@@ -1,0 +1,6 @@
+interface:
+  display_name: "Spec-Driven Development"
+  short_description: "Turn specs into atomic outcomes and proof plans."
+  default_prompt: "Use $spec-driven-development to extract requirements, scope this task, and define evidence before editing."
+policy:
+  allow_implicit_invocation: true
