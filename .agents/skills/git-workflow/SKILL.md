@@ -141,6 +141,50 @@ Fixes #<issue-number>
 
 Do not put closing references in the middle of the PR body.
 
+## Codex Review Gate
+
+Codex connector review is a real merge gate when it is expected for the
+repository or when the maintainer asks for it. Opening a PR is not completion,
+and merging is not completion if actionable Codex feedback has not been checked
+and handled.
+
+After opening or updating a PR, inspect Codex review state on the latest head.
+Do not rely only on GitHub review objects. `chatgpt-codex-connector` can deliver
+actual review results as inline review comments, GitHub review objects, or
+top-level PR issue comments.
+
+```sh
+gh pr view <pr> --json number,headRefOid,reviews,latestReviews,comments,reviewDecision,statusCheckRollup
+gh api repos/<owner>/<repo>/pulls/<pr>/comments --paginate
+gh api repos/<owner>/<repo>/issues/<pr>/comments --paginate
+```
+
+If the expected automatic Codex review does not appear after a reasonable wait,
+request it explicitly with a PR comment:
+
+```sh
+gh pr comment <pr> --body "@codex review"
+```
+
+An `eyes` reaction on the `@codex review` comment means Codex noticed the request
+and is processing it. It is not approval and does not mean review is complete.
+
+Codex review completion signals include:
+
+- Inline review comments or review suggestions from `chatgpt-codex-connector`; these are complete review output, but actionable comments block merge until fixed or explicitly accepted by a human maintainer.
+- A top-level PR comment from `chatgpt-codex-connector` that contains actual review results, suggestions, or no-issue/no-suggestion wording; this is also Codex review output, even when no GitHub review object appears.
+- A Codex comment such as `Didn't find any major issues` or equivalent no-suggestion wording; this means the reviewed head has no major actionable suggestions.
+- A Codex thumbs-up/no-suggestion result, such as `+1` or a thumbs-up reaction, when no inline suggestions are produced; this is acceptable only after confirming it applies to the latest PR head.
+
+Setup or environment comments, such as `create an environment for this repo`,
+are connector responses but not review content and not review completion. Treat
+them as infrastructure blockers unless the maintainer explicitly accepts
+proceeding without a full Codex review.
+
+If any new commits are pushed after Codex review, the old review no longer
+proves the current head. Wait for or request a fresh Codex review before
+merging.
+
 ## Repository Settings And Main Protection
 
 Repository settings should keep:
@@ -194,6 +238,7 @@ The review gate is satisfied only when:
 
 - `reviewDecision` is not `CHANGES_REQUESTED`.
 - No latest review from a maintainer, GitHub app, or Codex connector requests changes.
+- The expected Codex review has completed on the latest `headRefOid`; if it was missing, `@codex review` was requested and its completion signal was confirmed.
 - Every non-outdated review thread is resolved, or the PR body/comment history documents why no change is required.
 - Every actionable PR comment has been addressed or explicitly marked non-actionable with rationale.
 - You have re-run verification after addressing review feedback.
@@ -201,11 +246,18 @@ The review gate is satisfied only when:
 If any review or comment is ambiguous, stop and resolve it before merging. Do
 not merge first and plan to address review feedback afterward.
 
-When the PR satisfies the merge gates, merge through GitHub with squash merge and branch deletion:
+When the PR satisfies the merge gates, merge through GitHub with squash merge
+and branch deletion. Prefer `--match-head-commit <headRefOid>` when available so
+a newly pushed unreviewed head cannot be merged by accident:
 
 ```sh
-gh pr merge <pr> --squash --delete-branch --subject "<conventional subject> (#<pr-number>)"
+gh pr merge <pr> --squash --delete-branch --match-head-commit <headRefOid> --subject "<conventional subject> (#<pr-number>)"
 ```
+
+`gh pr merge` does not have a flag that means "Codex review passed." `--auto`
+only waits for requirements configured in GitHub, and `--admin` bypasses
+requirements. Do not use `--admin` to skip Codex review, required checks, or
+review-thread cleanup.
 
 Do not locally merge feature branches into `main` as a substitute for the PR workflow.
 
@@ -244,6 +296,7 @@ After resolving, stage only the resolved files and run verification relevant to 
 - No force push or force-with-lease is used.
 - Verification covers touched surfaces.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
+- Expected Codex review completed on the latest PR head, and no unresolved actionable Codex feedback remains.
 - PR reviews, Codex connector reviews, PR comments, and review threads have been inspected and all actionable feedback is resolved or explicitly documented as non-actionable before merge.
 - Repository merge settings allow squash only and delete branches after merge.
 - Main protection is configured, or an exact GitHub plan/visibility blocker is documented.
