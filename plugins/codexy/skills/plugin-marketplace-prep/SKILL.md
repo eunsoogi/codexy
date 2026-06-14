@@ -1,0 +1,87 @@
+---
+name: plugin-marketplace-prep
+description: Use when preparing Codex plugin manifests, marketplace listings, skill bundles, install candidates, assets, metadata, validation checks, or plugin distribution readiness.
+---
+
+# Plugin Marketplace Prep
+
+## Purpose
+
+Treat plugin and marketplace metadata as a product surface. A plugin is ready
+only when Codex can discover it, users can understand it, assets resolve, and
+validation proves the packaged paths match the repository layout.
+
+## Workflow
+
+1. Inspect canonical layout:
+   - `.agents/plugins/marketplace.json`,
+   - `plugins/<plugin>/.codex-plugin/plugin.json`,
+   - `plugins/<plugin>/skills/*/SKILL.md`,
+   - `plugins/<plugin>/skills/*/agents/openai.yaml`,
+   - `plugins/<plugin>/assets/*`,
+   - optional `plugins/<plugin>/.mcp.json` or app manifests when present.
+2. Validate plugin manifest:
+   - `name` matches the plugin folder,
+   - `version` is explicit,
+   - `license`, `author`, `repository`, and `homepage` are current,
+   - interface copy matches implemented behavior,
+   - referenced `logo`, `composerIcon`, screenshots, or assets exist.
+3. Validate marketplace entry:
+   - `source.path` is relative to the marketplace root,
+   - `policy.installation` and `policy.authentication` are explicit,
+   - `category` is present,
+   - plugin order is intentional,
+   - no obsolete root `.codex-plugin`, root marketplace, or package-only
+     assumption is reintroduced.
+4. Validate skills:
+   - `SKILL.md` has `name` and `description` frontmatter,
+   - names are lowercase hyphen-case,
+   - descriptions start with triggering context such as `Use when`,
+   - `agents/openai.yaml` has display name, short description, default prompt,
+     and invocation policy,
+   - default prompts mention `$skill-name` when they route the user.
+5. Validate packaged safety:
+   - no secrets,
+   - no local machine paths,
+   - no `.omo` state,
+   - no temporary logs,
+   - no missing assets.
+6. Record install/readiness evidence and unresolved risks.
+
+## Required Output
+
+```text
+Plugin path:
+Marketplace path:
+Manifest checks:
+Marketplace checks:
+Skill checks:
+Asset checks:
+Validation commands:
+Risks:
+```
+
+## Gates
+
+- Do not claim marketplace readiness while any referenced path is missing.
+- Do not advertise tools, MCP servers, apps, hooks, or assets that are not
+  actually packaged.
+- Do not add root-level plugin manifests when the canonical layout is
+  `plugins/<plugin>/.codex-plugin/plugin.json`.
+- Do not create package manager files solely to validate a static plugin unless
+  the release or automation scope requires them.
+
+## Evidence Rules
+
+- JSON manifests require parser validation.
+- Skill bundles require frontmatter and metadata validation.
+- Asset references require file-existence checks from the plugin root.
+- Marketplace installability requires checking both marketplace entry and plugin
+  manifest paths.
+
+## Failure Modes
+
+- Confusing a GitHub repository with an installable Codex plugin.
+- Letting marketplace copy drift from implemented skills.
+- Reintroducing obsolete root manifests or stale package scripts.
+- Shipping plugin metadata that depends on a local absolute path.
