@@ -27,7 +27,8 @@ validation proves the packaged paths match the repository layout.
    - interface copy matches implemented behavior,
    - referenced `logo`, `composerIcon`, screenshots, or assets exist.
 3. Validate marketplace entry:
-   - `source.path` is relative to the marketplace root,
+   - `source.path` is relative to the repository or marketplace installation
+     root, using the canonical `./plugins/<plugin>` shape for this repository,
    - `policy.installation` and `policy.authentication` are explicit,
    - `category` is present,
    - plugin order is intentional,
@@ -76,8 +77,8 @@ Risks:
 - JSON manifests require parser validation.
 - Skill bundles require frontmatter and metadata validation.
 - Asset references require file-existence checks from the plugin root.
-- Marketplace installability requires checking both marketplace entry and plugin
-  manifest paths.
+- Marketplace installability requires checking both the repo-root-relative
+  marketplace entry and plugin manifest paths.
 
 ## Failure Modes
 
