@@ -34,7 +34,9 @@
     "defaultPrompt": [
       "Use Codexy as the orchestrator for this request.",
       "Decompose the work into atomic issue-sized lanes before editing.",
-      "Use goal tracking when available, todo tracking, specialist roles, multi-agent or multi-thread decomposition, verification evidence, Codex review, and squash-merge gates before reporting completion."
+      "Track the goal when available and keep todo state current.",
+      "Use specialist roles plus multi-agent or multi-thread decomposition.",
+      "Require verification evidence, Codex review, and squash-merge gates."
     ],
     "brandColor": "#2F6F5E",
     "composerIcon": "./assets/codexy-agent-hero.png",
