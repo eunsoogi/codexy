@@ -159,6 +159,16 @@ gh api repos/<owner>/<repo>/pulls/<pr>/comments --paginate
 gh api repos/<owner>/<repo>/issues/<pr>/comments --paginate
 ```
 
+Identify Codex connector output by any of these GitHub API signals:
+
+- `performed_via_github_app.slug == "chatgpt-codex-connector"`.
+- `user.login == "chatgpt-codex-connector[bot]"` or the compact PR view author appears as `chatgpt-codex-connector`.
+- The GitHub App avatar/icon URL belongs to the `chatgpt-codex-connector` app user.
+
+These identity signals only prove the connector authored the comment or review.
+They do not prove the review completed; interpret the comment body and reaction
+state before treating it as a merge gate pass.
+
 If the expected automatic Codex review does not appear after a reasonable wait,
 request it explicitly with a PR comment:
 
