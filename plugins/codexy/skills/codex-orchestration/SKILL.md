@@ -84,9 +84,10 @@ Stop if:
 ## Completion Guard
 
 Do not mark a plan step complete until its evidence has been inspected by the
-orchestrator. Use `update_goal` only when that tool is available and every
-explicit requirement has current, matching proof. Otherwise, report the same
-completion audit textually without inventing unavailable goal-tool calls.
+orchestrator. Use `update_goal` only when that tool is available, an active or
+user-requested goal exists, and every explicit requirement has current,
+matching proof. Otherwise, report the same completion audit textually without
+inventing unavailable or unrequested goal-tool calls.
 
 ## Failure Modes
 
