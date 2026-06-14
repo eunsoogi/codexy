@@ -14,7 +14,7 @@ PLUGIN_NAME = "codexy"
 PLUGIN_MANIFEST = REPO_ROOT / "plugins" / PLUGIN_NAME / ".codex-plugin" / "plugin.json"
 MARKETPLACE = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
 PACKAGE_MANIFESTS = [REPO_ROOT / "package.json"]
-SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$")
+SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
 
 class VersionError(RuntimeError):
