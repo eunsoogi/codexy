@@ -13,9 +13,10 @@ Codexy is a Codex harness and loop engineering repository. It is used for agent 
 
 ## Documentation
 
-- User-facing project documentation should be written in Korean unless a legal, protocol, or upstream compatibility reason requires English.
+- `README.md` is the concise English first-user introduction.
+- `README.ko.md` is the concise Korean first-user introduction.
+- Keep both README files scoped to the current implemented state of the project.
 - `LICENSE` must remain the standard English MIT license text.
-- Keep `README.md` as the first-user project overview and workflow index.
 - Keep executable Git, issue, PR, and merge rules in `.agents/skills/git-workflow/SKILL.md`.
 
 ## Workflow
