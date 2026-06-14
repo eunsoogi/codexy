@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Codexy GitHub issue, branch, worktree, push, pull request, verification, repository-settings, branch-protection, and squash-merge workflow. Use before Git, issue, PR, label, review, protection, merge, or post-merge sync work in this repository.
+description: Codexy plugin GitHub issue, branch, worktree, push, pull request, verification, repository-settings, branch-protection, Codex review, and squash-merge workflow. Use before Git, issue, PR, label, review, protection, merge, or post-merge sync work in this repository.
 ---
 
 # Git Workflow
@@ -86,7 +86,7 @@ Common types:
 | `ci` | CI or automation workflow changes |
 | `revert` | Reverting an earlier change |
 
-Project-local skill changes under `.agents/skills/**` change agent behavior, so prefer a non-`docs` type such as `chore`, `feat`, `fix`, or `refactor`.
+Project-local skill changes under `plugins/codexy/skills/**` change agent behavior, so prefer a non-`docs` type such as `chore`, `feat`, `fix`, or `refactor`.
 
 Avoid vague messages such as `update`, `fix`, `WIP`, or `misc`.
 
@@ -101,7 +101,7 @@ git diff --check
 test -f README.md
 test -f LICENSE
 test -f AGENTS.md
-test -f .agents/skills/git-workflow/SKILL.md
+test -f plugins/codexy/skills/git-workflow/SKILL.md
 git check-ignore .omo/ulw-loop/example
 ```
 
