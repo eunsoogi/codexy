@@ -22,6 +22,11 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Pin working tree to main
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+
       - name: Configure Git identity
         run: |
           git config user.name "github-actions[bot]"
