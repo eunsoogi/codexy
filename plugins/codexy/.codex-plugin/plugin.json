@@ -17,7 +17,6 @@
     "harness"
   ],
   "mcpServers": "./.mcp.json",
-  "lsp": "./.codex/lsp-client.json",
   "interface": {
     "displayName": "Codexy",
     "shortDescription": "Harness, verification, and orchestration scaffolding for Codex work.",
