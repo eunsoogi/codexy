@@ -14,9 +14,10 @@ atomic units only.
 
 ## Required Control Plane
 
-- Establish the goal before implementation. Use `create_goal` when the user
-  explicitly asks for goal tracking; otherwise restate the objective and success
-  criteria in the thread.
+- Establish the goal before implementation. If `create_goal` is available and
+  the user explicitly asks for goal tracking, use it. If goal tools are not
+  available, keep a visible `Goal` note in the thread with success criteria and
+  update it textually as evidence changes.
 - Maintain a visible todo list with `update_plan` for any non-trivial task.
 - Decompose broad work into issue-sized atomic units before editing.
 - Use multi-agent dispatch for independent research, implementation, QA,
@@ -83,8 +84,9 @@ Stop if:
 ## Completion Guard
 
 Do not mark a plan step complete until its evidence has been inspected by the
-orchestrator. Do not mark a goal complete until every explicit requirement has
-current, matching proof.
+orchestrator. Use `update_goal` only when that tool is available and every
+explicit requirement has current, matching proof. Otherwise, report the same
+completion audit textually without inventing unavailable goal-tool calls.
 
 ## Failure Modes
 
