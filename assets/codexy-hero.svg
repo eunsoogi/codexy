@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+  <title id="title">Codexy hero image</title>
+  <desc id="desc">A clean abstract control room for Codex harness and loop engineering.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#172033"/>
+      <stop offset="0.55" stop-color="#203e43"/>
+      <stop offset="1" stop-color="#2f6f5e"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" x2="1">
+      <stop offset="0" stop-color="#f4f0e8"/>
+      <stop offset="1" stop-color="#d8ece6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0b1018" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="480" rx="36" fill="url(#bg)"/>
+  <path d="M0 356 C180 312 280 405 455 358 C627 311 720 208 895 260 C1038 302 1093 245 1200 205 L1200 480 L0 480 Z" fill="#f4f0e8" opacity="0.9"/>
+  <g transform="translate(122 92)" filter="url(#shadow)">
+    <rect x="0" y="0" width="956" height="286" rx="24" fill="#13202c"/>
+    <rect x="28" y="28" width="900" height="230" rx="16" fill="url(#panel)"/>
+    <g fill="none" stroke="#2f6f5e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M182 145 C236 74 305 73 360 145 C415 217 484 216 538 145 C592 74 661 73 716 145"/>
+      <path d="M182 145 C236 216 305 217 360 145 C415 74 484 73 538 145 C592 216 661 217 716 145"/>
+    </g>
+    <g fill="#172033">
+      <circle cx="182" cy="145" r="13"/>
+      <circle cx="360" cy="145" r="13"/>
+      <circle cx="538" cy="145" r="13"/>
+      <circle cx="716" cy="145" r="13"/>
+    </g>
+    <g fill="#c85d43">
+      <rect x="90" y="78" width="52" height="18" rx="9"/>
+      <rect x="90" y="126" width="52" height="18" rx="9"/>
+      <rect x="90" y="174" width="52" height="18" rx="9"/>
+    </g>
+    <g fill="#172033" opacity="0.72">
+      <rect x="770" y="78" width="72" height="18" rx="9"/>
+      <rect x="770" y="126" width="102" height="18" rx="9"/>
+      <rect x="770" y="174" width="58" height="18" rx="9"/>
+    </g>
+  </g>
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fill="#f4f0e8">
+    <text x="600" y="410" text-anchor="middle" font-size="50" font-weight="800" letter-spacing="0">Codexy</text>
+    <text x="600" y="444" text-anchor="middle" font-size="20" font-weight="500" opacity="0.86" letter-spacing="0">Harness and loop engineering for Codex</text>
+  </g>
+</svg>
