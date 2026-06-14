@@ -1,7 +1,7 @@
 {
   "name": "codexy",
   "version": "0.1.0",
-  "description": "Codex harness and loop engineering scaffolding for agent workflows, verification, evidence capture, and orchestration.",
+  "description": "Codex orchestrator scaffolding for atomic agent workflows, verification, evidence capture, and merge-safe execution.",
   "author": {
     "name": "Eunsoo Lee",
     "url": "https://github.com/eunsoogi"
@@ -19,8 +19,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Codexy",
-    "shortDescription": "Harness, verification, and orchestration scaffolding for Codex work.",
-    "longDescription": "Codexy packages repository-native scaffolding for Codex agent loops, workflow automation, evidence capture, and verification.",
+    "shortDescription": "Run Codex work through atomic orchestration, evidence, review, and merge gates.",
+    "longDescription": "Codexy starts as an orchestrator for Codex work: it decomposes broad requests into issue-sized lanes, routes work through specialist roles and skills, verifies real surfaces, and keeps pull requests behind review and squash-merge gates.",
     "developerName": "Eunsoo Lee",
     "category": "Developer Tools",
     "capabilities": [
@@ -32,9 +32,9 @@
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
     "defaultPrompt": [
-      "Prepare an atomic Codex workflow branch.",
-      "Validate Codexy plugin metadata.",
-      "Review evidence before a squash merge."
+      "Use Codexy as the orchestrator for this request.",
+      "Decompose the work into atomic issue-sized lanes before editing.",
+      "Use goal tracking when available, todo tracking, specialist roles, multi-agent or multi-thread decomposition, verification evidence, Codex review, and squash-merge gates before reporting completion."
     ],
     "brandColor": "#2F6F5E",
     "composerIcon": "./assets/codexy-agent-hero.png",
