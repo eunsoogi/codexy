@@ -23,7 +23,7 @@ aligned before publishing or tagging.
    - tag or GitHub release.
 2. Find version sources of truth:
    - `plugins/<plugin>/.codex-plugin/plugin.json`,
-   - marketplace metadata when it carries install availability,
+   - `.agents/plugins/marketplace.json` when it carries install availability,
    - package metadata only when a package manager is intentionally present,
    - release workflow inputs,
    - changelog or release notes.
@@ -57,6 +57,7 @@ Target version:
 Version policy:
 Files to sync:
 Release PR gates:
+Validation commands:
 Artifact checks:
 Rollback plan:
 Not publishing because:

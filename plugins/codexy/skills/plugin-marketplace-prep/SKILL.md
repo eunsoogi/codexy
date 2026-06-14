@@ -38,8 +38,8 @@ validation proves the packaged paths match the repository layout.
    - `SKILL.md` has `name` and `description` frontmatter,
    - names are lowercase hyphen-case,
    - descriptions start with triggering context such as `Use when`,
-   - `agents/openai.yaml` has display name, short description, default prompt,
-     and invocation policy,
+   - `agents/openai.yaml` has `display_name`, `short_description`,
+     `default_prompt`, and `allow_implicit_invocation: true`,
    - default prompts mention `$skill-name` when they route the user.
 5. Validate packaged safety:
    - no secrets,
@@ -47,7 +47,12 @@ validation proves the packaged paths match the repository layout.
    - no `.omo` state,
    - no temporary logs,
    - no missing assets.
-6. Record install/readiness evidence and unresolved risks.
+6. Validate automation and release surfaces when present:
+   - GitHub Actions reference repository-root paths,
+   - workflow version inputs match plugin manifest expectations,
+   - marketplace validation can run without package-manager scaffolding unless
+     that scaffolding is part of the release issue.
+7. Record install/readiness evidence and unresolved risks.
 
 ## Required Output
 
