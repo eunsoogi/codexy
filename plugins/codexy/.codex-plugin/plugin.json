@@ -16,6 +16,7 @@
     "verification",
     "harness"
   ],
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Codexy",
     "shortDescription": "Harness, verification, and orchestration scaffolding for Codex work.",

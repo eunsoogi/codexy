@@ -1,0 +1,29 @@
+{
+  "lsp": {
+    "basedpyright": {
+      "extensions": [
+        ".py",
+        ".pyi"
+      ],
+      "priority": 80
+    },
+    "typescript": {
+      "extensions": [
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs"
+      ],
+      "priority": 80
+    },
+    "yaml-ls": {
+      "extensions": [
+        ".yaml",
+        ".yml"
+      ],
+      "priority": 80
+    }
+  }
+}
