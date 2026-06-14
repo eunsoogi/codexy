@@ -1,0 +1,91 @@
+name: Plugin version bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Target plugin version in MAJOR.MINOR.PATCH form"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  open-version-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Pin working tree to main
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Synchronize plugin version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python3 scripts/sync-plugin-version.py --version "$VERSION"
+
+      - name: Verify version sync
+        run: |
+          python3 scripts/sync-plugin-version.py --check
+          git diff --check
+
+      - name: Open version bump pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git diff --quiet; then
+            echo "Version is already synchronized to ${VERSION}."
+            exit 0
+          fi
+          branch="eunsoogi/version-${VERSION}"
+          git switch -c "${branch}"
+          git add .agents/plugins/marketplace.json plugins/codexy/.codex-plugin/plugin.json
+          if [ -f package.json ]; then
+            git add package.json
+          fi
+          git commit -m "chore(plugin): bump version to ${VERSION}"
+          git push origin "${branch}"
+          body_file="$(mktemp)"
+          cat >"${body_file}" <<EOF
+          ## Summary
+          - Bump the Codexy plugin version to ${VERSION}.
+          - Keep plugin manifest and marketplace metadata in sync.
+
+          ## Rationale
+          - Codexy plugin releases need explicit version synchronization before review and merge.
+
+          ## Changed Areas
+          - .agents/plugins/marketplace.json
+          - plugins/codexy/.codex-plugin/plugin.json
+
+          ## Verification
+          - python3 scripts/sync-plugin-version.py --check
+
+          ## Evidence
+          - Workflow validation completed before opening this PR.
+
+          ## Not Run
+          - None.
+
+          ## Follow-ups
+          - None.
+          EOF
+          gh pr create \
+            --title "chore(plugin): bump version to ${VERSION}" \
+            --body-file "${body_file}" \
+            --base main \
+            --head "${branch}"

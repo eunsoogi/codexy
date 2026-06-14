@@ -6,6 +6,7 @@
   "plugins": [
     {
       "name": "codexy",
+      "version": "0.1.0",
       "source": {
         "source": "local",
         "path": "./plugins/codexy"
