@@ -8,7 +8,7 @@
       "name": "codexy",
       "source": {
         "source": "local",
-        "path": "."
+        "path": "./plugins/codexy"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -16,8 +16,5 @@
       },
       "category": "Developer Tools"
     }
-  ],
-  "metadata": {
-    "version": "0.1.0"
-  }
+  ]
 }
