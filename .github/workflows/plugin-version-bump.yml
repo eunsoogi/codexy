@@ -59,10 +59,23 @@ jobs:
           - Bump the Codexy plugin version to ${VERSION}.
           - Keep plugin manifest and marketplace metadata in sync.
 
+          ## Rationale
+          - Codexy plugin releases need explicit version synchronization before review and merge.
+
+          ## Changed Areas
+          - .agents/plugins/marketplace.json
+          - plugins/codexy/.codex-plugin/plugin.json
+
           ## Verification
           - python3 scripts/sync-plugin-version.py --check
 
+          ## Evidence
+          - Workflow validation completed before opening this PR.
+
           ## Not Run
+          - None.
+
+          ## Follow-ups
           - None." \
             --base main \
             --head "${branch}"
