@@ -1,0 +1,6 @@
+interface:
+  display_name: "QA"
+  short_description: "Verify claims through the real surface."
+  default_prompt: "Use $qa to turn acceptance criteria into observable QA scenarios and evidence."
+policy:
+  allow_implicit_invocation: true
