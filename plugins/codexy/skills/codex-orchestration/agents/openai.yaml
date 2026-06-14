@@ -1,0 +1,6 @@
+interface:
+  display_name: "Codex Orchestration"
+  short_description: "Coordinate goals, agents, threads, and worktrees."
+  default_prompt: "Use $codex-orchestration to decompose this Codex task into atomic lanes with evidence."
+policy:
+  allow_implicit_invocation: true

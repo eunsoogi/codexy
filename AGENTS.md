@@ -17,7 +17,7 @@ Codexy is a Codex harness and loop engineering repository. It is used for agent 
 - `README.ko.md` is the concise Korean first-user introduction.
 - Keep both README files scoped to the current implemented state of the project.
 - `LICENSE` must remain the standard English MIT license text.
-- Keep executable Git, issue, PR, and merge rules in `.agents/skills/git-workflow/SKILL.md`.
+- Keep executable Git, issue, PR, and merge rules in `plugins/codexy/skills/git-workflow/SKILL.md`.
 
 ## Workflow
 
@@ -39,7 +39,7 @@ Codexy is a Codex harness and loop engineering repository. It is used for agent 
 
 ## Git Workflow Skill
 
-- Before creating or updating issues, branches, worktrees, commits, pushes, PRs, labels, reviews, branch protection, repository settings, merges, or post-merge sync state, use the project-local `git-workflow` skill.
+- Before creating or updating issues, branches, worktrees, commits, pushes, PRs, labels, reviews, branch protection, repository settings, merges, or post-merge sync state, use the project-local `git-workflow` skill from `plugins/codexy/skills/git-workflow/SKILL.md`.
 - If the skill conflicts with this file, this file wins.
 - Use GitHub and `gh` for GitHub state when no richer connector is active.
 - Use local `git` for local worktree inspection, staging, committing, and ordinary pushes.
