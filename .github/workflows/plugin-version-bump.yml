@@ -53,9 +53,9 @@ jobs:
           fi
           git commit -m "chore(plugin): bump version to ${VERSION}"
           git push origin "${branch}"
-          gh pr create \
-            --title "chore(plugin): bump version to ${VERSION}" \
-            --body "## Summary
+          body_file="$(mktemp)"
+          cat >"${body_file}" <<EOF
+          ## Summary
           - Bump the Codexy plugin version to ${VERSION}.
           - Keep plugin manifest and marketplace metadata in sync.
 
@@ -76,6 +76,10 @@ jobs:
           - None.
 
           ## Follow-ups
-          - None." \
+          - None.
+          EOF
+          gh pr create \
+            --title "chore(plugin): bump version to ${VERSION}" \
+            --body-file "${body_file}" \
             --base main \
             --head "${branch}"
