@@ -27,7 +27,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Synchronize plugin version
-        run: python3 scripts/sync-plugin-version.py --version "${{ inputs.version }}"
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python3 scripts/sync-plugin-version.py --version "$VERSION"
 
       - name: Verify version sync
         run: |
