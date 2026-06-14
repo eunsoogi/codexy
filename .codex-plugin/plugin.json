@@ -1,0 +1,43 @@
+{
+  "name": "codexy",
+  "version": "0.1.0",
+  "description": "Codex harness and loop engineering scaffolding for agent workflows, verification, evidence capture, and orchestration.",
+  "author": {
+    "name": "Eunsoo Lee",
+    "url": "https://github.com/eunsoogi"
+  },
+  "homepage": "https://github.com/eunsoogi/codexy#readme",
+  "repository": "https://github.com/eunsoogi/codexy",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "agents",
+    "workflow",
+    "verification",
+    "harness"
+  ],
+  "interface": {
+    "displayName": "Codexy",
+    "shortDescription": "Harness, verification, and orchestration scaffolding for Codex work.",
+    "longDescription": "Codexy packages repository-native scaffolding for Codex agent loops, workflow automation, evidence capture, and verification.",
+    "developerName": "Eunsoo Lee",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/eunsoogi/codexy",
+    "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
+    "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Prepare an atomic Codex workflow branch.",
+      "Validate Codexy plugin metadata.",
+      "Review evidence before a squash merge."
+    ],
+    "brandColor": "#2F6F5E",
+    "composerIcon": "./assets/codexy-agent-hero.png",
+    "logo": "./assets/codexy-agent-hero.png",
+    "screenshots": []
+  }
+}

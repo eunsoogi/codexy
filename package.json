@@ -1,0 +1,28 @@
+{
+  "name": "codexy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Codex harness and loop engineering repository for agent workflows, verification, evidence capture, and orchestration.",
+  "author": "Eunsoo Lee",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eunsoogi/codexy.git"
+  },
+  "homepage": "https://github.com/eunsoogi/codexy#readme",
+  "scripts": {
+    "validate": "node scripts/validate-plugin.mjs",
+    "validate:plugin": "node scripts/validate-plugin.mjs"
+  },
+  "keywords": [
+    "codex",
+    "agents",
+    "workflow",
+    "verification",
+    "harness"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}
