@@ -216,6 +216,14 @@ review threads, stale concerns after new commits, and PR comments that identify
 defects must be addressed with code, documentation, or a clearly documented
 non-change rationale before merge.
 
+### Known Merge Subject Deviation
+
+PR #18 was squash merged as `docs(license): correct copyright owner (#)` because
+the merge command did not carry the numeric PR identifier into the subject. Do
+not rewrite protected `main` history to repair that old commit. Treat it as a
+recorded process deviation and prevent repeats by deriving the PR number from an
+explicit `gh pr view <number>` call before every merge.
+
 Before merging, inspect the latest PR state, checks, reviews, comments, and
 review threads:
 
@@ -261,7 +269,9 @@ and branch deletion. Prefer `--match-head-commit <headRefOid>` when available so
 a newly pushed unreviewed head cannot be merged by accident:
 
 ```sh
-gh pr merge <pr> --squash --delete-branch --match-head-commit <headRefOid> --subject "<conventional subject> (#<pr-number>)"
+pr_number=<explicit-pr-number>
+gh pr view "$pr_number" --json number,headRefOid,title
+gh pr merge "$pr_number" --squash --delete-branch --match-head-commit <headRefOid> --subject "<conventional subject> (#${pr_number})"
 ```
 
 `gh pr merge` does not have a flag that means "Codex review passed." `--auto`
