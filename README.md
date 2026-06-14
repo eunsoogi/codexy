@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/codexy-hero.svg" alt="Codexy" width="100%">
+  <img src="assets/codexy-agent-hero.png" alt="Codexy" width="100%">
 </p>
 
 <h1 align="center">Codexy</h1>
