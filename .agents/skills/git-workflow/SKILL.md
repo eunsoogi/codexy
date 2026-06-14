@@ -155,11 +155,51 @@ Repository settings should keep:
 
 ## Merge Rules
 
-Before merging, inspect the latest PR state and checks:
+Do not merge a PR until every review surface has been inspected and resolved.
+Codex connector reviews are merge-blocking reviews. Treat them the same as a
+human maintainer review: requested changes, actionable suggestions, unresolved
+review threads, stale concerns after new commits, and PR comments that identify
+defects must be addressed with code, documentation, or a clearly documented
+non-change rationale before merge.
+
+Before merging, inspect the latest PR state, checks, reviews, comments, and
+review threads:
 
 ```sh
-gh pr view <pr> --json number,title,state,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup
+gh pr view <pr> --json number,title,state,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,reviewDecision,latestReviews,reviews,comments
+gh pr view <pr> --comments
+gh api graphql -f owner=<owner> -f name=<repo> -F number=<pr-number> -f query='
+query($owner:String!, $name:String!, $number:Int!) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      reviewThreads(first:100) {
+        nodes {
+          isResolved
+          isOutdated
+          comments(first:20) {
+            nodes {
+              author { login }
+              body
+              url
+            }
+          }
+        }
+      }
+    }
+  }
+}'
 ```
+
+The review gate is satisfied only when:
+
+- `reviewDecision` is not `CHANGES_REQUESTED`.
+- No latest review from a maintainer, GitHub app, or Codex connector requests changes.
+- Every non-outdated review thread is resolved, or the PR body/comment history documents why no change is required.
+- Every actionable PR comment has been addressed or explicitly marked non-actionable with rationale.
+- You have re-run verification after addressing review feedback.
+
+If any review or comment is ambiguous, stop and resolve it before merging. Do
+not merge first and plan to address review feedback afterward.
 
 When the PR satisfies the merge gates, merge through GitHub with squash merge and branch deletion:
 
@@ -204,6 +244,7 @@ After resolving, stage only the resolved files and run verification relevant to 
 - No force push or force-with-lease is used.
 - Verification covers touched surfaces.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
+- PR reviews, Codex connector reviews, PR comments, and review threads have been inspected and all actionable feedback is resolved or explicitly documented as non-actionable before merge.
 - Repository merge settings allow squash only and delete branches after merge.
 - Main protection is configured, or an exact GitHub plan/visibility blocker is documented.
 - Merge is squash merge through the PR workflow.
