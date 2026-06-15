@@ -1,16 +1,6 @@
 interface:
   display_name: "Codex Orchestration"
   short_description: "Coordinate goals, agents, threads, and worktrees."
-  default_prompt: "Use $codex-orchestration to decompose this Codex task into atomic lanes with evidence."
+  default_prompt: "Use $codex-orchestration with the invoking Codex thread as orchestrator; split independent implementation into separate Codex thread/worktree lanes with issue, branch, worktree path, allowed paths, required evidence, stop condition, parent verification, and return format."
 policy:
   allow_implicit_invocation: true
-guidance: |
-  Keep the invoking Codex thread as the orchestrator. It may inspect child
-  output, request review, perform parent verification, coordinate merge, and
-  sync main, but child Codex worktree thread lanes own implementation edits,
-  local verification, and review-response fixes.
-
-  If review feedback belongs to a child-owned PR, MUST route it to the owning
-  child thread with PR number, head SHA, comments or threads, expected evidence,
-  and stop condition. Resolve review threads only after child evidence proves
-  the fix or a maintainer accepts a no-change rationale.
