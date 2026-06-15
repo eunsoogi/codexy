@@ -308,6 +308,10 @@ def check_agent_yaml_file(path: Path) -> list[str]:
 
 def check_agent_yaml(plugin_root: Path) -> list[str]:
     errors: list[str] = []
+    for skill_file in sorted((plugin_root / "skills").glob("*/SKILL.md")):
+        prompt_file = skill_file.parent / "agents" / "openai.yaml"
+        if not prompt_file.exists():
+            errors.append(f"{rel(skill_file.parent)} skill bundle is missing agents/openai.yaml")
     yaml_files = sorted(plugin_root.glob("**/agents/openai.yaml"))
     if not yaml_files:
         return [f"{rel(plugin_root)} has no agents/openai.yaml files"]
