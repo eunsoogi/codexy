@@ -54,17 +54,27 @@ complete.
   child thread. The parent thread may coordinate, but it must not merge until
   the child thread returns current verification or a documented non-change
   rationale.
+- For delegated lanes that need their own branch, worktree, PR, or durable
+  child context, require evidence that the child was created, forked, or
+  assigned before implementation patches began. If parent-authored draft edits
+  exist, require recovery evidence showing the parent stopped editing,
+  disclosed the mistake, protected user and other-agent work, and handed the
+  draft diff to the owning child thread.
 - For every non-trivial atomic unit, require evidence that the owning thread
   ran the packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/reviewer.toml`. Arbitrary reviewer agents, generic
   role names, or external review passes are not substitutes for this gate.
 - Re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, verify
-  the child reported its own goal state or fallback, current todo/plan status,
+  the child reported actual goal-tool usage or an unavailable-goal-tool
+  fallback, current todo/plan tool usage or an unavailable-todo-tool fallback,
   multi-agent use, a not-useful or not-applicable rationale, or an
   unavailable-tool fallback, changed files, verification evidence, packaged
   Codexy reviewer findings or approval, and clean worktree status before
-  treating the handoff as complete.
+  treating the handoff as complete. Goal-tool evidence should name real Codex
+  goal surfaces such as `create_goal`, `get_goal`, or `update_goal` when they
+  are available. Prose-only `Goal:` or `Todo:` text is not evidence of real
+  goal or todo/plan tool use.
   For an atomic trivial child lane, require an explicit not-applicable rationale
   instead of silently skipping the execution discipline.
 
@@ -115,8 +125,10 @@ Include:
   until a repeated true impasse prevents meaningful progress without user input
   or an external state change.
 - Do not accept a non-trivial child implementation handoff as complete when it
-  omits goal, todo/plan, or multi-agent/fallback evidence required by the
-  orchestrator assignment.
+  omits actual goal-tool usage, actual todo/plan tool usage, or
+  multi-agent/fallback evidence required by the orchestrator assignment.
+  Using only one of goal or todo/plan is insufficient unless the missing tool
+  was unavailable and the child reported that unavailability with its fallback.
 - Do not accept a non-trivial atomic unit as complete when it omits the
   packaged Codexy reviewer agent result for the current diff and evidence.
 
@@ -136,5 +148,7 @@ Include:
   exploration evidence when the MCP was available.
 - Fixing child-owned review feedback in the parent thread and merging without
   handing it back to the owning child thread for verification.
+- Accepting child-owned lane completion when the parent patched implementation
+  first and delegated afterward without explicit recovery evidence.
 - Treating an arbitrary reviewer agent, generic review role, or parent-only
   readthrough as equivalent to the packaged Codexy reviewer agent gate.

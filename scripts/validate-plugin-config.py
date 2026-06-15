@@ -235,9 +235,13 @@ def check_mcp(plugin_root: Path) -> list[str]:
         data = load_json(path)
         if not isinstance(data, dict):
             raise ValidationError(f"{rel(path)} must contain a JSON object")
-        servers = data.get("mcpServers")
+        if "mcpServers" in data:
+            raise ValidationError(f"{rel(path)} must use a direct server map or 'mcp_servers', not 'mcpServers'")
+        servers = data.get("mcp_servers", data)
         if not isinstance(servers, dict):
-            raise ValidationError(f"{rel(path)} must contain an object at key 'mcpServers'")
+            raise ValidationError(f"{rel(path)} MCP server map must be an object")
+        if "mcp_servers" in data and set(data.keys()) != {"mcp_servers"}:
+            errors.append(f"{rel(path)} must not mix 'mcp_servers' with direct MCP server entries")
         missing = sorted(REQUIRED_MCP_NAMES - servers.keys())
         if missing:
             errors.append(f"{rel(path)} missing required MCP servers: {', '.join(missing)}")

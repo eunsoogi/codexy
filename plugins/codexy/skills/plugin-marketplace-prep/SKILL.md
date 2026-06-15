@@ -53,7 +53,7 @@ validation proves the packaged paths match the repository layout.
    - no missing assets.
 6. Validate architecture surfaces when present:
    - LSP config and its catalog agree on server ids and covered extensions,
-  - MCP config contains only verified packaged or official endpoints,
+   - MCP config contains only verified packaged or official endpoints,
    - Codexy MCP config includes packaged `lsp` and `codegraph` servers when
      the plugin advertises LSP or code exploration behavior,
    - specialist agent or custom agent TOMLs parse and do not define a child

@@ -30,6 +30,10 @@ custom agents: Codex discovers native custom agents from the active project
   and syncs `main`.
 - A child Codex worktree thread owns implementation edits, local verification,
   and review-response fixes for its assigned issue or lane.
+- For any lane that needs its own branch, worktree, PR, or long-running
+  implementation context, the orchestrator MUST create, fork, or assign the
+  owning child thread before implementation patches begin. The orchestrator
+  MUST NOT make draft implementation edits first and delegate afterward.
 - If Codex connector or human review feedback flags a child-owned PR, the
   orchestrator MUST route the feedback back to the owning child thread with the
   PR number, latest head SHA, relevant comments or review threads, expected
@@ -40,6 +44,13 @@ custom agents: Codex discovers native custom agents from the active project
 - The orchestrator may resolve review threads only after child evidence proves
   the fix on the current head, or after a maintainer accepts a no-change
   rationale.
+- If the orchestrator accidentally creates draft edits for a lane that should
+  belong to a child thread, it MUST stop editing immediately, disclose the
+  mistake in the parent thread, inspect whether the draft touches user or other
+  agent work, and preserve the diff for handoff unless a maintainer explicitly
+  asks to discard it. It must then hand the draft diff, allowed files, risks,
+  and recovery state to the owning child thread instead of continuing the
+  implementation.
 - Worktree lanes must stay issue-sized and atomic. Do not bundle review
   response work from one lane into another lane.
 
@@ -61,17 +72,28 @@ Child implementation threads assigned a non-trivial lane MUST run their own
 execution loop instead of treating the parent handoff as permission for ad hoc
 edits.
 
-- Create or maintain a lane-specific goal when goal tooling is available. If
-  goal tooling is unavailable, write a visible textual goal with success
-  criteria and keep it current in status updates and handoff evidence.
-- Maintain a visible todo or `update_plan` state for multi-step delegated work.
-  Update statuses as work moves from discovery, to edit, to verification, to
-  handoff.
+- Create or maintain a lane-specific goal with the real Codex goal tools when
+  they are available. Use `create_goal` to start the lane goal, `get_goal` to
+  inspect active goal state when needed, and `update_goal` only when completion
+  or true blockage is proved. A prose-only `Goal:` line or goal-looking status
+  text is not evidence that goal tooling was used. If goal tooling is
+  unavailable, write a visible textual goal with success criteria, keep it
+  current in status updates, and report the unavailable-tool fallback in
+  handoff evidence.
+- Maintain real todo or plan state for multi-step delegated work when the
+  tool is available, such as Codex `update_plan` or the active todo tool for
+  the surface. Update statuses as work moves from discovery, to edit, to
+  verification, to handoff. Prose-only `Todo:` text is not evidence that
+  todo/plan tooling was used.
 - Use multi-agent decomposition when independent research, implementation,
   review, QA, or verification subtasks can safely proceed in parallel and the
   tool is available and useful.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
-  work MUST NOT proceed as untracked edits without goal and todo discipline.
+  work MUST NOT proceed as untracked edits without both real goal state and
+  real todo/plan state when those tools are available. Using only one of goal
+  or todo/plan is insufficient for a non-trivial child lane unless the missing
+  tool is unavailable and the child reports that unavailability with its
+  fallback.
 - If a required execution tool is unavailable in the child thread, say so in
   the thread and use the closest available fallback. Do not silently skip the
   discipline.
@@ -86,18 +108,26 @@ edits.
 
 ## Required Control Plane
 
-- Establish the goal before implementation. If `create_goal` is available and
-  the user explicitly asks for goal tracking, use it. If goal tools are not
-  available, keep a visible `Goal` note in the thread with success criteria and
-  update it textually as evidence changes.
+- Establish the goal before implementation. If `create_goal` is available,
+  use it directly for non-trivial delegated or orchestrated lanes; use
+  `get_goal` to inspect active goal state when needed, and `update_goal` only
+  when completion or true blockage is proved. Prose-only `Goal:` text is
+  fallback documentation, not proof of goal-tool use. If goal tools are not
+  available, keep a visible `Goal` note in the thread with success criteria,
+  update it textually as evidence changes, and report that fallback.
 - Treat waiting for Codex connector review, child-thread work, queued
   worktree/thread setup, or asynchronous tool completion as a non-blocking goal
   state. Keep the goal active, keep polling, send follow-up prompts when
   progress stalls, and continue the merge loop when evidence arrives.
 - Reserve `blocked` for repeated true impasses where the orchestrator cannot
   make meaningful progress without user input or an external state change.
-- Maintain a visible todo list with `update_plan` for any non-trivial task.
+- Maintain a visible todo list with real `update_plan` or todo-tool state for
+  any non-trivial task when available. Prose-only todo text is insufficient
+  unless the todo/plan tool is unavailable and the fallback is reported.
 - Decompose broad work into issue-sized atomic units before editing.
+- Decide lane ownership before editing. If an atomic unit needs a branch,
+  worktree, PR, or durable child context, dispatch the child thread first; do
+  not use the parent thread for a preliminary implementation pass.
 - Use multi-agent dispatch for bounded specialist help inside the current
   thread when the lane does not need its own branch or PR. Use the packaged
   specialist agent files and lightweight catalog metadata as routing context;
@@ -137,21 +167,28 @@ edits.
    - Mark exactly one step `in_progress`.
    - Split unrelated outcomes into separate issues and, when implementation
      can proceed independently, separate Codex thread/worktree lanes.
+   - Mark each lane as parent-owned or child-owned before any implementation
+     patch is made.
 3. Dispatch:
    - Start specialist subagents only for bounded lanes that do not need their
      own branch or PR.
    - For issue-sized implementation lanes, start or fork a separate Codex
      thread in a worktree when the tool is available. Fall back to manual
      `git worktree` only when thread tooling is unavailable, and record why.
+   - Complete the lane assignment before implementation edits begin. A parent
+     may prepare the issue, branch name, worktree path, and handoff text, but
+     must not patch implementation files for the child-owned lane.
    - Give each lane an assignment, issue, branch, worktree path, allowed paths,
      read-first files, deliverable, required evidence, verification command or
      surface, stop condition, and return format.
    - For forked Codex worktree child lanes, rename the child thread after
      setup with `set_thread_title` when available, using a project, issue
      number, and lane purpose title.
-   - Tell child implementation threads to create or maintain their own goal,
-     keep todo/plan state current, use useful multi-agent decomposition, and
-     report unavailable-tool fallbacks.
+   - Tell child implementation threads to create or maintain their own real
+     goal state with `create_goal`, `get_goal`, and `update_goal` when
+     available; keep real todo/plan state current with `update_plan` or the
+     available todo surface; use useful multi-agent decomposition; and report
+     actual tool usage or unavailable-tool fallbacks.
    - Tell child implementation threads and exploration agents to use Codexy
      `codegraph` MCP for code exploration when available, with ordinary file
      reads as confirmation before edits.
@@ -168,6 +205,9 @@ edits.
    - Resolve cross-lane conflicts in the orchestrator thread.
    - Route child-owned review feedback back to the owning child thread instead
      of patching it in the orchestrator thread.
+   - If parent-authored draft edits are discovered for a child-owned lane, stop
+     parent implementation, preserve or revert only as needed to protect user
+     work, and route the draft diff to the child as input evidence.
    - While child work, worktree setup, Codex review, or asynchronous tools are
      pending, keep polling and updating the plan instead of marking the goal
      blocked.
@@ -185,7 +225,7 @@ edits.
 ## Multi-Agent Dispatch Template
 
 ```text
-Goal:
+Lane goal / success criteria:
 Atomic lane:
 Issue:
 Branch:
@@ -198,6 +238,8 @@ Required evidence:
 Review feedback route:
 Parent verification:
 Return evidence:
+  - Goal tool usage or unavailable-goal-tool fallback
+  - Todo/plan tool usage or unavailable-todo-tool fallback
 Child execution discipline:
 Stop if:
 ```
@@ -219,6 +261,8 @@ Required evidence:
 Stop condition:
 Parent verification:
 Return format:
+  - Include goal tool usage or unavailable-goal-tool fallback.
+  - Include todo/plan tool usage or unavailable-todo-tool fallback.
 ```
 
 - Prefer Codex app thread tools such as `fork_thread` or `create_thread` with a
@@ -228,6 +272,10 @@ Return format:
 - The child thread must not merge, close issues, or claim final completion.
   It returns evidence and a commit-ready branch to the invoking orchestrator
   thread.
+- The invoking Codex thread must not edit implementation files for this
+  handoff before the child thread is created, forked, assigned, and given the
+  stop condition. If accidental parent draft edits exist, include them as
+  draft-diff input and stop parent implementation.
 - The invoking Codex thread re-reads diffs, reruns required checks, handles PR
   review gates, merges through GitHub, deletes branches, and syncs main.
 
@@ -237,6 +285,8 @@ Return format:
 - One branch per pull request.
 - Worktree-based implementation lanes require a Codex thread when thread tools
   are available.
+- Worktree-based implementation lanes require lane ownership before edits:
+  parent coordination first, child implementation second.
 - Shared files must have a named owner before parallel edits begin.
 - Never merge child work locally as a substitute for the repository PR flow.
 - After merge, synchronize the main worktree before starting dependent work.
@@ -268,6 +318,10 @@ requires user input or an external state change.
   instead of repeated blind requests.
 - Leaving multiple forked child worktree threads with inherited parent titles
   when `set_thread_title` is available.
+- Starting parent implementation patches for a lane that needs its own child
+  thread, worktree, branch, or PR, then delegating only after files changed.
+- Continuing parent implementation after discovering accidental draft edits for
+  a child-owned lane instead of handing the draft diff to the child thread.
 - Letting a child lane expand scope or edit shared files without ownership.
 - Letting a child implementation thread skip goal, todo/plan, or useful
   multi-agent discipline without saying which tool was unavailable and which
