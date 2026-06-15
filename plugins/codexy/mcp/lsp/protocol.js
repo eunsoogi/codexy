@@ -68,12 +68,12 @@ async function waitForPublishDiagnostics(notifications, timeoutMs) {
   }
 }
 
-async function runLspRequest({ server, filePath, method, params, timeoutMs = REQUEST_TIMEOUT_MS }) {
+async function runLspRequest({ server, filePath, method, params, timeoutMs = REQUEST_TIMEOUT_MS, workspaceRoot }) {
   const command = server.command;
   const absolutePath = resolvePath(filePath);
-  const workspaceRoot = workspaceRootForFile(absolutePath);
+  const requestWorkspaceRoot = workspaceRoot ? resolvePath(workspaceRoot) : workspaceRootForFile(absolutePath);
   const child = spawn(command[0], command.slice(1), {
-    cwd: workspaceRoot,
+    cwd: requestWorkspaceRoot,
     env: process.env,
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -159,7 +159,7 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
     const text = fs.readFileSync(absolutePath, "utf8");
     const initialize = await request("initialize", {
       processId: process.pid,
-      rootUri: toFileUri(workspaceRoot),
+      rootUri: toFileUri(requestWorkspaceRoot),
       capabilities: {
         textDocument: {
           documentSymbol: { hierarchicalDocumentSymbolSupport: true },

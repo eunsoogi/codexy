@@ -160,13 +160,14 @@ async function callTool(name, args) {
 
 async function operationResult(args, method, params) {
   if (!args.path) throw new Error("path is required");
-  const filePath = resolvePath(args.path, rootFromArgs(args));
+  const workspaceRoot = rootFromArgs(args);
+  const filePath = resolvePath(args.path, workspaceRoot);
   const server = selectServer({ ...args, path: filePath });
   if (!server.available) {
-    return textResult(JSON.stringify(unavailablePayload(filePath, server, rootFromArgs(args)), null, 2));
+    return textResult(JSON.stringify(unavailablePayload(filePath, server, workspaceRoot), null, 2));
   }
   try {
-    const result = await runLspRequest({ server, filePath, method, params });
+    const result = await runLspRequest({ server, filePath, method, params, workspaceRoot });
     return textResult(JSON.stringify(result, null, 2));
   } catch (error) {
     return textResult(JSON.stringify({

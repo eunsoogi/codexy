@@ -19,4 +19,20 @@ async function withFakeLspCapture(prefix, fn) {
   }
 }
 
-module.exports = { fakeLspCommand, withFakeLspCapture };
+function readCapture(capturePath) {
+  return JSON.parse(fs.readFileSync(capturePath, "utf8"));
+}
+
+async function withMarkerlessWorkspace(prefix, relativePath, fn) {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-${process.pid}-`));
+  const filePath = path.join(workspaceRoot, relativePath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, "export const markerless = true;\n");
+  try {
+    return await fn({ workspaceRoot, filePath });
+  } finally {
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  }
+}
+
+module.exports = { fakeLspCommand, readCapture, withFakeLspCapture, withMarkerlessWorkspace };
