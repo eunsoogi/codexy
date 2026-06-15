@@ -13,13 +13,14 @@ invoking Codex thread owns intent, decomposition, routing, evidence
 integration, and the final completion claim. Specialist subagents and separate
 Codex thread/worktree lanes own bounded atomic units only.
 
-Codexy ships specialist role definitions as plugin-packaged metadata at
-`plugins/codexy/agents/roles/<name>.toml`, with discovery metadata in
-`plugins/codexy/agents/catalog.toml`. Keep one specialist role per file. Do not treat
-`plugins/codexy/.codex/agents` as installed custom agents: Codex discovers
-native custom agents from the active project `.codex/agents` or
-`~/.codex/agents`, not from an installed plugin's internal `.codex/agents`
-directory.
+Codexy ships specialist agent definitions as plugin-packaged TOML files at
+`plugins/codexy/agents/<name>.toml`, with discovery metadata in
+`plugins/codexy/agents/catalog.toml`. Keep one specialist agent per file.
+`plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
+specialist worker. Do not treat `plugins/codexy/.codex/agents` as installed
+custom agents: Codex discovers native custom agents from the active project
+`.codex/agents` or `~/.codex/agents`, not from an installed plugin's internal
+`.codex/agents` directory.
 
 ## Parent And Child Thread Boundary
 
@@ -94,10 +95,10 @@ edits.
 - Decompose broad work into issue-sized atomic units before editing.
 - Use multi-agent dispatch for bounded specialist help inside the current
   thread when the lane does not need its own branch or PR. Use the packaged
-  specialist role files and lightweight catalog metadata as routing context;
-  do not claim those roles are native Codex custom agents unless they have
-  been projected into the active project or user custom-agent directory by a
-  supported workflow.
+  specialist agent files and lightweight catalog metadata as routing context;
+  do not claim those packaged agents are native Codex custom agents unless
+  they have been projected into the active project or user custom-agent
+  directory by a supported workflow.
 - Use separate Codex thread/worktree decomposition when lanes can proceed
   independently, touch separate ownership areas, or need separate PRs. If
   worktree isolation is required and Codex thread tools are available, create

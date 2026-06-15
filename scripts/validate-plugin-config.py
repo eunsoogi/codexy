@@ -245,18 +245,24 @@ def check_mcp(plugin_root: Path) -> list[str]:
     return errors
 
 
-def check_specialist_role_files(plugin_root: Path) -> list[str]:
+def check_specialist_agent_files(plugin_root: Path) -> list[str]:
     errors: list[str] = []
     agents_root = plugin_root / "agents"
+    legacy_roles_dir = agents_root / "roles"
     legacy_roles_path = agents_root / "roles.toml"
     catalog_path = agents_root / "catalog.toml"
+    if legacy_roles_dir.exists():
+        errors.append(
+            f"{rel(legacy_roles_dir)} must not contain specialist agent definitions; "
+            "store each specialist agent in agents/<name>.toml"
+        )
     if legacy_roles_path.exists():
         errors.append(
             f"{rel(legacy_roles_path)} must not contain collapsed multi-role metadata; "
-            "store each specialist role in agents/roles/<name>.toml"
+            "store each specialist agent in agents/<name>.toml"
         )
     if not catalog_path.exists():
-        return errors + [f"{rel(catalog_path)} is required for specialist role discovery metadata"]
+        return errors + [f"{rel(catalog_path)} is required for specialist agent discovery metadata"]
     try:
         catalog = load_toml(catalog_path)
     except ValidationError as exc:
@@ -265,48 +271,42 @@ def check_specialist_role_files(plugin_root: Path) -> list[str]:
     prefix = catalog.get("default_branch_prefix")
     if prefix in DISALLOWED_BRANCH_PREFIXES:
         errors.append(f"{rel(catalog_path)} default_branch_prefix must not be {prefix!r}")
-    roles_dir_name = catalog.get("roles_dir")
-    if not isinstance(roles_dir_name, str) or not roles_dir_name:
-        errors.append(f"{rel(catalog_path)} roles_dir must be the string 'roles'")
-        roles_dir_name = "roles"
-    elif roles_dir_name != "roles":
-        errors.append(f"{rel(catalog_path)} roles_dir must be 'roles'")
-    roles_dir = agents_root / "roles"
-    if not roles_dir.exists():
-        errors.append(f"{rel(roles_dir)} is required for per-agent specialist metadata")
-        return errors
-    if not roles_dir.is_dir():
-        errors.append(f"{rel(roles_dir)} must be a directory")
-        return errors
-    role_files = sorted(roles_dir.glob("*.toml"))
-    if not role_files:
-        errors.append(f"{rel(roles_dir)} must contain one TOML file per specialist role")
+    agent_files_glob = catalog.get("agent_files_glob")
+    if agent_files_glob != "*.toml":
+        errors.append(f"{rel(catalog_path)} agent_files_glob must be '*.toml'")
+    agent_files = sorted(
+        path
+        for path in agents_root.glob("*.toml")
+        if path.name != "catalog.toml"
+    )
+    if not agent_files:
+        errors.append(f"{rel(agents_root)} must contain one TOML file per specialist agent")
         return errors
     seen: set[str] = set()
-    for path in role_files:
+    for path in agent_files:
         try:
-            role = load_toml(path)
+            agent = load_toml(path)
         except ValidationError as exc:
             errors.append(str(exc))
             continue
-        if "roles" in role:
-            errors.append(f"{rel(path)} must define exactly one role and must not contain [[roles]]")
-        name = role.get("name")
+        if "roles" in agent:
+            errors.append(f"{rel(path)} must define exactly one specialist agent and must not contain [[roles]]")
+        name = agent.get("name")
         if not isinstance(name, str) or not name:
             errors.append(f"{rel(path)} name must be a non-empty string")
             continue
         if path.stem != name:
-            errors.append(f"{rel(path)} filename must match role name {name!r}")
+            errors.append(f"{rel(path)} filename must match agent name {name!r}")
         if name in seen:
-            errors.append(f"{rel(path)} duplicate role name: {name}")
+            errors.append(f"{rel(path)} duplicate agent name: {name}")
         seen.add(name)
         if name == "orchestrator":
-            errors.append(f"{rel(path)} assignable child orchestrator role is not allowed")
+            errors.append(f"{rel(path)} assignable child orchestrator agent is not allowed")
         for field in ("display_name", "model", "effort", "when_to_use"):
-            if not isinstance(role.get(field), str) or not role.get(field):
+            if not isinstance(agent.get(field), str) or not agent.get(field):
                 errors.append(f"{rel(path)} {field} must be a non-empty string")
         for field in ("inputs", "outputs", "constraints"):
-            value = role.get(field)
+            value = agent.get(field)
             if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
                 errors.append(f"{rel(path)} {field} must be a list of non-empty strings")
     required = {
@@ -324,7 +324,7 @@ def check_specialist_role_files(plugin_root: Path) -> list[str]:
     }
     missing = sorted(required - seen)
     if missing:
-        errors.append(f"{rel(roles_dir)} missing specialist roles: {', '.join(missing)}")
+        errors.append(f"{rel(agents_root)} missing specialist agents: {', '.join(missing)}")
     return errors
 
 
@@ -335,7 +335,7 @@ def check_project_agents(plugin_root: Path) -> list[str]:
         return errors
     errors.append(
         f"{rel(agents_dir)} is not loaded from an installed plugin; "
-        "keep plugin-packaged specialist metadata in agents/roles/<name>.toml"
+        "keep plugin-packaged specialist agent definitions in agents/<name>.toml"
     )
     seen: set[str] = set()
     for path in sorted(agents_dir.glob("*.toml")):
@@ -466,7 +466,7 @@ def check_agent_yaml(plugin_root: Path) -> list[str]:
 
 def check_roles(plugin_root: Path) -> list[str]:
     errors: list[str] = []
-    errors.extend(check_specialist_role_files(plugin_root))
+    errors.extend(check_specialist_agent_files(plugin_root))
     errors.extend(check_project_agents(plugin_root))
     errors.extend(check_agent_yaml(plugin_root))
     return errors
