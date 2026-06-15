@@ -129,15 +129,15 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
   child.stdout.on("data", (chunk) => {
     try {
       parseLspFrames(stdoutState, chunk, (message) => {
+        if (message.id !== undefined && typeof message.method === "string") {
+          respondToServerRequest(message);
+          return;
+        }
         if (message.id !== undefined && pending.has(message.id)) {
           const waiter = pending.get(message.id);
           clearTimeout(waiter.timer);
           pending.delete(message.id);
           waiter.resolve(message);
-          return;
-        }
-        if (message.id !== undefined && typeof message.method === "string") {
-          respondToServerRequest(message);
           return;
         }
         notifications.push(message);

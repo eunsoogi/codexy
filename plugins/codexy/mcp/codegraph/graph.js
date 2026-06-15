@@ -12,6 +12,8 @@ function parseJavaScriptFile(root, file) {
   const importPatterns = [
     /\bimport\s+(?:[^"'()]*?\s+from\s+)?["']([^"']+)["']/g,
     /\brequire\(\s*["']([^"']+)["']\s*\)/g,
+    /\bexport\s*\*\s*from\s*["']([^"']+)["']/g,
+    /\bexport\s*\{[^}]+\}\s*from\s*["']([^"']+)["']/g,
   ];
   const exportPatterns = [
     /\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g,

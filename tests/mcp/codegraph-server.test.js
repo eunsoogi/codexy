@@ -115,6 +115,46 @@ test("directory index imports resolve for graph, reverse deps, and neighborhood"
   }
 });
 
+test("re-export specifiers create dependency edges across graph tools", async () => {
+  const reexportFixtureRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-reexport-"));
+  await fs.writeFile(path.join(reexportFixtureRoot, "mod.js"), "export const leaf = 1;\n", "utf8");
+  await fs.writeFile(path.join(reexportFixtureRoot, "star.js"), 'export * from "./mod.js";\n', "utf8");
+  await fs.writeFile(
+    path.join(reexportFixtureRoot, "named.js"),
+    'export { leaf as renamedLeaf } from "./mod.js";\n',
+    "utf8"
+  );
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = assertStructuredToolResult(
+        await client.callTool("codegraph_index", { root: reexportFixtureRoot, limit: 10 })
+      );
+
+      assert.ok(graph.files.some((file) => file.path === "named.js" && file.exports.includes("renamedLeaf")));
+      assert.ok(graph.edges.some((edge) => edge.from === "star.js" && edge.to === "mod.js" && edge.resolved === true));
+      assert.ok(graph.edges.some((edge) => edge.from === "named.js" && edge.to === "mod.js" && edge.resolved === true));
+
+      const reverse = assertStructuredToolResult(
+        await client.callTool("codegraph_reverse_deps", { root: reexportFixtureRoot, path: "mod.js", limit: 5 })
+      );
+      assert.deepEqual(reverse.dependents.map((entry) => entry.path), ["named.js", "star.js"]);
+
+      const neighborhood = assertStructuredToolResult(
+        await client.callTool("codegraph_neighborhood", {
+          root: reexportFixtureRoot,
+          path: "named.js",
+          depth: 1,
+          limit: 5,
+        })
+      );
+      assert.ok(neighborhood.nodes.some((node) => node.path === "mod.js"));
+    });
+  } finally {
+    await fs.rm(reexportFixtureRoot, { recursive: true, force: true });
+  }
+});
+
 test("oversized graph output reports limit and truncation metadata", async () => {
   await withCodegraphClient(async (client) => {
     const response = await client.callTool("codegraph_index", { root: repoRoot, limit: 1 });

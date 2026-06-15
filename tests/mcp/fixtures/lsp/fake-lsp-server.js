@@ -6,7 +6,14 @@ let buffer = Buffer.alloc(0);
 let nextDiagnostics = false;
 let captureData = {};
 let pendingSymbolRequest;
-let serverRequestId = 1000;
+let pendingServerRequestId;
+
+function serverRequestIdFor(message) {
+  if (process.env.CODEXY_FAKE_LSP_SERVER_REQUEST_ID === "match-client-request") {
+    return message.id;
+  }
+  return 1000;
+}
 
 function encode(payload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8");
@@ -34,11 +41,12 @@ function captureUri(key, uri) {
 }
 
 function handle(message) {
-  if (pendingSymbolRequest && message.id === serverRequestId) {
+  if (pendingSymbolRequest && message.id === pendingServerRequestId) {
     captureUri("serverRequestResponseId", message.id);
     captureUri("serverRequestResponseResult", message.result);
     send({ jsonrpc: "2.0", id: pendingSymbolRequest.id, result: [] });
     pendingSymbolRequest = undefined;
+    pendingServerRequestId = undefined;
     return;
   }
   if (message.method === "initialize") {
@@ -58,7 +66,9 @@ function handle(message) {
   if (message.id !== undefined) {
     captureUri("requestUri", message.params?.textDocument?.uri);
     if (process.env.CODEXY_FAKE_LSP_REQUIRE_CLIENT_RESPONSE === "1") {
+      const serverRequestId = serverRequestIdFor(message);
       pendingSymbolRequest = message;
+      pendingServerRequestId = serverRequestId;
       send({
         jsonrpc: "2.0",
         id: serverRequestId,

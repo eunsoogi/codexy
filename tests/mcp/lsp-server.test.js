@@ -7,6 +7,7 @@ const os = require("os");
 const path = require("path");
 const { pathToFileURL } = require("url");
 const { createStdioClient, jsonTextContent } = require("./stdio-client");
+const { fakeLspCommand, withFakeLspCapture } = require("./fixtures/lsp/fake-lsp-fixtures");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const pluginRoot = path.join(repoRoot, "plugins/codexy");
@@ -106,63 +107,52 @@ test("LSP operations return structured unavailable when a path command is not ex
 });
 
 test("LSP operations initialize servers from the target file workspace root", async () => {
-  const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-${process.pid}-${Date.now()}.json`);
-  try {
+  await withFakeLspCapture("codexy-fake-lsp", async (capturePath) => {
     await withLspClient(async (client) => {
       const response = await client.callTool("lsp_document_symbols", {
         path: externalFixture,
-        server: {
-          id: "fake-lsp",
-          command: [process.execPath, fakeLspServer],
-        },
+        server: { id: "fake-lsp", command: fakeLspCommand() },
       });
       const payload = assertStructuredToolResult(response);
 
       assert.equal(payload.status, "ok");
       assert.equal(payload.path, externalFixture);
     }, { env: { CODEXY_FAKE_LSP_CAPTURE: capturePath } });
-
     const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
     assert.equal(capture.cwd, externalWorkspace);
     assert.equal(capture.rootUri, pathToFileURL(externalWorkspace).href);
-  } finally {
-    fs.rmSync(capturePath, { force: true });
-  }
+  });
 });
 
 test("LSP operations keep a markerless target file directory as the workspace root", async () => {
   const markerlessRoot = fs.mkdtempSync(path.join(os.tmpdir(), "codexy-markerless-lsp-"));
   const markerlessFixture = path.join(markerlessRoot, "sample.js");
-  const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-markerless-${process.pid}-${Date.now()}.json`);
   try {
     fs.writeFileSync(markerlessFixture, "export const markerless = true;\n");
 
-    await withLspClient(async (client) => {
-      const response = await client.callTool("lsp_document_symbols", {
-        path: markerlessFixture,
-        server: {
-          id: "fake-lsp",
-          command: [process.execPath, fakeLspServer],
-        },
-      });
-      const payload = assertStructuredToolResult(response);
+    await withFakeLspCapture("codexy-fake-lsp-markerless", async (capturePath) => {
+      await withLspClient(async (client) => {
+        const response = await client.callTool("lsp_document_symbols", {
+          path: markerlessFixture,
+          server: { id: "fake-lsp", command: fakeLspCommand() },
+        });
+        const payload = assertStructuredToolResult(response);
 
-      assert.equal(payload.status, "ok");
-      assert.equal(payload.path, markerlessFixture);
-    }, { env: { CODEXY_FAKE_LSP_CAPTURE: capturePath } });
+        assert.equal(payload.status, "ok");
+        assert.equal(payload.path, markerlessFixture);
+      }, { env: { CODEXY_FAKE_LSP_CAPTURE: capturePath } });
 
-    const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
-    assert.equal(fs.realpathSync(capture.cwd), fs.realpathSync(markerlessRoot));
-    assert.equal(capture.rootUri, pathToFileURL(markerlessRoot).href);
+      const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
+      assert.equal(fs.realpathSync(capture.cwd), fs.realpathSync(markerlessRoot));
+      assert.equal(capture.rootUri, pathToFileURL(markerlessRoot).href);
+    });
   } finally {
     fs.rmSync(markerlessRoot, { recursive: true, force: true });
-    fs.rmSync(capturePath, { force: true });
   }
 });
 
 test("LSP operations resolve relative paths against caller root", async () => {
-  const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-root-${process.pid}-${Date.now()}.json`);
-  try {
+  await withFakeLspCapture("codexy-fake-lsp-root", async (capturePath) => {
     await withLspClient(async (client) => {
       const statusResponse = await client.callTool("lsp_status", {
         path: "src/sample.js",
@@ -174,10 +164,7 @@ test("LSP operations resolve relative paths against caller root", async () => {
       const response = await client.callTool("lsp_document_symbols", {
         path: "src/sample.js",
         root: externalWorkspace,
-        server: {
-          id: "fake-lsp",
-          command: [process.execPath, fakeLspServer],
-        },
+        server: { id: "fake-lsp", command: fakeLspCommand() },
       });
       const payload = assertStructuredToolResult(response);
       const externalUri = pathToFileURL(externalFixture).href;
@@ -191,9 +178,7 @@ test("LSP operations resolve relative paths against caller root", async () => {
       assert.equal(capture.openedUri, externalUri);
       assert.equal(capture.requestUri, externalUri);
     }, { cwd: pluginRoot, env: { CODEXY_FAKE_LSP_CAPTURE: capturePath } });
-  } finally {
-    fs.rmSync(capturePath, { force: true });
-  }
+  });
 });
 
 test("LSP tools reject relative paths without an explicit caller root", async () => {
@@ -206,15 +191,11 @@ test("LSP tools reject relative paths without an explicit caller root", async ()
 });
 
 test("LSP operations answer server-to-client requests before document symbols", async () => {
-  const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-server-request-${process.pid}-${Date.now()}.json`);
-  try {
+  await withFakeLspCapture("codexy-fake-lsp-server-request", async (capturePath) => {
     await withLspClient(async (client) => {
       const response = await client.callTool("lsp_document_symbols", {
         path: externalFixture,
-        server: {
-          id: "fake-lsp",
-          command: [process.execPath, fakeLspServer],
-        },
+        server: { id: "fake-lsp", command: fakeLspCommand() },
       });
       const payload = assertStructuredToolResult(response);
 
@@ -230,7 +211,31 @@ test("LSP operations answer server-to-client requests before document symbols", 
         CODEXY_FAKE_LSP_REQUIRE_CLIENT_RESPONSE: "1",
       },
     });
-  } finally {
-    fs.rmSync(capturePath, { force: true });
-  }
+  });
+});
+
+test("LSP operations do not confuse a colliding server request id with the pending client request", async () => {
+  await withFakeLspCapture("codexy-fake-lsp-colliding-server-request", async (capturePath) => {
+    await withLspClient(async (client) => {
+      const response = await client.callTool("lsp_document_symbols", {
+        path: externalFixture,
+        server: { id: "fake-lsp", command: fakeLspCommand() },
+      });
+      const payload = assertStructuredToolResult(response);
+
+      assert.equal(payload.status, "ok");
+      assert.equal(payload.path, externalFixture);
+      assert.deepEqual(payload.result, []);
+
+      const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
+      assert.equal(capture.serverRequestResponseId, 2);
+      assert.deepEqual(capture.serverRequestResponseResult, [null]);
+    }, {
+      env: {
+        CODEXY_FAKE_LSP_CAPTURE: capturePath,
+        CODEXY_FAKE_LSP_REQUIRE_CLIENT_RESPONSE: "1",
+        CODEXY_FAKE_LSP_SERVER_REQUEST_ID: "match-client-request",
+      },
+    });
+  });
 });
