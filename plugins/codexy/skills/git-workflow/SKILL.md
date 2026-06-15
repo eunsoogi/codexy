@@ -58,6 +58,19 @@ If `origin/main` does not exist yet, create the smallest bootstrap commit needed
 
 Do not force-push task branches. If push is rejected because the remote branch changed, inspect the remote changes and bring required adjustments in with a new commit.
 
+## Child Worktree Thread Titles
+
+When a task lane is delegated to a forked Codex worktree child thread, rename
+the child thread after setup completes and a thread id exists. Use
+`set_thread_title` when that tool is available.
+
+Thread titles should include the project, issue number, and lane purpose, for
+example `Codexy #52 refactoring skill agent lane`.
+
+If thread title renaming is unavailable, mention that limitation in the parent
+status or child handoff and continue the lane. A missing title rename is a
+clarity issue, not a merge blocker for otherwise complete implementation work.
+
 ## Local Change Discipline
 
 Inspect before editing or committing:

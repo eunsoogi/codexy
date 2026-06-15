@@ -4,3 +4,21 @@ interface:
   default_prompt: "Use the invoking Codex thread as the Codexy orchestrator: classify the request, track the goal when available, maintain todos, use the packaged specialist role files and catalog metadata for bounded helper routing, split independent implementation into separate Codex thread/worktree lanes, use the packaged Codexy skills, verify each surface, require Codex review before merge, and hide internal routing details from the user."
 policy:
   allow_implicit_invocation: true
+guidance: |
+  The plugin-invoking thread is the orchestrator. It creates or confirms issues,
+  delegates atomic lanes, opens PRs, requests Codex review, performs parent
+  verification, coordinates merge, and syncs main.
+
+  After a forked Codex worktree child thread finishes setup and a thread id is
+  available, call `set_thread_title` when available. Use a title that includes
+  project, issue number, and lane purpose, such as `Codexy issue 52 refactoring
+  skill agent lane`. If title renaming is unavailable, report that limitation in
+  status or handoff and continue; thread title clarity is not a merge blocker
+  for otherwise complete implementation work.
+
+  A child Codex worktree thread owns implementation edits, local verification,
+  and review-response fixes for its assigned lane. If review feedback flags a
+  child-owned PR, the orchestrator MUST route the PR number, latest head SHA,
+  comments or review threads, expected return evidence, and stop condition back
+  to the owning child thread. The orchestrator does not directly patch
+  child-owned review feedback unless a maintainer explicitly reassigns the lane.

@@ -42,6 +42,18 @@ directory.
 - Worktree lanes must stay issue-sized and atomic. Do not bundle review
   response work from one lane into another lane.
 
+## Child Thread Titles
+
+- After a forked Codex worktree child thread finishes setup and a thread id is
+  available, the orchestrator should rename it with `set_thread_title` when the
+  tool is available.
+- Use a title that includes the project, issue number, and lane purpose, such
+  as `Codexy #52 refactoring skill agent lane`.
+- If thread title renaming is unavailable, mention that limitation in the
+  orchestration status or child handoff and continue with the lane.
+- Child thread title renaming is a clarity policy, not a merge blocker for
+  otherwise complete implementation work.
+
 ## Required Control Plane
 
 - Establish the goal before implementation. If `create_goal` is available and
@@ -86,6 +98,9 @@ directory.
    - Give each lane an assignment, issue, branch, worktree path, allowed paths,
      read-first files, deliverable, required evidence, verification command or
      surface, stop condition, and return format.
+   - For forked Codex worktree child lanes, rename the child thread after
+     setup with `set_thread_title` when available, using a project, issue
+     number, and lane purpose title.
    - Require evidence, diffs, findings, or failed assumptions; do not accept
      acknowledgements as proof.
    - For Codex worktree thread lanes, state that the child owns implementation
@@ -181,6 +196,8 @@ inventing unavailable or unrequested goal-tool calls.
   has `eyes` for the same PR head. Keep polling and waiting; if the request is
   unusually stale, record that status and escalate with a distinct rationale
   instead of repeated blind requests.
+- Leaving multiple forked child worktree threads with inherited parent titles
+  when `set_thread_title` is available.
 - Letting a child lane expand scope or edit shared files without ownership.
 - Fixing a child-owned PR's review feedback in the parent/orchestrator thread
   instead of routing it back to the owning child thread.
