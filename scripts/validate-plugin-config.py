@@ -123,7 +123,7 @@ def lsp_entries(plugin_root: Path) -> dict[str, dict[str, Any]]:
         if not extensions:
             raise ValidationError(f"{rel(lsp_path)} {server_id}.extensions must not be empty")
         priority = entry.get("priority")
-        if not isinstance(priority, int):
+        if type(priority) is not int:
             raise ValidationError(f"{rel(lsp_path)} {server_id}.priority must be an integer")
     return entries
 
@@ -259,6 +259,13 @@ def check_agent_yaml_file(path: Path) -> list[str]:
     for marker in required_markers:
         if marker not in text:
             errors.append(f"{rel(path)} missing YAML marker {marker}")
+    if "allow_implicit_invocation:" in text:
+        has_true_implicit_invocation = any(
+            line.strip() == "allow_implicit_invocation: true"
+            for line in text.splitlines()
+        )
+        if not has_true_implicit_invocation:
+            errors.append(f"{rel(path)} allow_implicit_invocation must be true")
     for line in text.splitlines():
         stripped = line.strip()
         if stripped.startswith(("display_name:", "short_description:", "default_prompt:")):
