@@ -18,7 +18,8 @@ validation proves the packaged paths match the repository layout.
    - `plugins/<plugin>/.codex-plugin/plugin.json`,
    - `plugins/<plugin>/skills/*/SKILL.md`,
    - `plugins/<plugin>/skills/*/agents/openai.yaml`,
-   - optional `plugins/<plugin>/agents/roles.toml`,
+   - optional `plugins/<plugin>/agents/catalog.toml`,
+   - optional `plugins/<plugin>/agents/roles/*.toml`,
    - optional `plugins/<plugin>/.codex/lsp-client.json`,
    - `plugins/<plugin>/assets/*`,
    - optional `plugins/<plugin>/.mcp.json` or app manifests when present.
@@ -100,7 +101,8 @@ Risks:
 - Do not add root-level plugin manifests when the canonical layout is
   `plugins/<plugin>/.codex-plugin/plugin.json`.
 - Do not present plugin-internal `.codex/agents/*.toml` files as canonical or
-  supported; use `plugins/<plugin>/agents/roles.toml` for role metadata.
+  supported; use `plugins/<plugin>/agents/catalog.toml` and
+  `plugins/<plugin>/agents/roles/*.toml` for role metadata.
 - Do not create package manager files solely to validate a static plugin unless
   the release or automation scope requires them.
 
