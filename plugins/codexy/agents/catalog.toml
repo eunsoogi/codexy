@@ -2,5 +2,18 @@ version = "0.1.0"
 default_branch_prefix = "codexy/"
 default_review_gate = "codex"
 catalog_kind = "plugin-packaged-specialist-agent-files"
-agent_files_glob = "*.toml"
 native_custom_agent_projection = "requires-active-project-or-user-agent-install"
+agent_files = [
+  "architect.toml",
+  "debugger.toml",
+  "documenter.toml",
+  "explorer.toml",
+  "implementer.toml",
+  "integrator.toml",
+  "planner.toml",
+  "qa.toml",
+  "refactor.toml",
+  "release.toml",
+  "reviewer.toml",
+  "security.toml",
+]

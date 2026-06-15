@@ -271,17 +271,32 @@ def check_specialist_agent_files(plugin_root: Path) -> list[str]:
     prefix = catalog.get("default_branch_prefix")
     if prefix in DISALLOWED_BRANCH_PREFIXES:
         errors.append(f"{rel(catalog_path)} default_branch_prefix must not be {prefix!r}")
-    agent_files_glob = catalog.get("agent_files_glob")
-    if agent_files_glob != "*.toml":
-        errors.append(f"{rel(catalog_path)} agent_files_glob must be '*.toml'")
-    agent_files = sorted(
-        path
-        for path in agents_root.glob("*.toml")
-        if path.name != "catalog.toml"
-    )
+    agent_file_names = catalog.get("agent_files")
+    if not isinstance(agent_file_names, list) or not all(isinstance(item, str) and item for item in agent_file_names):
+        errors.append(f"{rel(catalog_path)} agent_files must be a list of agent TOML filenames")
+        agent_file_names = []
+    elif len(set(agent_file_names)) != len(agent_file_names):
+        errors.append(f"{rel(catalog_path)} agent_files must not contain duplicates")
+    agent_files: list[Path] = []
+    for filename in agent_file_names:
+        if "/" in filename or filename.startswith(".") or not filename.endswith(".toml"):
+            errors.append(f"{rel(catalog_path)} invalid agent file entry: {filename!r}")
+            continue
+        path = agents_root / filename
+        if not path.exists():
+            errors.append(f"{rel(catalog_path)} references missing agent file: {filename}")
+            continue
+        agent_files.append(path)
     if not agent_files:
-        errors.append(f"{rel(agents_root)} must contain one TOML file per specialist agent")
+        errors.append(f"{rel(catalog_path)} must list at least one specialist agent file")
         return errors
+    unlisted_agent_files = sorted(
+        path.name
+        for path in agents_root.glob("*.toml")
+        if path.name != "catalog.toml" and path.name not in set(agent_file_names)
+    )
+    if unlisted_agent_files:
+        errors.append(f"{rel(catalog_path)} missing agent_files entries: {', '.join(unlisted_agent_files)}")
     seen: set[str] = set()
     for path in agent_files:
         try:
@@ -316,6 +331,7 @@ def check_specialist_agent_files(plugin_root: Path) -> list[str]:
         "implementer",
         "debugger",
         "qa",
+        "refactor",
         "reviewer",
         "integrator",
         "release",
