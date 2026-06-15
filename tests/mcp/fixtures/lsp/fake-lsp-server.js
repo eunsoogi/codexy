@@ -7,6 +7,7 @@ let nextDiagnostics = false;
 let captureData = {};
 let pendingSymbolRequest;
 let pendingServerRequestId;
+let openedUri = "";
 
 function serverRequestIdFor(message) {
   if (process.env.CODEXY_FAKE_LSP_SERVER_REQUEST_ID === "match-client-request") {
@@ -40,6 +41,17 @@ function captureUri(key, uri) {
   fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify(captureData, null, 2));
 }
 
+function publishDiagnostics() {
+  send({
+    jsonrpc: "2.0",
+    method: "textDocument/publishDiagnostics",
+    params: {
+      uri: openedUri,
+      diagnostics: [{ message: "push-only diagnostic", severity: 2, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } }],
+    },
+  });
+}
+
 function handle(message) {
   if (pendingSymbolRequest && message.id === pendingServerRequestId) {
     captureUri("serverRequestResponseId", message.id);
@@ -51,12 +63,21 @@ function handle(message) {
   }
   if (message.method === "initialize") {
     capture(message);
-    send({ jsonrpc: "2.0", id: message.id, result: { capabilities: {} } });
+    send({
+      jsonrpc: "2.0",
+      id: message.id,
+      result: { capabilities: process.env.CODEXY_FAKE_LSP_PULL_DIAGNOSTICS === "1" ? { diagnosticProvider: {} } : {} },
+    });
     return;
   }
   if (message.method === "textDocument/didOpen") {
-    captureUri("openedUri", message.params.textDocument.uri);
+    openedUri = message.params.textDocument.uri;
+    captureUri("openedUri", openedUri);
     nextDiagnostics = true;
+    if (process.env.CODEXY_FAKE_LSP_PUSH_DIAGNOSTICS_ON_OPEN === "1") {
+      nextDiagnostics = false;
+      publishDiagnostics();
+    }
     return;
   }
   if (message.method === "shutdown") {
@@ -64,7 +85,15 @@ function handle(message) {
     return;
   }
   if (message.id !== undefined) {
+    captureData = { ...captureData, requestMethods: [...(captureData.requestMethods || []), message.method] };
+    if (process.env.CODEXY_FAKE_LSP_CAPTURE) {
+      fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify(captureData, null, 2));
+    }
     captureUri("requestUri", message.params?.textDocument?.uri);
+    if (message.method === "textDocument/diagnostic" && process.env.CODEXY_FAKE_LSP_PULL_DIAGNOSTICS !== "1") {
+      send({ jsonrpc: "2.0", id: message.id, error: { code: -32601, message: `Method not found: ${message.method}` } });
+      return;
+    }
     if (process.env.CODEXY_FAKE_LSP_REQUIRE_CLIENT_RESPONSE === "1") {
       const serverRequestId = serverRequestIdFor(message);
       pendingSymbolRequest = message;
@@ -79,7 +108,7 @@ function handle(message) {
     }
     if (nextDiagnostics) {
       nextDiagnostics = false;
-      send({ jsonrpc: "2.0", method: "textDocument/publishDiagnostics", params: { uri: "", diagnostics: [] } });
+      publishDiagnostics();
     }
     send({ jsonrpc: "2.0", id: message.id, result: [] });
   }

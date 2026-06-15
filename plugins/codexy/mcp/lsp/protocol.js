@@ -11,22 +11,8 @@ const {
 
 const REQUEST_TIMEOUT_MS = 1500;
 const STDERR_LIMIT = 4000;
-const WORKSPACE_MARKERS = [
-  ".git",
-  "package.json",
-  "pyproject.toml",
-  "Cargo.toml",
-  "go.mod",
-  "deno.json",
-  "tsconfig.json",
-  "jsconfig.json",
-];
-const SUPPORTED_SERVER_REQUESTS = new Set([
-  "client/registerCapability",
-  "client/unregisterCapability",
-  "window/workDoneProgress/create",
-  "workspace/configuration",
-]);
+const WORKSPACE_MARKERS = [".git", "package.json", "pyproject.toml", "Cargo.toml", "go.mod", "deno.json", "tsconfig.json", "jsconfig.json"];
+const SUPPORTED_SERVER_REQUESTS = new Set(["client/registerCapability", "client/unregisterCapability", "window/workDoneProgress/create", "workspace/configuration"]);
 
 function encodeLsp(payload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8");
@@ -67,6 +53,18 @@ function workspaceRootForFile(filePath) {
     const parent = path.dirname(directory);
     if (parent === directory) return initialDirectory;
     directory = parent;
+  }
+}
+
+function supportsPullDiagnostics(capabilities) {
+  return capabilities?.diagnosticProvider !== undefined;
+}
+
+async function waitForPublishDiagnostics(notifications, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (notifications.some((message) => message.method === "textDocument/publishDiagnostics")) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 
@@ -186,15 +184,21 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
         text,
       },
     });
-    const response = await request(method, params({ uri, absolutePath }), timeoutMs);
-    if (response.error) {
-      return { status: "error", server: { id: server.id }, error: response.error, stderr };
+    let result = null;
+    if (method === "textDocument/diagnostic" && !supportsPullDiagnostics(initialize.result?.capabilities)) {
+      await waitForPublishDiagnostics(notifications, timeoutMs);
+    } else {
+      const response = await request(method, params({ uri, absolutePath }), timeoutMs);
+      if (response.error) {
+        return { status: "error", server: { id: server.id }, error: response.error, stderr };
+      }
+      result = response.result;
     }
     return {
       status: "ok",
       path: absolutePath,
       server: { id: server.id, executable: server.executable },
-      result: response.result,
+      result,
       diagnostics: notifications
         .filter((message) => message.method === "textDocument/publishDiagnostics")
         .map((message) => message.params),
