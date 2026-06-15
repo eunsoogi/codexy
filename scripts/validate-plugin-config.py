@@ -224,7 +224,7 @@ def check_legacy_roles(plugin_root: Path) -> list[str]:
     errors: list[str] = []
     roles_path = plugin_root / "agents" / "roles.toml"
     if not roles_path.exists():
-        return errors
+        return [f"{rel(roles_path)} is required for plugin-packaged specialist role metadata"]
     try:
         data = load_toml(roles_path)
     except ValidationError as exc:
@@ -234,9 +234,10 @@ def check_legacy_roles(plugin_root: Path) -> list[str]:
     if prefix in DISALLOWED_BRANCH_PREFIXES:
         errors.append(f"{rel(roles_path)} default_branch_prefix must not be {prefix!r}")
     roles = data.get("roles")
-    if roles is not None and not isinstance(roles, list):
+    if not isinstance(roles, list) or not roles:
         errors.append(f"{rel(roles_path)} roles must be an array of tables")
         return errors
+    seen: set[str] = set()
     for index, role in enumerate(roles or [], start=1):
         if not isinstance(role, dict):
             errors.append(f"{rel(roles_path)} roles[{index}] must be a table")
@@ -244,8 +245,35 @@ def check_legacy_roles(plugin_root: Path) -> list[str]:
         name = role.get("name")
         if not isinstance(name, str) or not name:
             errors.append(f"{rel(roles_path)} roles[{index}].name must be a non-empty string")
+            continue
+        if name in seen:
+            errors.append(f"{rel(roles_path)} duplicate role name: {name}")
+        seen.add(name)
         if name == "orchestrator":
             errors.append(f"{rel(roles_path)} assignable child orchestrator role is not allowed")
+        for field in ("display_name", "model", "effort", "when_to_use"):
+            if not isinstance(role.get(field), str) or not role.get(field):
+                errors.append(f"{rel(roles_path)} role {name}.{field} must be a non-empty string")
+        for field in ("inputs", "outputs", "constraints"):
+            value = role.get(field)
+            if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+                errors.append(f"{rel(roles_path)} role {name}.{field} must be a list of non-empty strings")
+    required = {
+        "planner",
+        "explorer",
+        "architect",
+        "implementer",
+        "debugger",
+        "qa",
+        "reviewer",
+        "integrator",
+        "release",
+        "security",
+        "documenter",
+    }
+    missing = sorted(required - seen)
+    if missing:
+        errors.append(f"{rel(roles_path)} missing specialist roles: {', '.join(missing)}")
     return errors
 
 
@@ -254,6 +282,10 @@ def check_project_agents(plugin_root: Path) -> list[str]:
     agents_dir = plugin_root / ".codex" / "agents"
     if not agents_dir.exists():
         return errors
+    errors.append(
+        f"{rel(agents_dir)} is not loaded from an installed plugin; "
+        "keep plugin-packaged specialist metadata in agents/roles.toml"
+    )
     seen: set[str] = set()
     for path in sorted(agents_dir.glob("*.toml")):
         try:

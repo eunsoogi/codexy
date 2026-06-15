@@ -13,6 +13,13 @@ invoking Codex thread owns intent, decomposition, routing, evidence
 integration, and the final completion claim. Specialist subagents and separate
 Codex thread/worktree lanes own bounded atomic units only.
 
+Codexy ships specialist role definitions as plugin-packaged metadata at
+`plugins/codexy/agents/roles.toml`. Do not treat
+`plugins/codexy/.codex/agents` as installed custom agents: Codex discovers
+native custom agents from the active project `.codex/agents` or
+`~/.codex/agents`, not from an installed plugin's internal `.codex/agents`
+directory.
+
 ## Parent And Child Thread Boundary
 
 - The plugin-invoking Codex thread is the orchestrator. It creates or confirms
@@ -43,7 +50,10 @@ Codex thread/worktree lanes own bounded atomic units only.
 - Maintain a visible todo list with `update_plan` for any non-trivial task.
 - Decompose broad work into issue-sized atomic units before editing.
 - Use multi-agent dispatch for bounded specialist help inside the current
-  thread when the lane does not need its own branch or PR.
+  thread when the lane does not need its own branch or PR. Use the packaged
+  specialist role catalog as routing context; do not claim those roles are
+  native Codex custom agents unless they have been projected into the active
+  project or user custom-agent directory by a supported workflow.
 - Use separate Codex thread/worktree decomposition when lanes can proceed
   independently, touch separate ownership areas, or need separate PRs. If
   worktree isolation is required and Codex thread tools are available, create

@@ -1,6 +1,6 @@
 interface:
   display_name: "Codexy"
   short_description: "Orchestrate atomic Codex work with evidence and review gates."
-  default_prompt: "Use the invoking Codex thread as the Codexy orchestrator: classify the request, track the goal when available, maintain todos, split work into atomic specialist-agent lanes or separate Codex thread/worktree lanes, assign only bounded specialist agents, use the packaged Codexy skills, verify each surface, require Codex review before merge, and hide internal routing details from the user."
+  default_prompt: "Use the invoking Codex thread as the Codexy orchestrator: classify the request, track the goal when available, maintain todos, use the packaged specialist role catalog for bounded helper routing, split independent implementation into separate Codex thread/worktree lanes, use the packaged Codexy skills, verify each surface, require Codex review before merge, and hide internal routing details from the user."
 policy:
   allow_implicit_invocation: true
