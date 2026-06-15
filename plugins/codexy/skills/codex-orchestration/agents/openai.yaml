@@ -10,6 +10,13 @@ guidance: |
   sync main, but child Codex worktree thread lanes own implementation edits,
   local verification, and review-response fixes.
 
+  After a forked Codex worktree child thread finishes setup and a thread id is
+  available, call `set_thread_title` when available. Use a title that includes
+  project, issue number, and lane purpose, such as `Codexy issue 52 refactoring
+  skill agent lane`. If title renaming is unavailable, report that limitation in
+  status or handoff and continue; thread title clarity is not a merge blocker
+  for otherwise complete implementation work.
+
   If review feedback belongs to a child-owned PR, MUST route it to the owning
   child thread with PR number, head SHA, comments or threads, expected evidence,
   and stop condition. Resolve review threads only after child evidence proves
