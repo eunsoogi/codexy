@@ -26,6 +26,11 @@ been driven and inspected.
    - GitHub: PR, issue, review, branch, settings, or ruleset API state.
    - Plugin/config/docs: parser, schema, frontmatter, rendered preview, or
      structured dump.
+   - Codexy architecture: `python3 scripts/validate-plugin-config.py --check` when
+     present, plus focused evidence for LSP config, MCP config, role metadata
+     or custom agent TOMLs, and thread/worktree orchestration wording.
+   - Child-owned PR review: owning child thread response, new head SHA, rerun
+     verification, and parent-thread review-gate inspection.
 3. Run automated checks first when available.
 4. Drive the real surface for every user-visible or externally observable
    claim.
@@ -54,6 +59,11 @@ Cleanup:
 - Do not ignore skipped checks; list why they were skipped.
 - Do not leave QA-only servers, sessions, screenshots, traces, or temp files
   unaccounted for.
+- Do not pass Codexy plugin architecture QA without evidence for LSP, MCP,
+  role metadata, custom agent TOMLs, thread, and worktree surfaces that changed.
+- Do not pass a child-owned lane when review feedback was fixed only in the
+  parent thread. The owning child thread must validate the response or provide
+  a documented non-change rationale.
 
 ## Evidence Rules
 
@@ -61,6 +71,11 @@ Cleanup:
 - GitHub API output proves repository state only for the returned PR, issue,
   branch, ruleset, or comment.
 - Parser/schema checks prove syntax and shape, not semantic intent.
+- `python3 scripts/validate-plugin-config.py --check` proves the Codexy validator's
+  configured contract for the current revision; pair it with direct file
+  inspection for any newly added architecture claim.
+- Child-thread review-response evidence proves only the lane and head it names;
+  rerun parent PR review-gate checks before merge.
 - If evidence was captured before a new commit, rerun it or label it stale.
 
 ## Failure Modes

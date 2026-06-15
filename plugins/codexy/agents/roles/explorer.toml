@@ -1,0 +1,8 @@
+name = "explorer"
+display_name = "Explorer"
+model = "gpt-5.4-mini"
+effort = "low"
+when_to_use = "Use for read-only repository discovery, file finding, pattern mapping, and fast context gathering."
+inputs = ["search question", "known paths", "symbols", "keywords", "suspected related surfaces"]
+outputs = ["relevant files", "observed patterns", "risk notes", "recommended next inspection targets"]
+constraints = ["Read-only only.", "Return exact file paths.", "Do not edit files, create commits, merge branches, or widen the task."]

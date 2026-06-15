@@ -94,7 +94,7 @@ def mcp_config_path(plugin_root: Path, manifest: dict[str, Any]) -> Path:
     return resolved
 
 
-def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]] | None:
+def load_lsp_catalog(plugin_root: Path) -> dict[str, dict[str, Any]] | None:
     catalog_path = plugin_root / "lsp" / "server-catalog.toml"
     if not catalog_path.exists():
         return None
@@ -105,7 +105,7 @@ def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]] | None:
     if not servers:
         raise ValidationError(f"{rel(catalog_path)} must contain at least one [[servers]] entry")
 
-    known: dict[str, set[str]] = {}
+    known: dict[str, dict[str, Any]] = {}
     for index, server in enumerate(servers, start=1):
         if not isinstance(server, dict):
             raise ValidationError(f"{rel(catalog_path)} servers[{index}] must be a table")
@@ -115,7 +115,15 @@ def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]] | None:
         extensions = server.get("extensions")
         if not isinstance(extensions, list) or not all(isinstance(item, str) for item in extensions):
             raise ValidationError(f"{rel(catalog_path)} {server_id}.extensions must be a list of strings")
-        known[server_id] = set(extensions)
+        command = server.get("command")
+        if not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command):
+            raise ValidationError(f"{rel(catalog_path)} {server_id}.command must be a non-empty argv array")
+        if "args" in server:
+            raise ValidationError(f"{rel(catalog_path)} {server_id}.args is not allowed; include argv in command")
+        known[server_id] = {
+            "extensions": set(extensions),
+            "command": list(command),
+        }
     return known
 
 
@@ -140,6 +148,13 @@ def lsp_entries(plugin_root: Path) -> dict[str, dict[str, Any]]:
         priority = entry.get("priority")
         if type(priority) is not int:
             raise ValidationError(f"{rel(lsp_path)} {server_id}.priority must be an integer")
+        command = entry.get("command")
+        if command is not None and (
+            not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command)
+        ):
+            raise ValidationError(f"{rel(lsp_path)} {server_id}.command must be a non-empty argv array")
+        if "args" in entry:
+            raise ValidationError(f"{rel(lsp_path)} {server_id}.args is not allowed; include argv in command")
     return entries
 
 
@@ -150,10 +165,14 @@ def covered_extensions(entries: dict[str, dict[str, Any]]) -> set[str]:
     return covered
 
 
-def catalog_covered_extensions(entries: dict[str, dict[str, Any]], catalog: dict[str, set[str]]) -> set[str]:
+def catalog_covered_extensions(entries: dict[str, dict[str, Any]], catalog: dict[str, dict[str, Any]]) -> set[str]:
     covered: set[str] = set()
     for server_id, entry in entries.items():
-        covered.update(extension for extension in entry["extensions"] if extension in catalog.get(server_id, set()))
+        catalog_entry = catalog.get(server_id)
+        if catalog_entry is None:
+            continue
+        catalog_extensions = catalog_entry["extensions"]
+        covered.update(extension for extension in entry["extensions"] if extension in catalog_extensions)
     return covered
 
 
@@ -170,11 +189,17 @@ def check_lsp(plugin_root: Path) -> list[str]:
                 if server_id not in catalog:
                     errors.append(f"LSP server {server_id!r} is not present in lsp/server-catalog.toml")
                     continue
-                undeclared = sorted(set(entry["extensions"]) - catalog[server_id])
+                catalog_entry = catalog[server_id]
+                undeclared = sorted(set(entry["extensions"]) - catalog_entry["extensions"])
                 if undeclared:
                     errors.append(
                         f"LSP server {server_id!r} configures extensions not declared by catalog: "
                         f"{', '.join(undeclared)}"
+                    )
+                if entry.get("command") != catalog_entry["command"]:
+                    errors.append(
+                        f"LSP server {server_id!r} must define command argv {catalog_entry['command']!r} "
+                        "from lsp/server-catalog.toml"
                     )
             coverage_for_missing = catalog_covered_extensions(entries, catalog)
         missing = sorted(REQUIRED_LSP_EXTENSIONS - coverage_for_missing)
@@ -220,32 +245,86 @@ def check_mcp(plugin_root: Path) -> list[str]:
     return errors
 
 
-def check_legacy_roles(plugin_root: Path) -> list[str]:
+def check_specialist_role_files(plugin_root: Path) -> list[str]:
     errors: list[str] = []
-    roles_path = plugin_root / "agents" / "roles.toml"
-    if not roles_path.exists():
-        return errors
+    agents_root = plugin_root / "agents"
+    legacy_roles_path = agents_root / "roles.toml"
+    catalog_path = agents_root / "catalog.toml"
+    if legacy_roles_path.exists():
+        errors.append(
+            f"{rel(legacy_roles_path)} must not contain collapsed multi-role metadata; "
+            "store each specialist role in agents/roles/<name>.toml"
+        )
+    if not catalog_path.exists():
+        return errors + [f"{rel(catalog_path)} is required for specialist role discovery metadata"]
     try:
-        data = load_toml(roles_path)
+        catalog = load_toml(catalog_path)
     except ValidationError as exc:
         return [str(exc)]
 
-    prefix = data.get("default_branch_prefix")
+    prefix = catalog.get("default_branch_prefix")
     if prefix in DISALLOWED_BRANCH_PREFIXES:
-        errors.append(f"{rel(roles_path)} default_branch_prefix must not be {prefix!r}")
-    roles = data.get("roles")
-    if roles is not None and not isinstance(roles, list):
-        errors.append(f"{rel(roles_path)} roles must be an array of tables")
+        errors.append(f"{rel(catalog_path)} default_branch_prefix must not be {prefix!r}")
+    roles_dir_name = catalog.get("roles_dir")
+    if not isinstance(roles_dir_name, str) or not roles_dir_name:
+        errors.append(f"{rel(catalog_path)} roles_dir must be the string 'roles'")
+        roles_dir_name = "roles"
+    elif roles_dir_name != "roles":
+        errors.append(f"{rel(catalog_path)} roles_dir must be 'roles'")
+    roles_dir = agents_root / "roles"
+    if not roles_dir.exists():
+        errors.append(f"{rel(roles_dir)} is required for per-agent specialist metadata")
         return errors
-    for index, role in enumerate(roles or [], start=1):
-        if not isinstance(role, dict):
-            errors.append(f"{rel(roles_path)} roles[{index}] must be a table")
+    if not roles_dir.is_dir():
+        errors.append(f"{rel(roles_dir)} must be a directory")
+        return errors
+    role_files = sorted(roles_dir.glob("*.toml"))
+    if not role_files:
+        errors.append(f"{rel(roles_dir)} must contain one TOML file per specialist role")
+        return errors
+    seen: set[str] = set()
+    for path in role_files:
+        try:
+            role = load_toml(path)
+        except ValidationError as exc:
+            errors.append(str(exc))
             continue
+        if "roles" in role:
+            errors.append(f"{rel(path)} must define exactly one role and must not contain [[roles]]")
         name = role.get("name")
         if not isinstance(name, str) or not name:
-            errors.append(f"{rel(roles_path)} roles[{index}].name must be a non-empty string")
+            errors.append(f"{rel(path)} name must be a non-empty string")
+            continue
+        if path.stem != name:
+            errors.append(f"{rel(path)} filename must match role name {name!r}")
+        if name in seen:
+            errors.append(f"{rel(path)} duplicate role name: {name}")
+        seen.add(name)
         if name == "orchestrator":
-            errors.append(f"{rel(roles_path)} assignable child orchestrator role is not allowed")
+            errors.append(f"{rel(path)} assignable child orchestrator role is not allowed")
+        for field in ("display_name", "model", "effort", "when_to_use"):
+            if not isinstance(role.get(field), str) or not role.get(field):
+                errors.append(f"{rel(path)} {field} must be a non-empty string")
+        for field in ("inputs", "outputs", "constraints"):
+            value = role.get(field)
+            if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+                errors.append(f"{rel(path)} {field} must be a list of non-empty strings")
+    required = {
+        "planner",
+        "explorer",
+        "architect",
+        "implementer",
+        "debugger",
+        "qa",
+        "reviewer",
+        "integrator",
+        "release",
+        "security",
+        "documenter",
+    }
+    missing = sorted(required - seen)
+    if missing:
+        errors.append(f"{rel(roles_dir)} missing specialist roles: {', '.join(missing)}")
     return errors
 
 
@@ -254,6 +333,10 @@ def check_project_agents(plugin_root: Path) -> list[str]:
     agents_dir = plugin_root / ".codex" / "agents"
     if not agents_dir.exists():
         return errors
+    errors.append(
+        f"{rel(agents_dir)} is not loaded from an installed plugin; "
+        "keep plugin-packaged specialist metadata in agents/roles/<name>.toml"
+    )
     seen: set[str] = set()
     for path in sorted(agents_dir.glob("*.toml")):
         try:
@@ -383,7 +466,7 @@ def check_agent_yaml(plugin_root: Path) -> list[str]:
 
 def check_roles(plugin_root: Path) -> list[str]:
     errors: list[str] = []
-    errors.extend(check_legacy_roles(plugin_root))
+    errors.extend(check_specialist_role_files(plugin_root))
     errors.extend(check_project_agents(plugin_root))
     errors.extend(check_agent_yaml(plugin_root))
     return errors

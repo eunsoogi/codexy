@@ -7,10 +7,19 @@ description: Use when coordinating Codex plugin calls, long-running goals, issue
 
 ## Purpose
 
-Run the current Codex thread as the orchestrator for goal-oriented work. The
-orchestrator owns intent, decomposition, routing, evidence integration, and the
-final completion claim. Subagents, extra threads, and worktrees own bounded
-atomic units only.
+Run the current plugin-invoking Codex thread as the orchestrator for
+goal-oriented work. Do not spawn or assign a separate orchestrator agent. The
+invoking Codex thread owns intent, decomposition, routing, evidence
+integration, and the final completion claim. Specialist subagents and separate
+Codex thread/worktree lanes own bounded atomic units only.
+
+Codexy ships specialist role definitions as plugin-packaged metadata at
+`plugins/codexy/agents/roles/<name>.toml`, with discovery metadata in
+`plugins/codexy/agents/catalog.toml`. Keep one specialist role per file. Do not treat
+`plugins/codexy/.codex/agents` as installed custom agents: Codex discovers
+native custom agents from the active project `.codex/agents` or
+`~/.codex/agents`, not from an installed plugin's internal `.codex/agents`
+directory.
 
 ## Parent And Child Thread Boundary
 
@@ -47,13 +56,20 @@ atomic units only.
   make meaningful progress without user input or an external state change.
 - Maintain a visible todo list with `update_plan` for any non-trivial task.
 - Decompose broad work into issue-sized atomic units before editing.
-- Use multi-agent dispatch for independent research, implementation, QA,
-  review, or release lanes when the tool is available.
-- Use multi-thread or worktree decomposition when lanes can proceed
-  independently, touch separate ownership areas, or need separate PRs.
-- Keep the current thread as the orchestrator. It integrates child results,
-  resolves conflicts, verifies final behavior, and decides whether work is
-  complete.
+- Use multi-agent dispatch for bounded specialist help inside the current
+  thread when the lane does not need its own branch or PR. Use the packaged
+  specialist role files and lightweight catalog metadata as routing context;
+  do not claim those roles are native Codex custom agents unless they have
+  been projected into the active project or user custom-agent directory by a
+  supported workflow.
+- Use separate Codex thread/worktree decomposition when lanes can proceed
+  independently, touch separate ownership areas, or need separate PRs. If
+  worktree isolation is required and Codex thread tools are available, create
+  or fork a Codex worktree thread instead of using only manual `git worktree`
+  commands.
+- Keep the invoking Codex thread as the orchestrator. It integrates child
+  results, resolves conflicts, verifies final behavior, and decides whether
+  work is complete.
 
 ## Orchestration Loop
 
@@ -65,11 +81,17 @@ atomic units only.
 2. Plan:
    - Create a short `update_plan` with atomic outcomes.
    - Mark exactly one step `in_progress`.
-   - Split unrelated outcomes into separate issues or worktrees.
+   - Split unrelated outcomes into separate issues and, when implementation
+     can proceed independently, separate Codex thread/worktree lanes.
 3. Dispatch:
-   - Start subagents only for independent lanes.
-   - Give each lane an assignment, allowed paths, required reads, deliverable,
-     verification command or surface, and stop condition.
+   - Start specialist subagents only for bounded lanes that do not need their
+     own branch or PR.
+   - For issue-sized implementation lanes, start or fork a separate Codex
+     thread in a worktree when the tool is available. Fall back to manual
+     `git worktree` only when thread tooling is unavailable, and record why.
+   - Give each lane an assignment, issue, branch, worktree path, allowed paths,
+     read-first files, deliverable, required evidence, verification command or
+     surface, stop condition, and return format.
    - Require evidence, diffs, findings, or failed assumptions; do not accept
      acknowledgements as proof.
    - For Codex worktree thread lanes, state that the child owns implementation
@@ -99,20 +121,55 @@ atomic units only.
 ```text
 Goal:
 Atomic lane:
+Issue:
+Branch:
+Worktree path:
 Allowed paths:
 Read first:
 Deliverable:
 Verification:
+Required evidence:
 Review feedback route:
 Parent verification:
 Return evidence:
 Stop if:
 ```
 
+## Codex Thread And Worktree Handoff
+
+Use this for any lane that needs its own branch, PR, or long-running
+implementation context:
+
+```text
+Issue:
+Branch:
+Worktree path:
+First message:
+Allowed files or paths:
+Read first:
+Acceptance criteria:
+Required evidence:
+Stop condition:
+Parent verification:
+Return format:
+```
+
+- Prefer Codex app thread tools such as `fork_thread` or `create_thread` with a
+  `worktree` environment when they are available in the session.
+- A child worktree thread should create or use exactly one task branch with the
+  project branch prefix.
+- The child thread must not merge, close issues, or claim final completion.
+  It returns evidence and a commit-ready branch to the invoking orchestrator
+  thread.
+- The invoking Codex thread re-reads diffs, reruns required checks, handles PR
+  review gates, merges through GitHub, deletes branches, and syncs main.
+
 ## Worktree Rules
 
 - One issue-sized outcome per branch.
 - One branch per pull request.
+- Worktree-based implementation lanes require a Codex thread when thread tools
+  are available.
 - Shared files must have a named owner before parallel edits begin.
 - Never merge child work locally as a substitute for the repository PR flow.
 - After merge, synchronize the main worktree before starting dependent work.
@@ -138,6 +195,10 @@ requires user input or an external state change.
   proof.
 - Marking a goal blocked because a review, child thread, queued worktree/thread,
   or asynchronous tool is still pending.
+- Sending duplicate `@codex review` requests while an existing request already
+  has `eyes` for the same PR head. Keep polling and waiting; if the request is
+  unusually stale, record that status and escalate with a distinct rationale
+  instead of repeated blind requests.
 - Letting a child lane expand scope or edit shared files without ownership.
 - Fixing a child-owned PR's review feedback in the parent/orchestrator thread
   instead of routing it back to the owning child thread.
