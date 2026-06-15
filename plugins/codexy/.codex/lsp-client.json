@@ -1,9 +1,211 @@
 {
   "lsp": {
+    "astro": {
+      "extensions": [
+        ".astro"
+      ],
+      "priority": 80
+    },
+    "bash-language-server": {
+      "extensions": [
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".ksh"
+      ],
+      "priority": 80
+    },
     "basedpyright": {
       "extensions": [
         ".py",
         ".pyi"
+      ],
+      "priority": 80
+    },
+    "clangd": {
+      "extensions": [
+        ".c",
+        ".cc",
+        ".cpp",
+        ".cxx",
+        ".h",
+        ".hh",
+        ".hpp",
+        ".hxx"
+      ],
+      "priority": 80
+    },
+    "clojure-lsp": {
+      "extensions": [
+        ".clj",
+        ".cljs",
+        ".cljc",
+        ".edn"
+      ],
+      "priority": 80
+    },
+    "docker-language-server": {
+      "extensions": [
+        ".dockerfile",
+        "Dockerfile"
+      ],
+      "priority": 80
+    },
+    "elixir-ls": {
+      "extensions": [
+        ".ex",
+        ".exs"
+      ],
+      "priority": 80
+    },
+    "fsautocomplete": {
+      "extensions": [
+        ".fs",
+        ".fsi",
+        ".fsx"
+      ],
+      "priority": 80
+    },
+    "gleam": {
+      "extensions": [
+        ".gleam"
+      ],
+      "priority": 80
+    },
+    "gopls": {
+      "extensions": [
+        ".go"
+      ],
+      "priority": 80
+    },
+    "haskell-language-server": {
+      "extensions": [
+        ".hs",
+        ".lhs"
+      ],
+      "priority": 80
+    },
+    "jdtls": {
+      "extensions": [
+        ".java"
+      ],
+      "priority": 80
+    },
+    "json-language-server": {
+      "extensions": [
+        ".json",
+        ".jsonc"
+      ],
+      "priority": 80
+    },
+    "julia-language-server": {
+      "extensions": [
+        ".jl"
+      ],
+      "priority": 80
+    },
+    "kotlin-language-server": {
+      "extensions": [
+        ".kt",
+        ".kts"
+      ],
+      "priority": 80
+    },
+    "lua-language-server": {
+      "extensions": [
+        ".lua"
+      ],
+      "priority": 80
+    },
+    "marksman": {
+      "extensions": [
+        ".md",
+        ".markdown"
+      ],
+      "priority": 80
+    },
+    "nixd": {
+      "extensions": [
+        ".nix"
+      ],
+      "priority": 80
+    },
+    "ocamllsp": {
+      "extensions": [
+        ".ml",
+        ".mli"
+      ],
+      "priority": 80
+    },
+    "omnisharp": {
+      "extensions": [
+        ".cs",
+        ".csx"
+      ],
+      "priority": 80
+    },
+    "phpactor": {
+      "extensions": [
+        ".php"
+      ],
+      "priority": 80
+    },
+    "prisma-language-server": {
+      "extensions": [
+        ".prisma"
+      ],
+      "priority": 80
+    },
+    "rust-analyzer": {
+      "extensions": [
+        ".rs"
+      ],
+      "priority": 80
+    },
+    "solargraph": {
+      "extensions": [
+        ".rb",
+        ".rake",
+        ".gemspec",
+        ".ru"
+      ],
+      "priority": 80
+    },
+    "sourcekit-lsp": {
+      "extensions": [
+        ".swift"
+      ],
+      "priority": 80
+    },
+    "svelte-language-server": {
+      "extensions": [
+        ".svelte"
+      ],
+      "priority": 80
+    },
+    "taplo": {
+      "extensions": [
+        ".toml"
+      ],
+      "priority": 80
+    },
+    "terraform-ls": {
+      "extensions": [
+        ".tf",
+        ".tfvars"
+      ],
+      "priority": 80
+    },
+    "texlab": {
+      "extensions": [
+        ".tex",
+        ".bib"
+      ],
+      "priority": 80
+    },
+    "tinymist": {
+      "extensions": [
+        ".typ"
       ],
       "priority": 80
     },
@@ -14,7 +216,15 @@
         ".js",
         ".jsx",
         ".mjs",
-        ".cjs"
+        ".cjs",
+        ".mts",
+        ".cts"
+      ],
+      "priority": 80
+    },
+    "vue-language-server": {
+      "extensions": [
+        ".vue"
       ],
       "priority": 80
     },
@@ -22,6 +232,13 @@
       "extensions": [
         ".yaml",
         ".yml"
+      ],
+      "priority": 80
+    },
+    "zls": {
+      "extensions": [
+        ".zig",
+        ".zon"
       ],
       "priority": 80
     }
