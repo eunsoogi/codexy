@@ -303,6 +303,8 @@ def check_agent_yaml_file(path: Path) -> list[str]:
 def parse_prompt_yaml(text: str, path: Path) -> dict[str, Any]:
     root: dict[str, Any] = {}
     stack: list[tuple[int, dict[str, Any]]] = [(-1, root)]
+    previous_indent = -1
+    previous_was_mapping = True
     for line_number, raw_line in enumerate(text.splitlines(), start=1):
         if not raw_line.strip() or raw_line.lstrip().startswith("#"):
             continue
@@ -313,6 +315,8 @@ def parse_prompt_yaml(text: str, path: Path) -> dict[str, Any]:
         stripped = raw_line.strip()
         if ":" not in stripped:
             raise ValidationError(f"{rel(path)} line {line_number} must be a YAML key/value pair")
+        if indent > previous_indent and not previous_was_mapping:
+            raise ValidationError(f"{rel(path)} line {line_number} cannot be nested under a scalar value")
         key, raw_value = stripped.split(":", 1)
         key = key.strip()
         if not key:
@@ -327,8 +331,12 @@ def parse_prompt_yaml(text: str, path: Path) -> dict[str, Any]:
             child: dict[str, Any] = {}
             parent[key] = child
             stack.append((indent, child))
+            previous_indent = indent
+            previous_was_mapping = True
             continue
         parent[key] = parse_prompt_yaml_scalar(value_text)
+        previous_indent = indent
+        previous_was_mapping = False
     return root
 
 
