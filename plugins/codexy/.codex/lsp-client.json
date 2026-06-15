@@ -5,7 +5,9 @@
         ".astro"
       ],
       "priority": 80,
-      "command": "astro-ls"
+      "command": [
+        "astro-ls"
+      ]
     },
     "bash-language-server": {
       "extensions": [
@@ -15,8 +17,8 @@
         ".ksh"
       ],
       "priority": 80,
-      "command": "bash-language-server",
-      "args": [
+      "command": [
+        "bash-language-server",
         "start"
       ]
     },
@@ -26,8 +28,8 @@
         ".pyi"
       ],
       "priority": 80,
-      "command": "basedpyright-langserver",
-      "args": [
+      "command": [
+        "basedpyright-langserver",
         "--stdio"
       ]
     },
@@ -43,7 +45,9 @@
         ".hxx"
       ],
       "priority": 80,
-      "command": "clangd"
+      "command": [
+        "clangd"
+      ]
     },
     "clojure-lsp": {
       "extensions": [
@@ -53,7 +57,9 @@
         ".edn"
       ],
       "priority": 80,
-      "command": "clojure-lsp"
+      "command": [
+        "clojure-lsp"
+      ]
     },
     "docker-language-server": {
       "extensions": [
@@ -61,8 +67,8 @@
         "Dockerfile"
       ],
       "priority": 80,
-      "command": "docker-langserver",
-      "args": [
+      "command": [
+        "docker-langserver",
         "--stdio"
       ]
     },
@@ -72,7 +78,9 @@
         ".exs"
       ],
       "priority": 80,
-      "command": "elixir-ls"
+      "command": [
+        "elixir-ls"
+      ]
     },
     "fsautocomplete": {
       "extensions": [
@@ -81,15 +89,17 @@
         ".fsx"
       ],
       "priority": 80,
-      "command": "fsautocomplete"
+      "command": [
+        "fsautocomplete"
+      ]
     },
     "gleam": {
       "extensions": [
         ".gleam"
       ],
       "priority": 80,
-      "command": "gleam",
-      "args": [
+      "command": [
+        "gleam",
         "lsp"
       ]
     },
@@ -98,7 +108,9 @@
         ".go"
       ],
       "priority": 80,
-      "command": "gopls"
+      "command": [
+        "gopls"
+      ]
     },
     "haskell-language-server": {
       "extensions": [
@@ -106,8 +118,8 @@
         ".lhs"
       ],
       "priority": 80,
-      "command": "haskell-language-server-wrapper",
-      "args": [
+      "command": [
+        "haskell-language-server-wrapper",
         "--lsp"
       ]
     },
@@ -116,7 +128,9 @@
         ".java"
       ],
       "priority": 80,
-      "command": "jdtls"
+      "command": [
+        "jdtls"
+      ]
     },
     "json-language-server": {
       "extensions": [
@@ -124,8 +138,8 @@
         ".jsonc"
       ],
       "priority": 80,
-      "command": "vscode-json-language-server",
-      "args": [
+      "command": [
+        "vscode-json-language-server",
         "--stdio"
       ]
     },
@@ -134,8 +148,8 @@
         ".jl"
       ],
       "priority": 80,
-      "command": "julia",
-      "args": [
+      "command": [
+        "julia",
         "--startup-file=no",
         "--history-file=no",
         "-e",
@@ -148,14 +162,18 @@
         ".kts"
       ],
       "priority": 80,
-      "command": "kotlin-language-server"
+      "command": [
+        "kotlin-language-server"
+      ]
     },
     "lua-language-server": {
       "extensions": [
         ".lua"
       ],
       "priority": 80,
-      "command": "lua-language-server"
+      "command": [
+        "lua-language-server"
+      ]
     },
     "marksman": {
       "extensions": [
@@ -163,8 +181,8 @@
         ".markdown"
       ],
       "priority": 80,
-      "command": "marksman",
-      "args": [
+      "command": [
+        "marksman",
         "server"
       ]
     },
@@ -173,7 +191,9 @@
         ".nix"
       ],
       "priority": 80,
-      "command": "nixd"
+      "command": [
+        "nixd"
+      ]
     },
     "ocamllsp": {
       "extensions": [
@@ -181,7 +201,9 @@
         ".mli"
       ],
       "priority": 80,
-      "command": "ocamllsp"
+      "command": [
+        "ocamllsp"
+      ]
     },
     "omnisharp": {
       "extensions": [
@@ -189,8 +211,8 @@
         ".csx"
       ],
       "priority": 80,
-      "command": "OmniSharp",
-      "args": [
+      "command": [
+        "OmniSharp",
         "--languageserver"
       ]
     },
@@ -199,8 +221,8 @@
         ".php"
       ],
       "priority": 80,
-      "command": "phpactor",
-      "args": [
+      "command": [
+        "phpactor",
         "language-server"
       ]
     },
@@ -209,8 +231,8 @@
         ".prisma"
       ],
       "priority": 80,
-      "command": "prisma-language-server",
-      "args": [
+      "command": [
+        "prisma-language-server",
         "--stdio"
       ]
     },
@@ -219,7 +241,9 @@
         ".rs"
       ],
       "priority": 80,
-      "command": "rust-analyzer"
+      "command": [
+        "rust-analyzer"
+      ]
     },
     "solargraph": {
       "extensions": [
@@ -229,8 +253,8 @@
         ".ru"
       ],
       "priority": 80,
-      "command": "solargraph",
-      "args": [
+      "command": [
+        "solargraph",
         "stdio"
       ]
     },
@@ -239,15 +263,17 @@
         ".swift"
       ],
       "priority": 80,
-      "command": "sourcekit-lsp"
+      "command": [
+        "sourcekit-lsp"
+      ]
     },
     "svelte-language-server": {
       "extensions": [
         ".svelte"
       ],
       "priority": 80,
-      "command": "svelteserver",
-      "args": [
+      "command": [
+        "svelteserver",
         "--stdio"
       ]
     },
@@ -256,8 +282,8 @@
         ".toml"
       ],
       "priority": 80,
-      "command": "taplo",
-      "args": [
+      "command": [
+        "taplo",
         "lsp",
         "stdio"
       ]
@@ -268,8 +294,8 @@
         ".tfvars"
       ],
       "priority": 80,
-      "command": "terraform-ls",
-      "args": [
+      "command": [
+        "terraform-ls",
         "serve"
       ]
     },
@@ -279,14 +305,18 @@
         ".bib"
       ],
       "priority": 80,
-      "command": "texlab"
+      "command": [
+        "texlab"
+      ]
     },
     "tinymist": {
       "extensions": [
         ".typ"
       ],
       "priority": 80,
-      "command": "tinymist"
+      "command": [
+        "tinymist"
+      ]
     },
     "typescript": {
       "extensions": [
@@ -300,8 +330,8 @@
         ".cts"
       ],
       "priority": 80,
-      "command": "typescript-language-server",
-      "args": [
+      "command": [
+        "typescript-language-server",
         "--stdio"
       ]
     },
@@ -310,8 +340,8 @@
         ".vue"
       ],
       "priority": 80,
-      "command": "vue-language-server",
-      "args": [
+      "command": [
+        "vue-language-server",
         "--stdio"
       ]
     },
@@ -321,8 +351,8 @@
         ".yml"
       ],
       "priority": 80,
-      "command": "yaml-language-server",
-      "args": [
+      "command": [
+        "yaml-language-server",
         "--stdio"
       ]
     },
@@ -332,7 +362,9 @@
         ".zon"
       ],
       "priority": 80,
-      "command": "zls"
+      "command": [
+        "zls"
+      ]
     }
   }
 }

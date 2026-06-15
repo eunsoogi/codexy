@@ -115,14 +115,14 @@ def load_lsp_catalog(plugin_root: Path) -> dict[str, dict[str, Any]] | None:
         extensions = server.get("extensions")
         if not isinstance(extensions, list) or not all(isinstance(item, str) for item in extensions):
             raise ValidationError(f"{rel(catalog_path)} {server_id}.extensions must be a list of strings")
-        command = require_string(server.get("command"), f"{server_id}.command", catalog_path)
-        args = server.get("args")
-        if args is not None and (not isinstance(args, list) or not all(isinstance(item, str) for item in args)):
-            raise ValidationError(f"{rel(catalog_path)} {server_id}.args must be a list of strings")
+        command = server.get("command")
+        if not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command):
+            raise ValidationError(f"{rel(catalog_path)} {server_id}.command must be a non-empty argv array")
+        if "args" in server:
+            raise ValidationError(f"{rel(catalog_path)} {server_id}.args is not allowed; include argv in command")
         known[server_id] = {
             "extensions": set(extensions),
-            "command": command,
-            "args": list(args) if args is not None else None,
+            "command": list(command),
         }
     return known
 
@@ -149,11 +149,12 @@ def lsp_entries(plugin_root: Path) -> dict[str, dict[str, Any]]:
         if type(priority) is not int:
             raise ValidationError(f"{rel(lsp_path)} {server_id}.priority must be an integer")
         command = entry.get("command")
-        if command is not None and (not isinstance(command, str) or not command.strip()):
-            raise ValidationError(f"{rel(lsp_path)} {server_id}.command must be a non-empty string")
-        args = entry.get("args")
-        if args is not None and (not isinstance(args, list) or not all(isinstance(item, str) for item in args)):
-            raise ValidationError(f"{rel(lsp_path)} {server_id}.args must be a list of strings")
+        if command is not None and (
+            not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command)
+        ):
+            raise ValidationError(f"{rel(lsp_path)} {server_id}.command must be a non-empty argv array")
+        if "args" in entry:
+            raise ValidationError(f"{rel(lsp_path)} {server_id}.args is not allowed; include argv in command")
     return entries
 
 
@@ -197,18 +198,8 @@ def check_lsp(plugin_root: Path) -> list[str]:
                     )
                 if entry.get("command") != catalog_entry["command"]:
                     errors.append(
-                        f"LSP server {server_id!r} must define command {catalog_entry['command']!r} "
+                        f"LSP server {server_id!r} must define command argv {catalog_entry['command']!r} "
                         "from lsp/server-catalog.toml"
-                    )
-                catalog_args = catalog_entry["args"]
-                if catalog_args is not None and entry.get("args") != catalog_args:
-                    errors.append(
-                        f"LSP server {server_id!r} must define args from lsp/server-catalog.toml: "
-                        f"{catalog_args!r}"
-                    )
-                if catalog_args is None and "args" in entry:
-                    errors.append(
-                        f"LSP server {server_id!r} configures args but lsp/server-catalog.toml declares none"
                     )
             coverage_for_missing = catalog_covered_extensions(entries, catalog)
         missing = sorted(REQUIRED_LSP_EXTENSIONS - coverage_for_missing)
