@@ -89,7 +89,7 @@ async function callTool(name, args) {
     return textResult(JSON.stringify({ root, fileCount: files.length, files, importEdges: edges.slice(0, 300) }, null, 2));
   }
   if (name === "codegraph_search") {
-    const output = rg(["-n", "--glob", "!node_modules", "--glob", "!.git", args.query], root)
+    const output = rg(["-n", "--glob", "!node_modules", "--glob", "!.git", "-e", args.query], root)
       .split(/\r?\n/)
       .filter(Boolean)
       .slice(0, args.limit || 80);
