@@ -39,7 +39,8 @@ aligned before publishing or tagging.
    - clean worktree,
    - manifest parser checks,
    - marketplace parser checks,
-   - `python3 scripts/validate-plugin-config.py --check` when the validator exists,
+   - `python3 scripts/validate-plugin-config.py --plugin-root plugins/<plugin> --check`
+     when validating a generic plugin root,
    - LSP config, MCP config, role metadata, custom agent TOML, and
      thread/worktree wording checks for plugin architecture changes,
    - child-owned PR review feedback routed to the owning child thread with
@@ -90,7 +91,8 @@ Not publishing because:
 
 - Version sync requires direct file inspection or parser output.
 - Architecture validation requires parser output for structured config and
-  `python3 scripts/validate-plugin-config.py --check` when present.
+  `python3 scripts/validate-plugin-config.py --plugin-root plugins/<plugin> --check`
+  when validating a generic plugin root.
 - GitHub Actions changes require syntax or command-level validation where
   possible.
 - Release notes must match the actual diff and merged PRs.
