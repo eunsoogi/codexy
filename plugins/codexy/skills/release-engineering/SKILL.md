@@ -39,10 +39,12 @@ aligned before publishing or tagging.
    - clean worktree,
    - manifest parser checks,
    - marketplace parser checks,
-   - `python3 scripts/validate-plugin-config.py --plugin-root plugins/<plugin> --check`
-     when validating a generic plugin root,
    - LSP config, MCP config, role metadata, custom agent TOML, and
-     thread/worktree wording checks for plugin architecture changes,
+     thread/worktree wording checks for plugin architecture changes, limited to
+     the surfaces that exist for that plugin,
+   - for Codexy plugin releases specifically,
+     `python3 scripts/validate-plugin-config.py --check` when the validator
+     exists,
    - child-owned PR review feedback routed to the owning child thread with
      fresh verification before the parent thread merges,
    - skill metadata checks,
@@ -91,8 +93,9 @@ Not publishing because:
 
 - Version sync requires direct file inspection or parser output.
 - Architecture validation requires parser output for structured config and
-  `python3 scripts/validate-plugin-config.py --plugin-root plugins/<plugin> --check`
-  when validating a generic plugin root.
+  surface-specific checks for only the plugin surfaces that exist. For Codexy
+  plugin releases, run `python3 scripts/validate-plugin-config.py --check`
+  when present.
 - GitHub Actions changes require syntax or command-level validation where
   possible.
 - Release notes must match the actual diff and merged PRs.

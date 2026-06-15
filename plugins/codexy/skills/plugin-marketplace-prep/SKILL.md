@@ -58,8 +58,11 @@ validation proves the packaged paths match the repository layout.
      stop conditions, and parent verification,
    - child-owned PR review feedback is routed back to the owning child thread
      and revalidated there before the parent thread merges,
-   - `python3 scripts/validate-plugin-config.py --plugin-root plugins/<plugin> --check`
-     passes when that validator is present in the revision being prepared.
+   - for Codexy plugin prep specifically,
+     `python3 scripts/validate-plugin-config.py --check` passes when that
+     validator is present in the revision being prepared,
+   - for other plugins, validate only the packaged surfaces that exist instead
+     of requiring the full Codexy contract.
 7. Validate automation and release surfaces when present:
    - GitHub Actions reference repository-root paths,
    - workflow version inputs match plugin manifest expectations,
@@ -104,8 +107,8 @@ Risks:
 ## Evidence Rules
 
 - JSON manifests require parser validation.
-- LSP and MCP config require parser validation and, when available,
-  `python3 scripts/validate-plugin-config.py --plugin-root plugins/<plugin> --check`.
+- LSP and MCP config require parser validation and, when the plugin being
+  prepared is Codexy, `python3 scripts/validate-plugin-config.py --check`.
 - Custom agent TOMLs and role metadata require parser validation and evidence
   that no separate orchestrator agent competes with the invoking thread.
 - Skill bundles require frontmatter and metadata validation.
