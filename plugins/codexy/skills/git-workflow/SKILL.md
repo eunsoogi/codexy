@@ -443,8 +443,18 @@ if [ "$pr_body_approval" != "APPROVE_PR_BODY_FOR_MAIN" ]; then
   exit 1
 fi
 
-mkdir -p "$(dirname "$expected_body_file")"
-cp "$pr_body_file" "$expected_body_file"
+if ! mkdir -p "$(dirname "$expected_body_file")"; then
+  printf '%s\n' "Could not create merge body evidence directory; aborting merge." >&2
+  exit 1
+fi
+if ! cp "$pr_body_file" "$expected_body_file"; then
+  printf '%s\n' "Could not persist merge body evidence; aborting merge." >&2
+  exit 1
+fi
+if [ ! -s "$expected_body_file" ]; then
+  printf '%s\n' "Persisted merge body evidence is empty; aborting merge." >&2
+  exit 1
+fi
 
 gh pr merge "$pr_number" \
   --repo "$repo" \
