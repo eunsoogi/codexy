@@ -86,6 +86,12 @@ function toFileUri(filePath, root) {
   return pathToFileURL(resolvePath(filePath, root)).href;
 }
 
+function resolveCommand(command, root) {
+  if (!Array.isArray(command) || command.length === 0 || typeof command[0] !== "string") return command;
+  if (!command[0].includes(path.sep) || path.isAbsolute(command[0]) || !root) return command;
+  return [path.resolve(root, command[0]), ...command.slice(1)];
+}
+
 function resolveExecutable(command) {
   if (!Array.isArray(command) || command.length === 0 || typeof command[0] !== "string") {
     return { available: false, reason: "server command is missing" };
@@ -114,9 +120,9 @@ function resolveExecutable(command) {
   return { available: false, reason: `executable not found on PATH: ${executable}` };
 }
 
-function enrichServer(id, config, catalog = readCatalog()) {
+function enrichServer(id, config, catalog = readCatalog(), root) {
   const catalogEntry = catalog.get(id) || {};
-  const command = Array.isArray(config.command) ? config.command : catalogEntry.command;
+  const command = resolveCommand(Array.isArray(config.command) ? config.command : catalogEntry.command, root);
   const server = { id, ...catalogEntry, ...config, command };
   const availability = resolveExecutable(command);
   const installHints = [catalogEntry.install, config.install].filter(Boolean);
@@ -130,25 +136,26 @@ function enrichServer(id, config, catalog = readCatalog()) {
   };
 }
 
-function matchingServers(filePath) {
+function matchingServers(filePath, root) {
   const ext = normalizeExt(filePath);
   const catalog = readCatalog();
   return Object.entries(readConfig())
     .filter(([, config]) => Array.isArray(config.extensions) && config.extensions.includes(ext))
     .sort((a, b) => (b[1].priority || 0) - (a[1].priority || 0))
-    .map(([id, config]) => enrichServer(id, config, catalog));
+    .map(([id, config]) => enrichServer(id, config, catalog, root));
 }
 
-function serverFromOverride(override) {
+function serverFromOverride(override, root) {
   if (!override || typeof override !== "object") return null;
   if (!override.id) throw new Error("server.id is required when server override is provided");
-  return enrichServer(override.id, override, readCatalog());
+  return enrichServer(override.id, override, readCatalog(), root);
 }
 
 function selectServer(args) {
-  const override = serverFromOverride(args.server);
+  const root = args.root || args.workspaceRoot;
+  const override = serverFromOverride(args.server, root);
   if (override) return override;
-  const matches = matchingServers(args.path);
+  const matches = matchingServers(args.path, root);
   if (matches.length === 0) {
     return {
       id: "unmatched",

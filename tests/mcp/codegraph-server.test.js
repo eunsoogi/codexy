@@ -26,10 +26,13 @@ function assertStructuredToolResult(response) {
   return jsonTextContent(response);
 }
 
+async function tool(client, name, args) {
+  return assertStructuredToolResult(await client.callTool(name, args));
+}
+
 test("graph index includes imports, exports, and resolved/unresolved edges", async () => {
   await withCodegraphClient(async (client) => {
-    const response = await client.callTool("codegraph_index", { root: fixtureRoot, limit: 10 });
-    const graph = assertStructuredToolResult(response);
+    const graph = await tool(client, "codegraph_index", { root: fixtureRoot, limit: 10 });
 
     assert.equal(graph.root, fixtureRoot);
     assert.ok(Array.isArray(graph.files));
@@ -65,6 +68,26 @@ test("reverse deps and bounded neighborhood tools are registered", async () => {
   });
 });
 
+test("JS-family relative specifiers resolve to TS and TSX siblings", async () => {
+  const emittedSpecifierRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-js-specifier-"));
+  await fs.writeFile(path.join(emittedSpecifierRoot, "bar.ts"), 'import { foo } from "./foo.js";\nexport const bar = () => foo();\n', "utf8");
+  await fs.writeFile(path.join(emittedSpecifierRoot, "foo.ts"), "export const foo = () => 1;\n", "utf8");
+  await fs.writeFile(path.join(emittedSpecifierRoot, "view.tsx"), 'import { Widget } from "./widget.js";\nexport const View = () => Widget();\n', "utf8");
+  await fs.writeFile(path.join(emittedSpecifierRoot, "widget.tsx"), "export const Widget = () => null;\n", "utf8");
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: emittedSpecifierRoot, limit: 10 });
+      assert.ok(graph.edges.some((edge) => edge.from === "bar.ts" && edge.to === "foo.ts" && edge.specifier === "./foo.js" && edge.resolved === true));
+      assert.ok(graph.edges.some((edge) => edge.from === "view.tsx" && edge.to === "widget.tsx" && edge.specifier === "./widget.js" && edge.resolved === true));
+      assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: emittedSpecifierRoot, path: "foo.ts", limit: 5 })).dependents, [{ path: "bar.ts", specifier: "./foo.js" }]);
+      assert.ok((await tool(client, "codegraph_neighborhood", { root: emittedSpecifierRoot, path: "bar.ts", depth: 1, limit: 5 })).nodes.some((node) => node.path === "foo.ts"));
+    });
+  } finally {
+    await fs.rm(emittedSpecifierRoot, { recursive: true, force: true });
+  }
+});
+
 test("directory index imports resolve for graph, reverse deps, and neighborhood", async () => {
   const indexFixtureRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-index-import-"));
   await fs.mkdir(path.join(indexFixtureRoot, "feature"));
@@ -81,9 +104,7 @@ test("directory index imports resolve for graph, reverse deps, and neighborhood"
 
   try {
     await withCodegraphClient(async (client) => {
-      const graph = assertStructuredToolResult(
-        await client.callTool("codegraph_index", { root: indexFixtureRoot, limit: 10 })
-      );
+      const graph = await tool(client, "codegraph_index", { root: indexFixtureRoot, limit: 10 });
 
       assert.ok(
         graph.edges.some(
@@ -95,19 +116,10 @@ test("directory index imports resolve for graph, reverse deps, and neighborhood"
         )
       );
 
-      const reverse = assertStructuredToolResult(
-        await client.callTool("codegraph_reverse_deps", { root: indexFixtureRoot, path: "feature/index.ts", limit: 5 })
-      );
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: indexFixtureRoot, path: "feature/index.ts", limit: 5 });
       assert.deepEqual(reverse.dependents, [{ path: "index-entry.js", specifier: "./feature" }]);
 
-      const neighborhood = assertStructuredToolResult(
-        await client.callTool("codegraph_neighborhood", {
-          root: indexFixtureRoot,
-          path: "index-entry.js",
-          depth: 1,
-          limit: 5,
-        })
-      );
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: indexFixtureRoot, path: "index-entry.js", depth: 1, limit: 5 });
       assert.ok(neighborhood.nodes.some((node) => node.path === "feature/index.ts"));
     });
   } finally {
@@ -133,9 +145,7 @@ test("re-export specifiers create dependency edges across graph tools", async ()
 
   try {
     await withCodegraphClient(async (client) => {
-      const graph = assertStructuredToolResult(
-        await client.callTool("codegraph_index", { root: reexportFixtureRoot, limit: 10 })
-      );
+      const graph = await tool(client, "codegraph_index", { root: reexportFixtureRoot, limit: 10 });
 
       assert.ok(graph.files.some((file) => file.path === "named.js" && file.exports.includes("renamedLeaf")));
       assert.ok(graph.edges.some((edge) => edge.from === "star.js" && edge.to === "mod.js" && edge.resolved === true));
@@ -143,32 +153,14 @@ test("re-export specifiers create dependency edges across graph tools", async ()
       assert.ok(graph.files.some((file) => file.path === "typed.ts" && file.exports.includes("Foo")));
       assert.ok(graph.edges.some((edge) => edge.from === "typed.ts" && edge.to === "types.ts" && edge.resolved === true));
 
-      const reverse = assertStructuredToolResult(
-        await client.callTool("codegraph_reverse_deps", { root: reexportFixtureRoot, path: "mod.js", limit: 5 })
-      );
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: reexportFixtureRoot, path: "mod.js", limit: 5 });
       assert.deepEqual(reverse.dependents.map((entry) => entry.path), ["named.js", "star.js"]);
-      const typedReverse = assertStructuredToolResult(
-        await client.callTool("codegraph_reverse_deps", { root: reexportFixtureRoot, path: "types.ts", limit: 5 })
-      );
+      const typedReverse = await tool(client, "codegraph_reverse_deps", { root: reexportFixtureRoot, path: "types.ts", limit: 5 });
       assert.deepEqual(typedReverse.dependents, [{ path: "typed.ts", specifier: "./types" }]);
 
-      const neighborhood = assertStructuredToolResult(
-        await client.callTool("codegraph_neighborhood", {
-          root: reexportFixtureRoot,
-          path: "named.js",
-          depth: 1,
-          limit: 5,
-        })
-      );
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: reexportFixtureRoot, path: "named.js", depth: 1, limit: 5 });
       assert.ok(neighborhood.nodes.some((node) => node.path === "mod.js"));
-      const typedNeighborhood = assertStructuredToolResult(
-        await client.callTool("codegraph_neighborhood", {
-          root: reexportFixtureRoot,
-          path: "typed.ts",
-          depth: 1,
-          limit: 5,
-        })
-      );
+      const typedNeighborhood = await tool(client, "codegraph_neighborhood", { root: reexportFixtureRoot, path: "typed.ts", depth: 1, limit: 5 });
       assert.ok(typedNeighborhood.nodes.some((node) => node.path === "types.ts"));
     });
   } finally {
@@ -191,9 +183,7 @@ test("oversized graph output reports limit and truncation metadata", async () =>
 
 test("graph index keeps existing imports resolved outside the bounded file list", async () => {
   await withCodegraphClient(async (client) => {
-    const graph = assertStructuredToolResult(
-      await client.callTool("codegraph_index", { root: fixtureRoot, limit: 1 })
-    );
+    const graph = await tool(client, "codegraph_index", { root: fixtureRoot, limit: 1 });
 
     assert.deepEqual(
       graph.files.map((file) => file.path),
@@ -213,9 +203,7 @@ test("graph index keeps existing imports resolved outside the bounded file list"
 
 test("isolated neighborhoods do not report truncation because unrelated repo files exist", async () => {
   await withCodegraphClient(async (client) => {
-    const neighborhood = assertStructuredToolResult(
-      await client.callTool("codegraph_neighborhood", { root: fixtureRoot, path: "helper.js", depth: 1, limit: 1 })
-    );
+    const neighborhood = await tool(client, "codegraph_neighborhood", { root: fixtureRoot, path: "helper.js", depth: 1, limit: 1 });
 
     assert.deepEqual(neighborhood.nodes, [{ path: "helper.js" }]);
     assert.deepEqual(neighborhood.edges, []);

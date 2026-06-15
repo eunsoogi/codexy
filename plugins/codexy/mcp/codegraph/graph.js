@@ -3,6 +3,8 @@
 const fs = require("fs");
 const path = require("path");
 const { codeExtensions, resultLimit, toPosix, unique, walkCodeFiles } = require("./files");
+const jsFamilyExtensions = new Set([".js", ".jsx", ".mjs", ".cjs"]);
+const tsSourceExtensions = [".ts", ".tsx"];
 
 function parseJavaScriptFile(root, file) {
   const absolute = path.join(root, file);
@@ -45,8 +47,14 @@ function resolveImport(root, fromFile, specifier) {
 
   const fromDir = path.dirname(path.join(root, fromFile));
   const candidate = path.resolve(fromDir, specifier);
-  const candidates = path.extname(candidate)
-    ? [candidate]
+  const extension = path.extname(candidate);
+  const candidates = extension
+    ? [
+        candidate,
+        ...(jsFamilyExtensions.has(extension)
+          ? tsSourceExtensions.map((sourceExtension) => `${candidate.slice(0, -extension.length)}${sourceExtension}`)
+          : []),
+      ]
     : [
         candidate,
         ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`),

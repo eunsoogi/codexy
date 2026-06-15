@@ -35,4 +35,20 @@ async function withMarkerlessWorkspace(prefix, relativePath, fn) {
   }
 }
 
-module.exports = { fakeLspCommand, readCapture, withFakeLspCapture, withMarkerlessWorkspace };
+async function withWorkspaceRelativeFakeLsp(prefix, fn) {
+  return withMarkerlessWorkspace(prefix, "src/sample.js", async ({ workspaceRoot, filePath }) => {
+    const relativeCommand = "./node_modules/.bin/codexy-relative-fake-lsp";
+    const commandPath = path.join(workspaceRoot, relativeCommand);
+    fs.mkdirSync(path.dirname(commandPath), { recursive: true });
+    fs.writeFileSync(commandPath, `#!/bin/sh
+case "$0" in
+  /*) ;;
+  *) echo "expected absolute argv0, got: $0" >&2; exit 97 ;;
+esac
+exec "${process.execPath}" "${fakeLspServer}"
+`, { mode: 0o755 });
+    return fn({ workspaceRoot, filePath, relativeCommand, resolvedCommand: commandPath });
+  });
+}
+
+module.exports = { fakeLspCommand, readCapture, withFakeLspCapture, withMarkerlessWorkspace, withWorkspaceRelativeFakeLsp };
