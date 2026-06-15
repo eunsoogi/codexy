@@ -449,11 +449,14 @@ After merge, update the main worktree:
 pr_number=<explicit-pr-number>
 git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
-test -f "$expected_body_file"
+if [ ! -f "$expected_body_file" ]; then
+  printf '%s\n' "Missing captured PR body evidence: $expected_body_file" >&2
+  exit 1
+fi
 
 git pull --ff-only origin main
 git log -1 --pretty=%s
-ruby - "$expected_body_file" <<'RUBY'
+if ruby - "$expected_body_file" <<'RUBY'
 expected = File.binread(ARGV.fetch(0))
 raw_commit = IO.popen(["git", "cat-file", "commit", "HEAD"], "rb", &:read)
 raw_message = raw_commit.split("\n\n", 2).fetch(1)
@@ -467,7 +470,12 @@ unless without_single_terminal_lf.call(actual) == without_single_terminal_lf.cal
   abort("squash merge commit body does not match the captured PR body")
 end
 RUBY
-rm -f "$expected_body_file"
+then
+  rm -f "$expected_body_file"
+else
+  printf '%s\n' "Body verification failed; leaving evidence at: $expected_body_file" >&2
+  exit 1
+fi
 ```
 
 The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
