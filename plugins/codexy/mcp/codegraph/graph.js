@@ -128,13 +128,17 @@ function neighborhood(root, startPath, depth, limit) {
       if (!seen.has(edge.to)) queue.push({ path: edge.to, depth: current.depth + 1 });
     }
   }
+  const returnedNodePaths = new Set(nodes.map((node) => node.path));
+  const boundedEdges = edges
+    .filter((edge) => returnedNodePaths.has(edge.from) && returnedNodePaths.has(edge.to))
+    .slice(0, boundedLimit);
 
   return {
     root,
     path: start,
     depth: boundedDepth,
     nodes,
-    edges: edges.slice(0, boundedLimit),
+    edges: boundedEdges,
     limit: boundedLimit,
     truncated: queue.length > 0 || seen.size < graph.files.length && nodes.length >= boundedLimit,
   };

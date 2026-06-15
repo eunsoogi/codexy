@@ -59,6 +59,9 @@ test("reverse deps and bounded neighborhood tools are registered", async () => {
     assert.equal(neighborhood.nodes.length, 1);
     assert.equal(neighborhood.limit, 1);
     assert.equal(typeof neighborhood.truncated, "boolean");
+    const nodePaths = new Set(neighborhood.nodes.map((node) => node.path));
+    const orphanEdges = neighborhood.edges.filter((edge) => !nodePaths.has(edge.from) || !nodePaths.has(edge.to));
+    assert.deepEqual(orphanEdges, []);
   });
 });
 

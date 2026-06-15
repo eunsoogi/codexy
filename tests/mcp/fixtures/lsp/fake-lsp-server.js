@@ -5,6 +5,8 @@ const fs = require("fs");
 let buffer = Buffer.alloc(0);
 let nextDiagnostics = false;
 let captureData = {};
+let pendingSymbolRequest;
+let serverRequestId = 1000;
 
 function encode(payload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8");
@@ -32,6 +34,12 @@ function captureUri(key, uri) {
 }
 
 function handle(message) {
+  if (pendingSymbolRequest && message.id === serverRequestId) {
+    captureUri("serverRequestResponseId", message.id);
+    send({ jsonrpc: "2.0", id: pendingSymbolRequest.id, result: [] });
+    pendingSymbolRequest = undefined;
+    return;
+  }
   if (message.method === "initialize") {
     capture(message);
     send({ jsonrpc: "2.0", id: message.id, result: { capabilities: {} } });
@@ -48,6 +56,16 @@ function handle(message) {
   }
   if (message.id !== undefined) {
     captureUri("requestUri", message.params?.textDocument?.uri);
+    if (process.env.CODEXY_FAKE_LSP_REQUIRE_CLIENT_RESPONSE === "1") {
+      pendingSymbolRequest = message;
+      send({
+        jsonrpc: "2.0",
+        id: serverRequestId,
+        method: "workspace/configuration",
+        params: { items: [{ section: "codexy.fake" }] },
+      });
+      return;
+    }
     if (nextDiagnostics) {
       nextDiagnostics = false;
       send({ jsonrpc: "2.0", method: "textDocument/publishDiagnostics", params: { uri: "", diagnostics: [] } });

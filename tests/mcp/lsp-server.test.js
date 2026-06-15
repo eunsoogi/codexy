@@ -165,3 +165,32 @@ test("LSP operations resolve relative paths against caller root", async () => {
     fs.rmSync(capturePath, { force: true });
   }
 });
+
+test("LSP operations answer server-to-client requests before document symbols", async () => {
+  const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-server-request-${process.pid}-${Date.now()}.json`);
+  try {
+    await withLspClient(async (client) => {
+      const response = await client.callTool("lsp_document_symbols", {
+        path: externalFixture,
+        server: {
+          id: "fake-lsp",
+          command: [process.execPath, fakeLspServer],
+        },
+      });
+      const payload = assertStructuredToolResult(response);
+
+      assert.equal(payload.status, "ok");
+      assert.equal(payload.path, externalFixture);
+
+      const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
+      assert.equal(capture.serverRequestResponseId, 1000);
+    }, {
+      env: {
+        CODEXY_FAKE_LSP_CAPTURE: capturePath,
+        CODEXY_FAKE_LSP_REQUIRE_CLIENT_RESPONSE: "1",
+      },
+    });
+  } finally {
+    fs.rmSync(capturePath, { force: true });
+  }
+});

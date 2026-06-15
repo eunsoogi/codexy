@@ -21,6 +21,12 @@ const WORKSPACE_MARKERS = [
   "tsconfig.json",
   "jsconfig.json",
 ];
+const SUPPORTED_SERVER_REQUESTS = new Set([
+  "client/registerCapability",
+  "client/unregisterCapability",
+  "window/workDoneProgress/create",
+  "workspace/configuration",
+]);
 
 function encodeLsp(payload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8");
@@ -104,6 +110,18 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
     write({ jsonrpc: "2.0", method: notificationMethod, params: notificationParams });
   }
 
+  function respondToServerRequest(message) {
+    if (SUPPORTED_SERVER_REQUESTS.has(message.method)) {
+      write({ jsonrpc: "2.0", id: message.id, result: null });
+      return;
+    }
+    write({
+      jsonrpc: "2.0",
+      id: message.id,
+      error: { code: -32601, message: `Method not found: ${message.method}` },
+    });
+  }
+
   child.stdout.on("data", (chunk) => {
     try {
       parseLspFrames(stdoutState, chunk, (message) => {
@@ -112,6 +130,10 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
           clearTimeout(waiter.timer);
           pending.delete(message.id);
           waiter.resolve(message);
+          return;
+        }
+        if (message.id !== undefined && typeof message.method === "string") {
+          respondToServerRequest(message);
           return;
         }
         notifications.push(message);
