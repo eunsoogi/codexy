@@ -94,7 +94,7 @@ def mcp_config_path(plugin_root: Path, manifest: dict[str, Any]) -> Path:
     return resolved
 
 
-def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]] | None:
+def load_lsp_catalog(plugin_root: Path) -> dict[str, dict[str, Any]] | None:
     catalog_path = plugin_root / "lsp" / "server-catalog.toml"
     if not catalog_path.exists():
         return None
@@ -105,7 +105,7 @@ def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]] | None:
     if not servers:
         raise ValidationError(f"{rel(catalog_path)} must contain at least one [[servers]] entry")
 
-    known: dict[str, set[str]] = {}
+    known: dict[str, dict[str, Any]] = {}
     for index, server in enumerate(servers, start=1):
         if not isinstance(server, dict):
             raise ValidationError(f"{rel(catalog_path)} servers[{index}] must be a table")
@@ -115,7 +115,15 @@ def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]] | None:
         extensions = server.get("extensions")
         if not isinstance(extensions, list) or not all(isinstance(item, str) for item in extensions):
             raise ValidationError(f"{rel(catalog_path)} {server_id}.extensions must be a list of strings")
-        known[server_id] = set(extensions)
+        command = server.get("command")
+        if not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command):
+            raise ValidationError(f"{rel(catalog_path)} {server_id}.command must be a non-empty argv array")
+        if "args" in server:
+            raise ValidationError(f"{rel(catalog_path)} {server_id}.args is not allowed; include argv in command")
+        known[server_id] = {
+            "extensions": set(extensions),
+            "command": list(command),
+        }
     return known
 
 
@@ -140,6 +148,13 @@ def lsp_entries(plugin_root: Path) -> dict[str, dict[str, Any]]:
         priority = entry.get("priority")
         if type(priority) is not int:
             raise ValidationError(f"{rel(lsp_path)} {server_id}.priority must be an integer")
+        command = entry.get("command")
+        if command is not None and (
+            not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command)
+        ):
+            raise ValidationError(f"{rel(lsp_path)} {server_id}.command must be a non-empty argv array")
+        if "args" in entry:
+            raise ValidationError(f"{rel(lsp_path)} {server_id}.args is not allowed; include argv in command")
     return entries
 
 
@@ -150,10 +165,14 @@ def covered_extensions(entries: dict[str, dict[str, Any]]) -> set[str]:
     return covered
 
 
-def catalog_covered_extensions(entries: dict[str, dict[str, Any]], catalog: dict[str, set[str]]) -> set[str]:
+def catalog_covered_extensions(entries: dict[str, dict[str, Any]], catalog: dict[str, dict[str, Any]]) -> set[str]:
     covered: set[str] = set()
     for server_id, entry in entries.items():
-        covered.update(extension for extension in entry["extensions"] if extension in catalog.get(server_id, set()))
+        catalog_entry = catalog.get(server_id)
+        if catalog_entry is None:
+            continue
+        catalog_extensions = catalog_entry["extensions"]
+        covered.update(extension for extension in entry["extensions"] if extension in catalog_extensions)
     return covered
 
 
@@ -170,11 +189,17 @@ def check_lsp(plugin_root: Path) -> list[str]:
                 if server_id not in catalog:
                     errors.append(f"LSP server {server_id!r} is not present in lsp/server-catalog.toml")
                     continue
-                undeclared = sorted(set(entry["extensions"]) - catalog[server_id])
+                catalog_entry = catalog[server_id]
+                undeclared = sorted(set(entry["extensions"]) - catalog_entry["extensions"])
                 if undeclared:
                     errors.append(
                         f"LSP server {server_id!r} configures extensions not declared by catalog: "
                         f"{', '.join(undeclared)}"
+                    )
+                if entry.get("command") != catalog_entry["command"]:
+                    errors.append(
+                        f"LSP server {server_id!r} must define command argv {catalog_entry['command']!r} "
+                        "from lsp/server-catalog.toml"
                     )
             coverage_for_missing = catalog_covered_extensions(entries, catalog)
         missing = sorted(REQUIRED_LSP_EXTENSIONS - coverage_for_missing)
