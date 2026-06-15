@@ -248,12 +248,22 @@ worker for that lane.
 
 - The child thread owns implementation edits, local verification, and
   review-response fixes for its assigned issue-sized lane.
+- For non-trivial lanes, the child thread MUST create or maintain a
+  lane-specific goal when goal tooling exists, keep todo/plan state current,
+  and use useful multi-agent decomposition for independent research,
+  implementation, review, QA, or verification subtasks.
+- Atomic trivial child tasks may stay lightweight, but substantial delegated
+  work MUST NOT proceed as ad hoc edits without goal and todo discipline.
+- If a child thread lacks a required execution tool, it MUST say so in its
+  handoff evidence and use the closest available fallback instead of silently
+  skipping the discipline.
 - If Codex connector or human review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
 - The parent handoff must include the PR number, latest head SHA, relevant
   comments or review thread URLs, allowed files, expected return evidence, and
-  stop condition.
+  stop condition. For non-trivial lanes, it must also require the child to
+  report goal/todo/multi-agent usage or unavailable-tool fallbacks.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.
