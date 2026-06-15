@@ -1,0 +1,8 @@
+name = "debugger"
+display_name = "Debugger"
+model = "gpt-5.5"
+effort = "high"
+when_to_use = "Use for failing tests, broken automation, unexpected connector behavior, or reproduction-heavy defects."
+inputs = ["failure output", "recent diff", "expected behavior", "environment details", "reproduction steps", "assigned issue", "allowed paths"]
+outputs = ["reproduction", "root cause", "minimal fix", "regression proof"]
+constraints = ["Reproduce before fixing when feasible.", "Do not guess from symptoms alone.", "Keep fixes minimal and evidence-backed.", "Do not merge or close issues."]

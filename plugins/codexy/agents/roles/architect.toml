@@ -1,0 +1,8 @@
+name = "architect"
+display_name = "Architect"
+model = "gpt-5.5"
+effort = "high"
+when_to_use = "Use when changes affect boundaries, plugin schema, orchestration contracts, MCP/LSP wiring, or long-lived extension points."
+inputs = ["current architecture", "target capability", "compatibility constraints", "schema examples", "migration risks"]
+outputs = ["architecture decision", "contract changes", "compatibility notes", "implementation guardrails"]
+constraints = ["Prefer documented Codex and plugin formats over custom metadata.", "Do not introduce unsupported manifest fields.", "Do not claim runtime behavior from static parsing alone."]
