@@ -35,7 +35,13 @@ Issue bodies should include:
 - `## Acceptance Criteria`: concrete conditions that make the issue done.
 - `## Verification`: expected local checks or evidence.
 
-When labels are available, add one `priority/*`, one `status/*`, one `type/*`, and at least one `area/*` label to issues. Add missing workflow labels when repository administration is in scope.
+When labels are available, inspect the repository's current label taxonomy
+before creating or updating issues. Apply repository-appropriate labels for the
+work type, status, priority, and ownership area only when those concepts exist
+in that repository. Do not assume a universal label list across repositories.
+If the current taxonomy is missing a minimal label needed for clear workflow
+state, create or update the smallest repository-appropriate label set first,
+then apply it.
 
 ## Worktrees And Branches
 
@@ -141,6 +147,13 @@ Fixes #<issue-number>
 
 Do not put closing references in the middle of the PR body.
 
+When labels are available, inspect the repository's current label taxonomy
+before opening or updating a PR. Apply repository-appropriate labels to the PR
+using the same taxonomy principles as issues, without hard-coding a fixed label
+list. If the repository uses status-like labels, keep issue and PR labels
+aligned with state transitions such as review requested, review feedback routed,
+merge, close, or reopen.
+
 ## Codex Review Gate
 
 Codex connector review is a real merge gate when it is expected for the
@@ -178,6 +191,12 @@ gh pr comment <pr> --body "@codex review"
 
 An `eyes` reaction on the `@codex review` comment means Codex noticed the request
 and is processing it. It is not approval and does not mean review is complete.
+When an in-progress `@codex review` request already has an `eyes` reaction for
+the current PR head, do not send duplicate review requests for that same head.
+Keep polling PR comments, reviews, and review threads instead. If the request
+appears stale for an unusually long time, document the status and either keep
+polling or escalate once with a distinct rationale; do not issue repeated blind
+`@codex review` comments.
 
 Codex review completion signals include:
 
@@ -193,7 +212,9 @@ proceeding without a full Codex review.
 
 If any new commits are pushed after Codex review, the old review no longer
 proves the current head. Wait for or request a fresh Codex review before
-merging.
+merging. After a fresh-review request for that new head receives `eyes`, the
+correct action is waiting and polling until review output appears, not repeated
+requests for the same head.
 
 ### Child-Owned Review Feedback
 
@@ -332,6 +353,9 @@ After resolving, stage only the resolved files and run verification relevant to 
 ## Quick Checklist
 
 - Issue exists or a maintainer provided an explicit issue-sized scope.
+- Issue and PR labels match the repository's current label taxonomy when labels
+  are available; status-like labels have been updated after review, merge,
+  close, or reopen transitions.
 - Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
 - Branch scope matches the issue or sub-scope.
 - Local `.omo/**` evidence remains uncommitted unless explicitly requested.
