@@ -23,7 +23,11 @@ const tools = [
     description: "Return the Codexy LSP server registrations that match a file path.",
     inputSchema: {
       type: "object",
-      properties: { path: { type: "string", description: "Repository-relative or absolute file path." } },
+      properties: {
+        path: { type: "string", description: "Workspace-relative or absolute file path." },
+        root: { type: "string", description: "Workspace root for relative paths." },
+        workspaceRoot: { type: "string", description: "Alias for root." },
+      },
       required: ["path"],
     },
   },
@@ -33,7 +37,9 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Repository-relative or absolute file path." },
+        path: { type: "string", description: "Workspace-relative or absolute file path." },
+        root: { type: "string", description: "Workspace root for relative paths." },
+        workspaceRoot: { type: "string", description: "Alias for root." },
         server: { type: "object", description: "Optional server override with id and command array." },
       },
       required: ["path"],
@@ -46,6 +52,8 @@ const tools = [
       type: "object",
       properties: {
         path: { type: "string" },
+        root: { type: "string" },
+        workspaceRoot: { type: "string" },
         server: { type: "object" },
       },
       required: ["path"],
@@ -58,6 +66,8 @@ const tools = [
       type: "object",
       properties: {
         path: { type: "string" },
+        root: { type: "string" },
+        workspaceRoot: { type: "string" },
         line: { type: "number" },
         character: { type: "number" },
         server: { type: "object" },
@@ -72,6 +82,8 @@ const tools = [
       type: "object",
       properties: {
         path: { type: "string" },
+        root: { type: "string" },
+        workspaceRoot: { type: "string" },
         line: { type: "number" },
         character: { type: "number" },
         includeDeclaration: { type: "boolean" },
@@ -87,6 +99,8 @@ const tools = [
       type: "object",
       properties: {
         path: { type: "string" },
+        root: { type: "string" },
+        workspaceRoot: { type: "string" },
         server: { type: "object" },
       },
       required: ["path"],
@@ -100,11 +114,11 @@ async function callTool(name, args) {
   }
   if (name === "lsp_for_path") {
     if (!args.path) throw new Error("path is required");
-    return textResult(JSON.stringify(matchingServers(args.path), null, 2));
+    return textResult(JSON.stringify(matchingServers(resolvePath(args.path, rootFromArgs(args))), null, 2));
   }
   if (name === "lsp_status") {
     if (!args.path) throw new Error("path is required");
-    const filePath = resolvePath(args.path);
+    const filePath = resolvePath(args.path, rootFromArgs(args));
     const server = selectServer({ ...args, path: filePath });
     return textResult(JSON.stringify({
       path: filePath,
@@ -146,10 +160,10 @@ async function callTool(name, args) {
 
 async function operationResult(args, method, params) {
   if (!args.path) throw new Error("path is required");
-  const filePath = resolvePath(args.path);
+  const filePath = resolvePath(args.path, rootFromArgs(args));
   const server = selectServer({ ...args, path: filePath });
   if (!server.available) {
-    return textResult(JSON.stringify(unavailablePayload(filePath, server), null, 2));
+    return textResult(JSON.stringify(unavailablePayload(filePath, server, rootFromArgs(args)), null, 2));
   }
   try {
     const result = await runLspRequest({ server, filePath, method, params });
@@ -163,6 +177,10 @@ async function operationResult(args, method, params) {
       installHints: server.installHints || [],
     }, null, 2));
   }
+}
+
+function rootFromArgs(args) {
+  return args.root || args.workspaceRoot;
 }
 
 module.exports = { callTool, tools };

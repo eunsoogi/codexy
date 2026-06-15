@@ -4,6 +4,7 @@ const fs = require("fs");
 
 let buffer = Buffer.alloc(0);
 let nextDiagnostics = false;
+let captureData = {};
 
 function encode(payload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8");
@@ -16,10 +17,18 @@ function send(payload) {
 
 function capture(message) {
   if (!process.env.CODEXY_FAKE_LSP_CAPTURE) return;
-  fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify({
+  captureData = {
+    ...captureData,
     cwd: process.cwd(),
     rootUri: message.params.rootUri,
-  }, null, 2));
+  };
+  fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify(captureData, null, 2));
+}
+
+function captureUri(key, uri) {
+  if (!process.env.CODEXY_FAKE_LSP_CAPTURE) return;
+  captureData = { ...captureData, [key]: uri };
+  fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify(captureData, null, 2));
 }
 
 function handle(message) {
@@ -29,6 +38,7 @@ function handle(message) {
     return;
   }
   if (message.method === "textDocument/didOpen") {
+    captureUri("openedUri", message.params.textDocument.uri);
     nextDiagnostics = true;
     return;
   }
@@ -37,6 +47,7 @@ function handle(message) {
     return;
   }
   if (message.id !== undefined) {
+    captureUri("requestUri", message.params?.textDocument?.uri);
     if (nextDiagnostics) {
       nextDiagnostics = false;
       send({ jsonrpc: "2.0", method: "textDocument/publishDiagnostics", params: { uri: "", diagnostics: [] } });

@@ -76,12 +76,14 @@ function languageForPath(filePath, server) {
   return String(server.language || server.id || ext.replace(/^\./, "") || "plaintext").toLowerCase();
 }
 
-function resolvePath(filePath) {
-  return path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+function resolvePath(filePath, root) {
+  if (path.isAbsolute(filePath)) return filePath;
+  const base = root ? path.resolve(root) : process.cwd();
+  return path.resolve(base, filePath);
 }
 
-function toFileUri(filePath) {
-  return pathToFileURL(resolvePath(filePath)).href;
+function toFileUri(filePath, root) {
+  return pathToFileURL(resolvePath(filePath, root)).href;
 }
 
 function resolveExecutable(command) {
@@ -152,10 +154,10 @@ function selectServer(args) {
   return matches[0];
 }
 
-function unavailablePayload(filePath, server) {
+function unavailablePayload(filePath, server, root) {
   return {
     status: "unavailable",
-    path: filePath ? resolvePath(filePath) : undefined,
+    path: filePath ? resolvePath(filePath, root) : undefined,
     server: { id: server.id, executable: server.executable, command: server.command },
     reason: server.unavailableReason || "server executable unavailable",
     installHints: server.installHints || [],
