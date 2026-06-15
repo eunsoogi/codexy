@@ -278,6 +278,11 @@ worker for that lane.
 - If Codex connector or human review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
+- After the owning child pushes a review-response commit, the parent MUST
+  verify that the current head addresses each completed review thread before
+  resolving it in GitHub. Resolve only the threads whose feedback is fully
+  addressed by the pushed and verified head, or whose no-change rationale a
+  maintainer accepted.
 - If the parent accidentally creates draft edits for a child-owned lane, it
   MUST stop implementation immediately, disclose the mistake, inspect whether
   the draft overlaps user or other agent work, preserve or revert only as
@@ -294,6 +299,9 @@ worker for that lane.
   the lane to the parent.
 - The parent may resolve review threads only after child evidence proves the
   fix on the current head, or after a maintainer accepts a no-change rationale.
+- The parent MUST NOT resolve a thread merely because a child said it was fixed,
+  a commit was pushed, or a fresh review was requested. Unverified, partially
+  addressed, stale, or still-actionable feedback remains open and merge-blocking.
 - Worktree lanes must remain issue-sized and atomic. Do not combine review
   feedback from one child lane with another branch or PR.
 
@@ -362,6 +370,10 @@ The review gate is satisfied only when:
 - Every non-outdated review thread is resolved, or the PR body/comment history documents why no change is required.
 - Every actionable PR comment has been addressed or explicitly marked non-actionable with rationale.
 - You have re-run verification after addressing review feedback.
+- Addressed review threads from Codex connector or human reviewers have been
+  resolved in GitHub after the fixing commit was pushed and verified on the
+  current head. Do not resolve threads that still contain unresolved actionable
+  feedback; they remain merge-blocking.
 
 If any review or comment is ambiguous, stop and resolve it before merging. Do
 not merge first and plan to address review feedback afterward.
