@@ -427,7 +427,15 @@ fi
 
 printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
 printf '%s\n' "It MUST NOT contain secrets, credentials, private logs, throwaway notes, or local-only scratch paths unless intentional evidence references."
-less "$pr_body_file"
+if command -v less >/dev/null 2>&1 && [ -t 1 ]; then
+  if ! less "$pr_body_file"; then
+    printf '%s\n' "Could not display PR body with less; aborting merge." >&2
+    exit 1
+  fi
+elif ! cat "$pr_body_file"; then
+  printf '%s\n' "Could not display PR body with cat; aborting merge." >&2
+  exit 1
+fi
 printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "
 IFS= read -r pr_body_approval
 if [ "$pr_body_approval" != "APPROVE_PR_BODY_FOR_MAIN" ]; then
