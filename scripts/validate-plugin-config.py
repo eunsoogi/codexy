@@ -94,10 +94,10 @@ def mcp_config_path(plugin_root: Path, manifest: dict[str, Any]) -> Path:
     return resolved
 
 
-def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]]:
+def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]] | None:
     catalog_path = plugin_root / "lsp" / "server-catalog.toml"
     if not catalog_path.exists():
-        return {}
+        return None
     catalog = load_toml(catalog_path)
     servers = catalog.get("servers")
     if not isinstance(servers, list):
@@ -151,8 +151,6 @@ def covered_extensions(entries: dict[str, dict[str, Any]]) -> set[str]:
 
 
 def catalog_covered_extensions(entries: dict[str, dict[str, Any]], catalog: dict[str, set[str]]) -> set[str]:
-    if not catalog:
-        return covered_extensions(entries)
     covered: set[str] = set()
     for server_id, entry in entries.items():
         covered.update(extension for extension in entry["extensions"] if extension in catalog.get(server_id, set()))
@@ -164,7 +162,10 @@ def check_lsp(plugin_root: Path) -> list[str]:
     try:
         entries = lsp_entries(plugin_root)
         catalog = load_lsp_catalog(plugin_root)
-        if catalog:
+        if catalog is None:
+            errors.append("LSP coverage requires lsp/server-catalog.toml")
+            catalog = {}
+        else:
             for server_id, entry in entries.items():
                 if server_id not in catalog:
                     errors.append(f"LSP server {server_id!r} is not present in lsp/server-catalog.toml")
@@ -211,6 +212,8 @@ def check_mcp(plugin_root: Path) -> list[str]:
                     errors.append(f"{rel(path)} disallowed context7 MCP URL present for {name}")
             if command is not None and not isinstance(command, str):
                 errors.append(f"{rel(path)} {name}.command must be a string")
+            elif command is not None and "context7" in command.lower():
+                errors.append(f"{rel(path)} disallowed context7 MCP command present for {name}")
     except ValidationError as exc:
         errors.append(str(exc))
     return errors
@@ -303,6 +306,7 @@ def check_agent_yaml_file(path: Path) -> list[str]:
 def parse_prompt_yaml(text: str, path: Path) -> dict[str, Any]:
     root: dict[str, Any] = {}
     stack: list[tuple[int, dict[str, Any]]] = [(-1, root)]
+    child_indents: dict[int, int] = {}
     previous_indent = -1
     previous_was_mapping = True
     for line_number, raw_line in enumerate(text.splitlines(), start=1):
@@ -326,6 +330,11 @@ def parse_prompt_yaml(text: str, path: Path) -> dict[str, Any]:
         if not stack:
             raise ValidationError(f"{rel(path)} line {line_number} has invalid indentation")
         parent = stack[-1][1]
+        expected_indent = child_indents.get(id(parent))
+        if expected_indent is None:
+            child_indents[id(parent)] = indent
+        elif expected_indent != indent:
+            raise ValidationError(f"{rel(path)} line {line_number} has inconsistent sibling indentation")
         value_text = raw_value.strip()
         if not value_text:
             child: dict[str, Any] = {}
