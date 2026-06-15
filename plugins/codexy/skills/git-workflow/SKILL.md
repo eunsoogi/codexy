@@ -249,11 +249,18 @@ worker for that lane.
 - The child thread owns implementation edits, local verification, and
   review-response fixes for its assigned issue-sized lane.
 - For non-trivial lanes, the child thread MUST create or maintain a
-  lane-specific goal when goal tooling exists, keep todo/plan state current,
-  and use useful multi-agent decomposition for independent research,
-  implementation, review, QA, or verification subtasks.
+  lane-specific goal with the real Codex goal tools when they exist, such as
+  `create_goal`, `get_goal`, and `update_goal`; keep real todo/plan state
+  current with `update_plan` or the active todo surface; and use useful
+  multi-agent decomposition for independent research, implementation, review,
+  QA, or verification subtasks. Prose-only `Goal:` or `Todo:` text is not
+  evidence that either tool surface was used.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
-  work MUST NOT proceed as ad hoc edits without goal and todo discipline.
+  work MUST NOT proceed as ad hoc edits without both real goal state and real
+  todo/plan state when those tools are available. Using only one of goal or
+  todo/plan is insufficient for a non-trivial child lane unless the missing
+  tool is unavailable and the child reports that unavailability with its
+  fallback.
 - Before returning a non-trivial atomic lane as ready, the owning thread MUST
   run the packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/reviewer.toml` on the current diff, scope, and
@@ -261,15 +268,18 @@ worker for that lane.
   or parent-only readthrough for this lane-end gate.
 - If a child thread lacks a required execution tool, it MUST say so in its
   handoff evidence and use the closest available fallback instead of silently
-  skipping the discipline.
+  skipping the discipline. Handoff evidence MUST report actual goal and
+  todo/plan tool usage or the unavailable-tool fallback for each missing
+  surface.
 - If Codex connector or human review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
 - The parent handoff must include the PR number, latest head SHA, relevant
   comments or review thread URLs, allowed files, expected return evidence, and
   stop condition. For non-trivial lanes, it must also require the child to
-  report goal/todo/multi-agent usage or unavailable-tool fallbacks and the
-  packaged Codexy reviewer agent findings or approval.
+  report actual goal tool usage, actual todo/plan tool usage,
+  multi-agent usage or rationale, unavailable-tool fallbacks, and the packaged
+  Codexy reviewer agent findings or approval.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.

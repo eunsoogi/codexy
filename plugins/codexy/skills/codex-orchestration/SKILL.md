@@ -61,17 +61,28 @@ Child implementation threads assigned a non-trivial lane MUST run their own
 execution loop instead of treating the parent handoff as permission for ad hoc
 edits.
 
-- Create or maintain a lane-specific goal when goal tooling is available. If
-  goal tooling is unavailable, write a visible textual goal with success
-  criteria and keep it current in status updates and handoff evidence.
-- Maintain a visible todo or `update_plan` state for multi-step delegated work.
-  Update statuses as work moves from discovery, to edit, to verification, to
-  handoff.
+- Create or maintain a lane-specific goal with the real Codex goal tools when
+  they are available. Use `create_goal` to start the lane goal, `get_goal` to
+  inspect active goal state when needed, and `update_goal` only when completion
+  or true blockage is proved. A prose-only `Goal:` line or goal-looking status
+  text is not evidence that goal tooling was used. If goal tooling is
+  unavailable, write a visible textual goal with success criteria, keep it
+  current in status updates, and report the unavailable-tool fallback in
+  handoff evidence.
+- Maintain real todo or plan state for multi-step delegated work when the
+  tool is available, such as Codex `update_plan` or the active todo tool for
+  the surface. Update statuses as work moves from discovery, to edit, to
+  verification, to handoff. Prose-only `Todo:` text is not evidence that
+  todo/plan tooling was used.
 - Use multi-agent decomposition when independent research, implementation,
   review, QA, or verification subtasks can safely proceed in parallel and the
   tool is available and useful.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
-  work MUST NOT proceed as untracked edits without goal and todo discipline.
+  work MUST NOT proceed as untracked edits without both real goal state and
+  real todo/plan state when those tools are available. Using only one of goal
+  or todo/plan is insufficient for a non-trivial child lane unless the missing
+  tool is unavailable and the child reports that unavailability with its
+  fallback.
 - If a required execution tool is unavailable in the child thread, say so in
   the thread and use the closest available fallback. Do not silently skip the
   discipline.
@@ -86,17 +97,22 @@ edits.
 
 ## Required Control Plane
 
-- Establish the goal before implementation. If `create_goal` is available and
-  the user explicitly asks for goal tracking, use it. If goal tools are not
-  available, keep a visible `Goal` note in the thread with success criteria and
-  update it textually as evidence changes.
+- Establish the goal before implementation. If `create_goal` is available,
+  use it directly for non-trivial delegated or orchestrated lanes; use
+  `get_goal` to inspect active goal state when needed, and `update_goal` only
+  when completion or true blockage is proved. Prose-only `Goal:` text is
+  fallback documentation, not proof of goal-tool use. If goal tools are not
+  available, keep a visible `Goal` note in the thread with success criteria,
+  update it textually as evidence changes, and report that fallback.
 - Treat waiting for Codex connector review, child-thread work, queued
   worktree/thread setup, or asynchronous tool completion as a non-blocking goal
   state. Keep the goal active, keep polling, send follow-up prompts when
   progress stalls, and continue the merge loop when evidence arrives.
 - Reserve `blocked` for repeated true impasses where the orchestrator cannot
   make meaningful progress without user input or an external state change.
-- Maintain a visible todo list with `update_plan` for any non-trivial task.
+- Maintain a visible todo list with real `update_plan` or todo-tool state for
+  any non-trivial task when available. Prose-only todo text is insufficient
+  unless the todo/plan tool is unavailable and the fallback is reported.
 - Decompose broad work into issue-sized atomic units before editing.
 - Use multi-agent dispatch for bounded specialist help inside the current
   thread when the lane does not need its own branch or PR. Use the packaged
@@ -142,9 +158,11 @@ edits.
    - For forked Codex worktree child lanes, rename the child thread after
      setup with `set_thread_title` when available, using a project, issue
      number, and lane purpose title.
-   - Tell child implementation threads to create or maintain their own goal,
-     keep todo/plan state current, use useful multi-agent decomposition, and
-     report unavailable-tool fallbacks.
+   - Tell child implementation threads to create or maintain their own real
+     goal state with `create_goal`, `get_goal`, and `update_goal` when
+     available; keep real todo/plan state current with `update_plan` or the
+     available todo surface; use useful multi-agent decomposition; and report
+     actual tool usage or unavailable-tool fallbacks.
    - Tell each non-trivial child implementation thread to run the packaged
      Codexy reviewer agent before handoff and include the reviewer findings or
      approval in its return evidence.
@@ -175,7 +193,8 @@ edits.
 ## Multi-Agent Dispatch Template
 
 ```text
-Goal:
+Goal tool usage or unavailable-goal-tool fallback:
+Todo/plan tool usage or unavailable-todo-tool fallback:
 Atomic lane:
 Issue:
 Branch:
@@ -206,6 +225,8 @@ Allowed files or paths:
 Read first:
 Acceptance criteria:
 Required evidence:
+Goal tool usage or unavailable-goal-tool fallback:
+Todo/plan tool usage or unavailable-todo-tool fallback:
 Stop condition:
 Parent verification:
 Return format:
