@@ -75,6 +75,11 @@ edits.
 - If a required execution tool is unavailable in the child thread, say so in
   the thread and use the closest available fallback. Do not silently skip the
   discipline.
+- Before a child thread reports a non-trivial atomic lane as ready for parent
+  handoff, it MUST run the packaged Codexy reviewer agent defined by
+  `plugins/codexy/agents/reviewer.toml` against the lane diff, scope, and
+  verification evidence. Do not substitute an arbitrary reviewer, generic
+  review role, or external review agent for this gate.
 - The parent/orchestrator monitors evidence and merge gates. The child owns
   the implementation loop, local verification, and review-response fixes for
   its lane until the stop condition is met.
@@ -99,6 +104,11 @@ edits.
   do not claim those packaged agents are native Codex custom agents unless
   they have been projected into the active project or user custom-agent
   directory by a supported workflow.
+- End every non-trivial atomic unit with the packaged Codexy reviewer agent
+  from `plugins/codexy/agents/reviewer.toml`. The reviewer gate belongs inside
+  the owning thread or child thread for that atomic unit; the parent may verify
+  the evidence, but it must not replace the owning lane's reviewer pass with a
+  different ad hoc agent.
 - Use separate Codex thread/worktree decomposition when lanes can proceed
   independently, touch separate ownership areas, or need separate PRs. If
   worktree isolation is required and Codex thread tools are available, create
@@ -135,6 +145,9 @@ edits.
    - Tell child implementation threads to create or maintain their own goal,
      keep todo/plan state current, use useful multi-agent decomposition, and
      report unavailable-tool fallbacks.
+   - Tell each non-trivial child implementation thread to run the packaged
+     Codexy reviewer agent before handoff and include the reviewer findings or
+     approval in its return evidence.
    - Require evidence, diffs, findings, or failed assumptions; do not accept
      acknowledgements as proof.
    - For Codex worktree thread lanes, state that the child owns implementation

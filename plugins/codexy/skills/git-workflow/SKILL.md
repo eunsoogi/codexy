@@ -254,6 +254,11 @@ worker for that lane.
   implementation, review, QA, or verification subtasks.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
   work MUST NOT proceed as ad hoc edits without goal and todo discipline.
+- Before returning a non-trivial atomic lane as ready, the owning thread MUST
+  run the packaged Codexy reviewer agent defined by
+  `plugins/codexy/agents/reviewer.toml` on the current diff, scope, and
+  evidence. Do not substitute an arbitrary reviewer agent, generic review role,
+  or parent-only readthrough for this lane-end gate.
 - If a child thread lacks a required execution tool, it MUST say so in its
   handoff evidence and use the closest available fallback instead of silently
   skipping the discipline.
@@ -263,7 +268,8 @@ worker for that lane.
 - The parent handoff must include the PR number, latest head SHA, relevant
   comments or review thread URLs, allowed files, expected return evidence, and
   stop condition. For non-trivial lanes, it must also require the child to
-  report goal/todo/multi-agent usage or unavailable-tool fallbacks.
+  report goal/todo/multi-agent usage or unavailable-tool fallbacks and the
+  packaged Codexy reviewer agent findings or approval.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.
@@ -395,6 +401,9 @@ After resolving, stage only the resolved files and run verification relevant to 
 - Local `.omo/**` evidence remains uncommitted unless explicitly requested.
 - No force push or force-with-lease is used.
 - Verification covers touched surfaces.
+- Non-trivial atomic work includes packaged Codexy reviewer agent findings or
+  approval from `plugins/codexy/agents/reviewer.toml`; arbitrary reviewer
+  agents are not substitutes.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
 - Expected Codex review completed on the latest PR head, and no unresolved actionable Codex feedback remains.
 - PR reviews, Codex connector reviews, PR comments, and review threads have been inspected and all actionable feedback is resolved or explicitly documented as non-actionable before merge.

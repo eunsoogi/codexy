@@ -55,6 +55,8 @@ validation proves the packaged paths match the repository layout.
    - MCP config contains only verified packaged or official endpoints,
    - specialist agent or custom agent TOMLs parse and do not define a child
      orchestrator when the invoking thread is the orchestrator,
+   - Codexy reviewer agent metadata identifies it as the mandatory gate at the
+     end of every non-trivial atomic work unit,
    - thread/worktree orchestration wording includes handoff fields, evidence,
      stop conditions, and parent verification,
    - child-owned PR review feedback is routed back to the owning child thread
