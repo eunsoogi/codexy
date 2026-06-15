@@ -19,6 +19,7 @@ aligned before publishing or tagging.
    - skill bundle,
    - MCP configuration,
    - LSP configuration and catalog,
+   - codegraph MCP registration and code-exploration guidance,
    - role metadata or custom agent TOMLs,
    - thread/worktree orchestration guidance,
    - GitHub Action,
@@ -42,6 +43,8 @@ aligned before publishing or tagging.
    - LSP config, MCP config, role metadata, custom agent TOML, and
      thread/worktree wording checks for plugin architecture changes, limited to
      the surfaces that exist for that plugin,
+   - codegraph MCP registration checks when the release advertises code
+     exploration or thread/agent repository discovery,
    - for Codexy plugin releases specifically,
      `python3 scripts/validate-plugin-config.py --check` when the validator
      exists,
@@ -85,6 +88,8 @@ Not publishing because:
   archive, or marketplace bundle is produced.
 - Do not release plugin architecture changes while LSP, MCP, role metadata,
   custom agent TOML, or thread/worktree orchestration checks are missing.
+- Do not release code-exploration behavior without packaged codegraph MCP
+  registration evidence.
 - Do not merge child-owned release or architecture feedback from the parent
   thread alone. The owning child thread must address or explicitly reject the
   feedback and return current verification.

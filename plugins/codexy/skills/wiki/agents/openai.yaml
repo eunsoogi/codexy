@@ -1,0 +1,6 @@
+interface:
+  display_name: "Wiki"
+  short_description: "Use LLM Wiki methodology for durable project knowledge."
+  default_prompt: "Use $wiki to initialize, ingest, query, compile, audit, capture, or rehydrate topic-scoped LLM Wiki knowledge with provenance."
+policy:
+  allow_implicit_invocation: true

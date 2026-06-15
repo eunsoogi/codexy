@@ -69,6 +69,8 @@ codexy/
 - Keep specialist agents as separate `plugins/codexy/agents/*.toml` files.
 - Keep skill instructions under `plugins/codexy/skills/<skill>/SKILL.md`.
 - Keep MCP and LSP changes aligned with `scripts/validate-plugin-config.py`.
+- Use Codexy codegraph MCP for repository exploration when available, then
+  confirm exact files with direct reads before editing.
 - Prefer repository-specific guidance over generic agent advice.
 - Keep instructions actionable: use `MUST` or `MUST NOT` only for hard
   requirements.
