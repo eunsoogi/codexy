@@ -279,31 +279,67 @@ def check_agent_yaml_file(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     if "\t" in text:
         errors.append(f"{rel(path)} must not contain tab indentation")
-    required_markers = (
-        "interface:",
-        "display_name:",
-        "short_description:",
-        "default_prompt:",
-        "policy:",
-        "allow_implicit_invocation:",
-    )
-    for marker in required_markers:
-        if marker not in text:
-            errors.append(f"{rel(path)} missing YAML marker {marker}")
-    if "allow_implicit_invocation:" in text:
-        has_true_implicit_invocation = any(
-            line.strip() == "allow_implicit_invocation: true"
-            for line in text.splitlines()
-        )
-        if not has_true_implicit_invocation:
-            errors.append(f"{rel(path)} allow_implicit_invocation must be true")
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith(("display_name:", "short_description:", "default_prompt:")):
-            _, value = stripped.split(":", 1)
-            if not value.strip():
-                errors.append(f"{rel(path)} {stripped} must have a value")
+    try:
+        data = parse_prompt_yaml(text, path)
+    except ValidationError as exc:
+        return [str(exc)]
+    interface = data.get("interface")
+    if not isinstance(interface, dict):
+        errors.append(f"{rel(path)} interface must be a mapping")
+        interface = {}
+    policy = data.get("policy")
+    if not isinstance(policy, dict):
+        errors.append(f"{rel(path)} policy must be a mapping")
+        policy = {}
+    for field in ("display_name", "short_description", "default_prompt"):
+        value = interface.get(field)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"{rel(path)} interface.{field} must be a non-empty string")
+    if policy.get("allow_implicit_invocation") is not True:
+        errors.append(f"{rel(path)} policy.allow_implicit_invocation must be true")
     return errors
+
+
+def parse_prompt_yaml(text: str, path: Path) -> dict[str, Any]:
+    root: dict[str, Any] = {}
+    stack: list[tuple[int, dict[str, Any]]] = [(-1, root)]
+    for line_number, raw_line in enumerate(text.splitlines(), start=1):
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if raw_line.startswith(" "):
+            indent = len(raw_line) - len(raw_line.lstrip(" "))
+        else:
+            indent = 0
+        stripped = raw_line.strip()
+        if ":" not in stripped:
+            raise ValidationError(f"{rel(path)} line {line_number} must be a YAML key/value pair")
+        key, raw_value = stripped.split(":", 1)
+        key = key.strip()
+        if not key:
+            raise ValidationError(f"{rel(path)} line {line_number} has an empty key")
+        while stack and indent <= stack[-1][0]:
+            stack.pop()
+        if not stack:
+            raise ValidationError(f"{rel(path)} line {line_number} has invalid indentation")
+        parent = stack[-1][1]
+        value_text = raw_value.strip()
+        if not value_text:
+            child: dict[str, Any] = {}
+            parent[key] = child
+            stack.append((indent, child))
+            continue
+        parent[key] = parse_prompt_yaml_scalar(value_text)
+    return root
+
+
+def parse_prompt_yaml_scalar(value: str) -> Any:
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        return value[1:-1]
+    return value
 
 
 def check_agent_yaml(plugin_root: Path) -> list[str]:
