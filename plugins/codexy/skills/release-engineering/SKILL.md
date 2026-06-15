@@ -18,6 +18,9 @@ aligned before publishing or tagging.
    - marketplace entry,
    - skill bundle,
    - MCP configuration,
+   - LSP configuration and catalog,
+   - role metadata or custom agent TOMLs,
+   - thread/worktree orchestration guidance,
    - GitHub Action,
    - documentation bundle,
    - tag or GitHub release.
@@ -36,6 +39,9 @@ aligned before publishing or tagging.
    - clean worktree,
    - manifest parser checks,
    - marketplace parser checks,
+   - `scripts/validate-plugin-config.py --check` when the validator exists,
+   - LSP config, MCP config, role metadata, custom agent TOML, and
+     thread/worktree wording checks for plugin architecture changes,
    - skill metadata checks,
    - asset existence checks,
    - workflow syntax checks when GitHub Actions changed,
@@ -57,6 +63,7 @@ Target version:
 Version policy:
 Files to sync:
 Release PR gates:
+Architecture validation:
 Validation commands:
 Artifact checks:
 Rollback plan:
@@ -71,10 +78,14 @@ Not publishing because:
   requires pre-merge tags.
 - Do not treat source-tree validation as artifact validation when a package,
   archive, or marketplace bundle is produced.
+- Do not release plugin architecture changes while LSP, MCP, role metadata,
+  custom agent TOML, or thread/worktree orchestration checks are missing.
 
 ## Evidence Rules
 
 - Version sync requires direct file inspection or parser output.
+- Architecture validation requires parser output for structured config and
+  `scripts/validate-plugin-config.py --check` when present.
 - GitHub Actions changes require syntax or command-level validation where
   possible.
 - Release notes must match the actual diff and merged PRs.

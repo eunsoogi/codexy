@@ -20,6 +20,8 @@ complete.
 3. For each item, name the evidence that would prove it:
    - file content or diff for documentation and configuration,
    - parser/schema output for structured data,
+   - `scripts/validate-plugin-config.py --check` for Codexy plugin
+     architecture surfaces when the validator exists,
    - lint/typecheck/unit/integration output for code,
    - browser, desktop, CLI, GitHub, plugin, or marketplace observation for
      user-visible or external behavior,
@@ -35,6 +37,10 @@ complete.
 - Run `git diff --check` before pushing or opening a PR.
 - Inspect `git status --short` and avoid staging unrelated files.
 - Parse structured files with an appropriate parser when possible.
+- For Codexy plugin architecture changes, validate LSP config, MCP config,
+  role metadata or custom agent TOMLs, and thread/worktree orchestration
+  wording. Run `scripts/validate-plugin-config.py --check` when that script is
+  present in the current revision.
 - For plugin skills, confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, inspect PR state, latest head SHA, comments, reviews,
@@ -53,6 +59,9 @@ complete.
 - If a command was skipped, say so with the reason.
 - If evidence is local and untracked, summarize it or give the ignored evidence
   path; do not commit scratch artifacts unless requested.
+- If a dependency PR has not yet landed, label validator, LSP, MCP, role
+  metadata, custom agent TOML, thread, or worktree evidence as deferred instead
+  of claiming completion.
 
 ## Final Report Shape
 
@@ -81,3 +90,5 @@ Include:
 - Treating generated files as valid without parsing or inspecting them.
 - Forgetting cleanup of worktrees, sessions, ports, temp logs, or stale
   evidence.
+- Treating prose about architecture gates as proof that LSP, MCP, role
+  metadata, custom agent TOML, thread, or worktree behavior has been validated.
