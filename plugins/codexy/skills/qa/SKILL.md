@@ -26,7 +26,7 @@ been driven and inspected.
    - GitHub: PR, issue, review, branch, settings, or ruleset API state.
    - Plugin/config/docs: parser, schema, frontmatter, rendered preview, or
      structured dump.
-   - Codexy architecture: `scripts/validate-plugin-config.py --check` when
+   - Codexy architecture: `python3 scripts/validate-plugin-config.py --check` when
      present, plus focused evidence for LSP config, MCP config, role metadata
      or custom agent TOMLs, and thread/worktree orchestration wording.
    - Child-owned PR review: owning child thread response, new head SHA, rerun
@@ -71,7 +71,7 @@ Cleanup:
 - GitHub API output proves repository state only for the returned PR, issue,
   branch, ruleset, or comment.
 - Parser/schema checks prove syntax and shape, not semantic intent.
-- `scripts/validate-plugin-config.py --check` proves the Codexy validator's
+- `python3 scripts/validate-plugin-config.py --check` proves the Codexy validator's
   configured contract for the current revision; pair it with direct file
   inspection for any newly added architecture claim.
 - Child-thread review-response evidence proves only the lane and head it names;
