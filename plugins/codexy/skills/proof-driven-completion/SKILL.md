@@ -51,12 +51,17 @@ complete.
   child thread. The parent thread may coordinate, but it must not merge until
   the child thread returns current verification or a documented non-change
   rationale.
+- For every non-trivial atomic unit, require evidence that the owning thread
+  ran the packaged Codexy reviewer agent defined by
+  `plugins/codexy/agents/reviewer.toml`. Arbitrary reviewer agents, generic
+  role names, or external review passes are not substitutes for this gate.
 - Re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, verify
   the child reported its own goal state or fallback, current todo/plan status,
   multi-agent use, a not-useful or not-applicable rationale, or an
-  unavailable-tool fallback, changed files, verification evidence, and clean
-  worktree status before treating the handoff as complete.
+  unavailable-tool fallback, changed files, verification evidence, packaged
+  Codexy reviewer findings or approval, and clean worktree status before
+  treating the handoff as complete.
   For an atomic trivial child lane, require an explicit not-applicable rationale
   instead of silently skipping the execution discipline.
 
@@ -109,6 +114,8 @@ Include:
 - Do not accept a non-trivial child implementation handoff as complete when it
   omits goal, todo/plan, or multi-agent/fallback evidence required by the
   orchestrator assignment.
+- Do not accept a non-trivial atomic unit as complete when it omits the
+  packaged Codexy reviewer agent result for the current diff and evidence.
 
 ## Failure Modes
 
@@ -124,3 +131,5 @@ Include:
   metadata, custom agent TOML, thread, or worktree behavior has been validated.
 - Fixing child-owned review feedback in the parent thread and merging without
   handing it back to the owning child thread for verification.
+- Treating an arbitrary reviewer agent, generic review role, or parent-only
+  readthrough as equivalent to the packaged Codexy reviewer agent gate.
