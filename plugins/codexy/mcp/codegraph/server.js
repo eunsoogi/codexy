@@ -6,7 +6,6 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const { createServer, textResult } = require("../lib/stdio-mcp");
 
-const pluginRoot = path.resolve(__dirname, "..", "..");
 const codeExtensions = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go", ".rs", ".rb", ".java", ".kt"]);
 
 function repoRoot(inputRoot) {
@@ -80,7 +79,7 @@ const tools = [
 ];
 
 async function callTool(name, args) {
-  const root = repoRoot(args.root || pluginRoot);
+  const root = repoRoot(args.root);
   if (name === "codegraph_overview") {
     const files = listCodeFiles(root, args.limit || 400);
     const edges = files.flatMap((file) =>
@@ -89,7 +88,7 @@ async function callTool(name, args) {
     return textResult(JSON.stringify({ root, fileCount: files.length, files, importEdges: edges.slice(0, 300) }, null, 2));
   }
   if (name === "codegraph_search") {
-    const output = rg(["-n", "--glob", "!node_modules", "--glob", "!.git", "-e", args.query], root)
+    const output = rg(["--hidden", "-n", "--glob", "!node_modules", "--glob", "!.git", "-e", args.query], root)
       .split(/\r?\n/)
       .filter(Boolean)
       .slice(0, args.limit || 80);
