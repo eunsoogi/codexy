@@ -68,9 +68,15 @@ def load_manifest(plugin_root: Path) -> dict[str, Any]:
     interface = manifest.get("interface")
     if not isinstance(interface, dict):
         raise ValidationError(f"{rel(manifest_path(plugin_root))} interface must be an object")
-    for field in ("displayName", "shortDescription", "defaultPrompt"):
-        if field not in interface:
-            raise ValidationError(f"{rel(manifest_path(plugin_root))} interface.{field} is required")
+    require_string(interface.get("displayName"), "interface.displayName", manifest_path(plugin_root))
+    require_string(interface.get("shortDescription"), "interface.shortDescription", manifest_path(plugin_root))
+    default_prompt = interface.get("defaultPrompt")
+    if not isinstance(default_prompt, list) or not default_prompt:
+        raise ValidationError(f"{rel(manifest_path(plugin_root))} interface.defaultPrompt must be a non-empty array")
+    if not all(isinstance(item, str) and item.strip() for item in default_prompt):
+        raise ValidationError(
+            f"{rel(manifest_path(plugin_root))} interface.defaultPrompt must contain only non-empty strings"
+        )
     return manifest
 
 
@@ -96,6 +102,8 @@ def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]]:
     servers = catalog.get("servers")
     if not isinstance(servers, list):
         raise ValidationError(f"{rel(catalog_path)} must contain [[servers]] entries")
+    if not servers:
+        raise ValidationError(f"{rel(catalog_path)} must contain at least one [[servers]] entry")
 
     known: dict[str, set[str]] = {}
     for index, server in enumerate(servers, start=1):
