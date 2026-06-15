@@ -43,6 +43,9 @@ complete.
   role metadata or custom agent TOMLs, and thread/worktree orchestration
   wording. Run `python3 scripts/validate-plugin-config.py --check` when that
   script is present in the current revision.
+- For code-touching or code-adjacent runtime changes, include Codexy
+  `codegraph` MCP exploration evidence when the MCP is available, plus direct
+  file-read confirmation before claiming the touched surface is understood.
 - For plugin skills, confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, inspect PR state, latest head SHA, comments, reviews,
@@ -63,11 +66,15 @@ complete.
   role names, or external review passes are not substitutes for this gate.
 - Re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, verify
-  the child reported its own goal state or fallback, current todo/plan status,
+  the child reported actual goal-tool usage or an unavailable-goal-tool
+  fallback, current todo/plan tool usage or an unavailable-todo-tool fallback,
   multi-agent use, a not-useful or not-applicable rationale, or an
   unavailable-tool fallback, changed files, verification evidence, packaged
   Codexy reviewer findings or approval, and clean worktree status before
-  treating the handoff as complete.
+  treating the handoff as complete. Goal-tool evidence should name real Codex
+  goal surfaces such as `create_goal`, `get_goal`, or `update_goal` when they
+  are available. Prose-only `Goal:` or `Todo:` text is not evidence of real
+  goal or todo/plan tool use.
   For an atomic trivial child lane, require an explicit not-applicable rationale
   instead of silently skipping the execution discipline.
 
@@ -118,8 +125,10 @@ Include:
   until a repeated true impasse prevents meaningful progress without user input
   or an external state change.
 - Do not accept a non-trivial child implementation handoff as complete when it
-  omits goal, todo/plan, or multi-agent/fallback evidence required by the
-  orchestrator assignment.
+  omits actual goal-tool usage, actual todo/plan tool usage, or
+  multi-agent/fallback evidence required by the orchestrator assignment.
+  Using only one of goal or todo/plan is insufficient unless the missing tool
+  was unavailable and the child reported that unavailability with its fallback.
 - Do not accept a non-trivial atomic unit as complete when it omits the
   packaged Codexy reviewer agent result for the current diff and evidence.
 
@@ -135,6 +144,8 @@ Include:
   evidence.
 - Treating prose about architecture gates as proof that LSP, MCP, role
   metadata, custom agent TOML, thread, or worktree behavior has been validated.
+- Treating code-touching work as complete without Codexy `codegraph` MCP
+  exploration evidence when the MCP was available.
 - Fixing child-owned review feedback in the parent thread and merging without
   handing it back to the owning child thread for verification.
 - Accepting child-owned lane completion when the parent patched implementation

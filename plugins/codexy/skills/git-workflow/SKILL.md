@@ -128,6 +128,11 @@ For code changes, add the relevant lint, typecheck, unit, integration, harness, 
 
 When the requested behavior is a GitHub setting, branch rule, PR lifecycle, CLI, browser page, desktop app, or other external surface, drive that surface directly and capture observable evidence. Tests alone are supporting evidence, not completion proof.
 
+For code-touching or code-adjacent runtime changes, use Codexy `codegraph` MCP
+for code exploration when it is available. Include the resulting files,
+neighbors, or dependency evidence with the handoff or PR evidence, then confirm
+exact files with direct reads before editing.
+
 ## Pull Requests
 
 Open PRs with GitHub or `gh`. Keep PRs draft only while local verification is missing or risk is intentionally unresolved.
@@ -253,11 +258,21 @@ worker for that lane.
   implementation patches begin. The parent MUST NOT make draft implementation
   edits first and delegate afterward.
 - For non-trivial lanes, the child thread MUST create or maintain a
-  lane-specific goal when goal tooling exists, keep todo/plan state current,
-  and use useful multi-agent decomposition for independent research,
-  implementation, review, QA, or verification subtasks.
+  lane-specific goal with the real Codex goal tools when they exist, such as
+  `create_goal`, `get_goal`, and `update_goal`; keep real todo/plan state
+  current with `update_plan` or the active todo surface; and use useful
+  multi-agent decomposition for independent research, implementation, review,
+  QA, or verification subtasks. Prose-only `Goal:` or `Todo:` text is not
+  evidence that either tool surface was used.
+- For code-touching lanes, the child thread MUST use Codexy `codegraph` MCP
+  for code exploration when it is available, and include that exploration
+  evidence in its handoff.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
-  work MUST NOT proceed as ad hoc edits without goal and todo discipline.
+  work MUST NOT proceed as ad hoc edits without both real goal state and real
+  todo/plan state when those tools are available. Using only one of goal or
+  todo/plan is insufficient for a non-trivial child lane unless the missing
+  tool is unavailable and the child reports that unavailability with its
+  fallback.
 - Before returning a non-trivial atomic lane as ready, the owning thread MUST
   run the packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/reviewer.toml` on the current diff, scope, and
@@ -265,10 +280,17 @@ worker for that lane.
   or parent-only readthrough for this lane-end gate.
 - If a child thread lacks a required execution tool, it MUST say so in its
   handoff evidence and use the closest available fallback instead of silently
-  skipping the discipline.
+  skipping the discipline. Handoff evidence MUST report actual goal and
+  todo/plan tool usage or the unavailable-tool fallback for each missing
+  surface.
 - If Codex connector or human review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
+- After the owning child pushes a review-response commit, the parent MUST
+  verify that the current head addresses each completed review thread before
+  resolving it in GitHub. Resolve only the threads whose feedback is fully
+  addressed by the pushed and verified head, or whose no-change rationale a
+  maintainer accepted.
 - If the parent accidentally creates draft edits for a child-owned lane, it
   MUST stop implementation immediately, disclose the mistake, inspect whether
   the draft overlaps user or other agent work, preserve or revert only as
@@ -277,13 +299,19 @@ worker for that lane.
 - The parent handoff must include the PR number, latest head SHA, relevant
   comments or review thread URLs, allowed files, expected return evidence, and
   stop condition. For non-trivial lanes, it must also require the child to
-  report goal/todo/multi-agent usage or unavailable-tool fallbacks and the
-  packaged Codexy reviewer agent findings or approval.
+  report actual goal tool usage, actual todo/plan tool usage,
+  multi-agent usage or rationale, unavailable-tool fallbacks, and the packaged
+  Codexy reviewer agent findings or approval. For code-touching lanes, require
+  Codexy `codegraph` MCP exploration evidence or a clear unavailable-tool
+  fallback.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.
 - The parent may resolve review threads only after child evidence proves the
   fix on the current head, or after a maintainer accepts a no-change rationale.
+- The parent MUST NOT resolve a thread merely because a child said it was fixed,
+  a commit was pushed, or a fresh review was requested. Unverified, partially
+  addressed, stale, or still-actionable feedback remains open and merge-blocking.
 - Worktree lanes must remain issue-sized and atomic. Do not combine review
   feedback from one child lane with another branch or PR.
 
@@ -352,6 +380,10 @@ The review gate is satisfied only when:
 - Every non-outdated review thread is resolved, or the PR body/comment history documents why no change is required.
 - Every actionable PR comment has been addressed or explicitly marked non-actionable with rationale.
 - You have re-run verification after addressing review feedback.
+- Addressed review threads from Codex connector or human reviewers have been
+  resolved in GitHub after the fixing commit was pushed and verified on the
+  current head. Do not resolve threads that still contain unresolved actionable
+  feedback; they remain merge-blocking.
 
 If any review or comment is ambiguous, stop and resolve it before merging. Do
 not merge first and plan to address review feedback afterward.

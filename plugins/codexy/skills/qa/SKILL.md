@@ -29,6 +29,8 @@ been driven and inspected.
    - Codexy architecture: `python3 scripts/validate-plugin-config.py --check` when
      present, plus focused evidence for LSP config, MCP config, role metadata
      or custom agent TOMLs, and thread/worktree orchestration wording.
+   - Code exploration: Codexy `codegraph` MCP output when the MCP is available,
+     followed by direct file-read confirmation for edited files.
    - Child-owned PR review: owning child thread response, new head SHA, rerun
      verification, and parent-thread review-gate inspection.
 3. Run automated checks first when available.
@@ -61,6 +63,8 @@ Cleanup:
   unaccounted for.
 - Do not pass Codexy plugin architecture QA without evidence for LSP, MCP,
   role metadata, custom agent TOMLs, thread, and worktree surfaces that changed.
+- Do not pass code-touching lane QA without Codexy `codegraph` MCP exploration
+  evidence when the MCP is available, or an explicit unavailable-tool fallback.
 - Do not pass a child-owned lane when review feedback was fixed only in the
   parent thread. The owning child thread must validate the response or provide
   a documented non-change rationale.
