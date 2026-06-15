@@ -18,6 +18,9 @@ aligned before publishing or tagging.
    - marketplace entry,
    - skill bundle,
    - MCP configuration,
+   - LSP configuration and catalog,
+   - role metadata or custom agent TOMLs,
+   - thread/worktree orchestration guidance,
    - GitHub Action,
    - documentation bundle,
    - tag or GitHub release.
@@ -36,6 +39,14 @@ aligned before publishing or tagging.
    - clean worktree,
    - manifest parser checks,
    - marketplace parser checks,
+   - LSP config, MCP config, role metadata, custom agent TOML, and
+     thread/worktree wording checks for plugin architecture changes, limited to
+     the surfaces that exist for that plugin,
+   - for Codexy plugin releases specifically,
+     `python3 scripts/validate-plugin-config.py --check` when the validator
+     exists,
+   - child-owned PR review feedback routed to the owning child thread with
+     fresh verification before the parent thread merges,
    - skill metadata checks,
    - asset existence checks,
    - workflow syntax checks when GitHub Actions changed,
@@ -57,6 +68,7 @@ Target version:
 Version policy:
 Files to sync:
 Release PR gates:
+Architecture validation:
 Validation commands:
 Artifact checks:
 Rollback plan:
@@ -71,10 +83,19 @@ Not publishing because:
   requires pre-merge tags.
 - Do not treat source-tree validation as artifact validation when a package,
   archive, or marketplace bundle is produced.
+- Do not release plugin architecture changes while LSP, MCP, role metadata,
+  custom agent TOML, or thread/worktree orchestration checks are missing.
+- Do not merge child-owned release or architecture feedback from the parent
+  thread alone. The owning child thread must address or explicitly reject the
+  feedback and return current verification.
 
 ## Evidence Rules
 
 - Version sync requires direct file inspection or parser output.
+- Architecture validation requires parser output for structured config and
+  surface-specific checks for only the plugin surfaces that exist. For Codexy
+  plugin releases, run `python3 scripts/validate-plugin-config.py --check`
+  when present.
 - GitHub Actions changes require syntax or command-level validation where
   possible.
 - Release notes must match the actual diff and merged PRs.
