@@ -1,0 +1,240 @@
+version = "0.1.0"
+description = "Codexy-owned language server catalog for validation and future runtime wiring. Entries do not claim local installation."
+
+[[servers]]
+id = "astro"
+language = "Astro"
+extensions = [".astro"]
+command = ["astro-ls"]
+install = "npm install -g @astrojs/language-server"
+
+[[servers]]
+id = "bash-language-server"
+language = "Shell"
+extensions = [".sh", ".bash", ".zsh", ".ksh"]
+command = ["bash-language-server", "start"]
+install = "npm install -g bash-language-server"
+
+[[servers]]
+id = "basedpyright"
+language = "Python"
+extensions = [".py", ".pyi"]
+command = ["basedpyright-langserver", "--stdio"]
+install = "npm install -g basedpyright"
+
+[[servers]]
+id = "clangd"
+language = "C/C++"
+extensions = [".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"]
+command = ["clangd"]
+install = "Install clangd from LLVM or a system package manager."
+
+[[servers]]
+id = "clojure-lsp"
+language = "Clojure"
+extensions = [".clj", ".cljs", ".cljc", ".edn"]
+command = ["clojure-lsp"]
+install = "Install clojure-lsp."
+
+[[servers]]
+id = "docker-language-server"
+language = "Dockerfile"
+extensions = [".dockerfile", "Dockerfile"]
+command = ["docker-langserver", "--stdio"]
+install = "npm install -g dockerfile-language-server-nodejs"
+
+[[servers]]
+id = "elixir-ls"
+language = "Elixir"
+extensions = [".ex", ".exs"]
+command = ["elixir-ls"]
+install = "Install ElixirLS for the target project."
+
+[[servers]]
+id = "fsautocomplete"
+language = "F#"
+extensions = [".fs", ".fsi", ".fsx"]
+command = ["fsautocomplete"]
+install = "dotnet tool install --global fsautocomplete"
+
+[[servers]]
+id = "gleam"
+language = "Gleam"
+extensions = [".gleam"]
+command = ["gleam", "lsp"]
+install = "Install Gleam."
+
+[[servers]]
+id = "gopls"
+language = "Go"
+extensions = [".go"]
+command = ["gopls"]
+install = "go install golang.org/x/tools/gopls@latest"
+
+[[servers]]
+id = "haskell-language-server"
+language = "Haskell"
+extensions = [".hs", ".lhs"]
+command = ["haskell-language-server-wrapper", "--lsp"]
+install = "Install haskell-language-server for the target toolchain."
+
+[[servers]]
+id = "jdtls"
+language = "Java"
+extensions = [".java"]
+command = ["jdtls"]
+install = "Install Eclipse JDT LS."
+
+[[servers]]
+id = "json-language-server"
+language = "JSON"
+extensions = [".json", ".jsonc"]
+command = ["vscode-json-language-server", "--stdio"]
+install = "npm install -g vscode-langservers-extracted"
+
+[[servers]]
+id = "julia-language-server"
+language = "Julia"
+extensions = [".jl"]
+command = ["julia", "--startup-file=no", "--history-file=no", "-e", "using LanguageServer; runserver()"]
+install = "Install Julia LanguageServer.jl."
+
+[[servers]]
+id = "kotlin-language-server"
+language = "Kotlin"
+extensions = [".kt", ".kts"]
+command = ["kotlin-language-server"]
+install = "Install kotlin-language-server."
+
+[[servers]]
+id = "lua-language-server"
+language = "Lua"
+extensions = [".lua"]
+command = ["lua-language-server"]
+install = "Install lua-language-server."
+
+[[servers]]
+id = "marksman"
+language = "Markdown"
+extensions = [".md", ".markdown"]
+command = ["marksman", "server"]
+install = "Install Marksman."
+
+[[servers]]
+id = "nixd"
+language = "Nix"
+extensions = [".nix"]
+command = ["nixd"]
+install = "Install nixd."
+
+[[servers]]
+id = "ocamllsp"
+language = "OCaml"
+extensions = [".ml", ".mli"]
+command = ["ocamllsp"]
+install = "opam install ocaml-lsp-server"
+
+[[servers]]
+id = "omnisharp"
+language = "C#"
+extensions = [".cs", ".csx"]
+command = ["OmniSharp", "--languageserver"]
+install = "Install OmniSharp or a compatible C# language server."
+
+[[servers]]
+id = "phpactor"
+language = "PHP"
+extensions = [".php"]
+command = ["phpactor", "language-server"]
+install = "Install phpactor."
+
+[[servers]]
+id = "prisma-language-server"
+language = "Prisma"
+extensions = [".prisma"]
+command = ["prisma-language-server", "--stdio"]
+install = "npm install -g @prisma/language-server"
+
+[[servers]]
+id = "rust-analyzer"
+language = "Rust"
+extensions = [".rs"]
+command = ["rust-analyzer"]
+install = "Install rust-analyzer."
+
+[[servers]]
+id = "solargraph"
+language = "Ruby"
+extensions = [".rb", ".rake", ".gemspec", ".ru"]
+command = ["solargraph", "stdio"]
+install = "gem install solargraph"
+
+[[servers]]
+id = "sourcekit-lsp"
+language = "Swift"
+extensions = [".swift"]
+command = ["sourcekit-lsp"]
+install = "Install Xcode command line tools or the Swift toolchain."
+
+[[servers]]
+id = "svelte-language-server"
+language = "Svelte"
+extensions = [".svelte"]
+command = ["svelteserver", "--stdio"]
+install = "npm install -g svelte-language-server"
+
+[[servers]]
+id = "taplo"
+language = "TOML"
+extensions = [".toml"]
+command = ["taplo", "lsp", "stdio"]
+install = "cargo install taplo-cli --features lsp"
+
+[[servers]]
+id = "terraform-ls"
+language = "Terraform"
+extensions = [".tf", ".tfvars"]
+command = ["terraform-ls", "serve"]
+install = "Install terraform-ls."
+
+[[servers]]
+id = "texlab"
+language = "LaTeX"
+extensions = [".tex", ".bib"]
+command = ["texlab"]
+install = "Install texlab."
+
+[[servers]]
+id = "tinymist"
+language = "Typst"
+extensions = [".typ"]
+command = ["tinymist"]
+install = "Install tinymist."
+
+[[servers]]
+id = "typescript"
+language = "TypeScript and JavaScript"
+extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]
+command = ["typescript-language-server", "--stdio"]
+install = "npm install -g typescript typescript-language-server"
+
+[[servers]]
+id = "vue-language-server"
+language = "Vue"
+extensions = [".vue"]
+command = ["vue-language-server", "--stdio"]
+install = "npm install -g @vue/language-server"
+
+[[servers]]
+id = "yaml-ls"
+language = "YAML"
+extensions = [".yaml", ".yml"]
+command = ["yaml-language-server", "--stdio"]
+install = "npm install -g yaml-language-server"
+
+[[servers]]
+id = "zls"
+language = "Zig"
+extensions = [".zig", ".zon"]
+command = ["zls"]
+install = "Install zls."
