@@ -389,14 +389,87 @@ If any review or comment is ambiguous, stop and resolve it before merging. Do
 not merge first and plan to address review feedback afterward.
 
 When the PR satisfies the merge gates, merge through GitHub with squash merge
-and branch deletion. Prefer `--match-head-commit <headRefOid>` when available so
-a newly pushed unreviewed head cannot be merged by accident:
+and branch deletion. The squash merge commit body/description MUST be the PR
+body exactly as merged. Do not summarize, rewrite, append, truncate, or omit the
+PR body when building the merge commit message. Prefer `--match-head-commit
+<headRefOid>` when available so a newly pushed unreviewed head cannot be merged
+by accident:
 
 ```sh
 pr_number=<explicit-pr-number>
-gh pr view "$pr_number" --json number,headRefOid,title
-gh pr merge "$pr_number" --squash --delete-branch --match-head-commit <headRefOid> --subject "<conventional subject> (#${pr_number})"
+repo=eunsoogi/codexy
+pr_json_file=$(mktemp)
+pr_body_file=$(mktemp)
+git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
+trap 'rm -f "$pr_json_file" "$pr_body_file"' EXIT
+
+if ! head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid); then
+  printf '%s\n' "Could not read PR head; aborting merge." >&2
+  exit 1
+fi
+if ! gh pr view "$pr_number" --repo "$repo" --json body > "$pr_json_file"; then
+  printf '%s\n' "Could not capture PR body from GitHub; aborting merge." >&2
+  exit 1
+fi
+if ! ruby -rjson -e '
+body = JSON.parse(File.binread(ARGV.fetch(0))).fetch("body")
+abort("captured PR body is empty") if body.nil? || body.empty?
+File.binwrite(ARGV.fetch(1), body)
+' "$pr_json_file" "$pr_body_file"; then
+  printf '%s\n' "Could not extract a non-empty PR body; aborting merge." >&2
+  exit 1
+fi
+if [ ! -s "$pr_body_file" ]; then
+  printf '%s\n' "Captured PR body file is empty; aborting merge." >&2
+  exit 1
+fi
+
+printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
+printf '%s\n' "It MUST NOT contain secrets, credentials, private logs, throwaway notes, or local-only scratch paths unless intentional evidence references."
+if command -v less >/dev/null 2>&1 && [ -t 1 ]; then
+  if ! less "$pr_body_file"; then
+    printf '%s\n' "Could not display PR body with less; aborting merge." >&2
+    exit 1
+  fi
+elif ! cat "$pr_body_file"; then
+  printf '%s\n' "Could not display PR body with cat; aborting merge." >&2
+  exit 1
+fi
+printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "
+IFS= read -r pr_body_approval
+if [ "$pr_body_approval" != "APPROVE_PR_BODY_FOR_MAIN" ]; then
+  printf '%s\n' "PR body was not approved for permanent main history; aborting merge." >&2
+  exit 1
+fi
+
+if ! mkdir -p "$(dirname "$expected_body_file")"; then
+  printf '%s\n' "Could not create merge body evidence directory; aborting merge." >&2
+  exit 1
+fi
+if ! cp "$pr_body_file" "$expected_body_file"; then
+  printf '%s\n' "Could not persist merge body evidence; aborting merge." >&2
+  exit 1
+fi
+if [ ! -s "$expected_body_file" ]; then
+  printf '%s\n' "Persisted merge body evidence is empty; aborting merge." >&2
+  exit 1
+fi
+
+gh pr merge "$pr_number" \
+  --repo "$repo" \
+  --squash \
+  --delete-branch \
+  --match-head-commit "$head_oid" \
+  --subject "<conventional subject> (#${pr_number})" \
+  --body-file "$pr_body_file"
 ```
+
+Because PR bodies become permanent `main` commit bodies under this rule, the
+inspection and approval gate above must pass before `gh pr merge` runs. The
+expected body file is stored under the shared Git common directory from
+`git rev-parse --git-common-dir` so it remains local and untracked but survives
+post-merge verification from a separate worktree shell.
 
 `gh pr merge` does not have a flag that means "Codex review passed." `--auto`
 only waits for requirements configured in GitHub, and `--admin` bypasses
@@ -408,11 +481,44 @@ Do not locally merge feature branches into `main` as a substitute for the PR wor
 After merge, update the main worktree:
 
 ```sh
+pr_number=<explicit-pr-number>
+git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
+if [ ! -f "$expected_body_file" ]; then
+  printf '%s\n' "Missing captured PR body evidence: $expected_body_file" >&2
+  exit 1
+fi
+
 git pull --ff-only origin main
 git log -1 --pretty=%s
+if ruby - "$expected_body_file" <<'RUBY'
+expected = File.binread(ARGV.fetch(0))
+raw_commit = IO.popen(["git", "cat-file", "commit", "HEAD"], "rb", &:read)
+raw_message = raw_commit.split("\n\n", 2).fetch(1)
+actual = raw_message.include?("\n\n") ? raw_message.split("\n\n", 2).fetch(1) : ""
+
+without_single_terminal_lf = ->(value) {
+  value.end_with?("\n") ? value[0...-1] : value
+}
+
+unless without_single_terminal_lf.call(actual) == without_single_terminal_lf.call(expected)
+  abort("squash merge commit body does not match the captured PR body")
+end
+RUBY
+then
+  rm -f "$expected_body_file"
+else
+  printf '%s\n' "Body verification failed; leaving evidence at: $expected_body_file" >&2
+  exit 1
+fi
 ```
 
-The refreshed `main` commit subject must end with `(#<merged-pr-number>)`. If GitHub did not delete the remote topic branch, delete it only after confirming the PR was merged and no dependent work needs the branch:
+The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
+the refreshed `main` commit body must match the PR body captured from GitHub
+before merge. Use the raw commit object instead of `git log --pretty=%B` for the
+body comparison so formatter-added trailing newlines do not create false
+failures. If GitHub did not delete the remote topic branch, delete it only after
+confirming the PR was merged and no dependent work needs the branch:
 
 ```sh
 git push origin --delete <branch>
@@ -445,6 +551,8 @@ After resolving, stage only the resolved files and run verification relevant to 
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
   approval from `plugins/codexy/agents/reviewer.toml`; arbitrary reviewer
   agents are not substitutes.
+- Squash merge commit bodies preserve the PR body exactly, and the post-merge
+  body comparison has passed.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
 - Expected Codex review completed on the latest PR head, and no unresolved actionable Codex feedback remains.
 - PR reviews, Codex connector reviews, PR comments, and review threads have been inspected and all actionable feedback is resolved or explicitly documented as non-actionable before merge.
