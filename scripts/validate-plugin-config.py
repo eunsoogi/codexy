@@ -355,6 +355,10 @@ def parse_prompt_yaml_scalar(value: str) -> Any:
         return True
     if value == "false":
         return False
+    starts_quote = value.startswith(('"', "'"))
+    ends_quote = value.endswith(('"', "'"))
+    if starts_quote != ends_quote:
+        raise ValidationError("quoted scalar is unterminated")
     if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
         return value[1:-1]
     return value
