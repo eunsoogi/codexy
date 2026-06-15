@@ -76,17 +76,21 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
   function capStderr(chunk) {
     stderr = (stderr + chunk).slice(-STDERR_LIMIT);
   }
+  function failPending(error) {
+    capStderr(error.message);
+    for (const [, waiter] of pending) { clearTimeout(waiter.timer); waiter.reject(error); }
+    pending.clear();
+    return error;
+  }
   function stdinFailure(error) {
     if (stdinError) return stdinError;
     const reason = error instanceof Error ? error.message : String(error);
     stdinError = new Error(`LSP server stdin unavailable: ${reason}`);
-    capStderr(stdinError.message);
-    for (const [, waiter] of pending) {
-      clearTimeout(waiter.timer);
-      waiter.reject(stdinError);
-    }
-    pending.clear();
-    return stdinError;
+    return failPending(stdinError);
+  }
+  function processFailure(error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return failPending(new Error(`LSP server process unavailable: ${reason}`));
   }
   function write(payload) {
     if (stdinError) throw stdinError;
@@ -163,13 +167,8 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", capStderr);
   child.stdin.on("error", stdinFailure);
-  child.on("exit", (code, signal) => {
-    for (const [, waiter] of pending) {
-      clearTimeout(waiter.timer);
-      waiter.reject(new Error(`LSP server exited before response: code=${code} signal=${signal}`));
-    }
-    pending.clear();
-  });
+  child.on("error", processFailure);
+  child.on("exit", (code, signal) => failPending(new Error(`LSP server exited before response: code=${code} signal=${signal}`)));
 
   try {
     const uri = toFileUri(absolutePath);

@@ -36,10 +36,7 @@ test("full LSP operation tools are registered", async () => {
 });
 test("LSP operations return structured unavailable when the server executable is missing", async () => {
   await withLspClient(assert, lspServer, repoRoot, async (client) => {
-    const payload = await toolPayload(client, "lsp_document_symbols", {
-      path: jsFixture,
-      server: { id: "missing-test-server", command: ["definitely-not-a-real-language-server", "--stdio"] },
-    });
+    const payload = await toolPayload(client, "lsp_document_symbols", { path: jsFixture, server: { id: "missing-test-server", command: ["definitely-not-a-real-language-server", "--stdio"] } });
     assert.equal(payload.status, "unavailable");
     assert.equal(payload.server.id, "missing-test-server");
     assert.match(payload.reason, /not found|missing|unavailable/i);
@@ -51,10 +48,7 @@ test("LSP operations return structured unavailable when a path command is not ex
   try {
     fs.writeFileSync(commandPath, "#!/bin/sh\nexit 0\n", { mode: 0o600 });
     await withLspClient(assert, lspServer, repoRoot, async (client) => {
-      const payload = await toolPayload(client, "lsp_document_symbols", {
-        path: jsFixture,
-        server: { id: "non-executable-test-server", command: [commandPath, "--stdio"] },
-      });
+      const payload = await toolPayload(client, "lsp_document_symbols", { path: jsFixture, server: { id: "non-executable-test-server", command: [commandPath, "--stdio"] } });
       assert.equal(payload.status, "unavailable");
       assert.equal(payload.server.id, "non-executable-test-server");
       assert.match(payload.reason, /not executable|permission|unavailable/i);
@@ -64,14 +58,25 @@ test("LSP operations return structured unavailable when a path command is not ex
     fs.rmSync(commandPath, { force: true });
   }
 });
+test("LSP operations return structured errors when an executable path cannot spawn", async () => {
+  const commandPath = fs.mkdtempSync(path.join(os.tmpdir(), `codexy-unspawnable-lsp-${process.pid}-`));
+  try {
+    await withLspClient(assert, lspServer, repoRoot, async (client) => {
+      const payload = await toolPayload(client, "lsp_document_symbols", { path: jsFixture, server: { id: "unspawnable-test-server", command: [commandPath, "--stdio"] } });
+      assert.equal(payload.status, "error");
+      assert.equal(payload.server.id, "unspawnable-test-server");
+      assert.match(payload.reason, /spawn|EACCES|permission|directory/i);
+      assert.ok(Array.isArray(payload.installHints));
+    }, { env: allowOverride });
+  } finally {
+    fs.rmSync(commandPath, { recursive: true, force: true });
+  }
+});
 test("LSP operations reject caller command overrides by default", async () => {
   const markerPath = path.join(os.tmpdir(), `codexy-lsp-command-marker-${process.pid}-${Date.now()}`);
   try {
     await withLspClient(assert, lspServer, repoRoot, async (client) => {
-      const payload = await toolPayload(client, "lsp_document_symbols", {
-        path: jsFixture,
-        server: { id: "typescript", command: ["/bin/sh", "-c", `touch ${markerPath}`] },
-      });
+      const payload = await toolPayload(client, "lsp_document_symbols", { path: jsFixture, server: { id: "typescript", command: ["/bin/sh", "-c", `touch ${markerPath}`] } });
       assert.equal(payload.status, "unavailable");
       assert.match(payload.reason, /command overrides require CODEXY_LSP_ALLOW_COMMAND_OVERRIDE=1/);
       assert.equal(fs.existsSync(markerPath), false);
@@ -83,10 +88,7 @@ test("LSP operations reject caller command overrides by default", async () => {
 test("LSP operations initialize servers from the target file workspace root", async () => {
   await withFakeLspCapture("codexy-fake-lsp", async (capturePath) => {
     await withLspClient(assert, lspServer, repoRoot, async (client) => {
-      const payload = await toolPayload(client, "lsp_document_symbols", {
-        path: externalFixture,
-        server: { id: "fake-lsp", command: fakeLspCommand() },
-      });
+      const payload = await toolPayload(client, "lsp_document_symbols", { path: externalFixture, server: { id: "fake-lsp", command: fakeLspCommand() } });
       assert.equal(payload.status, "ok");
       assert.equal(payload.path, externalFixture);
     }, { env: fakeEnv({ CODEXY_FAKE_LSP_CAPTURE: capturePath }) });
@@ -99,10 +101,7 @@ test("LSP operations keep a markerless target file directory as the workspace ro
   await withMarkerlessWorkspace("codexy-markerless-lsp", "sample.js", async ({ workspaceRoot, filePath }) => {
     await withFakeLspCapture("codexy-fake-lsp-markerless", async (capturePath) => {
       await withLspClient(assert, lspServer, repoRoot, async (client) => {
-        const payload = await toolPayload(client, "lsp_document_symbols", {
-          path: filePath,
-          server: { id: "fake-lsp", command: fakeLspCommand() },
-        });
+        const payload = await toolPayload(client, "lsp_document_symbols", { path: filePath, server: { id: "fake-lsp", command: fakeLspCommand() } });
         assert.equal(payload.status, "ok");
         assert.equal(payload.path, filePath);
       }, { env: fakeEnv({ CODEXY_FAKE_LSP_CAPTURE: capturePath }) });
