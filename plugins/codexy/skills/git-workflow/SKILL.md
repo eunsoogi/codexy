@@ -178,6 +178,12 @@ gh pr comment <pr> --body "@codex review"
 
 An `eyes` reaction on the `@codex review` comment means Codex noticed the request
 and is processing it. It is not approval and does not mean review is complete.
+When an in-progress `@codex review` request already has an `eyes` reaction for
+the current PR head, do not send duplicate review requests for that same head.
+Keep polling PR comments, reviews, and review threads instead. If the request
+appears stale for an unusually long time, document the status and either keep
+polling or escalate once with a distinct rationale; do not issue repeated blind
+`@codex review` comments.
 
 Codex review completion signals include:
 
@@ -193,7 +199,9 @@ proceeding without a full Codex review.
 
 If any new commits are pushed after Codex review, the old review no longer
 proves the current head. Wait for or request a fresh Codex review before
-merging.
+merging. After a fresh-review request for that new head receives `eyes`, the
+correct action is waiting and polling until review output appears, not repeated
+requests for the same head.
 
 ### Child-Owned Review Feedback
 

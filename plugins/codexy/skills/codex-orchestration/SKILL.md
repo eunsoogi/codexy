@@ -175,6 +175,10 @@ inventing unavailable or unrequested goal-tool calls.
 
 - Treating an `eyes` reaction, child acknowledgement, or green test as complete
   proof.
+- Sending duplicate `@codex review` requests while an existing request already
+  has `eyes` for the same PR head. Keep polling and waiting; if the request is
+  unusually stale, record that status and escalate with a distinct rationale
+  instead of repeated blind requests.
 - Letting a child lane expand scope or edit shared files without ownership.
 - Fixing a child-owned PR's review feedback in the parent/orchestrator thread
   instead of routing it back to the owning child thread.
