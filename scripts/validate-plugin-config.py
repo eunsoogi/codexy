@@ -162,9 +162,9 @@ def check_lsp(plugin_root: Path) -> list[str]:
     try:
         entries = lsp_entries(plugin_root)
         catalog = load_lsp_catalog(plugin_root)
+        coverage_for_missing = covered_extensions(entries)
         if catalog is None:
             errors.append("LSP coverage requires lsp/server-catalog.toml")
-            catalog = {}
         else:
             for server_id, entry in entries.items():
                 if server_id not in catalog:
@@ -176,7 +176,8 @@ def check_lsp(plugin_root: Path) -> list[str]:
                         f"LSP server {server_id!r} configures extensions not declared by catalog: "
                         f"{', '.join(undeclared)}"
                     )
-        missing = sorted(REQUIRED_LSP_EXTENSIONS - catalog_covered_extensions(entries, catalog))
+            coverage_for_missing = catalog_covered_extensions(entries, catalog)
+        missing = sorted(REQUIRED_LSP_EXTENSIONS - coverage_for_missing)
         if missing:
             errors.append(f"LSP coverage missing required extensions: {', '.join(missing)}")
     except ValidationError as exc:
