@@ -51,7 +51,7 @@ jobs:
             echo "Version is already synchronized to ${VERSION}."
             exit 0
           fi
-          branch="eunsoogi/version-${VERSION}"
+          branch="codexy/version-${VERSION}"
           git switch -c "${branch}"
           git add .agents/plugins/marketplace.json plugins/codexy/.codex-plugin/plugin.json
           if [ -f package.json ]; then

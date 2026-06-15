@@ -1,5 +1,5 @@
 version = "0.1.0"
-default_branch_prefix = "eunsoogi/"
+default_branch_prefix = "codexy/"
 default_review_gate = "codex"
 
 [[roles]]

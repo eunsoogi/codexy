@@ -23,7 +23,7 @@ Use local `git` for local worktree inspection, checkout, worktree creation, diff
 4. Keep `main` as the protected integration branch. Do not implement directly on `main`.
 5. Create a branch only after the issue or explicit issue-sized scope exists.
 6. Use an isolated git worktree for the task branch.
-7. Use the `eunsoogi/` branch prefix unless the user requests another naming scheme.
+7. Use the `codexy/` branch prefix unless the user requests another naming scheme.
 8. Keep the branch scope aligned with the issue. Do not touch files outside the requested scope.
 
 Issue titles should summarize the user-visible problem or needed work in plain prose. They must start with an uppercase letter and must not use Conventional Commit prefixes such as `feat(...)`.
@@ -45,7 +45,7 @@ Create task worktrees from an up-to-date `main`:
 git fetch origin main
 git switch main
 git pull --ff-only origin main
-git worktree add -b eunsoogi/<issue-or-scope> ../<repo>-worktrees/<issue-or-scope> main
+git worktree add -b codexy/<issue-or-scope> ../<repo>-worktrees/<issue-or-scope> main
 ```
 
 If `origin/main` does not exist yet, create the smallest bootstrap commit needed to establish it, push `main`, and then move normal work to a topic worktree.
