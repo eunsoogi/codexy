@@ -59,12 +59,13 @@ function workspaceRootForFile(filePath) {
   } catch {
     directory = path.dirname(filePath);
   }
+  const initialDirectory = directory;
   while (true) {
     if (WORKSPACE_MARKERS.some((marker) => fs.existsSync(path.join(directory, marker)))) {
       return directory;
     }
     const parent = path.dirname(directory);
-    if (parent === directory) return directory;
+    if (parent === directory) return initialDirectory;
     directory = parent;
   }
 }
@@ -112,7 +113,10 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
 
   function respondToServerRequest(message) {
     if (SUPPORTED_SERVER_REQUESTS.has(message.method)) {
-      write({ jsonrpc: "2.0", id: message.id, result: null });
+      const result = message.method === "workspace/configuration"
+        ? (message.params?.items || []).map(() => null)
+        : null;
+      write({ jsonrpc: "2.0", id: message.id, result });
       return;
     }
     write({

@@ -36,6 +36,7 @@ function captureUri(key, uri) {
 function handle(message) {
   if (pendingSymbolRequest && message.id === serverRequestId) {
     captureUri("serverRequestResponseId", message.id);
+    captureUri("serverRequestResponseResult", message.result);
     send({ jsonrpc: "2.0", id: pendingSymbolRequest.id, result: [] });
     pendingSymbolRequest = undefined;
     return;

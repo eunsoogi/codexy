@@ -130,6 +130,36 @@ test("LSP operations initialize servers from the target file workspace root", as
   }
 });
 
+test("LSP operations keep a markerless target file directory as the workspace root", async () => {
+  const markerlessRoot = fs.mkdtempSync(path.join(os.tmpdir(), "codexy-markerless-lsp-"));
+  const markerlessFixture = path.join(markerlessRoot, "sample.js");
+  const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-markerless-${process.pid}-${Date.now()}.json`);
+  try {
+    fs.writeFileSync(markerlessFixture, "export const markerless = true;\n");
+
+    await withLspClient(async (client) => {
+      const response = await client.callTool("lsp_document_symbols", {
+        path: markerlessFixture,
+        server: {
+          id: "fake-lsp",
+          command: [process.execPath, fakeLspServer],
+        },
+      });
+      const payload = assertStructuredToolResult(response);
+
+      assert.equal(payload.status, "ok");
+      assert.equal(payload.path, markerlessFixture);
+    }, { env: { CODEXY_FAKE_LSP_CAPTURE: capturePath } });
+
+    const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
+    assert.equal(fs.realpathSync(capture.cwd), fs.realpathSync(markerlessRoot));
+    assert.equal(capture.rootUri, pathToFileURL(markerlessRoot).href);
+  } finally {
+    fs.rmSync(markerlessRoot, { recursive: true, force: true });
+    fs.rmSync(capturePath, { force: true });
+  }
+});
+
 test("LSP operations resolve relative paths against caller root", async () => {
   const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-root-${process.pid}-${Date.now()}.json`);
   try {
@@ -184,6 +214,7 @@ test("LSP operations answer server-to-client requests before document symbols", 
 
       const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
       assert.equal(capture.serverRequestResponseId, 1000);
+      assert.deepEqual(capture.serverRequestResponseResult, [null]);
     }, {
       env: {
         CODEXY_FAKE_LSP_CAPTURE: capturePath,
