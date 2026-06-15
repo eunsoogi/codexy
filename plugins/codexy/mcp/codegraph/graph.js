@@ -40,7 +40,7 @@ function parseJavaScriptFile(root, file) {
   return { imports: unique(imports), exports: unique(exports) };
 }
 
-function resolveImport(root, fromFile, specifier) {
+function resolveImport(root, fromFile, specifier, indexedFiles) {
   if (!specifier.startsWith(".")) {
     return { to: specifier, resolved: false };
   }
@@ -63,7 +63,10 @@ function resolveImport(root, fromFile, specifier) {
 
   for (const absolute of candidates) {
     if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {
-      return { to: toPosix(path.relative(root, absolute)), resolved: true };
+      const relative = toPosix(path.relative(root, absolute));
+      if (indexedFiles.has(relative)) {
+        return { to: relative, resolved: true };
+      }
     }
   }
 
@@ -75,6 +78,7 @@ function buildGraph(root, limit) {
   const allFiles = walkCodeFiles(root);
   const selectedFiles = allFiles.slice(0, boundedLimit);
   const truncated = allFiles.length > selectedFiles.length;
+  const indexedFiles = new Set(allFiles);
   const files = selectedFiles.map((file) => {
     const parsed = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"].includes(path.extname(file))
       ? parseJavaScriptFile(root, file)
@@ -84,7 +88,7 @@ function buildGraph(root, limit) {
   const selected = new Set(selectedFiles);
   const edges = files.flatMap((file) =>
     file.imports.map((specifier) => {
-      const resolved = resolveImport(root, file.path, specifier);
+      const resolved = resolveImport(root, file.path, specifier, indexedFiles);
       return {
         from: file.path,
         to: resolved.to,

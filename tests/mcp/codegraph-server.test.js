@@ -212,8 +212,12 @@ test("isolated neighborhoods do not report truncation because unrelated repo fil
 });
 
 test("graph index excludes git-ignored local state files", async () => {
+  const sourceRelativePath = "tests/mcp/fixtures/codegraph/imports-ignored-local-state.js";
+  const sourceAbsolutePath = path.join(repoRoot, sourceRelativePath);
   const ignoredRelativePath = ".omo/ulw-loop/full-lsp-codegraph/evidence/ignored-local-state.js";
   const ignoredAbsolutePath = path.join(repoRoot, ignoredRelativePath);
+  const ignoredSpecifier = path.posix.relative(path.posix.dirname(sourceRelativePath), ignoredRelativePath);
+  await fs.writeFile(sourceAbsolutePath, `import "${ignoredSpecifier}";\n`, "utf8");
   await fs.mkdir(path.dirname(ignoredAbsolutePath), { recursive: true });
   await fs.writeFile(ignoredAbsolutePath, "export const ignoredLocalState = true;\n", "utf8");
 
@@ -225,8 +229,14 @@ test("graph index excludes git-ignored local state files", async () => {
 
       assert.ok(!indexedFiles.includes(ignoredRelativePath), `${ignoredRelativePath} should not be indexed`);
       assert.ok(!graph.edges.some((edge) => edge.from === ignoredRelativePath || edge.to === ignoredRelativePath));
+      assert.ok(graph.edges.some((edge) => edge.from === sourceRelativePath && edge.to === ignoredSpecifier && edge.resolved === false));
+      assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: repoRoot, path: ignoredRelativePath, limit: 5 })).dependents, []);
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: repoRoot, path: sourceRelativePath, depth: 1, limit: 5 });
+      assert.deepEqual(neighborhood.nodes, [{ path: sourceRelativePath }]);
+      assert.deepEqual(neighborhood.edges, []);
     });
   } finally {
+    await fs.rm(sourceAbsolutePath, { force: true });
     await fs.rm(ignoredAbsolutePath, { force: true });
   }
 });

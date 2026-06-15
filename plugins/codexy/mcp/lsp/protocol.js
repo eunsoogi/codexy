@@ -61,7 +61,7 @@ async function waitForPublishDiagnostics(notifications, timeoutMs) {
 async function runLspRequest({ server, filePath, method, params, timeoutMs = REQUEST_TIMEOUT_MS, workspaceRoot }) {
   const command = server.command;
   const absolutePath = resolvePath(filePath);
-  const requestWorkspaceRoot = workspaceRoot ? resolvePath(workspaceRoot) : workspaceRootForFile(absolutePath);
+  const requestWorkspaceRoot = workspaceRoot ? resolvePath(workspaceRoot, process.cwd()) : workspaceRootForFile(absolutePath);
   const child = spawn(command[0], command.slice(1), {
     cwd: requestWorkspaceRoot,
     env: process.env,

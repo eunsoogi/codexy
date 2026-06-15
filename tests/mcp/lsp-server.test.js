@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { pathToFileURL } = require("url");
+const { fileURLToPath, pathToFileURL } = require("url");
 const { fakeLspCommand, readCapture, withFakeLspCapture, withMarkerlessWorkspace, withWorkspaceRelativeFakeLsp } = require("./fixtures/lsp/fake-lsp-fixtures");
 const { assertStructuredToolResult, withLspClient } = require("./fixtures/lsp/test-harness");
 const repoRoot = path.resolve(__dirname, "..", "..");
@@ -135,20 +135,20 @@ test("LSP operations resolve relative paths against caller root", async () => {
 });
 test("LSP operations honor caller workspaceRoot inside markerless workspaces", async () => {
   await withMarkerlessWorkspace("codexy-markerless-relative-lsp", "src/sample.js", async ({ workspaceRoot, filePath }) => {
-    await withFakeLspCapture("codexy-fake-lsp-markerless-relative", async (capturePath) => {
-      await withLspClient(assert, lspServer, repoRoot, async (client) => {
-        const payload = await toolPayload(client, "lsp_document_symbols", {
-          path: "src/sample.js",
-          workspaceRoot,
-          server: { id: "fake-lsp", command: fakeLspCommand() },
-        });
-        assert.equal(payload.status, "ok");
-        assert.equal(payload.path, filePath);
-      }, { cwd: pluginRoot, env: fakeEnv({ CODEXY_FAKE_LSP_CAPTURE: capturePath }) });
-      const capture = readCapture(capturePath);
-      assert.equal(fs.realpathSync(capture.cwd), fs.realpathSync(workspaceRoot));
-      assert.equal(capture.rootUri, pathToFileURL(workspaceRoot).href);
-    });
+    for (const testCase of [{ cwd: pluginRoot, workspaceRoot, label: "absolute workspaceRoot from plugin cwd" }, { cwd: workspaceRoot, workspaceRoot: ".", label: "relative workspaceRoot from workspace cwd" }]) {
+      await withFakeLspCapture("codexy-fake-lsp-markerless-relative", async (capturePath) => {
+        await withLspClient(assert, lspServer, repoRoot, async (client) => {
+          const payload = await toolPayload(client, "lsp_document_symbols", {
+            path: "src/sample.js", workspaceRoot: testCase.workspaceRoot, server: { id: "fake-lsp", command: fakeLspCommand() },
+          });
+          assert.equal(payload.status, "ok", testCase.label);
+          assert.equal(fs.realpathSync(payload.path), fs.realpathSync(filePath), testCase.label);
+        }, { cwd: testCase.cwd, env: fakeEnv({ CODEXY_FAKE_LSP_CAPTURE: capturePath }) });
+        const capture = readCapture(capturePath);
+        assert.equal(fs.realpathSync(capture.cwd), fs.realpathSync(workspaceRoot), testCase.label);
+        assert.equal(fs.realpathSync(fileURLToPath(capture.rootUri)), fs.realpathSync(workspaceRoot), testCase.label);
+      });
+    }
   });
 });
 test("relative override commands resolve from caller workspaceRoot and spawn via the resolved absolute path", async () => {
