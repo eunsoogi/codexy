@@ -404,9 +404,26 @@ git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
 trap 'rm -f "$pr_json_file" "$pr_body_file"' EXIT
 
-head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid)
-gh pr view "$pr_number" --repo "$repo" --json body > "$pr_json_file"
-ruby -rjson -e 'File.binwrite(ARGV.fetch(1), JSON.parse(File.binread(ARGV.fetch(0))).fetch("body") || "")' "$pr_json_file" "$pr_body_file"
+if ! head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid); then
+  printf '%s\n' "Could not read PR head; aborting merge." >&2
+  exit 1
+fi
+if ! gh pr view "$pr_number" --repo "$repo" --json body > "$pr_json_file"; then
+  printf '%s\n' "Could not capture PR body from GitHub; aborting merge." >&2
+  exit 1
+fi
+if ! ruby -rjson -e '
+body = JSON.parse(File.binread(ARGV.fetch(0))).fetch("body")
+abort("captured PR body is empty") if body.nil? || body.empty?
+File.binwrite(ARGV.fetch(1), body)
+' "$pr_json_file" "$pr_body_file"; then
+  printf '%s\n' "Could not extract a non-empty PR body; aborting merge." >&2
+  exit 1
+fi
+if [ ! -s "$pr_body_file" ]; then
+  printf '%s\n' "Captured PR body file is empty; aborting merge." >&2
+  exit 1
+fi
 
 printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
 printf '%s\n' "It MUST NOT contain secrets, credentials, private logs, throwaway notes, or local-only scratch paths unless intentional evidence references."
