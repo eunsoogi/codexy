@@ -193,8 +193,7 @@ edits.
 ## Multi-Agent Dispatch Template
 
 ```text
-Goal tool usage or unavailable-goal-tool fallback:
-Todo/plan tool usage or unavailable-todo-tool fallback:
+Lane goal / success criteria:
 Atomic lane:
 Issue:
 Branch:
@@ -207,6 +206,8 @@ Required evidence:
 Review feedback route:
 Parent verification:
 Return evidence:
+  - Goal tool usage or unavailable-goal-tool fallback
+  - Todo/plan tool usage or unavailable-todo-tool fallback
 Child execution discipline:
 Stop if:
 ```
@@ -225,11 +226,11 @@ Allowed files or paths:
 Read first:
 Acceptance criteria:
 Required evidence:
-Goal tool usage or unavailable-goal-tool fallback:
-Todo/plan tool usage or unavailable-todo-tool fallback:
 Stop condition:
 Parent verification:
 Return format:
+  - Include goal tool usage or unavailable-goal-tool fallback.
+  - Include todo/plan tool usage or unavailable-todo-tool fallback.
 ```
 
 - Prefer Codex app thread tools such as `fork_thread` or `create_thread` with a
