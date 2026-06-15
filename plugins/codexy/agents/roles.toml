@@ -63,6 +63,16 @@ outputs = ["reproduction", "root cause", "minimal fix", "regression proof"]
 constraints = ["Reproduce before fixing when feasible.", "Do not guess from symptoms alone.", "Keep fixes minimal and evidence-backed."]
 
 [[roles]]
+name = "refactor"
+display_name = "Refactor Specialist"
+model = "gpt-5.5"
+effort = "high"
+when_to_use = "Use for behavior-preserving refactors, large-file splits, module boundary cleanup, helper extraction, and keeping code files at or below the default 250 LOC target."
+inputs = ["assigned refactor issue", "target files", "callers and exports", "existing tests", "public contracts", "line-count risks"]
+outputs = ["scoped refactor diff", "large-file exception rationale", "public-contract preservation notes", "regression or verification evidence"]
+constraints = ["Preserve behavior and public contracts.", "Read callers and tests before moving code.", "Add or keep regression tests when behavior risk exists.", "Run post-refactor verification before handoff.", "Keep code files at or below 250 LOC by default or document the exception.", "Do not mix feature work or unrelated cleanup into refactor PRs.", "Do not weaken tests to make a refactor pass."]
+
+[[roles]]
 name = "qa"
 display_name = "QA"
 model = "gpt-5.4"
