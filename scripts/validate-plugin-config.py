@@ -78,7 +78,14 @@ def mcp_config_path(plugin_root: Path, manifest: dict[str, Any]) -> Path:
     configured = manifest.get("mcpServers")
     if not isinstance(configured, str) or not configured:
         raise ValidationError(f"{rel(manifest_path(plugin_root))} mcpServers must be a path string")
-    return (plugin_root / configured).resolve()
+    configured_path = Path(configured)
+    if configured_path.is_absolute():
+        raise ValidationError(f"{rel(manifest_path(plugin_root))} mcpServers must be plugin-relative")
+    resolved = (plugin_root / configured_path).resolve()
+    plugin_root_resolved = plugin_root.resolve()
+    if not resolved.is_relative_to(plugin_root_resolved):
+        raise ValidationError(f"{rel(manifest_path(plugin_root))} mcpServers must stay inside the plugin root")
+    return resolved
 
 
 def load_lsp_catalog(plugin_root: Path) -> dict[str, set[str]]:
@@ -135,16 +142,32 @@ def covered_extensions(entries: dict[str, dict[str, Any]]) -> set[str]:
     return covered
 
 
+def catalog_covered_extensions(entries: dict[str, dict[str, Any]], catalog: dict[str, set[str]]) -> set[str]:
+    if not catalog:
+        return covered_extensions(entries)
+    covered: set[str] = set()
+    for server_id, entry in entries.items():
+        covered.update(extension for extension in entry["extensions"] if extension in catalog.get(server_id, set()))
+    return covered
+
+
 def check_lsp(plugin_root: Path) -> list[str]:
     errors: list[str] = []
     try:
         entries = lsp_entries(plugin_root)
         catalog = load_lsp_catalog(plugin_root)
         if catalog:
-            for server_id in entries:
+            for server_id, entry in entries.items():
                 if server_id not in catalog:
                     errors.append(f"LSP server {server_id!r} is not present in lsp/server-catalog.toml")
-        missing = sorted(REQUIRED_LSP_EXTENSIONS - covered_extensions(entries))
+                    continue
+                undeclared = sorted(set(entry["extensions"]) - catalog[server_id])
+                if undeclared:
+                    errors.append(
+                        f"LSP server {server_id!r} configures extensions not declared by catalog: "
+                        f"{', '.join(undeclared)}"
+                    )
+        missing = sorted(REQUIRED_LSP_EXTENSIONS - catalog_covered_extensions(entries, catalog))
         if missing:
             errors.append(f"LSP coverage missing required extensions: {', '.join(missing)}")
     except ValidationError as exc:
