@@ -52,6 +52,13 @@ complete.
   the child thread returns current verification or a documented non-change
   rationale.
 - Re-run verification after addressing review feedback.
+- For delegated non-trivial or multi-step child implementation lanes, verify
+  the child reported its own goal state or fallback, current todo/plan status,
+  multi-agent use, a not-useful or not-applicable rationale, or an
+  unavailable-tool fallback, changed files, verification evidence, and clean
+  worktree status before treating the handoff as complete.
+  For an atomic trivial child lane, require an explicit not-applicable rationale
+  instead of silently skipping the execution discipline.
 
 ## Evidence Rules
 
@@ -99,6 +106,9 @@ Include:
   route review feedback to the owning child thread, and keep the goal active
   until a repeated true impasse prevents meaningful progress without user input
   or an external state change.
+- Do not accept a non-trivial child implementation handoff as complete when it
+  omits goal, todo/plan, or multi-agent/fallback evidence required by the
+  orchestrator assignment.
 
 ## Failure Modes
 

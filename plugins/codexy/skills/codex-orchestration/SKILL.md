@@ -54,6 +54,30 @@ directory.
 - Child thread title renaming is a clarity policy, not a merge blocker for
   otherwise complete implementation work.
 
+## Child Execution Discipline
+
+Child implementation threads assigned a non-trivial lane MUST run their own
+execution loop instead of treating the parent handoff as permission for ad hoc
+edits.
+
+- Create or maintain a lane-specific goal when goal tooling is available. If
+  goal tooling is unavailable, write a visible textual goal with success
+  criteria and keep it current in status updates and handoff evidence.
+- Maintain a visible todo or `update_plan` state for multi-step delegated work.
+  Update statuses as work moves from discovery, to edit, to verification, to
+  handoff.
+- Use multi-agent decomposition when independent research, implementation,
+  review, QA, or verification subtasks can safely proceed in parallel and the
+  tool is available and useful.
+- Atomic trivial child tasks may stay lightweight, but substantial delegated
+  work MUST NOT proceed as untracked edits without goal and todo discipline.
+- If a required execution tool is unavailable in the child thread, say so in
+  the thread and use the closest available fallback. Do not silently skip the
+  discipline.
+- The parent/orchestrator monitors evidence and merge gates. The child owns
+  the implementation loop, local verification, and review-response fixes for
+  its lane until the stop condition is met.
+
 ## Required Control Plane
 
 - Establish the goal before implementation. If `create_goal` is available and
@@ -107,6 +131,9 @@ directory.
    - For forked Codex worktree child lanes, rename the child thread after
      setup with `set_thread_title` when available, using a project, issue
      number, and lane purpose title.
+   - Tell child implementation threads to create or maintain their own goal,
+     keep todo/plan state current, use useful multi-agent decomposition, and
+     report unavailable-tool fallbacks.
    - Require evidence, diffs, findings, or failed assumptions; do not accept
      acknowledgements as proof.
    - For Codex worktree thread lanes, state that the child owns implementation
@@ -147,6 +174,7 @@ Required evidence:
 Review feedback route:
 Parent verification:
 Return evidence:
+Child execution discipline:
 Stop if:
 ```
 
@@ -217,6 +245,9 @@ requires user input or an external state change.
 - Leaving multiple forked child worktree threads with inherited parent titles
   when `set_thread_title` is available.
 - Letting a child lane expand scope or edit shared files without ownership.
+- Letting a child implementation thread skip goal, todo/plan, or useful
+  multi-agent discipline without saying which tool was unavailable and which
+  fallback was used.
 - Fixing a child-owned PR's review feedback in the parent/orchestrator thread
   instead of routing it back to the owning child thread.
 - Keeping work in a broad umbrella branch instead of issue-sized PRs.
