@@ -18,7 +18,7 @@ validation proves the packaged paths match the repository layout.
    - `plugins/<plugin>/.codex-plugin/plugin.json`,
    - `plugins/<plugin>/skills/*/SKILL.md`,
    - `plugins/<plugin>/skills/*/agents/openai.yaml`,
-   - optional `plugins/<plugin>/.codex/agents/*.toml`,
+   - optional `plugins/<plugin>/agents/roles.toml`,
    - optional `plugins/<plugin>/.codex/lsp-client.json`,
    - `plugins/<plugin>/assets/*`,
    - optional `plugins/<plugin>/.mcp.json` or app manifests when present.
@@ -58,8 +58,8 @@ validation proves the packaged paths match the repository layout.
      stop conditions, and parent verification,
    - child-owned PR review feedback is routed back to the owning child thread
      and revalidated there before the parent thread merges,
-   - `scripts/validate-plugin-config.py --check` passes when that validator is
-     present in the revision being prepared.
+   - `python3 scripts/validate-plugin-config.py --check` passes when that
+     validator is present in the revision being prepared.
 7. Validate automation and release surfaces when present:
    - GitHub Actions reference repository-root paths,
    - workflow version inputs match plugin manifest expectations,
@@ -96,6 +96,8 @@ Risks:
   thread's verification evidence before marketplace readiness.
 - Do not add root-level plugin manifests when the canonical layout is
   `plugins/<plugin>/.codex-plugin/plugin.json`.
+- Do not present plugin-internal `.codex/agents/*.toml` files as canonical or
+  supported; use `plugins/<plugin>/agents/roles.toml` for role metadata.
 - Do not create package manager files solely to validate a static plugin unless
   the release or automation scope requires them.
 
@@ -103,7 +105,7 @@ Risks:
 
 - JSON manifests require parser validation.
 - LSP and MCP config require parser validation and, when available,
-  `scripts/validate-plugin-config.py --check`.
+  `python3 scripts/validate-plugin-config.py --check`.
 - Custom agent TOMLs and role metadata require parser validation and evidence
   that no separate orchestrator agent competes with the invoking thread.
 - Skill bundles require frontmatter and metadata validation.
