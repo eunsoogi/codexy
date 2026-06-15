@@ -3,7 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { execFileSync, spawn } = require("child_process");
+const { spawn } = require("child_process");
 const { createServer, textResult } = require("../lib/stdio-mcp");
 
 const codeExtensions = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go", ".rs", ".rb", ".java", ".kt"]);
@@ -13,20 +13,20 @@ function repoRoot(inputRoot) {
   return fs.existsSync(candidate) ? candidate : process.cwd();
 }
 
-function rg(args, cwd) {
-  try {
-    return execFileSync("rg", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-  } catch (error) {
-    return error.status === 1 ? "" : String(error.message || error);
-  }
-}
-
 function resultLimit(inputLimit) {
   const parsed = Number(inputLimit);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 80;
 }
 
-function rgLines(args, cwd, limit) {
+function includeLine(line) {
+  return Boolean(line);
+}
+
+function isCodeFile(file) {
+  return codeExtensions.has(path.extname(file));
+}
+
+function rgLines(args, cwd, limit, shouldInclude = includeLine) {
   return new Promise((resolve) => {
     const child = spawn("rg", args, { cwd, stdio: ["ignore", "pipe", "ignore"] });
     const lines = [];
@@ -53,14 +53,14 @@ function rgLines(args, cwd, limit) {
       const parts = pending.split(/\r?\n/);
       pending = parts.pop() || "";
       for (const line of parts) {
-        if (line) lines.push(line);
+        if (line && shouldInclude(line)) lines.push(line);
         if (settleIfLimited()) return;
       }
     });
     child.on("error", (error) => settle(String(error.message || error)));
     child.on("close", (code) => {
       if (settled) return;
-      if (pending) lines.push(pending);
+      if (pending && shouldInclude(pending)) lines.push(pending);
       if (code === 0 || code === 1) {
         settle(lines.slice(0, limit).join("\n"));
         return;
@@ -70,12 +70,12 @@ function rgLines(args, cwd, limit) {
   });
 }
 
-function listCodeFiles(root, limit = 400) {
-  return rg(["--files"], root)
+async function listCodeFiles(root, limit = 400) {
+  const output = await rgLines(["--files"], root, resultLimit(limit), isCodeFile);
+  return output
     .split(/\r?\n/)
     .filter(Boolean)
-    .filter((file) => codeExtensions.has(path.extname(file)))
-    .slice(0, limit);
+    .filter(isCodeFile);
 }
 
 function importsFor(filePath) {
@@ -130,7 +130,7 @@ const tools = [
 async function callTool(name, args) {
   const root = repoRoot(args.root);
   if (name === "codegraph_overview") {
-    const files = listCodeFiles(root, args.limit || 400);
+    const files = await listCodeFiles(root, args.limit || 400);
     const edges = files.flatMap((file) =>
       importsFor(path.join(root, file)).map((edge) => ({ file, ...edge }))
     );
