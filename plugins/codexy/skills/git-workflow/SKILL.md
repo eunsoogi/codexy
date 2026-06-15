@@ -248,6 +248,10 @@ worker for that lane.
 
 - The child thread owns implementation edits, local verification, and
   review-response fixes for its assigned issue-sized lane.
+- For any lane that needs its own branch, worktree, PR, or durable child
+  context, the parent MUST create, fork, or assign the child thread before
+  implementation patches begin. The parent MUST NOT make draft implementation
+  edits first and delegate afterward.
 - For non-trivial lanes, the child thread MUST create or maintain a
   lane-specific goal when goal tooling exists, keep todo/plan state current,
   and use useful multi-agent decomposition for independent research,
@@ -265,6 +269,11 @@ worker for that lane.
 - If Codex connector or human review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
+- If the parent accidentally creates draft edits for a child-owned lane, it
+  MUST stop implementation immediately, disclose the mistake, inspect whether
+  the draft overlaps user or other agent work, preserve or revert only as
+  needed to protect that work, and hand the draft diff to the owning child
+  thread as input evidence.
 - The parent handoff must include the PR number, latest head SHA, relevant
   comments or review thread URLs, allowed files, expected return evidence, and
   stop condition. For non-trivial lanes, it must also require the child to
