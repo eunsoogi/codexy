@@ -78,8 +78,8 @@ function languageForPath(filePath, server) {
 
 function resolvePath(filePath, root) {
   if (path.isAbsolute(filePath)) return filePath;
-  const base = root ? path.resolve(root) : process.cwd();
-  return path.resolve(base, filePath);
+  if (!root) throw new Error("root or workspaceRoot is required for a relative path");
+  return path.resolve(root, filePath);
 }
 
 function toFileUri(filePath, root) {

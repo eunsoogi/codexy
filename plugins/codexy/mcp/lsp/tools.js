@@ -24,8 +24,8 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Workspace-relative or absolute file path." },
-        root: { type: "string", description: "Workspace root for relative paths." },
+        path: { type: "string", description: "Absolute or relative file path used for language/server matching." },
+        root: { type: "string", description: "Optional workspace root when you want relative paths normalized before matching." },
         workspaceRoot: { type: "string", description: "Alias for root." },
       },
       required: ["path"],
@@ -37,8 +37,8 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Workspace-relative or absolute file path." },
-        root: { type: "string", description: "Workspace root for relative paths." },
+        path: { type: "string", description: "Absolute file path, or workspace-relative path when root is provided." },
+        root: { type: "string", description: "Workspace root used to resolve a relative path." },
         workspaceRoot: { type: "string", description: "Alias for root." },
         server: { type: "object", description: "Optional server override with id and command array." },
       },
@@ -51,9 +51,9 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string" },
-        root: { type: "string" },
-        workspaceRoot: { type: "string" },
+        path: { type: "string", description: "Absolute file path, or workspace-relative path when root is provided." },
+        root: { type: "string", description: "Workspace root used to resolve a relative path." },
+        workspaceRoot: { type: "string", description: "Alias for root." },
         server: { type: "object" },
       },
       required: ["path"],
@@ -65,9 +65,9 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string" },
-        root: { type: "string" },
-        workspaceRoot: { type: "string" },
+        path: { type: "string", description: "Absolute file path, or workspace-relative path when root is provided." },
+        root: { type: "string", description: "Workspace root used to resolve a relative path." },
+        workspaceRoot: { type: "string", description: "Alias for root." },
         line: { type: "number" },
         character: { type: "number" },
         server: { type: "object" },
@@ -81,9 +81,9 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string" },
-        root: { type: "string" },
-        workspaceRoot: { type: "string" },
+        path: { type: "string", description: "Absolute file path, or workspace-relative path when root is provided." },
+        root: { type: "string", description: "Workspace root used to resolve a relative path." },
+        workspaceRoot: { type: "string", description: "Alias for root." },
         line: { type: "number" },
         character: { type: "number" },
         includeDeclaration: { type: "boolean" },
@@ -98,9 +98,9 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string" },
-        root: { type: "string" },
-        workspaceRoot: { type: "string" },
+        path: { type: "string", description: "Absolute file path, or workspace-relative path when root is provided." },
+        root: { type: "string", description: "Workspace root used to resolve a relative path." },
+        workspaceRoot: { type: "string", description: "Alias for root." },
         server: { type: "object" },
       },
       required: ["path"],
@@ -114,7 +114,7 @@ async function callTool(name, args) {
   }
   if (name === "lsp_for_path") {
     if (!args.path) throw new Error("path is required");
-    return textResult(JSON.stringify(matchingServers(resolvePath(args.path, rootFromArgs(args))), null, 2));
+    return textResult(JSON.stringify(matchingServers(matchPathFromArgs(args)), null, 2));
   }
   if (name === "lsp_status") {
     if (!args.path) throw new Error("path is required");
@@ -181,6 +181,11 @@ async function operationResult(args, method, params) {
 
 function rootFromArgs(args) {
   return args.root || args.workspaceRoot;
+}
+
+function matchPathFromArgs(args) {
+  const root = rootFromArgs(args);
+  return root ? resolvePath(args.path, root) : args.path;
 }
 
 module.exports = { callTool, tools };

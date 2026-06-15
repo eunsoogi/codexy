@@ -128,6 +128,40 @@ test("oversized graph output reports limit and truncation metadata", async () =>
   });
 });
 
+test("graph index keeps existing imports resolved outside the bounded file list", async () => {
+  await withCodegraphClient(async (client) => {
+    const graph = assertStructuredToolResult(
+      await client.callTool("codegraph_index", { root: fixtureRoot, limit: 1 })
+    );
+
+    assert.deepEqual(
+      graph.files.map((file) => file.path),
+      ["entry.js"]
+    );
+    assert.ok(
+      graph.edges.some(
+        (edge) =>
+          edge.from === "entry.js" &&
+          edge.to === "helper.js" &&
+          edge.specifier === "./helper.js" &&
+          edge.resolved === true
+      )
+    );
+  });
+});
+
+test("isolated neighborhoods do not report truncation because unrelated repo files exist", async () => {
+  await withCodegraphClient(async (client) => {
+    const neighborhood = assertStructuredToolResult(
+      await client.callTool("codegraph_neighborhood", { root: fixtureRoot, path: "helper.js", depth: 1, limit: 1 })
+    );
+
+    assert.deepEqual(neighborhood.nodes, [{ path: "helper.js" }]);
+    assert.deepEqual(neighborhood.edges, []);
+    assert.equal(neighborhood.truncated, false);
+  });
+});
+
 test("graph index excludes git-ignored local state files", async () => {
   const ignoredRelativePath = ".omo/ulw-loop/full-lsp-codegraph/evidence/ignored-local-state.js";
   const ignoredAbsolutePath = path.join(repoRoot, ignoredRelativePath);

@@ -196,6 +196,15 @@ test("LSP operations resolve relative paths against caller root", async () => {
   }
 });
 
+test("LSP tools reject relative paths without an explicit caller root", async () => {
+  await withLspClient(async (client) => {
+    const response = await client.callTool("lsp_status", { path: "src/sample.js" });
+
+    assert.equal(response.error?.code, -32000);
+    assert.match(response.error?.message || "", /root.*required.*relative path/i);
+  }, { cwd: pluginRoot });
+});
+
 test("LSP operations answer server-to-client requests before document symbols", async () => {
   const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-server-request-${process.pid}-${Date.now()}.json`);
   try {

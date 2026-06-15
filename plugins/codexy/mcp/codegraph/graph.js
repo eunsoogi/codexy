@@ -79,7 +79,7 @@ function buildGraph(root, limit) {
         from: file.path,
         to: resolved.to,
         specifier,
-        resolved: resolved.resolved && selected.has(resolved.to),
+        resolved: resolved.resolved,
       };
     })
   );
@@ -129,9 +129,11 @@ function neighborhood(root, startPath, depth, limit) {
     }
   }
   const returnedNodePaths = new Set(nodes.map((node) => node.path));
-  const boundedEdges = edges
-    .filter((edge) => returnedNodePaths.has(edge.from) && returnedNodePaths.has(edge.to))
-    .slice(0, boundedLimit);
+  const neighborhoodEdges = edges.filter(
+    (edge) => returnedNodePaths.has(edge.from) && returnedNodePaths.has(edge.to)
+  );
+  const boundedEdges = neighborhoodEdges.slice(0, boundedLimit);
+  const hasPendingNeighbors = queue.some((candidate) => !seen.has(candidate.path));
 
   return {
     root,
@@ -140,7 +142,7 @@ function neighborhood(root, startPath, depth, limit) {
     nodes,
     edges: boundedEdges,
     limit: boundedLimit,
-    truncated: queue.length > 0 || seen.size < graph.files.length && nodes.length >= boundedLimit,
+    truncated: hasPendingNeighbors || neighborhoodEdges.length > boundedEdges.length,
   };
 }
 
