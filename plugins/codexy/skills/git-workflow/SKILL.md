@@ -178,6 +178,10 @@ gh pr comment <pr> --body "@codex review"
 
 An `eyes` reaction on the `@codex review` comment means Codex noticed the request
 and is processing it. It is not approval and does not mean review is complete.
+Waiting for that review is a non-blocking goal state: keep the orchestrator
+active, poll the PR review/comment/thread surfaces, and continue as soon as the
+latest-head review output arrives. Do not mark the broader goal blocked merely
+because Codex review is pending.
 
 Codex review completion signals include:
 
@@ -194,6 +198,13 @@ proceeding without a full Codex review.
 If any new commits are pushed after Codex review, the old review no longer
 proves the current head. Wait for or request a fresh Codex review before
 merging.
+
+Waiting for child-owned review-response work, queued worktree/thread setup, or
+asynchronous GitHub/Codex tool completion is also non-blocking. The parent
+orchestrator should keep polling, send follow-up prompts when needed, and route
+new feedback to the owning child thread until a fresh reviewed head is ready.
+Reserve a blocked state only for repeated true impasses that cannot progress
+without user input or an external state change.
 
 ### Child-Owned Review Feedback
 

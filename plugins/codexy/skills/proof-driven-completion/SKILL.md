@@ -72,12 +72,20 @@ Include:
   destructive operation, or human-only decision.
 - Do not call `update_goal(status="complete")` until every requirement has
   current matching proof and no required work remains.
+- Do not call `update_goal(status="blocked")` merely because Codex connector
+  review, child-thread work, queued worktree/thread setup, or asynchronous tool
+  completion is pending. Continue polling, send follow-up prompts as needed,
+  route review feedback to the owning child thread, and keep the goal active
+  until a repeated true impasse prevents meaningful progress without user input
+  or an external state change.
 
 ## Failure Modes
 
 - Reporting a merge before verifying branch deletion and main sync.
 - Ignoring Codex connector comments because they are top-level PR comments
   instead of GitHub review objects.
+- Treating ordinary review or child-thread wait time as a blocker instead of an
+  active goal state.
 - Treating generated files as valid without parsing or inspecting them.
 - Forgetting cleanup of worktrees, sessions, ports, temp logs, or stale
   evidence.
