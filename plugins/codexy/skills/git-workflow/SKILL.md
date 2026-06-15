@@ -368,20 +368,11 @@ pr_number=<explicit-pr-number>
 repo=eunsoogi/codexy
 pr_json_file=$(mktemp)
 pr_body_file=$(mktemp)
-commit_body_file=$(mktemp)
-trap 'rm -f "$pr_json_file" "$pr_body_file" "$commit_body_file"' EXIT
+trap 'rm -f "$pr_json_file" "$pr_body_file"' EXIT
 
 head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid)
 gh pr view "$pr_number" --repo "$repo" --json body > "$pr_json_file"
-python3 - "$pr_json_file" "$pr_body_file" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as source:
-    body = json.load(source)["body"] or ""
-with open(sys.argv[2], "w", encoding="utf-8", newline="") as target:
-    target.write(body)
-PY
+ruby -rjson -e 'File.binwrite(ARGV.fetch(1), JSON.parse(File.binread(ARGV.fetch(0))).fetch("body") || "")' "$pr_json_file" "$pr_body_file"
 
 gh pr merge "$pr_number" \
   --repo "$repo" \
@@ -409,14 +400,28 @@ After merge, update the main worktree:
 ```sh
 git pull --ff-only origin main
 git log -1 --pretty=%s
-git log -1 --pretty=%B | tail -n +3 > "$commit_body_file"
-cmp -s "$pr_body_file" "$commit_body_file"
+ruby - "$pr_body_file" <<'RUBY'
+expected = File.binread(ARGV.fetch(0))
+raw_commit = IO.popen(["git", "cat-file", "commit", "HEAD"], "rb", &:read)
+raw_message = raw_commit.split("\n\n", 2).fetch(1)
+actual = raw_message.include?("\n\n") ? raw_message.split("\n\n", 2).fetch(1) : ""
+
+without_single_terminal_lf = ->(value) {
+  value.end_with?("\n") ? value[0...-1] : value
+}
+
+unless without_single_terminal_lf.call(actual) == without_single_terminal_lf.call(expected)
+  abort("squash merge commit body does not match the captured PR body")
+end
+RUBY
 ```
 
 The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body must match the PR body captured from GitHub
-before merge. If GitHub did not delete the remote topic branch, delete it only
-after confirming the PR was merged and no dependent work needs the branch:
+before merge. Use the raw commit object instead of `git log --pretty=%B` for the
+body comparison so formatter-added trailing newlines do not create false
+failures. If GitHub did not delete the remote topic branch, delete it only after
+confirming the PR was merged and no dependent work needs the branch:
 
 ```sh
 git push origin --delete <branch>
