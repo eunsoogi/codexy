@@ -1,6 +1,19 @@
 version = "0.1.0"
 default_branch_prefix = "codexy/"
 default_review_gate = "codex"
-catalog_kind = "plugin-packaged-specialist-role-files"
-native_custom_agent_projection = "unsupported-by-plugin-install"
-roles_dir = "roles"
+catalog_kind = "plugin-packaged-specialist-agent-files"
+native_custom_agent_projection = "requires-active-project-or-user-agent-install"
+agent_files = [
+  "architect.toml",
+  "debugger.toml",
+  "documenter.toml",
+  "explorer.toml",
+  "implementer.toml",
+  "integrator.toml",
+  "planner.toml",
+  "qa.toml",
+  "refactor.toml",
+  "release.toml",
+  "reviewer.toml",
+  "security.toml",
+]

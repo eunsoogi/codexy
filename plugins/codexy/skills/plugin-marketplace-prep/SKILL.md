@@ -19,7 +19,7 @@ validation proves the packaged paths match the repository layout.
    - `plugins/<plugin>/skills/*/SKILL.md`,
    - `plugins/<plugin>/skills/*/agents/openai.yaml`,
    - optional `plugins/<plugin>/agents/catalog.toml`,
-   - optional `plugins/<plugin>/agents/roles/*.toml`,
+   - optional `plugins/<plugin>/agents/*.toml` specialist agent definitions,
    - optional `plugins/<plugin>/.codex/lsp-client.json`,
    - `plugins/<plugin>/assets/*`,
    - optional `plugins/<plugin>/.mcp.json` or app manifests when present.
@@ -53,7 +53,7 @@ validation proves the packaged paths match the repository layout.
 6. Validate architecture surfaces when present:
    - LSP config and its catalog agree on server ids and covered extensions,
    - MCP config contains only verified packaged or official endpoints,
-   - role metadata or custom agent TOMLs parse and do not define a child
+   - specialist agent or custom agent TOMLs parse and do not define a child
      orchestrator when the invoking thread is the orchestrator,
    - thread/worktree orchestration wording includes handoff fields, evidence,
      stop conditions, and parent verification,
@@ -92,7 +92,7 @@ Risks:
 - Do not claim marketplace readiness while any referenced path is missing.
 - Do not advertise tools, MCP servers, apps, hooks, or assets that are not
   actually packaged.
-- Do not claim LSP, MCP, role metadata, custom agent TOML, or thread/worktree
+- Do not claim LSP, MCP, specialist agent TOML, custom agent TOML, or thread/worktree
   readiness without parser evidence and the plugin config validator when it is
   available.
 - Do not let the parent thread silently patch child-owned plugin architecture
@@ -102,7 +102,8 @@ Risks:
   `plugins/<plugin>/.codex-plugin/plugin.json`.
 - Do not present plugin-internal `.codex/agents/*.toml` files as canonical or
   supported; use `plugins/<plugin>/agents/catalog.toml` and
-  `plugins/<plugin>/agents/roles/*.toml` for role metadata.
+  `plugins/<plugin>/agents/<name>.toml` for packaged specialist agent
+  definitions.
 - Do not create package manager files solely to validate a static plugin unless
   the release or automation scope requires them.
 
@@ -111,7 +112,7 @@ Risks:
 - JSON manifests require parser validation.
 - LSP and MCP config require parser validation and, when the plugin being
   prepared is Codexy, `python3 scripts/validate-plugin-config.py --check`.
-- Custom agent TOMLs and role metadata require parser validation and evidence
+- Custom agent TOMLs and specialist agent definitions require parser validation and evidence
   that no separate orchestrator agent competes with the invoking thread.
 - Skill bundles require frontmatter and metadata validation.
 - Asset references require file-existence checks from the plugin root.
