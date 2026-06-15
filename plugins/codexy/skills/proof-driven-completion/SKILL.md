@@ -43,6 +43,9 @@ complete.
   role metadata or custom agent TOMLs, and thread/worktree orchestration
   wording. Run `python3 scripts/validate-plugin-config.py --check` when that
   script is present in the current revision.
+- For code-touching or code-adjacent runtime changes, include Codexy
+  `codegraph` MCP exploration evidence when the MCP is available, plus direct
+  file-read confirmation before claiming the touched surface is understood.
 - For plugin skills, confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, inspect PR state, latest head SHA, comments, reviews,
@@ -141,6 +144,8 @@ Include:
   evidence.
 - Treating prose about architecture gates as proof that LSP, MCP, role
   metadata, custom agent TOML, thread, or worktree behavior has been validated.
+- Treating code-touching work as complete without Codexy `codegraph` MCP
+  exploration evidence when the MCP was available.
 - Fixing child-owned review feedback in the parent thread and merging without
   handing it back to the owning child thread for verification.
 - Accepting child-owned lane completion when the parent patched implementation
