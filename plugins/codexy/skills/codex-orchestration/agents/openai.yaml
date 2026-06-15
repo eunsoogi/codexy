@@ -4,3 +4,4 @@ interface:
   default_prompt: "Use $codex-orchestration with the invoking Codex thread as orchestrator; split independent implementation into separate Codex thread/worktree lanes with issue, branch, worktree path, allowed paths, required evidence, stop condition, parent verification, and return format."
 policy:
   allow_implicit_invocation: true
+guidance: "After a forked Codex worktree child thread finishes setup and a thread id is available, call set_thread_title when available; include project, issue number, and lane purpose in the title; if title renaming is unavailable, report the limitation and continue because thread title clarity is not a merge blocker."

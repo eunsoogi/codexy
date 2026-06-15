@@ -4,3 +4,4 @@ interface:
   default_prompt: "Use the invoking Codex thread as the Codexy orchestrator: classify the request, track the goal when available, maintain todos, use the packaged specialist role files and catalog metadata for bounded helper routing, split independent implementation into separate Codex thread/worktree lanes, use the packaged Codexy skills, verify each surface, require Codex review before merge, and hide internal routing details from the user."
 policy:
   allow_implicit_invocation: true
+guidance: "After a forked Codex worktree child thread finishes setup and a thread id is available, call set_thread_title when available; include project, issue number, and lane purpose in the title; if title renaming is unavailable, report the limitation and continue because thread title clarity is not a merge blocker."
