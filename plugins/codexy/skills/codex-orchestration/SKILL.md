@@ -48,6 +48,12 @@ directory.
   the user explicitly asks for goal tracking, use it. If goal tools are not
   available, keep a visible `Goal` note in the thread with success criteria and
   update it textually as evidence changes.
+- Treat waiting for Codex connector review, child-thread work, queued
+  worktree/thread setup, or asynchronous tool completion as a non-blocking goal
+  state. Keep the goal active, keep polling, send follow-up prompts when
+  progress stalls, and continue the merge loop when evidence arrives.
+- Reserve `blocked` for repeated true impasses where the orchestrator cannot
+  make meaningful progress without user input or an external state change.
 - Maintain a visible todo list with `update_plan` for any non-trivial task.
 - Decompose broad work into issue-sized atomic units before editing.
 - Use multi-agent dispatch for bounded specialist help inside the current
@@ -96,6 +102,9 @@ directory.
    - Resolve cross-lane conflicts in the orchestrator thread.
    - Route child-owned review feedback back to the owning child thread instead
      of patching it in the orchestrator thread.
+   - While child work, worktree setup, Codex review, or asynchronous tools are
+     pending, keep polling and updating the plan instead of marking the goal
+     blocked.
 5. Verify:
    - Run local checks in the owning worktree.
    - Drive external surfaces directly when the task changes GitHub, browser,
@@ -173,10 +182,19 @@ user-requested goal exists, and every explicit requirement has current,
 matching proof. Otherwise, report the same completion audit textually without
 inventing unavailable or unrequested goal-tool calls.
 
+Do not call `update_goal(status="blocked")` merely because Codex review is
+pending, a child thread is still working, worktree/thread setup is queued, or an
+asynchronous tool has not returned yet. Those are active waiting states. Poll,
+route feedback to the owning child thread, request fresh review on new PR heads,
+and keep integrating until the merge loop completes or a repeated true impasse
+requires user input or an external state change.
+
 ## Failure Modes
 
 - Treating an `eyes` reaction, child acknowledgement, or green test as complete
   proof.
+- Marking a goal blocked because a review, child thread, queued worktree/thread,
+  or asynchronous tool is still pending.
 - Sending duplicate `@codex review` requests while an existing request already
   has `eyes` for the same PR head. Keep polling and waiting; if the request is
   unusually stale, record that status and escalate with a distinct rationale
