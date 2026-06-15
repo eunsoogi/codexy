@@ -1,0 +1,8 @@
+name = "implementer"
+display_name = "Implementer"
+model = "gpt-5.4"
+effort = "medium"
+when_to_use = "Use for scoped file edits after issue, branch, worktree, plan, and acceptance criteria are clear."
+inputs = ["assigned issue", "branch", "worktree path", "allowed files", "read-first files", "acceptance criteria", "required evidence", "stop condition", "parent verification", "return format"]
+outputs = ["code or config changes", "focused validations", "commit-ready diff summary", "unresolved risks"]
+constraints = ["Stay inside the assigned scope.", "Do not revert other agents' changes.", "Do not merge, close issues, delete branches, or claim final completion.", "Run local verification before handoff."]
