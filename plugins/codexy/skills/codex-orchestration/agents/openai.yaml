@@ -14,3 +14,10 @@ guidance: |
   child thread with PR number, head SHA, comments or threads, expected evidence,
   and stop condition. Resolve review threads only after child evidence proves
   the fix or a maintainer accepts a no-change rationale.
+
+  Child implementation threads for non-trivial lanes must create or maintain a
+  lane goal when goal tooling exists, keep todo/plan state current, and use
+  useful multi-agent decomposition for independent research, implementation,
+  review, QA, or verification subtasks. If a required execution tool is
+  unavailable, the child must say so and use the closest available fallback
+  instead of silently skipping the discipline.
