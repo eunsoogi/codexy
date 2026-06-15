@@ -2,15 +2,21 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("fs");
+const os = require("os");
 const path = require("path");
+const { pathToFileURL } = require("url");
 const { createStdioClient, jsonTextContent } = require("./stdio-client");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const lspServer = path.join(repoRoot, "plugins/codexy/mcp/lsp/server.js");
 const jsFixture = path.join(repoRoot, "tests/mcp/fixtures/lsp/sample.js");
+const externalWorkspace = path.join(repoRoot, "tests/mcp/fixtures/lsp/external-workspace");
+const externalFixture = path.join(externalWorkspace, "src/sample.js");
+const fakeLspServer = path.join(repoRoot, "tests/mcp/fixtures/lsp/fake-lsp-server.js");
 
-async function withLspClient(fn) {
-  const client = createStdioClient(process.execPath, [lspServer], { cwd: repoRoot });
+async function withLspClient(fn, options = {}) {
+  const client = createStdioClient(process.execPath, [lspServer], { cwd: repoRoot, env: options.env });
   try {
     await client.initialize();
     return await fn(client);
@@ -67,4 +73,29 @@ test("LSP operations return structured unavailable when the server executable is
     assert.match(payload.reason, /not found|missing|unavailable/i);
     assert.ok(Array.isArray(payload.installHints));
   });
+});
+
+test("LSP operations initialize servers from the target file workspace root", async () => {
+  const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-${process.pid}-${Date.now()}.json`);
+  try {
+    await withLspClient(async (client) => {
+      const response = await client.callTool("lsp_document_symbols", {
+        path: externalFixture,
+        server: {
+          id: "fake-lsp",
+          command: [process.execPath, fakeLspServer],
+        },
+      });
+      const payload = assertStructuredToolResult(response);
+
+      assert.equal(payload.status, "ok");
+      assert.equal(payload.path, externalFixture);
+    }, { env: { CODEXY_FAKE_LSP_CAPTURE: capturePath } });
+
+    const capture = JSON.parse(fs.readFileSync(capturePath, "utf8"));
+    assert.equal(capture.cwd, externalWorkspace);
+    assert.equal(capture.rootUri, pathToFileURL(externalWorkspace).href);
+  } finally {
+    fs.rmSync(capturePath, { force: true });
+  }
 });

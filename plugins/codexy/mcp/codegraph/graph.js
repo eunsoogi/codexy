@@ -45,7 +45,11 @@ function resolveImport(root, fromFile, specifier) {
   const candidate = path.resolve(fromDir, specifier);
   const candidates = path.extname(candidate)
     ? [candidate]
-    : [candidate, ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`)];
+    : [
+        candidate,
+        ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`),
+        ...Array.from(codeExtensions, (extension) => path.join(candidate, `index${extension}`)),
+      ];
 
   for (const absolute of candidates) {
     if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {

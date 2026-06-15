@@ -1,16 +1,26 @@
 "use strict";
 
 const fs = require("fs");
+const path = require("path");
 const { spawn } = require("child_process");
 const {
   languageForPath,
-  repoRoot,
   resolvePath,
   toFileUri,
 } = require("./config");
 
 const REQUEST_TIMEOUT_MS = 1500;
 const STDERR_LIMIT = 4000;
+const WORKSPACE_MARKERS = [
+  ".git",
+  "package.json",
+  "pyproject.toml",
+  "Cargo.toml",
+  "go.mod",
+  "deno.json",
+  "tsconfig.json",
+  "jsconfig.json",
+];
 
 function encodeLsp(payload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8");
@@ -35,10 +45,30 @@ function parseLspFrames(state, chunk, onMessage) {
   }
 }
 
+function workspaceRootForFile(filePath) {
+  let directory;
+  try {
+    const stat = fs.statSync(filePath);
+    directory = stat.isDirectory() ? filePath : path.dirname(filePath);
+  } catch {
+    directory = path.dirname(filePath);
+  }
+  while (true) {
+    if (WORKSPACE_MARKERS.some((marker) => fs.existsSync(path.join(directory, marker)))) {
+      return directory;
+    }
+    const parent = path.dirname(directory);
+    if (parent === directory) return directory;
+    directory = parent;
+  }
+}
+
 async function runLspRequest({ server, filePath, method, params, timeoutMs = REQUEST_TIMEOUT_MS }) {
   const command = server.command;
+  const absolutePath = resolvePath(filePath);
+  const workspaceRoot = workspaceRootForFile(absolutePath);
   const child = spawn(command[0], command.slice(1), {
-    cwd: repoRoot,
+    cwd: workspaceRoot,
     env: process.env,
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -101,12 +131,11 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
   });
 
   try {
-    const absolutePath = resolvePath(filePath);
     const uri = toFileUri(absolutePath);
     const text = fs.readFileSync(absolutePath, "utf8");
     const initialize = await request("initialize", {
       processId: process.pid,
-      rootUri: toFileUri(repoRoot),
+      rootUri: toFileUri(workspaceRoot),
       capabilities: {
         textDocument: {
           documentSymbol: { hierarchicalDocumentSymbolSupport: true },
