@@ -368,7 +368,8 @@ pr_number=<explicit-pr-number>
 repo=eunsoogi/codexy
 pr_json_file=$(mktemp)
 pr_body_file=$(mktemp)
-expected_body_file=$(git rev-parse --git-path "codexy/merge-bodies/pr-${pr_number}.body")
+git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
 trap 'rm -f "$pr_json_file" "$pr_body_file"' EXIT
 
 head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid)
@@ -399,8 +400,9 @@ gh pr merge "$pr_number" \
 
 Because PR bodies become permanent `main` commit bodies under this rule, the
 inspection and approval gate above must pass before `gh pr merge` runs. The
-expected body file is stored under `.git/` so it remains local and untracked but
-survives a separate post-merge verification shell.
+expected body file is stored under the shared Git common directory from
+`git rev-parse --git-common-dir` so it remains local and untracked but survives
+post-merge verification from a separate worktree shell.
 
 `gh pr merge` does not have a flag that means "Codex review passed." `--auto`
 only waits for requirements configured in GitHub, and `--admin` bypasses
@@ -413,7 +415,8 @@ After merge, update the main worktree:
 
 ```sh
 pr_number=<explicit-pr-number>
-expected_body_file=$(git rev-parse --git-path "codexy/merge-bodies/pr-${pr_number}.body")
+git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
 test -f "$expected_body_file"
 
 git pull --ff-only origin main
