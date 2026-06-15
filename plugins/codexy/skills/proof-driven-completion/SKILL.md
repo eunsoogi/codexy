@@ -50,6 +50,10 @@ complete.
   Codex review completion.
 - If new commits land after review, request or wait for fresh review on the new
   head.
+- If a fresh `@codex review` request for the current head already has `eyes`,
+  do not send duplicate requests for the same head. Continue polling and
+  waiting for review output. If it is unusually stale, document the status and
+  use a distinct escalation rationale instead of repeated blind requests.
 - If a command was skipped, say so with the reason.
 - If evidence is local and untracked, summarize it or give the ignored evidence
   path; do not commit scratch artifacts unless requested.
