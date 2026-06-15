@@ -267,9 +267,11 @@ def check_specialist_role_files(plugin_root: Path) -> list[str]:
         errors.append(f"{rel(catalog_path)} default_branch_prefix must not be {prefix!r}")
     roles_dir_name = catalog.get("roles_dir")
     if not isinstance(roles_dir_name, str) or not roles_dir_name:
-        errors.append(f"{rel(catalog_path)} roles_dir must be a non-empty string")
+        errors.append(f"{rel(catalog_path)} roles_dir must be the string 'roles'")
         roles_dir_name = "roles"
-    roles_dir = agents_root / roles_dir_name
+    elif roles_dir_name != "roles":
+        errors.append(f"{rel(catalog_path)} roles_dir must be 'roles'")
+    roles_dir = agents_root / "roles"
     if not roles_dir.exists():
         errors.append(f"{rel(roles_dir)} is required for per-agent specialist metadata")
         return errors
