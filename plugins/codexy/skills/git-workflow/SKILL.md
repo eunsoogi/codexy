@@ -195,6 +195,28 @@ If any new commits are pushed after Codex review, the old review no longer
 proves the current head. Wait for or request a fresh Codex review before
 merging.
 
+### Child-Owned Review Feedback
+
+When a PR was produced by a delegated child Codex worktree thread, the
+plugin-invoking parent thread is the orchestrator, not the implementation
+worker for that lane.
+
+- The child thread owns implementation edits, local verification, and
+  review-response fixes for its assigned issue-sized lane.
+- If Codex connector or human review feedback flags a child-owned PR, the
+  parent MUST route the feedback back to the owning child thread instead of
+  directly patching the branch.
+- The parent handoff must include the PR number, latest head SHA, relevant
+  comments or review thread URLs, allowed files, expected return evidence, and
+  stop condition.
+- The parent may make implementation edits only for its own explicitly scoped
+  lane, or when a maintainer explicitly overrides the boundary and reassigns
+  the lane to the parent.
+- The parent may resolve review threads only after child evidence proves the
+  fix on the current head, or after a maintainer accepts a no-change rationale.
+- Worktree lanes must remain issue-sized and atomic. Do not combine review
+  feedback from one child lane with another branch or PR.
+
 ## Repository Settings And Main Protection
 
 Repository settings should keep:
