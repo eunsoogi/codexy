@@ -92,9 +92,15 @@ function resolveExecutable(command) {
   }
   const executable = command[0];
   if (executable.includes(path.sep)) {
-    return fs.existsSync(executable)
-      ? { available: true, executable }
-      : { available: false, reason: `executable not found: ${executable}` };
+    try {
+      fs.accessSync(executable, fs.constants.X_OK);
+      return { available: true, executable };
+    } catch {
+      const reason = fs.existsSync(executable)
+        ? `executable is not executable: ${executable}`
+        : `executable not found: ${executable}`;
+      return { available: false, reason };
+    }
   }
   for (const entry of (process.env.PATH || "").split(path.delimiter)) {
     if (!entry) continue;

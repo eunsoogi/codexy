@@ -80,6 +80,31 @@ test("LSP operations return structured unavailable when the server executable is
   });
 });
 
+test("LSP operations return structured unavailable when a path command is not executable", async () => {
+  const commandPath = path.join(os.tmpdir(), `codexy-non-executable-lsp-${process.pid}-${Date.now()}`);
+  try {
+    fs.writeFileSync(commandPath, "#!/bin/sh\nexit 0\n", { mode: 0o600 });
+
+    await withLspClient(async (client) => {
+      const response = await client.callTool("lsp_document_symbols", {
+        path: jsFixture,
+        server: {
+          id: "non-executable-test-server",
+          command: [commandPath, "--stdio"],
+        },
+      });
+      const payload = assertStructuredToolResult(response);
+
+      assert.equal(payload.status, "unavailable");
+      assert.equal(payload.server.id, "non-executable-test-server");
+      assert.match(payload.reason, /not executable|permission|unavailable/i);
+      assert.ok(Array.isArray(payload.installHints));
+    });
+  } finally {
+    fs.rmSync(commandPath, { force: true });
+  }
+});
+
 test("LSP operations initialize servers from the target file workspace root", async () => {
   const capturePath = path.join(os.tmpdir(), `codexy-fake-lsp-${process.pid}-${Date.now()}.json`);
   try {
