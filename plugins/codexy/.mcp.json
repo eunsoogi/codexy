@@ -1,8 +1,21 @@
 {
-  "openaiDeveloperDocs": {
-    "url": "https://developers.openai.com/mcp"
-  },
-  "grep_app": {
-    "url": "https://mcp.grep.app"
+  "mcpServers": {
+    "lsp": {
+      "command": "node",
+      "args": [
+        "./mcp/lsp/server.js"
+      ],
+      "cwd": "."
+    },
+    "codegraph": {
+      "command": "node",
+      "args": [
+        "./mcp/codegraph/server.js"
+      ],
+      "cwd": "."
+    },
+    "grep_app": {
+      "url": "https://mcp.grep.app"
+    }
   }
 }

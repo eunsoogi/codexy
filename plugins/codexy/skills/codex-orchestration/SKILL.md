@@ -104,6 +104,11 @@ edits.
   do not claim those packaged agents are native Codex custom agents unless
   they have been projected into the active project or user custom-agent
   directory by a supported workflow.
+- For repository code exploration, route threads and agents through the
+  packaged Codexy `codegraph` MCP when it is available before falling back to
+  ad hoc text search. Use codegraph output to identify files, import edges,
+  and nearby implementation surfaces, then confirm with direct file reads
+  before editing.
 - End every non-trivial atomic unit with the packaged Codexy reviewer agent
   from `plugins/codexy/agents/reviewer.toml`. The reviewer gate belongs inside
   the owning thread or child thread for that atomic unit; the parent may verify
@@ -125,6 +130,8 @@ edits.
      relevant local skills.
    - Separate hard requirements, preferences, assumptions, and non-goals.
    - Identify the observable surface that proves the request worked.
+   - For codebase discovery, use the Codexy `codegraph` MCP to map relevant
+     files and neighbors when available.
 2. Plan:
    - Create a short `update_plan` with atomic outcomes.
    - Mark exactly one step `in_progress`.
@@ -145,6 +152,9 @@ edits.
    - Tell child implementation threads to create or maintain their own goal,
      keep todo/plan state current, use useful multi-agent decomposition, and
      report unavailable-tool fallbacks.
+   - Tell child implementation threads and exploration agents to use Codexy
+     `codegraph` MCP for code exploration when available, with ordinary file
+     reads as confirmation before edits.
    - Tell each non-trivial child implementation thread to run the packaged
      Codexy reviewer agent before handoff and include the reviewer findings or
      approval in its return evidence.

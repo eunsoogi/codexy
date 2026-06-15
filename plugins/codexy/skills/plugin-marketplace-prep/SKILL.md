@@ -18,6 +18,7 @@ validation proves the packaged paths match the repository layout.
    - `plugins/<plugin>/.codex-plugin/plugin.json`,
    - `plugins/<plugin>/skills/*/SKILL.md`,
    - `plugins/<plugin>/skills/*/agents/openai.yaml`,
+   - optional `plugins/<plugin>/skills/*/references/*`,
    - optional `plugins/<plugin>/agents/catalog.toml`,
    - optional `plugins/<plugin>/agents/*.toml` specialist agent definitions,
    - optional `plugins/<plugin>/.codex/lsp-client.json`,
@@ -52,7 +53,9 @@ validation proves the packaged paths match the repository layout.
    - no missing assets.
 6. Validate architecture surfaces when present:
    - LSP config and its catalog agree on server ids and covered extensions,
-   - MCP config contains only verified packaged or official endpoints,
+  - MCP config contains only verified packaged or official endpoints,
+   - Codexy MCP config includes packaged `lsp` and `codegraph` servers when
+     the plugin advertises LSP or code exploration behavior,
    - specialist agent or custom agent TOMLs parse and do not define a child
      orchestrator when the invoking thread is the orchestrator,
    - Codexy reviewer agent metadata identifies it as the mandatory gate at the

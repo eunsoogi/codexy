@@ -128,6 +128,11 @@ For code changes, add the relevant lint, typecheck, unit, integration, harness, 
 
 When the requested behavior is a GitHub setting, branch rule, PR lifecycle, CLI, browser page, desktop app, or other external surface, drive that surface directly and capture observable evidence. Tests alone are supporting evidence, not completion proof.
 
+For code-touching or code-adjacent runtime changes, use Codexy `codegraph` MCP
+for code exploration when it is available. Include the resulting files,
+neighbors, or dependency evidence with the handoff or PR evidence, then confirm
+exact files with direct reads before editing.
+
 ## Pull Requests
 
 Open PRs with GitHub or `gh`. Keep PRs draft only while local verification is missing or risk is intentionally unresolved.
@@ -252,6 +257,9 @@ worker for that lane.
   lane-specific goal when goal tooling exists, keep todo/plan state current,
   and use useful multi-agent decomposition for independent research,
   implementation, review, QA, or verification subtasks.
+- For code-touching lanes, the child thread MUST use Codexy `codegraph` MCP
+  for code exploration when it is available, and include that exploration
+  evidence in its handoff.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
   work MUST NOT proceed as ad hoc edits without goal and todo discipline.
 - Before returning a non-trivial atomic lane as ready, the owning thread MUST
@@ -269,7 +277,9 @@ worker for that lane.
   comments or review thread URLs, allowed files, expected return evidence, and
   stop condition. For non-trivial lanes, it must also require the child to
   report goal/todo/multi-agent usage or unavailable-tool fallbacks and the
-  packaged Codexy reviewer agent findings or approval.
+  packaged Codexy reviewer agent findings or approval. For code-touching lanes,
+  require Codexy `codegraph` MCP exploration evidence or a clear
+  unavailable-tool fallback.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.

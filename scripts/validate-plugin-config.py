@@ -12,6 +12,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PLUGIN_ROOT = REPO_ROOT / "plugins" / "codexy"
 REQUIRED_LSP_EXTENSIONS = {".py", ".pyi", ".yaml", ".yml", ".json", ".toml", ".md"}
 DISALLOWED_MCP_NAMES = {"context7"}
+DISALLOWED_MCP_NAME_FRAGMENTS = {"openai", "context7"}
+DISALLOWED_MCP_VALUE_FRAGMENTS = {"openai", "context7"}
+REQUIRED_MCP_NAMES = {"lsp", "codegraph"}
 DISALLOWED_BRANCH_PREFIXES = {"eunsoogi/"}
 
 
@@ -176,6 +179,20 @@ def catalog_covered_extensions(entries: dict[str, dict[str, Any]], catalog: dict
     return covered
 
 
+def disallowed_mcp_value_matches(value: Any, fragments: set[str]) -> list[str]:
+    matches: list[str] = []
+    if isinstance(value, str):
+        lowered = value.lower()
+        return [fragment for fragment in fragments if fragment in lowered]
+    if isinstance(value, list):
+        for item in value:
+            matches.extend(disallowed_mcp_value_matches(item, fragments))
+    elif isinstance(value, dict):
+        for item in value.values():
+            matches.extend(disallowed_mcp_value_matches(item, fragments))
+    return sorted(set(matches))
+
+
 def check_lsp(plugin_root: Path) -> list[str]:
     errors: list[str] = []
     try:
@@ -218,15 +235,24 @@ def check_mcp(plugin_root: Path) -> list[str]:
         data = load_json(path)
         if not isinstance(data, dict):
             raise ValidationError(f"{rel(path)} must contain a JSON object")
-        for name, entry in data.items():
+        servers = data.get("mcpServers")
+        if not isinstance(servers, dict):
+            raise ValidationError(f"{rel(path)} must contain an object at key 'mcpServers'")
+        missing = sorted(REQUIRED_MCP_NAMES - servers.keys())
+        if missing:
+            errors.append(f"{rel(path)} missing required MCP servers: {', '.join(missing)}")
+        for name, entry in servers.items():
             if not isinstance(name, str) or not name:
                 errors.append(f"{rel(path)} MCP names must be non-empty strings")
                 continue
-            if name in DISALLOWED_MCP_NAMES:
+            lowered_name = name.lower()
+            if name in DISALLOWED_MCP_NAMES or any(fragment in lowered_name for fragment in DISALLOWED_MCP_NAME_FRAGMENTS):
                 errors.append(f"{rel(path)} disallowed MCP server present: {name}")
             if not isinstance(entry, dict):
                 errors.append(f"{rel(path)} {name} must be an object")
                 continue
+            for fragment in disallowed_mcp_value_matches(entry, DISALLOWED_MCP_VALUE_FRAGMENTS):
+                errors.append(f"{rel(path)} disallowed MCP value fragment {fragment!r} present for {name}")
             url = entry.get("url")
             command = entry.get("command")
             if url is None and command is None:
@@ -234,12 +260,24 @@ def check_mcp(plugin_root: Path) -> list[str]:
             if url is not None:
                 if not isinstance(url, str) or not url.startswith(("https://", "http://")):
                     errors.append(f"{rel(path)} {name}.url must be an HTTP(S) string")
-                if "context7" in str(url).lower():
-                    errors.append(f"{rel(path)} disallowed context7 MCP URL present for {name}")
             if command is not None and not isinstance(command, str):
                 errors.append(f"{rel(path)} {name}.command must be a string")
-            elif command is not None and "context7" in command.lower():
-                errors.append(f"{rel(path)} disallowed context7 MCP command present for {name}")
+            args = entry.get("args")
+            if args is not None and (not isinstance(args, list) or not all(isinstance(item, str) for item in args)):
+                errors.append(f"{rel(path)} {name}.args must be a list of strings")
+            elif command == "node" and args:
+                entrypoint = Path(args[0])
+                if entrypoint.is_absolute():
+                    errors.append(f"{rel(path)} {name}.args[0] must be plugin-relative")
+                else:
+                    resolved_entrypoint = (plugin_root / entrypoint).resolve()
+                    if not resolved_entrypoint.is_relative_to(plugin_root.resolve()):
+                        errors.append(f"{rel(path)} {name}.args[0] must stay inside the plugin root")
+                    elif not resolved_entrypoint.exists():
+                        errors.append(f"{rel(path)} {name}.args[0] does not exist: {args[0]}")
+            cwd = entry.get("cwd")
+            if cwd is not None and not isinstance(cwd, str):
+                errors.append(f"{rel(path)} {name}.cwd must be a string")
     except ValidationError as exc:
         errors.append(str(exc))
     return errors
