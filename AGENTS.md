@@ -26,7 +26,7 @@ Codexy is a Codex harness and loop engineering repository. It is used for agent 
 - Direct pushes to `origin/main` are allowed only for one-time bootstrap work that is impossible before `origin/main` exists, or when a maintainer explicitly requests that exact operation.
 - Start every normal task from a GitHub issue or a maintainer-provided issue-sized scope.
 - Use an isolated git worktree with a topic branch for each task.
-- Use the `eunsoogi/` branch prefix unless the user requests another naming scheme.
+- Use the `codexy/` branch prefix unless the user requests another naming scheme.
 - Keep each branch tied to one issue-sized outcome.
 - Split unrelated follow-ups into separate issues and PRs.
 - Use Conventional Commit style for commit titles and PR titles.
