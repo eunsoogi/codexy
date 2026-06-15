@@ -2,6 +2,10 @@
 
 const fs = require("fs");
 
+if (process.env.CODEXY_FAKE_LSP_EXIT_EARLY === "1") {
+  process.exit(42);
+}
+
 let buffer = Buffer.alloc(0);
 let nextDiagnostics = false;
 let captureData = {};

@@ -35,6 +35,10 @@ const LANGUAGE_BY_EXTENSION = {
   ".ksh": "shellscript",
 };
 
+function commandOverridesAllowed() {
+  return process.env.CODEXY_LSP_ALLOW_COMMAND_OVERRIDE === "1";
+}
+
 function readConfig() {
   return JSON.parse(fs.readFileSync(lspConfigPath, "utf8")).lsp || {};
 }
@@ -148,7 +152,28 @@ function matchingServers(filePath, root) {
 function serverFromOverride(override, root) {
   if (!override || typeof override !== "object") return null;
   if (!override.id) throw new Error("server.id is required when server override is provided");
-  return enrichServer(override.id, override, readCatalog(), root);
+  const config = readConfig();
+  const catalog = readCatalog();
+  if (Array.isArray(override.command) && !commandOverridesAllowed()) {
+    return {
+      id: override.id,
+      command: override.command,
+      executable: override.command[0],
+      available: false,
+      installHints: [],
+      unavailableReason: "server command overrides require CODEXY_LSP_ALLOW_COMMAND_OVERRIDE=1",
+    };
+  }
+  if (!config[override.id] && !catalog.has(override.id) && !commandOverridesAllowed()) {
+    return {
+      id: override.id,
+      available: false,
+      installHints: [],
+      unavailableReason: `server id is not configured or cataloged: ${override.id}`,
+    };
+  }
+  const safeOverride = commandOverridesAllowed() ? override : { id: override.id };
+  return enrichServer(override.id, { ...(config[override.id] || {}), ...safeOverride }, catalog, root);
 }
 
 function selectServer(args) {

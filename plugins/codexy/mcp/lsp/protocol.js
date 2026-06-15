@@ -3,17 +3,11 @@
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
-const {
-  languageForPath,
-  resolvePath,
-  toFileUri,
-} = require("./config");
-
+const { languageForPath, resolvePath, toFileUri } = require("./config");
 const REQUEST_TIMEOUT_MS = 1500;
 const STDERR_LIMIT = 4000;
 const WORKSPACE_MARKERS = [".git", "package.json", "pyproject.toml", "Cargo.toml", "go.mod", "deno.json", "tsconfig.json", "jsconfig.json"];
 const SUPPORTED_SERVER_REQUESTS = new Set(["client/registerCapability", "client/unregisterCapability", "window/workDoneProgress/create", "workspace/configuration"]);
-
 function encodeLsp(payload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8");
   return Buffer.concat([Buffer.from(`Content-Length: ${body.length}\r\n\r\n`, "utf8"), body]);
@@ -36,7 +30,6 @@ function parseLspFrames(state, chunk, onMessage) {
     onMessage(JSON.parse(body));
   }
 }
-
 function workspaceRootForFile(filePath) {
   let directory;
   try {
@@ -55,11 +48,9 @@ function workspaceRootForFile(filePath) {
     directory = parent;
   }
 }
-
 function supportsPullDiagnostics(capabilities) {
   return capabilities?.diagnosticProvider !== undefined;
 }
-
 async function waitForPublishDiagnostics(notifications, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -67,7 +58,6 @@ async function waitForPublishDiagnostics(notifications, timeoutMs) {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
-
 async function runLspRequest({ server, filePath, method, params, timeoutMs = REQUEST_TIMEOUT_MS, workspaceRoot }) {
   const command = server.command;
   const absolutePath = resolvePath(filePath);
@@ -82,13 +72,32 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
   const pending = new Map();
   const notifications = [];
   const stdoutState = { buffer: Buffer.alloc(0) };
-
+  let stdinError = null;
   function capStderr(chunk) {
     stderr = (stderr + chunk).slice(-STDERR_LIMIT);
   }
-
+  function stdinFailure(error) {
+    if (stdinError) return stdinError;
+    const reason = error instanceof Error ? error.message : String(error);
+    stdinError = new Error(`LSP server stdin unavailable: ${reason}`);
+    capStderr(stdinError.message);
+    for (const [, waiter] of pending) {
+      clearTimeout(waiter.timer);
+      waiter.reject(stdinError);
+    }
+    pending.clear();
+    return stdinError;
+  }
   function write(payload) {
-    child.stdin.write(encodeLsp(payload));
+    if (stdinError) throw stdinError;
+    if (child.stdin.destroyed || child.exitCode !== null) throw stdinFailure(new Error("server closed stdin"));
+    try {
+      child.stdin.write(encodeLsp(payload), (error) => {
+        if (error) stdinFailure(error);
+      });
+    } catch (error) {
+      throw stdinFailure(error);
+    }
   }
 
   function request(requestMethod, requestParams, requestTimeoutMs = timeoutMs) {
@@ -101,7 +110,14 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
       }, requestTimeoutMs);
       pending.set(id, { resolve, reject, timer });
     });
-    write(payload);
+    try {
+      write(payload);
+    } catch (error) {
+      const waiter = pending.get(id);
+      if (waiter) clearTimeout(waiter.timer);
+      pending.delete(id);
+      return Promise.reject(error);
+    }
     return promise;
   }
 
@@ -146,6 +162,7 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
   });
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", capStderr);
+  child.stdin.on("error", stdinFailure);
   child.on("exit", (code, signal) => {
     for (const [, waiter] of pending) {
       clearTimeout(waiter.timer);
@@ -199,9 +216,7 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
       path: absolutePath,
       server: { id: server.id, executable: server.executable },
       result,
-      diagnostics: notifications
-        .filter((message) => message.method === "textDocument/publishDiagnostics")
-        .map((message) => message.params),
+      diagnostics: notifications.filter((message) => message.method === "textDocument/publishDiagnostics").map((message) => message.params),
       stderr,
     };
   } finally {
@@ -217,10 +232,7 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
     }
     if (child.exitCode === null) child.kill("SIGTERM");
     await new Promise((resolve) => {
-      if (child.exitCode !== null) {
-        resolve();
-        return;
-      }
+      if (child.exitCode !== null) return resolve();
       const timer = setTimeout(() => {
         if (child.exitCode === null) child.kill("SIGKILL");
         resolve();
