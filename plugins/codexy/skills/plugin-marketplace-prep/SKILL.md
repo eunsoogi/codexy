@@ -56,6 +56,8 @@ validation proves the packaged paths match the repository layout.
      orchestrator when the invoking thread is the orchestrator,
    - thread/worktree orchestration wording includes handoff fields, evidence,
      stop conditions, and parent verification,
+   - child-owned PR review feedback is routed back to the owning child thread
+     and revalidated there before the parent thread merges,
    - `scripts/validate-plugin-config.py --check` passes when that validator is
      present in the revision being prepared.
 7. Validate automation and release surfaces when present:
@@ -89,6 +91,9 @@ Risks:
 - Do not claim LSP, MCP, role metadata, custom agent TOML, or thread/worktree
   readiness without parser evidence and the plugin config validator when it is
   available.
+- Do not let the parent thread silently patch child-owned plugin architecture
+  feedback. Route review feedback to the owning child thread and require that
+  thread's verification evidence before marketplace readiness.
 - Do not add root-level plugin manifests when the canonical layout is
   `plugins/<plugin>/.codex-plugin/plugin.json`.
 - Do not create package manager files solely to validate a static plugin unless

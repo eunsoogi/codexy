@@ -42,6 +42,8 @@ aligned before publishing or tagging.
    - `scripts/validate-plugin-config.py --check` when the validator exists,
    - LSP config, MCP config, role metadata, custom agent TOML, and
      thread/worktree wording checks for plugin architecture changes,
+   - child-owned PR review feedback routed to the owning child thread with
+     fresh verification before the parent thread merges,
    - skill metadata checks,
    - asset existence checks,
    - workflow syntax checks when GitHub Actions changed,
@@ -80,6 +82,9 @@ Not publishing because:
   archive, or marketplace bundle is produced.
 - Do not release plugin architecture changes while LSP, MCP, role metadata,
   custom agent TOML, or thread/worktree orchestration checks are missing.
+- Do not merge child-owned release or architecture feedback from the parent
+  thread alone. The owning child thread must address or explicitly reject the
+  feedback and return current verification.
 
 ## Evidence Rules
 

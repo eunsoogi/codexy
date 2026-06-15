@@ -26,6 +26,8 @@ complete.
    - browser, desktop, CLI, GitHub, plugin, or marketplace observation for
      user-visible or external behavior,
    - PR review/comment/thread state for review gates.
+   - child-thread handoff or readback evidence when feedback belongs to a
+     child-owned lane.
 4. Inspect the current authoritative source. Do not rely on memory, intent, or
    earlier output unless it is explicitly marked as stale supporting context.
 5. Classify each item as proved, contradicted, incomplete, too weak, or missing.
@@ -45,6 +47,10 @@ complete.
   `name` and `description`.
 - For GitHub PR work, inspect PR state, latest head SHA, comments, reviews,
   review threads, and Codex connector output on the current head.
+- For child-owned PRs, route actionable review feedback back to the owning
+  child thread. The parent thread may coordinate, but it must not merge until
+  the child thread returns current verification or a documented non-change
+  rationale.
 - Re-run verification after addressing review feedback.
 
 ## Evidence Rules
@@ -56,6 +62,8 @@ complete.
   Codex review completion.
 - If new commits land after review, request or wait for fresh review on the new
   head.
+- If review feedback is addressed by a child thread, evidence must include the
+  child thread result, the exact new head, and the rerun verification.
 - If a command was skipped, say so with the reason.
 - If evidence is local and untracked, summarize it or give the ignored evidence
   path; do not commit scratch artifacts unless requested.
@@ -92,3 +100,5 @@ Include:
   evidence.
 - Treating prose about architecture gates as proof that LSP, MCP, role
   metadata, custom agent TOML, thread, or worktree behavior has been validated.
+- Fixing child-owned review feedback in the parent thread and merging without
+  handing it back to the owning child thread for verification.
