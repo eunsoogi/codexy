@@ -368,11 +368,25 @@ pr_number=<explicit-pr-number>
 repo=eunsoogi/codexy
 pr_json_file=$(mktemp)
 pr_body_file=$(mktemp)
+expected_body_file=$(git rev-parse --git-path "codexy/merge-bodies/pr-${pr_number}.body")
 trap 'rm -f "$pr_json_file" "$pr_body_file"' EXIT
 
 head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid)
 gh pr view "$pr_number" --repo "$repo" --json body > "$pr_json_file"
 ruby -rjson -e 'File.binwrite(ARGV.fetch(1), JSON.parse(File.binread(ARGV.fetch(0))).fetch("body") || "")' "$pr_json_file" "$pr_body_file"
+
+printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
+printf '%s\n' "It MUST NOT contain secrets, credentials, private logs, throwaway notes, or local-only scratch paths unless intentional evidence references."
+less "$pr_body_file"
+printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "
+IFS= read -r pr_body_approval
+if [ "$pr_body_approval" != "APPROVE_PR_BODY_FOR_MAIN" ]; then
+  printf '%s\n' "PR body was not approved for permanent main history; aborting merge." >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$expected_body_file")"
+cp "$pr_body_file" "$expected_body_file"
 
 gh pr merge "$pr_number" \
   --repo "$repo" \
@@ -383,10 +397,10 @@ gh pr merge "$pr_number" \
   --body-file "$pr_body_file"
 ```
 
-Because PR bodies become permanent `main` commit bodies under this rule, inspect
-the PR body before merging. It MUST NOT contain secrets, credentials, private
-logs, throwaway notes, or local-only scratch paths unless the path is an
-intentional evidence reference that should remain in project history.
+Because PR bodies become permanent `main` commit bodies under this rule, the
+inspection and approval gate above must pass before `gh pr merge` runs. The
+expected body file is stored under `.git/` so it remains local and untracked but
+survives a separate post-merge verification shell.
 
 `gh pr merge` does not have a flag that means "Codex review passed." `--auto`
 only waits for requirements configured in GitHub, and `--admin` bypasses
@@ -398,9 +412,13 @@ Do not locally merge feature branches into `main` as a substitute for the PR wor
 After merge, update the main worktree:
 
 ```sh
+pr_number=<explicit-pr-number>
+expected_body_file=$(git rev-parse --git-path "codexy/merge-bodies/pr-${pr_number}.body")
+test -f "$expected_body_file"
+
 git pull --ff-only origin main
 git log -1 --pretty=%s
-ruby - "$pr_body_file" <<'RUBY'
+ruby - "$expected_body_file" <<'RUBY'
 expected = File.binread(ARGV.fetch(0))
 raw_commit = IO.popen(["git", "cat-file", "commit", "HEAD"], "rb", &:read)
 raw_message = raw_commit.split("\n\n", 2).fetch(1)
@@ -414,6 +432,7 @@ unless without_single_terminal_lf.call(actual) == without_single_terminal_lf.cal
   abort("squash merge commit body does not match the captured PR body")
 end
 RUBY
+rm -f "$expected_body_file"
 ```
 
 The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
