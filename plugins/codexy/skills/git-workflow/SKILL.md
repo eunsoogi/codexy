@@ -357,14 +357,45 @@ If any review or comment is ambiguous, stop and resolve it before merging. Do
 not merge first and plan to address review feedback afterward.
 
 When the PR satisfies the merge gates, merge through GitHub with squash merge
-and branch deletion. Prefer `--match-head-commit <headRefOid>` when available so
-a newly pushed unreviewed head cannot be merged by accident:
+and branch deletion. The squash merge commit body/description MUST be the PR
+body exactly as merged. Do not summarize, rewrite, append, truncate, or omit the
+PR body when building the merge commit message. Prefer `--match-head-commit
+<headRefOid>` when available so a newly pushed unreviewed head cannot be merged
+by accident:
 
 ```sh
 pr_number=<explicit-pr-number>
-gh pr view "$pr_number" --json number,headRefOid,title
-gh pr merge "$pr_number" --squash --delete-branch --match-head-commit <headRefOid> --subject "<conventional subject> (#${pr_number})"
+repo=eunsoogi/codexy
+pr_json_file=$(mktemp)
+pr_body_file=$(mktemp)
+commit_body_file=$(mktemp)
+trap 'rm -f "$pr_json_file" "$pr_body_file" "$commit_body_file"' EXIT
+
+head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid)
+gh pr view "$pr_number" --repo "$repo" --json body > "$pr_json_file"
+python3 - "$pr_json_file" "$pr_body_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    body = json.load(source)["body"] or ""
+with open(sys.argv[2], "w", encoding="utf-8", newline="") as target:
+    target.write(body)
+PY
+
+gh pr merge "$pr_number" \
+  --repo "$repo" \
+  --squash \
+  --delete-branch \
+  --match-head-commit "$head_oid" \
+  --subject "<conventional subject> (#${pr_number})" \
+  --body-file "$pr_body_file"
 ```
+
+Because PR bodies become permanent `main` commit bodies under this rule, inspect
+the PR body before merging. It MUST NOT contain secrets, credentials, private
+logs, throwaway notes, or local-only scratch paths unless the path is an
+intentional evidence reference that should remain in project history.
 
 `gh pr merge` does not have a flag that means "Codex review passed." `--auto`
 only waits for requirements configured in GitHub, and `--admin` bypasses
@@ -378,9 +409,14 @@ After merge, update the main worktree:
 ```sh
 git pull --ff-only origin main
 git log -1 --pretty=%s
+git log -1 --pretty=%B | tail -n +3 > "$commit_body_file"
+cmp -s "$pr_body_file" "$commit_body_file"
 ```
 
-The refreshed `main` commit subject must end with `(#<merged-pr-number>)`. If GitHub did not delete the remote topic branch, delete it only after confirming the PR was merged and no dependent work needs the branch:
+The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
+the refreshed `main` commit body must match the PR body captured from GitHub
+before merge. If GitHub did not delete the remote topic branch, delete it only
+after confirming the PR was merged and no dependent work needs the branch:
 
 ```sh
 git push origin --delete <branch>
@@ -413,6 +449,8 @@ After resolving, stage only the resolved files and run verification relevant to 
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
   approval from `plugins/codexy/agents/reviewer.toml`; arbitrary reviewer
   agents are not substitutes.
+- Squash merge commit bodies preserve the PR body exactly, and the post-merge
+  body comparison has passed.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
 - Expected Codex review completed on the latest PR head, and no unresolved actionable Codex feedback remains.
 - PR reviews, Codex connector reviews, PR comments, and review threads have been inspected and all actionable feedback is resolved or explicitly documented as non-actionable before merge.
