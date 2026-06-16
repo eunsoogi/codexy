@@ -260,6 +260,52 @@ fn codegraph_wrapper_uses_validated_runtime_dir_for_platform_runtime()
     Ok(())
 }
 
+#[test]
+fn codegraph_wrapper_under_non_codexy_rust_host_uses_runtime_dir_not_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    let installed_plugin = installed_plugin_under_rust_host()?;
+    let runtime_dir = temp_runtime_dir(
+        "codexy-mcp-codegraph-linux-x86_64.bin",
+        env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
+    )?;
+    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"));
+    command
+        .current_dir(&installed_plugin.path)
+        .env("PATH", "/usr/bin:/bin")
+        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut client = McpClient::spawn_command(command)?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    Ok(())
+}
+
+#[test]
+fn lsp_wrapper_under_non_codexy_rust_host_uses_runtime_dir_not_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    let installed_plugin = installed_plugin_under_rust_host()?;
+    let runtime_dir = temp_runtime_dir(
+        "codexy-mcp-lsp-linux-x86_64.bin",
+        env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
+    )?;
+    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-lsp"));
+    command
+        .current_dir(&installed_plugin.path)
+        .env("PATH", "/usr/bin:/bin")
+        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut client = McpClient::spawn_command(command)?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
+    Ok(())
+}
+
 impl Drop for McpClient {
     fn drop(&mut self) {
         drop(self.child.stdin.take());
@@ -270,6 +316,27 @@ impl Drop for McpClient {
 fn installed_plugin_copy() -> Result<InstalledPlugin, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let installed_plugin = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &installed_plugin,
+    )?;
+    Ok(InstalledPlugin {
+        _temp: temp,
+        path: installed_plugin,
+    })
+}
+
+fn installed_plugin_under_rust_host() -> Result<InstalledPlugin, Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let host = temp.path().join("host");
+    let installed_plugin = host.join("plugins/codexy");
+    std::fs::create_dir_all(host.join("src"))?;
+    std::fs::write(
+        host.join("Cargo.toml"),
+        "[package]\nname = \"host-project\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    )?;
     copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("plugins/codexy")
