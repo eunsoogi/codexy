@@ -97,7 +97,7 @@ if [ "$runtime_ref_is_pinned" = 1 ] && [ -x "$installed_runtime" ]; then
 fi
 if command -v cargo >/dev/null 2>&1; then
   if [ "$runtime_ref_is_pinned" = 1 ]; then
-    cargo install --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-codegraph
+    cargo install --locked --git "$runtime_git_repository" --rev "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-codegraph
   else
     cargo install --force --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-codegraph
   fi

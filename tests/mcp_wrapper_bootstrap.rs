@@ -22,6 +22,14 @@ fn wrappers_refresh_cached_runtime_for_moving_main_ref() -> Result<(), Box<dyn s
     Ok(())
 }
 
+#[test]
+fn wrappers_use_rev_and_cache_for_pinned_sha_ref() -> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_uses_rev_for_pinned_sha_ref(server)?;
+    }
+    Ok(())
+}
+
 fn assert_wrapper_bootstraps_runtime(server: &str) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
@@ -67,13 +75,13 @@ fn assert_wrapper_refreshes_moving_ref_runtime(
     let fixture = WrapperFixture::new(temp.path())?;
     let cache = temp.path().join("runtime-cache");
 
-    let first = run_wrapper(&fixture, server, &cache, "first")?;
+    let first = run_wrapper(&fixture, server, &cache, "main", "first")?;
     assert!(
         first.contains(&format!("fake-installed first codexy-mcp-{server} --help")),
         "first wrapper run should execute the first installed runtime, got {first:?}"
     );
 
-    let second = run_wrapper(&fixture, server, &cache, "second")?;
+    let second = run_wrapper(&fixture, server, &cache, "main", "second")?;
     assert!(
         second.contains(&format!("fake-installed second codexy-mcp-{server} --help")),
         "moving refs must refresh the cached runtime before exec, got {second:?}"
@@ -93,10 +101,49 @@ fn assert_wrapper_refreshes_moving_ref_runtime(
     Ok(())
 }
 
+fn assert_wrapper_uses_rev_for_pinned_sha_ref(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+    let cache = temp.path().join("runtime-cache");
+    let pinned_ref = "0123456789abcdef0123456789abcdef01234567";
+
+    let first = run_wrapper(&fixture, server, &cache, pinned_ref, "pinned")?;
+    assert!(
+        first.contains(&format!("fake-installed pinned codexy-mcp-{server} --help")),
+        "first pinned-ref run should execute the installed runtime, got {first:?}"
+    );
+
+    let second = run_wrapper(&fixture, server, &cache, pinned_ref, "stale")?;
+    assert!(
+        second.contains(&format!("fake-installed pinned codexy-mcp-{server} --help")),
+        "pinned ref should use cached runtime after first install, got {second:?}"
+    );
+    let cargo_args = std::fs::read_to_string(&fixture.cargo_log)?;
+    assert_eq!(
+        cargo_args
+            .matches(&format!("--bin codexy-mcp-{server}"))
+            .count(),
+        1,
+        "pinned ref should not reinstall after cache exists, got {cargo_args:?}"
+    );
+    assert!(
+        cargo_args.contains(&format!("--rev {pinned_ref}")),
+        "pinned ref install should pass the SHA with --rev, got {cargo_args:?}"
+    );
+    assert!(
+        !cargo_args.contains("--branch 0123456789abcdef0123456789abcdef01234567"),
+        "pinned ref install must not pass the SHA with --branch, got {cargo_args:?}"
+    );
+    Ok(())
+}
+
 fn run_wrapper(
     fixture: &WrapperFixture,
     server: &str,
     cache: &std::path::Path,
+    runtime_ref: &str,
     fake_version: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
@@ -106,6 +153,7 @@ fn run_wrapper(
             format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()),
         )
         .env("CODEXY_RUNTIME_CACHE_DIR", cache)
+        .env("CODEXY_RUNTIME_GIT_REF", runtime_ref)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .env("FAKE_RUNTIME_VERSION", fake_version)
         .arg("--help")
