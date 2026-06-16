@@ -112,6 +112,8 @@ test("re-export specifiers create dependency edges across graph tools", async ()
   await fs.writeFile(path.join(reexportFixtureRoot, "mod.js"), "export const leaf = 1;\n", "utf8");
   await fs.writeFile(path.join(reexportFixtureRoot, "star.js"), 'export * from "./mod.js";\n', "utf8");
   await fs.writeFile(path.join(reexportFixtureRoot, "named.js"), 'export { leaf as renamedLeaf } from "./mod.js";\n', "utf8");
+  await fs.writeFile(path.join(reexportFixtureRoot, "compact-import.js"), 'import{leaf}from"./mod.js";\nexport const compact = leaf;\n', "utf8");
+  await fs.writeFile(path.join(reexportFixtureRoot, "compact-reexport.js"), 'export{leaf as compactLeaf}from"./mod.js";\n', "utf8");
   await fs.writeFile(path.join(reexportFixtureRoot, "types.ts"), "export type Foo = { leaf: number };\n", "utf8");
   await fs.writeFile(path.join(reexportFixtureRoot, "typed.ts"), 'export type { Foo } from "./types";\n', "utf8");
 
@@ -119,21 +121,20 @@ test("re-export specifiers create dependency edges across graph tools", async ()
     await withCodegraphClient(async (client) => {
       const graph = await tool(client, "codegraph_index", { root: reexportFixtureRoot, limit: 10 });
 
-      assert.ok(graph.files.some((file) => file.path === "named.js" && file.exports.includes("renamedLeaf")));
-      assert.ok(graph.edges.some((edge) => edge.from === "star.js" && edge.to === "mod.js" && edge.resolved === true));
-      assert.ok(graph.edges.some((edge) => edge.from === "named.js" && edge.to === "mod.js" && edge.resolved === true));
+      assert.ok(["named.js:renamedLeaf", "compact-reexport.js:compactLeaf"].every((target) => { const [filePath, name] = target.split(":"); return graph.files.some((file) => file.path === filePath && file.exports.includes(name)); }));
+      assert.ok(["star.js", "named.js", "compact-import.js", "compact-reexport.js"].every((from) => graph.edges.some((edge) => edge.from === from && edge.to === "mod.js" && edge.resolved === true)));
       assert.ok(graph.files.some((file) => file.path === "typed.ts" && file.exports.includes("Foo")));
       assert.ok(graph.edges.some((edge) => edge.from === "typed.ts" && edge.to === "types.ts" && edge.resolved === true));
 
       const reverse = await tool(client, "codegraph_reverse_deps", { root: reexportFixtureRoot, path: "mod.js", limit: 5 });
-      assert.deepEqual(reverse.dependents.map((entry) => entry.path), ["named.js", "star.js"]);
+      assert.deepEqual(reverse.dependents.map((entry) => entry.path), ["compact-import.js", "compact-reexport.js", "named.js", "star.js"]);
       const typedReverse = await tool(client, "codegraph_reverse_deps", { root: reexportFixtureRoot, path: "types.ts", limit: 5 });
       assert.deepEqual(typedReverse.dependents, [{ path: "typed.ts", specifier: "./types" }]);
 
       const neighborhood = await tool(client, "codegraph_neighborhood", { root: reexportFixtureRoot, path: "named.js", depth: 1, limit: 5 });
       assert.ok(neighborhood.nodes.some((node) => node.path === "mod.js"));
-      const typedNeighborhood = await tool(client, "codegraph_neighborhood", { root: reexportFixtureRoot, path: "typed.ts", depth: 1, limit: 5 });
-      assert.ok(typedNeighborhood.nodes.some((node) => node.path === "types.ts"));
+      assert.ok((await tool(client, "codegraph_neighborhood", { root: reexportFixtureRoot, path: "compact-import.js", depth: 1, limit: 5 })).nodes.some((node) => node.path === "mod.js"));
+      assert.ok((await tool(client, "codegraph_neighborhood", { root: reexportFixtureRoot, path: "typed.ts", depth: 1, limit: 5 })).nodes.some((node) => node.path === "types.ts"));
     });
   } finally {
     await fs.rm(reexportFixtureRoot, { recursive: true, force: true });

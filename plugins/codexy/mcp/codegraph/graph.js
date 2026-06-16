@@ -133,11 +133,11 @@ function parseJavaScriptFile(root, file) {
   const imports = [];
   const exports = [];
   const importPatterns = [
-    /\bimport\s+(?:[^"'()]*?\s+from\s+)?["']([^"']+)["']/g, /\bimport\s*\(\s*["']([^"']+)["'](?:\s*,[^)]*)?\s*\)/g,
-    /\brequire\(\s*["']([^"']+)["']\s*\)/g, /\bexport\s+(?:type\s+)?\*\s*from\s*["']([^"']+)["']/g,
-    /\bexport\s+(?:type\s+)?\{[^}]+\}\s*from\s*["']([^"']+)["']/g,
+    /\bimport\s*(?:[^"'()]*?\s*from\s*)?["']([^"']+)["']/g, /\bimport\s*\(\s*["']([^"']+)["'](?:\s*,[^)]*)?\s*\)/g,
+    /\brequire\(\s*["']([^"']+)["']\s*\)/g, /\bexport\s*(?:type\s+)?\*\s*from\s*["']([^"']+)["']/g,
+    /\bexport\s*(?:type\s+)?\{[^}]+\}\s*from\s*["']([^"']+)["']/g,
   ];
-  const exportPatterns = [/\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g, /\bexport\s+(?:type\s+)?\{([^}]+)\}/g];
+  const exportPatterns = [/\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g, /\bexport\s*(?:type\s+)?\{([^}]+)\}/g];
 
   for (const pattern of importPatterns) {
     for (const match of parsedSource.matchAll(pattern)) {
