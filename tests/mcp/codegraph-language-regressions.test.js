@@ -223,6 +223,33 @@ test("Python absolute submodule imports resolve to existing submodule files", as
   }
 });
 
+test("Python parenthesized from-import lists resolve every target", async () => {
+  const pythonParenthesizedRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-parenthesized-"));
+  await fs.mkdir(path.join(pythonParenthesizedRoot, "pkg/nested"), { recursive: true });
+  await Promise.all([
+    fs.writeFile(path.join(pythonParenthesizedRoot, "entry.py"), "from . import (\n  first_py as first_alias,\n  second_py,\n)\nfrom pkg import (\n  submod as alias,\n  nested,\n)\n", "utf8"),
+    fs.writeFile(path.join(pythonParenthesizedRoot, "first_py.py"), "value = 1\n", "utf8"),
+    fs.writeFile(path.join(pythonParenthesizedRoot, "second_py.py"), "value = 2\n", "utf8"),
+    fs.writeFile(path.join(pythonParenthesizedRoot, "pkg/__init__.py"), "value = 3\n", "utf8"),
+    fs.writeFile(path.join(pythonParenthesizedRoot, "pkg/submod.py"), "value = 4\n", "utf8"),
+    fs.writeFile(path.join(pythonParenthesizedRoot, "pkg/nested/__init__.py"), "value = 5\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: pythonParenthesizedRoot, limit: 10 });
+      const entry = graph.files.find((file) => file.path === "entry.py");
+      assert.deepEqual([...entry.imports].sort(), ["./first_py", "./pkg/nested", "./pkg/submod", "./second_py"]);
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "first_py.py" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "second_py.py" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "pkg/submod.py" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "pkg/nested/__init__.py" && edge.resolved));
+    });
+  } finally {
+    await fs.rm(pythonParenthesizedRoot, { recursive: true, force: true });
+  }
+});
+
 test("advertised non-JS files create graph edges across index, reverse deps, and neighborhoods", async () => {
   const nonJsRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-non-js-"));
   await fs.mkdir(path.join(nonJsRoot, "local"), { recursive: true });
@@ -332,6 +359,29 @@ test("Rust crate imports resolve from nested crate roots", async () => {
   }
 });
 
+test("Rust grouped use imports expand to concrete module dependencies", async () => {
+  const rustGroupedUseRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-rust-grouped-use-"));
+  await fs.mkdir(path.join(rustGroupedUseRoot, "src/support"), { recursive: true });
+  await Promise.all([
+    fs.writeFile(path.join(rustGroupedUseRoot, "src/lib.rs"), "use crate::support::{thing, other};\n", "utf8"),
+    fs.writeFile(path.join(rustGroupedUseRoot, "src/support/thing.rs"), "pub fn thing() {}\n", "utf8"),
+    fs.writeFile(path.join(rustGroupedUseRoot, "src/support/other.rs"), "pub fn other() {}\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: rustGroupedUseRoot, limit: 10 });
+      assert.ok(graph.edges.some((edge) => edge.from === "src/lib.rs" && edge.to === "src/support/thing.rs" && edge.specifier === "./support/thing" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "src/lib.rs" && edge.to === "src/support/other.rs" && edge.specifier === "./support/other" && edge.resolved));
+
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: rustGroupedUseRoot, path: "src/support/other.rs", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "src/lib.rs", specifier: "./support/other" }]);
+    });
+  } finally {
+    await fs.rm(rustGroupedUseRoot, { recursive: true, force: true });
+  }
+});
+
 test("Go module imports resolve local packages while external imports stay unresolved", async () => {
   const goModuleRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-go-module-"));
   await Promise.all([
@@ -363,6 +413,30 @@ test("Go module imports resolve local packages while external imports stay unres
     });
   } finally {
     await fs.rm(goModuleRoot, { recursive: true, force: true });
+  }
+});
+
+test("Java static imports strip member names before resolving classes", async () => {
+  const javaStaticRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-java-static-import-"));
+  await Promise.all([
+    fs.mkdir(path.join(javaStaticRoot, "com/example/app"), { recursive: true }),
+    fs.mkdir(path.join(javaStaticRoot, "com/example/util/Helper"), { recursive: true }),
+    fs.mkdir(path.join(javaStaticRoot, "com/example/util"), { recursive: true }),
+  ]);
+  await Promise.all([
+    fs.writeFile(path.join(javaStaticRoot, "com/example/app/Main.java"), "package com.example.app;\nimport static com.example.util.Helper.answer;\nclass Main {}\n", "utf8"),
+    fs.writeFile(path.join(javaStaticRoot, "com/example/util/Helper.java"), "package com.example.util;\nclass Helper {}\n", "utf8"),
+    fs.writeFile(path.join(javaStaticRoot, "com/example/util/Helper/answer.java"), "package wrong.root;\nclass answer {}\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: javaStaticRoot, limit: 10 });
+      assert.ok(graph.edges.some((edge) => edge.from === "com/example/app/Main.java" && edge.to === "com/example/util/Helper.java" && edge.specifier === "../util/Helper" && edge.resolved));
+      assert.ok(!graph.edges.some((edge) => edge.from === "com/example/app/Main.java" && edge.to === "com/example/util/Helper/answer.java"));
+    });
+  } finally {
+    await fs.rm(javaStaticRoot, { recursive: true, force: true });
   }
 });
 

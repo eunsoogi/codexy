@@ -73,8 +73,7 @@ function parseJavaScriptFile(root, file) {
   const absolute = path.join(root, file);
   const source = fs.readFileSync(absolute, "utf8");
   const mask = codePositionMask(source);
-  const imports = [];
-  const exports = [];
+  const imports = [], exports = [];
   const importPatterns = [
     /\bimport\s*(?:[^"'()]*?\s*from\s*)?["']([^"']+)["']/g, /\bimport\s*\(\s*["']([^"']+)["'](?:\s*,[^)]*)?\s*\)/g,
     /\brequire\(\s*["']([^"']+)["']\s*\)/g, /\bexport\s*(?:type\s+)?\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?from\s*["']([^"']+)["']/g,
@@ -101,11 +100,11 @@ function parseJavaScriptFile(root, file) {
   return { imports: unique(imports), exports: unique(exports) };
 }
 const languageRules = {
-  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?(?:\s*,\s*[A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+([A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?(?:\s*,\s*[A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?)*)/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\s+as\s+[A-Za-z_]\w*)?(?:\s*,\s*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\s+as\s+[A-Za-z_]\w*)?)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
+  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+(\([\s\S]*?\)|[A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?(?:\s*,\s*[A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+(\([\s\S]*?\)|[A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?(?:\s*,\s*[A-Za-z_]\w*(?:\s+as\s+[A-Za-z_]\w*)?)*)/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\s+as\s+[A-Za-z_]\w*)?(?:\s*,\s*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\s+as\s+[A-Za-z_]\w*)?)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
   ".go": { imports: [/\bimport\s+(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /\bimport\s*\(([\s\S]*?)\)/g], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
-  ".rs": { imports: [/\bmod\s+([A-Za-z_]\w*)\s*;/g, /\buse\s+((?:crate|self|super)::[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)/g], exports: [/\bpub\s+(?:fn|struct|enum|trait|mod|const|static)\s+([A-Za-z_]\w*)/g] },
+  ".rs": { imports: [/\bmod\s+([A-Za-z_]\w*)\s*;/g, /\buse\s+((?:crate|self|super)::[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)(?:::\{([^}]+)\})?/g], exports: [/\bpub\s+(?:fn|struct|enum|trait|mod|const|static)\s+([A-Za-z_]\w*)/g] },
   ".rb": { imports: [/\brequire_relative\s+["']([^"']+)["']/g, /\brequire\s+["'](\.[^"']+)["']/g], exports: [/\b(?:class|module|def)\s+([A-Z]\w*|[a-z_]\w*[!?=]?)/g] },
-  ".java": { imports: [/\bimport\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*;/g], exports: [/\b(?:class|interface|enum|record)\s+([A-Za-z_]\w*)/g] },
+  ".java": { imports: [/\bimport\s+(static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*;/g], exports: [/\b(?:class|interface|enum|record)\s+([A-Za-z_]\w*)/g] },
   ".kt": { imports: [/\bimport\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)/g], exports: [/\b(?:class|interface|object|fun|val|var)\s+([A-Za-z_]\w*)/g] },
 };
 function rustCrateRoot(file) { const parts = file.split("/"), index = parts.lastIndexOf("src"); return index < 0 ? "." : parts.slice(0, index + 1).join("/"); }
@@ -155,8 +154,10 @@ function parseLanguageFile(root, file, indexedFiles) {
   const mask = languageMask(source, extension);
   const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).flatMap((match) => {
       if (extension === ".go" && match[0].includes("(")) { const offset = match.index + match[0].indexOf(match[1]); return Array.from(match[1].matchAll(/^\s*(?:(?:[A-Za-z_]\w*|\.)\s+)?["']([^"']+)["']/gm)).filter((entry) => mask[offset + entry.index]).map((entry) => normalizeLanguageImport(extension, entry[1], file, packageName)); }
-      if (extension === ".py" && match[2]) return match[2].split(",").map((target) => { const imported = target.trim().replace(/\s+as\s+[A-Za-z_]\w*$/, ""), base = match[1], bareRelative = /^\.+$/.test(base), submodule = !bareRelative && normalizeLanguageImport(extension, `${base}.${imported}`, file, packageName); return submodule && resolveImport(root, file, submodule, indexedFiles).resolved ? submodule : normalizeLanguageImport(extension, bareRelative ? `${base}${imported}` : base, file, packageName); });
+      if (extension === ".py" && match[2]) return match[2].replace(/^\s*\(|\)\s*$/g, "").split(",").filter((target) => target.trim()).map((target) => { const imported = target.trim().replace(/\s+as\s+[A-Za-z_]\w*$/, ""), base = match[1], bareRelative = /^\.+$/.test(base), submodule = imported && !bareRelative && normalizeLanguageImport(extension, `${base}.${imported}`, file, packageName); return submodule && resolveImport(root, file, submodule, indexedFiles).resolved ? submodule : normalizeLanguageImport(extension, bareRelative ? `${base}${imported}` : base, file, packageName); }).filter((specifier) => specifier !== "./");
       if (extension === ".py") return match[1].split(",").map((target) => normalizeLanguageImport(extension, target.trim().replace(/\s+as\s+[A-Za-z_]\w*$/, ""), file, packageName));
+      if (extension === ".rs" && match[2]) return match[2].split(",").filter((target) => target.trim()).map((target) => normalizeLanguageImport(extension, `${match[1]}::${target.trim().replace(/\s+as\s+[A-Za-z_]\w*$/, "")}`, file, packageName));
+      if (extension === ".java" && match[2]) return [normalizeLanguageImport(extension, match[1] ? match[2].replace(/\.[A-Za-z_]\w*$/, "") : match[2], file, packageName)];
       return [normalizeLanguageImport(extension, `${match[1]}${match[2] || ""}`, file, packageName)];
     })
   );
