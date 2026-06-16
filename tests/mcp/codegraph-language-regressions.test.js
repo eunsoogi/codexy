@@ -195,3 +195,53 @@ test("Java and Kotlin package imports resolve from the package source root", asy
     await fs.rm(packageRoot, { recursive: true, force: true });
   }
 });
+
+test("Java and Kotlin source-set imports resolve from detected source roots", async () => {
+  const sourceSetRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-source-set-root-"));
+  const sourceSets = [
+    ["src/main/java", "Main.java", "Helper.java", "class Main {}", "class Helper {}"],
+    ["src/test/java", "MainTest.java", "HelperTest.java", "class MainTest {}", "class HelperTest {}"],
+    ["src/main/kotlin", "Main.kt", "HelperKt.kt", "fun main() {}", "class HelperKt"],
+    ["src/test/kotlin", "MainTest.kt", "HelperTestKt.kt", "fun testMain() {}", "class HelperTestKt"],
+  ];
+
+  for (const [sourceRoot, mainFile, helperFile, mainExport, helperExport] of sourceSets) {
+    await Promise.all([
+      fs.mkdir(path.join(sourceSetRoot, sourceRoot, "com/example/app"), { recursive: true }),
+      fs.mkdir(path.join(sourceSetRoot, sourceRoot, "com/example/util"), { recursive: true }),
+      fs.mkdir(path.join(sourceSetRoot, "com/example/util"), { recursive: true }),
+    ]);
+    const isKotlin = mainFile.endsWith(".kt");
+    const packageLine = isKotlin ? "package com.example.app\n" : "package com.example.app;\n";
+    const helperPackageLine = isKotlin ? "package com.example.util\n" : "package com.example.util;\n";
+    const importLine = isKotlin ? `import com.example.util.${path.basename(helperFile, ".kt")}\n` : `import com.example.util.${path.basename(helperFile, ".java")};\n`;
+    await Promise.all([
+      fs.writeFile(path.join(sourceSetRoot, sourceRoot, "com/example/app", mainFile), `${packageLine}${importLine}${mainExport}\n`, "utf8"),
+      fs.writeFile(path.join(sourceSetRoot, sourceRoot, "com/example/util", helperFile), `${helperPackageLine}${helperExport}\n`, "utf8"),
+      fs.writeFile(path.join(sourceSetRoot, "com/example/util", helperFile), `${helperPackageLine}class WrongRoot {}\n`, "utf8"),
+    ]);
+  }
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: sourceSetRoot, limit: 50 });
+      const expectedEdges = sourceSets.map(([sourceRoot, mainFile, helperFile]) => [
+        `${sourceRoot}/com/example/app/${mainFile}`,
+        `${sourceRoot}/com/example/util/${helperFile}`,
+      ]);
+      assert.deepEqual(expectedEdges.filter(([from, to]) => !graph.edges.some((edge) => edge.from === from && edge.to === to && edge.resolved)), []);
+      assert.ok(!graph.edges.some((edge) => edge.to.startsWith("com/example/util/")));
+
+      assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: sourceSetRoot, path: "src/main/java/com/example/util/Helper.java", limit: 5 })).dependents, [
+        { path: "src/main/java/com/example/app/Main.java", specifier: "../util/Helper" },
+      ]);
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: sourceSetRoot, path: "src/main/kotlin/com/example/app/Main.kt", depth: 1, limit: 5 });
+      assert.deepEqual(neighborhood.nodes.map((node) => node.path), [
+        "src/main/kotlin/com/example/app/Main.kt",
+        "src/main/kotlin/com/example/util/HelperKt.kt",
+      ]);
+    });
+  } finally {
+    await fs.rm(sourceSetRoot, { recursive: true, force: true });
+  }
+});

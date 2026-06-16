@@ -110,7 +110,7 @@ const languageRules = {
   ".java": { imports: [/\bimport\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*;/g], exports: [/\b(?:class|interface|enum|record)\s+([A-Za-z_]\w*)/g] },
   ".kt": { imports: [/\bimport\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)/g], exports: [/\b(?:class|interface|object|fun|val|var)\s+([A-Za-z_]\w*)/g] },
 };
-function normalizeLanguageImport(extension, specifier, file) {
+function normalizeLanguageImport(extension, specifier, file, packageName) {
   if (extension === ".py") {
     if (specifier.startsWith(".")) {
       const dots = specifier.match(/^\.+/)[0].length;
@@ -128,7 +128,10 @@ function normalizeLanguageImport(extension, specifier, file) {
   }
   if (extension === ".go" && !specifier.startsWith(".")) return specifier;
   if (extension === ".java" || extension === ".kt") {
-    const relative = path.posix.relative(path.posix.dirname(file), specifier.replace(/\./g, "/"));
+    const packagePath = packageName?.replace(/\./g, "/"), fileDir = path.posix.dirname(file), importPath = specifier.replace(/\./g, "/");
+    const hasPackageRoot = packagePath && (fileDir === packagePath || fileDir.endsWith(`/${packagePath}`));
+    const target = hasPackageRoot ? path.posix.join(fileDir.slice(0, -packagePath.length).replace(/\/$/, ""), importPath) : importPath;
+    const relative = path.posix.relative(fileDir, target);
     return relative.startsWith(".") ? relative : `./${relative}`;
   }
   return specifier.startsWith(".") ? specifier : `./${specifier}`;
@@ -149,8 +152,7 @@ function parseLanguageFile(root, file) {
   const mask = languageMask(source, extension);
   const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).map((match) => {
       const specifier = `${match[1]}${match[2] || ""}`;
-      if (packageName && specifier.startsWith(`${packageName}.`)) return `./${specifier.slice(packageName.length + 1).replace(/\./g, "/")}`;
-      return normalizeLanguageImport(extension, specifier, file);
+      return normalizeLanguageImport(extension, specifier, file, packageName);
     })
   );
   const exports = rules.exports.flatMap((pattern) =>
