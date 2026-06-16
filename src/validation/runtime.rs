@@ -134,16 +134,23 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "dist/codexy-marketplace-plugin.tar.gz",
         "--check-runtime-artifacts",
         "gh release upload",
-        "Publish generated marketplace snapshot",
-        "MARKETPLACE_BRANCH: codexy-marketplace",
-        "dist/marketplace-root",
-        "cp .agents/plugins/marketplace.json \"$marketplace_root/.agents/plugins/marketplace.json\"",
-        "cp -R \"$PACKAGE_ROOT/plugins/codexy\" \"$marketplace_root/plugins/codexy\"",
-        "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
     ] {
         if !text.contains(required) {
             bail!(
                 "{} runtime package workflow must include {required:?}",
+                display_relative(&path)
+            );
+        }
+    }
+    for forbidden in [
+        "Publish generated marketplace snapshot",
+        "MARKETPLACE_BRANCH",
+        "dist/marketplace-root",
+        "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
+    ] {
+        if text.contains(forbidden) {
+            bail!(
+                "{} runtime package workflow must not require {forbidden:?}",
                 display_relative(&path)
             );
         }

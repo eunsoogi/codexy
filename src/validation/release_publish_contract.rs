@@ -9,10 +9,11 @@ use crate::validation::{json_array_strings, load_json, require_string};
 const CONTRACT_PATH: &str = ".agents/plugins/release-publish-contract.json";
 const CONTRACT_SCHEMA: &str = "codexy.internal.release-publish-contract.v1";
 const WORKFLOW_PATH: &str = ".github/workflows/plugin-runtime-binaries.yml";
-const MARKETPLACE_BRANCH: &str = "codexy-marketplace";
+const CURRENT_INSTALL_REF: &str = "main";
 const MARKETPLACE_PATH: &str = ".agents/plugins/marketplace.json";
 const PLUGIN_PATH: &str = "./plugins/codexy";
 const PACKAGE_ARCHIVE: &str = "dist/codexy-marketplace-plugin.tar.gz";
+const FUTURE_INSTALL_REF: &str = "version-tags";
 
 pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
     let repo_root = crate::paths::repo_root()?;
@@ -25,45 +26,45 @@ pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
         CONTRACT_SCHEMA,
     )?;
     require_string(contract.get("name"), "name", &contract_path)?;
-    check_snapshot_target(&contract, &contract_path)?;
+    check_current_marketplace_target(&contract, &contract_path)?;
     check_package_contract(&contract, &contract_path, platforms)?;
     check_source_marketplace_mode(&contract, &contract_path)?;
-    check_workflow_publishes_snapshot(&repo_root.join(WORKFLOW_PATH))
+    check_workflow_packages_release_artifacts(&repo_root.join(WORKFLOW_PATH))
 }
 
-fn check_snapshot_target(contract: &Value, path: &Path) -> Result<()> {
+fn check_current_marketplace_target(contract: &Value, path: &Path) -> Result<()> {
     let snapshot = contract
-        .get("marketplaceSnapshot")
+        .get("currentMarketplace")
         .and_then(Value::as_object)
         .with_context(|| {
             format!(
-                "{} marketplaceSnapshot must be an object",
+                "{} currentMarketplace must be an object",
                 display_relative(path)
             )
         })?;
     require_exact(
         snapshot.get("ref"),
-        "marketplaceSnapshot.ref",
+        "currentMarketplace.ref",
         path,
-        MARKETPLACE_BRANCH,
+        CURRENT_INSTALL_REF,
     )?;
     require_exact(
         snapshot.get("marketplacePath"),
-        "marketplaceSnapshot.marketplacePath",
+        "currentMarketplace.marketplacePath",
         path,
         MARKETPLACE_PATH,
     )?;
     require_exact(
         snapshot.get("pluginPath"),
-        "marketplaceSnapshot.pluginPath",
+        "currentMarketplace.pluginPath",
         path,
         PLUGIN_PATH,
     )?;
     require_exact(
         snapshot.get("installCommand"),
-        "marketplaceSnapshot.installCommand",
+        "currentMarketplace.installCommand",
         path,
-        "codex plugin marketplace add eunsoogi/codexy --ref codexy-marketplace",
+        "codex plugin marketplace add eunsoogi/codexy --ref main",
     )
 }
 
@@ -83,6 +84,12 @@ fn check_package_contract(contract: &Value, path: &Path, platforms: &[String]) -
         "package.archive",
         path,
         PACKAGE_ARCHIVE,
+    )?;
+    require_exact(
+        package.get("futureInstallRef"),
+        "package.futureInstallRef",
+        path,
+        FUTURE_INSTALL_REF,
     )?;
     let package_platforms = json_array_strings(package.get("platforms")).with_context(|| {
         format!(
@@ -125,21 +132,32 @@ fn check_source_marketplace_mode(contract: &Value, path: &Path) -> Result<()> {
     )
 }
 
-fn check_workflow_publishes_snapshot(path: &Path) -> Result<()> {
+fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("reading {}", display_relative(path)))?;
     for required in [
-        "Publish generated marketplace snapshot",
-        "MARKETPLACE_BRANCH: codexy-marketplace",
-        "dist/marketplace-root",
-        "cp .agents/plugins/marketplace.json \"$marketplace_root/.agents/plugins/marketplace.json\"",
-        "cp -R \"$PACKAGE_ROOT/plugins/codexy\" \"$marketplace_root/plugins/codexy\"",
-        "scripts/validate-plugin-config --plugin-root \"$marketplace_root/plugins/codexy\" --check-runtime-artifacts",
-        "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
+        "Assemble marketplace plugin package",
+        "dist/codexy-marketplace-plugin",
+        "dist/codexy-marketplace-plugin.tar.gz",
+        "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
+        "gh release upload",
     ] {
         if !text.contains(required) {
             bail!(
-                "{} must publish an installable Codex marketplace snapshot; missing {required:?}",
+                "{} must package Codexy release artifacts; missing {required:?}",
+                display_relative(path)
+            );
+        }
+    }
+    for forbidden in [
+        "Publish generated marketplace snapshot",
+        "MARKETPLACE_BRANCH",
+        "dist/marketplace-root",
+        "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
+    ] {
+        if text.contains(forbidden) {
+            bail!(
+                "{} must not require a generated marketplace branch for current dogfood installs; found {forbidden:?}",
                 display_relative(path)
             );
         }
