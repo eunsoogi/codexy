@@ -83,11 +83,24 @@ esac
 runtime_cache_key=$(printf '%s\n%s\n%s\ncodexy-mcp-codegraph\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" | cksum | awk '{print $1}')
 runtime_install_root="$runtime_cache_root/$runtime_cache_key"
 installed_runtime="$runtime_install_root/bin/codexy-mcp-codegraph"
-if [ -x "$installed_runtime" ]; then
+runtime_ref_is_pinned=0
+case "$runtime_git_ref" in
+  *[!0123456789abcdefABCDEF]*|"") ;;
+  *)
+    if [ "$(printf '%s' "$runtime_git_ref" | wc -c | tr -d ' ')" = 40 ]; then
+      runtime_ref_is_pinned=1
+    fi
+    ;;
+esac
+if [ "$runtime_ref_is_pinned" = 1 ] && [ -x "$installed_runtime" ]; then
   exec "$installed_runtime" "$@"
 fi
 if command -v cargo >/dev/null 2>&1; then
-  cargo install --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-codegraph
+  if [ "$runtime_ref_is_pinned" = 1 ]; then
+    cargo install --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-codegraph
+  else
+    cargo install --force --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-codegraph
+  fi
   if [ -x "$installed_runtime" ]; then
     exec "$installed_runtime" "$@"
   fi
