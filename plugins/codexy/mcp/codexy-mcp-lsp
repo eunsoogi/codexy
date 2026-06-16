@@ -123,21 +123,6 @@ esac
 if [ "$runtime_ref_is_pinned" = 1 ] && [ "$runtime_package_requested" != 1 ] && [ -x "$installed_runtime" ]; then
   exec "$installed_runtime" "$@"
 fi
-if [ "$cargo_available" = 1 ]; then
-  if [ "$runtime_ref_is_pinned" = 1 ]; then
-    cargo install --locked --git "$runtime_git_repository" --rev "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp
-  else
-    if ! cargo install --force --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp; then
-      if [ -x "$installed_runtime" ]; then
-        exec "$installed_runtime" "$@"
-      fi
-    fi
-  fi
-  if [ -x "$installed_runtime" ]; then
-    exec "$installed_runtime" "$@"
-  fi
-fi
-
 if [ "$runtime_package_requested" = 1 ]; then
   package_tmp_dir="$runtime_install_root/package.$$"
   package_archive="$runtime_install_root/codexy-marketplace-plugin.tar.gz"
@@ -209,6 +194,21 @@ if [ "$runtime_package_requested" = 1 ]; then
     fi
   fi
   rm -rf "$package_tmp_dir" "$package_archive" "$package_zip" "$package_json"
+fi
+
+if [ "$cargo_available" = 1 ]; then
+  if [ "$runtime_ref_is_pinned" = 1 ]; then
+    cargo install --locked --git "$runtime_git_repository" --rev "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp
+  else
+    if ! cargo install --force --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp; then
+      if [ -x "$installed_runtime" ]; then
+        exec "$installed_runtime" "$@"
+      fi
+    fi
+  fi
+  if [ -x "$installed_runtime" ]; then
+    exec "$installed_runtime" "$@"
+  fi
 fi
 
 if [ "$cargo_available" != 1 ] && [ -x "$installed_runtime" ]; then
