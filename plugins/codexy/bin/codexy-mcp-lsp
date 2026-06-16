@@ -5,6 +5,7 @@ self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
 repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
 export CODEXY_PLUGIN_ROOT="$plugin_root"
+bundled_platforms="darwin-arm64"
 
 if [ -n "$repo_root" ] && [ -f "$repo_root/Cargo.toml" ] && [ -d "$repo_root/src" ]; then
   exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"
@@ -29,10 +30,6 @@ if [ -z "$platform" ]; then
 fi
 
 runtime_name="codexy-mcp-lsp-$platform.bin"
-if [ -x "$self_dir/$runtime_name" ]; then
-  exec "$self_dir/$runtime_name" "$@"
-fi
-
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   case "$CODEXY_RUNTIME_DIR" in
     /*) ;;
@@ -44,7 +41,25 @@ if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   if [ -x "$CODEXY_RUNTIME_DIR/$runtime_name" ]; then
     exec "$CODEXY_RUNTIME_DIR/$runtime_name" "$@"
   fi
+  echo "codexy-mcp-lsp runtime not found for $platform in CODEXY_RUNTIME_DIR: $CODEXY_RUNTIME_DIR/$runtime_name" >&2
+  exit 127
 fi
 
-echo "codexy-mcp-lsp runtime not found for $platform; install $runtime_name in the plugin bin directory or set CODEXY_RUNTIME_DIR to an absolute runtime directory" >&2
+case " $bundled_platforms " in
+  *" $platform "*)
+    if [ -x "$self_dir/$runtime_name" ]; then
+      exec "$self_dir/$runtime_name" "$@"
+    fi
+    ;;
+  *)
+    echo "codexy-mcp-lsp bundled runtime supports: $bundled_platforms; set CODEXY_RUNTIME_DIR to an absolute directory containing codexy-mcp-lsp-$platform.bin" >&2
+    exit 127
+    ;;
+esac
+
+if [ -x "$self_dir/$runtime_name" ]; then
+  exec "$self_dir/$runtime_name" "$@"
+fi
+
+echo "codexy-mcp-lsp bundled runtime missing for declared platform $platform: $self_dir/$runtime_name" >&2
 exit 127
