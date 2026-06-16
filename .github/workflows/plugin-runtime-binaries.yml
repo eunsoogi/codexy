@@ -9,7 +9,7 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "src/**"
-      - "plugins/codexy/bin/**"
+      - "plugins/codexy/mcp/**"
       - ".agents/plugins/release-publish-contract.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
@@ -80,9 +80,10 @@ jobs:
           rm -rf "$package_root"
           mkdir -p "${package_root}/plugins"
           rsync -a --exclude '*.bin' plugins/codexy/ "$plugin_root/"
-          cp dist/generated-runtimes/*.bin "${plugin_root}/bin/"
-          chmod 755 "${plugin_root}"/bin/*.bin
-          file "${plugin_root}"/bin/*.bin
+          mkdir -p "${plugin_root}/runtime"
+          cp dist/generated-runtimes/*.bin "${plugin_root}/runtime/"
+          chmod 755 "${plugin_root}"/runtime/*.bin
+          file "${plugin_root}"/runtime/*.bin
           scripts/validate-plugin-config --plugin-root "$plugin_root" --check-runtime-artifacts
           tar -C "$package_root" -czf "dist/codexy-marketplace-plugin.tar.gz" plugins/codexy
 

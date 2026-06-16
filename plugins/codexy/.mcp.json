@@ -1,13 +1,13 @@
 {
   "lsp": {
-    "command": "./bin/codexy-mcp-lsp",
+    "command": "./mcp/codexy-mcp-lsp",
     "args": [
       "--stdio"
     ],
     "cwd": "."
   },
   "codegraph": {
-    "command": "./bin/codexy-mcp-codegraph",
+    "command": "./mcp/codexy-mcp-codegraph",
     "args": [
       "--stdio"
     ],
