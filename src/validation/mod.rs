@@ -3,6 +3,7 @@ mod manifest;
 mod mcp;
 mod mcp_runtime;
 mod prompt_yaml;
+mod release_publish_contract;
 mod roles;
 mod roles_yaml;
 mod runtime;

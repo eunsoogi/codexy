@@ -10,6 +10,7 @@ on:
       - "Cargo.toml"
       - "src/**"
       - "plugins/codexy/bin/**"
+      - ".agents/plugins/release-publish-contract.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
 permissions:
@@ -98,3 +99,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" "dist/codexy-marketplace-plugin.tar.gz" --clobber
+
+      - name: Publish generated marketplace snapshot
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MARKETPLACE_BRANCH: codexy-marketplace
+          PACKAGE_ROOT: dist/codexy-marketplace-plugin
+        run: |
+          marketplace_root="dist/marketplace-root"
+          rm -rf "$marketplace_root"
+          mkdir -p "$marketplace_root/.agents/plugins" "$marketplace_root/plugins"
+          cp .agents/plugins/marketplace.json "$marketplace_root/.agents/plugins/marketplace.json"
+          cp -R "$PACKAGE_ROOT/plugins/codexy" "$marketplace_root/plugins/codexy"
+          scripts/validate-plugin-config --plugin-root "$marketplace_root/plugins/codexy" --check-runtime-artifacts
+          git -C "$marketplace_root" init
+          git -C "$marketplace_root" config user.name "github-actions[bot]"
+          git -C "$marketplace_root" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$marketplace_root" add .agents/plugins/marketplace.json plugins/codexy
+          git -C "$marketplace_root" commit -m "chore(plugin): publish codexy marketplace package"
+          git -C "$marketplace_root" branch -M "$MARKETPLACE_BRANCH"
+          git -C "$marketplace_root" remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C "$marketplace_root" push --force origin "$MARKETPLACE_BRANCH"

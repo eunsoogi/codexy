@@ -24,7 +24,8 @@ pub(super) fn check_source_contract(plugin_root: &Path, manifest: &Value) -> Res
             );
         }
     }
-    check_runtime_build_matrix(&platforms)
+    check_runtime_build_matrix(&platforms)?;
+    crate::validation::release_publish_contract::check_snapshot_contract(&platforms)
 }
 
 pub(super) fn check_artifacts(plugin_root: &Path) -> Vec<String> {
@@ -112,6 +113,12 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "dist/codexy-marketplace-plugin.tar.gz",
         "--check-runtime-artifacts",
         "gh release upload",
+        "Publish generated marketplace snapshot",
+        "MARKETPLACE_BRANCH: codexy-marketplace",
+        "dist/marketplace-root",
+        "cp .agents/plugins/marketplace.json \"$marketplace_root/.agents/plugins/marketplace.json\"",
+        "cp -R \"$PACKAGE_ROOT/plugins/codexy\" \"$marketplace_root/plugins/codexy\"",
+        "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
     ] {
         if !text.contains(required) {
             bail!(

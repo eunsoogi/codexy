@@ -18,6 +18,10 @@ fn marketplace_path() -> Result<PathBuf> {
     Ok(repo_root()?.join(".agents/plugins/marketplace.json"))
 }
 
+fn release_publish_contract_path() -> Result<PathBuf> {
+    Ok(repo_root()?.join(".agents/plugins/release-publish-contract.json"))
+}
+
 fn package_manifests() -> Result<Vec<PathBuf>> {
     let path = repo_root()?.join("package.json");
     Ok(if path.exists() {
@@ -111,8 +115,10 @@ fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
 pub fn check_versions() -> Result<String> {
     let manifest_path = plugin_manifest()?;
     let market_path = marketplace_path()?;
+    let publish_path = release_publish_contract_path()?;
     let manifest = load_json(&manifest_path)?;
     let mut marketplace = load_json(&market_path)?;
+    let publish = load_json(&publish_path)?;
     let manifest_version = string_field(&manifest, "version", "plugin manifest")?;
     require_semver(manifest_version)?;
     let marketplace_version = string_field(
@@ -147,6 +153,41 @@ pub fn check_versions() -> Result<String> {
             marketplace_platforms
         );
     }
+    let publish_version = string_field(&publish, "version", &display_relative(&publish_path))?;
+    require_semver(publish_version)?;
+    if publish_version != manifest_version {
+        bail!(
+            "version mismatch: {}={publish_version}, {}={manifest_version}",
+            display_relative(&publish_path),
+            display_relative(&manifest_path)
+        );
+    }
+    let package_platforms = publish
+        .get("package")
+        .and_then(Value::as_object)
+        .map(|package| {
+            string_array_field(
+                &Value::Object(package.clone()),
+                "platforms",
+                "publish package",
+            )
+        })
+        .transpose()?
+        .with_context(|| {
+            format!(
+                "{} package must be an object",
+                display_relative(&publish_path)
+            )
+        })?;
+    if package_platforms != manifest_platforms {
+        bail!(
+            "supportedPlatforms mismatch: {}={:?}, {} package.platforms={:?}",
+            display_relative(&manifest_path),
+            manifest_platforms,
+            display_relative(&publish_path),
+            package_platforms
+        );
+    }
     for path in package_manifests()? {
         let package = load_json(&path)?;
         let package_version = string_field(&package, "version", &display_relative(&path))?;
@@ -172,12 +213,16 @@ pub fn set_version(version: &str) -> Result<String> {
     require_semver(version)?;
     let manifest_path = plugin_manifest()?;
     let market_path = marketplace_path()?;
+    let publish_path = release_publish_contract_path()?;
     let mut manifest = load_json(&manifest_path)?;
     let mut marketplace = load_json(&market_path)?;
+    let mut publish = load_json(&publish_path)?;
     manifest["version"] = Value::String(version.to_owned());
     marketplace_plugin_mut(&mut marketplace)?["version"] = Value::String(version.to_owned());
+    publish["version"] = Value::String(version.to_owned());
     write_json(&manifest_path, &manifest)?;
     write_json(&market_path, &marketplace)?;
+    write_json(&publish_path, &publish)?;
     for path in package_manifests()? {
         let mut package = load_json(&path)?;
         package["version"] = Value::String(version.to_owned());
