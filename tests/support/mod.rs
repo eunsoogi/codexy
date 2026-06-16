@@ -121,27 +121,6 @@ pub(super) fn run_wrapper_with_package(
     Ok(String::from_utf8(output.stdout)?)
 }
 
-pub(super) fn run_wrapper_with_repository(
-    fixture: &WrapperFixture,
-    server: &str,
-    cache: &std::path::Path,
-    runtime_repository: &str,
-    runtime_ref: &str,
-    fake_version: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let output = wrapper_command(fixture, server, cache, runtime_ref, fake_version, false)
-        .env("CODEXY_RUNTIME_GIT_REPOSITORY", runtime_repository)
-        .arg("--help")
-        .output()?;
-    assert!(
-        output.status.success(),
-        "wrapper should run the bootstrapped runtime\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(String::from_utf8(output.stdout)?)
-}
-
 pub(super) fn run_wrapper_with_optional_failure(
     fixture: &WrapperFixture,
     server: &str,
