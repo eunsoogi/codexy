@@ -62,6 +62,37 @@ case " $bundled_platforms " in
     ;;
 esac
 
+runtime_git_repository=${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}
+runtime_git_ref=${CODEXY_RUNTIME_GIT_REF:-main}
+if [ -n "${CODEXY_RUNTIME_CACHE_DIR:-}" ]; then
+  runtime_cache_root=$CODEXY_RUNTIME_CACHE_DIR
+else
+  if [ -z "${XDG_CACHE_HOME:-}" ] && [ -z "${HOME:-}" ]; then
+    echo "codexy-mcp-lsp cannot bootstrap runtime without HOME, XDG_CACHE_HOME, or CODEXY_RUNTIME_CACHE_DIR" >&2
+    exit 127
+  fi
+  runtime_cache_root=${XDG_CACHE_HOME:-$HOME/.cache}/codexy/runtime
+fi
+case "$runtime_cache_root" in
+  /*) ;;
+  *)
+    echo "codexy-mcp-lsp runtime cache dir must be absolute: $runtime_cache_root" >&2
+    exit 127
+    ;;
+esac
+runtime_cache_key=$(printf '%s\n%s\n%s\ncodexy-mcp-lsp\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" | cksum | awk '{print $1}')
+runtime_install_root="$runtime_cache_root/$runtime_cache_key"
+installed_runtime="$runtime_install_root/bin/codexy-mcp-lsp"
+if [ -x "$installed_runtime" ]; then
+  exec "$installed_runtime" "$@"
+fi
+if command -v cargo >/dev/null 2>&1; then
+  cargo install --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp
+  if [ -x "$installed_runtime" ]; then
+    exec "$installed_runtime" "$@"
+  fi
+fi
+
 if [ -x "$bundled_runtime" ]; then
   exec "$bundled_runtime" "$@"
 fi
