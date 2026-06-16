@@ -111,10 +111,10 @@ test("Python relative import lists create graph edges for every target", async (
   const pythonImportListRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-import-list-"));
   await fs.mkdir(path.join(pythonImportListRoot, "pkg/child"), { recursive: true });
   await Promise.all([
-    fs.writeFile(path.join(pythonImportListRoot, "entry.py"), "from . import first_py, second_py\n", "utf8"),
+    fs.writeFile(path.join(pythonImportListRoot, "entry.py"), "from . import first_py as first_alias, second_py\n", "utf8"),
     fs.writeFile(path.join(pythonImportListRoot, "first_py.py"), "value = 1\n", "utf8"),
     fs.writeFile(path.join(pythonImportListRoot, "second_py.py"), "value = 2\n", "utf8"),
-    fs.writeFile(path.join(pythonImportListRoot, "pkg/child/entry.py"), "from .. import parent_first, parent_second\n", "utf8"),
+    fs.writeFile(path.join(pythonImportListRoot, "pkg/child/entry.py"), "from .. import parent_first as pf, parent_second\n", "utf8"),
     fs.writeFile(path.join(pythonImportListRoot, "pkg/parent_first.py"), "value = 1\n", "utf8"),
     fs.writeFile(path.join(pythonImportListRoot, "pkg/parent_second.py"), "value = 2\n", "utf8"),
   ]);
@@ -145,7 +145,7 @@ test("Python absolute import lists create graph edges for every target", async (
   const pythonAbsoluteImportListRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-absolute-import-list-"));
   await fs.mkdir(path.join(pythonAbsoluteImportListRoot, "localpkg"), { recursive: true });
   await Promise.all([
-    fs.writeFile(path.join(pythonAbsoluteImportListRoot, "entry.py"), "import localpkg.first, localpkg.second\n", "utf8"),
+    fs.writeFile(path.join(pythonAbsoluteImportListRoot, "entry.py"), "import localpkg.first as first, localpkg.second\n", "utf8"),
     fs.writeFile(path.join(pythonAbsoluteImportListRoot, "localpkg/first.py"), "value = 1\n", "utf8"),
     fs.writeFile(path.join(pythonAbsoluteImportListRoot, "localpkg/second.py"), "value = 2\n", "utf8"),
   ]);
