@@ -30,6 +30,10 @@ if [ -z "$runtime_package_path" ] \
   && [ "$runtime_git_ref_was_set" = 0 ]; then
   runtime_artifacts_api_url="https://api.github.com/repos/eunsoogi/codexy/actions/artifacts?name=codexy-marketplace-plugin&per_page=100"
 fi
+runtime_package_requested=0
+if [ -n "$runtime_package_path" ] || [ -n "$runtime_package_url" ] || [ -n "$runtime_artifacts_api_url" ]; then
+  runtime_package_requested=1
+fi
 
 platform=${CODEXY_RUNTIME_PLATFORM:-}
 if [ -z "$platform" ]; then
@@ -115,10 +119,7 @@ case "$runtime_git_ref" in
     fi
     ;;
 esac
-if [ "$runtime_ref_is_pinned" = 1 ] && [ -x "$installed_runtime" ]; then
-  exec "$installed_runtime" "$@"
-fi
-if [ "$cargo_available" != 1 ] && [ -x "$installed_runtime" ]; then
+if [ "$runtime_ref_is_pinned" = 1 ] && [ "$runtime_package_requested" != 1 ] && [ -x "$installed_runtime" ]; then
   exec "$installed_runtime" "$@"
 fi
 if [ "$cargo_available" = 1 ]; then
@@ -136,7 +137,7 @@ if [ "$cargo_available" = 1 ]; then
   fi
 fi
 
-if [ -n "$runtime_package_path" ] || [ -n "$runtime_package_url" ] || [ -n "$runtime_artifacts_api_url" ]; then
+if [ "$runtime_package_requested" = 1 ]; then
   package_tmp_dir="$runtime_install_root/package.$$"
   package_archive="$runtime_install_root/codexy-marketplace-plugin.tar.gz"
   package_zip="$runtime_install_root/codexy-marketplace-plugin.zip"
@@ -179,7 +180,9 @@ if [ -n "$runtime_package_path" ] || [ -n "$runtime_package_url" ] || [ -n "$run
           | sed 's/},{/}\
 {/g' \
           | sed -n '/"head_branch"[[:space:]]*:[[:space:]]*"main"/{
-              /"expired"[[:space:]]*:[[:space:]]*true/!s/.*"archive_download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
+              /"head_repository_id"[[:space:]]*:[[:space:]]*1269350143/{
+                /"expired"[[:space:]]*:[[:space:]]*true/!s/.*"archive_download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
+              }
             }' \
           | head -n 1)
       fi
@@ -209,6 +212,10 @@ if [ -n "$runtime_package_path" ] || [ -n "$runtime_package_url" ] || [ -n "$run
     fi
   fi
   rm -rf "$package_tmp_dir" "$package_archive" "$package_zip" "$package_json"
+fi
+
+if [ "$cargo_available" != 1 ] && [ -x "$installed_runtime" ]; then
+  exec "$installed_runtime" "$@"
 fi
 
 if [ -x "$bundled_runtime" ]; then

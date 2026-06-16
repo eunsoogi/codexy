@@ -72,7 +72,7 @@ pub(super) fn create_artifact_api_response(
     std::fs::write(
         &artifact_api,
         format!(
-            "{{\"artifacts\":[{{\"name\":\"codexy-marketplace-plugin\",\"expired\":false,\"archive_download_url\":\"file://{}\",\"workflow_run\":{{\"head_branch\":\"codexy/pr-artifact\"}}}},{{\"name\":\"codexy-marketplace-plugin\",\"expired\":false,\"archive_download_url\":\"file://{}\",\"workflow_run\":{{\"head_branch\":\"main\"}}}}]}}\n",
+            "{{\"artifacts\":[{{\"name\":\"codexy-marketplace-plugin\",\"expired\":false,\"archive_download_url\":\"file://{}\",\"workflow_run\":{{\"head_branch\":\"main\",\"head_repository_id\":999999,\"repository_id\":1269350143}}}},{{\"name\":\"codexy-marketplace-plugin\",\"expired\":false,\"archive_download_url\":\"file://{}\",\"workflow_run\":{{\"head_branch\":\"main\",\"head_repository_id\":1269350143,\"repository_id\":1269350143}}}}]}}\n",
             pr_artifact_zip.display(),
             main_artifact_zip.display()
         ),
