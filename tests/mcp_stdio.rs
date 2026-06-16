@@ -217,16 +217,82 @@ fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
 }
 
 #[test]
+fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn std::error::Error>>
+{
+    let root = tempfile::tempdir()?;
+    let outside = tempfile::tempdir()?;
+    let outside_dep = outside.path().join("dep.js");
+    std::fs::write(&outside_dep, "export const outside = 1;\n")?;
+    let canonical_outside = outside_dep.canonicalize()?;
+    let mirrored_dep = root.path().join(canonical_outside.strip_prefix("/")?);
+    let mirrored_dir = mirrored_dep.parent().ok_or("mirrored parent")?;
+    std::fs::create_dir_all(mirrored_dir)?;
+    std::fs::write(
+        &mirrored_dep,
+        "import { leaf } from \"./leaf.js\";\nexport const mirrored = leaf;\n",
+    )?;
+    std::fs::write(mirrored_dir.join("leaf.js"), "export const leaf = 1;\n")?;
+    std::fs::write(
+        mirrored_dir.join("entry.js"),
+        "import { mirrored } from \"./dep.js\";\nexport const entry = mirrored;\n",
+    )?;
+
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
+    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    let reverse_deps = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"codegraph_reverse_deps","arguments":{"root":root.path(),"path":outside_dep,"limit":10}}
+    }))?;
+    let reverse_payload: Value = serde_json::from_str(
+        reverse_deps["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("reverse deps text")?,
+    )?;
+    assert!(
+        reverse_payload["dependents"]
+            .as_array()
+            .ok_or("reverse dependents must be array")?
+            .is_empty(),
+        "outside absolute path must not alias mirrored in-root reverse deps"
+    );
+
+    let neighborhood = client.send(&json!({
+        "jsonrpc":"2.0","id":3,"method":"tools/call",
+        "params":{"name":"codegraph_neighborhood","arguments":{"root":root.path(),"path":outside_dep,"depth":1,"limit":10}}
+    }))?;
+    let neighborhood_payload: Value = serde_json::from_str(
+        neighborhood["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("neighborhood text")?,
+    )?;
+    assert!(
+        neighborhood_payload["edges"]
+            .as_array()
+            .ok_or("neighborhood edges must be array")?
+            .is_empty(),
+        "outside absolute path must not alias mirrored in-root neighborhood edges"
+    );
+    let nodes = neighborhood_payload["nodes"]
+        .as_array()
+        .ok_or("neighborhood nodes must be array")?;
+    assert!(
+        !nodes.iter().any(|node| {
+            node["path"]
+                .as_str()
+                .is_some_and(|path| path.ends_with("leaf.js"))
+        }),
+        "outside absolute path must not traverse mirrored in-root imports"
+    );
+    Ok(())
+}
+
+#[test]
 fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
     let source = root.path().join("sample.js");
     std::fs::write(&source, "const value = 1;\nvalue;\n")?;
-    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(std::path::Path::parent)
-        .and_then(std::path::Path::parent)
-        .ok_or("repo root")?;
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let fake_lsp = repo_root.join("tests/mcp/fixtures/lsp/fake-lsp-server.js");
 
     let mut client = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
@@ -289,11 +355,7 @@ fn lsp_stdio_accepts_integer_positions_encoded_as_json_floats()
     let source = root.path().join("sample.js");
     let capture = root.path().join("capture.json");
     std::fs::write(&source, "const value = 1;\nvalue;\n")?;
-    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(std::path::Path::parent)
-        .and_then(std::path::Path::parent)
-        .ok_or("repo root")?;
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let fake_lsp = repo_root.join("tests/mcp/fixtures/lsp/fake-lsp-server.js");
 
     let mut client = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))

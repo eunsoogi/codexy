@@ -42,7 +42,11 @@ pub(super) fn normalize_posix(path: &str) -> String {
         match part {
             "" | "." => {}
             ".." => {
-                parts.pop();
+                if parts.last().is_some_and(|previous| *previous != "..") {
+                    parts.pop();
+                } else {
+                    parts.push(part);
+                }
             }
             _ => parts.push(part),
         }

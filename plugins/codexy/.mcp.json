@@ -6,7 +6,7 @@
       "--locked",
       "--quiet",
       "--manifest-path",
-      "./rust/Cargo.toml",
+      "../../Cargo.toml",
       "--bin",
       "codexy-mcp-lsp",
       "--"
@@ -20,7 +20,7 @@
       "--locked",
       "--quiet",
       "--manifest-path",
-      "./rust/Cargo.toml",
+      "../../Cargo.toml",
       "--bin",
       "codexy-mcp-codegraph",
       "--"

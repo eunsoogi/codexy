@@ -28,8 +28,8 @@ fn validator_cli_rejects_mixed_type_string_arrays() -> Result<(), Box<dyn std::e
     let plugin_root = temp.path().join("codexy");
     copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .ok_or("plugin root")?,
+            .join("plugins/codexy")
+            .as_path(),
         &plugin_root,
     )?;
     let mcp_path = plugin_root.join(".mcp.json");
@@ -65,8 +65,8 @@ fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
     let plugin_root = temp.path().join("codexy");
     copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .ok_or("plugin root")?,
+            .join("plugins/codexy")
+            .as_path(),
         &plugin_root,
     )?;
     std::fs::write(temp.path().join("outside.js"), "console.log('outside');\n")?;
@@ -103,8 +103,8 @@ fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::e
     let plugin_root = temp.path().join("codexy");
     copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .ok_or("plugin root")?,
+            .join("plugins/codexy")
+            .as_path(),
         &plugin_root,
     )?;
     let planner_path = plugin_root.join("agents/planner.toml");

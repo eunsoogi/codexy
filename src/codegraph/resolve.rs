@@ -14,10 +14,11 @@ pub(super) fn graph_path(root: &Path, input: &str) -> String {
     let path = Path::new(input);
     let relative = if path.is_absolute() {
         let absolute = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-        absolute
-            .strip_prefix(root)
-            .unwrap_or(&absolute)
-            .to_path_buf()
+        if let Ok(relative) = absolute.strip_prefix(root) {
+            relative.to_path_buf()
+        } else {
+            return format!("/{}", normalize_posix(&to_posix(&absolute)));
+        }
     } else {
         path.to_path_buf()
     };

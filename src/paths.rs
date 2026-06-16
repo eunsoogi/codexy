@@ -1,11 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 
+#[must_use]
 pub fn plugin_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy")
 }
 
 /// Returns the repository root that contains the packaged plugin.
@@ -15,11 +14,7 @@ pub fn plugin_root() -> PathBuf {
 /// Returns an error if the compile-time plugin root cannot be walked back to
 /// the repository root.
 pub fn repo_root() -> Result<PathBuf> {
-    plugin_root()
-        .parent()
-        .and_then(Path::parent)
-        .map(Path::to_path_buf)
-        .context("resolving repository root from plugin root")
+    Ok(Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf())
 }
 
 #[must_use]
