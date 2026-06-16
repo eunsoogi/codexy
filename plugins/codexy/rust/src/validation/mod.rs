@@ -104,21 +104,23 @@ fn manifest_path(plugin_root: &Path) -> std::path::PathBuf {
 }
 
 fn json_array_strings(value: Option<&serde_json::Value>) -> Option<Vec<String>> {
-    value.and_then(serde_json::Value::as_array).map(|items| {
-        items
-            .iter()
-            .filter_map(serde_json::Value::as_str)
-            .map(ToOwned::to_owned)
-            .collect()
-    })
+    value
+        .and_then(serde_json::Value::as_array)
+        .and_then(|items| {
+            items
+                .iter()
+                .map(serde_json::Value::as_str)
+                .collect::<Option<Vec<_>>>()
+                .map(|strings| strings.into_iter().map(ToOwned::to_owned).collect())
+        })
 }
 
 fn toml_array_strings(value: Option<&toml::Value>) -> Option<Vec<String>> {
-    value.and_then(toml::Value::as_array).map(|items| {
+    value.and_then(toml::Value::as_array).and_then(|items| {
         items
             .iter()
-            .filter_map(toml::Value::as_str)
-            .map(ToOwned::to_owned)
-            .collect()
+            .map(toml::Value::as_str)
+            .collect::<Option<Vec<_>>>()
+            .map(|strings| strings.into_iter().map(ToOwned::to_owned).collect())
     })
 }

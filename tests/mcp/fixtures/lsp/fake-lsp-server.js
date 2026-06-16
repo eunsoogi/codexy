@@ -106,6 +106,12 @@ function handle(message) {
       fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify(captureData, null, 2));
     }
     captureUri("requestUri", message.params?.textDocument?.uri);
+    if (message.params?.position) {
+      captureData = { ...captureData, position: message.params.position };
+      if (process.env.CODEXY_FAKE_LSP_CAPTURE) {
+        fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify(captureData, null, 2));
+      }
+    }
     if (message.method === "textDocument/diagnostic" && process.env.CODEXY_FAKE_LSP_PULL_DIAGNOSTICS !== "1") {
       send({ jsonrpc: "2.0", id: message.id, error: { code: -32601, message: `Method not found: ${message.method}` } });
       return;

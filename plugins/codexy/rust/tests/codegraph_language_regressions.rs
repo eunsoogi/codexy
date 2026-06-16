@@ -1,6 +1,6 @@
 use std::fs;
 
-use codexy_runtime::codegraph::build_graph;
+use codexy_runtime::codegraph::{build_graph, neighborhood};
 
 #[test]
 fn codegraph_dynamic_imports_inside_template_expressions_create_edges()
@@ -86,6 +86,29 @@ fn codegraph_named_reexport_aliases_preserve_exported_names()
 
     assert_eq!(exports_for("named.js"), vec!["renamedLeaf"]);
     assert_eq!(exports_for("compact-reexport.js"), vec!["compactLeaf"]);
+
+    Ok(())
+}
+
+#[test]
+fn codegraph_neighborhood_reports_truncated_when_node_limit_is_reached()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path();
+    fs::write(
+        root.join("entry.js"),
+        "import { a } from \"./a.js\";\nimport { b } from \"./b.js\";\nexport const value = a + b;\n",
+    )?;
+    fs::write(root.join("a.js"), "export const a = 1;\n")?;
+    fs::write(root.join("b.js"), "export const b = 2;\n")?;
+
+    let result = neighborhood(root, "entry.js", Some(1), Some(1));
+
+    assert_eq!(result.nodes.len(), 1);
+    assert!(
+        result.truncated,
+        "neighborhood should report truncation when queued reachable nodes exceed limit"
+    );
 
     Ok(())
 }

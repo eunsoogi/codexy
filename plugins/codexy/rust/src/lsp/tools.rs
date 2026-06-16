@@ -144,8 +144,8 @@ fn operation_result(args: &Value, method: LspMethod) -> Result<Value> {
         file_path,
         workspace_root: root.map(ToOwned::to_owned),
         method,
-        line: args.get("line").and_then(Value::as_u64).unwrap_or(0),
-        character: args.get("character").and_then(Value::as_u64).unwrap_or(0),
+        line: numeric_position(args.get("line"), "line")?.unwrap_or(0),
+        character: numeric_position(args.get("character"), "character")?.unwrap_or(0),
         include_declaration: args
             .get("includeDeclaration")
             .and_then(Value::as_bool)
@@ -179,6 +179,22 @@ fn string_arg<'a>(args: &'a Value, name: &str) -> Result<&'a str> {
         .and_then(Value::as_str)
         .filter(|item| !item.is_empty())
         .with_context(|| format!("{name} is required"))
+}
+
+fn numeric_position(value: Option<&Value>, name: &str) -> Result<Option<u64>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if let Some(number) = value.as_u64() {
+        return Ok(Some(number));
+    }
+    let Some(number) = value.as_f64() else {
+        bail!("{name} must be a finite non-negative integer");
+    };
+    if !number.is_finite() || number < 0.0 || number.fract() != 0.0 {
+        bail!("{name} must be a finite non-negative integer");
+    }
+    Ok(Some(format!("{number:.0}").parse()?))
 }
 
 fn timeout_ms(args: &Value) -> Result<u64> {

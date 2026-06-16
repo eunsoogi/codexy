@@ -157,8 +157,13 @@ pub fn neighborhood(
     let mut queue = std::collections::VecDeque::from([(start.clone(), 0usize)]);
     let mut nodes = Vec::new();
     let mut edges = Vec::new();
+    let mut truncated = false;
     while let Some((current, current_depth)) = queue.pop_front() {
-        if nodes.len() >= bounded_limit || !seen.insert(current.clone()) {
+        if nodes.len() >= bounded_limit {
+            truncated = true;
+            continue;
+        }
+        if !seen.insert(current.clone()) {
             continue;
         }
         nodes.push(GraphNode {
@@ -186,8 +191,8 @@ pub fn neighborhood(
         .into_iter()
         .filter(|edge| returned.contains(&edge.from) && returned.contains(&edge.to))
         .collect::<Vec<_>>();
-    let truncated = queue.iter().any(|(path, _)| !seen.contains(path))
-        || neighborhood_edges.len() > bounded_limit;
+    truncated = truncated || queue.iter().any(|(path, _)| !seen.contains(path));
+    truncated = truncated || neighborhood_edges.len() > bounded_limit;
     Neighborhood {
         root: root.to_path_buf(),
         path: start,

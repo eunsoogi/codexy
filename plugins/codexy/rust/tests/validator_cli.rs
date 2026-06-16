@@ -23,6 +23,60 @@ fn validator_cli_checks_all_contract_surfaces() -> Result<(), Box<dyn std::error
 }
 
 #[test]
+fn validator_cli_rejects_mixed_type_string_arrays() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .ok_or("plugin root")?,
+        &plugin_root,
+    )?;
+    let mcp_path = plugin_root.join(".mcp.json");
+    let mut mcp_config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
+    mcp_config["lsp"]["args"] = serde_json::json!(["run", 7, "--quiet"]);
+    std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-mcp",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject mixed-type args arrays"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("args must be an array of strings"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn copy_dir(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(target)?;
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        if source_path.is_dir() {
+            if entry.file_name() == "target" {
+                continue;
+            }
+            copy_dir(&source_path, &target_path)?;
+        } else {
+            std::fs::copy(source_path, target_path)?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .arg("--check")

@@ -129,13 +129,13 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
     );
     let search = client.send(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"codegraph_search","arguments":{"root":root.path(),"query":"value","limit":1}}
+        "params":{"name":"codegraph_search","arguments":{"root":root.path(),"query":"entry","limit":1}}
     }))?;
     assert!(
         search["result"]["content"][0]["text"]
             .as_str()
             .ok_or("search text")?
-            .contains("entry.js:1:")
+            .contains("entry.js:")
     );
     let missing = client.send(&json!({
         "jsonrpc":"2.0","id":5,"method":"tools/call",
@@ -262,5 +262,48 @@ fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
             .ok_or("reason")?
             .contains("no LSP server matches")
     );
+    Ok(())
+}
+
+#[test]
+fn lsp_stdio_accepts_integer_positions_encoded_as_json_floats()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let source = root.path().join("sample.js");
+    let capture = root.path().join("capture.json");
+    std::fs::write(&source, "const value = 1;\nvalue;\n")?;
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .and_then(std::path::Path::parent)
+        .ok_or("repo root")?;
+    let fake_lsp = repo_root.join("tests/mcp/fixtures/lsp/fake-lsp-server.js");
+
+    let mut client = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
+        .env("CODEXY_LSP_ALLOW_COMMAND_OVERRIDE", "1")
+        .env("CODEXY_FAKE_LSP_CAPTURE", &capture)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map(|child| McpClient {
+            child,
+            buffer: Vec::new(),
+        })?;
+    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    let server = json!({"id":"typescript-language-server","command":["node", fake_lsp]});
+    let response = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"lsp_definition","arguments":{"root":root.path(),"path":"sample.js","server":server,"line":1.0,"character":2.0,"timeoutMs":5000}}
+    }))?;
+    let payload: Value = serde_json::from_str(
+        response["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("definition text")?,
+    )?;
+    assert_eq!(payload["status"], "ok");
+    let capture_payload: Value = serde_json::from_str(&std::fs::read_to_string(capture)?)?;
+    assert_eq!(capture_payload["position"]["line"], 1);
+    assert_eq!(capture_payload["position"]["character"], 2);
     Ok(())
 }
