@@ -1,3 +1,5 @@
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
 #[test]
@@ -98,6 +100,64 @@ fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
 }
 
 #[test]
+fn validator_cli_accepts_installed_plugin_mcp_entrypoints() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+
+    let mcp_path = plugin_root.join(".mcp.json");
+    let mcp_config: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
+    for server_name in ["lsp", "codegraph"] {
+        let command = mcp_config[server_name]["command"]
+            .as_str()
+            .ok_or("MCP command must be a string")?;
+        assert!(
+            command.starts_with("./"),
+            "{server_name} command must be plugin-relative for installed packages"
+        );
+        assert!(
+            plugin_root.join(command).is_file(),
+            "{server_name} command must exist inside the installed plugin"
+        );
+        #[cfg(unix)]
+        assert!(
+            plugin_root.join(command).metadata()?.permissions().mode() & 0o111 != 0,
+            "{server_name} command must be executable inside the installed plugin"
+        );
+        assert!(
+            !mcp_config[server_name]["args"]
+                .as_array()
+                .ok_or("MCP args must be an array")?
+                .iter()
+                .any(|arg| arg.as_str().is_some_and(|item| item.contains("../"))),
+            "{server_name} args must not escape the installed plugin"
+        );
+    }
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-mcp",
+        ])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept installed plugin-local MCP entrypoints\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
@@ -127,6 +187,76 @@ fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::e
     assert!(
         String::from_utf8_lossy(&output.stderr)
             .contains("inputs must be a list of non-empty strings"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let prompt_path = plugin_root.join("agents/openai.yaml");
+    let mut prompt = std::fs::read_to_string(&prompt_path)?;
+    prompt = prompt.replace("  display_name:", "\tdisplay_name:");
+    std::fs::write(&prompt_path, prompt)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject tab-indented prompt YAML"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("must not contain tab indentation"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_mixed_space_tab_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let prompt_path = plugin_root.join("agents/openai.yaml");
+    let mut prompt = std::fs::read_to_string(&prompt_path)?;
+    prompt = prompt.replace("  display_name:", " \tdisplay_name:");
+    std::fs::write(&prompt_path, prompt)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject mixed space-tab prompt YAML indentation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("must not contain tab indentation"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

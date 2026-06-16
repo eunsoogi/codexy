@@ -177,39 +177,35 @@ fn check_plugin_relative_entrypoint(
     name: &str,
     command: &[String],
 ) -> Result<()> {
-    let Some(entrypoint) = command.iter().find(|item| {
-        item.starts_with("./")
-            && Path::new(item)
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("rs") || ext.eq_ignore_ascii_case("js"))
-    }) else {
-        return Ok(());
-    };
-    let entrypoint_path = Path::new(entrypoint);
-    let resolved = plugin_root.join(entrypoint_path);
-    if !resolved.exists() {
-        bail!(
-            "{} {name}.command entrypoint does not exist: {entrypoint}",
-            display_relative(path)
-        );
-    }
     let canonical_root = plugin_root.canonicalize().with_context(|| {
         format!(
             "{} plugin root cannot be canonicalized",
             display_relative(plugin_root)
         )
     })?;
-    let canonical_resolved = resolved.canonicalize().with_context(|| {
-        format!(
-            "{} {name}.command entrypoint cannot be canonicalized: {entrypoint}",
-            display_relative(path)
-        )
-    })?;
-    if !canonical_resolved.starts_with(&canonical_root) {
-        bail!(
-            "{} {name}.command entrypoint must stay inside the plugin root",
-            display_relative(path)
-        );
+    for entrypoint in command
+        .iter()
+        .filter(|item| item.starts_with("./") || item.starts_with("../"))
+    {
+        let resolved = plugin_root.join(Path::new(entrypoint));
+        if !resolved.exists() {
+            bail!(
+                "{} {name}.command entrypoint does not exist: {entrypoint}",
+                display_relative(path)
+            );
+        }
+        let canonical_resolved = resolved.canonicalize().with_context(|| {
+            format!(
+                "{} {name}.command entrypoint cannot be canonicalized: {entrypoint}",
+                display_relative(path)
+            )
+        })?;
+        if !canonical_resolved.starts_with(&canonical_root) {
+            bail!(
+                "{} {name}.command entrypoint must stay inside the plugin root",
+                display_relative(path)
+            );
+        }
     }
     Ok(())
 }

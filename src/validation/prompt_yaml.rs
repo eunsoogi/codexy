@@ -21,13 +21,17 @@ pub(super) fn parse(text: &str, path: &Path) -> Result<BTreeMap<String, Scalar>>
         if raw_line.trim().is_empty() || raw_line.trim_start().starts_with('#') {
             continue;
         }
-        let indent = raw_line.len() - raw_line.trim_start_matches(' ').len();
-        if raw_line[..indent].contains('\t') {
+        if raw_line
+            .chars()
+            .take_while(|character| character.is_whitespace())
+            .any(|character| character == '\t')
+        {
             bail!(
                 "{} must not contain tab indentation",
                 display_relative(path)
             );
         }
+        let indent = raw_line.len() - raw_line.trim_start_matches(' ').len();
         let stripped = raw_line.trim();
         if !stripped.contains(':') {
             bail!(

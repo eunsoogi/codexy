@@ -1,29 +1,15 @@
 {
   "lsp": {
-    "command": "cargo",
+    "command": "./bin/codexy-mcp-lsp",
     "args": [
-      "run",
-      "--locked",
-      "--quiet",
-      "--manifest-path",
-      "../../Cargo.toml",
-      "--bin",
-      "codexy-mcp-lsp",
-      "--"
+      "--stdio"
     ],
     "cwd": "."
   },
   "codegraph": {
-    "command": "cargo",
+    "command": "./bin/codexy-mcp-codegraph",
     "args": [
-      "run",
-      "--locked",
-      "--quiet",
-      "--manifest-path",
-      "../../Cargo.toml",
-      "--bin",
-      "codexy-mcp-codegraph",
-      "--"
+      "--stdio"
     ],
     "cwd": "."
   },

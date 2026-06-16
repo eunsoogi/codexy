@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
+repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
+
+if [ -n "$repo_root" ] && [ -f "$repo_root/Cargo.toml" ] && [ -d "$repo_root/src" ]; then
+  exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"
+fi
+
+if [ -x "$self_dir/codexy-mcp-lsp.bin" ]; then
+  exec "$self_dir/codexy-mcp-lsp.bin" "$@"
+fi
+
+runtime=$(command -v codexy-mcp-lsp 2>/dev/null || true)
+if [ -n "$runtime" ] && [ "$runtime" != "$0" ] && [ "$runtime" != "$self_dir/codexy-mcp-lsp" ]; then
+  exec "$runtime" "$@"
+fi
+
+echo "codexy-mcp-lsp runtime not found; install the bundled binary or run from the Codexy repository checkout" >&2
+exit 127
