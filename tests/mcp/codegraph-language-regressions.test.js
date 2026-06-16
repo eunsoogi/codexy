@@ -141,6 +141,34 @@ test("Python relative import lists create graph edges for every target", async (
   }
 });
 
+test("Python absolute import lists create graph edges for every target", async () => {
+  const pythonAbsoluteImportListRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-absolute-import-list-"));
+  await fs.mkdir(path.join(pythonAbsoluteImportListRoot, "localpkg"), { recursive: true });
+  await Promise.all([
+    fs.writeFile(path.join(pythonAbsoluteImportListRoot, "entry.py"), "import localpkg.first, localpkg.second\n", "utf8"),
+    fs.writeFile(path.join(pythonAbsoluteImportListRoot, "localpkg/first.py"), "value = 1\n", "utf8"),
+    fs.writeFile(path.join(pythonAbsoluteImportListRoot, "localpkg/second.py"), "value = 2\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: pythonAbsoluteImportListRoot, limit: 10 });
+      const entry = graph.files.find((file) => file.path === "entry.py");
+      assert.deepEqual(entry.imports, ["./localpkg/first", "./localpkg/second"]);
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "localpkg/second.py" && edge.resolved));
+
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: pythonAbsoluteImportListRoot, path: "localpkg/second.py", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "entry.py", specifier: "./localpkg/second" }]);
+
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: pythonAbsoluteImportListRoot, path: "entry.py", depth: 1, limit: 5 });
+      assert.ok(neighborhood.nodes.some((node) => node.path === "localpkg/second.py"));
+      assert.ok(neighborhood.edges.some((edge) => edge.from === "entry.py" && edge.to === "localpkg/second.py"));
+    });
+  } finally {
+    await fs.rm(pythonAbsoluteImportListRoot, { recursive: true, force: true });
+  }
+});
+
 test("Python relative submodule imports resolve to existing submodule files", async () => {
   const pythonSubmoduleRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-submodule-"));
   await fs.mkdir(path.join(pythonSubmoduleRoot, "pkg"), { recursive: true });
@@ -286,7 +314,8 @@ test("Go module imports resolve local packages while external imports stay unres
   ]);
   await Promise.all([
     fs.writeFile(path.join(goModuleRoot, "go.mod"), "module example.com/acme/app\n\ngo 1.22\n", "utf8"),
-    fs.writeFile(path.join(goModuleRoot, "cmd/app/main.go"), 'package main\n\nimport (\n  "example.com/acme/app/pkg/foo"\n  "github.com/pkg/errors"\n)\n\nfunc main() {\n  _ = foo.Value\n  _ = errors.New\n}\n', "utf8"),
+    fs.writeFile(path.join(goModuleRoot, "cmd/app/main.go"), 'package main\n\nimport (\n  "example.com/acme/app/pkg/foo"\n  "github.com/pkg/errors"\n)\n\nvar fixturePaths = []string{\n  "./helper"\n}\n\nfunc main() {\n  _ = foo.Value\n  _ = errors.New\n}\n', "utf8"),
+    fs.writeFile(path.join(goModuleRoot, "cmd/app/helper.go"), "package main\n\nconst Helper = 1\n", "utf8"),
     fs.writeFile(path.join(goModuleRoot, "pkg/foo/foo.go"), "package foo\n\nconst Value = 1\n", "utf8"),
   ]);
 
@@ -295,12 +324,15 @@ test("Go module imports resolve local packages while external imports stay unres
       const graph = await tool(client, "codegraph_index", { root: goModuleRoot, limit: 10 });
       assert.ok(graph.edges.some((edge) => edge.from === "cmd/app/main.go" && edge.to === "pkg/foo/foo.go" && edge.specifier === "../../pkg/foo" && edge.resolved));
       assert.ok(graph.edges.some((edge) => edge.from === "cmd/app/main.go" && edge.to === "github.com/pkg/errors" && edge.specifier === "github.com/pkg/errors" && !edge.resolved));
+      assert.ok(!graph.edges.some((edge) => edge.from === "cmd/app/main.go" && edge.to === "cmd/app/helper.go"));
 
       const reverse = await tool(client, "codegraph_reverse_deps", { root: goModuleRoot, path: "pkg/foo/foo.go", limit: 5 });
       assert.deepEqual(reverse.dependents, [{ path: "cmd/app/main.go", specifier: "../../pkg/foo" }]);
+      assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: goModuleRoot, path: "cmd/app/helper.go", limit: 5 })).dependents, []);
 
       const neighborhood = await tool(client, "codegraph_neighborhood", { root: goModuleRoot, path: "cmd/app/main.go", depth: 1, limit: 5 });
       assert.ok(neighborhood.nodes.some((node) => node.path === "pkg/foo/foo.go"));
+      assert.ok(!neighborhood.nodes.some((node) => node.path === "cmd/app/helper.go"));
       assert.deepEqual(neighborhood.edges.map((edge) => [edge.from, edge.to]), [["cmd/app/main.go", "pkg/foo/foo.go"]]);
     });
   } finally {

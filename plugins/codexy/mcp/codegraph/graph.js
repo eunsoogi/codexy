@@ -101,8 +101,8 @@ function parseJavaScriptFile(root, file) {
   return { imports: unique(imports), exports: unique(exports) };
 }
 const languageRules = {
-  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
-  ".go": { imports: [/\bimport\s+(?:\(\s*)?(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /^\s*(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/gm], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
+  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\s*,\s*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
+  ".go": { imports: [/\bimport\s+(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /\bimport\s*\(([\s\S]*?)\)/g], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
   ".rs": { imports: [/\bmod\s+([A-Za-z_]\w*)\s*;/g, /\buse\s+((?:crate|self|super)::[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)/g], exports: [/\bpub\s+(?:fn|struct|enum|trait|mod|const|static)\s+([A-Za-z_]\w*)/g] },
   ".rb": { imports: [/\brequire_relative\s+["']([^"']+)["']/g, /\brequire\s+["'](\.[^"']+)["']/g], exports: [/\b(?:class|module|def)\s+([A-Z]\w*|[a-z_]\w*[!?=]?)/g] },
   ".java": { imports: [/\bimport\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*;/g], exports: [/\b(?:class|interface|enum|record)\s+([A-Za-z_]\w*)/g] },
@@ -154,10 +154,9 @@ function parseLanguageFile(root, file, indexedFiles) {
   const packageName = extension === ".go" ? readGoModulePath(root) : [".java", ".kt"].includes(extension) && source.match(/^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/m)?.[1];
   const mask = languageMask(source, extension);
   const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).flatMap((match) => {
-      if (extension === ".py" && match[2]) return match[2].split(",").map((target) => {
-        const imported = target.trim(), base = match[1], bareRelative = /^\.+$/.test(base), submodule = base.startsWith(".") && !bareRelative && normalizeLanguageImport(extension, `${base}.${imported}`, file, packageName);
-        return submodule && resolveImport(root, file, submodule, indexedFiles).resolved ? submodule : normalizeLanguageImport(extension, bareRelative ? `${base}${imported}` : base, file, packageName);
-      });
+      if (extension === ".go" && match[0].includes("(")) { const offset = match.index + match[0].indexOf(match[1]); return Array.from(match[1].matchAll(/^\s*(?:(?:[A-Za-z_]\w*|\.)\s+)?["']([^"']+)["']/gm)).filter((entry) => mask[offset + entry.index]).map((entry) => normalizeLanguageImport(extension, entry[1], file, packageName)); }
+      if (extension === ".py" && match[2]) return match[2].split(",").map((target) => { const imported = target.trim(), base = match[1], bareRelative = /^\.+$/.test(base), submodule = base.startsWith(".") && !bareRelative && normalizeLanguageImport(extension, `${base}.${imported}`, file, packageName); return submodule && resolveImport(root, file, submodule, indexedFiles).resolved ? submodule : normalizeLanguageImport(extension, bareRelative ? `${base}${imported}` : base, file, packageName); });
+      if (extension === ".py") return match[1].split(",").map((target) => normalizeLanguageImport(extension, target.trim(), file, packageName));
       return [normalizeLanguageImport(extension, `${match[1]}${match[2] || ""}`, file, packageName)];
     })
   );
