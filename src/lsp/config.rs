@@ -74,7 +74,7 @@ pub(super) fn matching_servers(file_path: &str, root: Option<&str>) -> Result<Ve
 }
 
 pub(super) fn select_server(args: &Value, file_path: &str, root: Option<&str>) -> Result<Server> {
-    if let Some(override_value) = args.get("server") {
+    if let Some(override_value) = args.get("server").filter(|value| !value.is_null()) {
         return server_from_override(override_value, root);
     }
     let matches = matching_servers(file_path, root)?;

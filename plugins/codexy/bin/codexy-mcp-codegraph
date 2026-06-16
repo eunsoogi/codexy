@@ -14,10 +14,5 @@ if [ -x "$self_dir/codexy-mcp-codegraph.bin" ]; then
   exec "$self_dir/codexy-mcp-codegraph.bin" "$@"
 fi
 
-runtime=$(command -v codexy-mcp-codegraph 2>/dev/null || true)
-if [ -n "$runtime" ] && [ "$runtime" != "$0" ] && [ "$runtime" != "$self_dir/codexy-mcp-codegraph" ]; then
-  exec "$runtime" "$@"
-fi
-
 echo "codexy-mcp-codegraph runtime not found; install the bundled binary or run from the Codexy repository checkout" >&2
 exit 127

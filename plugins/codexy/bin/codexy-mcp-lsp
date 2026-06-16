@@ -14,10 +14,5 @@ if [ -x "$self_dir/codexy-mcp-lsp.bin" ]; then
   exec "$self_dir/codexy-mcp-lsp.bin" "$@"
 fi
 
-runtime=$(command -v codexy-mcp-lsp 2>/dev/null || true)
-if [ -n "$runtime" ] && [ "$runtime" != "$0" ] && [ "$runtime" != "$self_dir/codexy-mcp-lsp" ]; then
-  exec "$runtime" "$@"
-fi
-
 echo "codexy-mcp-lsp runtime not found; install the bundled binary or run from the Codexy repository checkout" >&2
 exit 127

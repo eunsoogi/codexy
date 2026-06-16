@@ -1,8 +1,13 @@
 use std::io::{Read as _, Write as _};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 use serde_json::{Value, json};
+
+struct InstalledPlugin {
+    _temp: tempfile::TempDir,
+    path: PathBuf,
+}
 
 struct McpClient {
     child: Child,
@@ -89,15 +94,8 @@ impl McpClient {
 
 #[test]
 fn lsp_wrapper_uses_installed_plugin_root_for_config() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let installed_plugin = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy")
-            .as_path(),
-        &installed_plugin,
-    )?;
-    let lsp_config_path = installed_plugin.join(".codex/lsp-client.json");
+    let installed_plugin = installed_plugin_copy()?;
+    let lsp_config_path = installed_plugin.path.join(".codex/lsp-client.json");
     let mut lsp_config: Value = serde_json::from_str(&std::fs::read_to_string(&lsp_config_path)?)?;
     lsp_config["lsp"]["codexy-installed-root"] = json!({
         "extensions": [".installed"],
@@ -105,21 +103,15 @@ fn lsp_wrapper_uses_installed_plugin_root_for_config() -> Result<(), Box<dyn std
         "command": [env!("CARGO_BIN_EXE_codexy-fake-lsp")]
     });
     std::fs::write(&lsp_config_path, serde_json::to_vec_pretty(&lsp_config)?)?;
+    std::fs::write(
+        installed_plugin.path.join("sample.installed"),
+        "value = 1\n",
+    )?;
 
-    let mut command = Command::new(installed_plugin.join("bin/codexy-mcp-lsp"));
+    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-lsp"));
     command
-        .current_dir(&installed_plugin)
-        .env(
-            "PATH",
-            format!(
-                "{}:{}",
-                std::path::Path::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
-                    .parent()
-                    .ok_or("runtime bin dir")?
-                    .display(),
-                std::env::var("PATH")?
-            ),
-        )
+        .current_dir(&installed_plugin.path)
+        .env("PATH", "/usr/bin:/bin")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -142,6 +134,47 @@ fn lsp_wrapper_uses_installed_plugin_root_for_config() -> Result<(), Box<dyn std
             .any(|server| server["id"] == "codexy-installed-root"),
         "wrapper-launched runtime must read LSP config from copied installed plugin, got {payload:#}"
     );
+    let status = client.send(&json!({
+        "jsonrpc":"2.0","id":3,"method":"tools/call",
+        "params":{"name":"lsp_status","arguments":{"root":&installed_plugin.path,"path":"sample.installed","server":null}}
+    }))?;
+    let status_payload: Value = serde_json::from_str(
+        status["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or_else(|| format!("lsp_status text missing in {status:#}"))?,
+    )?;
+    assert_eq!(status_payload["server"]["id"], "codexy-installed-root");
+
+    let diagnostics = client.send(&json!({
+        "jsonrpc":"2.0","id":4,"method":"tools/call",
+        "params":{"name":"lsp_diagnostics","arguments":{"root":&installed_plugin.path,"path":"sample.installed","server":null,"timeoutMs":5000.0}}
+    }))?;
+    let diagnostics_payload: Value = serde_json::from_str(
+        diagnostics["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or_else(|| format!("lsp_diagnostics text missing in {diagnostics:#}"))?,
+    )?;
+    assert_eq!(
+        diagnostics_payload["status"], "ok",
+        "server:null diagnostics should use the installed plugin config, got {diagnostics_payload:#}"
+    );
+    Ok(())
+}
+
+#[test]
+fn codegraph_wrapper_uses_bundled_runtime_without_global_path()
+-> Result<(), Box<dyn std::error::Error>> {
+    let installed_plugin = installed_plugin_copy()?;
+    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"));
+    command
+        .current_dir(&installed_plugin.path)
+        .env("PATH", "/usr/bin:/bin")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut client = McpClient::spawn_command(command)?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
     Ok(())
 }
 
@@ -150,6 +183,21 @@ impl Drop for McpClient {
         drop(self.child.stdin.take());
         let _ = self.child.wait();
     }
+}
+
+fn installed_plugin_copy() -> Result<InstalledPlugin, Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let installed_plugin = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &installed_plugin,
+    )?;
+    Ok(InstalledPlugin {
+        _temp: temp,
+        path: installed_plugin,
+    })
 }
 
 fn copy_dir(source: &Path, target: &Path) -> std::io::Result<()> {
