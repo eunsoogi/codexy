@@ -80,6 +80,42 @@ pub(super) fn create_artifact_api_response(
     Ok(artifact_api)
 }
 
+pub(super) fn create_fake_curl_bin(
+    root: &std::path::Path,
+    artifact_api: &std::path::Path,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let fake_bin = root.join("fake-bin");
+    std::fs::create_dir_all(&fake_bin)?;
+    let curl_path = fake_bin.join("curl");
+    let curl_log = root.join("curl.log");
+    std::fs::write(
+        &curl_path,
+        format!(
+            "#!/bin/sh\n\
+             set -eu\n\
+             out=\"\"\n\
+             url=\"\"\n\
+             while [ \"$#\" -gt 0 ]; do\n\
+               case \"$1\" in\n\
+                 -o) out=\"$2\"; shift 2 ;;\n\
+                 -*) shift ;;\n\
+                 *) url=\"$1\"; shift ;;\n\
+               esac\n\
+             done\n\
+             printf '%s\\n' \"$url\" >> '{}'\n\
+             case \"$url\" in\n\
+               *api.github.com*) cp '{}' \"$out\" ;;\n\
+               file://*) cp \"${{url#file://}}\" \"$out\" ;;\n\
+               *) echo unexpected fake curl url: \"$url\" >&2; exit 22 ;;\n\
+             esac\n",
+            curl_log.display(),
+            artifact_api.display()
+        ),
+    )?;
+    make_executable(&curl_path)?;
+    Ok(fake_bin)
+}
+
 fn zip_package(
     artifact_zip: &std::path::Path,
     package_path: &std::path::Path,

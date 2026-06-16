@@ -28,7 +28,7 @@ if [ -z "$runtime_package_path" ] \
   && [ -z "$runtime_artifacts_api_url" ] \
   && [ "$runtime_git_repository_was_set" = 0 ] \
   && [ "$runtime_git_ref_was_set" = 0 ]; then
-  runtime_artifacts_api_url="https://api.github.com/repos/eunsoogi/codexy/actions/artifacts?name=codexy-marketplace-plugin&per_page=1"
+  runtime_artifacts_api_url="https://api.github.com/repos/eunsoogi/codexy/actions/artifacts?name=codexy-marketplace-plugin&per_page=100"
 fi
 
 platform=${CODEXY_RUNTIME_PLATFORM:-}
