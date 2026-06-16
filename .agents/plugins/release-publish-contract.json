@@ -12,6 +12,7 @@
   "package": {
     "workflow": ".github/workflows/plugin-runtime-binaries.yml",
     "archive": "dist/codexy-marketplace-plugin.tar.gz",
+    "mainDogfoodRelease": "codexy-main",
     "futureInstallRef": "version-tags",
     "platforms": [
       "darwin-arm64",

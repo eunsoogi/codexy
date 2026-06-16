@@ -55,6 +55,36 @@ impl<'a> WrapperFixture<'a> {
             cargo_log,
         })
     }
+
+    pub(super) fn runtime_package(
+        &self,
+        server: &str,
+        fake_version: &str,
+    ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+        let package_root = self.home.join("package-root");
+        let runtime_dir = package_root.join("plugins/codexy/runtime");
+        std::fs::create_dir_all(&runtime_dir)?;
+        let runtime_name = format!("codexy-mcp-{server}-darwin-arm64.bin");
+        let runtime_path = runtime_dir.join(&runtime_name);
+        std::fs::write(
+            &runtime_path,
+            format!(
+                "#!/bin/sh\n\
+                 echo fake-packaged {fake_version} codexy-mcp-{server} \"$@\"\n"
+            ),
+        )?;
+        make_executable(&runtime_path)?;
+        let package = self.home.join("codexy-marketplace-plugin.tar.gz");
+        let status = Command::new("tar")
+            .arg("-czf")
+            .arg(&package)
+            .arg("-C")
+            .arg(&package_root)
+            .arg("plugins/codexy")
+            .status()?;
+        assert!(status.success(), "tar should create runtime package");
+        Ok(package)
+    }
 }
 
 pub(super) fn run_wrapper(
@@ -95,6 +125,30 @@ pub(super) fn run_wrapper_with_optional_failure(
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(String::from_utf8(output.stdout)?)
+}
+
+pub(super) fn runtime_cache_contains_executable(
+    cache: &std::path::Path,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    if !cache.exists() {
+        return Ok(false);
+    }
+    for entry in std::fs::read_dir(cache)? {
+        let entry = entry?;
+        if entry.file_type()?.is_file() {
+            let permissions = entry.metadata()?.permissions();
+            #[cfg(unix)]
+            {
+                if permissions.mode() & 0o111 != 0 {
+                    return Ok(true);
+                }
+            }
+        }
+        if entry.file_type()?.is_dir() && runtime_cache_contains_executable(&entry.path())? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn copy_dir(source: impl AsRef<std::path::Path>, target: &std::path::Path) -> std::io::Result<()> {

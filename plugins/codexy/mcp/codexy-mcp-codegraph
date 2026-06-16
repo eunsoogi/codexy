@@ -64,6 +64,7 @@ esac
 
 runtime_git_repository=${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}
 runtime_git_ref=${CODEXY_RUNTIME_GIT_REF:-main}
+runtime_package_url=${CODEXY_RUNTIME_PACKAGE_URL:-https://github.com/eunsoogi/codexy/releases/download/codexy-main/codexy-marketplace-plugin.tar.gz}
 if [ -n "${CODEXY_RUNTIME_CACHE_DIR:-}" ]; then
   runtime_cache_root=$CODEXY_RUNTIME_CACHE_DIR
 else
@@ -83,6 +84,7 @@ esac
 runtime_cache_key=$(printf '%s\n%s\n%s\ncodexy-mcp-codegraph\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" | cksum | awk '{print $1}')
 runtime_install_root="$runtime_cache_root/$runtime_cache_key"
 installed_runtime="$runtime_install_root/bin/codexy-mcp-codegraph"
+downloaded_runtime="$runtime_install_root/package/plugins/codexy/runtime/$runtime_name"
 runtime_ref_is_pinned=0
 case "$runtime_git_ref" in
   *[!0123456789abcdefABCDEF]*|"") ;;
@@ -94,6 +96,28 @@ case "$runtime_git_ref" in
 esac
 if [ "$runtime_ref_is_pinned" = 1 ] && [ -x "$installed_runtime" ]; then
   exec "$installed_runtime" "$@"
+fi
+if [ "$runtime_ref_is_pinned" = 1 ] && [ -x "$downloaded_runtime" ]; then
+  exec "$downloaded_runtime" "$@"
+fi
+if [ -n "$runtime_package_url" ] && command -v curl >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
+  mkdir -p "$runtime_install_root"
+  package_tmp="$runtime_install_root/package.tar.gz.$$"
+  if curl -fsSL "$runtime_package_url" -o "$package_tmp"; then
+    rm -rf "$runtime_install_root/package"
+    mkdir -p "$runtime_install_root/package"
+    if tar -xzf "$package_tmp" -C "$runtime_install_root/package" "plugins/codexy/runtime/$runtime_name"; then
+      rm -f "$package_tmp"
+      chmod 755 "$downloaded_runtime" 2>/dev/null || true
+      if [ -x "$downloaded_runtime" ]; then
+        exec "$downloaded_runtime" "$@"
+      fi
+    fi
+  fi
+  rm -f "$package_tmp"
+fi
+if [ -x "$downloaded_runtime" ]; then
+  exec "$downloaded_runtime" "$@"
 fi
 if command -v cargo >/dev/null 2>&1; then
   if [ "$runtime_ref_is_pinned" = 1 ]; then
