@@ -1,9 +1,11 @@
 mod lsp;
 mod manifest;
 mod mcp;
+mod mcp_runtime;
 mod prompt_yaml;
 mod roles;
 mod roles_yaml;
+mod runtime;
 
 use std::path::Path;
 
@@ -15,6 +17,7 @@ pub enum Mode {
     Lsp,
     Mcp,
     Roles,
+    RuntimeArtifacts,
 }
 
 /// Runs plugin contract validation for the selected mode.
@@ -36,6 +39,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         Mode::Lsp => lsp::check(plugin_root),
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
+        Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
     };
     if errors.is_empty() {
         Ok(())

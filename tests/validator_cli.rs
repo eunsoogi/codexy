@@ -100,6 +100,47 @@ fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
 }
 
 #[test]
+fn validator_cli_rejects_script_runtime_mcp_entrypoints() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let script_name = ["server", &["j", "s"].join("")].join(".");
+    let script_path = plugin_root.join("bin").join(&script_name);
+    std::fs::write(&script_path, "removed runtime\n")?;
+    let mcp_path = plugin_root.join(".mcp.json");
+    let mut mcp_config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
+    mcp_config["lsp"]["command"] = serde_json::json!("node");
+    mcp_config["lsp"]["args"] = serde_json::json!([format!("./bin/{script_name}"), "--stdio"]);
+    std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-mcp",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject script runtime MCP entrypoints"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("must not use"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_accepts_installed_plugin_mcp_entrypoints() -> Result<(), Box<dyn std::error::Error>>
 {
     let temp = tempfile::tempdir()?;

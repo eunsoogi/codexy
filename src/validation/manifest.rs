@@ -4,7 +4,9 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
 use crate::paths::display_relative;
-use crate::validation::{load_json, manifest_path, require_string};
+use crate::validation::{json_array_strings, load_json, manifest_path, require_string};
+
+const REQUIRED_SUPPORTED_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64"];
 
 pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
     let path = manifest_path(plugin_root);
@@ -43,6 +45,7 @@ pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
             display_relative(&path)
         );
     }
+    supported_platforms(&manifest, &path)?;
     Ok(manifest)
 }
 
@@ -97,9 +100,45 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
                 display_relative(&mcp_path)
             );
         }
+        crate::validation::runtime::check_source_contract(plugin_root, &manifest)?;
         Ok(())
     }) {
         Ok(()) => Vec::new(),
         Err(error) => vec![error.to_string()],
     }
+}
+
+pub(super) fn supported_platforms(manifest: &Value, path: &Path) -> Result<Vec<String>> {
+    let platforms = json_array_strings(manifest.get("supportedPlatforms"))
+        .filter(|items| !items.is_empty())
+        .with_context(|| {
+            format!(
+                "{} supportedPlatforms must be a non-empty array of strings",
+                display_relative(path)
+            )
+        })?;
+    if platforms.iter().any(|item| item.trim().is_empty()) {
+        bail!(
+            "{} supportedPlatforms must contain only non-empty strings",
+            display_relative(path)
+        );
+    }
+    let mut sorted = platforms.clone();
+    sorted.sort();
+    sorted.dedup();
+    if sorted.len() != platforms.len() {
+        bail!(
+            "{} supportedPlatforms must not contain duplicate platforms",
+            display_relative(path)
+        );
+    }
+    for required in REQUIRED_SUPPORTED_PLATFORMS {
+        if !platforms.iter().any(|platform| platform == required) {
+            bail!(
+                "{} supportedPlatforms must include {required}",
+                display_relative(path)
+            );
+        }
+    }
+    Ok(platforms)
 }

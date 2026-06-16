@@ -63,6 +63,23 @@ fn string_field<'a>(data: &'a Value, field: &str, label: &str) -> Result<&'a str
         .with_context(|| format!("{label} {field} must be a string"))
 }
 
+fn string_array_field(data: &Value, field: &str, label: &str) -> Result<Vec<String>> {
+    let values = data
+        .get(field)
+        .and_then(Value::as_array)
+        .with_context(|| format!("{label} {field} must be an array"))?;
+    values
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .filter(|item| !item.trim().is_empty())
+                .map(ToOwned::to_owned)
+                .with_context(|| format!("{label} {field} must contain only non-empty strings"))
+        })
+        .collect()
+}
+
 fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
     let plugins = marketplace
         .get_mut("plugins")
@@ -109,6 +126,25 @@ pub fn check_versions() -> Result<String> {
             "version mismatch: {}={manifest_version}, {}={marketplace_version}",
             display_relative(&manifest_path),
             display_relative(&market_path)
+        );
+    }
+    let manifest_platforms = string_array_field(
+        &manifest,
+        "supportedPlatforms",
+        &display_relative(&manifest_path),
+    )?;
+    let marketplace_platforms = string_array_field(
+        marketplace_plugin_mut(&mut marketplace)?,
+        "supportedPlatforms",
+        "marketplace plugin entry",
+    )?;
+    if manifest_platforms != marketplace_platforms {
+        bail!(
+            "supportedPlatforms mismatch: {}={:?}, {}={:?}",
+            display_relative(&manifest_path),
+            manifest_platforms,
+            display_relative(&market_path),
+            marketplace_platforms
         );
     }
     for path in package_manifests()? {

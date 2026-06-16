@@ -1,0 +1,54 @@
+name: Plugin runtime binaries
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "src/**"
+      - "plugins/codexy/bin/**"
+      - ".github/workflows/plugin-runtime-binaries.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-runtime:
+    name: Build ${{ matrix.platform }} MCP runtimes
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-latest
+          - platform: darwin-arm64
+            runner: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build MCP runtime binaries
+        run: |
+          cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
+
+      - name: Package platform binaries
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p dist/plugins/codexy/bin
+          cp target/release/codexy-mcp-lsp "dist/plugins/codexy/bin/codexy-mcp-lsp-${PLATFORM}.bin"
+          cp target/release/codexy-mcp-codegraph "dist/plugins/codexy/bin/codexy-mcp-codegraph-${PLATFORM}.bin"
+          chmod 755 "dist/plugins/codexy/bin/codexy-mcp-lsp-${PLATFORM}.bin"
+          chmod 755 "dist/plugins/codexy/bin/codexy-mcp-codegraph-${PLATFORM}.bin"
+          file "dist/plugins/codexy/bin/codexy-mcp-lsp-${PLATFORM}.bin"
+          file "dist/plugins/codexy/bin/codexy-mcp-codegraph-${PLATFORM}.bin"
+
+      - name: Upload runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codexy-mcp-runtimes-${{ matrix.platform }}
+          path: dist/plugins/codexy/bin/*.bin
+          if-no-files-found: error

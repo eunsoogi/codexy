@@ -190,7 +190,7 @@ fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
     let output = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"))
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
-        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -198,11 +198,11 @@ fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
     assert_eq!(output.status.code(), Some(127));
     let stderr = String::from_utf8(output.stderr)?;
     assert!(
-        stderr.contains("linux-x86_64"),
+        stderr.contains("windows-x86_64"),
         "unsupported platform failure should name the missing runtime, got {stderr:?}"
     );
     assert!(
-        stderr.contains("bundled runtime supports: darwin-arm64"),
+        stderr.contains("bundled runtime supports: darwin-arm64 linux-x86_64"),
         "unsupported platform failure should declare the bundled platform contract, got {stderr:?}"
     );
     assert!(
@@ -219,7 +219,7 @@ fn lsp_wrapper_rejects_unsupported_platform_without_running_macos_binary()
     let output = Command::new(installed_plugin.path.join("bin/codexy-mcp-lsp"))
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
-        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -227,7 +227,7 @@ fn lsp_wrapper_rejects_unsupported_platform_without_running_macos_binary()
     assert_eq!(output.status.code(), Some(127));
     let stderr = String::from_utf8(output.stderr)?;
     assert!(
-        stderr.contains("bundled runtime supports: darwin-arm64"),
+        stderr.contains("bundled runtime supports: darwin-arm64 linux-x86_64"),
         "unsupported platform failure should declare the bundled platform contract, got {stderr:?}"
     );
     assert!(

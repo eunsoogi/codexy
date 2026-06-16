@@ -16,6 +16,10 @@
     "verification",
     "harness"
   ],
+  "supportedPlatforms": [
+    "darwin-arm64",
+    "linux-x86_64"
+  ],
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Codexy",

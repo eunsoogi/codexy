@@ -111,6 +111,7 @@ fn check_entry(path: &Path, plugin_root: &Path, name: &str, entry: &Value) -> Re
     }
     if let Some(command_value) = command {
         let command_items = command_items(path, name, command_value, object.get("args"))?;
+        super::mcp_runtime::check_no_script_runtime(path, name, &command_items)?;
         check_plugin_relative_entrypoint(path, plugin_root, name, &command_items)?;
     }
     if let Some(cwd) = object.get("cwd") {
