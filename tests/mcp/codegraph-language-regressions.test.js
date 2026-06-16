@@ -197,6 +197,32 @@ test("Python relative submodule imports resolve to existing submodule files", as
   }
 });
 
+test("Python absolute submodule imports resolve to existing submodule files", async () => {
+  const pythonAbsoluteSubmoduleRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-absolute-submodule-"));
+  await fs.mkdir(path.join(pythonAbsoluteSubmoduleRoot, "pkg/nested"), { recursive: true });
+  await Promise.all([
+    fs.writeFile(path.join(pythonAbsoluteSubmoduleRoot, "entry.py"), "from pkg import submod as alias, nested\n", "utf8"),
+    fs.writeFile(path.join(pythonAbsoluteSubmoduleRoot, "pkg/__init__.py"), "value = 1\n", "utf8"),
+    fs.writeFile(path.join(pythonAbsoluteSubmoduleRoot, "pkg/submod.py"), "value = 2\n", "utf8"),
+    fs.writeFile(path.join(pythonAbsoluteSubmoduleRoot, "pkg/nested/__init__.py"), "value = 3\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: pythonAbsoluteSubmoduleRoot, limit: 10 });
+      const entry = graph.files.find((file) => file.path === "entry.py");
+      assert.deepEqual([...entry.imports].sort(), ["./pkg/nested", "./pkg/submod"]);
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "pkg/submod.py" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "pkg/nested/__init__.py" && edge.resolved));
+
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: pythonAbsoluteSubmoduleRoot, path: "pkg/submod.py", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "entry.py", specifier: "./pkg/submod" }]);
+    });
+  } finally {
+    await fs.rm(pythonAbsoluteSubmoduleRoot, { recursive: true, force: true });
+  }
+});
+
 test("advertised non-JS files create graph edges across index, reverse deps, and neighborhoods", async () => {
   const nonJsRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-non-js-"));
   await fs.mkdir(path.join(nonJsRoot, "local"), { recursive: true });
