@@ -48,13 +48,12 @@ function workspaceRootForFile(filePath) {
     directory = parent;
   }
 }
-function supportsPullDiagnostics(capabilities) {
-  return capabilities?.diagnosticProvider !== undefined;
-}
-async function waitForPublishDiagnostics(notifications, timeoutMs) {
+function supportsPullDiagnostics(capabilities) { return capabilities?.diagnosticProvider !== undefined; }
+function isPublishDiagnosticsForUri(message, uri) { return message.method === "textDocument/publishDiagnostics" && message.params?.uri === uri; }
+async function waitForPublishDiagnostics(notifications, uri, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (notifications.some((message) => message.method === "textDocument/publishDiagnostics")) return;
+    if (notifications.some((message) => isPublishDiagnosticsForUri(message, uri))) return;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
@@ -202,7 +201,7 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
     });
     let result = null;
     if (method === "textDocument/diagnostic" && !supportsPullDiagnostics(initialize.result?.capabilities)) {
-      await waitForPublishDiagnostics(notifications, timeoutMs);
+      await waitForPublishDiagnostics(notifications, uri, timeoutMs);
     } else {
       const response = await request(method, params({ uri, absolutePath }), timeoutMs);
       if (response.error) {
@@ -215,7 +214,9 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
       path: absolutePath,
       server: { id: server.id, executable: server.executable },
       result,
-      diagnostics: notifications.filter((message) => message.method === "textDocument/publishDiagnostics").map((message) => message.params),
+      diagnostics: notifications
+        .filter((message) => message.method === "textDocument/publishDiagnostics" && (method !== "textDocument/diagnostic" || message.params?.uri === uri))
+        .map((message) => message.params),
       stderr,
     };
   } finally {

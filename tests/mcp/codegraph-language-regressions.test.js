@@ -49,6 +49,45 @@ test("export-like strings and templates do not create JS exports", async () => {
   }
 });
 
+test("TypeScript type declarations are included in graph exports", async () => {
+  const typeExportRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-ts-exports-"));
+  await fs.writeFile(path.join(typeExportRoot, "types.ts"), [
+    "export interface Props {}",
+    "export type Alias = { value: string };",
+    "export enum Mode { Read }",
+    "",
+  ].join("\n"), "utf8");
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: typeExportRoot, limit: 5 });
+      const entry = graph.files.find((file) => file.path === "types.ts");
+      assert.deepEqual(entry.exports.sort(), ["Alias", "Mode", "Props"]);
+    });
+  } finally {
+    await fs.rm(typeExportRoot, { recursive: true, force: true });
+  }
+});
+
+test("absolute root-contained paths match reverse deps and neighborhoods", async () => {
+  const absolutePathRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-absolute-paths-"));
+  await fs.writeFile(path.join(absolutePathRoot, "entry.ts"), 'import { leaf } from "./leaf";\nexport const entry = leaf;\n', "utf8");
+  await fs.writeFile(path.join(absolutePathRoot, "leaf.ts"), "export const leaf = 1;\n", "utf8");
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: absolutePathRoot, path: path.join(absolutePathRoot, "leaf.ts"), limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "entry.ts", specifier: "./leaf" }]);
+
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: absolutePathRoot, path: path.join(absolutePathRoot, "entry.ts"), depth: 1, limit: 5 });
+      assert.deepEqual(neighborhood.nodes.map((node) => node.path), ["entry.ts", "leaf.ts"]);
+      assert.deepEqual(neighborhood.edges.map((edge) => [edge.from, edge.to]), [["entry.ts", "leaf.ts"]]);
+    });
+  } finally {
+    await fs.rm(absolutePathRoot, { recursive: true, force: true });
+  }
+});
+
 test("advertised non-JS files create graph edges across index, reverse deps, and neighborhoods", async () => {
   const nonJsRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-non-js-"));
   await fs.mkdir(path.join(nonJsRoot, "local"), { recursive: true });

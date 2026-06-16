@@ -82,7 +82,7 @@ function parseJavaScriptFile(root, file) {
     /\brequire\(\s*["']([^"']+)["']\s*\)/g, /\bexport\s*(?:type\s+)?\*\s*from\s*["']([^"']+)["']/g,
     /\bexport\s*(?:type\s+)?\{[^}]+\}\s*from\s*["']([^"']+)["']/g,
   ];
-  const exportPatterns = [/\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g, /\bexport\s*(?:type\s+)?\{([^}]+)\}/g];
+  const exportPatterns = [/\bexport\s+(?:(?:async\s+)?(?:function|class|const|let|var)|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g, /\bexport\s*(?:type\s+)?\{([^}]+)\}/g];
   for (const pattern of importPatterns) {
     for (const match of source.matchAll(pattern)) {
       if (!mask[match.index]) continue;
@@ -202,9 +202,11 @@ function buildGraph(root, limit) {
   return { root, files, edges, totalFiles: allFiles.length, limit: boundedLimit, truncated, metadata: { truncated } };
 }
 
+function graphPath(root, input) { return toPosix(path.isAbsolute(input) ? path.relative(root, input) : input); }
+
 function reverseDeps(root, targetPath, limit) {
   const graph = buildGraph(root, Number.MAX_SAFE_INTEGER);
-  const normalizedTarget = toPosix(targetPath);
+  const normalizedTarget = graphPath(root, targetPath);
   const dependents = graph.edges
     .filter((edge) => edge.resolved && edge.to === normalizedTarget)
     .map((edge) => ({ path: edge.from, specifier: edge.specifier }))
@@ -217,7 +219,7 @@ function neighborhood(root, startPath, depth, limit) {
   const graph = buildGraph(root, Number.MAX_SAFE_INTEGER);
   const boundedDepth = Math.max(0, Math.floor(Number(depth) || 1));
   const boundedLimit = resultLimit(limit);
-  const start = toPosix(startPath);
+  const start = graphPath(root, startPath);
   const seen = new Set();
   const queue = [{ path: start, depth: 0 }];
   const nodes = [];

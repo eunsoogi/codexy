@@ -45,13 +45,13 @@ function captureUri(key, uri) {
   fs.writeFileSync(process.env.CODEXY_FAKE_LSP_CAPTURE, JSON.stringify(captureData, null, 2));
 }
 
-function publishDiagnostics() {
+function publishDiagnostics(uri = openedUri, message = "push-only diagnostic") {
   send({
     jsonrpc: "2.0",
     method: "textDocument/publishDiagnostics",
     params: {
-      uri: openedUri,
-      diagnostics: [{ message: "push-only diagnostic", severity: 2, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } }],
+      uri,
+      diagnostics: [{ message, severity: 2, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } }],
     },
   });
 }
@@ -78,6 +78,12 @@ function handle(message) {
     openedUri = message.params.textDocument.uri;
     captureUri("openedUri", openedUri);
     nextDiagnostics = true;
+    if (process.env.CODEXY_FAKE_LSP_UNRELATED_DIAGNOSTICS_FIRST === "1") {
+      nextDiagnostics = false;
+      publishDiagnostics("file:///workspace/unrelated.js", "unrelated diagnostic");
+      setTimeout(() => publishDiagnostics(openedUri, "target diagnostic"), 50);
+      return;
+    }
     if (process.env.CODEXY_FAKE_LSP_PUSH_DIAGNOSTICS_ON_OPEN === "1") {
       nextDiagnostics = false;
       publishDiagnostics();

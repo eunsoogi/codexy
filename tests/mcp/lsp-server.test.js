@@ -226,10 +226,7 @@ test("lsp_diagnostics uses pull diagnostics when the server advertises diagnosti
 test("lsp_diagnostics falls back to publish diagnostics for push-only servers", async () => {
   await withFakeLspCapture("codexy-fake-lsp-push-diagnostics", async (capturePath) => {
     await withLspClient(assert, lspServer, repoRoot, async (client) => {
-      const payload = await toolPayload(client, "lsp_diagnostics", {
-        path: externalFixture,
-        server: { id: "fake-lsp", command: fakeLspCommand() },
-      });
+      const payload = await toolPayload(client, "lsp_diagnostics", { path: externalFixture, server: { id: "fake-lsp", command: fakeLspCommand() } });
       assert.equal(payload.status, "ok");
       assert.equal(payload.result, null);
       assert.equal(payload.diagnostics[0].diagnostics[0].message, "push-only diagnostic");
@@ -237,6 +234,9 @@ test("lsp_diagnostics falls back to publish diagnostics for push-only servers", 
     const capture = readCapture(capturePath);
     assert.ok(!(capture.requestMethods || []).includes("textDocument/diagnostic"));
   });
+});
+test("lsp_diagnostics waits for target publish diagnostics from push-only servers", async () => {
+  await withFakeLspCapture("codexy-fake-lsp-target-push-diagnostics", async (capturePath) => { await withLspClient(assert, lspServer, repoRoot, async (client) => { const payload = await toolPayload(client, "lsp_diagnostics", { path: externalFixture, server: { id: "fake-lsp", command: fakeLspCommand() } }); assert.equal(payload.status, "ok"); assert.equal(payload.result, null); assert.equal(payload.diagnostics.length, 1); assert.equal(payload.diagnostics[0].uri, pathToFileURL(externalFixture).href); assert.equal(payload.diagnostics[0].diagnostics[0].message, "target diagnostic"); }, { env: fakeEnv({ CODEXY_FAKE_LSP_CAPTURE: capturePath, CODEXY_FAKE_LSP_UNRELATED_DIAGNOSTICS_FIRST: "1" }) }); assert.ok(!(readCapture(capturePath).requestMethods || []).includes("textDocument/diagnostic")); });
 });
 test("LSP operations return structured errors when server stdin closes early", async () => {
   await withLspClient(assert, lspServer, repoRoot, async (client) => {
