@@ -5,6 +5,7 @@ const path = require("path");
 const { spawn } = require("child_process");
 const { languageForPath, resolvePath, toFileUri } = require("./config");
 const REQUEST_TIMEOUT_MS = 10000;
+const INITIALIZE_TIMEOUT_MS = REQUEST_TIMEOUT_MS;
 const STDERR_LIMIT = 4000;
 const WORKSPACE_MARKERS = [".git", "package.json", "pyproject.toml", "Cargo.toml", "go.mod", "deno.json", "tsconfig.json", "jsconfig.json"];
 const SUPPORTED_SERVER_REQUESTS = new Set(["client/registerCapability", "client/unregisterCapability", "window/workDoneProgress/create", "workspace/configuration"]);
@@ -186,7 +187,7 @@ async function runLspRequest({ server, filePath, method, params, timeoutMs = REQ
         workspace: {},
       },
       clientInfo: { name: "codexy-lsp-mcp", version: "0.1.0" },
-    });
+    }, INITIALIZE_TIMEOUT_MS);
     if (initialize.error) {
       return { status: "error", server: { id: server.id }, error: initialize.error, stderr };
     }
