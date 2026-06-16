@@ -99,6 +99,14 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
         root.path().join("entry.js"),
         "import { value } from \"./dep.js\";\nexport const entry = value;\n",
     )?;
+    std::fs::write(
+        root.path().join("extra-one.js"),
+        "export const entryOne = 1;\n",
+    )?;
+    std::fs::write(
+        root.path().join("extra-two.js"),
+        "export const entryTwo = 2;\n",
+    )?;
 
     let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
@@ -131,11 +139,14 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
         "jsonrpc":"2.0","id":4,"method":"tools/call",
         "params":{"name":"codegraph_search","arguments":{"root":root.path(),"query":"entry","limit":1}}
     }))?;
-    assert!(
-        search["result"]["content"][0]["text"]
-            .as_str()
-            .ok_or("search text")?
-            .contains("entry.js:")
+    let search_text = search["result"]["content"][0]["text"]
+        .as_str()
+        .ok_or("search text")?;
+    assert!(search_text.contains("entry.js:"));
+    assert_eq!(
+        search_text.lines().count(),
+        1,
+        "codegraph_search must stop at the requested line limit"
     );
     let missing = client.send(&json!({
         "jsonrpc":"2.0","id":5,"method":"tools/call",

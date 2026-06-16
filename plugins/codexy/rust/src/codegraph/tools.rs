@@ -1,6 +1,7 @@
 use std::fs;
+use std::io::{BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use anyhow::{Context as _, Result, bail};
 use serde::Serialize;
@@ -148,9 +149,11 @@ fn imports_for(root: &Path, file_path: &str) -> Vec<ImportLine> {
 }
 
 fn rg_lines(root: &Path, query: &str, limit: Option<usize>) -> Result<String> {
-    let output = Command::new("rg")
+    let bounded_limit = result_limit(limit);
+    let mut child = Command::new("rg")
         .args([
             "--hidden",
+            "--line-buffered",
             "-n",
             "--glob",
             "!node_modules",
@@ -158,23 +161,35 @@ fn rg_lines(root: &Path, query: &str, limit: Option<usize>) -> Result<String> {
             "!.git",
             "-e",
             query,
+            ".",
         ])
         .current_dir(root)
-        .output()
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
         .with_context(|| format!("running rg in {}", root.display()))?;
-    if !output.status.success() && output.status.code() != Some(1) {
+    let stdout = child.stdout.take().context("reading rg stdout")?;
+    let mut lines = Vec::new();
+    for line in BufReader::new(stdout).lines() {
+        let line = line.context("reading rg output")?;
+        if is_code_file(Path::new(line.split(':').next().unwrap_or_default())) {
+            lines.push(line);
+            if lines.len() >= bounded_limit {
+                let _ = child.kill();
+                break;
+            }
+        }
+    }
+    let status = child
+        .wait()
+        .with_context(|| format!("waiting for rg in {}", root.display()))?;
+    if !status.success() && status.code() != Some(1) && lines.is_empty() {
         return Ok(format!(
             "Command failed: rg --hidden -n --glob !node_modules --glob !.git -e {query}"
         ));
     }
-    let text = String::from_utf8_lossy(&output.stdout);
-    let bounded = text
-        .lines()
-        .filter(|line| is_code_file(Path::new(line.split(':').next().unwrap_or_default())))
-        .take(result_limit(limit))
-        .collect::<Vec<_>>()
-        .join("\n");
-    Ok(bounded)
+    Ok(lines.join("\n"))
 }
 
 fn text_json<T: Serialize>(value: &T) -> Result<Value> {
