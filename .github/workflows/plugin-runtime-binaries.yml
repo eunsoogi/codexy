@@ -18,6 +18,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build-runtime:
     name: Build ${{ matrix.platform }} MCP runtimes
@@ -103,8 +107,22 @@ jobs:
         run: |
           gh release upload "${{ github.event.release.tag_name }}" "dist/codexy-marketplace-plugin.tar.gz" --clobber
 
-      - name: Create main dogfood package release
+      - name: Verify main dogfood package is current
+        id: main-package-head
         if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_head="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$current_head" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale main dogfood package for $GITHUB_SHA; main is $current_head."
+          fi
+
+      - name: Create main dogfood package release
+        if: github.event_name == 'push' && steps.main-package-head.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -118,7 +136,7 @@ jobs:
           fi
 
       - name: Upload main dogfood package
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.main-package-head.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -149,6 +149,11 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
         "gh release upload",
         "codexy-main",
+        "concurrency:",
+        "cancel-in-progress: true",
+        "Verify main dogfood package is current",
+        "repos/${GITHUB_REPOSITORY}/git/ref/heads/main",
+        "steps.main-package-head.outputs.current == 'true'",
         "Create main dogfood package release",
         "Upload main dogfood package",
     ] {

@@ -4,7 +4,7 @@ use std::process::Command;
 
 use support::{
     WrapperFixture, run_wrapper, run_wrapper_with_optional_failure, run_wrapper_with_package,
-    runtime_cache_contains_executable,
+    run_wrapper_with_repository, runtime_cache_contains_executable,
 };
 
 #[test]
@@ -39,6 +39,15 @@ fn wrappers_refresh_cached_runtime_for_moving_main_ref() -> Result<(), Box<dyn s
 fn wrappers_use_rev_and_cache_for_pinned_sha_ref() -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_uses_rev_for_pinned_sha_ref(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_honor_custom_runtime_source_before_default_package()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_honors_custom_runtime_source(server)?;
     }
     Ok(())
 }
@@ -211,6 +220,44 @@ fn assert_wrapper_uses_rev_for_pinned_sha_ref(
     assert!(
         !cargo_args.contains("--branch 0123456789abcdef0123456789abcdef01234567"),
         "pinned ref install must not pass the SHA with --branch, got {cargo_args:?}"
+    );
+    Ok(())
+}
+
+fn assert_wrapper_honors_custom_runtime_source(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+
+    let branch_cache = temp.path().join("runtime-cache-branch");
+    let branch_output = run_wrapper(&fixture, server, &branch_cache, "feature", "feature")?;
+    assert!(
+        branch_output.contains(&format!(
+            "fake-installed feature codexy-mcp-{server} --help"
+        )),
+        "custom branch should install the requested runtime source, got {branch_output:?}"
+    );
+
+    let repo_cache = temp.path().join("runtime-cache-repo");
+    let repo_output = run_wrapper_with_repository(
+        &fixture,
+        server,
+        &repo_cache,
+        "https://example.com/codexy-fork",
+        "main",
+        "fork",
+    )?;
+    assert!(
+        repo_output.contains(&format!("fake-installed fork codexy-mcp-{server} --help")),
+        "custom repository should install the requested runtime source, got {repo_output:?}"
+    );
+
+    let cargo_args = std::fs::read_to_string(&fixture.cargo_log)?;
+    assert!(
+        cargo_args.contains("--branch feature")
+            && cargo_args.contains("--git https://example.com/codexy-fork"),
+        "custom runtime sources should reach cargo instead of the default package, got {cargo_args:?}"
     );
     Ok(())
 }

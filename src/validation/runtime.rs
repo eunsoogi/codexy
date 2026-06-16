@@ -135,6 +135,11 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "--check-runtime-artifacts",
         "gh release upload",
         "codexy-main",
+        "concurrency:",
+        "cancel-in-progress: true",
+        "Verify main dogfood package is current",
+        "repos/${GITHUB_REPOSITORY}/git/ref/heads/main",
+        "steps.main-package-head.outputs.current == 'true'",
         "Create main dogfood package release",
         "Upload main dogfood package",
     ] {
