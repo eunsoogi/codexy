@@ -188,17 +188,36 @@ test("commented imports do not create graph dependencies", async () => {
     await fs.rm(commentedRoot, { recursive: true, force: true });
   }
 });
-
+test("dynamic imports create edges but import-like strings do not", async () => {
+  const dynamicRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-dynamic-imports-"));
+  await fs.writeFile(path.join(dynamicRoot, "entry.js"), ['export async function loadChunk() {', '  return `${// import("./fake-comment.js")\n import("./chunk.js", { with: { type: "javascript" } })}`;', '}', 'const staticText = "import { fakeStatic } from \\"./fake-static.js\\"";', "const requireText = 'const fakeRequire = require(\"./fake-require.js\")';", "const dynamicText = 'import(\"./fake-dynamic.js\")';", "const nestedTemplateText = `${`nested`} import(\"./fake-nested.js\")`;", ""].join("\n"), "utf8");
+  await Promise.all([
+    fs.writeFile(path.join(dynamicRoot, "chunk.js"), "export const chunk = 1;\n", "utf8"),
+    fs.writeFile(path.join(dynamicRoot, "fake-static.js"), "export const fakeStatic = 2;\n", "utf8"),
+    fs.writeFile(path.join(dynamicRoot, "fake-require.js"), "export const fakeRequire = 3;\n", "utf8"),
+    fs.writeFile(path.join(dynamicRoot, "fake-dynamic.js"), "export const fakeDynamic = 4;\n", "utf8"),
+  ]);
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: dynamicRoot, limit: 10 });
+      const entryEdges = graph.edges.filter((edge) => edge.from === "entry.js");
+      assert.deepEqual(entryEdges.map((edge) => edge.to), ["chunk.js"]);
+      assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: dynamicRoot, path: "chunk.js", limit: 5 })).dependents, [{ path: "entry.js", specifier: "./chunk.js" }]);
+      assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: dynamicRoot, path: "fake-static.js", limit: 5 })).dependents, []);
+      assert.ok((await tool(client, "codegraph_neighborhood", { root: dynamicRoot, path: "entry.js", depth: 1, limit: 5 })).nodes.some((node) => node.path === "chunk.js"));
+    });
+  } finally {
+    await fs.rm(dynamicRoot, { recursive: true, force: true });
+  }
+});
 test("isolated neighborhoods do not report truncation because unrelated repo files exist", async () => {
   await withCodegraphClient(async (client) => {
     const neighborhood = await tool(client, "codegraph_neighborhood", { root: fixtureRoot, path: "helper.js", depth: 1, limit: 1 });
-
     assert.deepEqual(neighborhood.nodes, [{ path: "helper.js" }]);
     assert.deepEqual(neighborhood.edges, []);
     assert.equal(neighborhood.truncated, false);
   });
 });
-
 test("graph index excludes git-ignored local state files", async () => {
   const sourceRelativePath = "tests/mcp/fixtures/codegraph/imports-ignored-local-state.js";
   const sourceAbsolutePath = path.join(repoRoot, sourceRelativePath);

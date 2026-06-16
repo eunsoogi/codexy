@@ -84,25 +84,64 @@ function stripJavaScriptComments(source) {
   return output;
 }
 
+function codePositionMask(source) {
+  const mask = Array(source.length).fill(true), stack = [];
+  let mode = "code", quote = null, escaped = false, templateDepth = 0;
+  const push = (next) => { stack.push({ mode, templateDepth }); mode = next; escaped = false; };
+  const pop = () => { const previous = stack.pop() || { mode: "code", templateDepth: 0 }; mode = previous.mode; templateDepth = previous.templateDepth; quote = null; escaped = false; };
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (mode === "string") {
+      mask[index] = false; if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === quote) pop();
+      continue;
+    }
+    if (mode === "template") {
+      mask[index] = false; if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "`") pop();
+      else if (char === "$" && source[index + 1] === "{") { mask[++index] = false; templateDepth = 1; push("templateExpr"); }
+      continue;
+    }
+    if (mode === "templateExpr" && char === "{") templateDepth += 1;
+    else if (mode === "templateExpr" && char === "}" && --templateDepth === 0) { mask[index] = false; pop(); continue; }
+    if (char === "\"" || char === "'") { quote = char; push("string"); mask[index] = false; continue; }
+    if (char === "`") { push("template"); mask[index] = false; continue; }
+    if (char === "/" && source[index + 1] === "/") {
+      while (index < source.length && source[index] !== "\n") mask[index++] = false;
+      index -= 1; continue;
+    }
+    if (char === "/" && source[index + 1] === "*") {
+      for (; index < source.length && !(source[index] === "*" && source[index + 1] === "/"); index += 1) mask[index] = false;
+      mask[index] = false; mask[index + 1] = false; index += 1; continue;
+    }
+    if (char === "/" && startsRegexLiteral(source, index)) {
+      const regex = readRegexLiteral(source, index);
+      for (let cursor = index; cursor <= regex.index; cursor += 1) mask[cursor] = false;
+      index = regex.index;
+    }
+  }
+  return mask;
+}
+
 function parseJavaScriptFile(root, file) {
   const absolute = path.join(root, file);
   const source = fs.readFileSync(absolute, "utf8");
   const parsedSource = stripJavaScriptComments(source);
+  const mask = codePositionMask(parsedSource);
   const imports = [];
   const exports = [];
   const importPatterns = [
-    /\bimport\s+(?:[^"'()]*?\s+from\s+)?["']([^"']+)["']/g,
-    /\brequire\(\s*["']([^"']+)["']\s*\)/g,
-    /\bexport\s+(?:type\s+)?\*\s*from\s*["']([^"']+)["']/g,
+    /\bimport\s+(?:[^"'()]*?\s+from\s+)?["']([^"']+)["']/g, /\bimport\s*\(\s*["']([^"']+)["'](?:\s*,[^)]*)?\s*\)/g,
+    /\brequire\(\s*["']([^"']+)["']\s*\)/g, /\bexport\s+(?:type\s+)?\*\s*from\s*["']([^"']+)["']/g,
     /\bexport\s+(?:type\s+)?\{[^}]+\}\s*from\s*["']([^"']+)["']/g,
   ];
-  const exportPatterns = [
-    /\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g,
-    /\bexport\s+(?:type\s+)?\{([^}]+)\}/g,
-  ];
+  const exportPatterns = [/\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g, /\bexport\s+(?:type\s+)?\{([^}]+)\}/g];
 
   for (const pattern of importPatterns) {
     for (const match of parsedSource.matchAll(pattern)) {
+      if (!mask[match.index]) continue;
       imports.push(match[1]);
     }
   }
@@ -128,17 +167,8 @@ function resolveImport(root, fromFile, specifier, indexedFiles) {
   const candidate = path.resolve(fromDir, specifier);
   const extension = path.extname(candidate);
   const candidates = extension
-    ? [
-        candidate,
-        ...(jsFamilyExtensions.has(extension)
-          ? tsSourceExtensions.map((sourceExtension) => `${candidate.slice(0, -extension.length)}${sourceExtension}`)
-          : []),
-      ]
-    : [
-        candidate,
-        ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`),
-        ...Array.from(codeExtensions, (extension) => path.join(candidate, `index${extension}`)),
-      ];
+    ? [candidate, ...(jsFamilyExtensions.has(extension) ? tsSourceExtensions.map((sourceExtension) => `${candidate.slice(0, -extension.length)}${sourceExtension}`) : [])]
+    : [candidate, ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`), ...Array.from(codeExtensions, (extension) => path.join(candidate, `index${extension}`))];
 
   for (const absolute of candidates) {
     if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {
@@ -159,33 +189,17 @@ function buildGraph(root, limit) {
   const truncated = allFiles.length > selectedFiles.length;
   const indexedFiles = new Set(allFiles);
   const files = selectedFiles.map((file) => {
-    const parsed = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"].includes(path.extname(file))
-      ? parseJavaScriptFile(root, file)
-      : { imports: [], exports: [] };
+    const parsed = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"].includes(path.extname(file)) ? parseJavaScriptFile(root, file) : { imports: [], exports: [] };
     return { path: file, imports: parsed.imports, exports: parsed.exports };
   });
-  const selected = new Set(selectedFiles);
   const edges = files.flatMap((file) =>
     file.imports.map((specifier) => {
       const resolved = resolveImport(root, file.path, specifier, indexedFiles);
-      return {
-        from: file.path,
-        to: resolved.to,
-        specifier,
-        resolved: resolved.resolved,
-      };
+      return { from: file.path, to: resolved.to, specifier, resolved: resolved.resolved };
     })
   );
 
-  return {
-    root,
-    files,
-    edges,
-    totalFiles: allFiles.length,
-    limit: boundedLimit,
-    truncated,
-    metadata: { truncated },
-  };
+  return { root, files, edges, totalFiles: allFiles.length, limit: boundedLimit, truncated, metadata: { truncated } };
 }
 
 function reverseDeps(root, targetPath, limit) {
@@ -228,19 +242,7 @@ function neighborhood(root, startPath, depth, limit) {
   const boundedEdges = neighborhoodEdges.slice(0, boundedLimit);
   const hasPendingNeighbors = queue.some((candidate) => !seen.has(candidate.path));
 
-  return {
-    root,
-    path: start,
-    depth: boundedDepth,
-    nodes,
-    edges: boundedEdges,
-    limit: boundedLimit,
-    truncated: hasPendingNeighbors || neighborhoodEdges.length > boundedEdges.length,
-  };
+  return { root, path: start, depth: boundedDepth, nodes, edges: boundedEdges, limit: boundedLimit, truncated: hasPendingNeighbors || neighborhoodEdges.length > boundedEdges.length };
 }
 
-module.exports = {
-  buildGraph,
-  neighborhood,
-  reverseDeps,
-};
+module.exports = { buildGraph, neighborhood, reverseDeps };
