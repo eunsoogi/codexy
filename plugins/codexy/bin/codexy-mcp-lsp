@@ -10,9 +10,41 @@ if [ -n "$repo_root" ] && [ -f "$repo_root/Cargo.toml" ] && [ -d "$repo_root/src
   exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"
 fi
 
-if [ -x "$self_dir/codexy-mcp-lsp.bin" ]; then
-  exec "$self_dir/codexy-mcp-lsp.bin" "$@"
+platform=${CODEXY_RUNTIME_PLATFORM:-}
+if [ -z "$platform" ]; then
+  os=$(uname -s 2>/dev/null || echo unknown)
+  arch=$(uname -m 2>/dev/null || echo unknown)
+  case "$os" in
+    Darwin) os=darwin ;;
+    Linux) os=linux ;;
+    MINGW*|MSYS*|CYGWIN*) os=windows ;;
+    *) os=unknown ;;
+  esac
+  case "$arch" in
+    arm64|aarch64) arch=arm64 ;;
+    x86_64|amd64) arch=x86_64 ;;
+    *) arch=unknown ;;
+  esac
+  platform="$os-$arch"
 fi
 
-echo "codexy-mcp-lsp runtime not found; install the bundled binary or run from the Codexy repository checkout" >&2
+runtime_name="codexy-mcp-lsp-$platform.bin"
+if [ -x "$self_dir/$runtime_name" ]; then
+  exec "$self_dir/$runtime_name" "$@"
+fi
+
+if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
+  case "$CODEXY_RUNTIME_DIR" in
+    /*) ;;
+    *)
+      echo "codexy-mcp-lsp runtime dir must be absolute: $CODEXY_RUNTIME_DIR" >&2
+      exit 127
+      ;;
+  esac
+  if [ -x "$CODEXY_RUNTIME_DIR/$runtime_name" ]; then
+    exec "$CODEXY_RUNTIME_DIR/$runtime_name" "$@"
+  fi
+fi
+
+echo "codexy-mcp-lsp runtime not found for $platform; install $runtime_name in the plugin bin directory or set CODEXY_RUNTIME_DIR to an absolute runtime directory" >&2
 exit 127

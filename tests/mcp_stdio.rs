@@ -9,6 +9,11 @@ struct InstalledPlugin {
     path: PathBuf,
 }
 
+struct TempRuntimeDir {
+    _temp: tempfile::TempDir,
+    path: PathBuf,
+}
+
 struct McpClient {
     child: Child,
     buffer: Vec<u8>,
@@ -178,6 +183,54 @@ fn codegraph_wrapper_uses_bundled_runtime_without_global_path()
     Ok(())
 }
 
+#[test]
+fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
+-> Result<(), Box<dyn std::error::Error>> {
+    let installed_plugin = installed_plugin_copy()?;
+    let output = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"))
+        .current_dir(&installed_plugin.path)
+        .env("PATH", "/usr/bin:/bin")
+        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+    assert_eq!(output.status.code(), Some(127));
+    let stderr = String::from_utf8(output.stderr)?;
+    assert!(
+        stderr.contains("linux-x86_64"),
+        "unsupported platform failure should name the missing runtime, got {stderr:?}"
+    );
+    assert!(
+        !stderr.contains("Exec format"),
+        "wrapper must not attempt to execute an incompatible bundled runtime"
+    );
+    Ok(())
+}
+
+#[test]
+fn codegraph_wrapper_uses_validated_runtime_dir_for_platform_runtime()
+-> Result<(), Box<dyn std::error::Error>> {
+    let installed_plugin = installed_plugin_copy()?;
+    let runtime_dir = temp_runtime_dir(
+        "codexy-mcp-codegraph-linux-x86_64.bin",
+        env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
+    )?;
+    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"));
+    command
+        .current_dir(&installed_plugin.path)
+        .env("PATH", "/usr/bin:/bin")
+        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut client = McpClient::spawn_command(command)?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    Ok(())
+}
+
 impl Drop for McpClient {
     fn drop(&mut self) {
         drop(self.child.stdin.take());
@@ -197,6 +250,29 @@ fn installed_plugin_copy() -> Result<InstalledPlugin, Box<dyn std::error::Error>
     Ok(InstalledPlugin {
         _temp: temp,
         path: installed_plugin,
+    })
+}
+
+fn temp_runtime_dir(
+    runtime_name: &str,
+    source_binary: &str,
+) -> Result<TempRuntimeDir, Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let runtime_dir = temp.path().join("runtimes");
+    std::fs::create_dir_all(&runtime_dir)?;
+    let runtime_path = runtime_dir.join(runtime_name);
+    std::fs::copy(source_binary, &runtime_path)?;
+    let mut permissions = std::fs::metadata(&runtime_path)?.permissions();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        permissions.set_mode(0o755);
+    }
+    std::fs::set_permissions(&runtime_path, permissions)?;
+    Ok(TempRuntimeDir {
+        _temp: temp,
+        path: runtime_dir,
     })
 }
 
