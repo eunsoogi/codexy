@@ -141,6 +141,34 @@ test("Python relative import lists create graph edges for every target", async (
   }
 });
 
+test("Python relative submodule imports resolve to existing submodule files", async () => {
+  const pythonSubmoduleRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-submodule-"));
+  await fs.mkdir(path.join(pythonSubmoduleRoot, "pkg"), { recursive: true });
+  await Promise.all([
+    fs.writeFile(path.join(pythonSubmoduleRoot, "entry.py"), "from .pkg import submod\n", "utf8"),
+    fs.writeFile(path.join(pythonSubmoduleRoot, "pkg/__init__.py"), "value = 1\n", "utf8"),
+    fs.writeFile(path.join(pythonSubmoduleRoot, "pkg/submod.py"), "value = 2\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: pythonSubmoduleRoot, limit: 10 });
+      const entry = graph.files.find((file) => file.path === "entry.py");
+      assert.deepEqual(entry.imports, ["./pkg/submod"]);
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "pkg/submod.py" && edge.resolved));
+
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: pythonSubmoduleRoot, path: "pkg/submod.py", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "entry.py", specifier: "./pkg/submod" }]);
+
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: pythonSubmoduleRoot, path: "entry.py", depth: 1, limit: 5 });
+      assert.ok(neighborhood.nodes.some((node) => node.path === "pkg/submod.py"));
+      assert.deepEqual(neighborhood.edges.map((edge) => [edge.from, edge.to]), [["entry.py", "pkg/submod.py"]]);
+    });
+  } finally {
+    await fs.rm(pythonSubmoduleRoot, { recursive: true, force: true });
+  }
+});
+
 test("advertised non-JS files create graph edges across index, reverse deps, and neighborhoods", async () => {
   const nonJsRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-non-js-"));
   await fs.mkdir(path.join(nonJsRoot, "local"), { recursive: true });

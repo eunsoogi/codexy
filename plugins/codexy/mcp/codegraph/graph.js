@@ -103,7 +103,7 @@ function parseJavaScriptFile(root, file) {
   return { imports: unique(imports), exports: unique(exports) };
 }
 const languageRules = {
-  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\b/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
+  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
   ".go": { imports: [/\bimport\s+(?:\(\s*)?(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /^\s*(?:[A-Za-z_]\w*\s+)?["'](\.[^"']+)["']/gm], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
   ".rs": { imports: [/\bmod\s+([A-Za-z_]\w*)\s*;/g, /\buse\s+((?:crate|self|super)::[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)/g], exports: [/\bpub\s+(?:fn|struct|enum|trait|mod|const|static)\s+([A-Za-z_]\w*)/g] },
   ".rb": { imports: [/\brequire_relative\s+["']([^"']+)["']/g, /\brequire\s+["'](\.[^"']+)["']/g], exports: [/\b(?:class|module|def)\s+([A-Z]\w*|[a-z_]\w*[!?=]?)/g] },
@@ -144,7 +144,7 @@ function languageMask(source, extension) {
   }
   return mask;
 }
-function parseLanguageFile(root, file) {
+function parseLanguageFile(root, file, indexedFiles) {
   const extension = path.extname(file);
   const rules = languageRules[extension];
   if (!rules) return { imports: [], exports: [] };
@@ -152,8 +152,11 @@ function parseLanguageFile(root, file) {
   const packageName = [".java", ".kt"].includes(extension) && source.match(/^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/m)?.[1];
   const mask = languageMask(source, extension);
   const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).flatMap((match) => {
-      const specifiers = extension === ".py" && match[2]?.includes(",") ? match[2].split(",").map((target) => `${match[1]}${target.trim()}`) : [`${match[1]}${match[2] || ""}`];
-      return specifiers.map((specifier) => normalizeLanguageImport(extension, specifier, file, packageName));
+      if (extension === ".py" && match[2]) return match[2].split(",").map((target) => {
+        const imported = target.trim(), base = match[1], bareRelative = /^\.+$/.test(base), submodule = base.startsWith(".") && !bareRelative && normalizeLanguageImport(extension, `${base}.${imported}`, file, packageName);
+        return submodule && resolveImport(root, file, submodule, indexedFiles).resolved ? submodule : normalizeLanguageImport(extension, bareRelative ? `${base}${imported}` : base, file, packageName);
+      });
+      return [normalizeLanguageImport(extension, `${match[1]}${match[2] || ""}`, file, packageName)];
     })
   );
   const exports = rules.exports.flatMap((pattern) =>
@@ -192,7 +195,7 @@ function buildGraph(root, limit) {
   const truncated = allFiles.length > selectedFiles.length;
   const indexedFiles = new Set(allFiles);
   const files = selectedFiles.map((file) => {
-    const parsed = jsSourceExtensions.has(path.extname(file)) ? parseJavaScriptFile(root, file) : parseLanguageFile(root, file);
+    const parsed = jsSourceExtensions.has(path.extname(file)) ? parseJavaScriptFile(root, file) : parseLanguageFile(root, file, indexedFiles);
     return { path: file, imports: parsed.imports, exports: parsed.exports };
   });
   const edges = files.flatMap((file) =>
