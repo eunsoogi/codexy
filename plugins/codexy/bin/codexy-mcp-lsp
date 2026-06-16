@@ -7,14 +7,6 @@ repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
 export CODEXY_PLUGIN_ROOT="$plugin_root"
 bundled_platforms="darwin-arm64 linux-x86_64"
 
-if [ -n "$repo_root" ] \
-  && [ -f "$repo_root/Cargo.toml" ] \
-  && grep -Eq '^name = "codexy-runtime"$' "$repo_root/Cargo.toml" \
-  && [ -f "$repo_root/src/bin/codexy-mcp-lsp.rs" ] \
-  && [ -f "$repo_root/plugins/codexy/.codex-plugin/plugin.json" ]; then
-  exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"
-fi
-
 platform=${CODEXY_RUNTIME_PLATFORM:-}
 if [ -z "$platform" ]; then
   os=$(uname -s 2>/dev/null || echo unknown)
@@ -47,6 +39,14 @@ if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   fi
   echo "codexy-mcp-lsp runtime not found for $platform in CODEXY_RUNTIME_DIR: $CODEXY_RUNTIME_DIR/$runtime_name" >&2
   exit 127
+fi
+
+if [ -n "$repo_root" ] \
+  && [ -f "$repo_root/Cargo.toml" ] \
+  && grep -Eq '^name = "codexy-runtime"$' "$repo_root/Cargo.toml" \
+  && [ -f "$repo_root/src/bin/codexy-mcp-lsp.rs" ] \
+  && [ -f "$repo_root/plugins/codexy/.codex-plugin/plugin.json" ]; then
+  exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"
 fi
 
 case " $bundled_platforms " in

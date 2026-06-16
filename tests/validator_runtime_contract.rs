@@ -202,6 +202,37 @@ fn validator_cli_rejects_packaged_plugin_with_script_placeholders()
     Ok(())
 }
 
+#[test]
+fn runtime_workflow_assembles_validated_marketplace_packages()
+-> Result<(), Box<dyn std::error::Error>> {
+    let workflow = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(".github/workflows/plugin-runtime-binaries.yml"),
+    )?;
+
+    for required in [
+        "release:",
+        "package-plugin:",
+        "needs: build-runtime",
+        "actions/download-artifact@v4",
+        "pattern: codexy-mcp-runtimes-*",
+        "dist/codexy-marketplace-plugin",
+        "dist/codexy-marketplace-plugin.tar.gz",
+        "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
+        "gh release upload",
+    ] {
+        assert!(
+            workflow.contains(required),
+            "runtime workflow must assemble and validate marketplace package archives; missing {required:?}"
+        );
+    }
+    assert!(
+        !workflow.contains("dist/plugins/codexy/bin/*.bin"),
+        "runtime workflow must not publish detached loose runtime binaries as the marketplace contract"
+    );
+    Ok(())
+}
+
 fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     let plugin_root = temp_root.join("codexy");
     copy_dir(

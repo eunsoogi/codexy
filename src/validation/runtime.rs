@@ -102,6 +102,24 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     let path = crate::paths::repo_root()?.join(".github/workflows/plugin-runtime-binaries.yml");
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", display_relative(&path)))?;
+    for required in [
+        "release:",
+        "package-plugin:",
+        "needs: build-runtime",
+        "actions/download-artifact@v4",
+        "pattern: codexy-mcp-runtimes-*",
+        "dist/codexy-marketplace-plugin",
+        "dist/codexy-marketplace-plugin.tar.gz",
+        "--check-runtime-artifacts",
+        "gh release upload",
+    ] {
+        if !text.contains(required) {
+            bail!(
+                "{} runtime package workflow must include {required:?}",
+                display_relative(&path)
+            );
+        }
+    }
     for platform in platforms {
         if !text.contains(&format!("platform: {platform}")) {
             bail!(
