@@ -13,7 +13,6 @@ const CURRENT_INSTALL_REF: &str = "main";
 const MARKETPLACE_PATH: &str = ".agents/plugins/marketplace.json";
 const PLUGIN_PATH: &str = "./plugins/codexy";
 const PACKAGE_ARCHIVE: &str = "dist/codexy-marketplace-plugin.tar.gz";
-const MAIN_DOGFOOD_RELEASE: &str = "codexy-main";
 const FUTURE_INSTALL_REF: &str = "version-tags";
 
 pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
@@ -87,12 +86,6 @@ fn check_package_contract(contract: &Value, path: &Path, platforms: &[String]) -
         PACKAGE_ARCHIVE,
     )?;
     require_exact(
-        package.get("mainDogfoodRelease"),
-        "package.mainDogfoodRelease",
-        path,
-        MAIN_DOGFOOD_RELEASE,
-    )?;
-    require_exact(
         package.get("futureInstallRef"),
         "package.futureInstallRef",
         path,
@@ -148,9 +141,6 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
         "gh release upload",
-        "codexy-main",
-        "Create main dogfood package release",
-        "Upload main dogfood package",
     ] {
         if !text.contains(required) {
             bail!(

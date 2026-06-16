@@ -9,8 +9,6 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
 
     for required in [
         "release:",
-        "push:",
-        "branches: [main]",
         "package-plugin:",
         "needs: build-runtime",
         "actions/download-artifact@v4",
@@ -19,9 +17,6 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
         "gh release upload",
-        "codexy-main",
-        "Create main dogfood package release",
-        "Upload main dogfood package",
         "mkdir -p \"${plugin_root}/runtime\"",
         "cp dist/generated-runtimes/*.bin \"${plugin_root}/runtime/\"",
     ] {
@@ -81,7 +76,6 @@ fn release_contract_uses_main_for_current_marketplace_ref() -> Result<(), Box<dy
         package["workflow"],
         ".github/workflows/plugin-runtime-binaries.yml"
     );
-    assert_eq!(package["mainDogfoodRelease"], "codexy-main");
     assert_eq!(package["futureInstallRef"], "version-tags");
     assert_eq!(
         package["platforms"],

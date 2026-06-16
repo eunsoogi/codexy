@@ -2,10 +2,7 @@ mod support;
 
 use std::process::Command;
 
-use support::{
-    WrapperFixture, run_wrapper, run_wrapper_with_optional_failure,
-    runtime_cache_contains_executable,
-};
+use support::{WrapperFixture, run_wrapper, run_wrapper_with_optional_failure};
 
 #[test]
 fn lsp_wrapper_bootstraps_runtime_when_installed_without_bundled_binary()
@@ -17,14 +14,6 @@ fn lsp_wrapper_bootstraps_runtime_when_installed_without_bundled_binary()
 fn codegraph_wrapper_bootstraps_runtime_when_installed_without_bundled_binary()
 -> Result<(), Box<dyn std::error::Error>> {
     assert_wrapper_bootstraps_runtime("codegraph")
-}
-
-#[test]
-fn wrappers_download_runtime_package_without_cargo() -> Result<(), Box<dyn std::error::Error>> {
-    for server in ["lsp", "codegraph"] {
-        assert_wrapper_downloads_runtime_package_without_cargo(server)?;
-    }
-    Ok(())
 }
 
 #[test]
@@ -95,46 +84,6 @@ fn assert_wrapper_bootstraps_runtime(server: &str) -> Result<(), Box<dyn std::er
             && cargo_args.contains("--branch main")
             && cargo_args.contains(&format!("--bin codexy-mcp-{server}")),
         "wrapper should install the matching runtime from the main ref, got {cargo_args:?}"
-    );
-    Ok(())
-}
-
-fn assert_wrapper_downloads_runtime_package_without_cargo(
-    server: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let fixture = WrapperFixture::new(temp.path())?;
-    let package = fixture.runtime_package(server, "packaged")?;
-    let cache = temp.path().join("runtime-cache");
-
-    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
-        .env("HOME", temp.path())
-        .env("PATH", "/usr/bin:/bin")
-        .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
-        .env(
-            "CODEXY_RUNTIME_PACKAGE_URL",
-            format!("file://{}", package.display()),
-        )
-        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
-        .arg("--help")
-        .output()?;
-
-    assert!(
-        output.status.success(),
-        "wrapper should run the downloaded packaged runtime without cargo\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let stdout = String::from_utf8(output.stdout)?;
-    assert!(
-        stdout.contains(&format!(
-            "fake-packaged packaged codexy-mcp-{server} --help"
-        )),
-        "wrapper should exec the downloaded packaged runtime, got {stdout:?}"
-    );
-    assert!(
-        !fixture.cargo_log.exists(),
-        "no-Cargo package bootstrap should not invoke cargo"
     );
     Ok(())
 }
@@ -265,8 +214,8 @@ fn assert_wrapper_fails_without_cache_after_refresh_failure(
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
-        !runtime_cache_contains_executable(&cache)?,
-        "failing first install should not create a cached executable runtime"
+        !cache.exists(),
+        "failing first install should not create a cached runtime"
     );
     Ok(())
 }

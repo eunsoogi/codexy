@@ -134,9 +134,6 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "dist/codexy-marketplace-plugin.tar.gz",
         "--check-runtime-artifacts",
         "gh release upload",
-        "codexy-main",
-        "Create main dogfood package release",
-        "Upload main dogfood package",
     ] {
         if !text.contains(required) {
             bail!(
