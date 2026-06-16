@@ -1,0 +1,24 @@
+{
+  "schema": "codexy.internal.release-publish-contract.v1",
+  "name": "codexy",
+  "version": "0.1.0",
+  "marketplaceSnapshot": {
+    "repository": "https://github.com/eunsoogi/codexy",
+    "ref": "codexy-marketplace",
+    "marketplacePath": ".agents/plugins/marketplace.json",
+    "pluginPath": "./plugins/codexy",
+    "installCommand": "codex plugin marketplace add eunsoogi/codexy --ref codexy-marketplace"
+  },
+  "package": {
+    "workflow": ".github/workflows/plugin-runtime-binaries.yml",
+    "archive": "dist/codexy-marketplace-plugin.tar.gz",
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64"
+    ]
+  },
+  "sourceMarketplace": {
+    "path": ".agents/plugins/marketplace.json",
+    "mode": "source-checkout-dev"
+  }
+}

@@ -1,0 +1,69 @@
+#!/bin/sh
+set -eu
+
+self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
+repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
+export CODEXY_PLUGIN_ROOT="$plugin_root"
+bundled_platforms="darwin-arm64 linux-x86_64"
+
+platform=${CODEXY_RUNTIME_PLATFORM:-}
+if [ -z "$platform" ]; then
+  os=$(uname -s 2>/dev/null || echo unknown)
+  arch=$(uname -m 2>/dev/null || echo unknown)
+  case "$os" in
+    Darwin) os=darwin ;;
+    Linux) os=linux ;;
+    MINGW*|MSYS*|CYGWIN*) os=windows ;;
+    *) os=unknown ;;
+  esac
+  case "$arch" in
+    arm64|aarch64) arch=arm64 ;;
+    x86_64|amd64) arch=x86_64 ;;
+    *) arch=unknown ;;
+  esac
+  platform="$os-$arch"
+fi
+
+runtime_name="codexy-mcp-codegraph-$platform.bin"
+if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
+  case "$CODEXY_RUNTIME_DIR" in
+    /*) ;;
+    *)
+      echo "codexy-mcp-codegraph runtime dir must be absolute: $CODEXY_RUNTIME_DIR" >&2
+      exit 127
+      ;;
+  esac
+  if [ -x "$CODEXY_RUNTIME_DIR/$runtime_name" ]; then
+    exec "$CODEXY_RUNTIME_DIR/$runtime_name" "$@"
+  fi
+  echo "codexy-mcp-codegraph runtime not found for $platform in CODEXY_RUNTIME_DIR: $CODEXY_RUNTIME_DIR/$runtime_name" >&2
+  exit 127
+fi
+
+if [ -n "$repo_root" ] \
+  && [ -f "$repo_root/Cargo.toml" ] \
+  && grep -Eq '^name = "codexy-runtime"$' "$repo_root/Cargo.toml" \
+  && [ -f "$repo_root/src/bin/codexy-mcp-codegraph.rs" ] \
+  && [ -f "$repo_root/plugins/codexy/.codex-plugin/plugin.json" ]; then
+  exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-codegraph -- "$@"
+fi
+
+case " $bundled_platforms " in
+  *" $platform "*)
+    if [ -x "$self_dir/$runtime_name" ]; then
+      exec "$self_dir/$runtime_name" "$@"
+    fi
+    ;;
+  *)
+    echo "codexy-mcp-codegraph bundled runtime supports: $bundled_platforms; set CODEXY_RUNTIME_DIR to an absolute directory containing codexy-mcp-codegraph-$platform.bin" >&2
+    exit 127
+    ;;
+esac
+
+if [ -x "$self_dir/$runtime_name" ]; then
+  exec "$self_dir/$runtime_name" "$@"
+fi
+
+echo "codexy-mcp-codegraph bundled runtime missing for declared platform $platform: $self_dir/$runtime_name" >&2
+exit 127

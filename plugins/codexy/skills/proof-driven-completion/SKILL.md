@@ -20,7 +20,7 @@ complete.
 3. For each item, name the evidence that would prove it:
    - file content or diff for documentation and configuration,
    - parser/schema output for structured data,
-   - `python3 scripts/validate-plugin-config.py --check` for Codexy plugin
+   - `scripts/validate-plugin-config --check` for Codexy plugin
      architecture surfaces when the validator exists,
    - lint/typecheck/unit/integration output for code,
    - browser, desktop, CLI, GitHub, plugin, or marketplace observation for
@@ -41,7 +41,7 @@ complete.
 - Parse structured files with an appropriate parser when possible.
 - For Codexy plugin architecture changes, validate LSP config, MCP config,
   role metadata or custom agent TOMLs, and thread/worktree orchestration
-  wording. Run `python3 scripts/validate-plugin-config.py --check` when that
+  wording. Run `scripts/validate-plugin-config --check` when that
   script is present in the current revision.
 - For code-touching or code-adjacent runtime changes, include Codexy
   `codegraph` MCP exploration evidence when the MCP is available, plus direct

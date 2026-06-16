@@ -1,0 +1,123 @@
+name: Plugin marketplace packages
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "src/**"
+      - "plugins/codexy/bin/**"
+      - ".agents/plugins/release-publish-contract.json"
+      - ".github/workflows/plugin-runtime-binaries.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-runtime:
+    name: Build ${{ matrix.platform }} MCP runtimes
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-latest
+          - platform: darwin-arm64
+            runner: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build MCP runtime binaries
+        run: |
+          cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
+
+      - name: Package platform runtime binaries
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p "dist/runtimes-${PLATFORM}"
+          cp target/release/codexy-mcp-lsp "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
+          cp target/release/codexy-mcp-codegraph "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
+          chmod 755 "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
+          chmod 755 "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
+          file "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
+          file "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
+
+      - name: Upload runtime binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: codexy-mcp-runtimes-${{ matrix.platform }}
+          path: dist/runtimes-${{ matrix.platform }}/*.bin
+          if-no-files-found: error
+
+  package-plugin:
+    name: Assemble marketplace plugin package
+    runs-on: ubuntu-latest
+    needs: build-runtime
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download generated runtime binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: codexy-mcp-runtimes-*
+          path: dist/generated-runtimes
+          merge-multiple: true
+
+      - name: Assemble marketplace plugin package
+        env:
+          PACKAGE_ROOT: dist/codexy-marketplace-plugin
+        run: |
+          package_root="$PACKAGE_ROOT"
+          plugin_root="${package_root}/plugins/codexy"
+          rm -rf "$package_root"
+          mkdir -p "${package_root}/plugins"
+          rsync -a --exclude '*.bin' plugins/codexy/ "$plugin_root/"
+          cp dist/generated-runtimes/*.bin "${plugin_root}/bin/"
+          chmod 755 "${plugin_root}"/bin/*.bin
+          file "${plugin_root}"/bin/*.bin
+          scripts/validate-plugin-config --plugin-root "$plugin_root" --check-runtime-artifacts
+          tar -C "$package_root" -czf "dist/codexy-marketplace-plugin.tar.gz" plugins/codexy
+
+      - name: Upload marketplace package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codexy-marketplace-plugin
+          path: dist/codexy-marketplace-plugin.tar.gz
+          if-no-files-found: error
+
+      - name: Attach marketplace package to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" "dist/codexy-marketplace-plugin.tar.gz" --clobber
+
+      - name: Publish generated marketplace snapshot
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MARKETPLACE_BRANCH: codexy-marketplace
+          PACKAGE_ROOT: dist/codexy-marketplace-plugin
+        run: |
+          marketplace_root="dist/marketplace-root"
+          rm -rf "$marketplace_root"
+          mkdir -p "$marketplace_root/.agents/plugins" "$marketplace_root/plugins"
+          cp .agents/plugins/marketplace.json "$marketplace_root/.agents/plugins/marketplace.json"
+          cp -R "$PACKAGE_ROOT/plugins/codexy" "$marketplace_root/plugins/codexy"
+          scripts/validate-plugin-config --plugin-root "$marketplace_root/plugins/codexy" --check-runtime-artifacts
+          git -C "$marketplace_root" init
+          git -C "$marketplace_root" config user.name "github-actions[bot]"
+          git -C "$marketplace_root" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$marketplace_root" add .agents/plugins/marketplace.json plugins/codexy
+          git -C "$marketplace_root" commit -m "chore(plugin): publish codexy marketplace package"
+          git -C "$marketplace_root" branch -M "$MARKETPLACE_BRANCH"
+          git -C "$marketplace_root" remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C "$marketplace_root" push --force origin "$MARKETPLACE_BRANCH"

@@ -1,15 +1,15 @@
 {
   "lsp": {
-    "command": "node",
+    "command": "./bin/codexy-mcp-lsp",
     "args": [
-      "./mcp/lsp/server.js"
+      "--stdio"
     ],
     "cwd": "."
   },
   "codegraph": {
-    "command": "node",
+    "command": "./bin/codexy-mcp-codegraph",
     "args": [
-      "./mcp/codegraph/server.js"
+      "--stdio"
     ],
     "cwd": "."
   },

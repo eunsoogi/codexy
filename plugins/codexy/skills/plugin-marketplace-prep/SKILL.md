@@ -65,7 +65,7 @@ validation proves the packaged paths match the repository layout.
    - child-owned PR review feedback is routed back to the owning child thread
      and revalidated there before the parent thread merges,
    - for Codexy plugin prep specifically,
-     `python3 scripts/validate-plugin-config.py --check` passes when that
+     `scripts/validate-plugin-config --check` passes when that
      validator is present in the revision being prepared,
    - for other plugins, validate only the packaged surfaces that exist instead
      of requiring the full Codexy contract.
@@ -116,7 +116,7 @@ Risks:
 
 - JSON manifests require parser validation.
 - LSP and MCP config require parser validation and, when the plugin being
-  prepared is Codexy, `python3 scripts/validate-plugin-config.py --check`.
+  prepared is Codexy, `scripts/validate-plugin-config --check`.
 - Custom agent TOMLs and specialist agent definitions require parser validation and evidence
   that no separate orchestrator agent competes with the invoking thread.
 - Skill bundles require frontmatter and metadata validation.
