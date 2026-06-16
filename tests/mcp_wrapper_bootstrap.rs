@@ -116,23 +116,13 @@ fn assert_wrapper_bootstraps_runtime(server: &str) -> Result<(), Box<dyn std::er
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
 
-    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
-        .env("HOME", temp.path())
-        .env(
-            "PATH",
-            format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()),
-        )
-        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
-        .arg("--help")
-        .output()?;
-
-    assert!(
-        output.status.success(),
-        "wrapper should run the bootstrapped runtime\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let stdout = String::from_utf8(output.stdout)?;
+    let stdout = run_wrapper(
+        &fixture,
+        server,
+        &temp.path().join("runtime-cache"),
+        "main",
+        "current",
+    )?;
     assert!(
         stdout.contains(&format!(
             "fake-installed current codexy-mcp-{server} --help"
