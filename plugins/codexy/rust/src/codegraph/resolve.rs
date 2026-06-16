@@ -13,7 +13,11 @@ pub(super) struct ResolvedImport {
 pub(super) fn graph_path(root: &Path, input: &str) -> String {
     let path = Path::new(input);
     let relative = if path.is_absolute() {
-        path.strip_prefix(root).unwrap_or(path).to_path_buf()
+        let absolute = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        absolute
+            .strip_prefix(root)
+            .unwrap_or(&absolute)
+            .to_path_buf()
     } else {
         path.to_path_buf()
     };

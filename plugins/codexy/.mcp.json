@@ -1,8 +1,9 @@
 {
   "lsp": {
-    "command": [
-      "cargo",
+    "command": "cargo",
+    "args": [
       "run",
+      "--locked",
       "--quiet",
       "--manifest-path",
       "./rust/Cargo.toml",
@@ -13,9 +14,10 @@
     "cwd": "."
   },
   "codegraph": {
-    "command": [
-      "cargo",
+    "command": "cargo",
+    "args": [
       "run",
+      "--locked",
       "--quiet",
       "--manifest-path",
       "./rust/Cargo.toml",

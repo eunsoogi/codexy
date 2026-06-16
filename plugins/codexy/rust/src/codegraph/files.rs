@@ -13,14 +13,17 @@ pub(super) fn result_limit(input: Option<usize>) -> usize {
 }
 
 pub(super) fn repo_root(input_root: Option<&str>) -> PathBuf {
-    let candidate = input_root.map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    );
-    if candidate.exists() {
+    let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let candidate = input_root.map_or_else(|| current_dir.clone(), PathBuf::from);
+    let rooted = if candidate.is_absolute() {
         candidate
     } else {
-        std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        current_dir.join(candidate)
+    };
+    if rooted.exists() {
+        rooted.canonicalize().unwrap_or(rooted)
+    } else {
+        current_dir
     }
 }
 

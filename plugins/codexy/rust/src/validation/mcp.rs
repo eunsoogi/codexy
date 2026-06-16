@@ -110,20 +110,7 @@ fn check_entry(path: &Path, plugin_root: &Path, name: &str, entry: &Value) -> Re
         );
     }
     if let Some(command_value) = command {
-        let command_items = json_array_strings(Some(command_value))
-            .filter(|items| !items.is_empty() && items.iter().all(|item| !item.trim().is_empty()));
-        let Some(command_items) = command_items else {
-            bail!(
-                "{} {name}.command must be a non-empty argv array",
-                display_relative(path)
-            );
-        };
-        if object.contains_key("args") {
-            bail!(
-                "{} {name}.args is not allowed; include argv in command",
-                display_relative(path)
-            );
-        }
+        let command_items = command_items(path, name, command_value, object.get("args"))?;
         check_plugin_relative_entrypoint(path, plugin_root, name, &command_items)?;
     }
     if let Some(cwd) = object.get("cwd") {
@@ -132,6 +119,56 @@ fn check_entry(path: &Path, plugin_root: &Path, name: &str, entry: &Value) -> Re
         }
     }
     Ok(())
+}
+
+fn command_items(
+    path: &Path,
+    name: &str,
+    command_value: &Value,
+    args_value: Option<&Value>,
+) -> Result<Vec<String>> {
+    if let Some(command) = command_value.as_str() {
+        if command.trim().is_empty() {
+            bail!(
+                "{} {name}.command must be a non-empty string",
+                display_relative(path)
+            );
+        }
+        let args = match args_value {
+            Some(value) => json_array_strings(Some(value)).with_context(|| {
+                format!(
+                    "{} {name}.args must be an array of strings",
+                    display_relative(path)
+                )
+            })?,
+            None => Vec::new(),
+        };
+        if args.iter().any(|item| item.trim().is_empty()) {
+            bail!(
+                "{} {name}.args must contain only non-empty strings",
+                display_relative(path)
+            );
+        }
+        let mut items = Vec::with_capacity(args.len() + 1);
+        items.push(command.to_owned());
+        items.extend(args);
+        return Ok(items);
+    }
+    let command_items = json_array_strings(Some(command_value))
+        .filter(|items| !items.is_empty() && items.iter().all(|item| !item.trim().is_empty()));
+    let Some(command_items) = command_items else {
+        bail!(
+            "{} {name}.command must be a non-empty string or argv array",
+            display_relative(path)
+        );
+    };
+    if args_value.is_some() {
+        bail!(
+            "{} {name}.args is only allowed with string command",
+            display_relative(path)
+        );
+    }
+    Ok(command_items)
 }
 
 fn check_plugin_relative_entrypoint(

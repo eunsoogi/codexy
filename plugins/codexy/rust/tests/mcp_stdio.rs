@@ -1,4 +1,5 @@
 use std::io::{Read as _, Write as _};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
 use serde_json::{Value, json};
@@ -10,7 +11,19 @@ struct McpClient {
 
 impl McpClient {
     fn spawn(binary: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let child = Command::new(binary)
+        Self::spawn_with(binary, None)
+    }
+
+    fn spawn_in(binary: &str, cwd: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::spawn_with(binary, Some(cwd))
+    }
+
+    fn spawn_with(binary: &str, cwd: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut command = Command::new(binary);
+        if let Some(cwd) = cwd {
+            command.current_dir(cwd);
+        }
+        let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -134,6 +147,55 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
             .ok_or("text")?,
     )?;
     assert_eq!(neighbors, json!([]));
+    Ok(())
+}
+
+#[test]
+fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let dependency = root.path().join("dep.js");
+    let entry = root.path().join("entry.js");
+    std::fs::write(&dependency, "export const value = 1;\n")?;
+    std::fs::write(
+        &entry,
+        "import { value } from \"./dep.js\";\nexport const entry = value;\n",
+    )?;
+
+    let mut client = McpClient::spawn_in(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"), root.path())?;
+    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    let reverse_deps = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"codegraph_reverse_deps","arguments":{"root":".","path":dependency,"limit":10}}
+    }))?;
+    let reverse_payload: Value = serde_json::from_str(
+        reverse_deps["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("reverse deps text")?,
+    )?;
+    assert!(
+        reverse_payload["dependents"]
+            .as_array()
+            .ok_or("reverse dependents must be array")?
+            .iter()
+            .any(|dependent| dependent["path"] == "entry.js"),
+        "absolute dependency path should match relative graph edges"
+    );
+
+    let neighborhood = client.send(&json!({
+        "jsonrpc":"2.0","id":3,"method":"tools/call",
+        "params":{"name":"codegraph_neighborhood","arguments":{"root":".","path":entry,"limit":10}}
+    }))?;
+    let neighborhood_payload: Value = serde_json::from_str(
+        neighborhood["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("neighborhood text")?,
+    )?;
+    let nodes = neighborhood_payload["nodes"]
+        .as_array()
+        .ok_or("neighborhood nodes must be array")?;
+    assert!(nodes.iter().any(|node| node["path"] == "entry.js"));
+    assert!(nodes.iter().any(|node| node["path"] == "dep.js"));
     Ok(())
 }
 
