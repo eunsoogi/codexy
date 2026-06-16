@@ -208,7 +208,12 @@ fn limit(args: &Value) -> Option<usize> {
 }
 
 fn value_usize(value: &Value) -> Option<usize> {
-    value
-        .as_u64()
-        .and_then(|number| usize::try_from(number).ok())
+    if let Some(number) = value.as_u64() {
+        return usize::try_from(number).ok();
+    }
+    let number = value.as_f64()?;
+    if !number.is_finite() || number < 0.0 || number.fract() != 0.0 {
+        return None;
+    }
+    format!("{number:.0}").parse().ok()
 }

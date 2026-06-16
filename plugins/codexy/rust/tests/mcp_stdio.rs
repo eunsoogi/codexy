@@ -137,7 +137,7 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
     );
     let search = client.send(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"codegraph_search","arguments":{"root":root.path(),"query":"entry","limit":1}}
+        "params":{"name":"codegraph_search","arguments":{"root":root.path(),"query":"entry","limit":1.0}}
     }))?;
     let search_text = search["result"]["content"][0]["text"]
         .as_str()
@@ -198,7 +198,7 @@ fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
 
     let neighborhood = client.send(&json!({
         "jsonrpc":"2.0","id":3,"method":"tools/call",
-        "params":{"name":"codegraph_neighborhood","arguments":{"root":".","path":entry,"limit":10}}
+        "params":{"name":"codegraph_neighborhood","arguments":{"root":".","path":entry,"depth":0.0,"limit":10.0}}
     }))?;
     let neighborhood_payload: Value = serde_json::from_str(
         neighborhood["result"]["content"][0]["text"]
@@ -209,7 +209,10 @@ fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
         .as_array()
         .ok_or("neighborhood nodes must be array")?;
     assert!(nodes.iter().any(|node| node["path"] == "entry.js"));
-    assert!(nodes.iter().any(|node| node["path"] == "dep.js"));
+    assert!(
+        !nodes.iter().any(|node| node["path"] == "dep.js"),
+        "float-encoded depth must be honored"
+    );
     Ok(())
 }
 
