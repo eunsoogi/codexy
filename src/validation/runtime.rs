@@ -8,12 +8,14 @@ use crate::validation::manifest::{load_manifest, supported_platforms};
 use crate::validation::manifest_path;
 
 const REQUIRED_RUNTIME_SERVERS: &[&str] = &["lsp", "codegraph"];
+const GENERATED_SOURCE_DIRS: &[&str] = &["bin", "runtime"];
 
 pub(super) fn check_source_contract(plugin_root: &Path, manifest: &Value) -> Result<()> {
+    check_no_source_runtime_artifacts(plugin_root)?;
     let path = manifest_path(plugin_root);
     let platforms = supported_platforms(manifest, &path)?;
     for server in REQUIRED_RUNTIME_SERVERS {
-        let wrapper_path = plugin_root.join("bin").join(format!("codexy-mcp-{server}"));
+        let wrapper_path = plugin_root.join("mcp").join(format!("codexy-mcp-{server}"));
         let wrapper_platforms = bundled_platforms(&wrapper_path)?;
         if wrapper_platforms != platforms {
             bail!(
@@ -38,12 +40,18 @@ pub(super) fn check_artifacts(plugin_root: &Path) -> Vec<String> {
 }
 
 fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Result<()> {
+    if plugin_root.join("bin").exists() {
+        bail!(
+            "{} must not contain generated MCP runtimes or wrappers",
+            display_relative(&plugin_root.join("bin"))
+        );
+    }
     let path = manifest_path(plugin_root);
     let platforms = supported_platforms(manifest, &path)?;
     for server in REQUIRED_RUNTIME_SERVERS {
         for platform in &platforms {
             let runtime_path = plugin_root
-                .join("bin")
+                .join("runtime")
                 .join(format!("codexy-mcp-{server}-{platform}.bin"));
             if !runtime_path.is_file() {
                 bail!(
@@ -53,6 +61,19 @@ fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Res
             }
             check_runtime_binary_signature(&runtime_path, platform)?;
             check_runtime_executable(&runtime_path)?;
+        }
+    }
+    Ok(())
+}
+
+fn check_no_source_runtime_artifacts(plugin_root: &Path) -> Result<()> {
+    for dir in GENERATED_SOURCE_DIRS {
+        let path = plugin_root.join(dir);
+        if path.exists() {
+            bail!(
+                "{} must not be tracked in the source plugin tree",
+                display_relative(&path)
+            );
         }
     }
     Ok(())

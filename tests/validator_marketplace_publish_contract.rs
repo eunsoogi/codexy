@@ -24,6 +24,8 @@ fn runtime_workflow_publishes_installable_marketplace_snapshot()
         "cp -R \"$PACKAGE_ROOT/plugins/codexy\" \"$marketplace_root/plugins/codexy\"",
         "scripts/validate-plugin-config --plugin-root \"$marketplace_root/plugins/codexy\" --check-runtime-artifacts",
         "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
+        "mkdir -p \"${plugin_root}/runtime\"",
+        "cp dist/generated-runtimes/*.bin \"${plugin_root}/runtime/\"",
     ] {
         assert!(
             workflow.contains(required),
@@ -31,8 +33,10 @@ fn runtime_workflow_publishes_installable_marketplace_snapshot()
         );
     }
     assert!(
-        !workflow.contains("dist/plugins/codexy/bin/*.bin"),
-        "runtime workflow must not use detached loose runtime files as its install contract"
+        !workflow.contains("plugins/codexy/bin")
+            && !workflow.contains("${plugin_root}/bin")
+            && !workflow.contains("\"$plugin_root\"/bin"),
+        "runtime workflow must not use plugin bin paths as its install contract"
     );
     Ok(())
 }

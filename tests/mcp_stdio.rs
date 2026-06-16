@@ -113,7 +113,7 @@ fn lsp_wrapper_uses_installed_plugin_root_for_config() -> Result<(), Box<dyn std
         "value = 1\n",
     )?;
 
-    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-lsp"));
+    let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-lsp"));
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
@@ -170,7 +170,7 @@ fn lsp_wrapper_uses_installed_plugin_root_for_config() -> Result<(), Box<dyn std
 fn codegraph_wrapper_uses_bundled_runtime_without_global_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let installed_plugin = installed_plugin_copy()?;
-    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"));
+    let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"));
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
@@ -187,7 +187,7 @@ fn codegraph_wrapper_uses_bundled_runtime_without_global_path()
 fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
 -> Result<(), Box<dyn std::error::Error>> {
     let installed_plugin = installed_plugin_copy()?;
-    let output = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"))
+    let output = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"))
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64")
@@ -216,7 +216,7 @@ fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
 fn lsp_wrapper_rejects_unsupported_platform_without_running_macos_binary()
 -> Result<(), Box<dyn std::error::Error>> {
     let installed_plugin = installed_plugin_copy()?;
-    let output = Command::new(installed_plugin.path.join("bin/codexy-mcp-lsp"))
+    let output = Command::new(installed_plugin.path.join("mcp/codexy-mcp-lsp"))
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64")
@@ -245,7 +245,7 @@ fn codegraph_wrapper_uses_validated_runtime_dir_for_platform_runtime()
         "codexy-mcp-codegraph-linux-x86_64.bin",
         env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
     )?;
-    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"));
+    let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"));
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
@@ -268,7 +268,7 @@ fn codegraph_wrapper_under_non_codexy_rust_host_uses_runtime_dir_not_cargo()
         "codexy-mcp-codegraph-linux-x86_64.bin",
         env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
     )?;
-    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-codegraph"));
+    let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"));
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
@@ -291,7 +291,7 @@ fn lsp_wrapper_under_non_codexy_rust_host_uses_runtime_dir_not_cargo()
         "codexy-mcp-lsp-linux-x86_64.bin",
         env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
     )?;
-    let mut command = Command::new(installed_plugin.path.join("bin/codexy-mcp-lsp"));
+    let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-lsp"));
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
@@ -315,7 +315,7 @@ fn codegraph_wrapper_in_source_checkout_prefers_runtime_dir_over_cargo()
     )?;
     let mut command = Command::new(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/bin/codexy-mcp-codegraph"),
+            .join("plugins/codexy/mcp/codexy-mcp-codegraph"),
     );
     command
         .current_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"))
@@ -339,7 +339,7 @@ fn lsp_wrapper_in_source_checkout_prefers_runtime_dir_over_cargo()
         env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
     )?;
     let mut command = Command::new(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/bin/codexy-mcp-lsp"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/mcp/codexy-mcp-lsp"),
     );
     command
         .current_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"))
@@ -370,6 +370,16 @@ fn installed_plugin_copy() -> Result<InstalledPlugin, Box<dyn std::error::Error>
             .join("plugins/codexy")
             .as_path(),
         &installed_plugin,
+    )?;
+    install_runtime_fixture(
+        &installed_plugin,
+        "codexy-mcp-lsp",
+        env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
+    )?;
+    install_runtime_fixture(
+        &installed_plugin,
+        "codexy-mcp-codegraph",
+        env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
     )?;
     Ok(InstalledPlugin {
         _temp: temp,
@@ -419,6 +429,28 @@ fn temp_runtime_dir(
         _temp: temp,
         path: runtime_dir,
     })
+}
+
+fn install_runtime_fixture(
+    installed_plugin: &Path,
+    runtime: &str,
+    source_binary: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let runtime_dir = installed_plugin.join("runtime");
+    std::fs::create_dir_all(&runtime_dir)?;
+    for platform in ["darwin-arm64", "linux-x86_64"] {
+        let runtime_path = runtime_dir.join(format!("{runtime}-{platform}.bin"));
+        std::fs::copy(source_binary, &runtime_path)?;
+        let mut permissions = std::fs::metadata(&runtime_path)?.permissions();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+
+            permissions.set_mode(0o755);
+        }
+        std::fs::set_permissions(&runtime_path, permissions)?;
+    }
+    Ok(())
 }
 
 fn copy_dir(source: &Path, target: &Path) -> std::io::Result<()> {

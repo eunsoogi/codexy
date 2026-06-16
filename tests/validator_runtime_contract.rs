@@ -46,7 +46,7 @@ fn validator_cli_rejects_supported_platform_without_build_matrix_coverage()
         serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]);
     std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
     for server in ["lsp", "codegraph"] {
-        let wrapper_path = plugin_root.join(format!("bin/codexy-mcp-{server}"));
+        let wrapper_path = plugin_root.join(format!("mcp/codexy-mcp-{server}"));
         let wrapper = std::fs::read_to_string(&wrapper_path)?.replace(
             "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
             "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
@@ -86,7 +86,7 @@ fn validator_cli_rejects_platform_narrowing_without_required_baseline()
     manifest["supportedPlatforms"] = serde_json::json!(["darwin-arm64"]);
     std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
     for server in ["lsp", "codegraph"] {
-        let wrapper_path = plugin_root.join(format!("bin/codexy-mcp-{server}"));
+        let wrapper_path = plugin_root.join(format!("mcp/codexy-mcp-{server}"));
         let wrapper = std::fs::read_to_string(&wrapper_path)?.replace(
             "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
             "bundled_platforms=\"darwin-arm64\"",
@@ -135,7 +135,7 @@ fn validator_cli_rejects_packaged_plugin_without_generated_runtime_artifacts()
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("codexy-mcp-lsp-linux-x86_64.bin bundled MCP runtime missing"),
+            .contains("codexy-mcp-lsp-darwin-arm64.bin bundled MCP runtime missing"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
@@ -147,9 +147,10 @@ fn validator_cli_accepts_packaged_plugin_with_generated_runtime_artifacts()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
-    for runtime_name in linux_runtime_names() {
-        let runtime_path = plugin_root.join("bin").join(runtime_name);
-        std::fs::write(&runtime_path, linux_binary_fixture())?;
+    for runtime_name in packaged_runtime_names() {
+        let runtime_path = plugin_root.join("runtime").join(runtime_name);
+        std::fs::create_dir_all(runtime_path.parent().ok_or("runtime parent")?)?;
+        std::fs::write(&runtime_path, runtime_binary_fixture(runtime_name))?;
         make_executable(&runtime_path)?;
     }
 
@@ -175,8 +176,9 @@ fn validator_cli_rejects_packaged_plugin_with_script_placeholders()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
-    for runtime_name in linux_runtime_names() {
-        let runtime_path = plugin_root.join("bin").join(runtime_name);
+    for runtime_name in packaged_runtime_names() {
+        let runtime_path = plugin_root.join("runtime").join(runtime_name);
+        std::fs::create_dir_all(runtime_path.parent().ok_or("runtime parent")?)?;
         std::fs::write(&runtime_path, "#!/bin/sh\nexit 0\n")?;
         make_executable(&runtime_path)?;
     }
@@ -195,7 +197,7 @@ fn validator_cli_rejects_packaged_plugin_with_script_placeholders()
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("bundled MCP runtime has invalid binary format for linux-x86_64"),
+            .contains("bundled MCP runtime has invalid binary format"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
@@ -213,15 +215,21 @@ fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::Pat
     Ok(plugin_root)
 }
 
-const fn linux_runtime_names() -> [&'static str; 2] {
+const fn packaged_runtime_names() -> [&'static str; 4] {
     [
+        "codexy-mcp-lsp-darwin-arm64.bin",
+        "codexy-mcp-codegraph-darwin-arm64.bin",
         "codexy-mcp-lsp-linux-x86_64.bin",
         "codexy-mcp-codegraph-linux-x86_64.bin",
     ]
 }
 
-fn linux_binary_fixture() -> Vec<u8> {
-    let mut bytes = vec![0x7f, b'E', b'L', b'F'];
+fn runtime_binary_fixture(runtime_name: &str) -> Vec<u8> {
+    let mut bytes = if runtime_name.contains("darwin-arm64") {
+        vec![0xcf, 0xfa, 0xed, 0xfe]
+    } else {
+        vec![0x7f, b'E', b'L', b'F']
+    };
     bytes.resize(4096, 0);
     bytes
 }
