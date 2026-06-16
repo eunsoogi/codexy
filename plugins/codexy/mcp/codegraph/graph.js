@@ -116,12 +116,14 @@ function normalizeLanguageImport(extension, specifier, file) {
       const dots = specifier.match(/^\.+/)[0].length;
       return `./${"../".repeat(Math.max(0, dots - 1))}${specifier.replace(/^\.+/, "").replace(/\./g, "/")}`;
     }
-    return `./${specifier.replace(/\./g, "/")}`;
+    const relative = path.posix.relative(path.posix.dirname(file), specifier.replace(/\./g, "/"));
+    return relative.startsWith(".") ? relative : `./${relative}`;
   }
   if (extension === ".rs") {
     if (specifier.startsWith("crate::")) return `./${path.posix.relative(path.posix.dirname(file), path.posix.join(file.split("/").includes("src") ? "src" : ".", specifier.slice(7).replace(/::/g, "/")))}`;
     if (specifier.startsWith("super::")) return `./../${specifier.slice(7).replace(/::/g, "/")}`;
     if (specifier.startsWith("self::")) return `./${specifier.slice(6).replace(/::/g, "/")}`;
+    if ((path.posix.dirname(file) === "src" || path.posix.dirname(file).startsWith("src/")) && !["lib.rs", "main.rs", "mod.rs"].includes(path.posix.basename(file))) return `./${path.posix.basename(file, ".rs")}/${specifier}`;
     return `./${specifier.replace(/::/g, "/")}`;
   }
   if (extension === ".go" && !specifier.startsWith(".")) return specifier;

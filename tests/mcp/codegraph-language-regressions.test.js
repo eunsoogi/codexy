@@ -54,12 +54,14 @@ test("advertised non-JS files create graph edges across index, reverse deps, and
   await fs.mkdir(path.join(nonJsRoot, "local"), { recursive: true });
   await Promise.all([
     fs.mkdir(path.join(nonJsRoot, "pkg/sub"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "pkg/sub/app.py"), "from ..util import helper\n", "utf8")),
+    fs.mkdir(path.join(nonJsRoot, "pkg/sub"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "pkg/sub/absolute_app.py"), "from pkg.util import helper\n", "utf8")),
     fs.writeFile(path.join(nonJsRoot, "app.py"), "from .util import helper\nfrom . import sibling_py\nfrom . import package_py\nimport localpkg.mod\n\ndef run():\n    return helper()\n", "utf8"),
     fs.writeFile(path.join(nonJsRoot, "text.py"), '# import fake\ntext = "from .fake import thing"\n', "utf8"),
     fs.writeFile(path.join(nonJsRoot, "fake.py"), "def thing():\n    return 0\n", "utf8"),
     fs.writeFile(path.join(nonJsRoot, "helper.py"), "value = 1\n", "utf8"),
     fs.writeFile(path.join(nonJsRoot, "sibling_py.py"), "value = 1\n", "utf8"),
     fs.mkdir(path.join(nonJsRoot, "pkg"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "pkg/util.py"), "def helper():\n    return 2\n", "utf8")),
+    fs.mkdir(path.join(nonJsRoot, "pkg/sub/pkg"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "pkg/sub/pkg/util.py"), "def helper():\n    return 3\n", "utf8")),
     fs.mkdir(path.join(nonJsRoot, "package_py"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "package_py/__init__.py"), "value = 1\n", "utf8")),
     fs.writeFile(path.join(nonJsRoot, "util.py"), "def helper():\n    return 1\n", "utf8"),
     fs.mkdir(path.join(nonJsRoot, "localpkg"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "localpkg/mod.py"), "value = 1\n", "utf8")),
@@ -70,6 +72,9 @@ test("advertised non-JS files create graph edges across index, reverse deps, and
     fs.mkdir(path.join(nonJsRoot, "module_dir"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "module_dir/mod.rs"), "pub fn module_dir() {}\n", "utf8")),
     fs.writeFile(path.join(nonJsRoot, "module_root.rs"), "mod module_dir;\n", "utf8"),
     fs.mkdir(path.join(nonJsRoot, "src/foo"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "src/foo/bar.rs"), "use crate::support::thing;\n", "utf8")),
+    fs.mkdir(path.join(nonJsRoot, "src"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "src/parent.rs"), "mod child;\n", "utf8")),
+    fs.mkdir(path.join(nonJsRoot, "src"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "src/child.rs"), "pub fn wrong_child() {}\n", "utf8")),
+    fs.mkdir(path.join(nonJsRoot, "src/parent"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "src/parent/child.rs"), "pub fn child() {}\n", "utf8")),
     fs.mkdir(path.join(nonJsRoot, "src/support"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "src/support/thing.rs"), "pub fn thing() {}\n", "utf8")),
     fs.writeFile(path.join(nonJsRoot, "sibling.rs"), "pub fn sibling() {}\n", "utf8"),
     fs.mkdir(path.join(nonJsRoot, "support"), { recursive: true }).then(() => fs.writeFile(path.join(nonJsRoot, "support/thing.rs"), "pub fn thing() {}\n", "utf8")),
@@ -84,12 +89,13 @@ test("advertised non-JS files create graph edges across index, reverse deps, and
 
   try {
     await withCodegraphClient(async (client) => {
-      const graph = await tool(client, "codegraph_index", { root: nonJsRoot, limit: 30 });
-      for (const [from, to] of [["app.py", "util.py"], ["app.py", "sibling_py.py"], ["app.py", "package_py/__init__.py"], ["pkg/sub/app.py", "pkg/util.py"], ["app.py", "localpkg/mod.py"], ["main.go", "pkg.go"], ["lib.rs", "sibling.rs"], ["lib.rs", "support/thing.rs"], ["src/foo/bar.rs", "src/support/thing.rs"], ["module_root.rs", "module_dir/mod.rs"], ["app.rb", "worker.rb"], ["app.rb", "job.rb"], ["local/Main.java", "local/Helper.java"], ["local/Main.kt", "local/HelperKt.kt"]]) {
-        assert.ok(graph.edges.some((edge) => edge.from === from && edge.to === to && edge.resolved), `${from} should resolve ${to}`);
-      }
+      const graph = await tool(client, "codegraph_index", { root: nonJsRoot, limit: 50 });
+      const expectedEdges = [["app.py", "util.py"], ["app.py", "sibling_py.py"], ["app.py", "package_py/__init__.py"], ["pkg/sub/app.py", "pkg/util.py"], ["pkg/sub/absolute_app.py", "pkg/util.py"], ["app.py", "localpkg/mod.py"], ["main.go", "pkg.go"], ["lib.rs", "sibling.rs"], ["lib.rs", "support/thing.rs"], ["src/foo/bar.rs", "src/support/thing.rs"], ["src/parent.rs", "src/parent/child.rs"], ["module_root.rs", "module_dir/mod.rs"], ["app.rb", "worker.rb"], ["app.rb", "job.rb"], ["local/Main.java", "local/Helper.java"], ["local/Main.kt", "local/HelperKt.kt"]];
+      assert.deepEqual(expectedEdges.filter(([from, to]) => !graph.edges.some((edge) => edge.from === from && edge.to === to && edge.resolved)), []);
       assert.ok(!graph.edges.some((edge) => edge.from === "main.go" && edge.to === "fmt.go"));
       assert.ok(!graph.edges.some((edge) => edge.from === "app.py" && edge.to === "helper.py"));
+      assert.ok(!graph.edges.some((edge) => edge.from === "pkg/sub/absolute_app.py" && edge.to === "pkg/sub/pkg/util.py"));
+      assert.ok(!graph.edges.some((edge) => edge.from === "src/parent.rs" && edge.to === "src/child.rs"));
       assert.ok(!graph.edges.some((edge) => edge.from === "text.py" && edge.to === "fake.py"));
       assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: nonJsRoot, path: "util.py", limit: 5 })).dependents, [{ path: "app.py", specifier: "./util" }]);
       assert.ok((await tool(client, "codegraph_neighborhood", { root: nonJsRoot, path: "lib.rs", depth: 1, limit: 5 })).nodes.some((node) => node.path === "support/thing.rs"));
