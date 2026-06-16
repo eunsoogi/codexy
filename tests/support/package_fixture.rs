@@ -84,10 +84,21 @@ pub(super) fn create_fake_curl_bin(
     root: &std::path::Path,
     artifact_api: &std::path::Path,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    create_fake_curl_bin_with_release_package(root, artifact_api, None)
+}
+
+pub(super) fn create_fake_curl_bin_with_release_package(
+    root: &std::path::Path,
+    artifact_api: &std::path::Path,
+    release_package: Option<&std::path::Path>,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let fake_bin = root.join("fake-bin");
     std::fs::create_dir_all(&fake_bin)?;
     let curl_path = fake_bin.join("curl");
     let curl_log = root.join("curl.log");
+    let release_package = release_package
+        .map(|path| path.display().to_string())
+        .unwrap_or_default();
     std::fs::write(
         &curl_path,
         format!(
@@ -104,11 +115,15 @@ pub(super) fn create_fake_curl_bin(
              done\n\
              printf '%s\\n' \"$url\" >> '{}'\n\
              case \"$url\" in\n\
+               *releases/latest/download/codexy-marketplace-plugin.tar.gz)\n\
+                 if [ -n '{}' ]; then cp '{}' \"$out\"; else echo release package unavailable >&2; exit 22; fi ;;\n\
                *api.github.com*) cp '{}' \"$out\" ;;\n\
                file://*) cp \"${{url#file://}}\" \"$out\" ;;\n\
                *) echo unexpected fake curl url: \"$url\" >&2; exit 22 ;;\n\
              esac\n",
             curl_log.display(),
+            release_package,
+            release_package,
             artifact_api.display()
         ),
     )?;

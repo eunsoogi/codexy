@@ -6,6 +6,7 @@ use support::{
     WrapperFixture, assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_installs_packaged_runtime_without_cargo,
     assert_wrapper_keeps_ref_override_exact_without_package_override,
+    assert_wrapper_prefers_durable_default_package_without_cargo,
     assert_wrapper_refreshes_package_before_stale_cache_without_cargo, run_wrapper,
     run_wrapper_with_optional_failure,
 };
@@ -61,6 +62,15 @@ fn wrappers_discover_default_artifact_when_fresh_without_cargo()
 -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_discovers_default_artifact_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_prefer_durable_default_package_when_fresh_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_prefers_durable_default_package_without_cargo(server)?;
     }
     Ok(())
 }

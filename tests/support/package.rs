@@ -2,8 +2,8 @@ use std::process::Command;
 
 use super::WrapperFixture;
 use super::package_fixture::{
-    create_artifact_api_response, create_fake_curl_bin, create_runtime_package,
-    create_source_layout_plugin, install_cached_runtime,
+    create_artifact_api_response, create_fake_curl_bin, create_fake_curl_bin_with_release_package,
+    create_runtime_package, create_source_layout_plugin, install_cached_runtime,
 };
 
 pub(crate) fn assert_wrapper_installs_packaged_runtime_without_cargo(
@@ -70,8 +70,63 @@ pub(crate) fn assert_wrapper_discovers_default_artifact_without_cargo(
     );
     let curl_log = std::fs::read_to_string(temp.path().join("curl.log"))?;
     assert!(
+        curl_log.contains("releases/latest/download/codexy-marketplace-plugin.tar.gz"),
+        "default lookup should try durable release package before expiring artifacts, got {curl_log:?}"
+    );
+    assert!(
         curl_log.contains("per_page=100"),
         "default artifact lookup should request enough artifacts to skip PR outputs, got {curl_log:?}"
+    );
+    Ok(())
+}
+
+pub(crate) fn assert_wrapper_prefers_durable_default_package_without_cargo(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let cache = temp.path().join("runtime-cache");
+    let release_root = temp.path().join("release");
+    let artifact_root = temp.path().join("artifact");
+    std::fs::create_dir_all(&release_root)?;
+    std::fs::create_dir_all(&artifact_root)?;
+    let release_package = create_runtime_package(&release_root, "darwin-arm64", server, "release")?;
+    let artifact_package =
+        create_runtime_package(&artifact_root, "darwin-arm64", server, "artifact")?;
+    let artifact_api = create_artifact_api_response(temp.path(), &artifact_package)?;
+    let fake_bin = create_fake_curl_bin_with_release_package(
+        temp.path(),
+        &artifact_api,
+        Some(&release_package),
+    )?;
+    let plugin_root = create_source_layout_plugin(temp.path())?;
+
+    let output = Command::new(plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+        .env("HOME", temp.path())
+        .env("PATH", format!("{}:/usr/bin:/bin", fake_bin.display()))
+        .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
+        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
+        .arg("--help")
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "fresh no-Cargo durable release fallback should run\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(
+        stdout.contains(&format!("fake-packaged release codexy-mcp-{server} --help")),
+        "wrapper should exec durable release runtime, got {stdout:?}"
+    );
+    let curl_log = std::fs::read_to_string(temp.path().join("curl.log"))?;
+    assert!(
+        curl_log.contains("releases/latest/download/codexy-marketplace-plugin.tar.gz"),
+        "default lookup should use durable release package, got {curl_log:?}"
+    );
+    assert!(
+        !curl_log.contains("api.github.com"),
+        "successful durable release package should avoid expiring artifact fallback, got {curl_log:?}"
     );
     Ok(())
 }
