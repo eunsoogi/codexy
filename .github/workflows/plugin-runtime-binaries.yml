@@ -4,6 +4,15 @@ on:
   workflow_dispatch:
   release:
     types: [published]
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "src/**"
+      - "plugins/codexy/mcp/**"
+      - ".agents/plugins/release-publish-contract.json"
+      - ".github/workflows/plugin-runtime-binaries.yml"
   pull_request:
     paths:
       - "Cargo.lock"
