@@ -127,10 +127,12 @@ function normalizeLanguageImport(extension, specifier, file) {
     return `./${specifier.replace(/::/g, "/")}`;
   }
   if (extension === ".go" && !specifier.startsWith(".")) return specifier;
-  if (extension === ".java" || extension === ".kt") return `./${specifier.replace(/\./g, "/")}`;
+  if (extension === ".java" || extension === ".kt") {
+    const relative = path.posix.relative(path.posix.dirname(file), specifier.replace(/\./g, "/"));
+    return relative.startsWith(".") ? relative : `./${relative}`;
+  }
   return specifier.startsWith(".") ? specifier : `./${specifier}`;
 }
-
 function languageMask(source, extension) {
   const mask = codePositionMask(source);
   if (extension === ".py" || extension === ".rb") for (let index = 0; index < source.length; index += 1) {
@@ -138,7 +140,6 @@ function languageMask(source, extension) {
   }
   return mask;
 }
-
 function parseLanguageFile(root, file) {
   const extension = path.extname(file);
   const rules = languageRules[extension];
@@ -157,19 +158,20 @@ function parseLanguageFile(root, file) {
   );
   return { imports: unique(imports), exports: unique(exports) };
 }
-
 function resolveImport(root, fromFile, specifier, indexedFiles) {
   if (!specifier.startsWith(".")) {
     return { to: specifier, resolved: false };
   }
-
   const fromDir = path.dirname(path.join(root, fromFile));
   const candidate = path.resolve(fromDir, specifier);
   const extension = path.extname(candidate);
+  const fromExtension = path.extname(fromFile);
+  const extensions = !jsSourceExtensions.has(fromExtension) && codeExtensions.has(fromExtension)
+    ? [fromExtension, ...Array.from(codeExtensions).filter((candidateExtension) => candidateExtension !== fromExtension)]
+    : Array.from(codeExtensions);
   const candidates = extension
     ? [candidate, ...(jsFamilyExtensions.has(extension) ? tsSourceExtensions.map((sourceExtension) => `${candidate.slice(0, -extension.length)}${sourceExtension}`) : [])]
-    : [candidate, ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`), ...Array.from(codeExtensions, (extension) => path.join(candidate, `index${extension}`)), path.join(candidate, "__init__.py"), path.join(candidate, "mod.rs")];
-
+    : [candidate, ...extensions.map((extension) => `${candidate}${extension}`), ...extensions.map((extension) => path.join(candidate, `index${extension}`)), path.join(candidate, "__init__.py"), path.join(candidate, "mod.rs")];
   for (const absolute of candidates) {
     if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {
       const relative = toPosix(path.relative(root, absolute));
@@ -178,10 +180,8 @@ function resolveImport(root, fromFile, specifier, indexedFiles) {
       }
     }
   }
-
   return { to: specifier, resolved: false };
 }
-
 function buildGraph(root, limit) {
   const boundedLimit = resultLimit(limit);
   const allFiles = walkCodeFiles(root);
@@ -203,7 +203,6 @@ function buildGraph(root, limit) {
 }
 
 function graphPath(root, input) { return toPosix(path.isAbsolute(input) ? path.relative(root, input) : input); }
-
 function reverseDeps(root, targetPath, limit) {
   const graph = buildGraph(root, Number.MAX_SAFE_INTEGER);
   const normalizedTarget = graphPath(root, targetPath);
@@ -224,7 +223,6 @@ function neighborhood(root, startPath, depth, limit) {
   const queue = [{ path: start, depth: 0 }];
   const nodes = [];
   const edges = [];
-
   while (queue.length && nodes.length < boundedLimit) {
     const current = queue.shift();
     if (seen.has(current.path)) continue;

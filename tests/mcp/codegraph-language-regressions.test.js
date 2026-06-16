@@ -143,3 +143,55 @@ test("advertised non-JS files create graph edges across index, reverse deps, and
     await fs.rm(nonJsRoot, { recursive: true, force: true });
   }
 });
+
+test("extensionless non-JS imports prefer the importing language over JS decoys", async () => {
+  const languagePreferenceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-language-preference-"));
+  await Promise.all([
+    fs.writeFile(path.join(languagePreferenceRoot, "app.py"), "from .util import helper\n", "utf8"),
+    fs.writeFile(path.join(languagePreferenceRoot, "util.py"), "def helper():\n    return 1\n", "utf8"),
+    fs.writeFile(path.join(languagePreferenceRoot, "util.js"), "export const helper = 2;\n", "utf8"),
+    fs.writeFile(path.join(languagePreferenceRoot, "runner.rb"), 'require_relative "worker"\n', "utf8"),
+    fs.writeFile(path.join(languagePreferenceRoot, "worker.rb"), "class Worker; end\n", "utf8"),
+    fs.writeFile(path.join(languagePreferenceRoot, "worker.js"), "export class Worker {}\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: languagePreferenceRoot, limit: 10 });
+      assert.ok(graph.edges.some((edge) => edge.from === "app.py" && edge.to === "util.py" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "runner.rb" && edge.to === "worker.rb" && edge.resolved));
+      assert.ok(!graph.edges.some((edge) => edge.from === "app.py" && edge.to === "util.js"));
+      assert.ok(!graph.edges.some((edge) => edge.from === "runner.rb" && edge.to === "worker.js"));
+    });
+  } finally {
+    await fs.rm(languagePreferenceRoot, { recursive: true, force: true });
+  }
+});
+
+test("Java and Kotlin package imports resolve from the package source root", async () => {
+  const packageRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-package-root-"));
+  await Promise.all([
+    fs.mkdir(path.join(packageRoot, "com/example/app/com/example/util"), { recursive: true }),
+    fs.mkdir(path.join(packageRoot, "com/example/util"), { recursive: true }),
+  ]);
+  await Promise.all([
+    fs.writeFile(path.join(packageRoot, "com/example/app/Main.java"), "package com.example.app;\nimport com.example.util.Helper;\nclass Main {}\n", "utf8"),
+    fs.writeFile(path.join(packageRoot, "com/example/util/Helper.java"), "package com.example.util;\nclass Helper {}\n", "utf8"),
+    fs.writeFile(path.join(packageRoot, "com/example/app/com/example/util/Helper.java"), "package wrong.root;\nclass Helper {}\n", "utf8"),
+    fs.writeFile(path.join(packageRoot, "com/example/app/Main.kt"), "package com.example.app\nimport com.example.util.HelperKt\nfun main() {}\n", "utf8"),
+    fs.writeFile(path.join(packageRoot, "com/example/util/HelperKt.kt"), "package com.example.util\nclass HelperKt\n", "utf8"),
+    fs.writeFile(path.join(packageRoot, "com/example/app/com/example/util/HelperKt.kt"), "package wrong.root\nclass HelperKt\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: packageRoot, limit: 20 });
+      assert.ok(graph.edges.some((edge) => edge.from === "com/example/app/Main.java" && edge.to === "com/example/util/Helper.java" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "com/example/app/Main.kt" && edge.to === "com/example/util/HelperKt.kt" && edge.resolved));
+      assert.ok(!graph.edges.some((edge) => edge.from === "com/example/app/Main.java" && edge.to === "com/example/app/com/example/util/Helper.java"));
+      assert.ok(!graph.edges.some((edge) => edge.from === "com/example/app/Main.kt" && edge.to === "com/example/app/com/example/util/HelperKt.kt"));
+    });
+  } finally {
+    await fs.rm(packageRoot, { recursive: true, force: true });
+  }
+});
