@@ -107,6 +107,40 @@ test("dot-relative workspace paths match reverse deps and neighborhoods", async 
   }
 });
 
+test("Python relative import lists create graph edges for every target", async () => {
+  const pythonImportListRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-python-import-list-"));
+  await fs.mkdir(path.join(pythonImportListRoot, "pkg/child"), { recursive: true });
+  await Promise.all([
+    fs.writeFile(path.join(pythonImportListRoot, "entry.py"), "from . import first_py, second_py\n", "utf8"),
+    fs.writeFile(path.join(pythonImportListRoot, "first_py.py"), "value = 1\n", "utf8"),
+    fs.writeFile(path.join(pythonImportListRoot, "second_py.py"), "value = 2\n", "utf8"),
+    fs.writeFile(path.join(pythonImportListRoot, "pkg/child/entry.py"), "from .. import parent_first, parent_second\n", "utf8"),
+    fs.writeFile(path.join(pythonImportListRoot, "pkg/parent_first.py"), "value = 1\n", "utf8"),
+    fs.writeFile(path.join(pythonImportListRoot, "pkg/parent_second.py"), "value = 2\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: pythonImportListRoot, limit: 20 });
+      const entry = graph.files.find((file) => file.path === "entry.py");
+      const childEntry = graph.files.find((file) => file.path === "pkg/child/entry.py");
+      assert.deepEqual(entry.imports, ["./first_py", "./second_py"]);
+      assert.deepEqual(childEntry.imports, ["./../parent_first", "./../parent_second"]);
+      assert.ok(graph.edges.some((edge) => edge.from === "entry.py" && edge.to === "second_py.py" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "pkg/child/entry.py" && edge.to === "pkg/parent_second.py" && edge.resolved));
+
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: pythonImportListRoot, path: "second_py.py", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "entry.py", specifier: "./second_py" }]);
+
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: pythonImportListRoot, path: "entry.py", depth: 1, limit: 5 });
+      assert.ok(neighborhood.nodes.some((node) => node.path === "first_py.py"));
+      assert.ok(neighborhood.nodes.some((node) => node.path === "second_py.py"));
+    });
+  } finally {
+    await fs.rm(pythonImportListRoot, { recursive: true, force: true });
+  }
+});
+
 test("advertised non-JS files create graph edges across index, reverse deps, and neighborhoods", async () => {
   const nonJsRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-non-js-"));
   await fs.mkdir(path.join(nonJsRoot, "local"), { recursive: true });

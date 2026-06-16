@@ -103,7 +103,7 @@ function parseJavaScriptFile(root, file) {
   return { imports: unique(imports), exports: unique(exports) };
 }
 const languageRules = {
-  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\b/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
+  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\b/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
   ".go": { imports: [/\bimport\s+(?:\(\s*)?(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /^\s*(?:[A-Za-z_]\w*\s+)?["'](\.[^"']+)["']/gm], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
   ".rs": { imports: [/\bmod\s+([A-Za-z_]\w*)\s*;/g, /\buse\s+((?:crate|self|super)::[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)/g], exports: [/\bpub\s+(?:fn|struct|enum|trait|mod|const|static)\s+([A-Za-z_]\w*)/g] },
   ".rb": { imports: [/\brequire_relative\s+["']([^"']+)["']/g, /\brequire\s+["'](\.[^"']+)["']/g], exports: [/\b(?:class|module|def)\s+([A-Z]\w*|[a-z_]\w*[!?=]?)/g] },
@@ -151,9 +151,9 @@ function parseLanguageFile(root, file) {
   const source = fs.readFileSync(path.join(root, file), "utf8");
   const packageName = [".java", ".kt"].includes(extension) && source.match(/^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/m)?.[1];
   const mask = languageMask(source, extension);
-  const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).map((match) => {
-      const specifier = `${match[1]}${match[2] || ""}`;
-      return normalizeLanguageImport(extension, specifier, file, packageName);
+  const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).flatMap((match) => {
+      const specifiers = extension === ".py" && match[2]?.includes(",") ? match[2].split(",").map((target) => `${match[1]}${target.trim()}`) : [`${match[1]}${match[2] || ""}`];
+      return specifiers.map((specifier) => normalizeLanguageImport(extension, specifier, file, packageName));
     })
   );
   const exports = rules.exports.flatMap((pattern) =>
@@ -201,7 +201,6 @@ function buildGraph(root, limit) {
       return { from: file.path, to: resolved.to, specifier, resolved: resolved.resolved };
     })
   );
-
   return { root, files, edges, totalFiles: allFiles.length, limit: boundedLimit, truncated, metadata: { truncated } };
 }
 function graphPath(root, input) { return path.posix.normalize(toPosix(path.isAbsolute(input) ? path.relative(root, input) : input)); }
@@ -215,7 +214,6 @@ function reverseDeps(root, targetPath, limit) {
     .slice(0, resultLimit(limit));
   return { root, path: normalizedTarget, dependents, limit: resultLimit(limit) };
 }
-
 function neighborhood(root, startPath, depth, limit) {
   const graph = buildGraph(root, Number.MAX_SAFE_INTEGER);
   const boundedDepth = Math.max(0, Math.floor(Number(depth) || 1));
@@ -231,7 +229,6 @@ function neighborhood(root, startPath, depth, limit) {
     seen.add(current.path);
     nodes.push({ path: current.path });
     if (current.depth >= boundedDepth) continue;
-
     for (const edge of graph.edges.filter((candidate) => candidate.from === current.path && candidate.resolved)) {
       edges.push(edge);
       if (!seen.has(edge.to)) queue.push({ path: edge.to, depth: current.depth + 1 });
