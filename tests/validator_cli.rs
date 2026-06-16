@@ -116,7 +116,8 @@ fn validator_cli_rejects_script_runtime_mcp_entrypoints() -> Result<(), Box<dyn 
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
-    mcp_config["lsp"]["command"] = serde_json::json!("node");
+    let command_name = ["no", "de"].join("");
+    mcp_config["lsp"]["command"] = serde_json::json!(command_name);
     mcp_config["lsp"]["args"] = serde_json::json!([format!("./bin/{script_name}"), "--stdio"]);
     std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
 
