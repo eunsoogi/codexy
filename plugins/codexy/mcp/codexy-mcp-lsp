@@ -99,7 +99,11 @@ if command -v cargo >/dev/null 2>&1; then
   if [ "$runtime_ref_is_pinned" = 1 ]; then
     cargo install --locked --git "$runtime_git_repository" --rev "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp
   else
-    cargo install --force --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp
+    if ! cargo install --force --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp; then
+      if [ -x "$installed_runtime" ]; then
+        exec "$installed_runtime" "$@"
+      fi
+    fi
   fi
   if [ -x "$installed_runtime" ]; then
     exec "$installed_runtime" "$@"

@@ -1,6 +1,8 @@
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt as _;
+mod support;
+
 use std::process::Command;
+
+use support::{WrapperFixture, run_wrapper, run_wrapper_with_optional_failure};
 
 #[test]
 fn lsp_wrapper_bootstraps_runtime_when_installed_without_bundled_binary()
@@ -26,6 +28,24 @@ fn wrappers_refresh_cached_runtime_for_moving_main_ref() -> Result<(), Box<dyn s
 fn wrappers_use_rev_and_cache_for_pinned_sha_ref() -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_uses_rev_for_pinned_sha_ref(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_fallback_to_cached_runtime_when_moving_ref_refresh_fails()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_falls_back_to_cached_runtime_after_refresh_failure(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_fail_when_moving_ref_initial_refresh_fails_without_cache()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_fails_without_cache_after_refresh_failure(server)?;
     }
     Ok(())
 }
@@ -139,106 +159,63 @@ fn assert_wrapper_uses_rev_for_pinned_sha_ref(
     Ok(())
 }
 
-fn run_wrapper(
-    fixture: &WrapperFixture,
+fn assert_wrapper_falls_back_to_cached_runtime_after_refresh_failure(
     server: &str,
-    cache: &std::path::Path,
-    runtime_ref: &str,
-    fake_version: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+    let cache = temp.path().join("runtime-cache");
+
+    let first = run_wrapper(&fixture, server, &cache, "main", "cached")?;
+    assert!(
+        first.contains(&format!("fake-installed cached codexy-mcp-{server} --help")),
+        "first run should populate the moving-ref cache, got {first:?}"
+    );
+
+    let second =
+        run_wrapper_with_optional_failure(&fixture, server, &cache, "main", "stale", true)?;
+    assert!(
+        second.contains(&format!("fake-installed cached codexy-mcp-{server} --help")),
+        "failed moving-ref refresh should fall back to cached runtime, got {second:?}"
+    );
+    let cargo_args = std::fs::read_to_string(&fixture.cargo_log)?;
+    assert_eq!(
+        cargo_args
+            .matches(&format!("--bin codexy-mcp-{server}"))
+            .count(),
+        2,
+        "wrapper should attempt refresh before fallback, got {cargo_args:?}"
+    );
+    Ok(())
+}
+
+fn assert_wrapper_fails_without_cache_after_refresh_failure(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+    let cache = temp.path().join("runtime-cache");
     let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
         .env("HOME", fixture.home)
         .env(
             "PATH",
             format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()),
         )
-        .env("CODEXY_RUNTIME_CACHE_DIR", cache)
-        .env("CODEXY_RUNTIME_GIT_REF", runtime_ref)
+        .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
+        .env("CODEXY_RUNTIME_GIT_REF", "main")
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
-        .env("FAKE_RUNTIME_VERSION", fake_version)
+        .env("FAKE_CARGO_FAIL", "1")
         .arg("--help")
         .output()?;
     assert!(
-        output.status.success(),
-        "wrapper should run the bootstrapped runtime\nstdout:\n{}\nstderr:\n{}",
+        !output.status.success(),
+        "first install failure without cache should fail\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    Ok(String::from_utf8(output.stdout)?)
-}
-
-struct WrapperFixture<'a> {
-    home: &'a std::path::Path,
-    plugin_root: std::path::PathBuf,
-    cargo_bin: std::path::PathBuf,
-    cargo_log: std::path::PathBuf,
-}
-
-impl<'a> WrapperFixture<'a> {
-    fn new(home: &'a std::path::Path) -> Result<Self, Box<dyn std::error::Error>> {
-        let plugin_root = home.join("codexy");
-        copy_dir(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-            &plugin_root,
-        )?;
-        let cargo_bin = home.join("fake-bin");
-        std::fs::create_dir_all(&cargo_bin)?;
-        let cargo_log = home.join("cargo.log");
-        let cargo_path = cargo_bin.join("cargo");
-        std::fs::write(
-            &cargo_path,
-            format!(
-                "#!/bin/sh\n\
-                 set -eu\n\
-                 echo \"$@\" >> '{}'\n\
-                 root=\"\"\n\
-                 bin=\"\"\n\
-                 while [ \"$#\" -gt 0 ]; do\n\
-                   case \"$1\" in\n\
-                     --root) root=\"$2\"; shift 2 ;;\n\
-                     --bin) bin=\"$2\"; shift 2 ;;\n\
-                     *) shift ;;\n\
-                   esac\n\
-                 done\n\
-                 mkdir -p \"$root/bin\"\n\
-                 printf '#!/bin/sh\\necho fake-installed %s %s \"$@\"\\n' \"${{FAKE_RUNTIME_VERSION:-current}}\" \"$bin\" > \"$root/bin/$bin\"\n\
-                 chmod 755 \"$root/bin/$bin\"\n",
-                cargo_log.display()
-            ),
-        )?;
-        make_executable(&cargo_path)?;
-        Ok(Self {
-            home,
-            plugin_root,
-            cargo_bin,
-            cargo_log,
-        })
-    }
-}
-
-fn copy_dir(source: impl AsRef<std::path::Path>, target: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(target)?;
-    for entry in std::fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let target_path = target.join(entry.file_name());
-        if source_path.is_dir() {
-            copy_dir(&source_path, &target_path)?;
-        } else {
-            std::fs::copy(source_path, target_path)?;
-        }
-    }
-    Ok(())
-}
-
-fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
-    #[cfg(unix)]
-    {
-        let mut permissions = std::fs::metadata(path)?.permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(path, permissions)?;
-    }
-    #[cfg(not(unix))]
-    let _ = path;
+    assert!(
+        !cache.exists(),
+        "failing first install should not create a cached runtime"
+    );
     Ok(())
 }
