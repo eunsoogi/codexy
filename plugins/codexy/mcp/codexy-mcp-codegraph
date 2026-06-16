@@ -97,7 +97,10 @@ esac
 if [ "$runtime_ref_is_pinned" = 1 ] && [ -x "$installed_runtime" ]; then
   exec "$installed_runtime" "$@"
 fi
-if [ "$runtime_ref_is_pinned" = 0 ] && [ -n "$runtime_package_url" ] && command -v curl >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
+if [ "$runtime_ref_is_pinned" = 1 ] && [ -x "$downloaded_runtime" ]; then
+  exec "$downloaded_runtime" "$@"
+fi
+if [ -n "$runtime_package_url" ] && command -v curl >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
   mkdir -p "$runtime_install_root"
   package_tmp="$runtime_install_root/package.tar.gz.$$"
   if curl -fsSL "$runtime_package_url" -o "$package_tmp"; then
@@ -113,7 +116,7 @@ if [ "$runtime_ref_is_pinned" = 0 ] && [ -n "$runtime_package_url" ] && command 
   fi
   rm -f "$package_tmp"
 fi
-if [ "$runtime_ref_is_pinned" = 0 ] && [ -x "$downloaded_runtime" ]; then
+if [ -x "$downloaded_runtime" ]; then
   exec "$downloaded_runtime" "$@"
 fi
 if command -v cargo >/dev/null 2>&1; then

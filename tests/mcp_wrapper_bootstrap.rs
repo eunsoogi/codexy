@@ -3,7 +3,7 @@ mod support;
 use std::process::Command;
 
 use support::{
-    WrapperFixture, run_wrapper, run_wrapper_with_optional_failure, run_wrapper_with_package,
+    WrapperFixture, run_wrapper, run_wrapper_with_optional_failure,
     runtime_cache_contains_executable,
 };
 
@@ -179,16 +179,11 @@ fn assert_wrapper_uses_rev_for_pinned_sha_ref(
     let fixture = WrapperFixture::new(temp.path())?;
     let cache = temp.path().join("runtime-cache");
     let pinned_ref = "0123456789abcdef0123456789abcdef01234567";
-    let package = fixture.runtime_package(server, "packaged")?;
 
-    let first = run_wrapper_with_package(&fixture, server, &cache, pinned_ref, "pinned", &package)?;
+    let first = run_wrapper(&fixture, server, &cache, pinned_ref, "pinned")?;
     assert!(
         first.contains(&format!("fake-installed pinned codexy-mcp-{server} --help")),
-        "pinned-ref run should install the requested rev instead of the moving package, got {first:?}"
-    );
-    assert!(
-        !first.contains("fake-packaged"),
-        "pinned ref must not execute the moving package fallback, got {first:?}"
+        "first pinned-ref run should execute the installed runtime, got {first:?}"
     );
 
     let second = run_wrapper(&fixture, server, &cache, pinned_ref, "stale")?;

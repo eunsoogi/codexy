@@ -97,30 +97,6 @@ pub(super) fn run_wrapper(
     run_wrapper_with_optional_failure(fixture, server, cache, runtime_ref, fake_version, false)
 }
 
-pub(super) fn run_wrapper_with_package(
-    fixture: &WrapperFixture,
-    server: &str,
-    cache: &std::path::Path,
-    runtime_ref: &str,
-    fake_version: &str,
-    package: &std::path::Path,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let output = wrapper_command(fixture, server, cache, runtime_ref, fake_version, false)
-        .env(
-            "CODEXY_RUNTIME_PACKAGE_URL",
-            format!("file://{}", package.display()),
-        )
-        .arg("--help")
-        .output()?;
-    assert!(
-        output.status.success(),
-        "wrapper should run the bootstrapped runtime\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(String::from_utf8(output.stdout)?)
-}
-
 pub(super) fn run_wrapper_with_optional_failure(
     fixture: &WrapperFixture,
     server: &str,
@@ -129,35 +105,7 @@ pub(super) fn run_wrapper_with_optional_failure(
     fake_version: &str,
     fail_cargo: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let output = wrapper_command(
-        fixture,
-        server,
-        cache,
-        runtime_ref,
-        fake_version,
-        fail_cargo,
-    )
-    .arg("--help")
-    .output()?;
-    assert!(
-        output.status.success(),
-        "wrapper should run the bootstrapped runtime\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(String::from_utf8(output.stdout)?)
-}
-
-fn wrapper_command(
-    fixture: &WrapperFixture,
-    server: &str,
-    cache: &std::path::Path,
-    runtime_ref: &str,
-    fake_version: &str,
-    fail_cargo: bool,
-) -> Command {
-    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
-    command
+    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
         .env("HOME", fixture.home)
         .env(
             "PATH",
@@ -167,8 +115,16 @@ fn wrapper_command(
         .env("CODEXY_RUNTIME_GIT_REF", runtime_ref)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .env("FAKE_RUNTIME_VERSION", fake_version)
-        .env("FAKE_CARGO_FAIL", if fail_cargo { "1" } else { "0" });
-    command
+        .env("FAKE_CARGO_FAIL", if fail_cargo { "1" } else { "0" })
+        .arg("--help")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "wrapper should run the bootstrapped runtime\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(String::from_utf8(output.stdout)?)
 }
 
 pub(super) fn runtime_cache_contains_executable(
