@@ -187,15 +187,27 @@ fn check_plugin_relative_entrypoint(
     };
     let entrypoint_path = Path::new(entrypoint);
     let resolved = plugin_root.join(entrypoint_path);
-    if !resolved.starts_with(plugin_root) {
-        bail!(
-            "{} {name}.command entrypoint must stay inside the plugin root",
-            display_relative(path)
-        );
-    }
     if !resolved.exists() {
         bail!(
             "{} {name}.command entrypoint does not exist: {entrypoint}",
+            display_relative(path)
+        );
+    }
+    let canonical_root = plugin_root.canonicalize().with_context(|| {
+        format!(
+            "{} plugin root cannot be canonicalized",
+            display_relative(plugin_root)
+        )
+    })?;
+    let canonical_resolved = resolved.canonicalize().with_context(|| {
+        format!(
+            "{} {name}.command entrypoint cannot be canonicalized: {entrypoint}",
+            display_relative(path)
+        )
+    })?;
+    if !canonical_resolved.starts_with(&canonical_root) {
+        bail!(
+            "{} {name}.command entrypoint must stay inside the plugin root",
             display_relative(path)
         );
     }

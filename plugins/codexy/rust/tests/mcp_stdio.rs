@@ -294,7 +294,7 @@ fn lsp_stdio_accepts_integer_positions_encoded_as_json_floats()
     let server = json!({"id":"typescript-language-server","command":["node", fake_lsp]});
     let response = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
-        "params":{"name":"lsp_definition","arguments":{"root":root.path(),"path":"sample.js","server":server,"line":1.0,"character":2.0,"timeoutMs":5000}}
+        "params":{"name":"lsp_definition","arguments":{"root":root.path(),"path":"sample.js","server":server,"line":1.0,"character":2.0,"timeoutMs":5000.0}}
     }))?;
     let payload: Value = serde_json::from_str(
         response["result"]["content"][0]["text"]

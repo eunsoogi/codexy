@@ -18,6 +18,7 @@ const staticText = "import { fakeStatic } from \"./fake-static.js\"";
 const requireText = 'const fakeRequire = require("./fake-require.js")';
 const dynamicText = 'import("./fake-dynamic.js")';
 const nestedTemplateText = `${`nested`} import("./fake-nested.js")`;
+const importPattern = /import\s+["']\.\/fake-regex\.js["']/;
 "#,
     )?;
     fs::write(root.join("chunk.js"), "export const chunk = 1;\n")?;
@@ -37,6 +38,7 @@ const nestedTemplateText = `${`nested`} import("./fake-nested.js")`;
         root.join("fake-comment.js"),
         "export const fakeComment = 5;\n",
     )?;
+    fs::write(root.join("fake-regex.js"), "export const fakeRegex = 6;\n")?;
 
     // When: the Rust codegraph indexes the fixture.
     let graph = build_graph(root, Some(10));
@@ -86,6 +88,40 @@ fn codegraph_named_reexport_aliases_preserve_exported_names()
 
     assert_eq!(exports_for("named.js"), vec!["renamedLeaf"]);
     assert_eq!(exports_for("compact-reexport.js"), vec!["compactLeaf"]);
+
+    Ok(())
+}
+
+#[test]
+fn codegraph_regex_literals_do_not_create_import_edges() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path();
+    fs::write(
+        root.join("entry.js"),
+        r#"const pattern = /import "./fake.js"/;
+export function matchImport() {
+  return /import "./fake-return.js"/;
+}
+export const value = pattern.test("import \"./fake.js\"");
+"#,
+    )?;
+    fs::write(root.join("fake.js"), "export const fake = true;\n")?;
+    fs::write(
+        root.join("fake-return.js"),
+        "export const fakeReturn = true;\n",
+    )?;
+
+    let graph = build_graph(root, Some(10));
+    let entry_edges = graph
+        .edges
+        .iter()
+        .filter(|edge| edge.from == "entry.js")
+        .collect::<Vec<_>>();
+
+    assert!(
+        entry_edges.is_empty(),
+        "regex literal import-like text should stay masked, got {entry_edges:#?}"
+    );
 
     Ok(())
 }

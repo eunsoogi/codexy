@@ -182,6 +182,10 @@ fn string_arg<'a>(args: &'a Value, name: &str) -> Result<&'a str> {
 }
 
 fn numeric_position(value: Option<&Value>, name: &str) -> Result<Option<u64>> {
+    numeric_integer(value, name)
+}
+
+fn numeric_integer(value: Option<&Value>, name: &str) -> Result<Option<u64>> {
     let Some(value) = value else {
         return Ok(None);
     };
@@ -198,12 +202,7 @@ fn numeric_position(value: Option<&Value>, name: &str) -> Result<Option<u64>> {
 }
 
 fn timeout_ms(args: &Value) -> Result<u64> {
-    let Some(timeout) = args.get("timeoutMs") else {
-        return Ok(10000);
-    };
-    let Some(timeout) = timeout.as_u64() else {
-        bail!("timeoutMs must be a finite number");
-    };
+    let timeout = numeric_integer(args.get("timeoutMs"), "timeoutMs")?.unwrap_or(10000);
     Ok(timeout.clamp(100, 60000))
 }
 
