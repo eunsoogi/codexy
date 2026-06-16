@@ -1,11 +1,10 @@
 "use strict";
-
 const fs = require("fs");
 const path = require("path");
 const { codeExtensions, resultLimit, toPosix, unique, walkCodeFiles } = require("./files");
 const jsFamilyExtensions = new Set([".js", ".jsx", ".mjs", ".cjs"]);
+const jsSourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"]);
 const tsSourceExtensions = [".ts", ".tsx"];
-
 function startsRegexLiteral(source, index) {
   for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
     const char = source[cursor];
@@ -15,11 +14,9 @@ function startsRegexLiteral(source, index) {
   }
   return true;
 }
-
 function readRegexLiteral(source, index) {
   let output = "/";
   let escaped = false, inClass = false;
-
   for (index += 1; index < source.length; index += 1) {
     const char = source[index];
     output += char;
@@ -32,58 +29,8 @@ function readRegexLiteral(source, index) {
       break;
     }
   }
-
   return { output, index };
 }
-
-function stripJavaScriptComments(source) {
-  let output = "";
-  let quote = null;
-  let escaped = false;
-
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index];
-    const next = source[index + 1];
-
-    if (quote) {
-      output += char;
-      if (escaped) escaped = false;
-      else if (char === "\\") escaped = true;
-      else if (char === quote) quote = null;
-      continue;
-    }
-
-    if (char === "\"" || char === "'" || char === "`") {
-      quote = char;
-      output += char;
-      continue;
-    }
-
-    if (char === "/" && next === "/") {
-      while (index < source.length && source[index] !== "\n") index += 1;
-      output += "\n"; continue;
-    }
-
-    if (char === "/" && next === "*") {
-      index += 2;
-      while (index < source.length && !(source[index] === "*" && source[index + 1] === "/")) {
-        output += source[index] === "\n" ? "\n" : " ";
-        index += 1;
-      }
-      index += 1; continue;
-    }
-
-    if (char === "/" && startsRegexLiteral(source, index)) {
-      const regex = readRegexLiteral(source, index);
-      output += regex.output; index = regex.index; continue;
-    }
-
-    output += char;
-  }
-
-  return output;
-}
-
 function codePositionMask(source) {
   const mask = Array(source.length).fill(true), stack = [];
   let mode = "code", quote = null, escaped = false, templateDepth = 0;
@@ -124,12 +71,10 @@ function codePositionMask(source) {
   }
   return mask;
 }
-
 function parseJavaScriptFile(root, file) {
   const absolute = path.join(root, file);
   const source = fs.readFileSync(absolute, "utf8");
-  const parsedSource = stripJavaScriptComments(source);
-  const mask = codePositionMask(parsedSource);
+  const mask = codePositionMask(source);
   const imports = [];
   const exports = [];
   const importPatterns = [
@@ -138,23 +83,76 @@ function parseJavaScriptFile(root, file) {
     /\bexport\s*(?:type\s+)?\{[^}]+\}\s*from\s*["']([^"']+)["']/g,
   ];
   const exportPatterns = [/\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g, /\bexport\s*(?:type\s+)?\{([^}]+)\}/g];
-
   for (const pattern of importPatterns) {
-    for (const match of parsedSource.matchAll(pattern)) {
+    for (const match of source.matchAll(pattern)) {
       if (!mask[match.index]) continue;
       imports.push(match[1]);
     }
   }
-  for (const match of parsedSource.matchAll(exportPatterns[0])) {
+  for (const match of source.matchAll(exportPatterns[0])) {
+    if (!mask[match.index]) continue;
     exports.push(match[1]);
   }
-  for (const match of parsedSource.matchAll(exportPatterns[1])) {
+  for (const match of source.matchAll(exportPatterns[1])) {
+    if (!mask[match.index]) continue;
     for (const name of match[1].split(",")) {
       const exported = name.trim().split(/\s+as\s+/).pop();
       if (exported) exports.push(exported);
     }
   }
+  return { imports: unique(imports), exports: unique(exports) };
+}
+const languageRules = {
+  ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\b/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
+  ".go": { imports: [/\bimport\s+(?:\(\s*)?(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /^\s*(?:[A-Za-z_]\w*\s+)?["'](\.[^"']+)["']/gm], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
+  ".rs": { imports: [/\bmod\s+([A-Za-z_]\w*)\s*;/g, /\buse\s+((?:crate|self|super)::[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)/g], exports: [/\bpub\s+(?:fn|struct|enum|trait|mod|const|static)\s+([A-Za-z_]\w*)/g] },
+  ".rb": { imports: [/\brequire_relative\s+["']([^"']+)["']/g, /\brequire\s+["'](\.[^"']+)["']/g], exports: [/\b(?:class|module|def)\s+([A-Z]\w*|[a-z_]\w*[!?=]?)/g] },
+  ".java": { imports: [/\bimport\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*;/g], exports: [/\b(?:class|interface|enum|record)\s+([A-Za-z_]\w*)/g] },
+  ".kt": { imports: [/\bimport\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)/g], exports: [/\b(?:class|interface|object|fun|val|var)\s+([A-Za-z_]\w*)/g] },
+};
+function normalizeLanguageImport(extension, specifier, file) {
+  if (extension === ".py") {
+    if (specifier.startsWith(".")) {
+      const dots = specifier.match(/^\.+/)[0].length;
+      return `./${"../".repeat(Math.max(0, dots - 1))}${specifier.replace(/^\.+/, "").replace(/\./g, "/")}`;
+    }
+    return `./${specifier.replace(/\./g, "/")}`;
+  }
+  if (extension === ".rs") {
+    if (specifier.startsWith("crate::")) return `./${path.posix.relative(path.posix.dirname(file), path.posix.join(file.split("/").includes("src") ? "src" : ".", specifier.slice(7).replace(/::/g, "/")))}`;
+    if (specifier.startsWith("super::")) return `./../${specifier.slice(7).replace(/::/g, "/")}`;
+    if (specifier.startsWith("self::")) return `./${specifier.slice(6).replace(/::/g, "/")}`;
+    return `./${specifier.replace(/::/g, "/")}`;
+  }
+  if (extension === ".go" && !specifier.startsWith(".")) return specifier;
+  if (extension === ".java" || extension === ".kt") return `./${specifier.replace(/\./g, "/")}`;
+  return specifier.startsWith(".") ? specifier : `./${specifier}`;
+}
 
+function languageMask(source, extension) {
+  const mask = codePositionMask(source);
+  if (extension === ".py" || extension === ".rb") for (let index = 0; index < source.length; index += 1) {
+    if (mask[index] && source[index] === "#") while (index < source.length && source[index] !== "\n") mask[index++] = false;
+  }
+  return mask;
+}
+
+function parseLanguageFile(root, file) {
+  const extension = path.extname(file);
+  const rules = languageRules[extension];
+  if (!rules) return { imports: [], exports: [] };
+  const source = fs.readFileSync(path.join(root, file), "utf8");
+  const packageName = [".java", ".kt"].includes(extension) && source.match(/^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/m)?.[1];
+  const mask = languageMask(source, extension);
+  const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).map((match) => {
+      const specifier = `${match[1]}${match[2] || ""}`;
+      if (packageName && specifier.startsWith(`${packageName}.`)) return `./${specifier.slice(packageName.length + 1).replace(/\./g, "/")}`;
+      return normalizeLanguageImport(extension, specifier, file);
+    })
+  );
+  const exports = rules.exports.flatMap((pattern) =>
+    Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).map((match) => match[1])
+  );
   return { imports: unique(imports), exports: unique(exports) };
 }
 
@@ -168,7 +166,7 @@ function resolveImport(root, fromFile, specifier, indexedFiles) {
   const extension = path.extname(candidate);
   const candidates = extension
     ? [candidate, ...(jsFamilyExtensions.has(extension) ? tsSourceExtensions.map((sourceExtension) => `${candidate.slice(0, -extension.length)}${sourceExtension}`) : [])]
-    : [candidate, ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`), ...Array.from(codeExtensions, (extension) => path.join(candidate, `index${extension}`))];
+    : [candidate, ...Array.from(codeExtensions, (extension) => `${candidate}${extension}`), ...Array.from(codeExtensions, (extension) => path.join(candidate, `index${extension}`)), path.join(candidate, "__init__.py"), path.join(candidate, "mod.rs")];
 
   for (const absolute of candidates) {
     if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {
@@ -189,7 +187,7 @@ function buildGraph(root, limit) {
   const truncated = allFiles.length > selectedFiles.length;
   const indexedFiles = new Set(allFiles);
   const files = selectedFiles.map((file) => {
-    const parsed = [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"].includes(path.extname(file)) ? parseJavaScriptFile(root, file) : { imports: [], exports: [] };
+    const parsed = jsSourceExtensions.has(path.extname(file)) ? parseJavaScriptFile(root, file) : parseLanguageFile(root, file);
     return { path: file, imports: parsed.imports, exports: parsed.exports };
   });
   const edges = files.flatMap((file) =>
