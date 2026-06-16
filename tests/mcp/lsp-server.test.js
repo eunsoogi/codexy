@@ -12,8 +12,9 @@ const pluginRoot = path.join(repoRoot, "plugins/codexy");
 const lspServer = path.join(repoRoot, "plugins/codexy/mcp/lsp/server.js");
 const jsFixture = path.join(repoRoot, "tests/mcp/fixtures/lsp/sample.js");
 const externalWorkspace = path.join(repoRoot, "tests/mcp/fixtures/lsp/external-workspace"), externalFixture = path.join(externalWorkspace, "src/sample.js");
-const allowOverride = { CODEXY_LSP_ALLOW_COMMAND_OVERRIDE: "1" }, fakeEnv = (env = {}) => ({ ...allowOverride, ...env });
+const allowOverride = { CODEXY_LSP_ALLOW_COMMAND_OVERRIDE: "1" }, fakeEnv = (env = {}) => ({ ...allowOverride, ...env }), { languageForPath } = require("../../plugins/codexy/mcp/lsp/config");
 async function toolPayload(client, name, args) { return assertStructuredToolResult(assert, await client.callTool(name, args)); }
+test("languageForPath maps catalog display labels to canonical LSP IDs", () => { for (const [filePath, server, languageId] of [["sample.c", { language: "C/C++" }, "c"], ["sample.cpp", { language: "C/C++" }, "cpp"], ["sample", { language: "C/C++" }, "cpp"], ["sample.cs", { language: "C#" }, "csharp"], ["sample.fs", { language: "F#" }, "fsharp"], ["script", { language: "Shell" }, "shellscript"], ["module", { language: "TypeScript and JavaScript" }, "javascript"]]) assert.equal(languageForPath(filePath, server), languageId); });
 test("lsp_status reports availability and install hints for a JavaScript path", async () => {
   await withLspClient(assert, lspServer, repoRoot, async (client) => {
     const response = await client.callTool("lsp_status", { path: jsFixture });

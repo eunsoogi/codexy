@@ -33,6 +33,29 @@ const LANGUAGE_BY_EXTENSION = {
   ".bash": "shellscript",
   ".zsh": "shellscript",
   ".ksh": "shellscript",
+  ".c": "c",
+  ".h": "c",
+  ".cc": "cpp",
+  ".cpp": "cpp",
+  ".cxx": "cpp",
+  ".hh": "cpp",
+  ".hpp": "cpp",
+  ".hxx": "cpp",
+  ".cs": "csharp",
+  ".csx": "csharp",
+  ".fs": "fsharp",
+  ".fsi": "fsharp",
+  ".fsx": "fsharp",
+};
+
+const LANGUAGE_BY_LABEL = {
+  "Astro": "astro", "C/C++": "cpp", "C#": "csharp", "Clojure": "clojure", "Dockerfile": "dockerfile",
+  "Elixir": "elixir", "F#": "fsharp", "Gleam": "gleam", "Haskell": "haskell",
+  "Java": "java", "Julia": "julia", "Kotlin": "kotlin", "Lua": "lua",
+  "Nix": "nix", "OCaml": "ocaml", "PHP": "php", "Prisma": "prisma",
+  "Ruby": "ruby", "Shell": "shellscript", "Swift": "swift", "Svelte": "svelte",
+  "Terraform": "terraform", "TypeScript and JavaScript": "javascript",
+  "LaTeX": "latex", "Typst": "typst", "Vue": "vue", "Zig": "zig",
 };
 
 function commandOverridesAllowed() {
@@ -77,6 +100,7 @@ function languageForPath(filePath, server) {
   const ext = normalizeExt(filePath);
   if (LANGUAGE_BY_EXTENSION[ext]) return LANGUAGE_BY_EXTENSION[ext];
   if (ext === "Dockerfile") return "dockerfile";
+  if (LANGUAGE_BY_LABEL[server.language]) return LANGUAGE_BY_LABEL[server.language];
   return String(server.language || server.id || ext.replace(/^\./, "") || "plaintext").toLowerCase();
 }
 

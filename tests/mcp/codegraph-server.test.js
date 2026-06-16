@@ -51,14 +51,10 @@ test("reverse deps and bounded neighborhood tools are registered", async () => {
     assert.ok(names.includes("codegraph_reverse_deps"));
     assert.ok(names.includes("codegraph_neighborhood"));
 
-    const reverse = assertStructuredToolResult(
-      await client.callTool("codegraph_reverse_deps", { root: fixtureRoot, path: "helper.js", limit: 5 })
-    );
+    const reverse = await tool(client, "codegraph_reverse_deps", { root: fixtureRoot, path: "helper.js", limit: 5 });
     assert.deepEqual(reverse.dependents.map((entry) => entry.path), ["entry.js"]);
 
-    const neighborhood = assertStructuredToolResult(
-      await client.callTool("codegraph_neighborhood", { root: fixtureRoot, path: "entry.js", depth: 1, limit: 1 })
-    );
+    const neighborhood = await tool(client, "codegraph_neighborhood", { root: fixtureRoot, path: "entry.js", depth: 1, limit: 1 });
     assert.equal(neighborhood.nodes.length, 1);
     assert.equal(neighborhood.limit, 1);
     assert.equal(typeof neighborhood.truncated, "boolean");
@@ -91,30 +87,14 @@ test("JS-family relative specifiers resolve to TS and TSX siblings", async () =>
 test("directory index imports resolve for graph, reverse deps, and neighborhood", async () => {
   const indexFixtureRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-index-import-"));
   await fs.mkdir(path.join(indexFixtureRoot, "feature"));
-  await fs.writeFile(
-    path.join(indexFixtureRoot, "index-entry.js"),
-    'import { feature } from "./feature";\n\nexport function runFeature() {\n  return feature();\n}\n',
-    "utf8"
-  );
-  await fs.writeFile(
-    path.join(indexFixtureRoot, "feature/index.ts"),
-    "export function feature() {\n  return 2;\n}\n",
-    "utf8"
-  );
+  await fs.writeFile(path.join(indexFixtureRoot, "index-entry.js"), 'import { feature } from "./feature";\nexport function runFeature() {\n  return feature();\n}\n', "utf8");
+  await fs.writeFile(path.join(indexFixtureRoot, "feature/index.ts"), "export function feature() {\n  return 2;\n}\n", "utf8");
 
   try {
     await withCodegraphClient(async (client) => {
       const graph = await tool(client, "codegraph_index", { root: indexFixtureRoot, limit: 10 });
 
-      assert.ok(
-        graph.edges.some(
-          (edge) =>
-            edge.from === "index-entry.js" &&
-            edge.to === "feature/index.ts" &&
-            edge.specifier === "./feature" &&
-            edge.resolved === true
-        )
-      );
+      assert.ok(graph.edges.some((edge) => edge.from === "index-entry.js" && edge.to === "feature/index.ts" && edge.specifier === "./feature" && edge.resolved === true));
 
       const reverse = await tool(client, "codegraph_reverse_deps", { root: indexFixtureRoot, path: "feature/index.ts", limit: 5 });
       assert.deepEqual(reverse.dependents, [{ path: "index-entry.js", specifier: "./feature" }]);
@@ -131,17 +111,9 @@ test("re-export specifiers create dependency edges across graph tools", async ()
   const reexportFixtureRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-reexport-"));
   await fs.writeFile(path.join(reexportFixtureRoot, "mod.js"), "export const leaf = 1;\n", "utf8");
   await fs.writeFile(path.join(reexportFixtureRoot, "star.js"), 'export * from "./mod.js";\n', "utf8");
-  await fs.writeFile(
-    path.join(reexportFixtureRoot, "named.js"),
-    'export { leaf as renamedLeaf } from "./mod.js";\n',
-    "utf8"
-  );
+  await fs.writeFile(path.join(reexportFixtureRoot, "named.js"), 'export { leaf as renamedLeaf } from "./mod.js";\n', "utf8");
   await fs.writeFile(path.join(reexportFixtureRoot, "types.ts"), "export type Foo = { leaf: number };\n", "utf8");
-  await fs.writeFile(
-    path.join(reexportFixtureRoot, "typed.ts"),
-    'export type { Foo } from "./types";\n',
-    "utf8"
-  );
+  await fs.writeFile(path.join(reexportFixtureRoot, "typed.ts"), 'export type { Foo } from "./types";\n', "utf8");
 
   try {
     await withCodegraphClient(async (client) => {
@@ -185,20 +157,36 @@ test("graph index keeps existing imports resolved outside the bounded file list"
   await withCodegraphClient(async (client) => {
     const graph = await tool(client, "codegraph_index", { root: fixtureRoot, limit: 1 });
 
-    assert.deepEqual(
-      graph.files.map((file) => file.path),
-      ["entry.js"]
-    );
-    assert.ok(
-      graph.edges.some(
-        (edge) =>
-          edge.from === "entry.js" &&
-          edge.to === "helper.js" &&
-          edge.specifier === "./helper.js" &&
-          edge.resolved === true
-      )
-    );
+    assert.deepEqual(graph.files.map((file) => file.path), ["entry.js"]);
+    assert.ok(graph.edges.some((edge) => edge.from === "entry.js" && edge.to === "helper.js" && edge.specifier === "./helper.js" && edge.resolved === true));
   });
+});
+
+test("commented imports do not create graph dependencies", async () => {
+  const commentedRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-commented-imports-"));
+  await fs.writeFile(path.join(commentedRoot, "entry.js"), [
+    'import { live } from "./live.js";',
+    '// import { line } from "./line-commented.js";',
+    '/* import { block } from "./block-commented.js"; */',
+    "export const value = live;",
+    "",
+  ].join("\n"), "utf8");
+  await fs.writeFile(path.join(commentedRoot, "live.js"), "export const live = 1;\n", "utf8");
+  await fs.writeFile(path.join(commentedRoot, "regex.js"), 'const marker = /\\/\\//; const regexLive = require("./regex-live.js");\nexport { regexLive };\n', "utf8");
+  await fs.writeFile(path.join(commentedRoot, "regex-live.js"), "exports.regexLive = 4;\n", "utf8");
+  await fs.writeFile(path.join(commentedRoot, "line-commented.js"), "export const line = 2;\n", "utf8");
+  await fs.writeFile(path.join(commentedRoot, "block-commented.js"), "export const block = 3;\n", "utf8");
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: commentedRoot, limit: 10 });
+      assert.deepEqual(graph.edges.map((edge) => edge.to), ["live.js", "regex-live.js"]);
+      assert.deepEqual((await tool(client, "codegraph_reverse_deps", { root: commentedRoot, path: "line-commented.js", limit: 5 })).dependents, []);
+      assert.deepEqual((await tool(client, "codegraph_neighborhood", { root: commentedRoot, path: "entry.js", depth: 1, limit: 10 })).nodes.map((node) => node.path), ["entry.js", "live.js"]);
+    });
+  } finally {
+    await fs.rm(commentedRoot, { recursive: true, force: true });
+  }
 });
 
 test("isolated neighborhoods do not report truncation because unrelated repo files exist", async () => {
