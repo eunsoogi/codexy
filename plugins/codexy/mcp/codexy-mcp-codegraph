@@ -170,33 +170,29 @@ if [ "$runtime_package_requested" = 1 ]; then
       if [ -z "$github_token" ] && command -v gh >/dev/null 2>&1; then
         github_token=$(gh auth token 2>/dev/null || true)
       fi
-      if [ -n "$github_token" ]; then
-        curl -fsSL -H "Authorization: Bearer $github_token" -H "Accept: application/vnd.github+json" "$runtime_artifacts_api_url" -o "$package_json" || true
+      if [ -z "$github_token" ]; then
+        echo "codexy-mcp-codegraph artifact fallback requires GH_TOKEN, GITHUB_TOKEN, or authenticated gh" >&2
       else
-        curl -fsSL -H "Accept: application/vnd.github+json" "$runtime_artifacts_api_url" -o "$package_json" || true
-      fi
-      archive_download_url=""
-      if [ -f "$package_json" ]; then
-        archive_download_url=$(tr '\n' ' ' < "$package_json" \
-          | sed 's/}[[:space:]]*,[[:space:]]*{/}\
+        curl -fsSL -H "Authorization: Bearer $github_token" -H "Accept: application/vnd.github+json" "$runtime_artifacts_api_url" -o "$package_json" || true
+        archive_download_url=""
+        if [ -f "$package_json" ]; then
+          archive_download_url=$(tr '\n' ' ' < "$package_json" \
+            | sed 's/}[[:space:]]*,[[:space:]]*{/}\
 {/g' \
-          | sed -n '/"head_branch"[[:space:]]*:[[:space:]]*"main"/{
-              /"head_repository_id"[[:space:]]*:[[:space:]]*1269350143/{
-                /"expired"[[:space:]]*:[[:space:]]*true/!s/.*"archive_download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
-              }
-            }' \
-          | head -n 1)
-      fi
-      if [ -n "$archive_download_url" ]; then
-        if [ -n "$github_token" ]; then
-          curl -fL -H "Authorization: Bearer $github_token" -H "Accept: application/vnd.github+json" "$archive_download_url" -o "$package_zip" || true
-        else
-          curl -fL -H "Accept: application/vnd.github+json" "$archive_download_url" -o "$package_zip" || true
+            | sed -n '/"head_branch"[[:space:]]*:[[:space:]]*"main"/{
+                /"head_repository_id"[[:space:]]*:[[:space:]]*1269350143/{
+                  /"expired"[[:space:]]*:[[:space:]]*true/!s/.*"archive_download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
+                }
+              }' \
+            | head -n 1)
         fi
-        if [ -f "$package_zip" ] && unzip -q "$package_zip" -d "$package_tmp_dir/artifact"; then
-          zipped_package=$(find "$package_tmp_dir/artifact" -name "codexy-marketplace-plugin.tar.gz" -type f | head -n 1)
-          if [ -n "$zipped_package" ] && cp "$zipped_package" "$package_archive"; then
-            package_ready=1
+        if [ -n "$archive_download_url" ]; then
+          curl -fL -H "Authorization: Bearer $github_token" -H "Accept: application/vnd.github+json" "$archive_download_url" -o "$package_zip" || true
+          if [ -f "$package_zip" ] && unzip -q "$package_zip" -d "$package_tmp_dir/artifact"; then
+            zipped_package=$(find "$package_tmp_dir/artifact" -name "codexy-marketplace-plugin.tar.gz" -type f | head -n 1)
+            if [ -n "$zipped_package" ] && cp "$zipped_package" "$package_archive"; then
+              package_ready=1
+            fi
           fi
         fi
       fi

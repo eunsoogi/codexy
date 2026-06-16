@@ -52,6 +52,7 @@ pub(crate) fn assert_wrapper_discovers_default_artifact_without_cargo(
         .env("PATH", format!("{}:/usr/bin:/bin", fake_bin.display()))
         .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
+        .env("GH_TOKEN", "fake-token")
         .arg("--help")
         .output()?;
 
@@ -76,6 +77,47 @@ pub(crate) fn assert_wrapper_discovers_default_artifact_without_cargo(
     assert!(
         curl_log.contains("per_page=100"),
         "default artifact lookup should request enough artifacts to skip PR outputs, got {curl_log:?}"
+    );
+    Ok(())
+}
+
+pub(crate) fn assert_wrapper_requires_token_for_default_artifact_without_cargo(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let cache = temp.path().join("runtime-cache");
+    let package_path = create_runtime_package(temp.path(), "darwin-arm64", server, "artifact")?;
+    let artifact_api = create_artifact_api_response(temp.path(), &package_path)?;
+    let fake_bin = create_fake_curl_bin(temp.path(), &artifact_api)?;
+    let plugin_root = create_source_layout_plugin(temp.path())?;
+
+    let output = Command::new(plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+        .env("HOME", temp.path())
+        .env("PATH", format!("{}:/usr/bin:/bin", fake_bin.display()))
+        .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
+        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
+        .arg("--help")
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "anonymous artifact fallback must not run without a token\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8(output.stderr)?;
+    assert!(
+        stderr.contains(&format!("codexy-mcp-{server} artifact fallback requires")),
+        "missing token failure should explain authenticated artifact fallback, got {stderr:?}"
+    );
+    let curl_log = std::fs::read_to_string(temp.path().join("curl.log"))?;
+    assert!(
+        curl_log.contains("releases/latest/download/codexy-marketplace-plugin.tar.gz"),
+        "default lookup should still try durable release package first, got {curl_log:?}"
+    );
+    assert!(
+        !curl_log.contains("api.github.com"),
+        "artifact API should not be fetched anonymously, got {curl_log:?}"
     );
     Ok(())
 }
