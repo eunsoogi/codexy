@@ -173,3 +173,53 @@ fn codegraph_python_bare_relative_imports_keep_unresolved_edges()
 
     Ok(())
 }
+
+#[test]
+fn codegraph_go_import_blocks_ignore_commented_local_imports()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path();
+    fs::create_dir_all(root.join("pkg/live"))?;
+    fs::create_dir_all(root.join("pkg/commented"))?;
+    fs::write(root.join("go.mod"), "module example.com/acme/app\n")?;
+    fs::write(
+        root.join("main.go"),
+        r#"package main
+
+import (
+    "example.com/acme/app/pkg/live"
+    /*
+    "example.com/acme/app/pkg/commented"
+    */
+)
+
+func main() {
+    live.Run()
+}
+"#,
+    )?;
+    fs::write(
+        root.join("pkg/live/live.go"),
+        "package live\nfunc Run() {}\n",
+    )?;
+    fs::write(
+        root.join("pkg/commented/commented.go"),
+        "package commented\nfunc Run() {}\n",
+    )?;
+
+    let graph = build_graph(root, Some(10));
+    let main_edges = graph
+        .edges
+        .iter()
+        .filter(|edge| edge.from == "main.go")
+        .map(|edge| edge.to.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        main_edges,
+        vec!["pkg/live/live.go"],
+        "commented Go import-block entries must stay masked, got {main_edges:#?}"
+    );
+
+    Ok(())
+}

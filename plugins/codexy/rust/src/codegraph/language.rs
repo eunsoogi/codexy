@@ -65,15 +65,14 @@ fn go_block_imports(
         .filter_map(|caps| {
             let block = caps.get(1)?;
             mask.get(block.start()).copied().filter(|value| *value)?;
-            Some(block.as_str().to_owned())
-        })
-        .flat_map(|block| {
-            regex_values(
-                &block,
-                &vec![true; block.len()],
+            let block_mask = mask.get(block.start()..block.end())?;
+            Some(regex_values(
+                block.as_str(),
+                block_mask,
                 &[r#"(?m)^\s*(?:(?:[A-Za-z_]\w*|\.)\s+)?["']([^"']+)["']"#],
-            )
+            ))
         })
+        .flatten()
         .map(|item| normalize_go_import(&item, file, module_path))
         .collect()
 }
