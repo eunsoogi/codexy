@@ -14,9 +14,31 @@ pub(super) struct WrapperFixture<'a> {
 impl<'a> WrapperFixture<'a> {
     pub(super) fn new(home: &'a std::path::Path) -> Result<Self, Box<dyn std::error::Error>> {
         let plugin_root = home.join("codexy");
+        Self::new_with_plugin_root(home, &plugin_root)
+    }
+
+    pub(super) fn new_source_checkout(
+        home: &'a std::path::Path,
+        server: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let repo_root = home.join("repo");
+        std::fs::create_dir_all(repo_root.join("src/bin"))?;
+        std::fs::write(repo_root.join("Cargo.toml"), "name = \"codexy-runtime\"\n")?;
+        std::fs::write(
+            repo_root.join(format!("src/bin/codexy-mcp-{server}.rs")),
+            "fn main() {}\n",
+        )?;
+        let plugin_root = repo_root.join("plugins/codexy");
+        Self::new_with_plugin_root(home, &plugin_root)
+    }
+
+    fn new_with_plugin_root(
+        home: &'a std::path::Path,
+        plugin_root: &std::path::Path,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         copy_dir(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-            &plugin_root,
+            plugin_root,
         )?;
         let cargo_bin = home.join("fake-bin");
         std::fs::create_dir_all(&cargo_bin)?;
@@ -50,7 +72,7 @@ impl<'a> WrapperFixture<'a> {
         make_executable(&cargo_path)?;
         Ok(Self {
             home,
-            plugin_root,
+            plugin_root: plugin_root.to_path_buf(),
             cargo_bin,
             cargo_log,
         })

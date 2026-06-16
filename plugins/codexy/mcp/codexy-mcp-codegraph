@@ -46,7 +46,8 @@ if [ -n "$repo_root" ] \
   && [ -f "$repo_root/Cargo.toml" ] \
   && grep -Eq '^name = "codexy-runtime"$' "$repo_root/Cargo.toml" \
   && [ -f "$repo_root/src/bin/codexy-mcp-codegraph.rs" ] \
-  && [ -f "$repo_root/plugins/codexy/.codex-plugin/plugin.json" ]; then
+  && [ -f "$repo_root/plugins/codexy/.codex-plugin/plugin.json" ] \
+  && command -v cargo >/dev/null 2>&1; then
   exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-codegraph -- "$@"
 fi
 

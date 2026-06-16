@@ -28,6 +28,15 @@ fn wrappers_download_runtime_package_without_cargo() -> Result<(), Box<dyn std::
 }
 
 #[test]
+fn wrappers_in_source_checkout_download_runtime_package_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_source_checkout_wrapper_downloads_package_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn wrappers_refresh_cached_runtime_for_moving_main_ref() -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_refreshes_moving_ref_runtime(server)?;
@@ -144,6 +153,46 @@ fn assert_wrapper_downloads_runtime_package_without_cargo(
     assert!(
         !fixture.cargo_log.exists(),
         "no-Cargo package bootstrap should not invoke cargo"
+    );
+    Ok(())
+}
+
+fn assert_source_checkout_wrapper_downloads_package_without_cargo(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new_source_checkout(temp.path(), server)?;
+    let package = fixture.runtime_package(server, "packaged")?;
+    let cache = temp.path().join("runtime-cache");
+
+    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+        .env("HOME", temp.path())
+        .env("PATH", "/usr/bin:/bin")
+        .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
+        .env(
+            "CODEXY_RUNTIME_PACKAGE_URL",
+            format!("file://{}", package.display()),
+        )
+        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
+        .arg("--help")
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "source-checkout wrapper should fall through to package runtime when cargo is absent\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(
+        stdout.contains(&format!(
+            "fake-packaged packaged codexy-mcp-{server} --help"
+        )),
+        "source-checkout wrapper should exec the downloaded packaged runtime, got {stdout:?}"
+    );
+    assert!(
+        !fixture.cargo_log.exists(),
+        "source-checkout no-Cargo package bootstrap should not invoke cargo"
     );
     Ok(())
 }
