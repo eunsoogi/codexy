@@ -1,8 +1,20 @@
 #![allow(clippy::redundant_pub_crate)]
 
+mod package;
+mod package_fixture;
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
+
+pub(super) use package::{
+    assert_wrapper_discovers_default_artifact_without_cargo,
+    assert_wrapper_installs_packaged_runtime_without_cargo,
+    assert_wrapper_keeps_ref_override_exact_without_package_override,
+    assert_wrapper_prefers_durable_default_package_without_cargo,
+    assert_wrapper_refreshes_package_before_stale_cache_without_cargo,
+    assert_wrapper_requires_token_for_default_artifact_without_cargo,
+};
 
 pub(super) struct WrapperFixture<'a> {
     pub(super) home: &'a std::path::Path,
@@ -97,7 +109,10 @@ pub(super) fn run_wrapper_with_optional_failure(
     Ok(String::from_utf8(output.stdout)?)
 }
 
-fn copy_dir(source: impl AsRef<std::path::Path>, target: &std::path::Path) -> std::io::Result<()> {
+pub(super) fn copy_dir(
+    source: impl AsRef<std::path::Path>,
+    target: &std::path::Path,
+) -> std::io::Result<()> {
     std::fs::create_dir_all(target)?;
     for entry in std::fs::read_dir(source)? {
         let entry = entry?;
@@ -112,7 +127,7 @@ fn copy_dir(source: impl AsRef<std::path::Path>, target: &std::path::Path) -> st
     Ok(())
 }
 
-fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
+pub(super) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         let mut permissions = std::fs::metadata(path)?.permissions();

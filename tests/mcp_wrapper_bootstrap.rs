@@ -2,7 +2,15 @@ mod support;
 
 use std::process::Command;
 
-use support::{WrapperFixture, run_wrapper, run_wrapper_with_optional_failure};
+use support::{
+    WrapperFixture, assert_wrapper_discovers_default_artifact_without_cargo,
+    assert_wrapper_installs_packaged_runtime_without_cargo,
+    assert_wrapper_keeps_ref_override_exact_without_package_override,
+    assert_wrapper_prefers_durable_default_package_without_cargo,
+    assert_wrapper_refreshes_package_before_stale_cache_without_cargo,
+    assert_wrapper_requires_token_for_default_artifact_without_cargo, run_wrapper,
+    run_wrapper_with_optional_failure,
+};
 
 #[test]
 fn lsp_wrapper_bootstraps_runtime_when_installed_without_bundled_binary()
@@ -37,6 +45,60 @@ fn wrappers_fallback_to_cached_runtime_when_moving_ref_refresh_fails()
 -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_falls_back_to_cached_runtime_after_refresh_failure(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_install_packaged_runtime_when_fresh_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_installs_packaged_runtime_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_discover_default_artifact_when_fresh_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_discovers_default_artifact_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_require_token_for_default_artifact_when_fresh_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_requires_token_for_default_artifact_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_prefer_durable_default_package_when_fresh_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_prefers_durable_default_package_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_refresh_package_before_stale_cache_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_refreshes_package_before_stale_cache_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_do_not_mask_runtime_ref_override_with_default_package()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_keeps_ref_override_exact_without_package_override(server)?;
     }
     Ok(())
 }
