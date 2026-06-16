@@ -2,9 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const { codeExtensions, resultLimit, toPosix, unique, walkCodeFiles } = require("./files");
-const jsFamilyExtensions = new Set([".js", ".jsx", ".mjs", ".cjs"]);
-const jsSourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"]);
-const tsSourceExtensions = [".ts", ".tsx"];
+const jsFamilyExtensions = new Set([".js", ".jsx", ".mjs", ".cjs"]), jsSourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"]), tsSourceExtensions = [".ts", ".tsx"];
 function startsRegexLiteral(source, index) {
   for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
     const char = source[cursor];
@@ -79,7 +77,7 @@ function parseJavaScriptFile(root, file) {
   const exports = [];
   const importPatterns = [
     /\bimport\s*(?:[^"'()]*?\s*from\s*)?["']([^"']+)["']/g, /\bimport\s*\(\s*["']([^"']+)["'](?:\s*,[^)]*)?\s*\)/g,
-    /\brequire\(\s*["']([^"']+)["']\s*\)/g, /\bexport\s*(?:type\s+)?\*\s*from\s*["']([^"']+)["']/g,
+    /\brequire\(\s*["']([^"']+)["']\s*\)/g, /\bexport\s*(?:type\s+)?\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?from\s*["']([^"']+)["']/g,
     /\bexport\s*(?:type\s+)?\{[^}]+\}\s*from\s*["']([^"']+)["']/g,
   ];
   const exportPatterns = [/\bexport\s+(?:(?:async\s+)?(?:function|class|const|let|var)|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g, /\bexport\s*(?:type\s+)?\{([^}]+)\}/g];
@@ -104,13 +102,14 @@ function parseJavaScriptFile(root, file) {
 }
 const languageRules = {
   ".py": { imports: [/\bfrom\s+(\.+)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /\bfrom\s+((?:\.+)?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/g, /^\s*import\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/gm], exports: [/\b(?:def|class)\s+([A-Za-z_]\w*)/g] },
-  ".go": { imports: [/\bimport\s+(?:\(\s*)?(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /^\s*(?:[A-Za-z_]\w*\s+)?["'](\.[^"']+)["']/gm], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
+  ".go": { imports: [/\bimport\s+(?:\(\s*)?(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/g, /^\s*(?:[A-Za-z_]\w*\s+)?["']([^"']+)["']/gm], exports: [/\b(?:func|type|var|const)\s+([A-Z]\w*)/g] },
   ".rs": { imports: [/\bmod\s+([A-Za-z_]\w*)\s*;/g, /\buse\s+((?:crate|self|super)::[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)/g], exports: [/\bpub\s+(?:fn|struct|enum|trait|mod|const|static)\s+([A-Za-z_]\w*)/g] },
   ".rb": { imports: [/\brequire_relative\s+["']([^"']+)["']/g, /\brequire\s+["'](\.[^"']+)["']/g], exports: [/\b(?:class|module|def)\s+([A-Z]\w*|[a-z_]\w*[!?=]?)/g] },
   ".java": { imports: [/\bimport\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*;/g], exports: [/\b(?:class|interface|enum|record)\s+([A-Za-z_]\w*)/g] },
   ".kt": { imports: [/\bimport\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)/g], exports: [/\b(?:class|interface|object|fun|val|var)\s+([A-Za-z_]\w*)/g] },
 };
 function rustCrateRoot(file) { const parts = file.split("/"), index = parts.lastIndexOf("src"); return index < 0 ? "." : parts.slice(0, index + 1).join("/"); }
+function readGoModulePath(root) { try { return fs.readFileSync(path.join(root, "go.mod"), "utf8").match(/^\s*module\s+(\S+)/m)?.[1]; } catch { return undefined; } }
 function normalizeLanguageImport(extension, specifier, file, packageName) {
   if (extension === ".py") {
     if (specifier.startsWith(".")) {
@@ -127,7 +126,10 @@ function normalizeLanguageImport(extension, specifier, file, packageName) {
     if ((path.posix.dirname(file) === "src" || path.posix.dirname(file).startsWith("src/")) && !["lib.rs", "main.rs", "mod.rs"].includes(path.posix.basename(file))) return `./${path.posix.basename(file, ".rs")}/${specifier}`;
     return `./${specifier.replace(/::/g, "/")}`;
   }
-  if (extension === ".go" && !specifier.startsWith(".")) return specifier;
+  if (extension === ".go" && !specifier.startsWith(".")) {
+    if (!packageName || (specifier !== packageName && !specifier.startsWith(`${packageName}/`))) return specifier;
+    const relative = path.posix.relative(path.posix.dirname(file), specifier.slice(packageName.length).replace(/^\//, "") || "."); return relative.startsWith(".") ? relative : `./${relative}`;
+  }
   if (extension === ".java" || extension === ".kt") {
     const packagePath = packageName?.replace(/\./g, "/"), fileDir = path.posix.dirname(file), importPath = specifier.replace(/\./g, "/");
     const hasPackageRoot = packagePath && (fileDir === packagePath || fileDir.endsWith(`/${packagePath}`));
@@ -149,7 +151,7 @@ function parseLanguageFile(root, file, indexedFiles) {
   const rules = languageRules[extension];
   if (!rules) return { imports: [], exports: [] };
   const source = fs.readFileSync(path.join(root, file), "utf8");
-  const packageName = [".java", ".kt"].includes(extension) && source.match(/^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/m)?.[1];
+  const packageName = extension === ".go" ? readGoModulePath(root) : [".java", ".kt"].includes(extension) && source.match(/^\s*package\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/m)?.[1];
   const mask = languageMask(source, extension);
   const imports = rules.imports.flatMap((pattern) => Array.from(source.matchAll(pattern)).filter((match) => mask[match.index]).flatMap((match) => {
       if (extension === ".py" && match[2]) return match[2].split(",").map((target) => {
@@ -175,9 +177,10 @@ function resolveImport(root, fromFile, specifier, indexedFiles) {
   const extensions = !jsSourceExtensions.has(fromExtension) && codeExtensions.has(fromExtension)
     ? [fromExtension, ...Array.from(codeExtensions).filter((candidateExtension) => candidateExtension !== fromExtension)]
     : Array.from(codeExtensions);
+  const goPackageFiles = fromExtension === ".go" && !extension && fs.existsSync(candidate) && fs.statSync(candidate).isDirectory() ? fs.readdirSync(candidate).filter((entry) => entry.endsWith(".go")).sort().map((entry) => path.join(candidate, entry)) : [];
   const candidates = extension
     ? [candidate, ...(jsFamilyExtensions.has(extension) ? tsSourceExtensions.map((sourceExtension) => `${candidate.slice(0, -extension.length)}${sourceExtension}`) : [])]
-    : [candidate, ...extensions.map((extension) => `${candidate}${extension}`), ...extensions.map((extension) => path.join(candidate, `index${extension}`)), path.join(candidate, "__init__.py"), path.join(candidate, "mod.rs")];
+    : [...goPackageFiles, candidate, ...extensions.map((extension) => `${candidate}${extension}`), ...extensions.map((extension) => path.join(candidate, `index${extension}`)), path.join(candidate, "__init__.py"), path.join(candidate, "mod.rs")];
   for (const absolute of candidates) {
     if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {
       const relative = toPosix(path.relative(root, absolute));
@@ -241,10 +244,7 @@ function neighborhood(root, startPath, depth, limit) {
   const neighborhoodEdges = edges.filter(
     (edge) => returnedNodePaths.has(edge.from) && returnedNodePaths.has(edge.to)
   );
-  const boundedEdges = neighborhoodEdges.slice(0, boundedLimit);
-  const hasPendingNeighbors = queue.some((candidate) => !seen.has(candidate.path));
-
+  const boundedEdges = neighborhoodEdges.slice(0, boundedLimit), hasPendingNeighbors = queue.some((candidate) => !seen.has(candidate.path));
   return { root, path: start, depth: boundedDepth, nodes, edges: boundedEdges, limit: boundedLimit, truncated: hasPendingNeighbors || neighborhoodEdges.length > boundedEdges.length };
 }
-
 module.exports = { buildGraph, neighborhood, reverseDeps };

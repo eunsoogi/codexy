@@ -278,6 +278,36 @@ test("Rust crate imports resolve from nested crate roots", async () => {
   }
 });
 
+test("Go module imports resolve local packages while external imports stay unresolved", async () => {
+  const goModuleRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-go-module-"));
+  await Promise.all([
+    fs.mkdir(path.join(goModuleRoot, "cmd/app"), { recursive: true }),
+    fs.mkdir(path.join(goModuleRoot, "pkg/foo"), { recursive: true }),
+  ]);
+  await Promise.all([
+    fs.writeFile(path.join(goModuleRoot, "go.mod"), "module example.com/acme/app\n\ngo 1.22\n", "utf8"),
+    fs.writeFile(path.join(goModuleRoot, "cmd/app/main.go"), 'package main\n\nimport (\n  "example.com/acme/app/pkg/foo"\n  "github.com/pkg/errors"\n)\n\nfunc main() {\n  _ = foo.Value\n  _ = errors.New\n}\n', "utf8"),
+    fs.writeFile(path.join(goModuleRoot, "pkg/foo/foo.go"), "package foo\n\nconst Value = 1\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: goModuleRoot, limit: 10 });
+      assert.ok(graph.edges.some((edge) => edge.from === "cmd/app/main.go" && edge.to === "pkg/foo/foo.go" && edge.specifier === "../../pkg/foo" && edge.resolved));
+      assert.ok(graph.edges.some((edge) => edge.from === "cmd/app/main.go" && edge.to === "github.com/pkg/errors" && edge.specifier === "github.com/pkg/errors" && !edge.resolved));
+
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: goModuleRoot, path: "pkg/foo/foo.go", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "cmd/app/main.go", specifier: "../../pkg/foo" }]);
+
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: goModuleRoot, path: "cmd/app/main.go", depth: 1, limit: 5 });
+      assert.ok(neighborhood.nodes.some((node) => node.path === "pkg/foo/foo.go"));
+      assert.deepEqual(neighborhood.edges.map((edge) => [edge.from, edge.to]), [["cmd/app/main.go", "pkg/foo/foo.go"]]);
+    });
+  } finally {
+    await fs.rm(goModuleRoot, { recursive: true, force: true });
+  }
+});
+
 test("Java and Kotlin package imports resolve from the package source root", async () => {
   const packageRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-package-root-"));
   await Promise.all([
