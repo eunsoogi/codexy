@@ -110,6 +110,7 @@ const languageRules = {
   ".java": { imports: [/\bimport\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\s*;/g], exports: [/\b(?:class|interface|enum|record)\s+([A-Za-z_]\w*)/g] },
   ".kt": { imports: [/\bimport\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)/g], exports: [/\b(?:class|interface|object|fun|val|var)\s+([A-Za-z_]\w*)/g] },
 };
+function rustCrateRoot(file) { const parts = file.split("/"), index = parts.lastIndexOf("src"); return index < 0 ? "." : parts.slice(0, index + 1).join("/"); }
 function normalizeLanguageImport(extension, specifier, file, packageName) {
   if (extension === ".py") {
     if (specifier.startsWith(".")) {
@@ -120,7 +121,7 @@ function normalizeLanguageImport(extension, specifier, file, packageName) {
     return relative.startsWith(".") ? relative : `./${relative}`;
   }
   if (extension === ".rs") {
-    if (specifier.startsWith("crate::")) return `./${path.posix.relative(path.posix.dirname(file), path.posix.join(file.split("/").includes("src") ? "src" : ".", specifier.slice(7).replace(/::/g, "/")))}`;
+    if (specifier.startsWith("crate::")) return `./${path.posix.relative(path.posix.dirname(file), path.posix.join(rustCrateRoot(file), specifier.slice(7).replace(/::/g, "/")))}`;
     if (specifier.startsWith("super::")) return `./../${specifier.slice(7).replace(/::/g, "/")}`;
     if (specifier.startsWith("self::")) return `./${specifier.slice(6).replace(/::/g, "/")}`;
     if ((path.posix.dirname(file) === "src" || path.posix.dirname(file).startsWith("src/")) && !["lib.rs", "main.rs", "mod.rs"].includes(path.posix.basename(file))) return `./${path.posix.basename(file, ".rs")}/${specifier}`;
@@ -203,8 +204,7 @@ function buildGraph(root, limit) {
 
   return { root, files, edges, totalFiles: allFiles.length, limit: boundedLimit, truncated, metadata: { truncated } };
 }
-
-function graphPath(root, input) { return toPosix(path.isAbsolute(input) ? path.relative(root, input) : input); }
+function graphPath(root, input) { return path.posix.normalize(toPosix(path.isAbsolute(input) ? path.relative(root, input) : input)); }
 function reverseDeps(root, targetPath, limit) {
   const graph = buildGraph(root, Number.MAX_SAFE_INTEGER);
   const normalizedTarget = graphPath(root, targetPath);

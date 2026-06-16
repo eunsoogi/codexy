@@ -88,6 +88,25 @@ test("absolute root-contained paths match reverse deps and neighborhoods", async
   }
 });
 
+test("dot-relative workspace paths match reverse deps and neighborhoods", async () => {
+  const dotRelativePathRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-dot-relative-paths-"));
+  await fs.writeFile(path.join(dotRelativePathRoot, "entry.js"), 'import { helper } from "./helper.js";\nexport const entry = helper;\n', "utf8");
+  await fs.writeFile(path.join(dotRelativePathRoot, "helper.js"), "export const helper = 1;\n", "utf8");
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: dotRelativePathRoot, path: "./helper.js", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "entry.js", specifier: "./helper.js" }]);
+
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: dotRelativePathRoot, path: "./entry.js", depth: 1, limit: 5 });
+      assert.deepEqual(neighborhood.nodes.map((node) => node.path), ["entry.js", "helper.js"]);
+      assert.deepEqual(neighborhood.edges.map((edge) => [edge.from, edge.to]), [["entry.js", "helper.js"]]);
+    });
+  } finally {
+    await fs.rm(dotRelativePathRoot, { recursive: true, force: true });
+  }
+});
+
 test("advertised non-JS files create graph edges across index, reverse deps, and neighborhoods", async () => {
   const nonJsRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-non-js-"));
   await fs.mkdir(path.join(nonJsRoot, "local"), { recursive: true });
@@ -165,6 +184,35 @@ test("extensionless non-JS imports prefer the importing language over JS decoys"
     });
   } finally {
     await fs.rm(languagePreferenceRoot, { recursive: true, force: true });
+  }
+});
+
+test("Rust crate imports resolve from nested crate roots", async () => {
+  const rustWorkspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codegraph-rust-workspace-"));
+  await Promise.all([
+    fs.mkdir(path.join(rustWorkspaceRoot, "crates/app/src/support"), { recursive: true }),
+    fs.mkdir(path.join(rustWorkspaceRoot, "src/support"), { recursive: true }),
+  ]);
+  await Promise.all([
+    fs.writeFile(path.join(rustWorkspaceRoot, "crates/app/src/lib.rs"), "use crate::support::thing;\n", "utf8"),
+    fs.writeFile(path.join(rustWorkspaceRoot, "crates/app/src/support/thing.rs"), "pub fn thing() {}\n", "utf8"),
+    fs.writeFile(path.join(rustWorkspaceRoot, "src/support/thing.rs"), "pub fn wrong_root() {}\n", "utf8"),
+  ]);
+
+  try {
+    await withCodegraphClient(async (client) => {
+      const graph = await tool(client, "codegraph_index", { root: rustWorkspaceRoot, limit: 10 });
+      assert.ok(graph.edges.some((edge) => edge.from === "crates/app/src/lib.rs" && edge.to === "crates/app/src/support/thing.rs" && edge.resolved));
+      assert.ok(!graph.edges.some((edge) => edge.from === "crates/app/src/lib.rs" && edge.to === "src/support/thing.rs"));
+
+      const reverse = await tool(client, "codegraph_reverse_deps", { root: rustWorkspaceRoot, path: "crates/app/src/support/thing.rs", limit: 5 });
+      assert.deepEqual(reverse.dependents, [{ path: "crates/app/src/lib.rs", specifier: "./support/thing" }]);
+
+      const neighborhood = await tool(client, "codegraph_neighborhood", { root: rustWorkspaceRoot, path: "crates/app/src/lib.rs", depth: 1, limit: 5 });
+      assert.deepEqual(neighborhood.nodes.map((node) => node.path), ["crates/app/src/lib.rs", "crates/app/src/support/thing.rs"]);
+    });
+  } finally {
+    await fs.rm(rustWorkspaceRoot, { recursive: true, force: true });
   }
 });
 
