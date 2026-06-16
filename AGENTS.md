@@ -43,9 +43,9 @@ codexy/
 | Git, issue, PR, review, merge, labels | `plugins/codexy/skills/git-workflow/SKILL.md` | Executable workflow source of truth. |
 | Plugin identity and install surface | `plugins/codexy/.codex-plugin/plugin.json` | Keep marketplace-facing metadata current. |
 | Marketplace registration | `.agents/plugins/marketplace.json` | Version must stay synced with the plugin manifest. |
-| Version bump automation | `.github/workflows/plugin-version-bump.yml` | Uses `scripts/sync-plugin-version.py`. |
-| Plugin config validation | `scripts/validate-plugin-config.py` | Covers manifest, MCP, LSP, skills, and agent contracts. |
-| Version synchronization | `scripts/sync-plugin-version.py` | Checks or updates plugin and marketplace versions. |
+| Version bump automation | `.github/workflows/plugin-version-bump.yml` | Uses `scripts/sync-plugin-version`. |
+| Plugin config validation | `scripts/validate-plugin-config` | Covers manifest, MCP, LSP, skills, and agent contracts. |
+| Version synchronization | `scripts/sync-plugin-version` | Checks or updates plugin and marketplace versions. |
 | Specialist agents | `plugins/codexy/agents/*.toml` | One agent per file plus `catalog.toml` and `openai.yaml`. |
 | Orchestration behavior | `plugins/codexy/skills/codex-orchestration/SKILL.md` | Thread, goal, todo, multi-agent, and worktree policy. |
 | Review gate contract | `plugins/codexy/agents/reviewer.toml` | Required reviewer gate for non-trivial atomic lanes. |
@@ -68,7 +68,7 @@ codexy/
   `plugins/codexy/**`, with validators in `scripts/**`.
 - Keep specialist agents as separate `plugins/codexy/agents/*.toml` files.
 - Keep skill instructions under `plugins/codexy/skills/<skill>/SKILL.md`.
-- Keep MCP and LSP changes aligned with `scripts/validate-plugin-config.py`.
+- Keep MCP and LSP changes aligned with `scripts/validate-plugin-config`.
 - Use Codexy codegraph MCP for repository exploration when available, then
   confirm exact files with direct reads before editing.
 - Prefer repository-specific guidance over generic agent advice.
@@ -82,8 +82,8 @@ codexy/
 - For documentation-only changes, at minimum run `git diff --check` and file
   existence checks for changed documents.
 - For structured plugin changes, run the relevant mode of
-  `scripts/validate-plugin-config.py`.
-- For version metadata changes, run `scripts/sync-plugin-version.py --check`.
+  `scripts/validate-plugin-config`.
+- For version metadata changes, run `scripts/sync-plugin-version --check`.
 - Tests alone do not prove completion when the requested surface is GitHub,
   plugin packaging, a CLI, a browser page, a desktop app, or another externally
   observable workflow; drive the matching surface and capture evidence.

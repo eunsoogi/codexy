@@ -1,15 +1,27 @@
 {
   "lsp": {
-    "command": "node",
-    "args": [
-      "./mcp/lsp/server.js"
+    "command": [
+      "cargo",
+      "run",
+      "--quiet",
+      "--manifest-path",
+      "./rust/Cargo.toml",
+      "--bin",
+      "codexy-mcp-lsp",
+      "--"
     ],
     "cwd": "."
   },
   "codegraph": {
-    "command": "node",
-    "args": [
-      "./mcp/codegraph/server.js"
+    "command": [
+      "cargo",
+      "run",
+      "--quiet",
+      "--manifest-path",
+      "./rust/Cargo.toml",
+      "--bin",
+      "codexy-mcp-codegraph",
+      "--"
     ],
     "cwd": "."
   },

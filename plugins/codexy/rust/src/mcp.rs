@@ -1,0 +1,181 @@
+use std::io::{self, Read, Write};
+
+use anyhow::{Context as _, Result, bail};
+use serde::Serialize;
+use serde_json::{Value, json};
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ToolDef {
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "inputSchema")]
+    pub input_schema: Value,
+}
+
+impl ToolDef {
+    #[must_use]
+    pub fn new(name: &str, description: &str, input_schema: Value) -> Self {
+        Self {
+            name: name.to_owned(),
+            description: description.to_owned(),
+            input_schema,
+        }
+    }
+}
+
+#[must_use]
+pub fn text_result(text: &str) -> Value {
+    json!({ "content": [{ "type": "text", "text": text }] })
+}
+
+/// Runs a JSON-RPC MCP server over standard input and output.
+///
+/// # Errors
+///
+/// Returns an error when reading stdin, parsing MCP frames, handling a tool
+/// call, or writing a response frame fails.
+pub fn run_stdio_server<F>(
+    name: &str,
+    version: &str,
+    tools: &[ToolDef],
+    mut call_tool: F,
+) -> Result<()>
+where
+    F: FnMut(&str, &Value) -> Result<Value>,
+{
+    let mut parser = FrameParser::default();
+    let mut chunk = [0_u8; 8192];
+    loop {
+        let read = {
+            let stdin = io::stdin();
+            let mut stdin = stdin.lock();
+            stdin.read(&mut chunk).context("reading MCP stdin")?
+        };
+        if read == 0 {
+            break;
+        }
+        parser.extend(&chunk[..read]);
+        while let Some(message) = parser.next_frame()? {
+            let response = handle_message(name, version, tools, &mut call_tool, &message);
+            if let Some(response) = response {
+                write_frame(&response)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn handle_message<F>(
+    name: &str,
+    version: &str,
+    tools: &[ToolDef],
+    call_tool: &mut F,
+    message: &Value,
+) -> Option<Value>
+where
+    F: FnMut(&str, &Value) -> Result<Value>,
+{
+    let id = message.get("id").cloned();
+    let method = message
+        .get("method")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    match method {
+        "initialize" => id.map(|id| {
+            json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": { "tools": {} },
+                    "serverInfo": { "name": name, "version": version }
+                }
+            })
+        }),
+        "notifications/initialized" => None,
+        "tools/list" => {
+            id.map(|id| json!({ "jsonrpc": "2.0", "id": id, "result": { "tools": tools } }))
+        }
+        "tools/call" => id.map(|id| {
+            let params = message.get("params").unwrap_or(&Value::Null);
+            let tool_name = params
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let arguments = params.get("arguments").unwrap_or(&Value::Null);
+            match call_tool(tool_name, arguments) {
+                Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
+                Err(error) => json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": { "code": -32000, "message": error.to_string() }
+                }),
+            }
+        }),
+        _ => id.map(|id| {
+            json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "error": { "code": -32601, "message": format!("Unknown method: {method}") }
+            })
+        }),
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct FrameParser {
+    buffer: Vec<u8>,
+}
+
+impl FrameParser {
+    pub(crate) fn extend(&mut self, chunk: &[u8]) {
+        self.buffer.extend_from_slice(chunk);
+    }
+
+    pub(crate) fn next_frame(&mut self) -> Result<Option<Value>> {
+        let Some(header_end) = find_header_end(&self.buffer) else {
+            return Ok(None);
+        };
+        let header =
+            std::str::from_utf8(&self.buffer[..header_end]).context("MCP header is not UTF-8")?;
+        let length = content_length(header)?;
+        let start = header_end + 4;
+        let end = start + length;
+        if self.buffer.len() < end {
+            return Ok(None);
+        }
+        let body = self.buffer[start..end].to_vec();
+        self.buffer.drain(..end);
+        serde_json::from_slice(&body)
+            .map(Some)
+            .context("parsing MCP JSON frame")
+    }
+}
+
+fn find_header_end(buffer: &[u8]) -> Option<usize> {
+    buffer.windows(4).position(|window| window == b"\r\n\r\n")
+}
+
+fn content_length(header: &str) -> Result<usize> {
+    for line in header.lines() {
+        let Some((name, value)) = line.split_once(':') else {
+            continue;
+        };
+        if name.eq_ignore_ascii_case("content-length") {
+            return value
+                .trim()
+                .parse::<usize>()
+                .context("parsing Content-Length header");
+        }
+    }
+    bail!("Missing Content-Length header")
+}
+
+fn write_frame(payload: &Value) -> Result<()> {
+    let body = serde_json::to_vec(payload)?;
+    let mut stdout = io::stdout().lock();
+    write!(stdout, "Content-Length: {}\r\n\r\n", body.len())?;
+    stdout.write_all(&body)?;
+    stdout.flush()?;
+    Ok(())
+}

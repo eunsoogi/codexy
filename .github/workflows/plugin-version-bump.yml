@@ -35,11 +35,11 @@ jobs:
       - name: Synchronize plugin version
         env:
           VERSION: ${{ inputs.version }}
-        run: python3 scripts/sync-plugin-version.py --version "$VERSION"
+        run: scripts/sync-plugin-version --version "$VERSION"
 
       - name: Verify version sync
         run: |
-          python3 scripts/sync-plugin-version.py --check
+          scripts/sync-plugin-version --check
           git diff --check
 
       - name: Open version bump pull request
@@ -73,7 +73,7 @@ jobs:
           - plugins/codexy/.codex-plugin/plugin.json
 
           ## Verification
-          - python3 scripts/sync-plugin-version.py --check
+          - scripts/sync-plugin-version --check
 
           ## Evidence
           - Workflow validation completed before opening this PR.
