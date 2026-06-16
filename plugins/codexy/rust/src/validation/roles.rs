@@ -173,7 +173,9 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
         }
     }
     for field in ["inputs", "outputs", "constraints"] {
-        if toml_array_strings(agent.get(field)).is_none_or(|items| items.is_empty()) {
+        if toml_array_strings(agent.get(field))
+            .is_none_or(|items| items.is_empty() || items.iter().any(String::is_empty))
+        {
             errors.push(format!(
                 "{} {field} must be a list of non-empty strings",
                 display_relative(path)

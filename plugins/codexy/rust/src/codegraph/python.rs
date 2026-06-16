@@ -59,6 +59,8 @@ fn collect_from_imports(
         let submodule = normalize_language_import(".py", &candidate, file, None);
         if resolve_import(root, file, &submodule, indexed_files).resolved {
             imports.push(submodule);
+        } else if base.chars().all(|ch| ch == '.') {
+            imports.push(normalize_language_import(".py", &candidate, file, None));
         } else {
             imports.push(normalize_language_import(".py", base, file, None));
         }

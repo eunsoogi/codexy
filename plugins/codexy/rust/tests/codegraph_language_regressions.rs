@@ -148,3 +148,28 @@ fn codegraph_neighborhood_reports_truncated_when_node_limit_is_reached()
 
     Ok(())
 }
+
+#[test]
+fn codegraph_python_bare_relative_imports_keep_unresolved_edges()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path();
+    fs::create_dir_all(root.join("pkg"))?;
+    fs::write(root.join("pkg/__init__.py"), "")?;
+    fs::write(root.join("pkg/module.py"), "from . import missing\n")?;
+
+    let graph = build_graph(root, Some(10));
+    let edge = graph
+        .edges
+        .iter()
+        .find(|edge| edge.from == "pkg/module.py")
+        .expect("bare relative import should create an edge");
+
+    assert_eq!(edge.to, "./missing");
+    assert!(
+        !edge.resolved,
+        "missing bare relative import should remain visible as unresolved"
+    );
+
+    Ok(())
+}

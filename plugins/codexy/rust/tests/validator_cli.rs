@@ -97,6 +97,42 @@ fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .ok_or("plugin root")?,
+        &plugin_root,
+    )?;
+    let planner_path = plugin_root.join("agents/planner.toml");
+    let mut planner = std::fs::read_to_string(&planner_path)?;
+    planner = planner.replace("inputs = [", "inputs = [\"\", ");
+    std::fs::write(&planner_path, planner)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject empty agent list entries"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("inputs must be a list of non-empty strings"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn copy_dir(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(target)?;
     for entry in std::fs::read_dir(source)? {
