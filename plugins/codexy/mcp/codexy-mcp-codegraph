@@ -177,7 +177,7 @@ if [ "$runtime_package_requested" = 1 ]; then
       archive_download_url=""
       if [ -f "$package_json" ]; then
         archive_download_url=$(tr '\n' ' ' < "$package_json" \
-          | sed 's/},{/}\
+          | sed 's/}[[:space:]]*,[[:space:]]*{/}\
 {/g' \
           | sed -n '/"head_branch"[[:space:]]*:[[:space:]]*"main"/{
               /"head_repository_id"[[:space:]]*:[[:space:]]*1269350143/{
