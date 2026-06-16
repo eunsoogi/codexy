@@ -4,6 +4,7 @@ set -eu
 self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
 repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
+export CODEXY_PLUGIN_ROOT="$plugin_root"
 
 if [ -n "$repo_root" ] && [ -f "$repo_root/Cargo.toml" ] && [ -d "$repo_root/src" ]; then
   exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"

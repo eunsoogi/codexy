@@ -4,6 +4,15 @@ use anyhow::Result;
 
 #[must_use]
 pub fn plugin_root() -> PathBuf {
+    if let Some(path) = std::env::var_os("CODEXY_PLUGIN_ROOT").filter(|value| !value.is_empty()) {
+        let path = PathBuf::from(path);
+        if path.is_absolute() {
+            return path;
+        }
+        if let Ok(current_dir) = std::env::current_dir() {
+            return current_dir.join(path);
+        }
+    }
     Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy")
 }
 
