@@ -1,9 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const fs = require("fs"), os = require("os"), path = require("path");
 const { fileURLToPath, pathToFileURL } = require("url");
 const { fakeLspCommand, readCapture, withFakeLspCapture, withMarkerlessWorkspace, withWorkspaceRelativeFakeLsp } = require("./fixtures/lsp/fake-lsp-fixtures");
 const { assertStructuredToolResult, withLspClient } = require("./fixtures/lsp/test-harness");
@@ -13,7 +11,7 @@ const lspServer = path.join(repoRoot, "plugins/codexy/mcp/lsp/server.js");
 const jsFixture = path.join(repoRoot, "tests/mcp/fixtures/lsp/sample.js");
 const externalWorkspace = path.join(repoRoot, "tests/mcp/fixtures/lsp/external-workspace"), externalFixture = path.join(externalWorkspace, "src/sample.js");
 const allowOverride = { CODEXY_LSP_ALLOW_COMMAND_OVERRIDE: "1" }, fakeEnv = (env = {}) => ({ ...allowOverride, ...env }), { languageForPath } = require("../../plugins/codexy/mcp/lsp/config");
-async function toolPayload(client, name, args) { return assertStructuredToolResult(assert, await client.callTool(name, args)); }
+async function toolPayload(client, name, args, timeoutMs) { return assertStructuredToolResult(assert, await client.callTool(name, args, timeoutMs)); }
 test("languageForPath maps catalog display labels to canonical LSP IDs", () => { for (const [filePath, server, languageId] of [["sample.c", { language: "C/C++" }, "c"], ["sample.cpp", { language: "C/C++" }, "cpp"], ["sample", { language: "C/C++" }, "cpp"], ["sample.cs", { language: "C#" }, "csharp"], ["sample.fs", { language: "F#" }, "fsharp"], ["script", { language: "Shell" }, "shellscript"], ["module", { language: "TypeScript and JavaScript" }, "javascript"]]) assert.equal(languageForPath(filePath, server), languageId); });
 test("lsp_status reports availability and install hints for a JavaScript path", async () => {
   await withLspClient(assert, lspServer, repoRoot, async (client) => {
@@ -30,9 +28,8 @@ test("full LSP operation tools are registered", async () => {
     const tools = await client.listTools();
     const names = tools.map((tool) => tool.name);
     const statusTool = tools.find((tool) => tool.name === "lsp_status"), symbolTool = tools.find((tool) => tool.name === "lsp_document_symbols");
-    for (const name of ["lsp_document_symbols", "lsp_definition", "lsp_references", "lsp_diagnostics"]) assert.ok(names.includes(name));
-    assert.ok(statusTool.inputSchema.properties.root);
-    assert.ok(symbolTool.inputSchema.properties.root);
+    for (const name of ["lsp_document_symbols", "lsp_definition", "lsp_references", "lsp_diagnostics"]) { const tool = tools.find((candidate) => candidate.name === name); assert.ok(names.includes(name)); assert.equal(tool.inputSchema.properties.timeoutMs.maximum, 60000); }
+    assert.ok(statusTool.inputSchema.properties.root); assert.ok(symbolTool.inputSchema.properties.root);
   });
 });
 test("LSP operations return structured unavailable when the server executable is missing", async () => {
@@ -192,6 +189,9 @@ test("LSP operations answer server-to-client requests before document symbols", 
     }, { env: fakeEnv({ CODEXY_FAKE_LSP_CAPTURE: capturePath, CODEXY_FAKE_LSP_REQUIRE_CLIENT_RESPONSE: "1" }) });
   });
 });
+test("LSP operations pass timeoutMs to slow initialize requests", async () => { await withLspClient(assert, lspServer, repoRoot, async (client) => { const payload = await toolPayload(client, "lsp_document_symbols", { path: externalFixture, timeoutMs: 2500, server: { id: "fake-lsp", command: fakeLspCommand() } }, 3000); assert.equal(payload.status, "ok"); }, { env: fakeEnv({ CODEXY_FAKE_LSP_INITIALIZE_DELAY_MS: "1700" }) }); });
+test("LSP operations pass timeoutMs to slow follow-up requests", async () => { await withLspClient(assert, lspServer, repoRoot, async (client) => { const payload = await toolPayload(client, "lsp_document_symbols", { path: externalFixture, timeoutMs: 2500, server: { id: "fake-lsp", command: fakeLspCommand() } }, 3000); assert.equal(payload.status, "ok"); }, { env: fakeEnv({ CODEXY_FAKE_LSP_REQUEST_DELAY_MS: "1700" }) }); });
+test("LSP operations preserve bounded caller timeouts", async () => { await withLspClient(assert, lspServer, repoRoot, async (client) => { const payload = await toolPayload(client, "lsp_document_symbols", { path: externalFixture, timeoutMs: 100, server: { id: "fake-lsp", command: fakeLspCommand() } }); assert.equal(payload.status, "error"); assert.match(payload.reason, /Timed out waiting for textDocument\/documentSymbol/); }, { env: fakeEnv({ CODEXY_FAKE_LSP_REQUEST_DELAY_MS: "300" }) }); });
 test("LSP operations do not confuse a colliding server request id with the pending client request", async () => {
   await withFakeLspCapture("codexy-fake-lsp-colliding-server-request", async (capturePath) => {
     await withLspClient(assert, lspServer, repoRoot, async (client) => {

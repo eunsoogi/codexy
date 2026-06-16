@@ -29,6 +29,12 @@ function send(payload) {
   process.stdout.write(encode(payload));
 }
 
+function sendAfter(payload, delayMs) {
+  const delay = Math.max(0, Number(delayMs) || 0);
+  if (delay > 0) setTimeout(() => send(payload), delay);
+  else send(payload);
+}
+
 function capture(message) {
   if (!process.env.CODEXY_FAKE_LSP_CAPTURE) return;
   captureData = {
@@ -67,11 +73,11 @@ function handle(message) {
   }
   if (message.method === "initialize") {
     capture(message);
-    send({
+    sendAfter({
       jsonrpc: "2.0",
       id: message.id,
       result: { capabilities: process.env.CODEXY_FAKE_LSP_PULL_DIAGNOSTICS === "1" ? { diagnosticProvider: {} } : {} },
-    });
+    }, process.env.CODEXY_FAKE_LSP_INITIALIZE_DELAY_MS);
     return;
   }
   if (message.method === "textDocument/didOpen") {
@@ -120,7 +126,7 @@ function handle(message) {
       nextDiagnostics = false;
       publishDiagnostics();
     }
-    send({ jsonrpc: "2.0", id: message.id, result: [] });
+    sendAfter({ jsonrpc: "2.0", id: message.id, result: [] }, process.env.CODEXY_FAKE_LSP_REQUEST_DELAY_MS);
   }
 }
 

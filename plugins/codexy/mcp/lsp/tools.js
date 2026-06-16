@@ -12,6 +12,15 @@ const {
 } = require("./config");
 const { runLspRequest } = require("./protocol");
 
+const MIN_TIMEOUT_MS = 100;
+const MAX_TIMEOUT_MS = 60000;
+const timeoutMsSchema = {
+  type: "number",
+  minimum: MIN_TIMEOUT_MS,
+  maximum: MAX_TIMEOUT_MS,
+  description: "Optional per-request timeout in milliseconds, clamped between 100 and 60000.",
+};
+
 const tools = [
   {
     name: "lsp_list_servers",
@@ -55,6 +64,7 @@ const tools = [
         root: { type: "string", description: "Workspace root used to resolve a relative path." },
         workspaceRoot: { type: "string", description: "Alias for root." },
         server: { type: "object" },
+        timeoutMs: timeoutMsSchema,
       },
       required: ["path"],
     },
@@ -71,6 +81,7 @@ const tools = [
         line: { type: "number" },
         character: { type: "number" },
         server: { type: "object" },
+        timeoutMs: timeoutMsSchema,
       },
       required: ["path"],
     },
@@ -88,6 +99,7 @@ const tools = [
         character: { type: "number" },
         includeDeclaration: { type: "boolean" },
         server: { type: "object" },
+        timeoutMs: timeoutMsSchema,
       },
       required: ["path"],
     },
@@ -102,6 +114,7 @@ const tools = [
         root: { type: "string", description: "Workspace root used to resolve a relative path." },
         workspaceRoot: { type: "string", description: "Alias for root." },
         server: { type: "object" },
+        timeoutMs: timeoutMsSchema,
       },
       required: ["path"],
     },
@@ -167,7 +180,8 @@ async function operationResult(args, method, params) {
     return textResult(JSON.stringify(unavailablePayload(filePath, server, workspaceRoot), null, 2));
   }
   try {
-    const result = await runLspRequest({ server, filePath, method, params, workspaceRoot });
+    const timeoutMs = timeoutMsFromArgs(args);
+    const result = await runLspRequest({ server, filePath, method, params, workspaceRoot, timeoutMs });
     return textResult(JSON.stringify(result, null, 2));
   } catch (error) {
     return textResult(JSON.stringify({
@@ -178,6 +192,13 @@ async function operationResult(args, method, params) {
       installHints: server.installHints || [],
     }, null, 2));
   }
+}
+
+function timeoutMsFromArgs(args) {
+  if (args.timeoutMs === undefined) return undefined;
+  const timeoutMs = Number(args.timeoutMs);
+  if (!Number.isFinite(timeoutMs)) throw new Error("timeoutMs must be a finite number");
+  return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Math.trunc(timeoutMs)));
 }
 
 function rootFromArgs(args) {
