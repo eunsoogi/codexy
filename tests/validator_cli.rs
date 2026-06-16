@@ -71,12 +71,12 @@ fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
             .as_path(),
         &plugin_root,
     )?;
-    std::fs::write(temp.path().join("outside.js"), "console.log('outside');\n")?;
+    std::fs::write(temp.path().join("outside.txt"), "outside\n")?;
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
-    mcp_config["lsp"]["command"] = serde_json::json!("node");
-    mcp_config["lsp"]["args"] = serde_json::json!(["./../outside.js"]);
+    mcp_config["lsp"]["command"] = serde_json::json!("sh");
+    mcp_config["lsp"]["args"] = serde_json::json!(["./../outside.txt"]);
     std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))

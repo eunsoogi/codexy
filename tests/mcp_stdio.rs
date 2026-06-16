@@ -94,18 +94,18 @@ impl Drop for McpClient {
 fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
-    std::fs::write(root.path().join("dep.js"), "export const value = 1;\n")?;
+    std::fs::write(root.path().join("dep.rs"), "pub const VALUE: u8 = 1;\n")?;
     std::fs::write(
-        root.path().join("entry.js"),
-        "import { value } from \"./dep.js\";\nexport const entry = value;\n",
+        root.path().join("entry.rs"),
+        "mod dep;\npub const ENTRY: u8 = dep::VALUE;\n",
     )?;
     std::fs::write(
-        root.path().join("extra-one.js"),
-        "export const entryOne = 1;\n",
+        root.path().join("extra_one.rs"),
+        "pub const ENTRY_ONE: u8 = 1;\n",
     )?;
     std::fs::write(
-        root.path().join("extra-two.js"),
-        "export const entryTwo = 2;\n",
+        root.path().join("extra_two.rs"),
+        "pub const ENTRY_TWO: u8 = 2;\n",
     )?;
 
     let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
@@ -133,17 +133,17 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
             .as_array()
             .ok_or("edges must be array")?
             .iter()
-            .any(|edge| edge["from"] == "entry.js" && edge["to"] == "dep.js")
+            .any(|edge| edge["from"] == "entry.rs" && edge["to"] == "dep.rs")
     );
     let search = client.send(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"codegraph_search","arguments":{"root":root.path(),"query":"entry","limit":1.0}}
+        "params":{"name":"codegraph_search","arguments":{"root":root.path(),"query":"ENTRY","limit":1.0}}
     }))?;
     let search_text = search["result"]["content"][0]["text"]
         .as_str()
         .ok_or("search text")?;
     assert!(
-        search_text.contains("entry"),
+        search_text.contains("ENTRY"),
         "codegraph_search must return a matching line, got {search_text:?}"
     );
     assert_eq!(
@@ -153,7 +153,7 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
     );
     let missing = client.send(&json!({
         "jsonrpc":"2.0","id":5,"method":"tools/call",
-        "params":{"name":"codegraph_neighbors","arguments":{"root":root.path(),"path":"missing.js"}}
+        "params":{"name":"codegraph_neighbors","arguments":{"root":root.path(),"path":"missing.rs"}}
     }))?;
     let neighbors: Value = serde_json::from_str(
         missing["result"]["content"][0]["text"]
@@ -168,13 +168,10 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
 fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
-    let dependency = root.path().join("dep.js");
-    let entry = root.path().join("entry.js");
-    std::fs::write(&dependency, "export const value = 1;\n")?;
-    std::fs::write(
-        &entry,
-        "import { value } from \"./dep.js\";\nexport const entry = value;\n",
-    )?;
+    let dependency = root.path().join("dep.rs");
+    let entry = root.path().join("entry.rs");
+    std::fs::write(&dependency, "pub const VALUE: u8 = 1;\n")?;
+    std::fs::write(&entry, "mod dep;\npub const ENTRY: u8 = dep::VALUE;\n")?;
 
     let mut client = McpClient::spawn_in(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"), root.path())?;
     let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
@@ -192,7 +189,7 @@ fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
             .as_array()
             .ok_or("reverse dependents must be array")?
             .iter()
-            .any(|dependent| dependent["path"] == "entry.js"),
+            .any(|dependent| dependent["path"] == "entry.rs"),
         "absolute dependency path should match relative graph edges"
     );
 
@@ -208,9 +205,9 @@ fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
     let nodes = neighborhood_payload["nodes"]
         .as_array()
         .ok_or("neighborhood nodes must be array")?;
-    assert!(nodes.iter().any(|node| node["path"] == "entry.js"));
+    assert!(nodes.iter().any(|node| node["path"] == "entry.rs"));
     assert!(
-        !nodes.iter().any(|node| node["path"] == "dep.js"),
+        !nodes.iter().any(|node| node["path"] == "dep.rs"),
         "float-encoded depth must be honored"
     );
     Ok(())
@@ -221,20 +218,20 @@ fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn
 {
     let root = tempfile::tempdir()?;
     let outside = tempfile::tempdir()?;
-    let outside_dep = outside.path().join("dep.js");
-    std::fs::write(&outside_dep, "export const outside = 1;\n")?;
+    let outside_dep = outside.path().join("dep.rs");
+    std::fs::write(&outside_dep, "pub const OUTSIDE: u8 = 1;\n")?;
     let canonical_outside = outside_dep.canonicalize()?;
     let mirrored_dep = root.path().join(canonical_outside.strip_prefix("/")?);
     let mirrored_dir = mirrored_dep.parent().ok_or("mirrored parent")?;
     std::fs::create_dir_all(mirrored_dir)?;
     std::fs::write(
         &mirrored_dep,
-        "import { leaf } from \"./leaf.js\";\nexport const mirrored = leaf;\n",
+        "mod leaf;\npub const MIRRORED: u8 = leaf::LEAF;\n",
     )?;
-    std::fs::write(mirrored_dir.join("leaf.js"), "export const leaf = 1;\n")?;
+    std::fs::write(mirrored_dir.join("leaf.rs"), "pub const LEAF: u8 = 1;\n")?;
     std::fs::write(
-        mirrored_dir.join("entry.js"),
-        "import { mirrored } from \"./dep.js\";\nexport const entry = mirrored;\n",
+        mirrored_dir.join("entry.rs"),
+        "mod dep;\npub const ENTRY: u8 = dep::MIRRORED;\n",
     )?;
 
     let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
@@ -279,7 +276,7 @@ fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn
         !nodes.iter().any(|node| {
             node["path"]
                 .as_str()
-                .is_some_and(|path| path.ends_with("leaf.js"))
+                .is_some_and(|path| path.ends_with("leaf.rs"))
         }),
         "outside absolute path must not traverse mirrored in-root imports"
     );
@@ -290,10 +287,9 @@ fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn
 fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
-    let source = root.path().join("sample.js");
-    std::fs::write(&source, "const value = 1;\nvalue;\n")?;
-    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let fake_lsp = repo_root.join("tests/mcp/fixtures/lsp/fake-lsp-server.js");
+    let source = root.path().join("sample.toml");
+    std::fs::write(&source, "value = 1\n")?;
+    let fake_lsp = env!("CARGO_BIN_EXE_codexy-fake-lsp");
 
     let mut client = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
         .env("CODEXY_LSP_ALLOW_COMMAND_OVERRIDE", "1")
@@ -308,10 +304,10 @@ fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
         })?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
     assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
-    let server = json!({"id":"typescript-language-server","command":["node", fake_lsp]});
+    let server = json!({"id":"taplo","command":[fake_lsp]});
     let status = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
-        "params":{"name":"lsp_status","arguments":{"root":root.path(),"path":"sample.js","server":server}}
+        "params":{"name":"lsp_status","arguments":{"root":root.path(),"path":"sample.toml","server":server}}
     }))?;
     let status_payload: Value = serde_json::from_str(
         status["result"]["content"][0]["text"]
@@ -321,7 +317,7 @@ fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
     assert_eq!(status_payload["available"], true);
     let diagnostics = client.send(&json!({
         "jsonrpc":"2.0","id":3,"method":"tools/call",
-        "params":{"name":"lsp_diagnostics","arguments":{"root":root.path(),"path":"sample.js","server":server,"timeoutMs":5000}}
+        "params":{"name":"lsp_diagnostics","arguments":{"root":root.path(),"path":"sample.toml","server":server,"timeoutMs":5000}}
     }))?;
     let diagnostics_payload: Value = serde_json::from_str(
         diagnostics["result"]["content"][0]["text"]
@@ -352,11 +348,10 @@ fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
 fn lsp_stdio_accepts_integer_positions_encoded_as_json_floats()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
-    let source = root.path().join("sample.js");
+    let source = root.path().join("sample.toml");
     let capture = root.path().join("capture.json");
-    std::fs::write(&source, "const value = 1;\nvalue;\n")?;
-    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let fake_lsp = repo_root.join("tests/mcp/fixtures/lsp/fake-lsp-server.js");
+    std::fs::write(&source, "value = 1\n")?;
+    let fake_lsp = env!("CARGO_BIN_EXE_codexy-fake-lsp");
 
     let mut client = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
         .env("CODEXY_LSP_ALLOW_COMMAND_OVERRIDE", "1")
@@ -370,10 +365,10 @@ fn lsp_stdio_accepts_integer_positions_encoded_as_json_floats()
             buffer: Vec::new(),
         })?;
     let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
-    let server = json!({"id":"typescript-language-server","command":["node", fake_lsp]});
+    let server = json!({"id":"taplo","command":[fake_lsp]});
     let response = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
-        "params":{"name":"lsp_definition","arguments":{"root":root.path(),"path":"sample.js","server":server,"line":1.0,"character":2.0,"timeoutMs":5000.0}}
+        "params":{"name":"lsp_definition","arguments":{"root":root.path(),"path":"sample.toml","server":server,"line":1.0,"character":2.0,"timeoutMs":5000.0}}
     }))?;
     let payload: Value = serde_json::from_str(
         response["result"]["content"][0]["text"]
