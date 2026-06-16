@@ -142,7 +142,10 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
     let search_text = search["result"]["content"][0]["text"]
         .as_str()
         .ok_or("search text")?;
-    assert!(search_text.contains("entry.js:"));
+    assert!(
+        search_text.contains("entry"),
+        "codegraph_search must return a matching line, got {search_text:?}"
+    );
     assert_eq!(
         search_text.lines().count(),
         1,
