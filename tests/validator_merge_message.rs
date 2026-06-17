@@ -94,6 +94,29 @@ fn validator_cli_rejects_sentence_form_closing_reference() -> Result<(), Box<dyn
 }
 
 #[test]
+fn validator_cli_rejects_bad_squash_subject_closing_reference()
+-> Result<(), Box<dyn std::error::Error>> {
+    reject_message(
+        "fix: #120 accidental close\n\nFixes #121\n",
+        "exactly one closing reference",
+    )
+}
+
+#[test]
+fn validator_cli_accepts_valid_squash_subject_and_body() -> Result<(), Box<dyn std::error::Error>> {
+    let message =
+        "fix(workflow): require issue references in merge messages (#123)\n\nFixes #121\n";
+    let output = validate_message(message)?;
+    assert!(
+        output.status.success(),
+        "validator should accept a valid squash subject with exactly one final closing reference\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_cross_repo_closing_reference() -> Result<(), Box<dyn std::error::Error>> {
     reject_message(
         "fix(workflow): tighten merge evidence (#122)\n\nFixes owner/repo#120\n\nFixes #121\n",

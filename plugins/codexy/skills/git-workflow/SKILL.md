@@ -448,11 +448,13 @@ by accident:
 pr_number=<explicit-pr-number>
 issue_number=<linked-issue-number>
 repo=eunsoogi/codexy
+merge_subject="<conventional subject> (#${pr_number})"
 pr_json_file=$(mktemp)
 pr_body_file=$(mktemp)
+merge_message_file=$(mktemp)
 git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
-trap 'rm -f "$pr_json_file" "$pr_body_file"' EXIT
+trap 'rm -f "$pr_json_file" "$pr_body_file" "$merge_message_file"' EXIT
 
 if ! head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid); then
   printf '%s\n' "Could not read PR head; aborting merge." >&2
@@ -474,9 +476,17 @@ if [ ! -s "$pr_body_file" ]; then
   printf '%s\n' "Captured PR body file is empty; aborting merge." >&2
   exit 1
 fi
+if ! printf '%s\n\n' "$merge_subject" > "$merge_message_file"; then
+  printf '%s\n' "Could not start composed squash merge message; aborting merge." >&2
+  exit 1
+fi
+if ! cat "$pr_body_file" >> "$merge_message_file"; then
+  printf '%s\n' "Could not append PR body to composed squash merge message; aborting merge." >&2
+  exit 1
+fi
 if [ -n "${issue_number:-}" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --merge-message-file "$pr_body_file"; then
-    printf '%s\n' "PR body is missing the expected issue reference; aborting merge." >&2
+  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --merge-message-file "$merge_message_file"; then
+    printf '%s\n' "Squash merge message is missing the expected final issue reference or has extra closing references; aborting merge." >&2
     exit 1
   fi
 fi
@@ -517,15 +527,18 @@ gh pr merge "$pr_number" \
   --squash \
   --delete-branch \
   --match-head-commit "$head_oid" \
-  --subject "<conventional subject> (#${pr_number})" \
+  --subject "$merge_subject" \
   --body-file "$pr_body_file"
 ```
 
 Because PR bodies become permanent `main` commit bodies under this rule, the
 inspection and approval gate above must pass before `gh pr merge` runs. The
-expected body file is stored under the shared Git common directory from
-`git rev-parse --git-common-dir` so it remains local and untracked but survives
-post-merge verification from a separate worktree shell.
+pre-merge message validator MUST check the composed squash merge message
+(`merge_subject` plus the captured PR body), not the body alone, so subject-line
+closing references such as `fix: #120 ...` are rejected before they can reach
+`main`. The expected body file is stored under the shared Git common directory
+from `git rev-parse --git-common-dir` so it remains local and untracked but
+survives post-merge verification from a separate worktree shell.
 
 `gh pr merge` does not have a flag that means "Codex review passed." `--auto`
 only waits for requirements configured in GitHub, and `--admin` bypasses
