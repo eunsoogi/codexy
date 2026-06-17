@@ -62,10 +62,8 @@ def main() -> int:
     except Exception as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-
 def default_plugin_root() -> Path:
     return Path(__file__).resolve().parents[3]
-
 def default_codex_home() -> Path:
     if os.environ.get("CODEX_HOME"):
         return Path(os.environ["CODEX_HOME"])
@@ -100,7 +98,6 @@ def load_agents(plugin_root: Path) -> list[dict[str, object]]:
     if missing:
         raise ValueError(f"{agents_root} missing required Codexy agents: {', '.join(sorted(missing))}")
     return agents
-
 def required_str(agent: dict[str, object], field: str, path: Path) -> str:
     value = agent.get(field)
     if not isinstance(value, str) or not value.strip():
@@ -165,7 +162,6 @@ def parse_basic_string(value: str, path: Path, lineno: int) -> str:
     if not isinstance(parsed, str):
         raise ValueError(f"{path}:{lineno} expected TOML string")
     return parsed
-
 def strip_managed_block(text: str) -> tuple[str, bool]:
     pattern = re.compile(rf"\n?{re.escape(BEGIN)}\n.*?{re.escape(END)}\n?", re.DOTALL)
     updated, count = pattern.subn("\n", text)
@@ -173,10 +169,11 @@ def strip_managed_block(text: str) -> tuple[str, bool]:
 
 def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     names = {str(agent["name"]) for agent in agents}
+    text = normalize_config_keys(text, names)
     found = set()
     pattern = r"^\s*(?:\[\s*(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\]\s*(?:#[^\n]*)?$|(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
     for match in re.finditer(pattern, text, re.MULTILINE):
-        found_name = matched_agent_name(match, {0, 3})
+        found_name = next(group for group in match.groups() if group)
         if found_name in names:
             found.add(found_name)
     if re.search(r"(?m)^\s*(?:agents|\"agents\"|'agents')\s*=", re.split(r"(?m)^\s*\[", text, maxsplit=1)[0]):
@@ -185,16 +182,19 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     child = r"^\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*(?:\.|=)"
     for block in re.finditer(parent, text):
         for match in re.finditer(child, block.group("body"), re.MULTILINE):
-            found_name = matched_agent_name(match, {0})
+            found_name = next(group for group in match.groups() if group)
             if found_name in names:
                 found.add(found_name)
     return found
 
-def matched_agent_name(match: re.Match[str], double_quoted: set[int]) -> str:
-    for index, group in enumerate(match.groups()):
-        if group:
-            return json.loads(f'"{group}"') if index in double_quoted else group
-    return ""
+def normalize_config_keys(text: str, names: set[str]) -> str:
+    def replace(match: re.Match[str]) -> str:
+        try:
+            decoded = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return match.group(0)
+        return decoded if decoded == "agents" or decoded in names else match.group(0)
+    return re.sub(r'"(?:\\.|[^"\\])*"', replace, text)
 
 def render_block(plugin_root: Path, agents: list[dict[str, object]]) -> str:
     lines = [
