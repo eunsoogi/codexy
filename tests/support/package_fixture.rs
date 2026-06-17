@@ -207,7 +207,7 @@ fn runtime_cache_key(
         let stdin = child.stdin.as_mut().ok_or("missing cksum stdin")?;
         write!(
             stdin,
-            "{repository}\n{runtime_ref}\n{platform}\nstdio-newline-v1\n{runtime}\n"
+            "{repository}\n{runtime_ref}\n{platform}\nstdio-newline-v1\npackage-default\n{runtime}\n"
         )?;
     }
     let output = child.wait_with_output()?;

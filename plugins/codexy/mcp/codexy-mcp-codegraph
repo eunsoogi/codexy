@@ -42,7 +42,6 @@ runtime_package_requested=0
 if [ -n "$runtime_package_path" ] || [ -n "$runtime_package_url" ] || [ -n "$runtime_artifacts_api_url" ]; then
   runtime_package_requested=1
 fi
-
 platform=${CODEXY_RUNTIME_PLATFORM:-}
 if [ -z "$platform" ]; then
   os=$(uname -s 2>/dev/null || echo unknown)
@@ -115,7 +114,14 @@ case "$runtime_cache_root" in
     exit 127
     ;;
 esac
-runtime_cache_key=$(printf '%s\n%s\n%s\n%s\ncodexy-mcp-codegraph\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" | cksum | awk '{print $1}')
+if [ "$runtime_package_override_was_set" = 1 ]; then
+  runtime_cache_source=$(printf 'package-override\n%s\n%s\n%s' "$runtime_package_path" "$runtime_package_url" "$runtime_artifacts_api_url")
+elif [ "$runtime_package_requested" = 1 ]; then
+  runtime_cache_source="package-default"
+else
+  runtime_cache_source="git"
+fi
+runtime_cache_key=$(printf '%s\n%s\n%s\n%s\n%s\ncodexy-mcp-codegraph\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" "$runtime_cache_source" | cksum | awk '{print $1}')
 runtime_install_root="$runtime_cache_root/$runtime_cache_key"
 installed_runtime="$runtime_install_root/bin/codexy-mcp-codegraph"
 runtime_ref_is_pinned=0

@@ -10,6 +10,7 @@ use std::process::Command;
 
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
+    assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,
     assert_wrapper_ignores_legacy_cache_before_default_package_refresh_without_cargo,
     assert_wrapper_installs_packaged_runtime_without_cargo,
     assert_wrapper_keeps_ref_override_exact_without_package_override,
