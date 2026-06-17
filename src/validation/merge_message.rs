@@ -22,8 +22,33 @@ fn has_unique_final_closing_reference(expected_issue: u64, message: &str) -> boo
 }
 
 fn is_closing_reference_line(line: &str) -> bool {
-    let Some(issue) = line.strip_prefix("Fixes #") else {
+    let mut parts = line.split_ascii_whitespace();
+    let Some(raw_keyword) = parts.next() else {
         return false;
     };
-    !issue.is_empty() && issue.chars().all(|character| character.is_ascii_digit())
+    let keyword = raw_keyword.strip_suffix(':').unwrap_or(raw_keyword);
+    if !is_closing_keyword(keyword) {
+        return false;
+    }
+    let Some(issue) = parts.next().and_then(|part| part.strip_prefix('#')) else {
+        return false;
+    };
+    parts.next().is_none()
+        && !issue.is_empty()
+        && issue.chars().all(|character| character.is_ascii_digit())
+}
+
+fn is_closing_keyword(keyword: &str) -> bool {
+    matches!(
+        keyword.to_ascii_lowercase().as_str(),
+        "close"
+            | "closes"
+            | "closed"
+            | "fix"
+            | "fixes"
+            | "fixed"
+            | "resolve"
+            | "resolves"
+            | "resolved"
+    )
 }

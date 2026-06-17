@@ -83,6 +83,73 @@ fn validator_cli_rejects_ambiguous_closing_references() -> Result<(), Box<dyn st
 }
 
 #[test]
+fn validator_cli_rejects_extra_closes_keyword_reference() -> Result<(), Box<dyn std::error::Error>>
+{
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nCloses #120\n\nFixes #121\n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject extra GitHub closing keyword references"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("exactly one closing reference"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_extra_resolves_keyword_reference() -> Result<(), Box<dyn std::error::Error>>
+{
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nResolves: #120\n\nFixes #121\n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject colon-form GitHub closing keyword references"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("exactly one closing reference"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_uppercase_extra_closing_keyword() -> Result<(), Box<dyn std::error::Error>>
+{
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nCLOSES #120\n\nFixes #121\n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject uppercase GitHub closing keyword references"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("exactly one closing reference"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_uppercase_final_fixes_line() -> Result<(), Box<dyn std::error::Error>> {
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nFIXES #121\n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should keep the workflow's exact final Fixes line requirement"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("final closing line must be exactly"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_padded_final_closing_reference() -> Result<(), Box<dyn std::error::Error>>
 {
     let message = "fix(workflow): tighten merge evidence (#122)\n\n  Fixes #121  \n";
