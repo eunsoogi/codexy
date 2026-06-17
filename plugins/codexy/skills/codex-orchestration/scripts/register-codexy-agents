@@ -14,7 +14,6 @@ import tempfile
 from pathlib import Path
 BEGIN, END = "# BEGIN CODEXY MANAGED AGENTS", "# END CODEXY MANAGED AGENTS"
 REQUIRED = {"codexy-sentinel", "codexy-pathfinder"}
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Register Codexy plugin-packaged agents in Codex config.toml."
@@ -29,7 +28,6 @@ def main() -> int:
     plugin_root = args.plugin_root.expanduser().resolve()
     config_path = (args.config or args.codex_home / "config.toml").expanduser()
     config_path = config_path.resolve()
-
     try:
         current = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
         stripped, had_block = strip_managed_block(current)
@@ -43,7 +41,6 @@ def main() -> int:
             write_config(config_path, stripped)
             print(f"removed Codexy managed agent block from {config_path}")
             return 0
-
         agents = load_agents(plugin_root)
         conflicts = find_conflicts(stripped, agents)
         if conflicts:
@@ -52,7 +49,6 @@ def main() -> int:
                 f"{config_path} already defines unmanaged Codex agent(s): {joined}; "
                 "remove or rename those entries before registering Codexy agents"
             )
-
         block = render_block(plugin_root, agents)
         updated = append_block(stripped, block)
         if args.dry_run:
@@ -180,7 +176,7 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     found = set()
     pattern = r"^\s*(?:\[\s*(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\]\s*(?:#[^\n]*)?$|(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
     for match in re.finditer(pattern, text, re.MULTILINE):
-        found_name = next(group for group in match.groups() if group)
+        found_name = matched_agent_name(match, {0, 3})
         if found_name in names:
             found.add(found_name)
     if re.search(r"(?m)^\s*(?:agents|\"agents\"|'agents')\s*=", re.split(r"(?m)^\s*\[", text, maxsplit=1)[0]):
@@ -189,10 +185,16 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     child = r"^\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*(?:\.|=)"
     for block in re.finditer(parent, text):
         for match in re.finditer(child, block.group("body"), re.MULTILINE):
-            found_name = next(group for group in match.groups() if group)
+            found_name = matched_agent_name(match, {0})
             if found_name in names:
                 found.add(found_name)
     return found
+
+def matched_agent_name(match: re.Match[str], double_quoted: set[int]) -> str:
+    for index, group in enumerate(match.groups()):
+        if group:
+            return json.loads(f'"{group}"') if index in double_quoted else group
+    return ""
 
 def render_block(plugin_root: Path, agents: list[dict[str, object]]) -> str:
     lines = [
