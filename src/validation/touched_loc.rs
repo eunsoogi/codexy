@@ -15,7 +15,7 @@ pub(super) fn check(base_ref: &str) -> Vec<String> {
 }
 
 fn check_inner(base_ref: &str) -> Result<()> {
-    let root = std::env::current_dir().context("reading current directory")?;
+    let root = git_top_level()?;
     let exceptions = load_exceptions(&root)?;
     let mut errors = Vec::new();
     for path in changed_files(&root, base_ref)? {
@@ -42,6 +42,22 @@ fn check_inner(base_ref: &str) -> Result<()> {
             errors.len()
         )
     }
+}
+
+fn git_top_level() -> Result<PathBuf> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .context("resolving git top-level for touched LOC validation")?;
+    if !output.status.success() {
+        bail!(
+            "git rev-parse for touched LOC validation failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    Ok(PathBuf::from(
+        String::from_utf8_lossy(&output.stdout).trim(),
+    ))
 }
 
 fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {

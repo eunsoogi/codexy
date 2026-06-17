@@ -61,6 +61,23 @@ fn validator_cli_allows_tracked_loc_exception() -> Result<(), Box<dyn std::error
 }
 
 #[test]
+fn validator_cli_resolves_touched_loc_from_git_root() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = touched_loc_fixture(true)?;
+    let base = git_head(repo.path())?;
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--check-touched-loc", "--base-ref", base.trim()])
+        .current_dir(repo.path().join("src"))
+        .output()?;
+    assert!(
+        output.status.success(),
+        "validator should resolve repo-relative git paths from subdirectories\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_untracked_loc_exception() -> Result<(), Box<dyn std::error::Error>> {
     let repo = touched_loc_fixture(false)?;
     let base = git_head(repo.path())?;
