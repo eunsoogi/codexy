@@ -1,4 +1,5 @@
 mod agent_registration;
+mod hooks;
 mod lsp;
 mod manifest;
 mod mcp;
@@ -18,6 +19,7 @@ pub enum Mode {
     All,
     Lsp,
     Mcp,
+    Hooks,
     Roles,
     RuntimeArtifacts,
 }
@@ -33,6 +35,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         Mode::All => {
             let mut all = Vec::new();
             all.extend(manifest::check(plugin_root));
+            all.extend(hooks::check(plugin_root));
             all.extend(lsp::check(plugin_root));
             all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
@@ -40,6 +43,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         }
         Mode::Lsp => lsp::check(plugin_root),
         Mode::Mcp => mcp::check(plugin_root),
+        Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
     };

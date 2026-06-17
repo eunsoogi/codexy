@@ -133,6 +133,7 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "--check-runtime-artifacts",
+        "--check-hooks",
         "gh release upload",
     ] {
         if !text.contains(required) {
@@ -141,6 +142,17 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
                 display_relative(&path)
             );
         }
+    }
+    let package_validation_order = concat!(
+        "--check-runtime-artifacts\n",
+        "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",
+        "          tar -C"
+    );
+    if !text.contains(package_validation_order) {
+        bail!(
+            "{} runtime package workflow must validate hooks before creating the archive",
+            display_relative(&path)
+        );
     }
     for forbidden in [
         "Publish generated marketplace snapshot",
@@ -152,6 +164,21 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
             bail!(
                 "{} runtime package workflow must not require {forbidden:?}",
                 display_relative(&path)
+            );
+        }
+    }
+    for trigger in ["push:", "pull_request:"] {
+        let trigger_text = workflow_trigger_block(&text, trigger).with_context(|| {
+            format!(
+                "{} runtime package workflow must include {trigger}",
+                display_relative(&path)
+            )
+        })?;
+        if !trigger_text.contains("plugins/codexy/hooks/**") {
+            bail!(
+                "{} runtime package workflow {trigger} paths must include {:?}",
+                display_relative(&path),
+                "plugins/codexy/hooks/**"
             );
         }
     }
@@ -173,6 +200,19 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn workflow_trigger_block<'a>(text: &'a str, trigger: &str) -> Option<&'a str> {
+    let start = text.find(trigger)?;
+    let rest = &text[start..];
+    let end = rest
+        .match_indices("\n  ")
+        .find_map(|(index, _)| {
+            let next = &rest[index + 3..];
+            (!next.starts_with(' ')).then_some(index)
+        })
+        .unwrap_or(rest.len());
+    Some(&rest[..end])
 }
 
 fn bundled_platforms(wrapper_path: &Path) -> Result<Vec<String>> {

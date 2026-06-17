@@ -126,6 +126,11 @@ git check-ignore .omo/ulw-loop/example
 
 For code changes, add the relevant lint, typecheck, unit, integration, harness, or end-to-end commands once the repository has those surfaces.
 
+For non-trivial code, validator, harness, or workflow-rule changes, run a
+touched implementation-file LOC audit before pushing or opening/updating a PR.
+Treat touched implementation files over the 250 LOC target as review-blocking
+unless the PR or handoff includes an explicit narrow exception rationale.
+
 When the requested behavior is a GitHub setting, branch rule, PR lifecycle, CLI, browser page, desktop app, or other external surface, drive that surface directly and capture observable evidence. Tests alone are supporting evidence, not completion proof.
 
 For code-touching or code-adjacent runtime changes, use Codexy `codegraph` MCP
@@ -282,7 +287,8 @@ worker for that lane.
   readiness, completion, or parent acceptance, the owning thread MUST run the
   packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/codexy-sentinel.toml` on the current diff, exact head or
-  file state, lane scope, verification outputs, and evidence. Do not
+  file state, lane scope, touched implementation-file LOC evidence,
+  verification outputs, and evidence. Do not
   substitute an arbitrary reviewer agent, generic review role, parent-only
   readthrough, stale reviewer output, or external review pass for this lane-end
   gate.
@@ -312,9 +318,9 @@ worker for that lane.
   multi-agent usage or a concrete not-useful rationale tied to atomicity, tiny
   scope, or unavailable tooling, unavailable-tool fallbacks, and the packaged
   Codexy reviewer agent findings or approval for the current diff, exact head
-  or file state, scope, verification outputs, and evidence. For code-touching
-  lanes, require Codexy `codegraph` MCP exploration evidence or a clear
-  unavailable-tool fallback.
+  or file state, scope, touched implementation-file LOC evidence,
+  verification outputs, and evidence. For code-touching lanes, require Codexy
+  `codegraph` MCP exploration evidence or a clear unavailable-tool fallback.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.
@@ -589,11 +595,15 @@ After resolving, stage only the resolved files and run verification relevant to 
 - Local `.omo/**` evidence remains uncommitted unless explicitly requested.
 - No force push or force-with-lease is used.
 - Verification covers touched surfaces.
+- Non-trivial code, validator, harness, or workflow-rule changes include
+  touched implementation-file LOC evidence; over-250 LOC implementation files
+  have an explicit narrow exception rationale or are fixed before PR readiness.
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
   approval from `plugins/codexy/agents/codexy-sentinel.toml` for the current diff,
-  exact head or file state, lane scope, verification outputs, and evidence;
-  arbitrary reviewer agents, generic review roles, parent-only readthroughs,
-  stale reviewer output, or external review passes are not substitutes.
+  exact head or file state, lane scope, touched implementation-file LOC
+  evidence, verification outputs, and evidence; arbitrary reviewer agents,
+  generic review roles, parent-only readthroughs, stale reviewer output, or
+  external review passes are not substitutes.
 - Squash merge commit bodies preserve the PR body exactly, and the post-merge
   body comparison has passed.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.

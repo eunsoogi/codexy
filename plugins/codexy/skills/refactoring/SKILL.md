@@ -15,6 +15,8 @@ dependency inversion, naming cleanup, and review-driven maintainability work.
 
 - Keep code files at or below 250 lines of code by default.
 - Treat the 250 LOC target as a design pressure, not permission for churn.
+- Before PR readiness or handoff, run a touched implementation-file LOC check
+  such as `wc -l` over changed source files and include the result in evidence.
 - If a code file must exceed 250 LOC, record the exception rationale in the
   handoff, PR body, or nearby architecture note. Do not hide the exception.
 - Do not split files mechanically when the result obscures public contracts,
@@ -77,6 +79,7 @@ When a file exceeds the 250 LOC target:
 ```text
 Refactor goal:
 Behavior preserved:
+Touched implementation LOC:
 Files over 250 LOC:
 Exceptions and rationale:
 Public contracts checked:

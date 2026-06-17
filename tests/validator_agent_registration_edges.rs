@@ -53,7 +53,10 @@ fn register_codexy_agents_backup_uses_python310_compatible_timestamp()
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     assert!(!script_text(&plugin_root)?.contains("datetime.UTC"));
-    assert_eq!(backup_count(config_path.parent().ok_or("config parent")?)?, 1);
+    assert_eq!(
+        backup_count(config_path.parent().ok_or("config parent")?)?,
+        1
+    );
     Ok(())
 }
 
@@ -86,6 +89,34 @@ fn register_codexy_agents_uninstall_does_not_require_valid_catalog()
     Ok(())
 }
 
+#[test]
+fn register_codexy_agents_allows_supported_agent_config_tables()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = installed_fixture(temp.path())?;
+    let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
+    let mut agent = std::fs::read_to_string(&agent_path)?;
+    agent.push_str(
+        "\n[mcp_servers.grep_app]\ncommand = \"grep_app\"\n\n[[skills.config]]\nname = \"codexy:qa\"\n",
+    );
+    std::fs::write(agent_path, agent)?;
+    let config_path = temp.path().join("home/.codex/config.toml");
+
+    let output = registration_script(&plugin_root)
+        .args([
+            "--plugin-root",
+            path(&plugin_root)?,
+            "--config",
+            path(&config_path)?,
+            "--dry-run",
+        ])
+        .output()?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("[agents.codexy-sentinel]"));
+    Ok(())
+}
+
 fn installed_fixture(root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     let plugin_root = root.join("installed-codexy");
     copy_dir(
@@ -106,7 +137,12 @@ fn assert_conflict(existing: &str) -> Result<(), Box<dyn std::error::Error>> {
     let config_path = temp.path().join("home/.codex/config.toml");
     write_config(&config_path, existing)?;
     let output = registration_script(&plugin_root)
-        .args(["--plugin-root", path(&plugin_root)?, "--config", path(&config_path)?])
+        .args([
+            "--plugin-root",
+            path(&plugin_root)?,
+            "--config",
+            path(&config_path)?,
+        ])
         .output()?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("already defines unmanaged Codex agent"));

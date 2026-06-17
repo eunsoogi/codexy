@@ -78,8 +78,8 @@ fn validator_cli_allows_supported_custom_agent_config_layers()
 }
 
 #[test]
-fn validator_cli_rejects_unsupported_skills_config_layers()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_unsupported_skills_config_layers() -> Result<(), Box<dyn std::error::Error>>
+{
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;

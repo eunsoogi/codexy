@@ -75,7 +75,6 @@ def default_codex_home() -> Path:
         return Path(os.environ["CODEX_HOME"])
     return Path.home() / ".codex"
 
-
 def load_agents(plugin_root: Path) -> list[dict[str, object]]:
     agents_root = plugin_root / "agents"
     catalog_path = agents_root / "catalog.toml"
@@ -115,13 +114,18 @@ def required_str(agent: dict[str, object], field: str, path: Path) -> str:
 def load_agent_toml(path: Path) -> dict[str, object]:
     return parse_toml_subset(path.read_text(encoding="utf-8"), path)
 
-
 def parse_toml_subset(text: str, path: Path) -> dict[str, object]:
     values: dict[str, object] = {}
     lines = iter(enumerate(text.splitlines(), start=1))
+    in_table = False
     for lineno, raw in lines:
         line = raw.strip()
         if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_table = True
+            continue
+        if in_table:
             continue
         key, separator, value = line.partition("=")
         if not separator:
@@ -157,7 +161,6 @@ def parse_toml_subset(text: str, path: Path) -> dict[str, object]:
             values[key] = parse_basic_string(value.rstrip(","), path, lineno)
     return values
 
-
 def parse_basic_string(value: str, path: Path, lineno: int) -> str:
     try:
         parsed = json.loads(value)
@@ -167,12 +170,10 @@ def parse_basic_string(value: str, path: Path, lineno: int) -> str:
         raise ValueError(f"{path}:{lineno} expected TOML string")
     return parsed
 
-
 def strip_managed_block(text: str) -> tuple[str, bool]:
     pattern = re.compile(rf"\n?{re.escape(BEGIN)}\n.*?{re.escape(END)}\n?", re.DOTALL)
     updated, count = pattern.subn("\n", text)
     return updated.strip() + ("\n" if updated.strip() else ""), count > 0
-
 
 def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     names = {str(agent["name"]) for agent in agents}
@@ -190,7 +191,6 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
             if found_name in names:
                 found.add(found_name)
     return found
-
 
 def render_block(plugin_root: Path, agents: list[dict[str, object]]) -> str:
     lines = [
@@ -215,16 +215,13 @@ def render_block(plugin_root: Path, agents: list[dict[str, object]]) -> str:
     lines.extend(["", END, ""])
     return "\n".join(lines)
 
-
 def toml_string(value: str) -> str:
     return json.dumps(value)
-
 
 def append_block(text: str, block: str) -> str:
     if not text.strip():
         return block
     return text.rstrip() + "\n\n" + block
-
 
 def write_config(path: Path, contents: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -244,7 +241,6 @@ def write_config(path: Path, contents: str) -> None:
         if backup and backup.exists():
             shutil.copy2(backup, path)
         raise
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

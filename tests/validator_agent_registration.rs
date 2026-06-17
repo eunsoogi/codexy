@@ -41,7 +41,9 @@ fn register_codexy_agents_writes_config_file_entries() -> Result<(), Box<dyn std
         assert_eq!(
             parsed["agents"][name]["config_file"].as_str(),
             Some(path(
-                &plugin_root.join(format!("agents/{name}.toml")).canonicalize()?
+                &plugin_root
+                    .join(format!("agents/{name}.toml"))
+                    .canonicalize()?
             )?)
         );
     }
@@ -87,8 +89,8 @@ fn register_codexy_agents_dry_run_does_not_touch_config() -> Result<(), Box<dyn 
 }
 
 #[test]
-fn register_codexy_agents_does_not_require_tomli_fallback()
--> Result<(), Box<dyn std::error::Error>> {
+fn register_codexy_agents_does_not_require_tomli_fallback() -> Result<(), Box<dyn std::error::Error>>
+{
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_fixture(temp.path())?;
     let config_path = temp.path().join("home/.codex/config.toml");
