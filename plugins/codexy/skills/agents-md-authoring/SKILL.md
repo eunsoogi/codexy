@@ -14,7 +14,7 @@ deeper instructions and higher-priority user or system directions.
 ## Workflow
 
 1. Locate the target directory and read every governing `AGENTS.md` from the
-   filesystem root or repository root down to that directory.
+   filesystem root down through each ancestor directory to the target.
 2. Identify the intended scope:
    - root guidance for repository-wide project structure and durable policies,
    - nested guidance only for stable local rules that should not apply
