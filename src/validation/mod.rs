@@ -1,4 +1,5 @@
 mod agent_registration;
+mod custom_agent_schema;
 mod hooks;
 mod lsp;
 mod manifest;

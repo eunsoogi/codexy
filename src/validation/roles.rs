@@ -4,7 +4,9 @@ use anyhow::{Context as _, Result};
 use toml::Value;
 
 use crate::paths::display_relative;
-use crate::validation::{agent_registration, load_toml, roles_yaml, toml_array_strings};
+use crate::validation::{
+    agent_registration, custom_agent_schema, load_toml, roles_yaml, toml_array_strings,
+};
 
 const REQUIRED_AGENTS: &[&str] = &[
     "codexy-architect",
@@ -195,14 +197,7 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
-    if let Some(Value::Table(skills)) = agent.get("skills") {
-        for key in skills.keys().filter(|key| key.as_str() != "config") {
-            errors.push(format!(
-                "{} skills.{key} is not part of the supported Codex custom-agent file schema",
-                display_relative(path)
-            ));
-        }
-    }
+    custom_agent_schema::check_skills_config(path, agent.get("skills"), errors);
     for field in [
         "description",
         "model",
