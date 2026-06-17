@@ -315,6 +315,40 @@ fn validator_cli_rejects_top_level_prompt_without_orchestration_route()
 }
 
 #[test]
+fn validator_cli_rejects_missing_top_level_prompt_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    std::fs::remove_file(plugin_root.join("agents/openai.yaml"))?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject missing top-level agents/openai.yaml"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("agents/openai.yaml is required for plugin invocation metadata"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_allows_skill_prompt_without_orchestration_route()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

@@ -22,6 +22,13 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             ));
         }
     }
+    let top_level_prompt = plugin_root.join("agents/openai.yaml");
+    if !top_level_prompt.exists() {
+        errors.push(format!(
+            "{} is required for plugin invocation metadata",
+            display_relative(&top_level_prompt)
+        ));
+    }
     for path in openai_yaml_files(plugin_root) {
         errors.extend(
             check_yaml_file(plugin_root, &path).unwrap_or_else(|error| vec![error.to_string()]),
