@@ -22,6 +22,7 @@ validation proves the packaged paths match the repository layout.
    - optional `plugins/<plugin>/agents/catalog.toml`,
    - optional `plugins/<plugin>/agents/*.toml` specialist agent definitions,
    - optional `plugins/<plugin>/.codex/lsp-client.json`,
+   - optional `plugins/<plugin>/hooks/hooks.json`,
    - `plugins/<plugin>/assets/*`,
    - optional `plugins/<plugin>/.mcp.json` or app manifests when present.
 2. Validate plugin manifest:
@@ -54,6 +55,10 @@ validation proves the packaged paths match the repository layout.
 6. Validate architecture surfaces when present:
    - LSP config and its catalog agree on server ids and covered extensions,
    - MCP config contains only verified packaged or official endpoints,
+   - lifecycle hooks use plugin-root-relative commands, stay read-only unless
+     explicitly scoped otherwise, and avoid user-state mutation paths,
+   - touched implementation files stay at or below the 250 LOC target unless a
+     narrow exception is explicitly justified in readiness evidence,
    - Codexy MCP config includes packaged `lsp` and `codegraph` servers when
      the plugin advertises LSP or code exploration behavior,
    - specialist agent or custom agent TOMLs parse and do not define a child
