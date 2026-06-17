@@ -30,6 +30,12 @@ custom agents: Codex discovers native custom agents from the active project
   and syncs `main`.
 - A child Codex worktree thread owns implementation edits, local verification,
   and review-response fixes for its assigned issue or lane.
+- Independent requested outcomes MUST be decomposed into separate issue-sized
+  atomic child lanes before child thread, worktree, branch, or PR creation.
+  Each atomic lane gets its own issue or explicit issue-sized scope, branch,
+  worktree or thread when needed, and PR. Bundling independent outcomes into
+  one child lane is a workflow violation unless a maintainer explicitly scopes
+  those outcomes as one atomic lane before implementation begins.
 - For any lane that needs its own branch, worktree, PR, or long-running
   implementation context, the orchestrator MUST create, fork, or assign the
   owning child thread before implementation patches begin. The orchestrator
@@ -51,6 +57,16 @@ custom agents: Codex discovers native custom agents from the active project
   asks to discard it. It must then hand the draft diff, allowed files, risks,
   and recovery state to the owning child thread instead of continuing the
   implementation.
+- If a bundled child lane is discovered after dispatch or after edits begin,
+  stop that lane immediately instead of continuing the umbrella lane. Preserve
+  and report its draft state, including branch, worktree, diff summary,
+  verification already run, unresolved risks, and any user or other-agent work
+  overlap. Split the independent outcomes into atomic issues, threads,
+  worktrees, branches, and PRs before implementation resumes. Maintainer
+  re-scoping after dispatch or edits begin cannot bypass this recovery path; if
+  a maintainer wants the outcomes handled together, start a new explicitly
+  scoped atomic lane after the bundled lane has stopped and reported its draft
+  state.
 - Worktree lanes must stay issue-sized and atomic. Do not bundle review
   response work from one lane into another lane.
 
@@ -136,7 +152,11 @@ edits.
 - Maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- Decompose broad work into issue-sized atomic units before editing.
+- Decompose broad work into issue-sized atomic units before editing. If a
+  request contains multiple independent outcomes, split them into separate
+  atomic issues and child lanes before any child thread, worktree, branch, or
+  PR is created, unless a maintainer explicitly says the outcomes are one
+  atomic lane.
 - Decide lane ownership before editing. If an atomic unit needs a branch,
   worktree, PR, or durable child context, dispatch the child thread first; do
   not use the parent thread for a preliminary implementation pass.
@@ -183,8 +203,10 @@ edits.
 2. Plan:
    - Create a short `update_plan` with atomic outcomes.
    - Mark exactly one step `in_progress`.
-   - Split unrelated outcomes into separate issues and, when implementation
-     can proceed independently, separate Codex thread/worktree lanes.
+   - Split independent outcomes into separate issues and, when implementation
+     can proceed independently, separate Codex thread/worktree lanes. Treat
+     bundling independent requested outcomes as a workflow violation unless a
+     maintainer explicitly scopes them as one atomic lane.
    - Mark each lane as parent-owned or child-owned before any implementation
      patch is made.
 3. Dispatch:
@@ -193,6 +215,10 @@ edits.
    - For issue-sized implementation lanes, start or fork a separate Codex
      thread in a worktree when the tool is available. Fall back to manual
      `git worktree` only when thread tooling is unavailable, and record why.
+   - Do not dispatch a child lane that contains independent outcomes needing
+     separate issues, branches, worktrees, threads, or PRs. Split the lane
+     first, or stop and ask for maintainer scoping if atomic ownership is
+     ambiguous.
    - Complete the lane assignment before implementation edits begin. A parent
      may prepare the issue, branch name, worktree path, and handoff text, but
      must not patch implementation files for the child-owned lane.
@@ -230,6 +256,9 @@ edits.
    - If parent-authored draft edits are discovered for a child-owned lane, stop
      parent implementation, preserve or revert only as needed to protect user
      work, and route the draft diff to the child as input evidence.
+   - If a child lane has bundled independent outcomes, stop the bundled lane,
+     preserve and report its draft state, and split the work into atomic
+     issues, child threads, worktrees, branches, and PRs before continuing.
    - While child work, worktree setup, Codex review, or asynchronous tools are
      pending, keep polling and updating the plan instead of marking the goal
      blocked.
@@ -313,6 +342,8 @@ Return format:
 
 - One issue-sized outcome per branch.
 - One branch per pull request.
+- One independent requested outcome per child lane unless a maintainer
+  explicitly scoped multiple outcomes as one atomic lane before implementation.
 - Worktree-based implementation lanes require a Codex thread when thread tools
   are available.
 - Worktree-based implementation lanes require lane ownership before edits:
@@ -353,6 +384,9 @@ requires user input or an external state change.
 - Continuing parent implementation after discovering accidental draft edits for
   a child-owned lane instead of handing the draft diff to the child thread.
 - Letting a child lane expand scope or edit shared files without ownership.
+- Letting a child lane bundle independent requested outcomes instead of
+  stopping, preserving draft state, and splitting the work into atomic issues,
+  threads, worktrees, branches, and PRs.
 - Letting a child implementation thread skip goal, todo/plan, or required
   situational multi-agent discipline without saying which tool was unavailable
   or giving a concrete not-useful rationale tied to atomicity, tiny scope, or
