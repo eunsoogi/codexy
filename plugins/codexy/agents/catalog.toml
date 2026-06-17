@@ -1,3 +1,6 @@
+# Codexy packaged-agent discovery/registration contract. Validators and the
+# registration script load agent_files from this catalog; native Codex agent
+# use is through generated [agents.<name>] config_file entries.
 version = "0.1.0"
 default_branch_prefix = "codexy/"
 default_review_gate = "codex"

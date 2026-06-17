@@ -59,6 +59,34 @@ fn validator_cli_rejects_agent_missing_developer_instructions()
 }
 
 #[test]
+fn validator_cli_rejects_too_short_developer_instructions() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let mut planner = std::fs::read_to_string(&planner_path)?;
+    let start = planner
+        .find("developer_instructions = \"\"\"\n")
+        .ok_or("developer_instructions start")?
+        + "developer_instructions = \"\"\"\n".len();
+    let end = planner[start..]
+        .find("\n\"\"\"")
+        .ok_or("developer_instructions end")?
+        + start;
+    planner.replace_range(start..end, "Plan Codexy work.");
+    std::fs::write(&planner_path, planner)?;
+
+    let output = validator(&plugin_root)?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains(
+        "developer_instructions must contain at least 120 non-whitespace characters and 20 words"
+    ));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_allows_supported_custom_agent_config_layers()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

@@ -9,32 +9,11 @@ use crate::validation::{
     toml_array_strings,
 };
 
-const REQUIRED_AGENTS: &[&str] = &[
-    "codexy-architect",
-    "codexy-auditor",
-    "codexy-cartographer",
-    "codexy-forge",
-    "codexy-pathfinder",
-    "codexy-scribe",
-    "codexy-sculptor",
-    "codexy-sentinel",
-    "codexy-shipwright",
-    "codexy-tracer",
-    "codexy-warden",
-    "codexy-weaver",
-];
+const REQUIRED_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
+const MIN_DEVELOPER_INSTRUCTION_WORDS: usize = 20;
+const MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS: usize = 120;
 
-const ALLOWED_CUSTOM_AGENT_FIELDS: &[&str] = &[
-    "name",
-    "description",
-    "developer_instructions",
-    "nickname_candidates",
-    "model",
-    "model_reasoning_effort",
-    "sandbox_mode",
-    "mcp_servers",
-    "skills",
-];
+const ALLOWED_CUSTOM_AGENT_FIELDS: &str = "name description developer_instructions nickname_candidates model model_reasoning_effort sandbox_mode mcp_servers skills";
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
@@ -135,9 +114,8 @@ fn check_specialists(plugin_root: &Path) -> Result<Vec<String>> {
         }
     }
     let missing = REQUIRED_AGENTS
-        .iter()
-        .filter(|agent| !seen_agents.contains(**agent))
-        .copied()
+        .split_whitespace()
+        .filter(|agent| !seen_agents.contains(*agent))
         .collect::<Vec<_>>();
     if !missing.is_empty() {
         errors.push(format!(
@@ -187,8 +165,7 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
         ));
     }
     let allowed = ALLOWED_CUSTOM_AGENT_FIELDS
-        .iter()
-        .copied()
+        .split_whitespace()
         .collect::<BTreeSet<_>>();
     for key in agent.as_table().into_iter().flat_map(|table| table.keys()) {
         if !allowed.contains(key.as_str()) {
@@ -217,6 +194,14 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
+    if let Some(instructions) = agent.get("developer_instructions").and_then(Value::as_str) {
+        if !instructions.is_empty() && !has_substantive_developer_instructions(instructions) {
+            errors.push(format!(
+                "{} developer_instructions must contain at least {MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS} non-whitespace characters and {MIN_DEVELOPER_INSTRUCTION_WORDS} words",
+                display_relative(path)
+            ));
+        }
+    }
     if let Some(nicknames) = agent.get("nickname_candidates") {
         if toml_array_strings(Some(nicknames))
             .is_none_or(|items| items.is_empty() || items.iter().any(String::is_empty))
@@ -229,16 +214,28 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
     }
 }
 
+fn has_substantive_developer_instructions(text: &str) -> bool {
+    let word_count = text
+        .split_whitespace()
+        .filter(|word| word.chars().any(char::is_alphanumeric))
+        .count();
+    let non_whitespace_chars = text.chars().filter(|ch| !ch.is_whitespace()).count();
+    word_count >= MIN_DEVELOPER_INSTRUCTION_WORDS
+        && non_whitespace_chars >= MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS
+}
+
 fn check_project_agents(plugin_root: &Path) -> Vec<String> {
     let agents_dir = plugin_root.join(".codex/agents");
-    if agents_dir.exists() {
-        vec![format!(
+    agents_dir
+        .exists()
+        .then(|| {
+            format!(
             "{} is not loaded from an installed plugin; keep plugin-packaged specialist agent definitions in agents/<name>.toml",
             display_relative(&agents_dir)
-        )]
-    } else {
-        Vec::new()
-    }
+        )
+        })
+        .into_iter()
+        .collect()
 }
 
 fn check_agent_yaml(plugin_root: &Path) -> Vec<String> {
