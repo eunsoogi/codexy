@@ -35,6 +35,17 @@ fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
 }
 
 #[test]
+fn register_codexy_agents_refuses_inline_agents_tables() -> Result<(), Box<dyn std::error::Error>> {
+    for existing in [
+        "agents = { max_threads = 6 }\n",
+        "agents = { codexy-sentinel = { config_file = \"existing.toml\" } }\n",
+    ] {
+        assert_conflict(existing)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn register_codexy_agents_backup_uses_python310_compatible_timestamp()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
