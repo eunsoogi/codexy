@@ -133,6 +133,15 @@ impl FrameParser {
     }
 
     pub(crate) fn next_frame(&mut self) -> Result<Option<Value>> {
+        if let Some(header_end) = find_header_end(&self.buffer) {
+            let header = std::str::from_utf8(&self.buffer[..header_end])
+                .context("MCP header is not UTF-8")?;
+            if header_has_content_length(header) {
+                return self.next_content_length_frame();
+            }
+        } else if starts_like_header_block(&self.buffer) {
+            return Ok(None);
+        }
         if starts_with_content_length(&self.buffer) {
             return self.next_content_length_frame();
         }
@@ -182,6 +191,29 @@ fn starts_with_content_length(buffer: &[u8]) -> bool {
             .iter()
             .zip(HEADER)
             .all(|(actual, expected)| actual.to_ascii_lowercase() == *expected)
+}
+
+fn starts_like_header_block(buffer: &[u8]) -> bool {
+    let first_line_end = buffer
+        .iter()
+        .position(|byte| matches!(byte, b'\n' | b'\r'))
+        .unwrap_or(buffer.len());
+    let first_line = &buffer[..first_line_end];
+    let Some(colon) = first_line.iter().position(|byte| *byte == b':') else {
+        return false;
+    };
+    let name = &first_line[..colon];
+    !name.is_empty()
+        && name
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'-')
+}
+
+fn header_has_content_length(header: &str) -> bool {
+    header.lines().any(|line| {
+        line.split_once(':')
+            .is_some_and(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+    })
 }
 
 fn find_header_end(buffer: &[u8]) -> Option<usize> {

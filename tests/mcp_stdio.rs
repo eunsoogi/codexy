@@ -57,6 +57,22 @@ impl McpClient {
         self.read_frame()
     }
 
+    fn send_with_leading_content_type(
+        &mut self,
+        payload: &Value,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let body = serde_json::to_vec(&payload)?;
+        let stdin = self.child.stdin.as_mut().ok_or("missing child stdin")?;
+        write!(
+            stdin,
+            "Content-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+            body.len()
+        )?;
+        stdin.write_all(&body)?;
+        stdin.flush()?;
+        self.read_frame()
+    }
+
     fn send_line(&mut self, payload: &Value) -> Result<Value, Box<dyn std::error::Error>> {
         let body = serde_json::to_vec(&payload)?;
         let stdin = self.child.stdin.as_mut().ok_or("missing child stdin")?;
@@ -248,6 +264,28 @@ fn lsp_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn std::err
             .iter()
             .any(|tool| tool["name"] == "lsp_status"),
         "newline stdio tools/list must include lsp_status, got {list:#}"
+    );
+    Ok(())
+}
+
+#[test]
+fn content_length_stdio_accepts_leading_content_type_header()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
+    let init = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}),
+    )?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    let list = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}),
+    )?;
+    assert!(
+        list["result"]["tools"]
+            .as_array()
+            .ok_or("tools must be array")?
+            .iter()
+            .any(|tool| tool["name"] == "codegraph_index"),
+        "leading Content-Type header must not prevent tools/list, got {list:#}"
     );
     Ok(())
 }
