@@ -10,6 +10,9 @@ fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
     for existing in [
         "[agents.\"codexy-sentinel\"]\ndescription = \"Existing reviewer\"\n",
         "[agents.'codexy-sentinel']\ndescription = 'Existing reviewer'\n",
+        "[agents.codexy-sentinel] # local reviewer\nconfig_file = \"existing.toml\"\n",
+        "[agents.\"codexy-sentinel\"] # local reviewer\nconfig_file = \"existing.toml\"\n",
+        "[agents.'codexy-sentinel'] # local reviewer\nconfig_file = \"existing.toml\"\n",
     ] {
         assert_conflict(existing)?;
     }

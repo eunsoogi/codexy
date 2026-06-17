@@ -178,7 +178,7 @@ def strip_managed_block(text: str) -> tuple[str, bool]:
 def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     names = {str(agent["name"]) for agent in agents}
     found = set()
-    pattern = r"^\s*(?:\[\s*agents\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\]\s*$|agents\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
+    pattern = r"^\s*(?:\[\s*agents\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\]\s*(?:#.*)?$|agents\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
     for match in re.finditer(pattern, text, re.MULTILINE):
         found_name = next(group for group in match.groups() if group)
         if found_name in names:
