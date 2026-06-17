@@ -260,10 +260,15 @@ worker for that lane.
 - For non-trivial lanes, the child thread MUST create or maintain a
   lane-specific goal with the real Codex goal tools when they exist, such as
   `create_goal`, `get_goal`, and `update_goal`; keep real todo/plan state
-  current with `update_plan` or the active todo surface; and use useful
-  multi-agent decomposition for independent research, implementation, review,
-  QA, or verification subtasks. Prose-only `Goal:` or `Todo:` text is not
-  evidence that either tool surface was used.
+  current with `update_plan` or the active todo surface; and use multi-agent
+  execution when the lane has independent research questions, disjoint
+  implementation slices, QA or verification that can run in parallel, review
+  gates, review-feedback validation, or any non-trivial atomic scope with
+  separable subtasks. Prose-only `Goal:` or `Todo:` text is not evidence that
+  either tool surface was used. If multi-agent tooling is available, "not
+  useful" is acceptable only with a concrete rationale tied to atomicity, tiny
+  scope, or the absence of separable work; a generic manual fallback is not
+  enough.
 - For code-touching lanes, the child thread MUST use Codexy `codegraph` MCP
   for code exploration when it is available, and include that exploration
   evidence in its handoff.
@@ -273,11 +278,14 @@ worker for that lane.
   todo/plan is insufficient for a non-trivial child lane unless the missing
   tool is unavailable and the child reports that unavailability with its
   fallback.
-- Before returning a non-trivial atomic lane as ready, the owning thread MUST
-  run the packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/reviewer.toml` on the current diff, scope, and
-  evidence. Do not substitute an arbitrary reviewer agent, generic review role,
-  or parent-only readthrough for this lane-end gate.
+- Before returning a non-trivial atomic lane as ready for handoff, PR
+  readiness, completion, or parent acceptance, the owning thread MUST run the
+  packaged Codexy reviewer agent defined by
+  `plugins/codexy/agents/reviewer.toml` on the current diff, exact head or
+  file state, lane scope, verification outputs, and evidence. Do not
+  substitute an arbitrary reviewer agent, generic review role, parent-only
+  readthrough, stale reviewer output, or external review pass for this lane-end
+  gate.
 - If a child thread lacks a required execution tool, it MUST say so in its
   handoff evidence and use the closest available fallback instead of silently
   skipping the discipline. Handoff evidence MUST report actual goal and
@@ -300,10 +308,12 @@ worker for that lane.
   comments or review thread URLs, allowed files, expected return evidence, and
   stop condition. For non-trivial lanes, it must also require the child to
   report actual goal tool usage, actual todo/plan tool usage,
-  multi-agent usage or rationale, unavailable-tool fallbacks, and the packaged
-  Codexy reviewer agent findings or approval. For code-touching lanes, require
-  Codexy `codegraph` MCP exploration evidence or a clear unavailable-tool
-  fallback.
+  multi-agent usage or a concrete not-useful rationale tied to atomicity, tiny
+  scope, or unavailable tooling, unavailable-tool fallbacks, and the packaged
+  Codexy reviewer agent findings or approval for the current diff, exact head
+  or file state, scope, verification outputs, and evidence. For code-touching
+  lanes, require Codexy `codegraph` MCP exploration evidence or a clear
+  unavailable-tool fallback.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.
@@ -549,8 +559,10 @@ After resolving, stage only the resolved files and run verification relevant to 
 - No force push or force-with-lease is used.
 - Verification covers touched surfaces.
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
-  approval from `plugins/codexy/agents/reviewer.toml`; arbitrary reviewer
-  agents are not substitutes.
+  approval from `plugins/codexy/agents/reviewer.toml` for the current diff,
+  exact head or file state, lane scope, verification outputs, and evidence;
+  arbitrary reviewer agents, generic review roles, parent-only readthroughs,
+  stale reviewer output, or external review passes are not substitutes.
 - Squash merge commit bodies preserve the PR body exactly, and the post-merge
   body comparison has passed.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
