@@ -3,6 +3,7 @@ use std::path::Path;
 use toml::Value;
 
 use crate::paths::display_relative;
+use crate::validation::custom_agent_mcp_tools;
 
 const ALLOWED_FIELDS: &[&str] = &[
     "args",
@@ -85,6 +86,7 @@ fn check_server(path: &Path, name: &str, value: &Value, errors: &mut Vec<String>
     for key in ["env", "env_http_headers", "http_headers"] {
         check_string_map(path, name, fields, key, errors);
     }
+    custom_agent_mcp_tools::check(path, name, fields.get("tools"), errors);
     for key in [
         "startup_timeout_ms",
         "startup_timeout_sec",

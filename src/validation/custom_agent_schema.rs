@@ -7,7 +7,11 @@ use crate::paths::display_relative;
 const ALLOWED_SKILLS_CONFIG_FIELDS: &[&str] = &["enabled", "path"];
 
 pub(super) fn check_skills_config(path: &Path, value: Option<&Value>, errors: &mut Vec<String>) {
-    let Some(Value::Table(skills)) = value else {
+    let Some(value) = value else {
+        return;
+    };
+    let Value::Table(skills) = value else {
+        errors.push(format!("{} skills must be a table", display_relative(path)));
         return;
     };
 
