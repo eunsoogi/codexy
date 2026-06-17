@@ -5,7 +5,8 @@ use toml::Value;
 
 use crate::paths::display_relative;
 use crate::validation::{
-    agent_registration, custom_agent_schema, load_toml, roles_yaml, toml_array_strings,
+    agent_registration, custom_agent_mcp, custom_agent_schema, load_toml, roles_yaml,
+    toml_array_strings,
 };
 
 const REQUIRED_AGENTS: &[&str] = &[
@@ -197,6 +198,7 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
+    custom_agent_mcp::check(path, agent.get("mcp_servers"), errors);
     custom_agent_schema::check_skills_config(path, agent.get("skills"), errors);
     for field in [
         "description",
