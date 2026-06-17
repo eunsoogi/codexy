@@ -9,8 +9,10 @@ fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
 -> Result<(), Box<dyn std::error::Error>> {
     for existing in [
         "[agents.\"codexy-sentinel\"]\ndescription = \"Existing reviewer\"\n",
+        "[agents.codexy-sentinel.mcp_servers.local]\ncommand = \"local\"\n",
         "[agents.'codexy-sentinel']\ndescription = 'Existing reviewer'\n",
         "[\"agents\".\"codexy-sentinel\"]\nconfig_file = \"existing.toml\"\n",
+        "[\"agents\".\"codexy-sentinel\".mcp_servers.local]\ncommand = \"local\"\n",
         "[\"ag\\u0065nts\".\"codexy-sentinel\"]\nconfig_file = \"existing.toml\"\n",
         "[\"\\U00000061gents\".\"codexy-sentinel\"]\nconfig_file = \"existing.toml\"\n",
         "['agents'.'codexy-sentinel']\nconfig_file = 'existing.toml'\n",

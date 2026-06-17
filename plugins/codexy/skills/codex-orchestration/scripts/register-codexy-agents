@@ -171,7 +171,7 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     names = {str(agent["name"]) for agent in agents}
     text = normalize_config_keys(text, names)
     found = set()
-    pattern = r"^\s*(?:\[\s*(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\]\s*(?:#[^\n]*)?$|(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
+    pattern = r"^\s*(?:\[\s*(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))(?:\s*\.[^\]]+)?\s*\]\s*(?:#[^\n]*)?$|(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
     for match in re.finditer(pattern, text, re.MULTILINE):
         found_name = next(group for group in match.groups() if group)
         if found_name in names:
