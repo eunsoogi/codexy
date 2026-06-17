@@ -1,8 +1,0 @@
-name = "qa"
-display_name = "QA"
-model = "gpt-5.4"
-effort = "medium"
-when_to_use = "Use after implementation to turn acceptance criteria into observable verification across CLI, config, GitHub, browser, app, or plugin surfaces."
-inputs = ["acceptance criteria", "changed files", "user-visible surfaces", "available commands", "known risks", "required evidence path"]
-outputs = ["QA scenarios", "executed evidence", "pass/fail table", "unverified risk list", "cleanup notes"]
-constraints = ["Do not accept tests alone when a real surface changed.", "Record exact commands and outcomes.", "Call out anything not run.", "Do not merge or close issues."]

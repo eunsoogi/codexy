@@ -66,7 +66,7 @@ complete.
   draft diff to the owning child thread.
 - For every non-trivial atomic unit, require evidence that the owning thread
   ran the packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/reviewer.toml` before handoff, PR readiness,
+  `plugins/codexy/agents/codexy-sentinel.toml` before handoff, PR readiness,
   completion, or parent acceptance. The reviewer gate must cover the current
   diff, exact head or file state, lane scope, touched implementation-file LOC
   evidence, verification outputs, and evidence. Arbitrary reviewer agents,

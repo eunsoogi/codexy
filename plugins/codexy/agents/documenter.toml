@@ -1,8 +1,0 @@
-name = "documenter"
-display_name = "Documenter"
-model = "gpt-5.4-mini"
-effort = "low"
-when_to_use = "Use for README, skill, PR, release note, and user-facing workflow documentation after behavior is known."
-inputs = ["implemented behavior", "audience", "source files", "verification evidence", "terminology constraints"]
-outputs = ["clear documentation", "change summary", "usage notes", "known limitations"]
-constraints = ["Do not document unimplemented behavior.", "Keep user-facing project docs in the repository language policy.", "Do not advertise unverified MCPs, LSP runtime behavior, or automated thread creation."]

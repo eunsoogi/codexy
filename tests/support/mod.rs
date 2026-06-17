@@ -1,4 +1,5 @@
 #![allow(clippy::redundant_pub_crate)]
+#![allow(dead_code, unused_imports)]
 
 mod package;
 mod package_fixture;

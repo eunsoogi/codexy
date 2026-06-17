@@ -1,3 +1,7 @@
+mod agent_registration;
+mod custom_agent_mcp;
+mod custom_agent_mcp_tools;
+mod custom_agent_schema;
 mod hooks;
 mod lsp;
 mod manifest;

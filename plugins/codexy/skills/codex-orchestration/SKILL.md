@@ -13,14 +13,34 @@ invoking Codex thread owns intent, decomposition, routing, evidence
 integration, and the final completion claim. Specialist subagents and separate
 Codex thread/worktree lanes own bounded atomic units only.
 
-Codexy ships specialist agent definitions as plugin-packaged TOML files at
-`plugins/codexy/agents/<name>.toml`, with discovery metadata in
+Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
+TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
 `plugins/codexy/agents/catalog.toml`. Keep one specialist agent per file.
 `plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
-specialist worker. Do not treat `plugins/codexy/.codex/agents` as installed
-custom agents: Codex discovers native custom agents from the active project
-`.codex/agents` or `~/.codex/agents`, not from an installed plugin's internal
-`.codex/agents` directory.
+specialist worker. Installed Codexy agents become native Codex `spawn_agent`
+roles only after the user's Codex config registers those packaged TOMLs through
+`[agents.<codexy-name>] config_file = "<installed-plugin>/agents/<codexy-name>.toml"`.
+Use `skills/codex-orchestration/scripts/register-codexy-agents` from the
+installed plugin to add or remove Codexy's managed config block safely. Do not
+treat `plugins/codexy/.codex/agents` as installed custom agents: Codex
+discovers native project custom agents from active project `.codex/agents`, and
+plugin-provided Codexy agents use the config-file registration path above.
+Packaged Codexy agent filenames and `name` fields are already distinctive
+Codexy agent types, such as `codexy-sentinel`, `codexy-pathfinder`, and
+`codexy-cartographer`.
+
+To register Codexy agents from an installed plugin, run:
+
+```sh
+skills/codex-orchestration/scripts/register-codexy-agents
+```
+
+The script writes a managed block to `${CODEX_HOME:-$HOME/.codex}/config.toml`,
+backs up an existing config before changing it, refuses unmanaged
+`[agents.<codexy-name>]` conflicts, registers every catalog agent under its
+packaged Codexy name, supports `--dry-run`, and supports `--uninstall`.
+Restart Codex or start a fresh session after registration before expecting new
+`spawn_agent` agent types to appear.
 
 ## Parent And Child Thread Boundary
 
@@ -119,7 +139,7 @@ edits.
 - Before a child thread reports a non-trivial atomic lane as ready for parent
   handoff, PR readiness, completion, or parent acceptance, it MUST run the
   packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/reviewer.toml` against the current lane diff, exact
+  `plugins/codexy/agents/codexy-sentinel.toml` against the current lane diff, exact
   head or file state, lane scope, touched implementation-file LOC evidence,
   verification outputs, and available evidence.
   Do not substitute an arbitrary reviewer, generic review role, external
@@ -167,16 +187,24 @@ edits.
   parallel QA or verification, review gates, review-feedback validation, or
   separable subtasks in a non-trivial atomic lane can be isolated. Use the
   packaged specialist agent files and lightweight catalog metadata as routing
-  context; do not claim those packaged agents are native Codex custom agents
-  unless they have been projected into the active project or user custom-agent
-  directory by a supported workflow.
+  context. If `spawn_agent` supports the Codexy role, invoke specialists by
+  exact agent type, such as `spawn_agent(agent_type="codexy-sentinel", message="Review
+  the current diff, exact head, scope, verification output, and evidence.")` or
+  `spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and
+  verification checklist.")`. Use
+  `spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.")`
+  for Codexy exploration.
+  If `spawn_agent` or the requested Codexy
+  `agent_type` is unavailable, report that the Codexy agents have not been
+  registered in the active Codex config and fall back to packaged TOML/catalog
+  context without claiming native-agent success.
 - For repository code exploration, route threads and agents through the
   packaged Codexy `codegraph` MCP when it is available before falling back to
   ad hoc text search. Use codegraph output to identify files, import edges,
   and nearby implementation surfaces, then confirm with direct file reads
   before editing.
 - End every non-trivial atomic unit with the packaged Codexy reviewer agent
-  from `plugins/codexy/agents/reviewer.toml`. The reviewer gate belongs inside
+  from `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate belongs inside
   the owning thread or child thread for that atomic unit and must review the
   current diff, exact head or file state, lane scope, touched
   implementation-file LOC evidence, verification outputs, and evidence before
