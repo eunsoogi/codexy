@@ -90,6 +90,24 @@ Restart Codex or start a fresh session after registration before expecting new
 - Worktree lanes must stay issue-sized and atomic. Do not bundle review
   response work from one lane into another lane.
 
+## Parent Stop Preflight
+
+Run this checkpoint before any implementation edit when a lane may need a
+branch, worktree, PR, durable child context, or review-response ownership:
+
+1. Name the atomic lane and decide ownership as `parent-owned` or
+   `child-owned`.
+2. If the lane is `child-owned`, stop parent implementation before editing.
+   The parent may prepare issue text, branch names, worktree requests, handoff
+   text, and acceptance criteria, but it MUST NOT patch implementation files.
+3. If any parent draft implementation diff already exists for a `child-owned`
+   lane, preserve the diff as evidence, disclose the mistake, inspect for user
+   or other-agent overlap, and route the draft diff to the child. Do not
+   continue by "finishing the small fix" in the parent.
+4. Include the owner decision and stop condition in the handoff. PR readiness
+   requires evidence that the child owner existed before implementation
+   patches began, or explicit recovery evidence for an accidental parent draft.
+
 ## Child Thread Titles
 
 - After a forked Codex worktree child thread finishes setup and a thread id is
@@ -149,6 +167,24 @@ edits.
   the implementation loop, local verification, and review-response fixes for
   its lane until the stop condition is met.
 
+## Registered MCP Exposure Defects
+
+Codexy packages `lsp` and `codegraph` MCP servers and expects agents to use
+`codegraph` for repository exploration when it is available. If a packaged
+Codexy MCP is registered by `codex mcp list` but absent from callable tools,
+tool discovery, or `tool_search`, treat that as a dogfood defect in the active
+Codex/plugin surface.
+
+- Capture evidence from both surfaces: `codex mcp list`, the active callable
+  tools, and any `tool_search` result.
+- Name the missing MCP tools and the affected exploration, LSP, validation, or
+  PR-readiness claim.
+- Investigate or report the mismatch before PR readiness instead of treating it
+  as a normal unavailable fallback.
+- If the lane must proceed with direct reads or text search, label that as a
+  dogfood-defect fallback and carry the mismatch as a residual risk until a
+  maintainer accepts or fixes it.
+
 ## Required Control Plane
 
 - Establish the goal before implementation. If `create_goal` is available,
@@ -203,6 +239,14 @@ edits.
   ad hoc text search. Use codegraph output to identify files, import edges,
   and nearby implementation surfaces, then confirm with direct file reads
   before editing.
+- If `codex mcp list` shows required packaged MCPs such as `lsp` or
+  `codegraph` as enabled, but no corresponding callable tools are exposed in
+  the current thread, the orchestrator MUST NOT silently downgrade that state
+  to a generic unavailable-tool fallback. Record `codex mcp list` output, the
+  callable-tool or `tool_search` result, the missing tool names, and the
+  affected verification claim. Treat the mismatch as a dogfood defect that
+  blocks PR readiness until investigated, fixed, or explicitly accepted as a
+  residual risk by the maintainer.
 - End every non-trivial atomic unit with the packaged Codexy reviewer agent
   from `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate belongs inside
   the owning thread or child thread for that atomic unit and must review the
@@ -245,6 +289,9 @@ edits.
    - For issue-sized implementation lanes, start or fork a separate Codex
      thread in a worktree when the tool is available. Fall back to manual
      `git worktree` only when thread tooling is unavailable, and record why.
+   - Before calling Codex app worktree or thread tools, run the Codex App
+     Worktree Creation Preflight below. Do not retry failed setup by creating
+     a second active owner until the pending or failed owner is resolved.
    - Do not dispatch a child lane that contains independent outcomes needing
      separate issues, branches, worktrees, threads, or PRs. Split the lane
      first, or stop and ask for maintainer scoping if atomic ownership is
@@ -375,6 +422,39 @@ Return format:
 - The invoking Codex thread re-reads diffs, reruns required checks, handles PR
   review gates, merges through GitHub, deletes branches, and syncs main.
 
+## Codex App Worktree Creation Preflight
+
+Use this when calling Codex app thread/worktree tools such as `fork_thread` or
+`create_thread` with a `worktree` environment.
+
+- Preflight branch names with local Git before requesting the app worktree:
+  `git check-ref-format --branch <branch>`, `git rev-parse --verify <branch>`,
+  and `git rev-parse --verify origin/<branch>` as applicable.
+- Do not pass a non-existing new branch as
+  `startingState.type="branch"` / `branchName=<new-branch>`. Treat
+  `startingState.type="branch"` as an existing ref selector unless the tool
+  documentation or current successful evidence proves it creates new branches.
+  For a new lane branch, create the branch with the tool's explicit new-branch
+  mode if available, or create it with Git in the owning worktree after the
+  worktree starts from a known existing ref.
+- If `git check-ref-format --branch <branch>` succeeds but the Codex app
+  reports `fatal: invalid reference: <branch>` during `Creating worktree`, do
+  not "fix" the branch spelling or blindly retry. First check whether the
+  branch exists locally or remotely; if it does not, record the likely
+  existing-ref expectation and retry only with a valid starting ref or an
+  explicit new-branch creation path.
+- Waiting for pending worktree setup is an active orchestration state. Poll or
+  wait for the pending result, keep the plan item in progress, and do not judge
+  the lane failed merely because setup has not completed quickly.
+- Keep exactly one active owner for each issue-sized lane. Before retrying or
+  reassigning after pending or failed setup, list current child threads,
+  pending worktrees, branches, and worktree paths when the tools expose them.
+  Stop, archive, remove, or explicitly mark duplicate owners inactive before
+  creating another owner for the same lane.
+- Handoff evidence for Codex app worktree setup must include the starting ref,
+  branch preflight result, pending/final worktree result, active owner identity,
+  and any duplicate-owner cleanup.
+
 ## Worktree Rules
 
 - One issue-sized outcome per branch.
@@ -410,6 +490,12 @@ requires user input or an external state change.
   proof.
 - Marking a goal blocked because a review, child thread, queued worktree/thread,
   or asynchronous tool is still pending.
+- Treating registered MCPs as absent when `codex mcp list` shows them enabled
+  but callable tools or `tool_search` do not expose them, instead of recording
+  the mismatch as a dogfood defect.
+- Retrying Codex app worktree setup after `fatal: invalid reference` by
+  creating another active owner without checking whether
+  `startingState.type="branch"` expected an existing ref.
 - Sending duplicate `@codex review` requests while an existing request already
   has `eyes` for the same PR head. Keep polling and waiting; if the request is
   unusually stale, record that status and escalate with a distinct rationale

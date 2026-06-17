@@ -88,6 +88,25 @@ fn codex_orchestration_spawn_agent_examples_use_message_argument()
 }
 
 #[test]
+fn codex_orchestration_documents_dogfood_worktree_preflights()
+-> Result<(), Box<dyn std::error::Error>> {
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?;
+
+    assert!(skill.contains("Parent Stop Preflight"));
+    assert!(skill.contains("Registered MCP Exposure Defects"));
+    assert!(skill.contains("Codex App Worktree Creation Preflight"));
+    assert!(skill.contains("startingState.type=\"branch\""));
+    assert!(skill.contains("existing ref"));
+    assert!(skill.contains("git check-ref-format --branch"));
+    assert!(skill.contains("exactly one active owner"));
+    assert!(skill.contains("registered by `codex mcp list` but absent"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
     assert_prompt_indent_rejected("  display_name:", "\tdisplay_name:")
 }
