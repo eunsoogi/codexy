@@ -295,10 +295,11 @@ worker for that lane.
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
 - After the owning child pushes a review-response commit, the parent MUST
-  verify that the current head addresses each completed review thread before
-  resolving it in GitHub. Resolve only the threads whose feedback is fully
-  addressed by the pushed and verified head, or whose no-change rationale a
-  maintainer accepted.
+  inspect the unresolved review threads after child fixes and fresh
+  current-head review, then verify that the current head addresses each
+  completed review thread before resolving it in GitHub. Resolve only the
+  threads whose feedback is fully addressed by the pushed and verified head, or
+  whose no-change rationale a maintainer accepted.
 - If the parent accidentally creates draft edits for a child-owned lane, it
   MUST stop implementation immediately, disclose the mistake, inspect whether
   the draft overlaps user or other agent work, preserve or revert only as
@@ -319,6 +320,9 @@ worker for that lane.
   the lane to the parent.
 - The parent may resolve review threads only after child evidence proves the
   fix on the current head, or after a maintainer accepts a no-change rationale.
+- Fixed or accepted review threads MUST be resolved in GitHub before the PR is
+  merged. Outdated Codex review threads that were fixed by later commits should
+  be resolved once current-head evidence proves the fix.
 - The parent MUST NOT resolve a thread merely because a child said it was fixed,
   a commit was pushed, or a fresh review was requested. Unverified, partially
   addressed, stale, or still-actionable feedback remains open and merge-blocking.
@@ -389,7 +393,13 @@ The review gate is satisfied only when:
 - The expected Codex review has completed on the latest `headRefOid`; if it was missing, `@codex review` was requested and its completion signal was confirmed.
 - Required status checks have passed, or the maintainer explicitly accepted
   that remaining checks are non-required or not applicable for the merge.
-- Every non-outdated review thread is resolved, or the PR body/comment history documents why no change is required.
+- Every fixed or accepted review thread, including outdated-but-fixed Codex
+  review threads, is resolved in GitHub before merge.
+- Every unresolved actionable review thread remains a merge blocker until the
+  fix is verified on the current head and the thread is resolved, or a
+  maintainer accepts a no-change rationale.
+- Every non-outdated review thread is resolved, or the PR body/comment history
+  documents why no change is required.
 - Every actionable PR comment has been addressed or explicitly marked non-actionable with rationale.
 - You have re-run verification after addressing review feedback.
 - Addressed review threads from Codex connector or human reviewers have been
