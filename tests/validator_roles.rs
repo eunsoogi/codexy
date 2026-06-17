@@ -9,7 +9,7 @@ fn validator_cli_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::err
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/planner.toml");
+    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\nnickname_candidates = [\"\", \"Plan\"]\n");
     std::fs::write(&planner_path, planner)?;
@@ -26,7 +26,7 @@ fn validator_cli_rejects_non_custom_agent_fields() -> Result<(), Box<dyn std::er
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/planner.toml");
+    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\ndisplay_name = \"Planner\"\n");
     std::fs::write(&planner_path, planner)?;
@@ -46,7 +46,7 @@ fn validator_cli_rejects_agent_missing_developer_instructions()
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/planner.toml");
+    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
     let planner = std::fs::read_to_string(&planner_path)?;
     let planner = planner.replace("developer_instructions = \"\"\"\n", "removed = \"\"\"\n");
     std::fs::write(&planner_path, planner)?;

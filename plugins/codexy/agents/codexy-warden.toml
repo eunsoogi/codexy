@@ -1,4 +1,4 @@
-name = "security"
+name = "codexy-warden"
 description = "Use for workflows, shell commands, credentials, remote MCP endpoints, untrusted input, and repository permissions."
 model = "gpt-5.5"
 model_reasoning_effort = "xhigh"

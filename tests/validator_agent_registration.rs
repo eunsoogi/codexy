@@ -22,18 +22,45 @@ fn register_codexy_agents_writes_config_file_entries() -> Result<(), Box<dyn std
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     let config = std::fs::read_to_string(&config_path)?;
     let parsed: toml::Value = toml::from_str(&config)?;
-    assert_eq!(
-        parsed["agents"]["reviewer"]["config_file"].as_str(),
-        Some(path(
-            &plugin_root.join("agents/reviewer.toml").canonicalize()?
-        )?)
-    );
-    assert_eq!(
-        parsed["agents"]["planner"]["config_file"].as_str(),
-        Some(path(
-            &plugin_root.join("agents/planner.toml").canonicalize()?
-        )?)
-    );
+    let agents = parsed["agents"].as_table().ok_or("agents table")?;
+    assert_eq!(agents.len(), 12);
+    for name in [
+        "codexy-architect",
+        "codexy-tracer",
+        "codexy-scribe",
+        "codexy-cartographer",
+        "codexy-forge",
+        "codexy-weaver",
+        "codexy-pathfinder",
+        "codexy-auditor",
+        "codexy-sculptor",
+        "codexy-shipwright",
+        "codexy-sentinel",
+        "codexy-warden",
+    ] {
+        assert_eq!(
+            parsed["agents"][name]["config_file"].as_str(),
+            Some(path(
+                &plugin_root.join(format!("agents/{name}.toml")).canonicalize()?
+            )?)
+        );
+    }
+    for old_name in [
+        "architect",
+        "debugger",
+        "documenter",
+        "explorer",
+        "implementer",
+        "integrator",
+        "planner",
+        "qa",
+        "refactor",
+        "release",
+        "reviewer",
+        "security",
+    ] {
+        assert!(agents.get(old_name).is_none());
+    }
     Ok(())
 }
 
@@ -87,7 +114,7 @@ fn register_codexy_agents_does_not_require_tomli_fallback()
         .output()?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
-    assert!(std::fs::read_to_string(config_path)?.contains("[agents.reviewer]"));
+    assert!(std::fs::read_to_string(config_path)?.contains("[agents.codexy-sentinel]"));
     Ok(())
 }
 
@@ -99,7 +126,7 @@ fn register_codexy_agents_refuses_unmanaged_conflicts() -> Result<(), Box<dyn st
     std::fs::create_dir_all(config_path.parent().ok_or("config parent")?)?;
     std::fs::write(
         &config_path,
-        "[agents.reviewer]\ndescription = \"Existing reviewer\"\n",
+        "[agents.codexy-sentinel]\ndescription = \"Existing reviewer\"\n",
     )?;
 
     let output = registration_script(&plugin_root)
@@ -152,7 +179,7 @@ fn register_codexy_agents_uninstall_removes_only_managed_block()
     let config = std::fs::read_to_string(&config_path)?;
     assert!(config.contains("model = \"gpt-5.5\""));
     assert!(!config.contains("BEGIN CODEXY MANAGED AGENTS"));
-    assert!(!config.contains("[agents.reviewer]"));
+    assert!(!config.contains("[agents.codexy-sentinel]"));
     Ok(())
 }
 

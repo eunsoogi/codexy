@@ -48,7 +48,7 @@ codexy/
 | Version synchronization | `scripts/sync-plugin-version` | Checks or updates plugin and marketplace versions. |
 | Specialist agents | `plugins/codexy/agents/*.toml` | One agent per file plus `catalog.toml` and `openai.yaml`. |
 | Orchestration behavior | `plugins/codexy/skills/codex-orchestration/SKILL.md` | Thread, goal, todo, multi-agent, and worktree policy. |
-| Review gate contract | `plugins/codexy/agents/reviewer.toml` | Required reviewer gate for non-trivial atomic lanes. |
+| Review gate contract | `plugins/codexy/agents/codexy-sentinel.toml` | Required reviewer gate for non-trivial atomic lanes. |
 | MCP/LSP integration | `plugins/codexy/.mcp.json`, `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/server-catalog.toml` | Keep these validator-compatible together. |
 | User-facing docs | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md` | Root README files stay concise; skills carry executable usage detail. |
 | Visual assets | `assets/`, `plugins/codexy/assets/` | Keep plugin-local assets available from the manifest. |

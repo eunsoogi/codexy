@@ -7,18 +7,18 @@ use crate::paths::display_relative;
 use crate::validation::{agent_registration, load_toml, roles_yaml, toml_array_strings};
 
 const REQUIRED_AGENTS: &[&str] = &[
-    "planner",
-    "explorer",
-    "architect",
-    "implementer",
-    "debugger",
-    "qa",
-    "refactor",
-    "reviewer",
-    "integrator",
-    "release",
-    "security",
-    "documenter",
+    "codexy-architect",
+    "codexy-auditor",
+    "codexy-cartographer",
+    "codexy-forge",
+    "codexy-pathfinder",
+    "codexy-scribe",
+    "codexy-sculptor",
+    "codexy-sentinel",
+    "codexy-shipwright",
+    "codexy-tracer",
+    "codexy-warden",
+    "codexy-weaver",
 ];
 
 const ALLOWED_CUSTOM_AGENT_FIELDS: &[&str] = &[

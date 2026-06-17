@@ -1,4 +1,4 @@
-name = "explorer"
+name = "codexy-cartographer"
 description = "Use for read-only repository discovery, codegraph exploration, file finding, pattern mapping, and fast context gathering."
 model = "gpt-5.4-mini"
 model_reasoning_effort = "low"

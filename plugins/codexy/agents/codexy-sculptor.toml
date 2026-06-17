@@ -1,4 +1,4 @@
-name = "refactor"
+name = "codexy-sculptor"
 description = "Use for behavior-preserving refactors, large-file splits, module boundary cleanup, helper extraction, and keeping code files at or below the default 250 LOC target."
 model = "gpt-5.5"
 model_reasoning_effort = "high"

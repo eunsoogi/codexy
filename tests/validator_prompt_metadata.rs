@@ -81,8 +81,9 @@ fn codex_orchestration_spawn_agent_examples_use_message_argument()
             .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
     )?;
     assert!(!skill.contains("prompt="));
-    assert!(skill.contains("spawn_agent(agent_type=\"reviewer\", message="));
-    assert!(skill.contains("spawn_agent(agent_type=\"planner\", message="));
+    assert!(skill.contains("spawn_agent(agent_type=\"codexy-sentinel\", message="));
+    assert!(skill.contains("spawn_agent(agent_type=\"codexy-pathfinder\", message="));
+    assert!(skill.contains("spawn_agent(agent_type=\"codexy-cartographer\", message="));
     Ok(())
 }
 

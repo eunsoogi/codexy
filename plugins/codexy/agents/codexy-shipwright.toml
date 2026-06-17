@@ -1,4 +1,4 @@
-name = "release"
+name = "codexy-shipwright"
 description = "Use for version bumps, release PRs, manifest sync, marketplace readiness, tags, and rollback planning."
 model = "gpt-5.5"
 model_reasoning_effort = "high"

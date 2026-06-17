@@ -1,4 +1,4 @@
-name = "debugger"
+name = "codexy-tracer"
 description = "Use for failing tests, broken automation, unexpected connector behavior, or reproduction-heavy defects."
 model = "gpt-5.5"
 model_reasoning_effort = "high"

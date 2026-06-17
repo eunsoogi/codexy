@@ -1,4 +1,4 @@
-name = "reviewer"
+name = "codexy-sentinel"
 description = "Use at the end of every non-trivial atomic Codexy work unit before parent handoff, PR readiness, parent acceptance, merge, or final completion to review correctness, scope, safety, tests, and Codex connector feedback."
 model = "gpt-5.5"
 model_reasoning_effort = "high"

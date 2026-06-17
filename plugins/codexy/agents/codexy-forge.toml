@@ -1,4 +1,4 @@
-name = "implementer"
+name = "codexy-forge"
 description = "Use for scoped file edits after issue, branch, worktree, plan, and acceptance criteria are clear."
 model = "gpt-5.4"
 model_reasoning_effort = "medium"

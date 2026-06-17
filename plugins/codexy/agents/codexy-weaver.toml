@@ -1,4 +1,4 @@
-name = "integrator"
+name = "codexy-weaver"
 description = "Use to reconcile parallel lanes, update main, detect conflicts, and prepare merge sequencing."
 model = "gpt-5.5"
 model_reasoning_effort = "medium"

@@ -7,22 +7,27 @@ use support::copy_dir;
 #[test]
 fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
 -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = installed_fixture(temp.path())?;
-    let config_path = temp.path().join("home/.codex/config.toml");
-    write_config(&config_path, "[agents.\"reviewer\"]\ndescription = \"Existing reviewer\"\n")?;
+    for existing in [
+        "[agents.\"codexy-sentinel\"]\ndescription = \"Existing reviewer\"\n",
+        "[agents.'codexy-sentinel']\ndescription = 'Existing reviewer'\n",
+    ] {
+        assert_conflict(existing)?;
+    }
+    Ok(())
+}
 
-    let output = registration_script(&plugin_root)
-        .args([
-            "--plugin-root",
-            path(&plugin_root)?,
-            "--config",
-            path(&config_path)?,
-        ])
-        .output()?;
-
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("already defines unmanaged Codex agent"));
+#[test]
+fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
+-> Result<(), Box<dyn std::error::Error>> {
+    for existing in [
+        "agents.codexy-sentinel.config_file = \"existing.toml\"\n",
+        "agents . codexy-sentinel . config_file = \"existing.toml\"\n",
+        "agents.'codexy-sentinel'.config_file = 'existing.toml'\n",
+        "agents . 'codexy-sentinel' . config_file = 'existing.toml'\n",
+        "agents.codexy-cartographer.config_file = \"existing.toml\"\n",
+    ] {
+        assert_conflict(existing)?;
+    }
     Ok(())
 }
 
@@ -57,7 +62,7 @@ fn register_codexy_agents_uninstall_does_not_require_valid_catalog()
     let config_path = temp.path().join("home/.codex/config.toml");
     write_config(
         &config_path,
-        "model = \"gpt-5.5\"\n\n# BEGIN CODEXY MANAGED AGENTS\n[agents.reviewer]\nconfig_file = \"stale\"\n# END CODEXY MANAGED AGENTS\n",
+        "model = \"gpt-5.5\"\n\n# BEGIN CODEXY MANAGED AGENTS\n[agents.codexy-sentinel]\nconfig_file = \"stale\"\n# END CODEXY MANAGED AGENTS\n",
     )?;
     std::fs::remove_file(plugin_root.join("agents/catalog.toml"))?;
 
@@ -90,6 +95,19 @@ fn installed_fixture(root: &std::path::Path) -> std::io::Result<std::path::PathB
 fn write_config(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
     std::fs::create_dir_all(path.parent().expect("config parent"))?;
     std::fs::write(path, contents)
+}
+
+fn assert_conflict(existing: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = installed_fixture(temp.path())?;
+    let config_path = temp.path().join("home/.codex/config.toml");
+    write_config(&config_path, existing)?;
+    let output = registration_script(&plugin_root)
+        .args(["--plugin-root", path(&plugin_root)?, "--config", path(&config_path)?])
+        .output()?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("already defines unmanaged Codex agent"));
+    Ok(())
 }
 
 fn registration_script(plugin_root: &std::path::Path) -> Command {

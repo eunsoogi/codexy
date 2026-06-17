@@ -1,4 +1,4 @@
-name = "qa"
+name = "codexy-auditor"
 description = "Use after implementation to turn acceptance criteria into observable verification across CLI, config, GitHub, browser, app, or plugin surfaces."
 model = "gpt-5.4"
 model_reasoning_effort = "medium"

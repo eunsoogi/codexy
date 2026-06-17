@@ -281,7 +281,7 @@ worker for that lane.
 - Before returning a non-trivial atomic lane as ready for handoff, PR
   readiness, completion, or parent acceptance, the owning thread MUST run the
   packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/reviewer.toml` on the current diff, exact head or
+  `plugins/codexy/agents/codexy-sentinel.toml` on the current diff, exact head or
   file state, lane scope, verification outputs, and evidence. Do not
   substitute an arbitrary reviewer agent, generic review role, parent-only
   readthrough, stale reviewer output, or external review pass for this lane-end
@@ -590,7 +590,7 @@ After resolving, stage only the resolved files and run verification relevant to 
 - No force push or force-with-lease is used.
 - Verification covers touched surfaces.
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
-  approval from `plugins/codexy/agents/reviewer.toml` for the current diff,
+  approval from `plugins/codexy/agents/codexy-sentinel.toml` for the current diff,
   exact head or file state, lane scope, verification outputs, and evidence;
   arbitrary reviewer agents, generic review roles, parent-only readthroughs,
   stale reviewer output, or external review passes are not substitutes.
