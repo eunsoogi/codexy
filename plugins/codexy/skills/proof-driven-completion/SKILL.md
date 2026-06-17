@@ -46,6 +46,10 @@ complete.
 - For code-touching or code-adjacent runtime changes, include Codexy
   `codegraph` MCP exploration evidence when the MCP is available, plus direct
   file-read confirmation before claiming the touched surface is understood.
+- For non-trivial code, validator, harness, or workflow-rule changes, run a
+  touched implementation-file LOC audit before PR readiness or handoff. Treat
+  files over the 250 LOC target as failing evidence unless the handoff and PR
+  body include an explicit, narrow exception rationale.
 - For plugin skills, confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, inspect PR state, latest head SHA, comments, reviews,
@@ -64,8 +68,9 @@ complete.
   ran the packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/reviewer.toml` before handoff, PR readiness,
   completion, or parent acceptance. The reviewer gate must cover the current
-  diff, exact head or file state, lane scope, verification outputs, and
-  evidence. Arbitrary reviewer agents, generic role names, parent-only
+  diff, exact head or file state, lane scope, touched implementation-file LOC
+  evidence, verification outputs, and evidence. Arbitrary reviewer agents,
+  generic role names, parent-only
   readthroughs, stale reviewer output, or external review passes are not
   substitutes for this gate.
 - Re-run verification after addressing review feedback.

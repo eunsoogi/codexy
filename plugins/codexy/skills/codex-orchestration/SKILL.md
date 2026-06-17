@@ -120,7 +120,8 @@ edits.
   handoff, PR readiness, completion, or parent acceptance, it MUST run the
   packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/reviewer.toml` against the current lane diff, exact
-  head or file state, lane scope, verification outputs, and available evidence.
+  head or file state, lane scope, touched implementation-file LOC evidence,
+  verification outputs, and available evidence.
   Do not substitute an arbitrary reviewer, generic review role, external
   review agent, parent-only readthrough, or stale reviewer output for this
   gate.
@@ -177,8 +178,9 @@ edits.
 - End every non-trivial atomic unit with the packaged Codexy reviewer agent
   from `plugins/codexy/agents/reviewer.toml`. The reviewer gate belongs inside
   the owning thread or child thread for that atomic unit and must review the
-  current diff, exact head or file state, lane scope, verification outputs,
-  and evidence before handoff, PR readiness, completion, or parent acceptance.
+  current diff, exact head or file state, lane scope, touched
+  implementation-file LOC evidence, verification outputs, and evidence before
+  handoff, PR readiness, completion, or parent acceptance.
   The parent may verify the evidence, but it must not replace the owning
   lane's reviewer pass with a different ad hoc agent, arbitrary reviewer role,
   parent-only readthrough, or stale reviewer output.
@@ -243,6 +245,10 @@ edits.
      Codexy reviewer agent before handoff, PR readiness, completion, or parent
      acceptance, and include current-diff reviewer findings or approval in its
      return evidence.
+   - For non-trivial code, validator, harness, or workflow-rule lanes, require a
+     touched implementation-file LOC audit before handoff or PR readiness.
+     Over-250 LOC implementation files must be fixed or explicitly justified
+     with a narrow exception rationale before reviewer approval.
    - Require evidence, diffs, findings, or failed assumptions; do not accept
      acknowledgements as proof.
    - For Codex worktree thread lanes, state that the child owns implementation
@@ -291,6 +297,7 @@ Parent verification:
 Return evidence:
   - Goal tool usage or unavailable-goal-tool fallback
   - Todo/plan tool usage or unavailable-todo-tool fallback
+  - Touched implementation-file LOC audit or not-applicable rationale
   - Multi-agent usage for separable subtasks, or a concrete not-useful
     rationale tied to atomicity, tiny scope, or unavailable tooling
   - Packaged Codexy reviewer gate result for the current diff, exact head or
@@ -320,6 +327,8 @@ Return format:
   - Include todo/plan tool usage or unavailable-todo-tool fallback.
   - Include multi-agent usage or a concrete not-useful/unavailable-tool
     rationale.
+  - Include touched implementation-file LOC audit evidence for non-trivial code,
+    validator, harness, or workflow-rule lanes.
   - Include packaged Codexy reviewer gate findings or approval for the current
     diff, exact head or file state, scope, verification outputs, and evidence.
 ```
