@@ -14,28 +14,30 @@ fn has_unique_final_closing_reference(expected_issue: u64, message: &str) -> boo
         .lines()
         .filter(|line| !line.trim().is_empty())
         .collect::<Vec<_>>();
-    let closing_lines = non_empty_lines
+    let closing_reference_count = non_empty_lines
         .iter()
-        .filter(|line| is_closing_reference_line(line))
-        .collect::<Vec<_>>();
-    closing_lines.len() == 1 && non_empty_lines.last() == Some(&expected_line.as_str())
+        .map(|line| closing_reference_count(line))
+        .sum::<usize>();
+    closing_reference_count == 1 && non_empty_lines.last() == Some(&expected_line.as_str())
 }
 
-fn is_closing_reference_line(line: &str) -> bool {
-    let mut parts = line.split_ascii_whitespace();
-    let Some(raw_keyword) = parts.next() else {
-        return false;
-    };
-    let keyword = raw_keyword.strip_suffix(':').unwrap_or(raw_keyword);
-    if !is_closing_keyword(keyword) {
-        return false;
+fn closing_reference_count(line: &str) -> usize {
+    let tokens = line.split_ascii_whitespace().collect::<Vec<_>>();
+    let mut count = 0;
+    for (index, token) in tokens.iter().enumerate() {
+        let keyword = token.strip_suffix(':').unwrap_or(token);
+        if !is_closing_keyword(keyword) {
+            continue;
+        }
+        for candidate in tokens.iter().skip(index + 1) {
+            if is_closing_issue_reference(candidate) {
+                count += 1;
+                continue;
+            }
+            break;
+        }
     }
-    let Some(issue) = parts.next().and_then(|part| part.strip_prefix('#')) else {
-        return false;
-    };
-    parts.next().is_none()
-        && !issue.is_empty()
-        && issue.chars().all(|character| character.is_ascii_digit())
+    count
 }
 
 fn is_closing_keyword(keyword: &str) -> bool {
@@ -51,4 +53,32 @@ fn is_closing_keyword(keyword: &str) -> bool {
             | "resolves"
             | "resolved"
     )
+}
+
+fn is_closing_issue_reference(candidate: &str) -> bool {
+    let candidate = candidate.trim_matches(|character: char| matches!(character, ',' | '.'));
+    if let Some(reference) = candidate.strip_prefix('#') {
+        return is_issue_number(reference);
+    }
+    let Some((owner_repo, issue)) = candidate.rsplit_once('#') else {
+        return false;
+    };
+    is_owner_repo_reference(owner_repo) && is_issue_number(issue)
+}
+
+fn is_issue_number(value: &str) -> bool {
+    !value.is_empty() && value.chars().all(|character| character.is_ascii_digit())
+}
+
+fn is_owner_repo_reference(value: &str) -> bool {
+    let Some((owner, repo)) = value.split_once('/') else {
+        return false;
+    };
+    !owner.is_empty()
+        && !repo.is_empty()
+        && [owner, repo].iter().all(|part| {
+            part.chars().all(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.')
+            })
+        })
 }
