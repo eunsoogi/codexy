@@ -13,11 +13,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
-
 
 BEGIN = "# BEGIN CODEXY MANAGED AGENTS"
 END = "# END CODEXY MANAGED AGENTS"
@@ -64,7 +59,6 @@ def main() -> int:
 
         block = render_block(plugin_root, agents)
         updated = append_block(stripped, block)
-        tomllib.loads(updated)
         if args.dry_run:
             print(f"would write Codexy managed agent block to {config_path}")
             print(block, end="")
@@ -91,7 +85,7 @@ def default_codex_home() -> Path:
 def load_agents(plugin_root: Path) -> list[dict[str, object]]:
     agents_root = plugin_root / "agents"
     catalog_path = agents_root / "catalog.toml"
-    catalog = tomllib.loads(catalog_path.read_text(encoding="utf-8"))
+    catalog = load_agent_toml(catalog_path)
     files = catalog.get("agent_files")
     if not isinstance(files, list) or not files:
         raise ValueError(f"{catalog_path} must define agent_files")
@@ -103,7 +97,7 @@ def load_agents(plugin_root: Path) -> list[dict[str, object]]:
         path = (agents_root / filename).resolve()
         if not str(path).startswith(str(agents_root.resolve()) + os.sep):
             raise ValueError(f"{path} escapes {agents_root}")
-        agent = tomllib.loads(path.read_text(encoding="utf-8"))
+        agent = load_agent_toml(path)
         name = required_str(agent, "name", path)
         required_str(agent, "description", path)
         required_str(agent, "developer_instructions", path)
@@ -124,6 +118,62 @@ def required_str(agent: dict[str, object], field: str, path: Path) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{path} must define non-empty {field}")
     return value
+
+
+def load_agent_toml(path: Path) -> dict[str, object]:
+    return parse_toml_subset(path.read_text(encoding="utf-8"), path)
+
+
+def parse_toml_subset(text: str, path: Path) -> dict[str, object]:
+    values: dict[str, object] = {}
+    lines = iter(enumerate(text.splitlines(), start=1))
+    for lineno, raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, separator, value = line.partition("=")
+        if not separator:
+            raise ValueError(f"{path}:{lineno} unsupported TOML line: {raw}")
+        key = key.strip()
+        value = value.strip()
+        if value == "[":
+            items: list[str] = []
+            for lineno, raw in lines:
+                line = raw.strip()
+                if line == "]":
+                    break
+                if line and not line.startswith("#"):
+                    items.append(parse_basic_string(line.rstrip(","), path, lineno))
+            else:
+                raise ValueError(f"{path}:{lineno} unterminated TOML array for {key}")
+            values[key] = items
+        elif value.startswith('"""'):
+            body = []
+            if value != '"""':
+                raise ValueError(f"{path}:{lineno} unsupported inline multiline string")
+            for lineno, raw in lines:
+                if raw.strip() == '"""':
+                    break
+                body.append(raw)
+            else:
+                raise ValueError(f"{path}:{lineno} unterminated TOML multiline string for {key}")
+            values[key] = "\n".join(body) + ("\n" if body else "")
+        elif value.startswith("[") and value.endswith("]"):
+            items = (item.strip() for item in value[1:-1].split(","))
+            values[key] = [parse_basic_string(item, path, lineno) for item in items if item]
+        else:
+            values[key] = parse_basic_string(value.rstrip(","), path, lineno)
+    return values
+
+
+def parse_basic_string(value: str, path: Path, lineno: int) -> str:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{path}:{lineno} unsupported TOML string: {value}") from error
+    if not isinstance(parsed, str):
+        raise ValueError(f"{path}:{lineno} expected TOML string")
+    return parsed
 
 
 def strip_managed_block(text: str) -> tuple[str, bool]:
@@ -187,7 +237,6 @@ def write_config(path: Path, contents: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(contents)
-        tomllib.loads(contents)
         os.replace(temp_path, path)
     except Exception:
         temp_path.unlink(missing_ok=True)

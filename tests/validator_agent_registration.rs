@@ -60,6 +60,38 @@ fn register_codexy_agents_dry_run_does_not_touch_config() -> Result<(), Box<dyn 
 }
 
 #[test]
+fn register_codexy_agents_does_not_require_tomli_fallback()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = installed_fixture(temp.path())?;
+    let config_path = temp.path().join("home/.codex/config.toml");
+    let fake_modules = temp.path().join("fake-pythonpath");
+    std::fs::create_dir(&fake_modules)?;
+    std::fs::write(
+        fake_modules.join("tomllib.py"),
+        "raise ModuleNotFoundError('simulated Python 3.10')\n",
+    )?;
+    std::fs::write(
+        fake_modules.join("tomli.py"),
+        "raise RuntimeError('unbundled tomli was imported')\n",
+    )?;
+
+    let output = registration_script(&plugin_root)
+        .env("PYTHONPATH", path(&fake_modules)?)
+        .args([
+            "--plugin-root",
+            path(&plugin_root)?,
+            "--config",
+            path(&config_path)?,
+        ])
+        .output()?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    assert!(std::fs::read_to_string(config_path)?.contains("[agents.reviewer]"));
+    Ok(())
+}
+
+#[test]
 fn register_codexy_agents_refuses_unmanaged_conflicts() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_fixture(temp.path())?;
