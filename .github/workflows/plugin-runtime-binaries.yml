@@ -96,6 +96,7 @@ jobs:
           chmod 755 "${plugin_root}"/runtime/*.bin
           file "${plugin_root}"/runtime/*.bin
           scripts/validate-plugin-config --plugin-root "$plugin_root" --check-runtime-artifacts
+          scripts/validate-plugin-config --plugin-root "$plugin_root" --check-hooks
           tar -C "$package_root" -czf "dist/codexy-marketplace-plugin.tar.gz" plugins/codexy
 
       - name: Upload marketplace package artifact

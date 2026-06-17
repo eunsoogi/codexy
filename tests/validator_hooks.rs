@@ -2,6 +2,9 @@
 use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
+#[allow(unused)]
+mod support;
+
 #[test]
 fn validator_cli_checks_hook_contract_surface() -> Result<(), Box<dyn std::error::Error>> {
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -137,10 +140,20 @@ fn validator_cli_rejects_hooks_without_plugin_root_command()
             "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"SessionStart",
             "quoted hook entrypoints must be followed by whitespace or EOF",
         ),
+        (
+            "$PLUGIN_ROOT/hooks/placeholder; touch /tmp/pwned",
+            "unquoted hook entrypoints must not contain shell control syntax",
+        ),
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
         copy_plugin(&plugin_root)?;
+        if command.contains("placeholder;") {
+            std::fs::copy(
+                plugin_root.join("hooks/codexy-routing-context.sh"),
+                plugin_root.join("hooks/placeholder;"),
+            )?;
+        }
         let hooks_path = plugin_root.join("hooks/hooks.json");
         let mut hooks_config: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
@@ -227,23 +240,8 @@ fn validator_cli_rejects_non_boolean_hook_async() -> Result<(), Box<dyn std::err
 }
 
 fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {
-    copy_dir(
+    support::copy_dir(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         plugin_root,
     )
-}
-
-fn copy_dir(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(target)?;
-    for entry in std::fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let target_path = target.join(entry.file_name());
-        if source_path.is_dir() {
-            copy_dir(&source_path, &target_path)?;
-        } else {
-            std::fs::copy(source_path, target_path)?;
-        }
-    }
-    Ok(())
 }

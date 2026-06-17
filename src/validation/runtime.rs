@@ -133,6 +133,7 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "--check-runtime-artifacts",
+        "--check-hooks",
         "gh release upload",
     ] {
         if !text.contains(required) {
@@ -141,6 +142,17 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
                 display_relative(&path)
             );
         }
+    }
+    let package_validation_order = concat!(
+        "--check-runtime-artifacts\n",
+        "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",
+        "          tar -C"
+    );
+    if !text.contains(package_validation_order) {
+        bail!(
+            "{} runtime package workflow must validate hooks before creating the archive",
+            display_relative(&path)
+        );
     }
     for forbidden in [
         "Publish generated marketplace snapshot",

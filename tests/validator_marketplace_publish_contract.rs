@@ -16,6 +16,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
+        "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks",
         "gh release upload",
         "mkdir -p \"${plugin_root}/runtime\"",
         "cp dist/generated-runtimes/*.bin \"${plugin_root}/runtime/\"",
@@ -25,6 +26,15 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
             "runtime workflow must package release artifacts; missing {required:?}"
         );
     }
+    let package_validation_order = concat!(
+        "--check-runtime-artifacts\n",
+        "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",
+        "          tar -C"
+    );
+    assert!(
+        workflow.contains(package_validation_order),
+        "runtime workflow must validate hooks before creating the package archive"
+    );
     for trigger in ["push:", "pull_request:"] {
         let trigger_text = workflow_trigger_block(&workflow, trigger)
             .ok_or_else(|| format!("runtime workflow missing {trigger}"))?;

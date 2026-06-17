@@ -84,6 +84,12 @@ pub(super) fn check_command(
             display_relative(path)
         )
     })?;
+    if !command.trim_start().starts_with('"') && hook_path_has_shell_control_syntax(&hook_path) {
+        bail!(
+            "{} {event} hook command unquoted hook entrypoints must not contain shell control syntax",
+            display_relative(path)
+        );
+    }
     check_static_arguments(path, event, arguments)?;
     let canonical_root = plugin_root.canonicalize().with_context(|| {
         format!(
@@ -198,6 +204,12 @@ fn check_static_arguments(path: &Path, event: &str, arguments: &str) -> Result<(
         "{} {event} hook command arguments must be static values without shell control syntax",
         display_relative(path)
     );
+}
+
+fn hook_path_has_shell_control_syntax(path: &Path) -> bool {
+    path.to_string_lossy()
+        .chars()
+        .any(|character| matches!(character, ';' | '&' | '|' | '<' | '>' | '(' | ')' | '`'))
 }
 
 fn is_static_argument_character(character: char) -> bool {
