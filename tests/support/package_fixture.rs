@@ -24,6 +24,27 @@ pub(super) fn install_cached_runtime(
     Ok(runtime_path)
 }
 
+pub(super) fn install_legacy_cached_runtime(
+    cache: &std::path::Path,
+    repository: &str,
+    runtime_ref: &str,
+    platform: &str,
+    server: &str,
+    fake_version: &str,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let runtime = format!("codexy-mcp-{server}");
+    let cache_key = legacy_runtime_cache_key(repository, runtime_ref, platform, &runtime)?;
+    let bin_dir = cache.join(cache_key).join("bin");
+    std::fs::create_dir_all(&bin_dir)?;
+    let runtime_path = bin_dir.join(&runtime);
+    std::fs::write(
+        &runtime_path,
+        format!("#!/bin/sh\necho fake-installed {fake_version} {runtime} \"$@\"\n"),
+    )?;
+    make_executable(&runtime_path)?;
+    Ok(runtime_path)
+}
+
 pub(super) fn create_runtime_package(
     root: &std::path::Path,
     platform: &str,
@@ -186,7 +207,7 @@ fn runtime_cache_key(
         let stdin = child.stdin.as_mut().ok_or("missing cksum stdin")?;
         write!(
             stdin,
-            "{repository}\n{runtime_ref}\n{platform}\n{runtime}\n"
+            "{repository}\n{runtime_ref}\n{platform}\nstdio-newline-v1\npackage-default\n{runtime}\n"
         )?;
     }
     let output = child.wait_with_output()?;
@@ -198,5 +219,34 @@ fn runtime_cache_key(
         .split_whitespace()
         .next()
         .ok_or("cksum output missing cache key")?;
+    Ok(key.to_owned())
+}
+
+fn legacy_runtime_cache_key(
+    repository: &str,
+    runtime_ref: &str,
+    platform: &str,
+    runtime: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut child = Command::new("cksum")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+    {
+        let stdin = child.stdin.as_mut().ok_or("missing cksum stdin")?;
+        write!(
+            stdin,
+            "{repository}\n{runtime_ref}\n{platform}\n{runtime}\n"
+        )?;
+    }
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        return Err("cksum failed while computing legacy runtime cache key".into());
+    }
+    let stdout = String::from_utf8(output.stdout)?;
+    let key = stdout
+        .split_whitespace()
+        .next()
+        .ok_or("cksum output missing legacy cache key")?;
     Ok(key.to_owned())
 }

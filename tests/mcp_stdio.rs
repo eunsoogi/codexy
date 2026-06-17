@@ -57,13 +57,46 @@ impl McpClient {
         self.read_frame()
     }
 
+    fn send_with_leading_content_type(
+        &mut self,
+        payload: &Value,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let body = serde_json::to_vec(&payload)?;
+        let stdin = self.child.stdin.as_mut().ok_or("missing child stdin")?;
+        write!(
+            stdin,
+            "Content-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+            body.len()
+        )?;
+        stdin.write_all(&body)?;
+        stdin.flush()?;
+        self.read_frame()
+    }
+
+    fn send_line(&mut self, payload: &Value) -> Result<Value, Box<dyn std::error::Error>> {
+        let body = serde_json::to_vec(&payload)?;
+        let stdin = self.child.stdin.as_mut().ok_or("missing child stdin")?;
+        stdin.write_all(&body)?;
+        stdin.write_all(b"\n")?;
+        stdin.flush()?;
+        self.read_frame()
+    }
+
     fn read_frame(&mut self) -> Result<Value, Box<dyn std::error::Error>> {
         loop {
-            if let Some(header_end) = self
+            if self
                 .buffer
-                .windows(4)
-                .position(|window| window == b"\r\n\r\n")
+                .get(..15)
+                .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"content-length:"))
             {
+                let Some(header_end) = self
+                    .buffer
+                    .windows(4)
+                    .position(|window| window == b"\r\n\r\n")
+                else {
+                    self.read_stdout_chunk()?;
+                    continue;
+                };
                 let header = std::str::from_utf8(&self.buffer[..header_end])?;
                 let length = header
                     .lines()
@@ -81,19 +114,33 @@ impl McpClient {
                     self.buffer.drain(..body_end);
                     return Ok(serde_json::from_slice(&body)?);
                 }
-            }
-            let mut chunk = [0_u8; 4096];
-            let stdout = self.child.stdout.as_mut().ok_or("missing child stdout")?;
-            let read = stdout.read(&mut chunk)?;
-            if read == 0 {
-                let mut stderr = String::new();
-                if let Some(output) = self.child.stderr.as_mut() {
-                    output.read_to_string(&mut stderr)?;
+            } else if let Some(line_end) = self.buffer.iter().position(|byte| *byte == b'\n') {
+                let mut line = self.buffer.drain(..=line_end).collect::<Vec<_>>();
+                while matches!(line.last(), Some(b'\n' | b'\r')) {
+                    line.pop();
                 }
-                return Err(format!("MCP process exited before frame: {stderr}").into());
+                if line.is_empty() {
+                    continue;
+                }
+                return Ok(serde_json::from_slice(&line)?);
             }
-            self.buffer.extend_from_slice(&chunk[..read]);
+            self.read_stdout_chunk()?;
         }
+    }
+
+    fn read_stdout_chunk(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut chunk = [0_u8; 4096];
+        let stdout = self.child.stdout.as_mut().ok_or("missing child stdout")?;
+        let read = stdout.read(&mut chunk)?;
+        if read == 0 {
+            let mut stderr = String::new();
+            if let Some(output) = self.child.stderr.as_mut() {
+                output.read_to_string(&mut stderr)?;
+            }
+            return Err(format!("MCP process exited before frame: {stderr}").into());
+        }
+        self.buffer.extend_from_slice(&chunk[..read]);
+        Ok(())
     }
 }
 
@@ -180,6 +227,66 @@ fn codegraph_wrapper_uses_bundled_runtime_without_global_path()
     let mut client = McpClient::spawn_command(command)?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
     assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    Ok(())
+}
+
+#[test]
+fn codegraph_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
+    let init =
+        client.send_line(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    let list =
+        client.send_line(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}))?;
+    assert!(
+        list["result"]["tools"]
+            .as_array()
+            .ok_or("tools must be array")?
+            .iter()
+            .any(|tool| tool["name"] == "codegraph_index"),
+        "newline stdio tools/list must include codegraph_index, got {list:#}"
+    );
+    Ok(())
+}
+
+#[test]
+fn lsp_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))?;
+    let init =
+        client.send_line(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
+    let list =
+        client.send_line(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}))?;
+    assert!(
+        list["result"]["tools"]
+            .as_array()
+            .ok_or("tools must be array")?
+            .iter()
+            .any(|tool| tool["name"] == "lsp_status"),
+        "newline stdio tools/list must include lsp_status, got {list:#}"
+    );
+    Ok(())
+}
+
+#[test]
+fn content_length_stdio_accepts_leading_content_type_header()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
+    let init = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}),
+    )?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    let list = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}),
+    )?;
+    assert!(
+        list["result"]["tools"]
+            .as_array()
+            .ok_or("tools must be array")?
+            .iter()
+            .any(|tool| tool["name"] == "codegraph_index"),
+        "leading Content-Type header must not prevent tools/list, got {list:#}"
+    );
     Ok(())
 }
 
