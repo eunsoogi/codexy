@@ -236,7 +236,7 @@ fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::e
 }
 
 #[test]
-fn validator_cli_rejects_plugin_prompt_without_orchestration_route()
+fn validator_cli_rejects_manifest_prompt_without_orchestration_route()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
@@ -246,26 +246,31 @@ fn validator_cli_rejects_plugin_prompt_without_orchestration_route()
             .as_path(),
         &plugin_root,
     )?;
-    let prompt_path = plugin_root.join("agents/openai.yaml");
-    let mut prompt = std::fs::read_to_string(&prompt_path)?;
-    prompt = prompt.replace("$codex-orchestration", "Codexy orchestration");
-    std::fs::write(&prompt_path, prompt)?;
+    let manifest_path = plugin_root.join(".codex-plugin/plugin.json");
+    let mut manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_path)?)?;
+    manifest["interface"]["defaultPrompt"] = serde_json::json!([
+        "Use Codexy as orchestrator; split the request into atomic issue-sized lanes before editing.",
+        "Track goals and todos; assign specialist roles with multi-agent or multi-thread work.",
+        "Verify evidence, require Codex review, and use squash-merge gates before completion."
+    ]);
+    std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",
             plugin_root.to_str().ok_or("plugin root path")?,
-            "--check-roles",
+            "--check",
         ])
         .output()?;
 
     assert!(
         !output.status.success(),
-        "validator should reject plugin prompt without $codex-orchestration"
+        "validator should reject manifest prompt without $codex-orchestration"
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("interface.default_prompt must route through $codex-orchestration"),
+            .contains("interface.defaultPrompt must route through $codex-orchestration"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

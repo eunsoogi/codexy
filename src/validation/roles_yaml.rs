@@ -23,9 +23,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         }
     }
     for path in openai_yaml_files(plugin_root) {
-        errors.extend(
-            check_yaml_file(plugin_root, &path).unwrap_or_else(|error| vec![error.to_string()]),
-        );
+        errors.extend(check_yaml_file(&path).unwrap_or_else(|error| vec![error.to_string()]));
     }
     errors
 }
@@ -67,7 +65,7 @@ fn collect_openai_yaml(root: &Path, files: &mut Vec<PathBuf>) {
     }
 }
 
-fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
+fn check_yaml_file(path: &Path) -> Result<Vec<String>> {
     let text = fs::read_to_string(path)?;
     let parsed = prompt_yaml::parse(&text, path)?;
     let mut errors = Vec::new();
@@ -79,17 +77,6 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
                 display_relative(path)
             ));
         }
-    }
-    if path == plugin_root.join("agents/openai.yaml")
-        && !matches!(
-            prompt_yaml::get_path(&parsed, &["interface", "default_prompt"]),
-            Some(prompt_yaml::Scalar::Text(text)) if text.contains("$codex-orchestration")
-        )
-    {
-        errors.push(format!(
-            "{} interface.default_prompt must route through $codex-orchestration",
-            display_relative(path)
-        ));
     }
     if !matches!(
         prompt_yaml::get_path(&parsed, &["policy", "allow_implicit_invocation"]),
