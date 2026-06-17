@@ -63,12 +63,11 @@ fn validator_cli_accepts_installed_plugin_hook_entrypoints()
         hook_json["hookSpecificOutput"]["hookEventName"],
         "SessionStart"
     );
-    assert!(
-        hook_json["hookSpecificOutput"]["additionalContext"]
-            .as_str()
-            .is_some_and(|context| context.contains("$codex-orchestration")),
-        "hook output should surface lightweight Codexy routing context"
-    );
+    let context = hook_json["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .ok_or("hook output should include additional context")?;
+    assert!(context.contains("$codex-orchestration"));
+    assert!(context.contains("--check-touched-loc"));
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([

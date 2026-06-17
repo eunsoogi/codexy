@@ -13,6 +13,7 @@ mod release_publish_contract;
 mod roles;
 mod roles_yaml;
 mod runtime;
+mod touched_loc;
 
 use std::path::Path;
 
@@ -30,6 +31,9 @@ pub enum Mode {
     Hooks,
     Roles,
     RuntimeArtifacts,
+    TouchedLoc {
+        base_ref: String,
+    },
 }
 
 /// Runs plugin contract validation for the selected mode.
@@ -58,6 +62,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
+        Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),
     };
     if errors.is_empty() {
         Ok(())

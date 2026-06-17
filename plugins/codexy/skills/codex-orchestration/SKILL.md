@@ -304,10 +304,11 @@ edits.
      Codexy reviewer agent before handoff, PR readiness, completion, or parent
      acceptance, and include current-diff reviewer findings or approval in its
      return evidence.
-   - For non-trivial code, validator, harness, or workflow-rule lanes, require a
-     touched implementation-file LOC audit before handoff or PR readiness.
-     Over-250 LOC implementation files must be fixed or explicitly justified
-     with a narrow exception rationale before reviewer approval.
+   - For non-trivial code, validator, harness, or workflow-rule lanes, require
+     `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`
+     output before handoff or PR readiness. Over-250 LOC implementation or
+     test-harness files must be fixed unless the tracked Codexy LOC exception
+     mechanism names the file and rationale.
    - Require evidence, diffs, findings, or failed assumptions; do not accept
      acknowledgements as proof.
    - For Codex worktree thread lanes, state that the child owns implementation
@@ -356,7 +357,7 @@ Parent verification:
 Return evidence:
   - Goal tool usage or unavailable-goal-tool fallback
   - Todo/plan tool usage or unavailable-todo-tool fallback
-  - Touched implementation-file LOC audit or not-applicable rationale
+  - Touched implementation-file LOC gate output or not-applicable rationale
   - Multi-agent usage for separable subtasks, or a concrete not-useful
     rationale tied to atomicity, tiny scope, or unavailable tooling
   - Packaged Codexy reviewer gate result for the current diff, exact head or
@@ -386,7 +387,7 @@ Return format:
   - Include todo/plan tool usage or unavailable-todo-tool fallback.
   - Include multi-agent usage or a concrete not-useful/unavailable-tool
     rationale.
-  - Include touched implementation-file LOC audit evidence for non-trivial code,
+  - Include touched implementation-file LOC gate output for non-trivial code,
     validator, harness, or workflow-rule lanes.
   - Include packaged Codexy reviewer gate findings or approval for the current
     diff, exact head or file state, scope, verification outputs, and evidence.

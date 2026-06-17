@@ -57,8 +57,9 @@ validation proves the packaged paths match the repository layout.
    - MCP config contains only verified packaged or official endpoints,
    - lifecycle hooks use plugin-root-relative commands, stay read-only unless
      explicitly scoped otherwise, and avoid user-state mutation paths,
-   - touched implementation files stay at or below the 250 LOC target unless a
-     narrow exception is explicitly justified in readiness evidence,
+   - `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`
+     passes for touched implementation and test-harness files unless the
+     tracked Codexy LOC exception mechanism names the file and rationale,
    - Codexy MCP config includes packaged `lsp` and `codegraph` servers when
      the plugin advertises LSP or code exploration behavior,
    - specialist agent or custom agent TOMLs parse and do not define a child
