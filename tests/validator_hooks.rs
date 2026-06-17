@@ -183,6 +183,7 @@ fn validator_cli_rejects_hook_user_state_mutation() -> Result<(), Box<dyn std::e
     for script_suffix in [
         "\ntouch ~/.codex/codexy-hook-state\n",
         "\nprintf x > \"$HOME/codexy-hook-state\"\n",
+        "\nprintf x > \"$PWD/codexy-hook-state\"\n",
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");

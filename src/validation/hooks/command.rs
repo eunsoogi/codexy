@@ -46,7 +46,7 @@ const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
     "curl",
     "codex plugin",
     "codex mcp",
-    ">>",
+    ">",
 ];
 const FORBIDDEN_SCRIPT_COMMAND_PREFIXES: &[&str] = &[
     "gh ", "git ", "mkdir ", "touch ", "rm ", "mv ", "cp ", "chmod ", "chown ",
