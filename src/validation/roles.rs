@@ -1,12 +1,10 @@
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt as _;
 use std::{collections::BTreeSet, fs, path::Path};
 
 use anyhow::{Context as _, Result};
 use toml::Value;
 
 use crate::paths::display_relative;
-use crate::validation::{load_toml, roles_yaml, toml_array_strings};
+use crate::validation::{agent_registration, load_toml, roles_yaml, toml_array_strings};
 
 const REQUIRED_AGENTS: &[&str] = &[
     "planner",
@@ -37,7 +35,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
     errors.extend(check_specialists(plugin_root).unwrap_or_else(|error| vec![error.to_string()]));
     errors.extend(check_project_agents(plugin_root));
-    errors.extend(check_agent_registration(plugin_root));
+    errors.extend(agent_registration::check(plugin_root));
     errors.extend(check_agent_yaml(plugin_root));
     errors
 }
@@ -222,27 +220,6 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
-}
-
-fn check_agent_registration(plugin_root: &Path) -> Vec<String> {
-    let script = plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents");
-    let mut errors = Vec::new();
-    if !script.is_file() {
-        errors.push(format!(
-            "{} must exist to register plugin-packaged agents through Codex [agents.<name>] config_file",
-            display_relative(&script)
-        ));
-        return errors;
-    }
-    #[cfg(unix)]
-    if script
-        .metadata()
-        .map(|metadata| metadata.permissions().mode() & 0o111 == 0)
-        .unwrap_or(true)
-    {
-        errors.push(format!("{} must be executable", display_relative(&script)));
-    }
-    errors
 }
 
 fn check_project_agents(plugin_root: &Path) -> Vec<String> {

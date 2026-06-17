@@ -1,3 +1,4 @@
+mod agent_registration;
 mod lsp;
 mod manifest;
 mod mcp;
