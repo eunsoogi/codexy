@@ -1,0 +1,6 @@
+interface:
+  display_name: "AGENTS.md Authoring"
+  short_description: "Create scoped AGENTS.md instruction files."
+  default_prompt: "Use $agents-md-authoring to create or update AGENTS.md instructions with correct scope, precedence, and verification."
+policy:
+  allow_implicit_invocation: true
