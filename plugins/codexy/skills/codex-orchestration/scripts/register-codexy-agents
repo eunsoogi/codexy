@@ -186,7 +186,7 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     if re.search(r"(?m)^\s*(?:agents|\"agents\"|'agents')\s*=", re.split(r"(?m)^\s*\[", text, maxsplit=1)[0]):
         found.update(names)
     parent = r"(?ms)^\s*\[\s*(?:agents|\"agents\"|'agents')\s*\]\s*(?:#[^\n]*)?$\n(?P<body>.*?)(?=^\s*\[|\Z)"
-    child = r"^\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\."
+    child = r"^\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*(?:\.|=)"
     for block in re.finditer(parent, text):
         for match in re.finditer(child, block.group("body"), re.MULTILINE):
             found_name = next(group for group in match.groups() if group)
