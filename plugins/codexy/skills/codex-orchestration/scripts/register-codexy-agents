@@ -190,8 +190,8 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
 def normalize_config_keys(text: str, names: set[str]) -> str:
     def replace(match: re.Match[str]) -> str:
         try:
-            decoded = json.loads(match.group(0))
-        except json.JSONDecodeError:
+            decoded = match.group(0)[1:-1].encode().decode("unicode_escape")
+        except UnicodeDecodeError:
             return match.group(0)
         return decoded if decoded == "agents" or decoded in names else match.group(0)
     return re.sub(r'"(?:\\.|[^"\\])*"', replace, text)
