@@ -4,11 +4,13 @@ use std::process::Command;
 
 use support::{
     WrapperFixture, assert_wrapper_discovers_default_artifact_without_cargo,
+    assert_wrapper_ignores_legacy_cache_before_default_package_refresh_without_cargo,
     assert_wrapper_installs_packaged_runtime_without_cargo,
     assert_wrapper_keeps_ref_override_exact_without_package_override,
     assert_wrapper_prefers_durable_default_package_without_cargo,
     assert_wrapper_refreshes_package_before_stale_cache_without_cargo,
-    assert_wrapper_requires_token_for_default_artifact_without_cargo, run_wrapper,
+    assert_wrapper_requires_token_for_default_artifact_without_cargo,
+    assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo, run_wrapper,
     run_wrapper_with_optional_failure,
 };
 
@@ -25,9 +27,9 @@ fn codegraph_wrapper_bootstraps_runtime_when_installed_without_bundled_binary()
 }
 
 #[test]
-fn wrappers_refresh_cached_runtime_for_moving_main_ref() -> Result<(), Box<dyn std::error::Error>> {
+fn wrappers_reuse_cached_runtime_for_moving_main_ref() -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
-        assert_wrapper_refreshes_moving_ref_runtime(server)?;
+        assert_wrapper_reuses_moving_ref_runtime(server)?;
     }
     Ok(())
 }
@@ -81,6 +83,24 @@ fn wrappers_prefer_durable_default_package_when_fresh_without_cargo()
 -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_prefers_durable_default_package_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_reuse_cache_before_default_package_refresh_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_ignore_legacy_cache_before_default_package_refresh_without_cargo()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_ignores_legacy_cache_before_default_package_refresh_without_cargo(server)?;
     }
     Ok(())
 }
@@ -140,7 +160,7 @@ fn assert_wrapper_bootstraps_runtime(server: &str) -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-fn assert_wrapper_refreshes_moving_ref_runtime(
+fn assert_wrapper_reuses_moving_ref_runtime(
     server: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -155,20 +175,16 @@ fn assert_wrapper_refreshes_moving_ref_runtime(
 
     let second = run_wrapper(&fixture, server, &cache, "main", "second")?;
     assert!(
-        second.contains(&format!("fake-installed second codexy-mcp-{server} --help")),
-        "moving refs must refresh the cached runtime before exec, got {second:?}"
+        second.contains(&format!("fake-installed first codexy-mcp-{server} --help")),
+        "MCP startup must reuse the cached runtime before network refresh, got {second:?}"
     );
     let cargo_args = std::fs::read_to_string(&fixture.cargo_log)?;
     assert_eq!(
         cargo_args
             .matches(&format!("--bin codexy-mcp-{server}"))
             .count(),
-        2,
-        "moving ref should invoke cargo on both wrapper runs, got {cargo_args:?}"
-    );
-    assert!(
-        cargo_args.contains("--force"),
-        "moving ref cargo refresh should force reinstall, got {cargo_args:?}"
+        1,
+        "cached MCP startup should not invoke Cargo refresh, got {cargo_args:?}"
     );
     Ok(())
 }
@@ -228,15 +244,15 @@ fn assert_wrapper_falls_back_to_cached_runtime_after_refresh_failure(
         run_wrapper_with_optional_failure(&fixture, server, &cache, "main", "stale", true)?;
     assert!(
         second.contains(&format!("fake-installed cached codexy-mcp-{server} --help")),
-        "failed moving-ref refresh should fall back to cached runtime, got {second:?}"
+        "cached runtime should be used before a failing moving-ref refresh, got {second:?}"
     );
     let cargo_args = std::fs::read_to_string(&fixture.cargo_log)?;
     assert_eq!(
         cargo_args
             .matches(&format!("--bin codexy-mcp-{server}"))
             .count(),
-        2,
-        "wrapper should attempt refresh before fallback, got {cargo_args:?}"
+        1,
+        "cached MCP startup should not attempt refresh before exec, got {cargo_args:?}"
     );
     Ok(())
 }

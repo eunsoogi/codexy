@@ -133,6 +133,13 @@ impl FrameParser {
     }
 
     pub(crate) fn next_frame(&mut self) -> Result<Option<Value>> {
+        if starts_with_content_length(&self.buffer) {
+            return self.next_content_length_frame();
+        }
+        self.next_newline_frame()
+    }
+
+    fn next_content_length_frame(&mut self) -> Result<Option<Value>> {
         let Some(header_end) = find_header_end(&self.buffer) else {
             return Ok(None);
         };
@@ -150,6 +157,31 @@ impl FrameParser {
             .map(Some)
             .context("parsing MCP JSON frame")
     }
+
+    fn next_newline_frame(&mut self) -> Result<Option<Value>> {
+        let Some(line_end) = self.buffer.iter().position(|byte| *byte == b'\n') else {
+            return Ok(None);
+        };
+        let mut line = self.buffer.drain(..=line_end).collect::<Vec<_>>();
+        while matches!(line.last(), Some(b'\n' | b'\r')) {
+            line.pop();
+        }
+        if line.is_empty() {
+            return Ok(None);
+        }
+        serde_json::from_slice(&line)
+            .map(Some)
+            .context("parsing MCP newline JSON message")
+    }
+}
+
+fn starts_with_content_length(buffer: &[u8]) -> bool {
+    const HEADER: &[u8] = b"content-length:";
+    buffer.len() >= HEADER.len()
+        && buffer[..HEADER.len()]
+            .iter()
+            .zip(HEADER)
+            .all(|(actual, expected)| actual.to_ascii_lowercase() == *expected)
 }
 
 fn find_header_end(buffer: &[u8]) -> Option<usize> {
@@ -174,8 +206,8 @@ fn content_length(header: &str) -> Result<usize> {
 fn write_frame(payload: &Value) -> Result<()> {
     let body = serde_json::to_vec(payload)?;
     let mut stdout = io::stdout().lock();
-    write!(stdout, "Content-Length: {}\r\n\r\n", body.len())?;
     stdout.write_all(&body)?;
+    stdout.write_all(b"\n")?;
     stdout.flush()?;
     Ok(())
 }

@@ -20,9 +20,16 @@ if [ -n "${CODEXY_RUNTIME_GIT_REF+x}" ]; then
 fi
 runtime_git_repository=${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}
 runtime_git_ref=${CODEXY_RUNTIME_GIT_REF:-main}
+runtime_cache_protocol="stdio-newline-v1"
 runtime_package_path=${CODEXY_RUNTIME_PACKAGE_PATH:-}
 runtime_package_url=${CODEXY_RUNTIME_PACKAGE_URL:-}
 runtime_artifacts_api_url=${CODEXY_RUNTIME_ARTIFACTS_API_URL:-}
+runtime_package_override_was_set=0
+if [ -n "${CODEXY_RUNTIME_PACKAGE_PATH+x}" ] \
+  || [ -n "${CODEXY_RUNTIME_PACKAGE_URL+x}" ] \
+  || [ -n "${CODEXY_RUNTIME_ARTIFACTS_API_URL+x}" ]; then
+  runtime_package_override_was_set=1
+fi
 if [ -z "$runtime_package_path" ] \
   && [ -z "$runtime_package_url" ] \
   && [ -z "$runtime_artifacts_api_url" ] \
@@ -108,7 +115,7 @@ case "$runtime_cache_root" in
     exit 127
     ;;
 esac
-runtime_cache_key=$(printf '%s\n%s\n%s\ncodexy-mcp-codegraph\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" | cksum | awk '{print $1}')
+runtime_cache_key=$(printf '%s\n%s\n%s\n%s\ncodexy-mcp-codegraph\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" | cksum | awk '{print $1}')
 runtime_install_root="$runtime_cache_root/$runtime_cache_key"
 installed_runtime="$runtime_install_root/bin/codexy-mcp-codegraph"
 runtime_ref_is_pinned=0
@@ -120,7 +127,7 @@ case "$runtime_git_ref" in
     fi
     ;;
 esac
-if [ "$runtime_ref_is_pinned" = 1 ] && [ "$runtime_package_requested" != 1 ] && [ -x "$installed_runtime" ]; then
+if [ "$runtime_package_override_was_set" = 0 ] && [ -x "$installed_runtime" ]; then
   exec "$installed_runtime" "$@"
 fi
 if [ "$runtime_package_requested" = 1 ]; then
