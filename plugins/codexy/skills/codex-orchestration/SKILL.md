@@ -13,6 +13,12 @@ invoking Codex thread owns intent, decomposition, routing, evidence
 integration, and the final completion claim. Specialist subagents and separate
 Codex thread/worktree lanes own bounded atomic units only.
 
+Root `AGENTS.md` owns repo-wide dogfooding policy, including governing
+instruction failures, expected-but-uncallable tool surfaces, Codex app
+thread/worktree preflights, merge-through-completion expectations, and
+parent/child ownership boundaries. This skill provides execution mechanics for
+the orchestration loop and must be read together with root `AGENTS.md`.
+
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
 TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
 `plugins/codexy/agents/catalog.toml`. Keep one specialist agent per file.
@@ -167,24 +173,6 @@ edits.
   the implementation loop, local verification, and review-response fixes for
   its lane until the stop condition is met.
 
-## Registered MCP Exposure Defects
-
-Codexy packages `lsp` and `codegraph` MCP servers and expects agents to use
-`codegraph` for repository exploration when it is available. If a packaged
-Codexy MCP is registered by `codex mcp list` but absent from callable tools,
-tool discovery, or `tool_search`, treat that as a dogfood defect in the active
-Codex/plugin surface.
-
-- Capture evidence from both surfaces: `codex mcp list`, the active callable
-  tools, and any `tool_search` result.
-- Name the missing MCP tools and the affected exploration, LSP, validation, or
-  PR-readiness claim.
-- Investigate or report the mismatch before PR readiness instead of treating it
-  as a normal unavailable fallback.
-- If the lane must proceed with direct reads or text search, label that as a
-  dogfood-defect fallback and carry the mismatch as a residual risk until a
-  maintainer accepts or fixes it.
-
 ## Required Control Plane
 
 - Establish the goal before implementation. If `create_goal` is available,
@@ -239,14 +227,10 @@ Codex/plugin surface.
   ad hoc text search. Use codegraph output to identify files, import edges,
   and nearby implementation surfaces, then confirm with direct file reads
   before editing.
-- If `codex mcp list` shows required packaged MCPs such as `lsp` or
-  `codegraph` as enabled, but no corresponding callable tools are exposed in
-  the current thread, the orchestrator MUST NOT silently downgrade that state
-  to a generic unavailable-tool fallback. Record `codex mcp list` output, the
-  callable-tool or `tool_search` result, the missing tool names, and the
-  affected verification claim. Treat the mismatch as a dogfood defect that
-  blocks PR readiness until investigated, fixed, or explicitly accepted as a
-  residual risk by the maintainer.
+- If a packaged MCP such as `lsp` or `codegraph` is expected or registered but
+  not callable in the active session, follow root `AGENTS.md` dogfooding policy:
+  capture both surfaces as evidence and carry the exposure mismatch instead of
+  presenting a quiet fallback as normal.
 - End every non-trivial atomic unit with the packaged Codexy reviewer agent
   from `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate belongs inside
   the owning thread or child thread for that atomic unit and must review the
@@ -490,9 +474,9 @@ requires user input or an external state change.
   proof.
 - Marking a goal blocked because a review, child thread, queued worktree/thread,
   or asynchronous tool is still pending.
-- Treating registered MCPs as absent when `codex mcp list` shows them enabled
-  but callable tools or `tool_search` do not expose them, instead of recording
-  the mismatch as a dogfood defect.
+- Treating expected or registered MCPs as ordinary unavailable tools when the
+  callable Codex surface does not expose them, instead of following root
+  `AGENTS.md` dogfooding policy.
 - Retrying Codex app worktree setup after `fatal: invalid reference` by
   creating another active owner without checking whether
   `startingState.type="branch"` expected an existing ref.
