@@ -1,21 +1,13 @@
 use std::process::Command;
 
 #[test]
-fn validator_cli_accepts_merge_message_with_expected_issue_reference()
+fn validator_cli_accepts_merge_message_with_final_expected_closing_reference()
 -> Result<(), Box<dyn std::error::Error>> {
     let message = "fix(workflow): tighten merge evidence (#122)\n\nFixes #121\n";
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-merge-message",
-            "--expected-issue",
-            "121",
-            "--merge-message",
-            message,
-        ])
-        .output()?;
+    let output = validate_message(message)?;
     assert!(
         output.status.success(),
-        "validator should accept merge messages with the expected issue reference\nstdout:\n{}\nstderr:\n{}",
+        "validator should accept merge messages with exactly one final expected closing reference\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -26,21 +18,81 @@ fn validator_cli_accepts_merge_message_with_expected_issue_reference()
 fn validator_cli_rejects_merge_message_missing_expected_issue_reference()
 -> Result<(), Box<dyn std::error::Error>> {
     let message = "fix(workflow): tighten merge evidence (#122)\n\nReviewed and verified.\n";
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-merge-message",
-            "--expected-issue",
-            "121",
-            "--merge-message",
-            message,
-        ])
-        .output()?;
+    let output = validate_message(message)?;
     assert!(
         !output.status.success(),
         "validator should reject issue-backed merge messages without the expected issue reference"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("expected issue reference #121"),
+        String::from_utf8_lossy(&output.stderr).contains("final closing line must be exactly"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_incidental_only_issue_reference() -> Result<(), Box<dyn std::error::Error>>
+{
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nRationale: see #121.\n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject incidental issue references without a final closing line"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("final closing line must be exactly"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_duplicate_expected_closing_references()
+-> Result<(), Box<dyn std::error::Error>> {
+    let message =
+        "fix(workflow): tighten merge evidence (#122)\n\nFixes #121\n\nFollow-up.\n\nFixes #121\n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject duplicate closing references for the expected issue"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("exactly one closing reference"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_ambiguous_closing_references() -> Result<(), Box<dyn std::error::Error>> {
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nFixes #120\nFixes #121\n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject ambiguous closing references"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("exactly one closing reference"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_padded_final_closing_reference() -> Result<(), Box<dyn std::error::Error>>
+{
+    let message = "fix(workflow): tighten merge evidence (#122)\n\n  Fixes #121  \n";
+    let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject padded final closing references"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("final closing line must be exactly"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
@@ -72,4 +124,16 @@ fn validator_cli_checks_merge_message_file_input() -> Result<(), Box<dyn std::er
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
+}
+
+fn validate_message(message: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-merge-message",
+            "--expected-issue",
+            "121",
+            "--merge-message",
+            message,
+        ])
+        .output()?)
 }

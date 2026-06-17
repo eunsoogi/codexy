@@ -1,22 +1,29 @@
 pub(super) fn check(expected_issue: u64, message: &str) -> Vec<String> {
-    let reference = format!("#{expected_issue}");
-    if contains_issue_reference(message, &reference) {
+    if has_unique_final_closing_reference(expected_issue, message) {
         Vec::new()
     } else {
         vec![format!(
-            "merge commit message must contain expected issue reference {reference}"
+            "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
         )]
     }
 }
 
-fn contains_issue_reference(message: &str, reference: &str) -> bool {
-    message
-        .split(|character: char| {
-            character.is_whitespace()
-                || matches!(
-                    character,
-                    '(' | ')' | '[' | ']' | '{' | '}' | ',' | '.' | ';' | ':' | '!' | '?'
-                )
-        })
-        .any(|token| token == reference)
+fn has_unique_final_closing_reference(expected_issue: u64, message: &str) -> bool {
+    let expected_line = format!("Fixes #{expected_issue}");
+    let non_empty_lines = message
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect::<Vec<_>>();
+    let closing_lines = non_empty_lines
+        .iter()
+        .filter(|line| is_closing_reference_line(line))
+        .collect::<Vec<_>>();
+    closing_lines.len() == 1 && non_empty_lines.last() == Some(&expected_line.as_str())
+}
+
+fn is_closing_reference_line(line: &str) -> bool {
+    let Some(issue) = line.strip_prefix("Fixes #") else {
+        return false;
+    };
+    !issue.is_empty() && issue.chars().all(|character| character.is_ascii_digit())
 }
