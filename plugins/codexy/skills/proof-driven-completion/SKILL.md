@@ -47,9 +47,11 @@ complete.
   `codegraph` MCP exploration evidence when the MCP is available, plus direct
   file-read confirmation before claiming the touched surface is understood.
 - For non-trivial code, validator, harness, or workflow-rule changes, run a
-  touched implementation-file LOC audit before PR readiness or handoff. Treat
-  files over the 250 LOC target as failing evidence unless the handoff and PR
-  body include an explicit, narrow exception rationale.
+  touched implementation-file LOC gate before PR readiness or handoff:
+  `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`.
+  Treat files over the 250 LOC target as failing evidence unless the tracked
+  Codexy LOC exception mechanism names the file and rationale. Handoff or PR
+  body prose alone is not proof of an exception.
 - For plugin skills, confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, inspect PR state, latest head SHA, comments, reviews,

@@ -128,8 +128,11 @@ For code changes, add the relevant lint, typecheck, unit, integration, harness, 
 
 For non-trivial code, validator, harness, or workflow-rule changes, run a
 touched implementation-file LOC audit before pushing or opening/updating a PR.
-Treat touched implementation files over the 250 LOC target as review-blocking
-unless the PR or handoff includes an explicit narrow exception rationale.
+Run `scripts/validate-plugin-config --check-touched-loc --base-ref origin/main`
+or the equivalent current PR base before PR readiness. Treat touched
+implementation and test-harness files over the 250 LOC target as
+review-blocking unless a tracked Codexy LOC exception file contains a narrow,
+maintained rationale. PR body text alone is not an exception mechanism.
 
 When the requested behavior is a GitHub setting, branch rule, PR lifecycle, CLI, browser page, desktop app, or other external surface, drive that surface directly and capture observable evidence. Tests alone are supporting evidence, not completion proof.
 
@@ -637,8 +640,10 @@ After resolving, stage only the resolved files and run verification relevant to 
 - No force push or force-with-lease is used.
 - Verification covers touched surfaces.
 - Non-trivial code, validator, harness, or workflow-rule changes include
-  touched implementation-file LOC evidence; over-250 LOC implementation files
-  have an explicit narrow exception rationale or are fixed before PR readiness.
+  `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`
+  output; over-250 LOC implementation or test-harness files are fixed before
+  PR readiness unless the tracked LOC exception mechanism names the file and
+  rationale.
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
   approval from `plugins/codexy/agents/codexy-sentinel.toml` for the current diff,
   exact head or file state, lane scope, touched implementation-file LOC

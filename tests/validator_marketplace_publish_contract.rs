@@ -77,6 +77,21 @@ fn workflow_trigger_block<'a>(workflow: &'a str, trigger: &str) -> Option<&'a st
 }
 
 #[test]
+fn touched_loc_workflow_runs_for_all_pull_requests() -> Result<(), Box<dyn std::error::Error>> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workflow = std::fs::read_to_string(root.join(".github/workflows/touched-loc-gate.yml"))?;
+
+    assert!(workflow.contains("pull_request:"));
+    assert!(
+        !workflow.contains("paths:"),
+        "touched LOC gate must not use a narrow paths filter"
+    );
+    assert!(workflow.contains("fetch-depth: 0"));
+    assert!(workflow.contains("--check-touched-loc"));
+    Ok(())
+}
+
+#[test]
 fn release_contract_uses_main_for_current_marketplace_ref() -> Result<(), Box<dyn std::error::Error>>
 {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
