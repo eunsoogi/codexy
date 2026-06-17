@@ -88,6 +88,38 @@ fn codex_orchestration_spawn_agent_examples_use_message_argument()
 }
 
 #[test]
+fn repo_instructions_own_dogfood_policy_with_orchestration_details()
+-> Result<(), Box<dyn std::error::Error>> {
+    let agents = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md"),
+    )?;
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?;
+
+    assert!(agents.contains("Dogfooding Guardrails"));
+    assert!(agents.contains("failures to follow governing `AGENTS.md`"));
+    assert!(agents.contains("actual Codex callable tool surface or `tool_search`"));
+    assert!(agents.contains("`codex mcp list` shows Codexy `codegraph` or `lsp` enabled"));
+    assert!(agents.contains("preflight branch refs"));
+    assert!(agents.contains("non-existent new branch as an existing branch selector"));
+    assert!(agents.contains("keep exactly one active"));
+    assert!(agents.contains("must not stop at an open PR"));
+    assert!(
+        agents.contains("Child-owned lanes receive implementation and review-feedback patches")
+    );
+
+    assert!(skill.contains("Root `AGENTS.md` owns repo-wide dogfooding policy"));
+    assert!(skill.contains("Parent Stop Preflight"));
+    assert!(skill.contains("Codex App Worktree Creation Preflight"));
+    assert!(skill.contains("startingState.type=\"branch\""));
+    assert!(skill.contains("git check-ref-format --branch"));
+    assert!(!skill.contains("## Registered MCP Exposure Defects"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
     assert_prompt_indent_rejected("  display_name:", "\tdisplay_name:")
 }

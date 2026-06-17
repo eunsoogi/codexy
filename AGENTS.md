@@ -75,6 +75,27 @@ codexy/
 - Keep instructions actionable: use `MUST` or `MUST NOT` only for hard
   requirements.
 
+## Dogfooding Guardrails
+
+- Treat failures to follow governing `AGENTS.md` files and selected skills as
+  dogfooding defects. Capture the evidence and fix or explicitly track the
+  defect before PR readiness.
+- If a repo or plugin surface is expected, registered, or enabled but is not
+  available in the actual Codex callable tool surface or `tool_search`, treat
+  the exposure mismatch as a dogfooding defect, not as a quiet fallback. For
+  example, if `codex mcp list` shows Codexy `codegraph` or `lsp` enabled but
+  the tools are not callable in the session, record both surfaces as evidence.
+- Before creating Codex app threads or worktrees, preflight branch refs and do
+  not pass a non-existent new branch as an existing branch selector. Wait for
+  pending worktree setup before declaring failure, and keep exactly one active
+  owner per issue lane before retrying or reassigning.
+- Dogfooding loops must not stop at an open PR when the requested outcome
+  includes completion. After verification and review gates are clean, proceed
+  through merge, or explicitly report the blocker that prevents merge.
+- Parent/orchestrator threads must decide lane ownership before edits.
+  Child-owned lanes receive implementation and review-feedback patches in the
+  child branch, not in the parent workspace.
+
 ## Verification
 
 - Run verification that covers every touched surface before pushing or opening
