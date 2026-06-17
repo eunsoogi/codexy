@@ -1,3 +1,5 @@
-.omo/
 .DS_Store
-target/
+
+# Rust build artifacts
+/target/
+**/*.rs.bk

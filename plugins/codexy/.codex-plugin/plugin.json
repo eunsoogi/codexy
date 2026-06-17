@@ -41,8 +41,8 @@
       "Verify evidence, require Codex review, and use squash-merge gates before completion."
     ],
     "brandColor": "#2F6F5E",
-    "composerIcon": "./assets/codexy-agent-hero.png",
-    "logo": "./assets/codexy-agent-hero.png",
+    "composerIcon": "./assets/codexy-icon.png",
+    "logo": "./assets/codexy-icon.png",
     "screenshots": []
   }
 }
