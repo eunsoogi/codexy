@@ -236,6 +236,43 @@ fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::e
 }
 
 #[test]
+fn validator_cli_rejects_plugin_prompt_without_orchestration_route()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let prompt_path = plugin_root.join("agents/openai.yaml");
+    let mut prompt = std::fs::read_to_string(&prompt_path)?;
+    prompt = prompt.replace("$codex-orchestration", "Codexy orchestration");
+    std::fs::write(&prompt_path, prompt)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject plugin prompt without $codex-orchestration"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("interface.default_prompt must route through $codex-orchestration"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
