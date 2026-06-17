@@ -278,6 +278,78 @@ fn validator_cli_rejects_manifest_prompt_without_orchestration_route()
 }
 
 #[test]
+fn validator_cli_rejects_top_level_prompt_without_orchestration_route()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let prompt_path = plugin_root.join("agents/openai.yaml");
+    let mut prompt = std::fs::read_to_string(&prompt_path)?;
+    prompt = prompt.replace("$codex-orchestration", "Codexy orchestration");
+    std::fs::write(&prompt_path, prompt)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject top-level prompt without $codex-orchestration"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("interface.default_prompt must route through $codex-orchestration"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_skill_prompt_without_orchestration_route()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let prompt_path = plugin_root.join("skills/git-workflow/agents/openai.yaml");
+    let prompt = std::fs::read_to_string(&prompt_path)?;
+    assert!(
+        !prompt.contains("$codex-orchestration"),
+        "fixture should prove non-orchestration skill prompts remain valid"
+    );
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow non-orchestration skill prompts\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
