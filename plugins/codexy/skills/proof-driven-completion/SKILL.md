@@ -62,19 +62,28 @@ complete.
   draft diff to the owning child thread.
 - For every non-trivial atomic unit, require evidence that the owning thread
   ran the packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/reviewer.toml`. Arbitrary reviewer agents, generic
-  role names, or external review passes are not substitutes for this gate.
+  `plugins/codexy/agents/reviewer.toml` before handoff, PR readiness,
+  completion, or parent acceptance. The reviewer gate must cover the current
+  diff, exact head or file state, lane scope, verification outputs, and
+  evidence. Arbitrary reviewer agents, generic role names, parent-only
+  readthroughs, stale reviewer output, or external review passes are not
+  substitutes for this gate.
 - Re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, verify
   the child reported actual goal-tool usage or an unavailable-goal-tool
   fallback, current todo/plan tool usage or an unavailable-todo-tool fallback,
-  multi-agent use, a not-useful or not-applicable rationale, or an
-  unavailable-tool fallback, changed files, verification evidence, packaged
-  Codexy reviewer findings or approval, and clean worktree status before
-  treating the handoff as complete. Goal-tool evidence should name real Codex
-  goal surfaces such as `create_goal`, `get_goal`, or `update_goal` when they
-  are available. Prose-only `Goal:` or `Todo:` text is not evidence of real
-  goal or todo/plan tool use.
+  required multi-agent use for independent research questions, disjoint
+  implementation slices, QA or verification in parallel, review gates,
+  review-feedback validation, or separable non-trivial subtasks, changed
+  files, verification evidence, packaged Codexy reviewer findings or approval,
+  and clean worktree status before treating the handoff as complete. A
+  "multi-agent not useful" rationale is acceptable only when it is concrete
+  and tied to atomicity, tiny scope, or the absence of separable work; generic
+  manual fallback is not enough when multi-agent tooling is available.
+  Goal-tool evidence should name real Codex goal surfaces such as
+  `create_goal`, `get_goal`, or `update_goal` when they are available.
+  Prose-only `Goal:` or `Todo:` text is not evidence of real goal or todo/plan
+  tool use.
   For an atomic trivial child lane, require an explicit not-applicable rationale
   instead of silently skipping the execution discipline.
 
@@ -125,12 +134,15 @@ Include:
   until a repeated true impasse prevents meaningful progress without user input
   or an external state change.
 - Do not accept a non-trivial child implementation handoff as complete when it
-  omits actual goal-tool usage, actual todo/plan tool usage, or
-  multi-agent/fallback evidence required by the orchestrator assignment.
+  omits actual goal-tool usage, actual todo/plan tool usage, required
+  situational multi-agent usage, a concrete not-useful rationale tied to
+  atomicity or tiny scope, or unavailable-tool fallback evidence required by
+  the orchestrator assignment.
   Using only one of goal or todo/plan is insufficient unless the missing tool
   was unavailable and the child reported that unavailability with its fallback.
 - Do not accept a non-trivial atomic unit as complete when it omits the
-  packaged Codexy reviewer agent result for the current diff and evidence.
+  packaged Codexy reviewer agent result for the current diff, exact head or
+  file state, lane scope, verification outputs, and evidence.
 
 ## Failure Modes
 
@@ -150,5 +162,6 @@ Include:
   handing it back to the owning child thread for verification.
 - Accepting child-owned lane completion when the parent patched implementation
   first and delegated afterward without explicit recovery evidence.
-- Treating an arbitrary reviewer agent, generic review role, or parent-only
-  readthrough as equivalent to the packaged Codexy reviewer agent gate.
+- Treating an arbitrary reviewer agent, generic review role, parent-only
+  readthrough, stale reviewer output, or external review pass as equivalent to
+  the packaged Codexy reviewer agent gate for the current diff and evidence.

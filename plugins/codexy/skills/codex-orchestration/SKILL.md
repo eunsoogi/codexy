@@ -85,9 +85,12 @@ edits.
   the surface. Update statuses as work moves from discovery, to edit, to
   verification, to handoff. Prose-only `Todo:` text is not evidence that
   todo/plan tooling was used.
-- Use multi-agent decomposition when independent research, implementation,
-  review, QA, or verification subtasks can safely proceed in parallel and the
-  tool is available and useful.
+- Use multi-agent execution when the lane has independent research questions,
+  disjoint implementation slices, QA or verification that can run in parallel,
+  review gates, review-feedback validation, or any non-trivial atomic scope
+  with separable subtasks. If multi-agent tooling is available, "not useful"
+  is acceptable only with a concrete rationale tied to atomicity, tiny scope,
+  or the absence of separable work; a generic manual fallback is not enough.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
   work MUST NOT proceed as untracked edits without both real goal state and
   real todo/plan state when those tools are available. Using only one of goal
@@ -98,10 +101,13 @@ edits.
   the thread and use the closest available fallback. Do not silently skip the
   discipline.
 - Before a child thread reports a non-trivial atomic lane as ready for parent
-  handoff, it MUST run the packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/reviewer.toml` against the lane diff, scope, and
-  verification evidence. Do not substitute an arbitrary reviewer, generic
-  review role, or external review agent for this gate.
+  handoff, PR readiness, completion, or parent acceptance, it MUST run the
+  packaged Codexy reviewer agent defined by
+  `plugins/codexy/agents/reviewer.toml` against the current lane diff, exact
+  head or file state, lane scope, verification outputs, and available evidence.
+  Do not substitute an arbitrary reviewer, generic review role, external
+  review agent, parent-only readthrough, or stale reviewer output for this
+  gate.
 - The parent/orchestrator monitors evidence and merge gates. The child owns
   the implementation loop, local verification, and review-response fixes for
   its lane until the stop condition is met.
@@ -129,10 +135,13 @@ edits.
   worktree, PR, or durable child context, dispatch the child thread first; do
   not use the parent thread for a preliminary implementation pass.
 - Use multi-agent dispatch for bounded specialist help inside the current
-  thread when the lane does not need its own branch or PR. Use the packaged
-  specialist agent files and lightweight catalog metadata as routing context;
-  do not claim those packaged agents are native Codex custom agents unless
-  they have been projected into the active project or user custom-agent
+  thread when the lane does not need its own branch or PR. Multi-agent use is
+  required when independent research questions, disjoint implementation slices,
+  parallel QA or verification, review gates, review-feedback validation, or
+  separable subtasks in a non-trivial atomic lane can be isolated. Use the
+  packaged specialist agent files and lightweight catalog metadata as routing
+  context; do not claim those packaged agents are native Codex custom agents
+  unless they have been projected into the active project or user custom-agent
   directory by a supported workflow.
 - For repository code exploration, route threads and agents through the
   packaged Codexy `codegraph` MCP when it is available before falling back to
@@ -141,9 +150,12 @@ edits.
   before editing.
 - End every non-trivial atomic unit with the packaged Codexy reviewer agent
   from `plugins/codexy/agents/reviewer.toml`. The reviewer gate belongs inside
-  the owning thread or child thread for that atomic unit; the parent may verify
-  the evidence, but it must not replace the owning lane's reviewer pass with a
-  different ad hoc agent.
+  the owning thread or child thread for that atomic unit and must review the
+  current diff, exact head or file state, lane scope, verification outputs,
+  and evidence before handoff, PR readiness, completion, or parent acceptance.
+  The parent may verify the evidence, but it must not replace the owning
+  lane's reviewer pass with a different ad hoc agent, arbitrary reviewer role,
+  parent-only readthrough, or stale reviewer output.
 - Use separate Codex thread/worktree decomposition when lanes can proceed
   independently, touch separate ownership areas, or need separate PRs. If
   worktree isolation is required and Codex thread tools are available, create
@@ -187,14 +199,18 @@ edits.
    - Tell child implementation threads to create or maintain their own real
      goal state with `create_goal`, `get_goal`, and `update_goal` when
      available; keep real todo/plan state current with `update_plan` or the
-     available todo surface; use useful multi-agent decomposition; and report
-     actual tool usage or unavailable-tool fallbacks.
+     available todo surface; use required multi-agent execution for
+     independent research, disjoint implementation, QA, verification, review,
+     review-feedback validation, or separable non-trivial subtasks; and report
+     actual tool usage, concrete not-useful rationale, or unavailable-tool
+     fallbacks.
    - Tell child implementation threads and exploration agents to use Codexy
      `codegraph` MCP for code exploration when available, with ordinary file
      reads as confirmation before edits.
    - Tell each non-trivial child implementation thread to run the packaged
-     Codexy reviewer agent before handoff and include the reviewer findings or
-     approval in its return evidence.
+     Codexy reviewer agent before handoff, PR readiness, completion, or parent
+     acceptance, and include current-diff reviewer findings or approval in its
+     return evidence.
    - Require evidence, diffs, findings, or failed assumptions; do not accept
      acknowledgements as proof.
    - For Codex worktree thread lanes, state that the child owns implementation
@@ -240,6 +256,10 @@ Parent verification:
 Return evidence:
   - Goal tool usage or unavailable-goal-tool fallback
   - Todo/plan tool usage or unavailable-todo-tool fallback
+  - Multi-agent usage for separable subtasks, or a concrete not-useful
+    rationale tied to atomicity, tiny scope, or unavailable tooling
+  - Packaged Codexy reviewer gate result for the current diff, exact head or
+    file state, scope, verification outputs, and evidence
 Child execution discipline:
 Stop if:
 ```
@@ -263,6 +283,10 @@ Parent verification:
 Return format:
   - Include goal tool usage or unavailable-goal-tool fallback.
   - Include todo/plan tool usage or unavailable-todo-tool fallback.
+  - Include multi-agent usage or a concrete not-useful/unavailable-tool
+    rationale.
+  - Include packaged Codexy reviewer gate findings or approval for the current
+    diff, exact head or file state, scope, verification outputs, and evidence.
 ```
 
 - Prefer Codex app thread tools such as `fork_thread` or `create_thread` with a
@@ -323,9 +347,13 @@ requires user input or an external state change.
 - Continuing parent implementation after discovering accidental draft edits for
   a child-owned lane instead of handing the draft diff to the child thread.
 - Letting a child lane expand scope or edit shared files without ownership.
-- Letting a child implementation thread skip goal, todo/plan, or useful
-  multi-agent discipline without saying which tool was unavailable and which
-  fallback was used.
+- Letting a child implementation thread skip goal, todo/plan, or required
+  situational multi-agent discipline without saying which tool was unavailable
+  or giving a concrete not-useful rationale tied to atomicity, tiny scope, or
+  the absence of separable work.
+- Treating parent-only readthrough, arbitrary reviewer agents, generic review
+  roles, or stale reviewer output as the packaged Codexy reviewer gate for the
+  current diff and evidence.
 - Fixing a child-owned PR's review feedback in the parent/orchestrator thread
   instead of routing it back to the owning child thread.
 - Keeping work in a broad umbrella branch instead of issue-sized PRs.
