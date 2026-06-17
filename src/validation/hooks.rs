@@ -133,19 +133,23 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             )
         })?;
     command::check_command(path, plugin_root, event, command)?;
-    if let Some(timeout) = object.get("timeout") {
-        let timeout = timeout.as_u64().with_context(|| {
-            format!(
-                "{} {event} hook timeout must be a positive integer",
-                display_relative(path)
-            )
-        })?;
-        if timeout == 0 || timeout > 10 {
-            bail!(
-                "{} {event} hook timeout must be between 1 and 10 seconds",
-                display_relative(path)
-            );
-        }
+    let timeout = object.get("timeout").with_context(|| {
+        format!(
+            "{} {event} hook timeout is required",
+            display_relative(path)
+        )
+    })?;
+    let timeout = timeout.as_u64().with_context(|| {
+        format!(
+            "{} {event} hook timeout must be a positive integer",
+            display_relative(path)
+        )
+    })?;
+    if timeout == 0 || timeout > 10 {
+        bail!(
+            "{} {event} hook timeout must be between 1 and 10 seconds",
+            display_relative(path)
+        );
     }
     if let Some(status) = object.get("statusMessage") {
         if !status

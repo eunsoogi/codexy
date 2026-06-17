@@ -142,7 +142,7 @@ fn validator_cli_rejects_hooks_without_plugin_root_command()
         ),
         (
             "$PLUGIN_ROOT/hooks/placeholder; touch /tmp/pwned",
-            "unquoted hook entrypoints must not contain shell control syntax",
+            "entrypoint paths must not contain shell syntax",
         ),
     ] {
         let temp = tempfile::tempdir()?;
