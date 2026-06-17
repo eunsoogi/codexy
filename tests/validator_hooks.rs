@@ -112,33 +112,51 @@ fn validator_cli_rejects_missing_plugin_hooks() -> Result<(), Box<dyn std::error
 #[test]
 fn validator_cli_rejects_hooks_without_plugin_root_command()
 -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
-    let hooks_path = plugin_root.join("hooks/hooks.json");
-    let mut hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    hooks_config["hooks"]["SessionStart"][0]["hooks"][0]["command"] =
-        serde_json::json!("./hooks/codexy-routing-context.sh SessionStart");
-    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
+    for (command, expected) in [
+        (
+            "./hooks/codexy-routing-context.sh SessionStart",
+            "must start with a packaged ${PLUGIN_ROOT} entrypoint",
+        ),
+        (
+            "/tmp/mutate; \"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"",
+            "must start with a packaged ${PLUGIN_ROOT} entrypoint",
+        ),
+        (
+            "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"; /tmp/mutate",
+            "arguments must be static values without shell control syntax",
+        ),
+        (
+            "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"\n/tmp/mutate",
+            "arguments must be static values without shell control syntax",
+        ),
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_plugin(&plugin_root)?;
+        let hooks_path = plugin_root.join("hooks/hooks.json");
+        let mut hooks_config: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
+        hooks_config["hooks"]["SessionStart"][0]["hooks"][0]["command"] =
+            serde_json::json!(command);
+        std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check",
-        ])
-        .output()?;
-    assert!(
-        !output.status.success(),
-        "validator should reject hook commands that do not resolve through PLUGIN_ROOT"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("must reference a packaged ${PLUGIN_ROOT} path"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args([
+                "--plugin-root",
+                plugin_root.to_str().ok_or("plugin root path")?,
+                "--check-hooks",
+            ])
+            .output()?;
+        assert!(
+            !output.status.success(),
+            "validator should reject unsafe hook command: {command}"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains(expected),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

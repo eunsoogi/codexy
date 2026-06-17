@@ -59,64 +59,104 @@ pub(super) fn check_command(
             );
         }
     }
-    let hook_paths = plugin_root_command_paths(command);
-    if hook_paths.is_empty() {
-        bail!(
-            "{} {event} hook command must reference a packaged ${{PLUGIN_ROOT}} path",
+    let (hook_path, arguments) = plugin_root_entrypoint_path(command).with_context(|| {
+        format!(
+            "{} {event} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
             display_relative(path)
-        );
-    }
+        )
+    })?;
+    check_static_arguments(path, event, arguments)?;
     let canonical_root = plugin_root.canonicalize().with_context(|| {
         format!(
             "{} plugin root cannot be canonicalized",
             display_relative(plugin_root)
         )
     })?;
-    for hook_path in hook_paths {
-        let resolved = plugin_root.join(&hook_path);
-        if !resolved.is_file() {
-            bail!(
-                "{} {event} hook command target does not exist: {}",
-                display_relative(path),
-                display_relative(&resolved)
-            );
-        }
-        let canonical_resolved = resolved.canonicalize().with_context(|| {
-            format!(
-                "{} {event} hook command target cannot be canonicalized: {}",
-                display_relative(path),
-                display_relative(&resolved)
-            )
-        })?;
-        if !canonical_resolved.starts_with(&canonical_root) {
-            bail!(
-                "{} {event} hook command target must stay inside the plugin root",
-                display_relative(path)
-            );
-        }
-        check_script_safety(path, event, &resolved)?;
+    let resolved = plugin_root.join(&hook_path);
+    if !resolved.is_file() {
+        bail!(
+            "{} {event} hook command target does not exist: {}",
+            display_relative(path),
+            display_relative(&resolved)
+        );
     }
+    let canonical_resolved = resolved.canonicalize().with_context(|| {
+        format!(
+            "{} {event} hook command target cannot be canonicalized: {}",
+            display_relative(path),
+            display_relative(&resolved)
+        )
+    })?;
+    if !canonical_resolved.starts_with(&canonical_root) {
+        bail!(
+            "{} {event} hook command target must stay inside the plugin root",
+            display_relative(path)
+        );
+    }
+    check_script_safety(path, event, &resolved)?;
     Ok(())
 }
 
-fn plugin_root_command_paths(command: &str) -> Vec<PathBuf> {
-    let mut paths = Vec::new();
+fn plugin_root_entrypoint_path(command: &str) -> Option<(PathBuf, &str)> {
+    let entrypoint = command_entrypoint(command)?;
     for marker in ["${PLUGIN_ROOT}/", "$PLUGIN_ROOT/"] {
-        let mut rest = command;
-        while let Some((_, after_marker)) = rest.split_once(marker) {
-            let path = after_marker
-                .split(|character: char| {
-                    character.is_whitespace() || character == '"' || character == '\''
-                })
-                .next()
-                .unwrap_or_default();
-            if !path.is_empty() {
-                paths.push(PathBuf::from(path));
-            }
-            rest = after_marker;
+        if let Some(path) = entrypoint.command.strip_prefix(marker) {
+            return (!path.is_empty()).then(|| (PathBuf::from(path), entrypoint.arguments));
         }
     }
-    paths
+    None
+}
+
+struct CommandEntrypoint<'a> {
+    command: String,
+    arguments: &'a str,
+}
+
+fn command_entrypoint(command: &str) -> Option<CommandEntrypoint<'_>> {
+    let command = command.trim_start();
+    let first = command.chars().next()?;
+    if first == '"' || first == '\'' {
+        let close = command[1..].find(first)?;
+        if close == 0 {
+            return Some(CommandEntrypoint {
+                command: String::new(),
+                arguments: &command[2..],
+            });
+        }
+        return Some(CommandEntrypoint {
+            command: command[1..=close].to_string(),
+            arguments: &command[close + 2..],
+        });
+    }
+    for (index, character) in command.char_indices() {
+        if character.is_whitespace() {
+            return Some(CommandEntrypoint {
+                command: command[..index].to_string(),
+                arguments: &command[index..],
+            });
+        }
+    }
+    Some(CommandEntrypoint {
+        command: command.to_string(),
+        arguments: "",
+    })
+}
+
+fn check_static_arguments(path: &Path, event: &str, arguments: &str) -> Result<()> {
+    if arguments.chars().all(is_static_argument_character) {
+        return Ok(());
+    }
+    bail!(
+        "{} {event} hook command arguments must be static values without shell control syntax",
+        display_relative(path)
+    );
+}
+
+fn is_static_argument_character(character: char) -> bool {
+    character.is_ascii_alphanumeric()
+        || character == ' '
+        || character == '\t'
+        || matches!(character, '-' | '_' | '.' | '/' | ':')
 }
 
 fn check_script_safety(path: &Path, event: &str, script_path: &Path) -> Result<()> {

@@ -69,15 +69,16 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
     let object = group
         .as_object()
         .with_context(|| format!("{} {event} group must be an object", display_relative(path)))?;
-    if let Some(matcher) = object.get("matcher")
-        && !matcher
+    if let Some(matcher) = object.get("matcher") {
+        if !matcher
             .as_str()
             .is_some_and(|value| !value.trim().is_empty())
-    {
-        bail!(
-            "{} {event}.matcher must be a non-empty string when present",
-            display_relative(path)
-        );
+        {
+            bail!(
+                "{} {event}.matcher must be a non-empty string when present",
+                display_relative(path)
+            );
+        }
     }
     let handlers = object
         .get("hooks")
@@ -146,15 +147,16 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             );
         }
     }
-    if let Some(status) = object.get("statusMessage")
-        && !status
+    if let Some(status) = object.get("statusMessage") {
+        if !status
             .as_str()
             .is_some_and(|value| !value.trim().is_empty())
-    {
-        bail!(
-            "{} {event} hook statusMessage must be a non-empty string when present",
-            display_relative(path)
-        );
+        {
+            bail!(
+                "{} {event} hook statusMessage must be a non-empty string when present",
+                display_relative(path)
+            );
+        }
     }
     Ok(())
 }
