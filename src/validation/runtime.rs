@@ -155,6 +155,21 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
             );
         }
     }
+    for trigger in ["push:", "pull_request:"] {
+        let trigger_text = workflow_trigger_block(&text, trigger).with_context(|| {
+            format!(
+                "{} runtime package workflow must include {trigger}",
+                display_relative(&path)
+            )
+        })?;
+        if !trigger_text.contains("plugins/codexy/hooks/**") {
+            bail!(
+                "{} runtime package workflow {trigger} paths must include {:?}",
+                display_relative(&path),
+                "plugins/codexy/hooks/**"
+            );
+        }
+    }
     for platform in platforms {
         if !text.contains(&format!("platform: {platform}")) {
             bail!(
@@ -173,6 +188,19 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn workflow_trigger_block<'a>(text: &'a str, trigger: &str) -> Option<&'a str> {
+    let start = text.find(trigger)?;
+    let rest = &text[start..];
+    let end = rest
+        .match_indices("\n  ")
+        .find_map(|(index, _)| {
+            let next = &rest[index + 3..];
+            (!next.starts_with(' ')).then_some(index)
+        })
+        .unwrap_or(rest.len());
+    Some(&rest[..end])
 }
 
 fn bundled_platforms(wrapper_path: &Path) -> Result<Vec<String>> {

@@ -72,6 +72,12 @@ pub(super) fn check_command(
             display_relative(path)
         );
     }
+    if has_quoted_entrypoint_without_separator(command) {
+        bail!(
+            "{} {event} hook command quoted hook entrypoints must be followed by whitespace or EOF",
+            display_relative(path)
+        );
+    }
     let (hook_path, arguments) = plugin_root_entrypoint_path(command).with_context(|| {
         format!(
             "{} {event} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
@@ -132,6 +138,18 @@ fn has_single_quoted_plugin_root_entrypoint(command: &str) -> bool {
     ["${PLUGIN_ROOT}/", "$PLUGIN_ROOT/"]
         .iter()
         .any(|marker| quoted.starts_with(marker))
+}
+
+fn has_quoted_entrypoint_without_separator(command: &str) -> bool {
+    let command = command.trim_start();
+    if !command.starts_with('"') {
+        return false;
+    }
+    let Some(close) = command[1..].find('"') else {
+        return false;
+    };
+    let after_quote = &command[close + 2..];
+    !after_quote.is_empty() && !after_quote.starts_with(char::is_whitespace)
 }
 
 struct CommandEntrypoint<'a> {

@@ -25,6 +25,14 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
             "runtime workflow must package release artifacts; missing {required:?}"
         );
     }
+    for trigger in ["push:", "pull_request:"] {
+        let trigger_text = workflow_trigger_block(&workflow, trigger)
+            .ok_or_else(|| format!("runtime workflow missing {trigger}"))?;
+        assert!(
+            trigger_text.contains("plugins/codexy/hooks/**"),
+            "runtime workflow {trigger} paths must include hooks"
+        );
+    }
     for forbidden in [
         "Publish generated marketplace snapshot",
         "MARKETPLACE_BRANCH",
@@ -43,6 +51,19 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "runtime workflow must not use plugin bin paths as its install contract"
     );
     Ok(())
+}
+
+fn workflow_trigger_block<'a>(workflow: &'a str, trigger: &str) -> Option<&'a str> {
+    let start = workflow.find(trigger)?;
+    let rest = &workflow[start..];
+    let end = rest
+        .match_indices("\n  ")
+        .find_map(|(index, _)| {
+            let next = &rest[index + 3..];
+            (!next.starts_with(' ')).then_some(index)
+        })
+        .unwrap_or(rest.len());
+    Some(&rest[..end])
 }
 
 #[test]

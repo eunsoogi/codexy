@@ -123,7 +123,7 @@ fn validator_cli_rejects_hooks_without_plugin_root_command()
         ),
         (
             "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"; /tmp/mutate",
-            "arguments must be static values without shell control syntax",
+            "quoted hook entrypoints must be followed by whitespace or EOF",
         ),
         (
             "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"\n/tmp/mutate",
@@ -134,8 +134,8 @@ fn validator_cli_rejects_hooks_without_plugin_root_command()
             "single-quoted PLUGIN_ROOT entrypoints are not supported",
         ),
         (
-            "'$PLUGIN_ROOT/hooks/codexy-routing-context.sh' SessionStart",
-            "single-quoted PLUGIN_ROOT entrypoints are not supported",
+            "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"SessionStart",
+            "quoted hook entrypoints must be followed by whitespace or EOF",
         ),
     ] {
         let temp = tempfile::tempdir()?;
