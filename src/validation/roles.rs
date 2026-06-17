@@ -1,3 +1,5 @@
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt as _;
 use std::{collections::BTreeSet, fs, path::Path};
 
 use anyhow::{Context as _, Result};
@@ -21,10 +23,21 @@ const REQUIRED_AGENTS: &[&str] = &[
     "documenter",
 ];
 
+const ALLOWED_CUSTOM_AGENT_FIELDS: &[&str] = &[
+    "name",
+    "description",
+    "developer_instructions",
+    "nickname_candidates",
+    "model",
+    "model_reasoning_effort",
+    "sandbox_mode",
+];
+
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
     errors.extend(check_specialists(plugin_root).unwrap_or_else(|error| vec![error.to_string()]));
     errors.extend(check_project_agents(plugin_root));
+    errors.extend(check_agent_registration(plugin_root));
     errors.extend(check_agent_yaml(plugin_root));
     errors
 }
@@ -49,6 +62,16 @@ fn check_specialists(plugin_root: &Path) -> Result<Vec<String>> {
     if catalog.get("default_branch_prefix").and_then(Value::as_str) == Some("eunsoogi/") {
         errors.push(format!(
             "{} default_branch_prefix must not be 'eunsoogi/'",
+            display_relative(&catalog_path)
+        ));
+    }
+    if catalog
+        .get("native_custom_agent_registration")
+        .and_then(Value::as_str)
+        != Some("user-config-agents-config_file")
+    {
+        errors.push(format!(
+            "{} native_custom_agent_registration must be user-config-agents-config_file",
             display_relative(&catalog_path)
         ));
     }
@@ -160,7 +183,24 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             display_relative(path)
         ));
     }
-    for field in ["display_name", "model", "effort", "when_to_use"] {
+    let allowed = ALLOWED_CUSTOM_AGENT_FIELDS
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>();
+    for key in agent.as_table().into_iter().flat_map(|table| table.keys()) {
+        if !allowed.contains(key.as_str()) {
+            errors.push(format!(
+                "{} {key} is not part of the supported Codex custom-agent file schema",
+                display_relative(path)
+            ));
+        }
+    }
+    for field in [
+        "description",
+        "model",
+        "model_reasoning_effort",
+        "developer_instructions",
+    ] {
         if agent
             .get(field)
             .and_then(Value::as_str)
@@ -172,16 +212,37 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
-    for field in ["inputs", "outputs", "constraints"] {
-        if toml_array_strings(agent.get(field))
+    if let Some(nicknames) = agent.get("nickname_candidates") {
+        if toml_array_strings(Some(nicknames))
             .is_none_or(|items| items.is_empty() || items.iter().any(String::is_empty))
         {
             errors.push(format!(
-                "{} {field} must be a list of non-empty strings",
+                "{} nickname_candidates must be a list of non-empty strings",
                 display_relative(path)
             ));
         }
     }
+}
+
+fn check_agent_registration(plugin_root: &Path) -> Vec<String> {
+    let script = plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents");
+    let mut errors = Vec::new();
+    if !script.is_file() {
+        errors.push(format!(
+            "{} must exist to register plugin-packaged agents through Codex [agents.<name>] config_file",
+            display_relative(&script)
+        ));
+        return errors;
+    }
+    #[cfg(unix)]
+    if script
+        .metadata()
+        .map(|metadata| metadata.permissions().mode() & 0o111 == 0)
+        .unwrap_or(true)
+    {
+        errors.push(format!("{} must be executable", display_relative(&script)));
+    }
+    errors
 }
 
 fn check_project_agents(plugin_root: &Path) -> Vec<String> {

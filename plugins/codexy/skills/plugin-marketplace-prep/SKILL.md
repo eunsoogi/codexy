@@ -58,6 +58,12 @@ validation proves the packaged paths match the repository layout.
      the plugin advertises LSP or code exploration behavior,
    - specialist agent or custom agent TOMLs parse and do not define a child
      orchestrator when the invoking thread is the orchestrator,
+   - Codexy specialist agent TOMLs use Codex custom-agent compatible fields so
+     they can be registered with `[agents.<name>] config_file` from an
+     installed plugin path,
+   - the Codexy agent registration script exists under
+     `skills/codex-orchestration/scripts/register-codexy-agents` and is
+     executable,
    - Codexy reviewer agent metadata identifies it as the mandatory gate at the
      end of every non-trivial atomic work unit,
    - thread/worktree orchestration wording includes handoff fields, evidence,
@@ -106,9 +112,11 @@ Risks:
 - Do not add root-level plugin manifests when the canonical layout is
   `plugins/<plugin>/.codex-plugin/plugin.json`.
 - Do not present plugin-internal `.codex/agents/*.toml` files as canonical or
-  supported; use `plugins/<plugin>/agents/catalog.toml` and
+  supported. Codexy uses `plugins/<plugin>/agents/catalog.toml` and
   `plugins/<plugin>/agents/<name>.toml` for packaged specialist agent
-  definitions.
+  definitions, and registers those installed plugin files through Codex
+  `[agents.<name>] config_file` entries when native `spawn_agent` roles are
+  needed.
 - Do not create package manager files solely to validate a static plugin unless
   the release or automation scope requires them.
 

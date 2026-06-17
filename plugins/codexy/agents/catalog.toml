@@ -2,7 +2,8 @@ version = "0.1.0"
 default_branch_prefix = "codexy/"
 default_review_gate = "codex"
 catalog_kind = "plugin-packaged-specialist-agent-files"
-native_custom_agent_projection = "requires-active-project-or-user-agent-install"
+native_custom_agent_registration = "user-config-agents-config_file"
+native_custom_agent_projection = "not-required-agent-files-are-custom-agent-compatible"
 agent_files = [
   "architect.toml",
   "debugger.toml",

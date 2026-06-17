@@ -200,7 +200,7 @@ fn validator_cli_accepts_installed_plugin_mcp_entrypoints() -> Result<(), Box<dy
 }
 
 #[test]
-fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_dir(
@@ -211,7 +211,7 @@ fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::e
     )?;
     let planner_path = plugin_root.join("agents/planner.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
-    planner = planner.replace("inputs = [", "inputs = [\"\", ");
+    planner.push_str("\nnickname_candidates = [\"\", \"Plan\"]\n");
     std::fs::write(&planner_path, planner)?;
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -224,14 +224,264 @@ fn validator_cli_rejects_empty_agent_list_entries() -> Result<(), Box<dyn std::e
 
     assert!(
         !output.status.success(),
-        "validator should reject empty agent list entries"
+        "validator should reject empty nickname entries"
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("inputs must be a list of non-empty strings"),
+            .contains("nickname_candidates must be a list of non-empty strings"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_non_custom_agent_fields() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let planner_path = plugin_root.join("agents/planner.toml");
+    let mut planner = std::fs::read_to_string(&planner_path)?;
+    planner.push_str("\ndisplay_name = \"Planner\"\n");
+    std::fs::write(&planner_path, planner)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject non-custom-agent fields"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("display_name is not part of the supported Codex custom-agent file schema"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_agent_missing_developer_instructions()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let planner_path = plugin_root.join("agents/planner.toml");
+    let planner = std::fs::read_to_string(&planner_path)?;
+    let planner = planner.replace("developer_instructions = \"\"\"\n", "removed = \"\"\"\n");
+    std::fs::write(&planner_path, planner)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-roles",
+        ])
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject missing developer_instructions"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("developer_instructions must be a non-empty string"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn register_codexy_agents_writes_config_file_entries() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("installed-codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let config_path = temp.path().join("home/.codex/config.toml");
+
+    let output =
+        Command::new(plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"))
+            .args([
+                "--plugin-root",
+                plugin_root.to_str().ok_or("plugin root path")?,
+                "--config",
+                config_path.to_str().ok_or("config path")?,
+            ])
+            .output()?;
+
+    assert!(
+        output.status.success(),
+        "registration script failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let config = std::fs::read_to_string(&config_path)?;
+    let parsed: toml::Value = toml::from_str(&config)?;
+    assert_eq!(
+        parsed["agents"]["reviewer"]["config_file"].as_str(),
+        Some(
+            plugin_root
+                .join("agents/reviewer.toml")
+                .canonicalize()?
+                .to_str()
+                .ok_or("reviewer path")?
+        )
+    );
+    assert_eq!(
+        parsed["agents"]["planner"]["config_file"].as_str(),
+        Some(
+            plugin_root
+                .join("agents/planner.toml")
+                .canonicalize()?
+                .to_str()
+                .ok_or("planner path")?
+        )
+    );
+    Ok(())
+}
+
+#[test]
+fn register_codexy_agents_dry_run_does_not_touch_config() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("installed-codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let config_path = temp.path().join("home/.codex/config.toml");
+
+    let output =
+        Command::new(plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"))
+            .args([
+                "--plugin-root",
+                plugin_root.to_str().ok_or("plugin root path")?,
+                "--config",
+                config_path.to_str().ok_or("config path")?,
+                "--dry-run",
+            ])
+            .output()?;
+
+    assert!(
+        output.status.success(),
+        "dry run failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        !config_path.exists(),
+        "dry-run must not write the target config"
+    );
+    Ok(())
+}
+
+#[test]
+fn register_codexy_agents_refuses_unmanaged_conflicts() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("installed-codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let config_path = temp.path().join("home/.codex/config.toml");
+    std::fs::create_dir_all(config_path.parent().ok_or("config parent")?)?;
+    std::fs::write(
+        &config_path,
+        "[agents.reviewer]\ndescription = \"Existing reviewer\"\n",
+    )?;
+
+    let output =
+        Command::new(plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"))
+            .args([
+                "--plugin-root",
+                plugin_root.to_str().ok_or("plugin root path")?,
+                "--config",
+                config_path.to_str().ok_or("config path")?,
+            ])
+            .output()?;
+
+    assert!(
+        !output.status.success(),
+        "registration should refuse unmanaged reviewer conflict"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("already defines unmanaged Codex agent"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn register_codexy_agents_uninstall_removes_only_managed_block()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("installed-codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .as_path(),
+        &plugin_root,
+    )?;
+    let config_path = temp.path().join("home/.codex/config.toml");
+    std::fs::create_dir_all(config_path.parent().ok_or("config parent")?)?;
+    std::fs::write(&config_path, "model = \"gpt-5.5\"\n")?;
+
+    let script = plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents");
+    let install = Command::new(&script)
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--config",
+            config_path.to_str().ok_or("config path")?,
+        ])
+        .output()?;
+    assert!(install.status.success(), "install failed");
+
+    let uninstall = Command::new(&script)
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--config",
+            config_path.to_str().ok_or("config path")?,
+            "--uninstall",
+        ])
+        .output()?;
+    assert!(
+        uninstall.status.success(),
+        "uninstall failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&uninstall.stdout),
+        String::from_utf8_lossy(&uninstall.stderr)
+    );
+    let config = std::fs::read_to_string(&config_path)?;
+    assert!(config.contains("model = \"gpt-5.5\""));
+    assert!(!config.contains("BEGIN CODEXY MANAGED AGENTS"));
+    assert!(!config.contains("[agents.reviewer]"));
     Ok(())
 }
 

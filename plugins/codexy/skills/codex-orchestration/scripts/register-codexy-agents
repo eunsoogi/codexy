@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""Register Codexy packaged agents through Codex's [agents.<name>] config_file surface."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as _dt
+import json
+import os
+import re
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
+
+
+BEGIN = "# BEGIN CODEXY MANAGED AGENTS"
+END = "# END CODEXY MANAGED AGENTS"
+REQUIRED = {"reviewer", "planner"}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Register Codexy plugin-packaged agents in Codex config.toml."
+    )
+    parser.add_argument("--plugin-root", type=Path, default=default_plugin_root())
+    parser.add_argument("--codex-home", type=Path, default=default_codex_home())
+    parser.add_argument("--config", type=Path)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--uninstall", action="store_true")
+    args = parser.parse_args()
+
+    plugin_root = args.plugin_root.expanduser().resolve()
+    config_path = (args.config or args.codex_home / "config.toml").expanduser()
+    config_path = config_path.resolve()
+
+    try:
+        agents = load_agents(plugin_root)
+        current = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+        stripped, had_block = strip_managed_block(current)
+        if args.uninstall:
+            if args.dry_run:
+                print(f"would remove Codexy managed agent block from {config_path}")
+                return 0
+            if not had_block:
+                print(f"no Codexy managed agent block found in {config_path}")
+                return 0
+            write_config(config_path, stripped)
+            print(f"removed Codexy managed agent block from {config_path}")
+            return 0
+
+        conflicts = find_conflicts(stripped, agents)
+        if conflicts:
+            joined = ", ".join(sorted(conflicts))
+            raise SystemExit(
+                f"{config_path} already defines unmanaged Codex agent(s): {joined}; "
+                "remove or rename those entries before registering Codexy agents"
+            )
+
+        block = render_block(plugin_root, agents)
+        updated = append_block(stripped, block)
+        tomllib.loads(updated)
+        if args.dry_run:
+            print(f"would write Codexy managed agent block to {config_path}")
+            print(block, end="")
+            return 0
+        write_config(config_path, updated)
+        print(f"registered {len(agents)} Codexy agents in {config_path}")
+        print("restart Codex or start a fresh session before using spawn_agent")
+        return 0
+    except Exception as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+
+
+def default_plugin_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def default_codex_home() -> Path:
+    if os.environ.get("CODEX_HOME"):
+        return Path(os.environ["CODEX_HOME"])
+    return Path.home() / ".codex"
+
+
+def load_agents(plugin_root: Path) -> list[dict[str, object]]:
+    agents_root = plugin_root / "agents"
+    catalog_path = agents_root / "catalog.toml"
+    catalog = tomllib.loads(catalog_path.read_text(encoding="utf-8"))
+    files = catalog.get("agent_files")
+    if not isinstance(files, list) or not files:
+        raise ValueError(f"{catalog_path} must define agent_files")
+
+    agents: list[dict[str, object]] = []
+    for filename in files:
+        if not isinstance(filename, str) or "/" in filename or filename.startswith("."):
+            raise ValueError(f"{catalog_path} contains invalid agent file entry {filename!r}")
+        path = (agents_root / filename).resolve()
+        if not str(path).startswith(str(agents_root.resolve()) + os.sep):
+            raise ValueError(f"{path} escapes {agents_root}")
+        agent = tomllib.loads(path.read_text(encoding="utf-8"))
+        name = required_str(agent, "name", path)
+        required_str(agent, "description", path)
+        required_str(agent, "developer_instructions", path)
+        if path.stem != name:
+            raise ValueError(f"{path} filename must match agent name {name!r}")
+        agent["_path"] = path
+        agents.append(agent)
+
+    names = {str(agent["name"]) for agent in agents}
+    missing = REQUIRED - names
+    if missing:
+        raise ValueError(f"{agents_root} missing required Codexy agents: {', '.join(sorted(missing))}")
+    return agents
+
+
+def required_str(agent: dict[str, object], field: str, path: Path) -> str:
+    value = agent.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{path} must define non-empty {field}")
+    return value
+
+
+def strip_managed_block(text: str) -> tuple[str, bool]:
+    pattern = re.compile(rf"\n?{re.escape(BEGIN)}\n.*?{re.escape(END)}\n?", re.DOTALL)
+    updated, count = pattern.subn("\n", text)
+    return updated.strip() + ("\n" if updated.strip() else ""), count > 0
+
+
+def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
+    names = {str(agent["name"]) for agent in agents}
+    found = set()
+    for match in re.finditer(r"^\s*\[agents\.([A-Za-z0-9_-]+)\]\s*$", text, re.MULTILINE):
+        if match.group(1) in names:
+            found.add(match.group(1))
+    return found
+
+
+def render_block(plugin_root: Path, agents: list[dict[str, object]]) -> str:
+    lines = [
+        BEGIN,
+        f"# Source: {plugin_root / 'agents'}",
+        "# Re-run the Codexy registration script after updating or reinstalling the plugin.",
+    ]
+    for agent in agents:
+        name = str(agent["name"])
+        lines.extend(
+            [
+                "",
+                f"[agents.{name}]",
+                f"description = {toml_string(str(agent['description']))}",
+                f"config_file = {toml_string(str(agent['_path']))}",
+            ]
+        )
+        nicknames = agent.get("nickname_candidates")
+        if isinstance(nicknames, list) and nicknames:
+            rendered = ", ".join(toml_string(str(item)) for item in nicknames)
+            lines.append(f"nickname_candidates = [{rendered}]")
+    lines.extend(["", END, ""])
+    return "\n".join(lines)
+
+
+def toml_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def append_block(text: str, block: str) -> str:
+    if not text.strip():
+        return block
+    return text.rstrip() + "\n\n" + block
+
+
+def write_config(path: Path, contents: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    backup = None
+    if path.exists():
+        stamp = _dt.datetime.now(_dt.UTC).strftime("%Y%m%d%H%M%S")
+        backup = path.with_name(f"{path.name}.codexy-backup-{stamp}")
+        shutil.copy2(path, backup)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(contents)
+        tomllib.loads(contents)
+        os.replace(temp_path, path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        if backup and backup.exists():
+            shutil.copy2(backup, path)
+        raise
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
