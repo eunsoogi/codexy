@@ -35,7 +35,6 @@ def main() -> int:
     config_path = config_path.resolve()
 
     try:
-        agents = load_agents(plugin_root)
         current = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
         stripped, had_block = strip_managed_block(current)
         if args.uninstall:
@@ -49,6 +48,7 @@ def main() -> int:
             print(f"removed Codexy managed agent block from {config_path}")
             return 0
 
+        agents = load_agents(plugin_root)
         conflicts = find_conflicts(stripped, agents)
         if conflicts:
             joined = ", ".join(sorted(conflicts))
@@ -185,9 +185,10 @@ def strip_managed_block(text: str) -> tuple[str, bool]:
 def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     names = {str(agent["name"]) for agent in agents}
     found = set()
-    for match in re.finditer(r"^\s*\[agents\.([A-Za-z0-9_-]+)\]\s*$", text, re.MULTILINE):
-        if match.group(1) in names:
-            found.add(match.group(1))
+    for match in re.finditer(r'^\s*\[agents\.(?:"([^"]+)"|([A-Za-z0-9_-]+))\]\s*$', text, re.MULTILINE):
+        found_name = match.group(1) or match.group(2)
+        if found_name in names:
+            found.add(found_name)
     return found
 
 
@@ -229,7 +230,7 @@ def write_config(path: Path, contents: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     backup = None
     if path.exists():
-        stamp = _dt.datetime.now(_dt.UTC).strftime("%Y%m%d%H%M%S")
+        stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d%H%M%S")
         backup = path.with_name(f"{path.name}.codexy-backup-{stamp}")
         shutil.copy2(path, backup)
     fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)

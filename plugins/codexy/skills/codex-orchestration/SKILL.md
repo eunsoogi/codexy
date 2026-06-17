@@ -183,9 +183,9 @@ edits.
   separable subtasks in a non-trivial atomic lane can be isolated. Use the
   packaged specialist agent files and lightweight catalog metadata as routing
   context. If `spawn_agent` supports the Codexy role, invoke specialists by
-  exact agent type, such as `spawn_agent(agent_type="reviewer", prompt="Review
+  exact agent type, such as `spawn_agent(agent_type="reviewer", message="Review
   the current diff, exact head, scope, verification output, and evidence.")` or
-  `spawn_agent(agent_type="planner", prompt="Produce an atomic plan and
+  `spawn_agent(agent_type="planner", message="Produce an atomic plan and
   verification checklist.")`. If `spawn_agent` or the requested Codexy
   `agent_type` is unavailable, report that the Codexy agents have not been
   registered in the active Codex config and fall back to packaged TOML/catalog

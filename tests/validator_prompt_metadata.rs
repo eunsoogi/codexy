@@ -74,6 +74,19 @@ fn validator_cli_allows_skill_prompt_without_orchestration_route()
 }
 
 #[test]
+fn codex_orchestration_spawn_agent_examples_use_message_argument()
+-> Result<(), Box<dyn std::error::Error>> {
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?;
+    assert!(!skill.contains("prompt="));
+    assert!(skill.contains("spawn_agent(agent_type=\"reviewer\", message="));
+    assert!(skill.contains("spawn_agent(agent_type=\"planner\", message="));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
     assert_prompt_indent_rejected("  display_name:", "\tdisplay_name:")
 }
