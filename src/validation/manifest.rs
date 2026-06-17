@@ -45,6 +45,15 @@ pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
             display_relative(&path)
         );
     }
+    if !default_prompt.iter().any(|item| {
+        item.as_str()
+            .is_some_and(|text| text.contains("$codex-orchestration"))
+    }) {
+        bail!(
+            "{} interface.defaultPrompt must route through $codex-orchestration",
+            display_relative(&path)
+        );
+    }
     supported_platforms(&manifest, &path)?;
     Ok(manifest)
 }
