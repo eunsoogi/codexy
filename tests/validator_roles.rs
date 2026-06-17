@@ -58,6 +58,43 @@ fn validator_cli_rejects_agent_missing_developer_instructions()
     Ok(())
 }
 
+#[test]
+fn validator_cli_allows_supported_custom_agent_config_layers()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let mut planner = std::fs::read_to_string(&planner_path)?;
+    planner.push_str(
+        "\nmcp_servers = [\"grep_app\"]\n\n[skills.config]\n\"codexy:qa\" = { enabled = true }\n",
+    );
+    std::fs::write(&planner_path, planner)?;
+
+    let output = validator(&plugin_root)?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_unsupported_skills_config_layers()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let mut planner = std::fs::read_to_string(&planner_path)?;
+    planner.push_str("\n[skills.unsupported]\nfoo = true\n");
+    std::fs::write(&planner_path, planner)?;
+
+    let output = validator(&plugin_root)?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("skills.unsupported is not part"));
+    Ok(())
+}
+
 fn copy_fixture(plugin_root: &std::path::Path) -> std::io::Result<()> {
     copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),

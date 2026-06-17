@@ -29,6 +29,8 @@ const ALLOWED_CUSTOM_AGENT_FIELDS: &[&str] = &[
     "model",
     "model_reasoning_effort",
     "sandbox_mode",
+    "mcp_servers",
+    "skills",
 ];
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
@@ -189,6 +191,14 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
         if !allowed.contains(key.as_str()) {
             errors.push(format!(
                 "{} {key} is not part of the supported Codex custom-agent file schema",
+                display_relative(path)
+            ));
+        }
+    }
+    if let Some(Value::Table(skills)) = agent.get("skills") {
+        for key in skills.keys().filter(|key| key.as_str() != "config") {
+            errors.push(format!(
+                "{} skills.{key} is not part of the supported Codex custom-agent file schema",
                 display_relative(path)
             ));
         }

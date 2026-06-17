@@ -25,6 +25,9 @@ fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
         "agents.'codexy-sentinel'.config_file = 'existing.toml'\n",
         "agents . 'codexy-sentinel' . config_file = 'existing.toml'\n",
         "agents.codexy-cartographer.config_file = \"existing.toml\"\n",
+        "[agents]\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
+        "[agents]\n'codexy-sentinel'.config_file = 'existing.toml'\n",
+        "[agents]\ncodexy-cartographer.config_file = \"existing.toml\"\n",
     ] {
         assert_conflict(existing)?;
     }

@@ -12,11 +12,8 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-
-
 BEGIN, END = "# BEGIN CODEXY MANAGED AGENTS", "# END CODEXY MANAGED AGENTS"
 REQUIRED = {"codexy-sentinel", "codexy-pathfinder"}
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -70,10 +67,8 @@ def main() -> int:
         print(f"error: {error}", file=sys.stderr)
         return 1
 
-
 def default_plugin_root() -> Path:
     return Path(__file__).resolve().parents[3]
-
 
 def default_codex_home() -> Path:
     if os.environ.get("CODEX_HOME"):
@@ -111,13 +106,11 @@ def load_agents(plugin_root: Path) -> list[dict[str, object]]:
         raise ValueError(f"{agents_root} missing required Codexy agents: {', '.join(sorted(missing))}")
     return agents
 
-
 def required_str(agent: dict[str, object], field: str, path: Path) -> str:
     value = agent.get(field)
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{path} must define non-empty {field}")
     return value
-
 
 def load_agent_toml(path: Path) -> dict[str, object]:
     return parse_toml_subset(path.read_text(encoding="utf-8"), path)
@@ -189,6 +182,13 @@ def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
         found_name = next(group for group in match.groups() if group)
         if found_name in names:
             found.add(found_name)
+    parent = r"(?ms)^\s*\[\s*agents\s*\]\s*$\n(?P<body>.*?)(?=^\s*\[|\Z)"
+    child = r"^\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\."
+    for block in re.finditer(parent, text):
+        for match in re.finditer(child, block.group("body"), re.MULTILINE):
+            found_name = next(group for group in match.groups() if group)
+            if found_name in names:
+                found.add(found_name)
     return found
 
 
