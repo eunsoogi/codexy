@@ -129,6 +129,14 @@ fn validator_cli_rejects_hooks_without_plugin_root_command()
             "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\"\n/tmp/mutate",
             "arguments must be static values without shell control syntax",
         ),
+        (
+            "'${PLUGIN_ROOT}/hooks/codexy-routing-context.sh' SessionStart",
+            "single-quoted PLUGIN_ROOT entrypoints are not supported",
+        ),
+        (
+            "'$PLUGIN_ROOT/hooks/codexy-routing-context.sh' SessionStart",
+            "single-quoted PLUGIN_ROOT entrypoints are not supported",
+        ),
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
@@ -139,13 +147,10 @@ fn validator_cli_rejects_hooks_without_plugin_root_command()
         hooks_config["hooks"]["SessionStart"][0]["hooks"][0]["command"] =
             serde_json::json!(command);
         std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
+        let root = plugin_root.to_str().ok_or("plugin root path")?;
 
         let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-            .args([
-                "--plugin-root",
-                plugin_root.to_str().ok_or("plugin root path")?,
-                "--check-hooks",
-            ])
+            .args(["--plugin-root", root, "--check-hooks"])
             .output()?;
         assert!(
             !output.status.success(),
@@ -162,30 +167,32 @@ fn validator_cli_rejects_hooks_without_plugin_root_command()
 
 #[test]
 fn validator_cli_rejects_hook_user_state_mutation() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
-    let script_path = plugin_root.join("hooks/codexy-routing-context.sh");
-    let mut script = std::fs::read_to_string(&script_path)?;
-    script.push_str("\ntouch ~/.codex/codexy-hook-state\n");
-    std::fs::write(&script_path, script)?;
+    for script_suffix in [
+        "\ntouch ~/.codex/codexy-hook-state\n",
+        "\nprintf x > \"$HOME/codexy-hook-state\"\n",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_plugin(&plugin_root)?;
+        let script_path = plugin_root.join("hooks/codexy-routing-context.sh");
+        let mut script = std::fs::read_to_string(&script_path)?;
+        script.push_str(script_suffix);
+        std::fs::write(&script_path, script)?;
+        let root = plugin_root.to_str().ok_or("plugin root path")?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check",
-        ])
-        .output()?;
-    assert!(
-        !output.status.success(),
-        "validator should reject hook scripts that mutate user Codex state"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("hook script must not contain"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args(["--plugin-root", root, "--check"])
+            .output()?;
+        assert!(
+            !output.status.success(),
+            "validator should reject hook scripts that mutate user state: {script_suffix:?}"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("hook script must not"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

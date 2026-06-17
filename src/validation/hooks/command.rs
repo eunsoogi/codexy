@@ -24,6 +24,13 @@ const FORBIDDEN_COMMAND_FRAGMENTS: &[&str] = &[
     "codex mcp",
 ];
 const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
+    "~/",
+    "$HOME/",
+    "$HOME",
+    "${HOME}/",
+    "${HOME}",
+    "/Users/",
+    "/home/",
     "~/.codex",
     "$HOME/.codex",
     "${HOME}/.codex",
@@ -58,6 +65,12 @@ pub(super) fn check_command(
                 display_relative(path)
             );
         }
+    }
+    if has_single_quoted_plugin_root_entrypoint(command) {
+        bail!(
+            "{} {event} hook command single-quoted PLUGIN_ROOT entrypoints are not supported",
+            display_relative(path)
+        );
     }
     let (hook_path, arguments) = plugin_root_entrypoint_path(command).with_context(|| {
         format!(
@@ -107,6 +120,20 @@ fn plugin_root_entrypoint_path(command: &str) -> Option<(PathBuf, &str)> {
     None
 }
 
+fn has_single_quoted_plugin_root_entrypoint(command: &str) -> bool {
+    let command = command.trim_start();
+    if !command.starts_with('\'') {
+        return false;
+    }
+    let Some(close) = command[1..].find('\'') else {
+        return false;
+    };
+    let quoted = &command[1..=close];
+    ["${PLUGIN_ROOT}/", "$PLUGIN_ROOT/"]
+        .iter()
+        .any(|marker| quoted.starts_with(marker))
+}
+
 struct CommandEntrypoint<'a> {
     command: String,
     arguments: &'a str,
@@ -116,6 +143,9 @@ fn command_entrypoint(command: &str) -> Option<CommandEntrypoint<'_>> {
     let command = command.trim_start();
     let first = command.chars().next()?;
     if first == '"' || first == '\'' {
+        if first == '\'' {
+            return None;
+        }
         let close = command[1..].find(first)?;
         if close == 0 {
             return Some(CommandEntrypoint {
