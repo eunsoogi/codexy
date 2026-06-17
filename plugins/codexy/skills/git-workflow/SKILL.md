@@ -387,6 +387,8 @@ The review gate is satisfied only when:
 - `reviewDecision` is not `CHANGES_REQUESTED`.
 - No latest review from a maintainer, GitHub app, or Codex connector requests changes.
 - The expected Codex review has completed on the latest `headRefOid`; if it was missing, `@codex review` was requested and its completion signal was confirmed.
+- Required status checks have passed, or the maintainer explicitly accepted
+  that remaining checks are non-required or not applicable for the merge.
 - Every non-outdated review thread is resolved, or the PR body/comment history documents why no change is required.
 - Every actionable PR comment has been addressed or explicitly marked non-actionable with rationale.
 - You have re-run verification after addressing review feedback.
@@ -397,6 +399,25 @@ The review gate is satisfied only when:
 
 If any review or comment is ambiguous, stop and resolve it before merging. Do
 not merge first and plan to address review feedback afterward.
+
+Merge continuation is goal and plan driven. Keep the active goal and real
+plan/todo state open while review is pending. Once the latest-head review gate
+is satisfied, checks are passed or explicitly accepted as non-required,
+child-owned feedback has returned through the owning child thread, actionable
+comments and review threads are resolved or documented as non-actionable, and
+the PR-body preservation gate below passes, advance the plan into GitHub squash
+merge, branch deletion, and post-merge main sync without waiting for another
+maintainer prompt.
+
+Maintainer override still wins. If the maintainer explicitly requested stop,
+wait, push only, no merge, draft only, or leaving the PR open, obey that
+instruction and do not continue to merge until the maintainer changes it.
+
+Default merge continuation is not permission to take unsafe shortcuts. Do not
+use `--admin` to bypass reviews or checks, merge a stale or unreviewed head,
+ignore child-owned feedback, leave actionable comments or threads unresolved,
+skip the PR-body preservation gate, or merge before re-running verification
+after review-response changes.
 
 When the PR satisfies the merge gates, merge through GitHub with squash merge
 and branch deletion. The squash merge commit body/description MUST be the PR

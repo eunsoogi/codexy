@@ -125,6 +125,12 @@ edits.
   worktree/thread setup, or asynchronous tool completion as a non-blocking goal
   state. Keep the goal active, keep polling, send follow-up prompts when
   progress stalls, and continue the merge loop when evidence arrives.
+- For PR merge coordination, keep an active goal and real plan or todo item
+  open through the review gate, merge gate, GitHub squash merge, branch
+  deletion, and main sync. When the latest-head review gate is satisfied and
+  merge prerequisites pass, advance the plan from review waiting into the
+  merge/post-merge-sync step and continue unless the maintainer explicitly
+  requested stop, wait, push only, no merge, draft only, or leaving the PR open.
 - Reserve `blocked` for repeated true impasses where the orchestrator cannot
   make meaningful progress without user input or an external state change.
 - Maintain a visible todo list with real `update_plan` or todo-tool state for
