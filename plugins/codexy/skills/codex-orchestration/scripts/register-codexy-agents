@@ -178,14 +178,14 @@ def strip_managed_block(text: str) -> tuple[str, bool]:
 def find_conflicts(text: str, agents: list[dict[str, object]]) -> set[str]:
     names = {str(agent["name"]) for agent in agents}
     found = set()
-    pattern = r"^\s*(?:\[\s*agents\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\]\s*(?:#.*)?$|agents\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
+    pattern = r"^\s*(?:\[\s*(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\]\s*(?:#[^\n]*)?$|(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\.)"
     for match in re.finditer(pattern, text, re.MULTILINE):
         found_name = next(group for group in match.groups() if group)
         if found_name in names:
             found.add(found_name)
-    if re.search(r"(?m)^\s*agents\s*=", re.split(r"(?m)^\s*\[", text, maxsplit=1)[0]):
+    if re.search(r"(?m)^\s*(?:agents|\"agents\"|'agents')\s*=", re.split(r"(?m)^\s*\[", text, maxsplit=1)[0]):
         found.update(names)
-    parent = r"(?ms)^\s*\[\s*agents\s*\]\s*$\n(?P<body>.*?)(?=^\s*\[|\Z)"
+    parent = r"(?ms)^\s*\[\s*(?:agents|\"agents\"|'agents')\s*\]\s*(?:#[^\n]*)?$\n(?P<body>.*?)(?=^\s*\[|\Z)"
     child = r"^\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*\."
     for block in re.finditer(parent, text):
         for match in re.finditer(child, block.group("body"), re.MULTILINE):

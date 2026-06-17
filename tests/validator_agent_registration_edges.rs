@@ -10,6 +10,9 @@ fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
     for existing in [
         "[agents.\"codexy-sentinel\"]\ndescription = \"Existing reviewer\"\n",
         "[agents.'codexy-sentinel']\ndescription = 'Existing reviewer'\n",
+        "[\"agents\".\"codexy-sentinel\"]\nconfig_file = \"existing.toml\"\n",
+        "['agents'.'codexy-sentinel']\nconfig_file = 'existing.toml'\n",
+        "[\"agents\".codexy-cartographer] # local explorer\nconfig_file = \"existing.toml\"\n",
         "[agents.codexy-sentinel] # local reviewer\nconfig_file = \"existing.toml\"\n",
         "[agents.\"codexy-sentinel\"] # local reviewer\nconfig_file = \"existing.toml\"\n",
         "[agents.'codexy-sentinel'] # local reviewer\nconfig_file = \"existing.toml\"\n",
@@ -27,9 +30,14 @@ fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
         "agents . codexy-sentinel . config_file = \"existing.toml\"\n",
         "agents.'codexy-sentinel'.config_file = 'existing.toml'\n",
         "agents . 'codexy-sentinel' . config_file = 'existing.toml'\n",
+        "\"agents\".\"codexy-sentinel\".config_file = \"existing.toml\"\n",
+        "'agents'.'codexy-sentinel'.config_file = 'existing.toml'\n",
         "agents.codexy-cartographer.config_file = \"existing.toml\"\n",
         "[agents]\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
+        "[agents] # local agents table\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
+        "[\"agents\"]\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
         "[agents]\n'codexy-sentinel'.config_file = 'existing.toml'\n",
+        "['agents']\n'codexy-sentinel'.config_file = 'existing.toml'\n",
         "[agents]\ncodexy-cartographer.config_file = \"existing.toml\"\n",
     ] {
         assert_conflict(existing)?;
@@ -41,6 +49,8 @@ fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
 fn register_codexy_agents_refuses_inline_agents_tables() -> Result<(), Box<dyn std::error::Error>> {
     for existing in [
         "agents = { max_threads = 6 }\n",
+        "\"agents\" = { max_threads = 6 }\n",
+        "'agents' = { max_threads = 6 }\n",
         "agents = { codexy-sentinel = { config_file = \"existing.toml\" } }\n",
     ] {
         assert_conflict(existing)?;
@@ -160,6 +170,7 @@ fn assert_conflict(existing: &str) -> Result<(), Box<dyn std::error::Error>> {
         .output()?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("already defines unmanaged Codex agent"));
+    assert_eq!(std::fs::read_to_string(config_path)?, existing);
     Ok(())
 }
 
