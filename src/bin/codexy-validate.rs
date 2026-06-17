@@ -11,25 +11,41 @@ use codexy_runtime::{paths, validation};
 struct Cli {
     #[arg(long)]
     plugin_root: Option<PathBuf>,
-    #[arg(long, conflicts_with_all = ["check_lsp", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
+    #[arg(long, conflicts_with_all = ["check_lsp", "check_merge_message", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
     check: bool,
-    #[arg(long, conflicts_with_all = ["check", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
+    #[arg(long, conflicts_with_all = ["check", "check_merge_message", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
     check_lsp: bool,
-    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_hooks", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
+    check_merge_message: bool,
+    #[arg(long, requires = "check_merge_message")]
+    expected_issue: Option<u64>,
+    #[arg(
+        long,
+        requires = "check_merge_message",
+        conflicts_with = "merge_message_file"
+    )]
+    merge_message: Option<String>,
+    #[arg(
+        long,
+        requires = "check_merge_message",
+        conflicts_with = "merge_message"
+    )]
+    merge_message_file: Option<PathBuf>,
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_merge_message", "check_hooks", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
     check_mcp: bool,
-    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_mcp", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_merge_message", "check_mcp", "check_roles", "check_runtime_artifacts", "print_covered_extensions"])]
     check_hooks: bool,
-    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_mcp", "check_hooks", "check_runtime_artifacts", "print_covered_extensions"])]
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_merge_message", "check_mcp", "check_hooks", "check_runtime_artifacts", "print_covered_extensions"])]
     check_roles: bool,
-    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_mcp", "check_hooks", "check_roles", "print_covered_extensions"])]
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_merge_message", "check_mcp", "check_hooks", "check_roles", "print_covered_extensions"])]
     check_runtime_artifacts: bool,
-    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts"])]
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_merge_message", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts"])]
     print_covered_extensions: bool,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let plugin_root = cli.plugin_root.unwrap_or_else(paths::plugin_root);
+    let plugin_root = cli.plugin_root.clone().unwrap_or_else(paths::plugin_root);
     if cli.print_covered_extensions {
         for extension in validation::covered_extensions(&plugin_root)? {
             println!("{extension}");
@@ -38,6 +54,13 @@ fn main() -> Result<()> {
     }
     let mode = if cli.check_lsp {
         validation::Mode::Lsp
+    } else if cli.check_merge_message {
+        validation::Mode::MergeMessage {
+            expected_issue: cli
+                .expected_issue
+                .ok_or_else(|| anyhow::anyhow!("--expected-issue is required"))?,
+            message: merge_message(&cli)?,
+        }
     } else if cli.check_mcp {
         validation::Mode::Mcp
     } else if cli.check_hooks {
@@ -57,4 +80,15 @@ fn main() -> Result<()> {
         paths::display_relative(&plugin_root)
     );
     Ok(())
+}
+
+fn merge_message(cli: &Cli) -> Result<String> {
+    if let Some(message) = &cli.merge_message {
+        return Ok(message.clone());
+    }
+    if let Some(path) = &cli.merge_message_file {
+        return std::fs::read_to_string(path)
+            .map_err(|error| anyhow::anyhow!("reading {}: {error}", path.display()));
+    }
+    anyhow::bail!("--merge-message or --merge-message-file is required")
 }

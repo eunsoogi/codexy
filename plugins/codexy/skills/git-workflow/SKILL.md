@@ -162,7 +162,9 @@ PR bodies must include:
 - `## Not Run`: any verification that could not be run and why, or `None`.
 - `## Follow-ups`: known follow-ups, or `None`.
 
-When a matching issue exists, put the closing reference only on the final line:
+When a matching issue exists, put the closing reference only on the final line.
+That issue reference is part of the permanent squash merge commit message and
+MUST survive merge completion:
 
 ```text
 Fixes #<issue-number>
@@ -444,6 +446,7 @@ by accident:
 
 ```sh
 pr_number=<explicit-pr-number>
+issue_number=<linked-issue-number>
 repo=eunsoogi/codexy
 pr_json_file=$(mktemp)
 pr_body_file=$(mktemp)
@@ -470,6 +473,12 @@ fi
 if [ ! -s "$pr_body_file" ]; then
   printf '%s\n' "Captured PR body file is empty; aborting merge." >&2
   exit 1
+fi
+if [ -n "${issue_number:-}" ]; then
+  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --merge-message-file "$pr_body_file"; then
+    printf '%s\n' "PR body is missing the expected issue reference; aborting merge." >&2
+    exit 1
+  fi
 fi
 
 printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
@@ -531,6 +540,8 @@ After merge, update the main worktree:
 pr_number=<explicit-pr-number>
 git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
+commit_message_file=$(mktemp)
+trap 'rm -f "$commit_message_file"' EXIT
 if [ ! -f "$expected_body_file" ]; then
   printf '%s\n' "Missing captured PR body evidence: $expected_body_file" >&2
   exit 1
@@ -538,10 +549,10 @@ fi
 
 git pull --ff-only origin main
 git log -1 --pretty=%s
-if ruby - "$expected_body_file" <<'RUBY'
+git cat-file commit HEAD | ruby -e 'input = STDIN.read; print input.split("\n\n", 2).fetch(1)' > "$commit_message_file"
+if ruby - "$expected_body_file" "$commit_message_file" <<'RUBY'
 expected = File.binread(ARGV.fetch(0))
-raw_commit = IO.popen(["git", "cat-file", "commit", "HEAD"], "rb", &:read)
-raw_message = raw_commit.split("\n\n", 2).fetch(1)
+raw_message = File.binread(ARGV.fetch(1))
 actual = raw_message.include?("\n\n") ? raw_message.split("\n\n", 2).fetch(1) : ""
 
 without_single_terminal_lf = ->(value) {
@@ -553,19 +564,36 @@ unless without_single_terminal_lf.call(actual) == without_single_terminal_lf.cal
 end
 RUBY
 then
-  rm -f "$expected_body_file"
+  true
 else
   printf '%s\n' "Body verification failed; leaving evidence at: $expected_body_file" >&2
   exit 1
 fi
+expected_issue_number=$(ruby - "$expected_body_file" <<'RUBY'
+body = File.binread(ARGV.fetch(0))
+match = body.lines.map(&:strip).reverse.find { |line| line.match?(/\AFixes #\d+\z/) }
+print(match[/\d+/]) if match
+RUBY
+)
+if [ -n "$expected_issue_number" ]; then
+  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$expected_issue_number" --merge-message-file "$commit_message_file"; then
+    printf '%s\n' "Merged commit message is missing the expected issue reference; leaving evidence at: $expected_body_file" >&2
+    exit 1
+  fi
+fi
+rm -f "$expected_body_file"
 ```
 
 The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body must match the PR body captured from GitHub
-before merge. Use the raw commit object instead of `git log --pretty=%B` for the
-body comparison so formatter-added trailing newlines do not create false
-failures. If GitHub did not delete the remote topic branch, delete it only after
-confirming the PR was merged and no dependent work needs the branch:
+before merge. For issue-backed PRs, the refreshed commit message must also pass
+`scripts/validate-plugin-config --check-merge-message --expected-issue
+<issue-number> --merge-message-file <commit-message-file>` before merge
+completion is reported. Use the raw commit object instead of `git log
+--pretty=%B` for the body comparison so formatter-added trailing newlines do not
+create false failures. If GitHub did not delete the remote topic branch, delete
+it only after confirming the PR was merged and no dependent work needs the
+branch:
 
 ```sh
 git push origin --delete <branch>
@@ -606,6 +634,9 @@ After resolving, stage only the resolved files and run verification relevant to 
   external review passes are not substitutes.
 - Squash merge commit bodies preserve the PR body exactly, and the post-merge
   body comparison has passed.
+- Issue-backed squash merge commit messages include the linked issue number,
+  and the merge-message validator has passed on the refreshed `main` commit
+  before merge completion is reported.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
 - Expected Codex review completed on the latest PR head, and no unresolved actionable Codex feedback remains.
 - PR reviews, Codex connector reviews, PR comments, and review threads have been inspected and all actionable feedback is resolved or explicitly documented as non-actionable before merge.

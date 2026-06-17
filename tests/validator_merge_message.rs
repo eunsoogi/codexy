@@ -1,0 +1,75 @@
+use std::process::Command;
+
+#[test]
+fn validator_cli_accepts_merge_message_with_expected_issue_reference()
+-> Result<(), Box<dyn std::error::Error>> {
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nFixes #121\n";
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-merge-message",
+            "--expected-issue",
+            "121",
+            "--merge-message",
+            message,
+        ])
+        .output()?;
+    assert!(
+        output.status.success(),
+        "validator should accept merge messages with the expected issue reference\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_merge_message_missing_expected_issue_reference()
+-> Result<(), Box<dyn std::error::Error>> {
+    let message = "fix(workflow): tighten merge evidence (#122)\n\nReviewed and verified.\n";
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-merge-message",
+            "--expected-issue",
+            "121",
+            "--merge-message",
+            message,
+        ])
+        .output()?;
+    assert!(
+        !output.status.success(),
+        "validator should reject issue-backed merge messages without the expected issue reference"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("expected issue reference #121"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_checks_merge_message_file_input() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let message_path = temp.path().join("merge-message.txt");
+    std::fs::write(
+        &message_path,
+        "fix(workflow): tighten merge evidence (#122)\n\nFixes #121\n",
+    )?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-merge-message",
+            "--expected-issue",
+            "121",
+            "--merge-message-file",
+            message_path.to_str().ok_or("message path")?,
+        ])
+        .output()?;
+    assert!(
+        output.status.success(),
+        "validator should accept file-provided merge messages with the expected issue reference\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

@@ -7,6 +7,7 @@ mod lsp;
 mod manifest;
 mod mcp;
 mod mcp_runtime;
+mod merge_message;
 mod prompt_yaml;
 mod release_publish_contract;
 mod roles;
@@ -17,10 +18,14 @@ use std::path::Path;
 
 use anyhow::{Result, bail};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Mode {
     All,
     Lsp,
+    MergeMessage {
+        expected_issue: u64,
+        message: String,
+    },
     Mcp,
     Hooks,
     Roles,
@@ -45,6 +50,10 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all
         }
         Mode::Lsp => lsp::check(plugin_root),
+        Mode::MergeMessage {
+            expected_issue,
+            message,
+        } => merge_message::check(expected_issue, &message),
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
