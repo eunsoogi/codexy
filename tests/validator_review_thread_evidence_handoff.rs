@@ -86,11 +86,11 @@ fn validator_allows_unresolved_status_without_action_word_match() -> TestResult 
     )
 }
 #[test]
-fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
+fn validator_rejects_missing_review_thread_page_info() -> TestResult {
     assert_handoff_fails(
         "Review response: addressed current head. PR ready for parent handoff.\n",
-        r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"nodes":[{}]}}"#,
-        "incomplete reviewThreads.nodes",
+        unresolved_review_thread_pr_state().replace("\"pageInfo\":{\"hasNextPage\":false},", ""),
+        "pagination",
     )
 }
 #[test]
@@ -216,8 +216,8 @@ fn unresolved_review_thread_pr_state() -> String {
 }
 fn partial_review_thread_pr_state() -> String {
     unresolved_review_thread_with_id_pr_state("PRRT_kwDOPartial").replace(
-        "\"nodes\": [",
-        "\"pageInfo\":{\"hasNextPage\":true,\"endCursor\":\"cursor\"},\"nodes\": [",
+        "\"pageInfo\":{\"hasNextPage\":false},",
+        "\"pageInfo\":{\"hasNextPage\":true,\"endCursor\":\"cursor\"},",
     )
 }
 fn unresolved_review_thread_with_id_pr_state(id: &str) -> String {
@@ -228,7 +228,7 @@ fn unresolved_review_thread_with_id_pr_state(id: &str) -> String {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {{
+        "reviewThreads": {{"pageInfo":{{"hasNextPage":false}},
             "nodes": [
                 {{
                     "id": "{id}",

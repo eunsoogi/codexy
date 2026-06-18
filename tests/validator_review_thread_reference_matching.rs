@@ -68,7 +68,7 @@ fn two_prefix_collision_review_threads_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {
                     "id": "PRRT_kwDOPrefixOne",
@@ -96,7 +96,7 @@ fn multi_comment_review_thread_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {
                     "id": "PRRT_kwDOS6i-_86KhdRE",

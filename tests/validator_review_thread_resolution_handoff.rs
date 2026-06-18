@@ -168,7 +168,7 @@ fn unresolved_review_thread_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {
                     "id": "PRRT_kwDOExample",
@@ -196,7 +196,7 @@ fn two_unresolved_review_threads_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {
                     "id": "PRRT_kwDOAccepted",
@@ -224,7 +224,7 @@ fn two_same_path_unresolved_review_threads_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {
                     "id": "PRRT_kwDOSamePathOne",

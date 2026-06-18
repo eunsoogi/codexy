@@ -52,7 +52,7 @@ fn unresolved_review_thread_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {
                     "id": "PRRT_kwDOS6i-_86Kho2O",

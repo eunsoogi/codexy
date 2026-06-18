@@ -1,12 +1,17 @@
 use serde_json::Value;
 
 pub(super) fn check(threads: &Value) -> Option<String> {
-    if threads
+    let Some(has_next_page) = threads
         .get("pageInfo")
         .and_then(|page| page.get("hasNextPage"))
         .and_then(Value::as_bool)
-        == Some(true)
-    {
+    else {
+        return Some(
+            "incomplete reviewThreads.nodes PR state evidence: missing pagination pageInfo.hasNextPage"
+                .into(),
+        );
+    };
+    if has_next_page {
         return Some(
             "incomplete reviewThreads.nodes PR state evidence: pagination hasNextPage true".into(),
         );
