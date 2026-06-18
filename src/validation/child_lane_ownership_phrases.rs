@@ -55,9 +55,19 @@ pub(super) fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
 pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
         key.contains("maintainer reassignment")
-            && ["pending", "requested", "needed", "required"]
-                .into_iter()
-                .any(|qualifier| key.contains(qualifier))
+            && [
+                "no",
+                "not",
+                "without",
+                "missing",
+                "absent",
+                "pending",
+                "requested",
+                "needed",
+                "required",
+            ]
+            .into_iter()
+            .any(|qualifier| key.contains(qualifier))
     })
 }
 
@@ -106,7 +116,10 @@ fn is_empty_or_spaced((_, suffix): (&str, &str)) -> bool {
 
 pub(super) fn has_absent_value(value: &str) -> bool {
     let value = trimmed_value(value);
-    matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
+    matches!(
+        value,
+        "no" | "none" | "false" | "missing" | "absent" | "not provided"
+    )
 }
 
 pub(super) fn has_absent_field_value(value: &str, field: &str) -> bool {

@@ -103,6 +103,7 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment needed: explicit maintainer reassignment to parent",
         "Maintainer reassignment requested: explicit maintainer reassignment to parent",
         "Maintainer reassignment pending: explicit maintainer reassignment to parent",
+        "No maintainer reassignment: explicit maintainer reassignment to parent",
         "Maintainer reassignment: pending explicit maintainer reassignment to parent",
         "Maintainer reassignment: pending explicit maintainer reassignment to orchestrator",
         "Maintainer reassignment: requested explicit maintainer reassignment to parent",
@@ -171,27 +172,32 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
 #[test]
 fn validator_allows_absent_parent_authored_fix_evidence() -> Result<(), Box<dyn std::error::Error>>
 {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(
-        &evidence_path,
+    for evidence in [
         r#"Lane ownership: child-owned
 Parent-authored implementation commits: no
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Lane ownership: child-owned
+Parent-authored implementation commits: false
+Maintainer reassignment: none
+"#,
+    ] {
+        let temp = tempfile::tempdir()?;
+        let evidence_path = temp.path().join("handoff.md");
+        std::fs::write(&evidence_path, evidence)?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?;
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args(["--check-child-lane-ownership", "--evidence-file"])
+            .arg(&evidence_path)
+            .output()?;
 
-    assert!(
-        output.status.success(),
-        "validator should not flag explicitly absent parent-authored fixes\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should not flag explicitly absent parent-authored fixes\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
