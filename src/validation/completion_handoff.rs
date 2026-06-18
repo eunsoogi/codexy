@@ -100,6 +100,10 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
     if (has_false_label_value(suffix)
         && !suffix.strip_prefix("no").is_some_and(starts_with_boundary))
         || suffix.starts_with("from maintainer was not requested")
+        || (suffix
+            .strip_prefix("was requested")
+            .is_some_and(starts_with_boundary)
+            && !suffix.starts_with("was requested by maintainer"))
         || (suffix.starts_with("was requested by ")
             && !suffix.starts_with("was requested by maintainer"))
         || ["is not requested", "was not requested", "? no"]
