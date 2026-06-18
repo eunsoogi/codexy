@@ -1,4 +1,5 @@
 mod agent_registration;
+mod completion_handoff;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;
@@ -26,6 +27,10 @@ pub enum Mode {
     MergeMessage {
         expected_issue: u64,
         message: String,
+    },
+    CompletionHandoff {
+        handoff: String,
+        pr_state: String,
     },
     Mcp,
     Hooks,
@@ -58,6 +63,9 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             expected_issue,
             message,
         } => merge_message::check(expected_issue, &message),
+        Mode::CompletionHandoff { handoff, pr_state } => {
+            completion_handoff::check(&handoff, &pr_state)
+        }
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
