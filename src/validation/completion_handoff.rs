@@ -29,6 +29,7 @@ fn is_clean_open_pr(pr_state: &Value) -> bool {
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
     if has_unnegated_phrase(&text, "not complete until merge", 16) {
+        text = text.replace("verification completed.", "verification evidence.");
         for phrase in [
             "successfully completed",
             "completed",
@@ -47,15 +48,11 @@ fn claims_completion(handoff: &str) -> bool {
         "implementation is complete",
         "complete after opening pr",
         "complete after pr",
-        "complete.",
-        "complete\n",
         "successfully completed",
         "completed",
         "finished",
         "finalized",
         "all set",
-        "done.",
-        "done\n",
         "done after opening pr",
         "done after pr",
         "is done",
@@ -121,13 +118,16 @@ fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
 }
 fn has_false_deferral_label(text: &str, start: usize, after_index: usize) -> bool {
     let suffix = text[after_index..].trim_start_matches([' ', '\t']);
-    if ["is not requested", "was not requested"]
+    if ["is not requested", "was not requested", "? no"]
         .iter()
         .any(|phrase| {
             suffix
                 .strip_prefix(phrase)
                 .is_some_and(starts_with_boundary)
         })
+        || suffix
+            .strip_prefix('\n')
+            .is_some_and(|value| has_false_label_value(value.trim_start_matches([' ', '\t'])))
         || (text[char_window_start(text, start, 80)..start]
             .trim_start()
             .starts_with("no explicit")
@@ -144,6 +144,9 @@ fn has_false_deferral_label(text: &str, start: usize, after_index: usize) -> boo
     if matches!(value.chars().next(), None | Some('\n' | '\r' | '.' | ';')) {
         return true;
     }
+    has_false_label_value(value)
+}
+fn has_false_label_value(value: &str) -> bool {
     [
         "none",
         "false",
@@ -177,7 +180,6 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
     }
     false
 }
-
 fn has_unnegated_word(text: &str, word: &str, negation_window: usize) -> bool {
     let mut rest = text;
     let mut offset = 0;

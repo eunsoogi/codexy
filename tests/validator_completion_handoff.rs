@@ -38,7 +38,6 @@ fn validator_cli_rejects_completion_claim_that_only_says_waiting_for_merge() -> 
         "validator should reject completion claims that merely say they are waiting for merge",
     )
 }
-
 #[test]
 fn validator_cli_rejects_completion_claim_that_negates_explicit_stop() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -61,6 +60,8 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: not requested. Work is complete after PR #128.\n",
         "No-merge instruction: no. Work is complete after PR #128.\n",
         "No-merge instruction: N/A. Work is complete after PR #128.\n",
+        "No-merge instruction\nNone.\nWork is complete after PR #128.\n",
+        "Maintainer requested no merge? No. Work is complete after PR #128.\n",
         "No-merge instruction:\nWork is complete after PR #128.\n",
         "Draft-only instruction: not applicable. Work is complete after PR #128.\n",
         "Draft-only instruction was not requested. Work is complete after PR #128.\n",
@@ -94,7 +95,6 @@ fn validator_cli_rejects_parent_orchestrator_wait_as_maintainer_deferral() -> Te
         "validator should reject non-maintainer wait requests as explicit deferrals",
     )
 }
-
 #[test]
 fn validator_cli_rejects_unchecked_checklist_deferral() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -183,6 +183,7 @@ fn validator_cli_accepts_negated_completion_claim_after_pr() -> TestResult {
         "This lane is incomplete after PR #128.\n",
         "Work isn't complete.\n",
         "Verification completed; this lane is not complete until merge.\n",
+        "Verification completed. This lane is not complete until merge.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -191,7 +192,6 @@ fn validator_cli_accepts_negated_completion_claim_after_pr() -> TestResult {
     }
     Ok(())
 }
-
 fn validate_completion_handoff(
     handoff_path: &std::path::Path,
     pr_state_path: &std::path::Path,
