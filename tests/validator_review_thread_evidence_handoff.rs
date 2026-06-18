@@ -132,6 +132,22 @@ fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> T
 }
 
 #[test]
+fn validator_allows_no_review_feedback_with_unrelated_fix_without_threads() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review feedback: none from Codex. Fixed the failing test.\n",
+        r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not treat unrelated fixes after no-review-feedback text as review feedback responses\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed the Codex review feedback on the current head.\n",

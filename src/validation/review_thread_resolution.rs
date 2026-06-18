@@ -41,8 +41,6 @@ fn is_unresolved_thread(thread: &Value) -> bool {
 
 fn claims_review_response(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    let has_review_feedback = has_any(&text, &["review response", "review feedback"])
-        || has_any(&text, &["review thread", "review comments"]);
     has_any(
         &text,
         &[
@@ -51,10 +49,11 @@ fn claims_review_response(handoff: &str) -> bool {
             "no-change rationale documented",
             "no change rationale documented",
         ],
-    ) || (has_review_feedback
-        && ["addressed", "fixed", "responded"]
+    ) || review_feedback_segments(&text).any(|segment| {
+        ["addressed", "fixed", "responded"]
             .iter()
-            .any(|phrase| has_unnegated_action(&text, phrase)))
+            .any(|phrase| has_unnegated_action(segment, phrase))
+    })
 }
 
 fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool {
@@ -73,6 +72,13 @@ fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool
 
 fn has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| text.contains(needle))
+}
+
+fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
+    text.split(['.', '\n', ';']).filter(|segment| {
+        has_any(segment, &["review response", "review feedback"])
+            || has_any(segment, &["review thread", "review comments"])
+    })
 }
 
 fn has_unnegated_action(text: &str, phrase: &str) -> bool {
