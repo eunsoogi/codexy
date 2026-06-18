@@ -150,11 +150,13 @@ pr=<pr>
 owner=<owner>
 repo=<repo>
 gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.base.json
-gh api graphql -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
-query($owner:String!, $name:String!, $number:Int!) {
+gh api graphql --paginate --slurp \
+  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
     pullRequest(number:$number) {
-      reviewThreads(first:100) {
+      reviewThreads(first:100, after:$endCursor) {
+        pageInfo { hasNextPage endCursor }
         nodes {
           id
           isResolved
@@ -165,11 +167,14 @@ query($owner:String!, $name:String!, $number:Int!) {
       }
     }
   }
-}' --jq '.data.repository.pullRequest.reviewThreads' > pr-state.reviewThreads.json
+}' > pr-state.reviewThreads.pages.json
+jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
+  | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
+  pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
   '. + {reviewThreads: $reviewThreads[0]}' \
   pr-state.base.json > pr-state.json
-rm -f pr-state.base.json pr-state.reviewThreads.json
+rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json
 scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file pr-state.json
 ```
 

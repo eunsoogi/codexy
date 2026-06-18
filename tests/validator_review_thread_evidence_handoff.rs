@@ -45,11 +45,13 @@ fn validator_rejects_missing_no_change_rationale_labels() -> TestResult {
 }
 #[test]
 fn validator_treats_review_comments_as_review_response() -> TestResult {
-    assert_requires_threads("Addressed Codex review comments on the current head.\n")
+    assert_requires_threads("Addressed Codex review comments on the current head.\n")?;
+    assert_requires_threads("Addressed the Codex review comment on the current head.\n")
 }
 #[test]
 fn validator_treats_review_suggestions_as_review_response() -> TestResult {
-    assert_requires_threads("Addressed Codex review suggestions on the current head.\n")
+    assert_requires_threads("Addressed Codex review suggestions on the current head.\n")?;
+    assert_requires_threads("Addressed the Codex review suggestion on the current head.\n")
 }
 #[test]
 fn validator_treats_resolved_review_comments_as_review_response() -> TestResult {
@@ -82,6 +84,14 @@ fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
     assert_handoff_fails(
         "Review response: addressed current head. PR ready for parent handoff.\n",
         r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"nodes":[{}]}}"#,
+        "incomplete reviewThreads.nodes",
+    )
+}
+#[test]
+fn validator_rejects_partial_review_thread_evidence() -> TestResult {
+    assert_handoff_fails(
+        "Review response: addressed current head. PR ready for parent handoff.\n",
+        partial_review_thread_pr_state(),
         "incomplete reviewThreads.nodes",
     )
 }
@@ -180,31 +190,9 @@ fn assert_success(output: &std::process::Output) {
         String::from_utf8_lossy(&output.stderr)
     );
 }
-fn outdated_unresolved_review_thread_pr_state() -> &'static str {
-    r#"{
-        "number": 134,
-        "state": "OPEN",
-        "isDraft": false,
-        "mergeStateStatus": "CLEAN",
-        "reviewDecision": "APPROVED",
-        "reviewThreads": {
-            "nodes": [
-                {
-                    "id": "PRRT_kwDOOutdated",
-                    "isResolved": false,
-                    "isOutdated": true,
-                    "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {
-                        "nodes": [
-                            {
-                                "url": "https://github.com/eunsoogi/codexy/pull/134#discussion_r3435715837"
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
-    }"#
+fn outdated_unresolved_review_thread_pr_state() -> String {
+    unresolved_review_thread_with_id_pr_state("PRRT_kwDOOutdated")
+        .replace("\"isOutdated\": false", "\"isOutdated\": true")
 }
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -219,6 +207,12 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
 }
 fn unresolved_review_thread_pr_state() -> String {
     unresolved_review_thread_with_id_pr_state("PRRT_kwDOExample")
+}
+fn partial_review_thread_pr_state() -> String {
+    unresolved_review_thread_with_id_pr_state("PRRT_kwDOPartial").replace(
+        "\"nodes\": [",
+        "\"pageInfo\":{\"hasNextPage\":true,\"endCursor\":\"cursor\"},\"nodes\": [",
+    )
 }
 fn unresolved_review_thread_with_id_pr_state(id: &str) -> String {
     format!(

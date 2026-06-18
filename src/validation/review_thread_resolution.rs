@@ -1,15 +1,18 @@
 use serde_json::Value;
+const MISSING_REVIEW_THREADS: &str =
+    "review response handoff missing reviewThreads.nodes PR state evidence";
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !claims_review_response(handoff) {
         return Vec::new();
     }
-    let Some(nodes) = review_thread_nodes(pr_state) else {
-        return vec![
-            "review response handoff missing reviewThreads.nodes PR state evidence".into(),
-        ];
+    let Some(threads) = pr_state.get("reviewThreads") else {
+        return vec![MISSING_REVIEW_THREADS.into()];
     };
-    if let Some(error) = super::review_thread_evidence::check_nodes(nodes) {
+    let Some(nodes) = review_thread_nodes(threads) else {
+        return vec![MISSING_REVIEW_THREADS.into()];
+    };
+    if let Some(error) = super::review_thread_evidence::check(threads) {
         return vec![error];
     }
     let Some(unresolved) = nodes
@@ -24,11 +27,8 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         thread_label(unresolved)
     )]
 }
-fn review_thread_nodes(pr_state: &Value) -> Option<&Vec<Value>> {
-    pr_state
-        .get("reviewThreads")
-        .and_then(|threads| threads.get("nodes"))
-        .and_then(Value::as_array)
+fn review_thread_nodes(threads: &Value) -> Option<&Vec<Value>> {
+    threads.get("nodes").and_then(Value::as_array)
 }
 fn claims_review_response(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
@@ -67,7 +67,7 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
     text.split_inclusive(['.', '\n', ';'])
         .filter(move |segment| {
             let has_context =
-                "review response|review feedback|review thread|review comments|review suggestions"
+                "review response|review feedback|review thread|review comment|review comments|review suggestion|review suggestions"
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();

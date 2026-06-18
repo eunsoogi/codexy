@@ -1,6 +1,19 @@
 use serde_json::Value;
 
-pub(super) fn check_nodes(nodes: &[Value]) -> Option<String> {
+pub(super) fn check(threads: &Value) -> Option<String> {
+    if threads
+        .get("pageInfo")
+        .and_then(|page| page.get("hasNextPage"))
+        .and_then(Value::as_bool)
+        == Some(true)
+    {
+        return Some(
+            "incomplete reviewThreads.nodes PR state evidence: pagination hasNextPage true".into(),
+        );
+    }
+    check_nodes(threads.get("nodes").and_then(Value::as_array)?)
+}
+fn check_nodes(nodes: &[Value]) -> Option<String> {
     nodes.iter().enumerate().find_map(|(index, thread)| {
         let missing = [
             ("id", !has_string(thread, "id")),
