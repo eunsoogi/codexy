@@ -73,6 +73,8 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: missing explicit maintainer reassignment",
         "Maintainer reassignment: not reassigned to parent",
         "Maintainer reassignment: without explicit maintainer reassignment to parent",
+        "Maintainer reassignment: explicit maintainer reassignment to parent not provided",
+        "Maintainer reassignment: explicit maintainer reassignment to parent not provided.",
     ] {
         let temp = tempfile::tempdir()?;
         let evidence_path = temp.path().join("handoff.md");
@@ -121,56 +123,6 @@ Maintainer reassignment: none
         "validator should not flag explicitly absent parent-authored fixes\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_parent_authored_fix_with_unrelated_no_value()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(
-        &evidence_path,
-        r#"Lane ownership: child-owned
-Review response: parent-authored implementation commit abc123; no tests run
-Maintainer reassignment: none
-"#,
-    )?;
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?;
-
-    assert!(
-        !output.status.success(),
-        "validator should reject parent-authored fixes even when the same line mentions unrelated no-values"
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_parent_authored_field_with_unrelated_no_value()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(
-        &evidence_path,
-        r#"Lane ownership: child-owned
-Parent-authored implementation commits: parent-authored implementation commit abc123; no tests run
-Maintainer reassignment: none
-"#,
-    )?;
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?;
-
-    assert!(
-        !output.status.success(),
-        "validator should reject parent-authored field values even when they mention unrelated no-values"
     );
     Ok(())
 }

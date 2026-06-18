@@ -29,7 +29,10 @@ fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
 fn has_parent_authored_fix(evidence: &str) -> bool {
     evidence.lines().any(|line| {
         let line = line.trim();
-        if line.contains("parent-authored") && !has_negative_field_value(line, "parent-authored") {
+        if line.contains("parent-authored")
+            && !has_negative_field_value(line, "parent-authored")
+            && !has_absent_parent_authored_phrase(line)
+        {
             return line.contains("implementation")
                 || line.contains("review-response")
                 || line.contains("review response")
@@ -65,17 +68,27 @@ fn is_positive_reassignment_value(value: &str) -> bool {
 }
 
 fn is_negative_reassignment_value(value: &str) -> bool {
+    let value = trimmed_value(value);
     has_absent_value(value)
         || value.starts_with("no ")
         || value.starts_with("missing ")
         || value.starts_with("absent ")
         || value.starts_with("not ")
         || value.starts_with("without ")
+        || value.ends_with(" not provided")
 }
 
 fn has_absent_value(value: &str) -> bool {
-    let value = value.trim_matches(|character: char| {
-        character.is_ascii_whitespace() || matches!(character, '.' | ',' | ';')
-    });
+    let value = trimmed_value(value);
     matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
+}
+
+fn has_absent_parent_authored_phrase(line: &str) -> bool {
+    line.contains("no parent-authored") && !line.contains("; parent-authored")
+}
+
+fn trimmed_value(value: &str) -> &str {
+    value.trim_matches(|character: char| {
+        character.is_ascii_whitespace() || matches!(character, '.' | ',' | ';')
+    })
 }
