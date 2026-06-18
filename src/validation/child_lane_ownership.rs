@@ -161,6 +161,12 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     {
         return has_fix_marker(line) || has_affirmative_implementation_field(line);
     }
+    if line.contains("orchestrator authored")
+        && !has_negative_field_value(line, "orchestrator")
+        && !has_absent_actor_phrase(line, "orchestrator", "authored")
+    {
+        return has_fix_marker(line) || has_affirmative_implementation_field(line);
+    }
     (line.contains("parent implemented")
         || line.contains("parent fixed")
         || line.contains("parent pushed")

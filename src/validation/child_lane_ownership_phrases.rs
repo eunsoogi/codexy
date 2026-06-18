@@ -36,7 +36,9 @@ pub(super) fn has_fix_marker(line: &str) -> bool {
 
 pub(super) fn has_affirmative_implementation_field(line: &str) -> bool {
     field_value(line, "parent-authored implementation")
+        .or_else(|| field_value(line, "parent authored implementation"))
         .or_else(|| field_value(line, "orchestrator-authored implementation"))
+        .or_else(|| field_value(line, "orchestrator authored implementation"))
         .is_some_and(|value| matches!(trimmed_value(value), "yes" | "true"))
 }
 
@@ -71,6 +73,8 @@ pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
                 "requested",
                 "needed",
                 "required",
+                "denied",
+                "rejected",
             ]
             .into_iter()
             .any(|qualifier| key.contains(qualifier))
