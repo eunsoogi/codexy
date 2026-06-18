@@ -12,21 +12,16 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if let Some(error) = super::review_thread_evidence::check_nodes(nodes) {
         return vec![error];
     }
-    let unresolved = nodes
+    let Some(unresolved) = nodes
         .iter()
-        .filter(|thread| {
-            thread
-                .get("isResolved")
-                .and_then(Value::as_bool)
-                .is_some_and(|resolved| !resolved)
-        })
-        .find(|thread| !documents_accepted_no_change_rationale(handoff, thread));
-    if unresolved.is_none() {
+        .filter(|thread| thread.get("isResolved").and_then(Value::as_bool) == Some(false))
+        .find(|thread| !documents_accepted_no_change_rationale(handoff, thread))
+    else {
         return Vec::new();
-    }
+    };
     vec![format!(
         "unresolved review thread remains after addressed review feedback: {}; resolve fixed threads after current-head verification or document an accepted no-change rationale",
-        thread_label(unresolved.expect("checked unresolved thread"))
+        thread_label(unresolved)
     )]
 }
 fn review_thread_nodes(pr_state: &Value) -> Option<&Vec<Value>> {
@@ -71,13 +66,14 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
     let mut section = false;
     text.split_inclusive(['.', '\n', ';'])
         .filter(move |segment| {
-            let has_context = has_any(segment, &["review response", "review feedback"])
-                || has_any(segment, &["review thread", "review comments"]);
+            let has_context =
+                "review response|review feedback|review thread|review comments|review suggestions"
+                    .split('|')
+                    .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();
-            let bullet = trimmed.starts_with('-');
-            let matches = has_context || (section && bullet);
+            let matches = has_context || (section && trimmed.starts_with('-'));
             section = (has_context && segment.trim_end().ends_with(':'))
-                || (section && (bullet || trimmed.is_empty()));
+                || (section && (trimmed.starts_with('-') || trimmed.is_empty()));
             matches
         })
 }

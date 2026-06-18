@@ -40,6 +40,10 @@ fn validator_treats_review_comments_as_review_response() -> TestResult {
     assert_requires_threads("Addressed Codex review comments on the current head.\n")
 }
 #[test]
+fn validator_treats_review_suggestions_as_review_response() -> TestResult {
+    assert_requires_threads("Addressed Codex review suggestions on the current head.\n")
+}
+#[test]
 fn validator_treats_resolved_review_comments_as_review_response() -> TestResult {
     assert_requires_threads("Resolved Codex review comments on the current head.\n")
 }
