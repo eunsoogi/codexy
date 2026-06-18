@@ -67,7 +67,7 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
     text.split_inclusive(['.', '\n', ';'])
         .filter(move |segment| {
             let has_context =
-                "review response|review feedback|review thread|review comment|review comments|review suggestion|review suggestions"
+                "codex review|codex feedback|review response|review feedback|review thread|review comment|review comments|review suggestion|review suggestions"
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();

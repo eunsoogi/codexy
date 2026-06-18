@@ -54,6 +54,11 @@ fn validator_treats_review_suggestions_as_review_response() -> TestResult {
     assert_requires_threads("Addressed the Codex review suggestion on the current head.\n")
 }
 #[test]
+fn validator_treats_codex_review_feedback_as_review_response() -> TestResult {
+    assert_requires_threads("Codex review:\n- Fixed the requested changes.\n")?;
+    assert_requires_threads("Addressed actionable Codex feedback.\n")
+}
+#[test]
 fn validator_treats_resolved_review_comments_as_review_response() -> TestResult {
     assert_requires_threads("Resolved Codex review comments on the current head.\n")
 }
