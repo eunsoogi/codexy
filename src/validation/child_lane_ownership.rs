@@ -113,7 +113,7 @@ fn has_passive_parent_fix(line: &str) -> bool {
 }
 
 fn has_fix_marker(line: &str) -> bool {
-    "implementation|review-response|review response|fix|commit"
+    "review-response|review response|fix|commit"
         .split('|')
         .any(|marker| line.contains(marker))
 }
@@ -175,8 +175,8 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.ends_with(" not granted")
         || value.ends_with(" was not granted")
         || value.ends_with(" not been granted")
-        || value.ends_with(" was denied")
-        || value.ends_with(" was rejected")
+        || value.contains(" was denied")
+        || value.contains(" was rejected")
         || value.ends_with(" requested")
         || value.ends_with(" needed")
         || value.ends_with(" pending")

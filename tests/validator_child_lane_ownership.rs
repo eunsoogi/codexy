@@ -117,6 +117,7 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: explicit maintainer reassignment to parent was not granted",
         "Maintainer reassignment: explicit maintainer reassignment to parent has not been granted",
         "Maintainer reassignment: explicit maintainer reassignment to parent was denied",
+        "Maintainer reassignment: explicit maintainer reassignment to parent was denied by @maintainer",
         "Maintainer reassignment: explicit maintainer reassignment to parent was rejected",
         "Maintainer reassignment: explicit maintainer reassignment to parent requested",
         "Maintainer reassignment: explicit maintainer reassignment to the parent is missing",
@@ -176,27 +177,32 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_child_owned_lane_without_parent_authored_fixes()
 -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(
-        &evidence_path,
+    for evidence in [
         r#"Lane ownership: child-owned
 PR: #129
 Review response: child-authored commit def456 fixed feedback.
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Lane ownership: child-owned
+Parent-authored implementation draft diff was routed to the child
+Maintainer reassignment: none
+"#,
+    ] {
+        let temp = tempfile::tempdir()?;
+        let evidence_path = temp.path().join("handoff.md");
+        std::fs::write(&evidence_path, evidence)?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?;
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args(["--check-child-lane-ownership", "--evidence-file"])
+            .arg(&evidence_path)
+            .output()?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow child-authored child lane evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should allow non-commit child-lane evidence\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
