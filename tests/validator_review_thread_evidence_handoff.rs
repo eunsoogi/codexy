@@ -29,35 +29,26 @@ fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> Test
 }
 #[test]
 fn validator_treats_review_comments_as_review_response() -> TestResult {
-    assert_handoff_fails(
-        "Addressed Codex review comments on the current head.\n",
-        NORMAL_OPEN_PR_STATE,
-        "reviewThreads.nodes",
-    )
+    assert_requires_threads("Addressed Codex review comments on the current head.\n")
 }
 #[test]
 fn validator_treats_resolved_review_comments_as_review_response() -> TestResult {
-    assert_handoff_fails(
-        "Resolved Codex review comments on the current head.\n",
-        NORMAL_OPEN_PR_STATE,
-        "reviewThreads.nodes",
-    )
+    assert_requires_threads("Resolved Codex review comments on the current head.\n")
+}
+#[test]
+fn validator_treats_present_tense_review_actions_as_review_response() -> TestResult {
+    assert_requires_threads("Review response: this fixes the Codex review feedback.\n")?;
+    assert_requires_threads("This resolves the review comments.\n")
 }
 #[test]
 fn validator_preserves_review_feedback_context_across_section_breaks() -> TestResult {
-    assert_handoff_fails(
+    assert_requires_threads(
         "Review feedback:\n- Addressed all requested changes on the current head.\n",
-        NORMAL_OPEN_PR_STATE,
-        "reviewThreads.nodes",
     )
 }
 #[test]
 fn validator_preserves_review_feedback_context_across_all_bullets() -> TestResult {
-    assert_handoff_fails(
-        "Review feedback:\n- Verification rerun.\n- Fixed the Codex comment.\n",
-        NORMAL_OPEN_PR_STATE,
-        "reviewThreads.nodes",
-    )
+    assert_requires_threads("Review feedback:\n- Verification rerun.\n- Fixed the Codex comment.\n")
 }
 #[test]
 fn validator_allows_unresolved_status_without_action_word_match() -> TestResult {
@@ -96,6 +87,15 @@ fn validator_allows_no_review_feedback_with_unrelated_fix_without_threads() -> T
     )
 }
 #[test]
+fn validator_limits_no_feedback_negation_to_current_clause() -> TestResult {
+    assert_requires_threads(
+        "No review feedback was left unresolved. Review response: fixed the Codex review feedback.\n",
+    )?;
+    assert_requires_threads(
+        "Review response: no review feedback was left unresolved, fixed the Codex review feedback.\n",
+    )
+}
+#[test]
 fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> TestResult {
     assert_handoff_succeeds(
         "Review feedback: none from Codex, fixed the failing test.\n",
@@ -104,11 +104,7 @@ fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> T
 }
 #[test]
 fn validator_limits_negation_to_matched_review_action() -> TestResult {
-    assert_handoff_fails(
-        "Review feedback: did not change the API, fixed the requested test.\n",
-        NORMAL_OPEN_PR_STATE,
-        "reviewThreads.nodes",
-    )
+    assert_requires_threads("Review feedback: did not change the API, fixed the requested test.\n")
 }
 #[test]
 fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestResult {
@@ -138,6 +134,9 @@ fn assert_handoff_fails(handoff: &str, pr_state: impl AsRef<str>, needle: &str) 
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
     assert_failure_contains(&output, needle);
     Ok(())
+}
+fn assert_requires_threads(handoff: &str) -> TestResult {
+    assert_handoff_fails(handoff, NORMAL_OPEN_PR_STATE, "reviewThreads.nodes")
 }
 fn assert_handoff_succeeds(handoff: &str, pr_state: impl AsRef<str>) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;

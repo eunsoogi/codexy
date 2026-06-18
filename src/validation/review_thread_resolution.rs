@@ -46,8 +46,8 @@ fn claims_review_response(handoff: &str) -> bool {
             "no change rationale documented",
         ],
     ) || review_feedback_segments(&text).any(|segment| {
-        ["addressed", "fixed", "responded", "resolved", "resolve"]
-            .iter()
+        "addressed fixed fixes responded resolved resolve resolves"
+            .split_whitespace()
             .any(|phrase| has_unnegated_action(segment, phrase))
     })
 }
@@ -102,10 +102,10 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
                 "review thread: none",
                 "review comments: none",
                 "none from codex",
-                "no review feedback was ",
-                "no review feedback ",
             ],
-        ) && !has_any(local_prefix, &["no feedback was ", "no feedback ", "not "])
+        ) && !"no review feedback was |no review feedback |no feedback was |no feedback |not "
+            .split('|')
+            .any(|negation| local_prefix.contains(negation))
         {
             return true;
         }
