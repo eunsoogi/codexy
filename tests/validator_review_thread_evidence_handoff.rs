@@ -52,6 +52,43 @@ fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review passed. Fixed the failing test.\n",
+        r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not treat unrelated fixes as review feedback responses\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review feedback on the current head.\n",
+        outdated_unresolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should require resolution for addressed outdated review threads\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOOutdated"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
@@ -59,6 +96,33 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(&pr_state_path, pr_state)?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn outdated_unresolved_review_thread_pr_state() -> &'static str {
+    r#"{
+        "number": 134,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "reviewThreads": {
+            "nodes": [
+                {
+                    "id": "PRRT_kwDOOutdated",
+                    "isResolved": false,
+                    "isOutdated": true,
+                    "path": "src/validation/review_thread_resolution.rs",
+                    "comments": {
+                        "nodes": [
+                            {
+                                "url": "https://github.com/eunsoogi/codexy/pull/134#discussion_r3435715837"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }"#
 }
 
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {

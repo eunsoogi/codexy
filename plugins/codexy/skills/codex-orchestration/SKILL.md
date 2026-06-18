@@ -200,8 +200,9 @@ edits.
   `scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`
   and fix the claim or continue through merge instead of marking the lane done.
   If the report discusses addressed review feedback, the PR state evidence must
-  include GraphQL `reviewThreads.nodes`; unresolved non-outdated threads remain
-  invalid unless the report documents an accepted no-change rationale.
+  include GraphQL `reviewThreads.nodes`; addressed unresolved threads,
+  including outdated-but-fixed threads, remain invalid unless the report
+  documents an accepted no-change rationale.
 - Reserve `blocked` for repeated true impasses where the orchestrator cannot
   make meaningful progress without user input or an external state change.
 - Maintain a visible todo list with real `update_plan` or todo-tool state for

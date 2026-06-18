@@ -58,9 +58,10 @@ complete.
   review threads, and Codex connector output on the current head.
 - When a handoff or final answer reports addressed review feedback, include
   GraphQL `reviewThreads.nodes` in the PR state evidence and run
-  `scripts/validate-plugin-config --check-completion-handoff`; unresolved
-  non-outdated threads must be resolved or covered by an accepted no-change
-  rationale before readiness evidence is accepted.
+  `scripts/validate-plugin-config --check-completion-handoff`; addressed
+  unresolved threads, including outdated-but-fixed threads, must be resolved or
+  covered by an accepted no-change rationale before readiness evidence is
+  accepted.
 - For child-owned PRs, route actionable review feedback back to the owning
   child thread. The parent thread may coordinate, but it must not merge until
   the child thread returns current verification or a documented non-change

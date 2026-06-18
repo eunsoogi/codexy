@@ -14,7 +14,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     }
     let unresolved = nodes
         .iter()
-        .filter(|thread| is_unresolved_current_thread(thread))
+        .filter(|thread| is_unresolved_thread(thread))
         .find(|thread| !documents_accepted_no_change_rationale(handoff, thread));
     if unresolved.is_none() {
         return Vec::new();
@@ -32,28 +32,20 @@ fn review_thread_nodes(pr_state: &Value) -> Option<&Vec<Value>> {
         .and_then(Value::as_array)
 }
 
-fn is_unresolved_current_thread(thread: &Value) -> bool {
+fn is_unresolved_thread(thread: &Value) -> bool {
     thread
         .get("isResolved")
         .and_then(Value::as_bool)
         .is_some_and(|resolved| !resolved)
-        && !thread
-            .get("isOutdated")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
 }
 
 fn claims_review_response(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    has_any(
+    let has_review_feedback = has_any(
         &text,
-        &[
-            "review response",
-            "review feedback",
-            "review thread",
-            "codex review",
-        ],
-    ) && (has_any(
+        &["review response", "review feedback", "review thread"],
+    );
+    has_any(
         &text,
         &[
             "accepted no-change rationale",
@@ -61,9 +53,10 @@ fn claims_review_response(handoff: &str) -> bool {
             "no-change rationale documented",
             "no change rationale documented",
         ],
-    ) || ["addressed", "fixed", "responded"]
-        .iter()
-        .any(|phrase| has_unnegated_action(&text, phrase)))
+    ) || (has_review_feedback
+        && ["addressed", "fixed", "responded"]
+            .iter()
+            .any(|phrase| has_unnegated_action(&text, phrase)))
 }
 
 fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool {

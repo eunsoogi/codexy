@@ -153,9 +153,9 @@ scripts/validate-plugin-config --check-completion-handoff --handoff-file <report
 For review-response or review-feedback handoffs, the PR state file MUST also
 include GraphQL `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`,
 `path`, and comment URLs. The completion-handoff validator rejects addressed
-review-feedback reports when this thread evidence is missing, or when a
-non-outdated addressed thread remains unresolved without an accepted no-change
-rationale.
+review-feedback reports when this thread evidence is missing, or when any
+addressed unresolved thread, including an outdated-but-fixed thread, remains
+unresolved without an accepted no-change rationale.
 
 If the validator flags the report, either continue through review, merge,
 branch deletion, and post-merge main sync, or rewrite the report to state the
