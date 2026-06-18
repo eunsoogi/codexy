@@ -40,7 +40,7 @@ fn claims_review_response(handoff: &str) -> bool {
             "no change rationale documented",
         ],
     ) || review_feedback_segments(&text).any(|segment| {
-        "addressed applied fixed fixes handled implemented responded resolved resolve resolves updated"
+        "addressed addresses addressing applied fixed fixes handled implemented responded resolved resolve resolves updated"
             .split_whitespace()
             .any(|phrase| has_unnegated_action(segment, phrase))
     })
@@ -70,10 +70,12 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();
+            let no_feedback = segment.contains(": none") || segment.contains("none from codex");
             let matches = has_context || (section && !trimmed.is_empty());
-            section = (has_context && segment.trim_end().ends_with(':'))
-                || (segment.contains("review response:") && !segment.contains("review response: none"))
-                || (section && (trimmed.starts_with('-') || trimmed.is_empty()));
+            section = !no_feedback
+                && ((has_context && (segment.trim_end().ends_with(':') || trimmed.starts_with('#')))
+                    || segment.contains("review response:")
+                    || (section && (trimmed.starts_with('-') || trimmed.is_empty())));
             matches
         })
 }
@@ -121,14 +123,10 @@ fn is_word_match(text: &str, start: usize, end: usize) -> bool {
         && !b.get(end).is_some_and(u8::is_ascii_alphanumeric)
 }
 fn local_action_prefix(prefix: &str) -> &str {
-    let punctuation = prefix.rfind(['\n', ',', ';']).map(|index| index + 1);
-    let sentence = prefix.rfind(". ").map(|index| index + 1);
-    let contrast = prefix.rfind(" but ").map(|index| index + 5);
-    let start = [punctuation, sentence, contrast]
-        .into_iter()
-        .flatten()
-        .max()
-        .unwrap_or(0);
+    let p = prefix.rfind(['\n', ',', ';']).map(|index| index + 1);
+    let s = prefix.rfind(". ").map(|index| index + 1);
+    let c = prefix.rfind(" but ").map(|index| index + 5);
+    let start = [p, s, c].into_iter().flatten().max().unwrap_or(0);
     &prefix[start..]
 }
 fn thread_label(thread: &Value) -> String {
