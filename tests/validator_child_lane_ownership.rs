@@ -36,28 +36,35 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_parent_authored_child_lane_fix_with_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(
-        &evidence_path,
-        r#"Lane ownership: child-owned
-PR: #128
-Review response: parent-authored implementation commit abc123 fixed feedback.
-Maintainer reassignment: explicit maintainer reassignment to parent in thread.
-"#,
-    )?;
+    for phrase in [
+        "Maintainer reassignment: explicit maintainer reassignment to parent in thread.",
+        "Maintainer reassignment: explicit maintainer reassignment to the parent",
+        "Maintainer reassignment: reassigns implementation ownership to the parent",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let evidence_path = temp.path().join("handoff.md");
+        std::fs::write(
+            &evidence_path,
+            format!(
+                "Lane ownership: child-owned\n\
+                 PR: #128\n\
+                 Review response: parent-authored implementation commit abc123 fixed feedback.\n\
+                 {phrase}\n"
+            ),
+        )?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?;
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args(["--check-child-lane-ownership", "--evidence-file"])
+            .arg(&evidence_path)
+            .output()?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow explicit maintainer reassignment\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should allow explicit maintainer reassignment phrase `{phrase}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

@@ -61,10 +61,15 @@ fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
 
 fn is_positive_reassignment_value(value: &str) -> bool {
     value.contains("explicit maintainer reassignment to parent")
+        || value.contains("explicit maintainer reassignment to the parent")
         || value.contains("explicit reassignment to parent")
+        || value.contains("explicit reassignment to the parent")
         || value.contains("reassigned to parent")
+        || value.contains("reassigned to the parent")
         || value.contains("reassigns implementation ownership to parent")
+        || value.contains("reassigns implementation ownership to the parent")
         || value.contains("reassigned implementation ownership to parent")
+        || value.contains("reassigned implementation ownership to the parent")
 }
 
 fn is_negative_reassignment_value(value: &str) -> bool {
