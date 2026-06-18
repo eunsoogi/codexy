@@ -128,12 +128,12 @@ Maintainer reassignment: none
 #[test]
 fn validator_treats_list_style_pr_metadata_as_boundary() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
-        r#"- PR: #1
+        r#"- [x] PR: #1
 - Lane ownership: child-owned
 - Review response: child-authored commit abc123 fixed feedback
 - Maintainer reassignment: none
 
-- PR: #2
+- [x] PR: #2
 - Review response: parent-authored implementation commit def456 fixed feedback
 - Lane ownership: parent-owned
 - Maintainer reassignment: none

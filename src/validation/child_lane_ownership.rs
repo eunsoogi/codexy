@@ -202,7 +202,7 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
         || has_present_actor_action(line, "orchestrator", "pushed")
         || has_present_actor_action(line, "parent", "implementation commit")
         || has_present_actor_action(line, "orchestrator", "implementation commit")
-        || line.contains("fixed in parent")
+        || has_present_fixed_in_parent_phrase(line)
         || has_present_actor_action(line, "parent", "patched")
         || has_present_actor_action(line, "orchestrator", "patched")
         || (line.contains("orchestrator authored")
@@ -224,4 +224,19 @@ fn has_present_actor_action(line: &str, actor: &str, marker: &str) -> bool {
     line.contains(&field)
         && !has_negative_field_value(line, &field)
         && !has_absent_actor_phrase(line, actor, marker)
+}
+fn has_present_fixed_in_parent_phrase(line: &str) -> bool {
+    line.contains("fixed in parent") && !has_absent_fixed_in_parent_phrase(line)
+}
+fn has_absent_fixed_in_parent_phrase(line: &str) -> bool {
+    ["no ", "not ", "without "]
+        .into_iter()
+        .map(|prefix| format!("{prefix}fixed in parent"))
+        .any(|absent_marker| {
+            let Some(index) = line.find(&absent_marker) else {
+                return false;
+            };
+            let after_absence = &line[index + absent_marker.len()..];
+            !after_absence.contains("fixed in parent")
+        })
 }

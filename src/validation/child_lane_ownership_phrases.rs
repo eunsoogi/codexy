@@ -64,19 +64,8 @@ pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
         let key = metadata_key(key);
         key.contains("maintainer reassignment")
             && (key.starts_with("[ ]")
-                || [
-                    "no",
-                    "not",
-                    "without",
-                    "missing",
-                    "absent",
-                    "pending",
-                    "requested",
-                    "needed",
-                    "required",
-                    "denied",
-                    "rejected",
-                ]
+                || "no|not|without|missing|absent|pending|requested|needed|required|denied|rejected"
+                    .split('|')
                 .into_iter()
                 .any(|qualifier| {
                     key.split(|character: char| !character.is_ascii_alphanumeric())
@@ -86,7 +75,11 @@ pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
 }
 
 pub(super) fn metadata_key(key: &str) -> &str {
-    key.trim().trim_start_matches(['-', '*']).trim_start()
+    let key = key.trim().trim_start_matches(['-', '*']).trim_start();
+    key.strip_prefix("[x]")
+        .or_else(|| key.strip_prefix("[X]"))
+        .unwrap_or(key)
+        .trim_start()
 }
 
 pub(super) fn is_positive_reassignment_value(value: &str) -> bool {
