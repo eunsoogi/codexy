@@ -8,6 +8,25 @@ fn validator_cli_rejects_completion_claim_with_clean_open_pr() -> TestResult {
     )
 }
 #[test]
+fn validator_cli_rejects_completion_claim_with_open_non_draft_pr() -> TestResult {
+    for merge_state in ["UNKNOWN", "BLOCKED", "UNSTABLE"] {
+        let output = validate_handoff_with_pr_state(
+            "Work is complete after PR #128.\n",
+            &format!(
+                r#"{{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"{merge_state}","reviewDecision":"APPROVED"}}"#
+            ),
+        )?;
+        assert!(
+            !output.status.success(),
+            "validator should fail closed for open non-draft PR state {merge_state}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("opening a PR is not completion"));
+    }
+    Ok(())
+}
+#[test]
 fn validator_cli_allows_explicit_stop_condition_with_clean_open_pr() -> TestResult {
     for handoff in [
         "Draft PR #128 is open per the stop condition. Parent orchestrator will handle review and merge gates; this lane is not complete.\n",
@@ -76,6 +95,8 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: maintainer did not request no merge. Work is complete after PR #128.\n",
         "No-merge instruction: maintainer requested a Codex review only. Work is complete after PR #128.\n",
         "No-merge instruction from maintainer was not requested. Work is complete after PR #128.\n",
+        "No-merge instruction. Work is complete after PR #128.\n",
+        "Draft-only instruction\nWork is complete after PR #128.\n",
         "No-merge instruction\nNone.\nWork is complete after PR #128.\n",
         "Maintainer requested no merge? No. Work is complete after PR #128.\n",
         "No-merge instruction:\nWork is complete after PR #128.\n",

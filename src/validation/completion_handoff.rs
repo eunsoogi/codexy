@@ -7,26 +7,23 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if let Some(error) = pr_state_input_error(&pr_state) {
         return vec![error];
     }
-    if !is_clean_open_pr(&pr_state)
+    if !is_open_non_draft_pr(&pr_state)
         || !claims_completion(handoff)
         || states_explicit_deferral(handoff)
     {
         return Vec::new();
     }
     vec![format!(
-        "opening a PR is not completion: PR #{} is still open and mergeable; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
+        "opening a PR is not completion: PR #{} is still open; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
         pr_number(&pr_state)
     )]
 }
-fn is_clean_open_pr(pr_state: &Value) -> bool {
+fn is_open_non_draft_pr(pr_state: &Value) -> bool {
     string_field(pr_state, "state").is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))
         && !pr_state
             .get("isDraft")
             .and_then(Value::as_bool)
             .unwrap_or(false)
-        && string_field(pr_state, "mergeStateStatus").is_some_and(|status| {
-            matches!(status.to_ascii_uppercase().as_str(), "CLEAN" | "HAS_HOOKS")
-        })
 }
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
@@ -126,6 +123,15 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
         return true;
     }
     let Some(value) = suffix.strip_prefix(':') else {
+        if phrase.ends_with("instruction") {
+            return !["was requested by maintainer", "per maintainer"]
+                .iter()
+                .any(|phrase| {
+                    suffix
+                        .strip_prefix(phrase)
+                        .is_some_and(starts_with_boundary)
+                });
+        }
         return false;
     };
     let value = value.trim_start_matches([' ', '\t']);
