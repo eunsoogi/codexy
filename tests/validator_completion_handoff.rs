@@ -63,6 +63,8 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
     for handoff in [
         "No-merge instruction: none. Work is complete after PR #128.\n",
         "No-merge instruction: false. Work is complete after PR #128.\n",
+        "No-merge instruction: not requested. Work is complete after PR #128.\n",
+        "No-merge instruction: no. Work is complete after PR #128.\n",
         "No-merge instruction: . Work is complete after PR #128.\n",
     ] {
         reject_open_pr_completion_handoff(
@@ -146,6 +148,8 @@ fn validator_cli_rejects_natural_completion_claims_after_pr() -> TestResult {
         "Complete!\n",
         "Complete after opening PR #128.\n",
         "Complete after PR #128.\n",
+        "Opened PR #128. Finished.\n",
+        "Opened PR #128. Finalized.\n",
         "Done",
         "Done — PR #128 is open.\n",
         "Done after opening PR #128.\n",

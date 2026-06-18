@@ -46,6 +46,8 @@ fn claims_completion(handoff: &str) -> bool {
         "complete\n",
         "successfully completed",
         "completed",
+        "finished",
+        "finalized",
         "all set",
         "done.",
         "done\n",
@@ -57,6 +59,8 @@ fn claims_completion(handoff: &str) -> bool {
     .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
         || has_unnegated_word(&text, "done", 16)
         || has_unnegated_word(&text, "complete", 16)
+        || has_unnegated_word(&text, "finish", 16)
+        || has_unnegated_word(&text, "finalize", 16)
 }
 
 fn states_explicit_deferral(handoff: &str) -> bool {
@@ -120,7 +124,7 @@ fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
     if matches!(value.chars().next(), None | Some('.') | Some(';')) {
         return true;
     }
-    ["none", "false"].iter().any(|word| {
+    ["none", "false", "not requested", "no"].iter().any(|word| {
         value
             .strip_prefix(word)
             .is_some_and(|rest| is_boundary(rest.chars().next()))
