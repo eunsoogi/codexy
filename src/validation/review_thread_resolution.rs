@@ -70,8 +70,9 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();
-            let matches = has_context || (section && trimmed.starts_with('-'));
+            let matches = has_context || (section && !trimmed.is_empty());
             section = (has_context && segment.trim_end().ends_with(':'))
+                || (segment.contains("review response:") && !segment.contains("review response: none"))
                 || (section && (trimmed.starts_with('-') || trimmed.is_empty()));
             matches
         })
@@ -120,12 +121,12 @@ fn is_word_match(text: &str, start: usize, end: usize) -> bool {
         && !b.get(end).is_some_and(u8::is_ascii_alphanumeric)
 }
 fn local_action_prefix(prefix: &str) -> &str {
-    let start = prefix
-        .rfind(['\n', ',', ';'])
-        .map(|index| index + 1)
+    let punctuation = prefix.rfind(['\n', ',', ';']).map(|index| index + 1);
+    let sentence = prefix.rfind(". ").map(|index| index + 1);
+    let contrast = prefix.rfind(" but ").map(|index| index + 5);
+    let start = [punctuation, sentence, contrast]
         .into_iter()
-        .chain(prefix.rfind(". ").map(|index| index + 1))
-        .chain(prefix.rfind(" but ").map(|index| index + 5))
+        .flatten()
         .max()
         .unwrap_or(0);
     &prefix[start..]

@@ -69,10 +69,11 @@ fn validator_treats_present_tense_review_actions_as_review_response() -> TestRes
     assert_requires_threads("This resolves the review comments.\n")
 }
 #[test]
-fn validator_preserves_review_feedback_context_across_section_breaks() -> TestResult {
+fn validator_preserves_review_response_context_across_follow_up_sentences() -> TestResult {
     assert_requires_threads(
         "Review feedback:\n- Addressed all requested changes on the current head.\n",
-    )
+    )?;
+    assert_requires_threads("Review response: current head verified. Addressed all feedback.\n")
 }
 #[test]
 fn validator_preserves_review_feedback_context_across_all_bullets() -> TestResult {
@@ -150,7 +151,6 @@ fn validator_allows_rationale_after_unrelated_no_blockers_summary() -> TestResul
         unresolved_review_thread_pr_state(),
     )
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: impl AsRef<str>) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
