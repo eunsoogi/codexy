@@ -85,6 +85,24 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_detects_fix_before_child_owned_line_in_same_lane()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"PR: #130
+Review response: parent-authored implementation commit abc123 fixed feedback
+Lane ownership: child-owned
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not depend on child-owned evidence preceding the parent-authored fix"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_reassignment_before_child_owned_lane() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(

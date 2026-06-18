@@ -14,6 +14,7 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
         "Review response: parent authored implementation commit abc123 fixed feedback.",
         "Review response: parent pushed commit abc123 to fix feedback",
         "Review response: orchestrator-authored implementation commit abc123 fixed feedback.",
+        "Orchestrator-authored implementation: yes",
         "Review response: orchestrator-authored review-response commit abc123 fixed feedback.",
         "Review response: orchestrator authored implementation commit abc123 fixed feedback.",
         "Review response: parent patched the child-owned branch with commit abc123",
