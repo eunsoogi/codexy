@@ -1,5 +1,4 @@
 use std::process::Command;
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 #[test]
 fn validator_cli_rejects_completion_claim_with_clean_open_pr() -> TestResult {
@@ -60,6 +59,9 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: not requested. Work is complete after PR #128.\n",
         "No-merge instruction: no. Work is complete after PR #128.\n",
         "No-merge instruction: N/A. Work is complete after PR #128.\n",
+        "No-merge instruction: parent orchestrator will handle merge. Work is complete after PR #128.\n",
+        "No-merge instruction: maintainer did not request no merge. Work is complete after PR #128.\n",
+        "No-merge instruction: not from maintainer. Work is complete after PR #128.\n",
         "No-merge instruction\nNone.\nWork is complete after PR #128.\n",
         "Maintainer requested no merge? No. Work is complete after PR #128.\n",
         "No-merge instruction:\nWork is complete after PR #128.\n",
@@ -149,6 +151,7 @@ fn validator_cli_rejects_natural_completion_claims_after_pr() -> TestResult {
     for handoff in [
         "The lane is complete after PR #128.\n",
         "The implementation is complete after PR #128.\n",
+        "This completes the task after PR #128.\n",
         "Complete",
         "Complete!\n",
         "Complete after opening PR #128.\n",
@@ -206,7 +209,6 @@ fn validate_completion_handoff(
         ])
         .output()?)
 }
-
 fn reject_open_pr_completion_handoff(handoff: &str, failure_message: &str) -> TestResult {
     let output = validate_open_pr_handoff(handoff)?;
     assert!(
@@ -222,7 +224,6 @@ fn reject_open_pr_completion_handoff(handoff: &str, failure_message: &str) -> Te
     );
     Ok(())
 }
-
 fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     let output = validate_open_pr_handoff(handoff)?;
     assert!(
@@ -233,7 +234,6 @@ fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     );
     Ok(())
 }
-
 fn validate_open_pr_handoff(
     handoff: &str,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
@@ -245,6 +245,5 @@ fn validate_open_pr_handoff(
         &pr_state_path,
         r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
     )?;
-
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
