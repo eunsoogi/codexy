@@ -17,13 +17,19 @@ fn is_child_owned(evidence: &str) -> bool {
 }
 
 fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
-    evidence.lines().any(|line| {
+    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
+    lines.iter().enumerate().any(|(index, line)| {
         let line = line.trim();
         if has_non_affirmative_reassignment_key(line) {
             return false;
         }
         let Some(value) = field_value(line, "maintainer reassignment") else {
             return false;
+        };
+        let value = if value.is_empty() {
+            next_line_bullet_value(&lines, index).unwrap_or(value)
+        } else {
+            value
         };
         is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
     })
@@ -68,6 +74,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             || line.contains("parent review-response")
             || line.contains("parent review response")
             || (line.contains("parent commit") && !has_absent_parent_phrase(line, "commit"))
+            || has_passive_parent_fix(line)
             || line.contains("patched by parent"))
             && !has_negative_field_value(line, "parent")
     })
@@ -92,6 +99,24 @@ fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
         return false;
     };
     has_absent_value(value.trim_start_matches(['-', '*']).trim())
+}
+
+fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
+    let value = lines.iter().skip(index + 1).find(|line| !line.is_empty())?;
+    value
+        .strip_prefix('-')
+        .or_else(|| value.strip_prefix('*'))
+        .map(str::trim)
+}
+
+fn has_passive_parent_fix(line: &str) -> bool {
+    let authored = line.contains(" by parent") || line.contains(" by orchestrator");
+    authored
+        && (line.contains("implementation")
+            || line.contains("review-response")
+            || line.contains("review response")
+            || line.contains("fix")
+            || line.contains("commit"))
 }
 
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {

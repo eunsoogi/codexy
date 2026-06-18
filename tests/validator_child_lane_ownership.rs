@@ -50,6 +50,7 @@ fn validator_allows_parent_authored_child_lane_fix_with_reassignment()
         "Maintainer reassignment: explicit maintainer reassignment to the parent",
         "Maintainer reassignment: explicit maintainer reassignment to orchestrator",
         "Maintainer reassignment: explicit maintainer reassignment to the orchestrator",
+        "Maintainer reassignment:\n- explicit maintainer reassignment to parent",
         "Maintainer reassignment: reassigns implementation ownership to the parent",
         "Maintainer reassignment: reassigns implementation ownership to the orchestrator",
     ] {
