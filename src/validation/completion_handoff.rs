@@ -102,6 +102,7 @@ fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usiz
         let absolute_index = offset + index;
         let after_index = absolute_index + phrase.len();
         if phrase_has_boundaries(text, absolute_index, after_index)
+            && !has_unchecked_checklist_marker_before(text, absolute_index)
             && !has_false_deferral_label_after(text, after_index)
         {
             let prefix_start = char_window_start(text, absolute_index, negation_window);
@@ -113,6 +114,10 @@ fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usiz
         rest = &text[offset..];
     }
     false
+}
+
+fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
+    text[..start].trim_end().ends_with("- [ ]")
 }
 
 fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {

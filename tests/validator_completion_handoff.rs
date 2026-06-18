@@ -94,6 +94,13 @@ fn validator_cli_rejects_parent_orchestrator_wait_as_maintainer_deferral() -> Te
 }
 
 #[test]
+fn validator_cli_rejects_unchecked_checklist_deferral() -> TestResult {
+    reject_open_pr_completion_handoff(
+        "- [ ] maintainer requested wait\nWork is complete after PR #128.\n",
+        "validator should reject unchecked checklist deferral options",
+    )
+}
+#[test]
 fn validator_cli_rejects_unrelated_maintainer_request_as_deferral() -> TestResult {
     reject_open_pr_completion_handoff(
         "Maintainer explicitly requested a Codex review. Work is complete after PR #128.\n",
