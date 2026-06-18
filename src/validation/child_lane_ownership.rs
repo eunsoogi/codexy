@@ -163,7 +163,8 @@ fn is_non_reassignment_metadata_field(line: &str) -> bool {
 fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
     if field_value(line, "parent-authored").is_some_and(str::is_empty)
-        && next_line_bullet_value(lines, index).is_some_and(has_absent_value)
+        && next_line_bullet_value(lines, index)
+            .is_some_and(|value| has_absent_value(value) || is_metadata_field(value))
     {
         return false;
     }
@@ -218,6 +219,10 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
         || has_passive_parent_fix(line)
         || line.contains("patched by parent"))
         && !has_negative_field_value(line, "parent")
+}
+fn is_metadata_field(line: &str) -> bool {
+    line.split_once(':')
+        .is_some_and(|(key, _)| !metadata_key(key).is_empty())
 }
 fn has_present_actor_action(line: &str, actor: &str, marker: &str) -> bool {
     let field = format!("{actor} {marker}");

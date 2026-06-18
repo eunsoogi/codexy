@@ -111,6 +111,10 @@ none
 Maintainer reassignment: none
 "#,
         r#"Lane ownership: child-owned
+Parent-authored implementation commits:
+Maintainer reassignment: none
+"#,
+        r#"Lane ownership: child-owned
 Parent-authored implementation commits: none; child-authored commit def456
 Maintainer reassignment: none
 "#,
