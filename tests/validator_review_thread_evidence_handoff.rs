@@ -9,7 +9,6 @@ fn validator_rejects_negated_no_change_rationale() -> TestResult {
         "Review response: addressed current head. No accepted no-change rationale documented for thread PRRT_kwDOExample.\n",
         unresolved_review_thread_pr_state(),
         "PRRT_kwDOExample",
-        "validator should reject negated no-change rationale text",
     )
 }
 #[test]
@@ -18,7 +17,6 @@ fn validator_rejects_post_label_negated_no_change_rationale() -> TestResult {
         "Review response: addressed current head. Accepted no-change rationale was not documented for thread PRRT_kwDOS6i-_86KixXq.\n",
         unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
         "PRRT_kwDOS6i-_86KixXq",
-        "validator should reject post-label negated no-change rationale text",
     )
 }
 #[test]
@@ -27,7 +25,6 @@ fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> Test
         "Review response: addressed current head. Accepted no-change rationale: was not documented for thread PRRT_kwDOS6i-_86KixXq.\n",
         unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
         "PRRT_kwDOS6i-_86KixXq",
-        "validator should reject punctuated post-label negated rationale text",
     )
 }
 #[test]
@@ -36,7 +33,6 @@ fn validator_treats_review_comments_as_review_response() -> TestResult {
         "Addressed Codex review comments on the current head.\n",
         NORMAL_OPEN_PR_STATE,
         "reviewThreads.nodes",
-        "validator should require reviewThreads.nodes for addressed review comments",
     )
 }
 #[test]
@@ -45,7 +41,6 @@ fn validator_treats_resolved_review_comments_as_review_response() -> TestResult 
         "Resolved Codex review comments on the current head.\n",
         NORMAL_OPEN_PR_STATE,
         "reviewThreads.nodes",
-        "validator should require reviewThreads.nodes for resolved review comments",
     )
 }
 #[test]
@@ -54,7 +49,6 @@ fn validator_preserves_review_feedback_context_across_section_breaks() -> TestRe
         "Review feedback:\n- Addressed all requested changes on the current head.\n",
         NORMAL_OPEN_PR_STATE,
         "reviewThreads.nodes",
-        "validator should preserve review-feedback context across section breaks",
     )
 }
 #[test]
@@ -63,7 +57,13 @@ fn validator_preserves_review_feedback_context_across_all_bullets() -> TestResul
         "Review feedback:\n- Verification rerun.\n- Fixed the Codex comment.\n",
         NORMAL_OPEN_PR_STATE,
         "reviewThreads.nodes",
-        "validator should preserve review-feedback context across all bullets",
+    )
+}
+#[test]
+fn validator_allows_unresolved_status_without_action_word_match() -> TestResult {
+    assert_handoff_succeeds(
+        "Review feedback: unresolved thread remains; this lane is not complete.\n",
+        NORMAL_OPEN_PR_STATE,
     )
 }
 #[test]
@@ -79,7 +79,6 @@ fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
             "reviewThreads": {"nodes": [{}]}
         }"#,
         "incomplete reviewThreads.nodes",
-        "validator should fail closed on incomplete review thread evidence",
     )
 }
 #[test]
@@ -87,7 +86,6 @@ fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> T
     assert_handoff_succeeds(
         "Codex review passed. Fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
-        "validator should not treat unrelated fixes as review feedback responses",
     )
 }
 #[test]
@@ -95,7 +93,6 @@ fn validator_allows_no_review_feedback_with_unrelated_fix_without_threads() -> T
     assert_handoff_succeeds(
         "Review feedback: none from Codex. Fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
-        "validator should not treat unrelated fixes after no-review-feedback text as review feedback responses",
     )
 }
 #[test]
@@ -103,7 +100,6 @@ fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> T
     assert_handoff_succeeds(
         "Review feedback: none from Codex, fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
-        "validator should not treat comma-separated no-review-feedback text as a response",
     )
 }
 #[test]
@@ -112,7 +108,6 @@ fn validator_limits_negation_to_matched_review_action() -> TestResult {
         "Review feedback: did not change the API, fixed the requested test.\n",
         NORMAL_OPEN_PR_STATE,
         "reviewThreads.nodes",
-        "validator should not let unrelated negation suppress the matched action",
     )
 }
 #[test]
@@ -121,7 +116,13 @@ fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestR
         "Review response: fixed the Codex review feedback on the current head.\n",
         outdated_unresolved_review_thread_pr_state(),
         "PRRT_kwDOOutdated",
-        "validator should require resolution for addressed outdated review threads",
+    )
+}
+#[test]
+fn validator_allows_rationale_after_unrelated_no_blockers_summary() -> TestResult {
+    assert_handoff_succeeds(
+        "No blockers. Accepted no-change rationale documented for thread PRRT_kwDOExample.\n",
+        unresolved_review_thread_pr_state(),
     )
 }
 
@@ -133,25 +134,20 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: impl AsRef<str>) -> O
     std::fs::write(&pr_state_path, pr_state.as_ref())?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
-fn assert_handoff_fails(
-    handoff: &str,
-    pr_state: impl AsRef<str>,
-    needle: &str,
-    message: &str,
-) -> TestResult {
+fn assert_handoff_fails(handoff: &str, pr_state: impl AsRef<str>, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
-    assert_failure_contains(&output, needle, message);
+    assert_failure_contains(&output, needle);
     Ok(())
 }
-fn assert_handoff_succeeds(handoff: &str, pr_state: impl AsRef<str>, message: &str) -> TestResult {
+fn assert_handoff_succeeds(handoff: &str, pr_state: impl AsRef<str>) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
-    assert_success(&output, message);
+    assert_success(&output);
     Ok(())
 }
-fn assert_failure_contains(output: &std::process::Output, needle: &str, message: &str) {
+fn assert_failure_contains(output: &std::process::Output, needle: &str) {
     assert!(
         !output.status.success(),
-        "{message}\nstdout:\n{}\nstderr:\n{}",
+        "validator should fail\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -161,10 +157,10 @@ fn assert_failure_contains(output: &std::process::Output, needle: &str, message:
         String::from_utf8_lossy(&output.stderr)
     );
 }
-fn assert_success(output: &std::process::Output, message: &str) {
+fn assert_success(output: &std::process::Output) {
     assert!(
         output.status.success(),
-        "{message}\nstdout:\n{}\nstderr:\n{}",
+        "validator should pass\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

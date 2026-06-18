@@ -86,6 +86,12 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
     let mut offset = 0;
     while let Some(index) = rest.find(phrase) {
         let start = offset + index;
+        let end = start + phrase.len();
+        if !is_word_match(text, start, end) {
+            offset = end;
+            rest = &text[offset..];
+            continue;
+        }
         let prefix = &text[..start];
         let local_prefix = local_action_prefix(prefix);
         if !has_any(
@@ -103,30 +109,25 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
         {
             return true;
         }
-        offset = start + phrase.len();
+        offset = end;
         rest = &text[offset..];
     }
     false
 }
-fn local_action_prefix(prefix: &str) -> &str {
-    let start = [
-        prefix.rfind('\n'),
-        prefix.rfind(". "),
-        prefix.rfind(','),
-        prefix.rfind(';'),
-    ]
-    .into_iter()
-    .flatten()
-    .max()
-    .map_or(0, |index| index + 1);
-    &prefix[start..]
+fn is_word_match(text: &str, start: usize, end: usize) -> bool {
+    let b = text.as_bytes();
+    !b.get(start.wrapping_sub(1))
+        .is_some_and(u8::is_ascii_alphanumeric)
+        && !b.get(end).is_some_and(u8::is_ascii_alphanumeric)
 }
-fn char_window_start(text: &str, end: usize, max_chars: usize) -> usize {
-    text[..end]
-        .char_indices()
-        .rev()
-        .nth(max_chars.saturating_sub(1))
-        .map_or(0, |(index, _)| index)
+fn local_action_prefix(prefix: &str) -> &str {
+    let start = prefix
+        .rfind(['\n', ',', ';'])
+        .into_iter()
+        .chain(prefix.rfind(". "))
+        .max()
+        .map_or(0, |index| index + 1);
+    &prefix[start..]
 }
 fn thread_label(thread: &Value) -> String {
     let id = thread
@@ -165,8 +166,7 @@ fn rationale_segments<'a>(text: &'a str, phrase: &str) -> impl Iterator<Item = &
     })
 }
 fn is_negated_rationale(text: &str, start: usize, phrase: &str, segment: &str) -> bool {
-    let prefix_start = char_window_start(text, start, 32);
-    let prefix = &text[prefix_start..start];
+    let prefix = local_action_prefix(&text[..start]);
     ["no ", "not ", "without ", "missing "]
         .iter()
         .any(|negation| prefix.contains(negation))
@@ -186,9 +186,9 @@ fn has_post_label_negation(segment: &str, phrase: &str) -> bool {
 }
 fn has_word_prefix(text: &str, word: &str) -> bool {
     text.strip_prefix(word).is_some_and(|tail| {
-        tail.chars()
-            .next()
-            .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+        tail.as_bytes()
+            .first()
+            .is_none_or(|byte| !byte.is_ascii_alphanumeric())
     })
 }
 fn is_empty_rationale(segment: &str) -> bool {
