@@ -123,6 +123,7 @@ pub(super) fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("there was no ")
         || value.contains(" not provided")
         || value.ends_with(" is missing")
+        || value.contains(" is missing from ")
         || value.contains(" not granted")
         || value.contains(" was not granted")
         || value.contains(" not been granted")

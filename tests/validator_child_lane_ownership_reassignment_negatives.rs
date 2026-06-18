@@ -47,3 +47,19 @@ fn validator_rejects_denied_reassignment_value_prefixes() -> Result<(), Box<dyn 
     }
     Ok(())
 }
+
+#[test]
+fn validator_rejects_contextual_missing_reassignment_text() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        "Lane ownership: child-owned\n\
+         Review response: parent-authored implementation commit abc123 fixed feedback\n\
+         Maintainer reassignment: explicit maintainer reassignment to parent is missing from the handoff\n",
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject contextual missing reassignment evidence"
+    );
+    Ok(())
+}
