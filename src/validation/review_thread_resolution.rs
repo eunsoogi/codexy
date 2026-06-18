@@ -142,19 +142,40 @@ fn rationale_segments<'a>(text: &'a str, phrase: &str) -> impl Iterator<Item = &
             offset = start + phrase.len();
             rest = &text[offset..];
             let segment = &text[start..end];
-            if !is_negated_rationale(text, start) && !is_empty_rationale(segment) {
+            if !is_negated_rationale(text, start, phrase, segment) && !is_empty_rationale(segment) {
                 return Some(segment);
             }
         }
     })
 }
 
-fn is_negated_rationale(text: &str, start: usize) -> bool {
+fn is_negated_rationale(text: &str, start: usize, phrase: &str, segment: &str) -> bool {
     let prefix_start = char_window_start(text, start, 32);
     let prefix = &text[prefix_start..start];
     ["no ", "not ", "without ", "missing "]
         .iter()
         .any(|negation| prefix.contains(negation))
+        || has_post_label_negation(segment, phrase)
+}
+
+fn has_post_label_negation(segment: &str, phrase: &str) -> bool {
+    let after_label = segment
+        .strip_prefix(phrase)
+        .map(str::trim_start)
+        .unwrap_or_default();
+    let prefixes = ["not ", "was not ", "wasn't ", "is not ", "isn't "];
+    let words = ["accepted", "approved", "documented"];
+    prefixes.iter().any(|prefix| {
+        after_label.strip_prefix(prefix).is_some_and(|rest| {
+            words.iter().any(|word| {
+                rest.strip_prefix(word).is_some_and(|tail| {
+                    tail.chars()
+                        .next()
+                        .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+                })
+            })
+        })
+    })
 }
 
 fn is_empty_rationale(segment: &str) -> bool {

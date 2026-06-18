@@ -25,6 +25,27 @@ fn validator_rejects_negated_no_change_rationale() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_post_label_negated_no_change_rationale() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: addressed current head. Accepted no-change rationale was not documented for thread PRRT_kwDOS6i-_86KixXq.\n",
+        unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject post-label negated no-change rationale text\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOS6i-_86KixXq"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: addressed current head. PR ready for parent handoff.\n",
@@ -89,12 +110,12 @@ fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestR
     Ok(())
 }
 
-fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
+fn validate_handoff_with_pr_state(handoff: &str, pr_state: impl AsRef<str>) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
-    std::fs::write(&pr_state_path, pr_state)?;
+    std::fs::write(&pr_state_path, pr_state.as_ref())?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
 
@@ -137,29 +158,35 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
         .output()?)
 }
 
-fn unresolved_review_thread_pr_state() -> &'static str {
-    r#"{
+fn unresolved_review_thread_pr_state() -> String {
+    unresolved_review_thread_with_id_pr_state("PRRT_kwDOExample")
+}
+
+fn unresolved_review_thread_with_id_pr_state(id: &str) -> String {
+    format!(
+        r#"{{
         "number": 134,
         "state": "OPEN",
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {
+        "reviewThreads": {{
             "nodes": [
-                {
-                    "id": "PRRT_kwDOExample",
+                {{
+                    "id": "{id}",
                     "isResolved": false,
                     "isOutdated": false,
                     "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {
+                    "comments": {{
                         "nodes": [
-                            {
+                            {{
                                 "url": "https://github.com/eunsoogi/codexy/pull/134#discussion_r3435613705"
-                            }
+                            }}
                         ]
-                    }
-                }
+                    }}
+                }}
             ]
-        }
-    }"#
+        }}
+    }}"#
+    )
 }
