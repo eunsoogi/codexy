@@ -95,11 +95,14 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
     let mut offset = 0;
     while let Some(index) = rest.find(phrase) {
         let absolute_index = offset + index;
-        let prefix_start = char_window_start(text, absolute_index, negation_window);
-        if !has_nearby_negation(&text[prefix_start..absolute_index]) {
-            return true;
+        let after_index = absolute_index + phrase.len();
+        if phrase_has_boundaries(text, absolute_index, after_index) {
+            let prefix_start = char_window_start(text, absolute_index, negation_window);
+            if !has_nearby_negation(&text[prefix_start..absolute_index]) {
+                return true;
+            }
         }
-        offset = absolute_index + phrase.len();
+        offset = after_index;
         rest = &text[offset..];
     }
     false
@@ -129,6 +132,10 @@ fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())
 }
 
+fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
+    is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
+}
+
 fn has_nearby_negation(prefix: &str) -> bool {
     let prefix = prefix.trim_end();
     [
@@ -136,6 +143,8 @@ fn has_nearby_negation(prefix: &str) -> bool {
         "no explicit",
         "not",
         "not explicit",
+        "isn't",
+        "is not",
         "did not",
         "did not explicitly",
         "was not",

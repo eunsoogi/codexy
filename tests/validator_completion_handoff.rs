@@ -159,22 +159,16 @@ fn validator_cli_rejects_natural_completion_claims_after_pr()
 #[test]
 fn validator_cli_accepts_negated_completion_claim_after_pr()
 -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let handoff_path = temp.path().join("handoff.md");
-    let pr_state_path = temp.path().join("pr-state.json");
-    std::fs::write(&handoff_path, "This lane is not complete after PR #128.\n")?;
-    std::fs::write(
-        &pr_state_path,
-        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
-    )?;
-
-    let output = validate_completion_handoff(&handoff_path, &pr_state_path)?;
-    assert!(
-        output.status.success(),
-        "validator should allow negated completion text\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    for handoff in [
+        "This lane is not complete after PR #128.\n",
+        "This lane is incomplete after PR #128.\n",
+        "Work isn't complete.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should allow accurate non-completion text",
+        )?;
+    }
     Ok(())
 }
 
@@ -216,6 +210,29 @@ fn reject_open_pr_completion_handoff(
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("opening a PR is not completion"),
         "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn accept_open_pr_handoff(
+    handoff: &str,
+    failure_message: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let handoff_path = temp.path().join("handoff.md");
+    let pr_state_path = temp.path().join("pr-state.json");
+    std::fs::write(&handoff_path, handoff)?;
+    std::fs::write(
+        &pr_state_path,
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )?;
+
+    let output = validate_completion_handoff(&handoff_path, &pr_state_path)?;
+    assert!(
+        output.status.success(),
+        "{failure_message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
