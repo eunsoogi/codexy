@@ -82,6 +82,11 @@ pub(super) fn metadata_key(key: &str) -> &str {
         .trim_start()
 }
 
+pub(super) fn is_metadata_field(line: &str) -> bool {
+    line.split_once(':')
+        .is_some_and(|(key, _)| !metadata_key(key).is_empty())
+}
+
 pub(super) fn is_positive_reassignment_value(value: &str) -> bool {
     "explicit maintainer reassignment to parent|explicit maintainer reassignment to the parent|explicit maintainer reassignment to orchestrator|explicit maintainer reassignment to the orchestrator|explicit reassignment to parent|explicit reassignment to the parent|explicit reassignment to orchestrator|explicit reassignment to the orchestrator|reassigned to parent|reassigned to the parent|reassigned to orchestrator|reassigned to the orchestrator|reassigns implementation ownership to parent|reassigns implementation ownership to the parent|reassigns implementation ownership to orchestrator|reassigns implementation ownership to the orchestrator|reassigned implementation ownership to parent|reassigned implementation ownership to the parent|reassigned implementation ownership to orchestrator|reassigned implementation ownership to the orchestrator"
         .split('|')

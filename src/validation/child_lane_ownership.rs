@@ -11,8 +11,8 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
-    let (mut child_owned, mut parent_fix, mut reassigned, mut child_header_open) =
-        (false, false, false, false);
+    let (mut child_owned, mut parent_fix, mut reassigned, mut child_header_open, mut child_pr_seen) =
+        (false, false, false, false, false);
     let mut pending_parent_fix = Some(false);
     let mut pending_reassigned = Some(false);
     let mut pending_pr_seen = false;
@@ -21,9 +21,10 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         let pr_metadata = is_pr_boundary(line);
         let pr_boundary = pr_metadata
             && index > 0
-            && previous_non_empty_line(&lines, index)
+            && (previous_non_empty_line(&lines, index)
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous))
-            && !(child_owned && child_header_open);
+                || (child_owned && child_header_open && child_pr_seen))
+            && !(child_owned && child_header_open && !child_pr_seen);
         let ownership_boundary =
             is_lane_ownership_boundary(line) || is_parent_owned_owner_boundary(line);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
@@ -32,7 +33,11 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             if parent_fix && !reassigned {
                 return true;
             }
-            (child_owned, parent_fix, reassigned, child_header_open) = (false, false, false, false);
+            child_owned = false;
+            parent_fix = false;
+            reassigned = false;
+            child_header_open = false;
+            child_pr_seen = false;
         }
         if pr_boundary {
             if pending_pr_seen || !pending_parent_fix.unwrap_or(false) {
@@ -48,6 +53,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         if starts_lane {
             child_owned = true;
             child_header_open = true;
+            child_pr_seen = pending_pr_seen;
             parent_fix |= pending_parent_fix.unwrap_or(false);
             reassigned |= pending_reassigned.unwrap_or(false);
             pending_parent_fix = Some(false);
@@ -55,6 +61,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             pending_pr_seen = false;
         }
         if child_owned {
+            child_pr_seen |= pr_metadata;
             parent_fix |= line_parent_fix;
             reassigned |= line_reassigned;
         } else if let Some(pending) = pending_parent_fix.as_mut() {
@@ -219,10 +226,6 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
         || has_passive_parent_fix(line)
         || line.contains("patched by parent"))
         && !has_negative_field_value(line, "parent")
-}
-fn is_metadata_field(line: &str) -> bool {
-    line.split_once(':')
-        .is_some_and(|(key, _)| !metadata_key(key).is_empty())
 }
 fn has_present_actor_action(line: &str, actor: &str, marker: &str) -> bool {
     let field = format!("{actor} {marker}");

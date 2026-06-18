@@ -34,3 +34,25 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_treats_new_pr_after_header_only_child_lane_as_boundary()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"PR: #1
+Lane ownership: child-owned
+
+PR: #2
+Review response: parent-authored implementation commit abc123 fixed feedback
+Lane ownership: parent-owned
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not carry header-only child ownership into the next parent-owned PR\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
