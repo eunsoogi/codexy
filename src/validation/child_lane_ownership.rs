@@ -20,7 +20,9 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             && index > 0
             && previous_non_empty_line(&lines, index)
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous));
-        let ownership_boundary = line.contains("ownership:");
+        let ownership_boundary = line
+            .split_once(':')
+            .is_some_and(|(key, _)| key.contains("ownership"));
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
         if (starts_lane || pr_boundary || ownership_boundary) && child_owned {
@@ -121,6 +123,7 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     (line.contains("parent implemented")
         || line.contains("parent fixed")
         || line.contains("parent pushed")
+        || line.contains("orchestrator pushed")
         || line.contains("parent implementation commit")
         || line.contains("fixed in parent")
         || line.contains("parent patched")

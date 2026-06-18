@@ -48,3 +48,41 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_processes_reassignment_value_before_ownership_words()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+PR: #130
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: explicit maintainer reassignment to parent; implementation ownership: parent
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should process explicit reassignment before treating ownership words as lane boundaries\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_orchestrator_pushed_review_response_without_reassignment()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+PR: #130
+Review response: orchestrator pushed commit abc123 to fix review feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should treat orchestrator-pushed review-response commits like parent-pushed fixes"
+    );
+    Ok(())
+}
