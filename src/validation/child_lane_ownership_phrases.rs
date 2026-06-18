@@ -108,6 +108,7 @@ pub(super) fn is_negative_reassignment_value(value: &str) -> bool {
             .any(|marker| value.contains(marker))
         || value.contains(" not reassigned to ")
         || value.contains(" not reassigned implementation ownership to ")
+        || has_negated_reassignment_action(value)
         || value.starts_with("we need ")
         || value.starts_with("waiting for ")
         || value.starts_with("there is no ")
@@ -123,6 +124,13 @@ pub(super) fn is_negative_reassignment_value(value: &str) -> bool {
         || [" requested", " needed", " required", " pending"]
             .into_iter()
             .any(|marker| value.split_once(marker).is_some_and(is_empty_or_spaced))
+}
+
+fn has_negated_reassignment_action(value: &str) -> bool {
+    value.split_once(" not ").is_some_and(|(_, suffix)| {
+        suffix.contains("reassigned to ")
+            || suffix.contains("reassigned implementation ownership to ")
+    })
 }
 
 fn is_empty_or_spaced((_, suffix): (&str, &str)) -> bool {
