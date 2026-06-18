@@ -50,22 +50,7 @@ fn claims_review_response(handoff: &str) -> bool {
             "review thread",
             "codex review",
         ],
-    ) && has_any(
-        &text,
-        &[
-            "addressed",
-            "fixed",
-            "verified",
-            "pr ready",
-            "ready for parent",
-            "responded",
-        ],
-    )
-}
-
-fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool {
-    let text = handoff.to_ascii_lowercase();
-    has_any(
+    ) && (has_any(
         &text,
         &[
             "accepted no-change rationale",
@@ -73,11 +58,60 @@ fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool
             "no-change rationale documented",
             "no change rationale documented",
         ],
-    ) && thread_referenced(&text, thread)
+    ) || ["addressed", "fixed", "responded"]
+        .iter()
+        .any(|phrase| has_unnegated_action(&text, phrase)))
+}
+
+fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool {
+    let text = handoff.to_ascii_lowercase();
+    [
+        "accepted no-change rationale",
+        "accepted no change rationale",
+        "no-change rationale documented",
+        "no change rationale documented",
+    ]
+    .iter()
+    .any(|phrase| {
+        rationale_segments(&text, phrase).any(|segment| thread_referenced(segment, thread))
+    })
 }
 
 fn has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| text.contains(needle))
+}
+
+fn has_unnegated_action(text: &str, phrase: &str) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(phrase) {
+        let start = offset + index;
+        let prefix_start = char_window_start(text, start, 32);
+        let prefix = &text[prefix_start..start];
+        if ![
+            "no review feedback was ",
+            "no review feedback ",
+            "no feedback was ",
+            "no feedback ",
+            "not ",
+        ]
+        .iter()
+        .any(|negation| prefix.contains(negation))
+        {
+            return true;
+        }
+        offset = start + phrase.len();
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn char_window_start(text: &str, end: usize, max_chars: usize) -> usize {
+    text[..end]
+        .char_indices()
+        .rev()
+        .nth(max_chars.saturating_sub(1))
+        .map_or(0, |(index, _)| index)
 }
 
 fn thread_label(thread: &Value) -> String {
@@ -99,6 +133,33 @@ fn thread_referenced(text: &str, thread: &Value) -> bool {
         .and_then(Value::as_str)
         .is_some_and(|id| has_exact_reference(text, &id.to_ascii_lowercase()))
         || comment_urls(thread).any(|url| has_exact_reference(text, &url.to_ascii_lowercase()))
+}
+
+fn rationale_segments<'a>(text: &'a str, phrase: &str) -> impl Iterator<Item = &'a str> {
+    let mut rest = text;
+    let mut offset = 0;
+    std::iter::from_fn(move || {
+        let index = rest.find(phrase)?;
+        let start = offset + index;
+        let end = clause_end(text, start);
+        offset = start + phrase.len();
+        rest = &text[offset..];
+        Some(&text[start..end])
+    })
+}
+
+fn clause_end(text: &str, start: usize) -> usize {
+    let suffix = &text[start..];
+    [
+        suffix.find('\n'),
+        suffix.find(". "),
+        suffix.find(','),
+        suffix.find(';'),
+    ]
+    .into_iter()
+    .flatten()
+    .min()
+    .map_or(text.len(), |index| start + index)
 }
 
 fn has_exact_reference(text: &str, reference: &str) -> bool {

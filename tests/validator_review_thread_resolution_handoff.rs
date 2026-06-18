@@ -62,6 +62,27 @@ fn validator_rejects_no_change_rationale_that_does_not_cover_each_thread() -> Te
 }
 
 #[test]
+fn validator_rejects_thread_mention_outside_no_change_rationale() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: addressed current head. Accepted no-change rationale documented for thread PRRT_kwDOAccepted, fixed PRRT_kwDOMissing.\n",
+        two_unresolved_review_threads_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should tie no-change rationale to the same unresolved thread\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOMissing"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_path_only_no_change_rationale_for_multiple_threads() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: addressed and verified current head. Accepted no-change rationale documented for plugins/codexy/skills/git-workflow/SKILL.md.\n",
@@ -98,6 +119,22 @@ fn validator_rejects_review_response_handoff_without_review_thread_state() -> Te
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("reviewThreads.nodes"),
         "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_clean_codex_review_verification_without_review_threads() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review verified on the latest head. No review feedback was addressed in this handoff.\n",
+        r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not require reviewThreads.nodes for clean review verification\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
