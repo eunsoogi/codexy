@@ -47,21 +47,19 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             && !has_negative_field_value(line, "parent-authored")
             && !has_absent_authored_phrase(line, "parent-authored")
         {
-            return line.contains("implementation")
-                || line.contains("review-response")
-                || line.contains("review response")
-                || line.contains("fix")
-                || line.contains("commit");
+            return has_fix_marker(line);
+        }
+        if line.contains("parent authored")
+            && !has_negative_field_value(line, "parent")
+            && !has_absent_parent_phrase(line, "authored")
+        {
+            return has_fix_marker(line);
         }
         if line.contains("orchestrator-authored")
             && !has_negative_field_value(line, "orchestrator-authored")
             && !has_absent_authored_phrase(line, "orchestrator-authored")
         {
-            return line.contains("implementation")
-                || line.contains("review-response")
-                || line.contains("review response")
-                || line.contains("fix")
-                || line.contains("commit");
+            return has_fix_marker(line);
         }
         (line.contains("parent implemented")
             || line.contains("parent fixed")
@@ -111,12 +109,13 @@ fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str
 
 fn has_passive_parent_fix(line: &str) -> bool {
     let authored = line.contains(" by parent") || line.contains(" by orchestrator");
-    authored
-        && (line.contains("implementation")
-            || line.contains("review-response")
-            || line.contains("review response")
-            || line.contains("fix")
-            || line.contains("commit"))
+    authored && has_fix_marker(line)
+}
+
+fn has_fix_marker(line: &str) -> bool {
+    "implementation|review-response|review response|fix|commit"
+        .split('|')
+        .any(|marker| line.contains(marker))
 }
 
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
@@ -168,6 +167,7 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("not ")
         || value.starts_with("without ")
         || value.starts_with("we need ")
+        || value.starts_with("waiting for ")
         || value.starts_with("there is no ")
         || value.starts_with("there was no ")
         || value.ends_with(" not provided")
@@ -193,28 +193,20 @@ fn has_absent_field_value(value: &str, field: &str) -> bool {
         return true;
     }
 
-    [
-        "not provided",
-        "without",
-        "missing",
-        "absent",
-        "none",
-        "not",
-        "no",
-    ]
-    .into_iter()
-    .any(|marker| {
-        let Some(after_marker) = value.strip_prefix(marker) else {
-            return false;
-        };
-        let Some(separator) = after_marker.chars().next() else {
-            return true;
-        };
-        if !separator.is_ascii_whitespace() && !matches!(separator, '.' | ',' | ';' | ':') {
-            return false;
-        }
-        !after_marker.contains(field)
-    })
+    "not provided|without|missing|absent|none|not|no"
+        .split('|')
+        .any(|marker| {
+            let Some(after_marker) = value.strip_prefix(marker) else {
+                return false;
+            };
+            let Some(separator) = after_marker.chars().next() else {
+                return true;
+            };
+            if !separator.is_ascii_whitespace() && !matches!(separator, '.' | ',' | ';' | ':') {
+                return false;
+            }
+            !after_marker.contains(field)
+        })
 }
 
 fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
