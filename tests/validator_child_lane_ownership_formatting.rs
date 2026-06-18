@@ -181,9 +181,9 @@ fn validator_keeps_pr_metadata_inside_child_owned_header() -> Result<(), Box<dyn
     let output = run_ownership_validator(
         r#"Lane ownership: child-owned
 Owner: child-thread-1
+Maintainer reassignment: none
 PR: #130
 Review response: parent-authored implementation commit abc123 fixed feedback
-Maintainer reassignment: none
 "#,
     )?;
 
