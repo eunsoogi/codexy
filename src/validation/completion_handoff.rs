@@ -55,6 +55,7 @@ fn claims_completion(handoff: &str) -> bool {
     ]
     .iter()
     .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
+        || has_unnegated_word(&text, "done", 16)
 }
 
 fn states_explicit_deferral(handoff: &str) -> bool {
@@ -102,6 +103,30 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
         rest = &text[offset..];
     }
     false
+}
+
+fn has_unnegated_word(text: &str, word: &str, negation_window: usize) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(word) {
+        let absolute_index = offset + index;
+        let after_index = absolute_index + word.len();
+        if is_boundary(text[..absolute_index].chars().next_back())
+            && is_boundary(text[after_index..].chars().next())
+        {
+            let prefix_start = char_window_start(text, absolute_index, negation_window);
+            if !has_nearby_negation(&text[prefix_start..absolute_index]) {
+                return true;
+            }
+        }
+        offset = after_index;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn is_boundary(character: Option<char>) -> bool {
+    character.is_none_or(|character| !character.is_ascii_alphanumeric())
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {

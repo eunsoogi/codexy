@@ -138,6 +138,8 @@ fn validator_cli_rejects_natural_completion_claims_after_pr()
         "The implementation is complete after PR #128.\n",
         "Complete after opening PR #128.\n",
         "Complete after PR #128.\n",
+        "Done",
+        "Done — PR #128 is open.\n",
         "Done after opening PR #128.\n",
         "Done after PR #128.\n",
         "Implemented the fix and opened PR #128. Complete.\n",
