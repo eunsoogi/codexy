@@ -127,7 +127,7 @@ fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
 fn has_non_affirmative_reassignment_key(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
         key.contains("maintainer reassignment")
-            && ["pending", "requested", "needed"]
+            && ["pending", "requested", "needed", "required"]
                 .into_iter()
                 .any(|qualifier| key.contains(qualifier))
     })
@@ -162,9 +162,9 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("no ")
         || value.starts_with("missing ")
         || value.starts_with("absent ")
-        || value.starts_with("pending ")
-        || value.starts_with("requested ")
-        || value.starts_with("needed ")
+        || ["pending ", "requested ", "needed ", "required "]
+            .into_iter()
+            .any(|prefix| value.starts_with(prefix))
         || value.starts_with("not ")
         || value.starts_with("without ")
         || value.contains(" not reassigned to ")
@@ -179,9 +179,9 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.ends_with(" not been granted")
         || value.contains(" was denied")
         || value.contains(" was rejected")
-        || contains_non_affirmative_reassignment_suffix(value, " requested")
-        || contains_non_affirmative_reassignment_suffix(value, " needed")
-        || contains_non_affirmative_reassignment_suffix(value, " pending")
+        || [" requested", " needed", " required", " pending"]
+            .into_iter()
+            .any(|suffix| contains_non_affirmative_reassignment_suffix(value, suffix))
 }
 
 fn contains_non_affirmative_reassignment_suffix(value: &str, marker: &str) -> bool {

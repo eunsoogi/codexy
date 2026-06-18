@@ -99,6 +99,7 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: requested explicit maintainer reassignment to orchestrator",
         "Maintainer reassignment: needed explicit maintainer reassignment to parent",
         "Maintainer reassignment: needed explicit maintainer reassignment to orchestrator",
+        "Maintainer reassignment: required explicit maintainer reassignment to parent",
         "Maintainer reassignment: no explicit maintainer reassignment",
         "Maintainer reassignment: no explicit maintainer reassignment to parent",
         "Maintainer reassignment: there is no explicit maintainer reassignment to parent",
