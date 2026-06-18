@@ -13,26 +13,34 @@ fn validator_rejects_negated_no_change_rationale() -> TestResult {
 }
 #[test]
 fn validator_rejects_post_label_negated_no_change_rationale() -> TestResult {
-    assert_handoff_fails(
+    assert_rejects_thread_rationale(
         "Review response: addressed current head. Accepted no-change rationale was not documented for thread PRRT_kwDOS6i-_86KixXq.\n",
-        unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
         "PRRT_kwDOS6i-_86KixXq",
     )
 }
 #[test]
 fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> TestResult {
-    assert_handoff_fails(
+    assert_rejects_thread_rationale(
         "Review response: addressed current head. Accepted no-change rationale: was not documented for thread PRRT_kwDOS6i-_86KixXq.\n",
-        unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
         "PRRT_kwDOS6i-_86KixXq",
     )
 }
 #[test]
 fn validator_rejects_has_not_been_no_change_rationale() -> TestResult {
-    assert_handoff_fails(
+    assert_rejects_thread_rationale(
         "Review response: addressed current head. Accepted no-change rationale has not been documented for thread PRRT_kwDOS6i-_86Km2Tf.\n",
-        unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86Km2Tf"),
         "PRRT_kwDOS6i-_86Km2Tf",
+    )
+}
+#[test]
+fn validator_rejects_missing_no_change_rationale_labels() -> TestResult {
+    assert_rejects_thread_rationale(
+        "Review response: addressed current head. Accepted no-change rationale is missing for thread PRRT_kwDOS6i-_86KnflQ.\n",
+        "PRRT_kwDOS6i-_86KnflQ",
+    )?;
+    assert_rejects_thread_rationale(
+        "Review response: addressed current head. Accepted no-change rationale hasn't been documented for thread PRRT_kwDOS6i-_86KnflQ.\n",
+        "PRRT_kwDOS6i-_86KnflQ",
     )
 }
 #[test]
@@ -73,14 +81,7 @@ fn validator_allows_unresolved_status_without_action_word_match() -> TestResult 
 fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
     assert_handoff_fails(
         "Review response: addressed current head. PR ready for parent handoff.\n",
-        r#"{
-            "number": 134,
-            "state": "OPEN",
-            "isDraft": false,
-            "mergeStateStatus": "CLEAN",
-            "reviewDecision": "APPROVED",
-            "reviewThreads": {"nodes": [{}]}
-        }"#,
+        r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"nodes":[{}]}}"#,
         "incomplete reviewThreads.nodes",
     )
 }
@@ -149,6 +150,9 @@ fn assert_handoff_fails(handoff: &str, pr_state: impl AsRef<str>, needle: &str) 
 }
 fn assert_requires_threads(handoff: &str) -> TestResult {
     assert_handoff_fails(handoff, NORMAL_OPEN_PR_STATE, "reviewThreads.nodes")
+}
+fn assert_rejects_thread_rationale(handoff: &str, id: &str) -> TestResult {
+    assert_handoff_fails(handoff, unresolved_review_thread_with_id_pr_state(id), id)
 }
 fn assert_handoff_succeeds(handoff: &str, pr_state: impl AsRef<str>) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;

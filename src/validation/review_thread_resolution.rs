@@ -173,7 +173,10 @@ fn has_post_label_negation(segment: &str, phrase: &str) -> bool {
         .strip_prefix(phrase)
         .unwrap_or_default()
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
-    let prefixes = "not |was not |wasn't |is not |isn't |has not been ";
+    if has_word_prefix(after_label, "is missing") {
+        return true;
+    }
+    let prefixes = "not |was not |wasn't |is not |isn't |has not been |hasn't been ";
     let words = ["accepted", "approved", "documented"];
     prefixes
         .split('|')

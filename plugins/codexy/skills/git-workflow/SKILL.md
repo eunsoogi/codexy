@@ -146,7 +146,30 @@ the claim does not stop at an open PR when the requested outcome includes
 completion or the default Codexy merge flow. Capture current PR state first:
 
 ```sh
-gh pr view <pr> --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.json
+pr=<pr>
+owner=<owner>
+repo=<repo>
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.base.json
+gh api graphql -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
+query($owner:String!, $name:String!, $number:Int!) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      reviewThreads(first:100) {
+        nodes {
+          id
+          isResolved
+          isOutdated
+          path
+          comments(first:20) { nodes { url } }
+        }
+      }
+    }
+  }
+}' --jq '.data.repository.pullRequest.reviewThreads' > pr-state.reviewThreads.json
+jq --slurpfile reviewThreads pr-state.reviewThreads.json \
+  '. + {reviewThreads: $reviewThreads[0]}' \
+  pr-state.base.json > pr-state.json
+rm -f pr-state.base.json pr-state.reviewThreads.json
 scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file pr-state.json
 ```
 
