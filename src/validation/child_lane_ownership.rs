@@ -155,7 +155,6 @@ fn is_positive_reassignment_value(value: &str) -> bool {
         || value.contains("reassigned implementation ownership to orchestrator")
         || value.contains("reassigned implementation ownership to the orchestrator")
 }
-
 fn is_negative_reassignment_value(value: &str) -> bool {
     let value = trimmed_value(value);
     has_absent_value(value)
@@ -167,6 +166,9 @@ fn is_negative_reassignment_value(value: &str) -> bool {
             .any(|prefix| value.starts_with(prefix))
         || value.starts_with("not ")
         || value.starts_with("without ")
+        || ["does not include ", "does not have "]
+            .into_iter()
+            .any(|marker| value.contains(marker))
         || value.contains(" not reassigned to ")
         || value.starts_with("we need ")
         || value.starts_with("waiting for ")
@@ -183,13 +185,11 @@ fn is_negative_reassignment_value(value: &str) -> bool {
             .into_iter()
             .any(|suffix| contains_non_affirmative_reassignment_suffix(value, suffix))
 }
-
 fn contains_non_affirmative_reassignment_suffix(value: &str, marker: &str) -> bool {
     value
         .split_once(marker)
         .is_some_and(|(_, suffix)| suffix.is_empty() || suffix.starts_with(char::is_whitespace))
 }
-
 fn has_absent_value(value: &str) -> bool {
     let value = trimmed_value(value);
     matches!(value, "no" | "none" | "missing" | "absent" | "not provided")

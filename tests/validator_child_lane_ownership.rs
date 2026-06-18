@@ -106,6 +106,8 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: there is no explicit maintainer reassignment to orchestrator",
         "Maintainer reassignment: there was no explicit maintainer reassignment to parent",
         "Maintainer reassignment: there was no explicit maintainer reassignment to orchestrator",
+        "Maintainer reassignment: evidence does not include explicit maintainer reassignment to parent",
+        "Maintainer reassignment: evidence does not have explicit maintainer reassignment to parent",
         "Maintainer reassignment: missing explicit maintainer reassignment",
         "Maintainer reassignment: we need explicit maintainer reassignment to parent",
         "Maintainer reassignment: waiting for explicit maintainer reassignment to parent",
