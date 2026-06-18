@@ -88,7 +88,7 @@ fn is_exact_child_header_metadata_line(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
         matches!(
             metadata_key(key),
-            "owner" | "lane owner" | "branch" | "head"
+            "owner" | "lane owner" | "branch" | "head" | "worktree path"
         )
     })
 }

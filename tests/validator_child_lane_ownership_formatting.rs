@@ -190,3 +190,22 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_keeps_pr_metadata_inside_child_owned_header_worktree_path()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Worktree path: /Users/eunsoo/.codex/worktrees/bdd7/codexy
+PR: #130
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should keep worktree path metadata inside the child-owned header"
+    );
+    Ok(())
+}
