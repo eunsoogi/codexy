@@ -141,12 +141,16 @@ fn has_absent_value(value: &str) -> bool {
 }
 
 fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
-    let absent_marker = format!("no {marker}");
-    let Some(index) = line.find(&absent_marker) else {
-        return false;
-    };
-    let after_absence = &line[index + absent_marker.len()..];
-    !after_absence.contains(marker)
+    ["no ", "not ", "without "]
+        .into_iter()
+        .map(|prefix| format!("{prefix}{marker}"))
+        .any(|absent_marker| {
+            let Some(index) = line.find(&absent_marker) else {
+                return false;
+            };
+            let after_absence = &line[index + absent_marker.len()..];
+            !after_absence.contains(marker)
+        })
 }
 
 fn trimmed_value(value: &str) -> &str {

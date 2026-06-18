@@ -17,6 +17,10 @@ fn validator_allows_absent_parent_authored_review_response()
     for review_response in [
         "Review response: no parent-authored implementation commits; child fixed feedback",
         "Review response: no orchestrator-authored implementation commits; child fixed feedback",
+        "Review response: not parent-authored; child-authored commit def456 fixed feedback",
+        "Review response: without parent-authored commits; child-authored commit def456 fixed feedback",
+        "Review response: not orchestrator-authored; child-authored commit def456 fixed feedback",
+        "Review response: without orchestrator-authored commits; child-authored commit def456 fixed feedback",
     ] {
         let output = run_ownership_validator(&format!(
             "Lane ownership: child-owned\n{review_response}\nMaintainer reassignment: none\n"
@@ -39,6 +43,8 @@ fn validator_rejects_contradictory_parent_authored_review_response()
         "Review response: no parent-authored implementation commits; parent-authored review-response commit abc123 fixed feedback",
         "Review response: no parent-authored implementation commits; parent review-response commit abc123 fixed feedback",
         "Review response: no parent-authored implementation commits; parent commit abc123 fixed feedback",
+        "Review response: not parent-authored; parent-authored review-response commit abc123 fixed feedback",
+        "Review response: without parent-authored commits; parent-authored review-response commit abc123 fixed feedback",
     ] {
         let output = run_ownership_validator(&format!(
             "Lane ownership: child-owned\n{review_response}\nMaintainer reassignment: none\n"
