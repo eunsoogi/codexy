@@ -11,7 +11,8 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
-    let (mut child_owned, mut parent_fix, mut reassigned) = (false, false, false);
+    let (mut child_owned, mut parent_fix, mut reassigned, mut child_header_open) =
+        (false, false, false, false);
     let mut pending_parent_fix = Some(false);
     let mut pending_reassigned = Some(false);
     for (index, line) in lines.iter().enumerate() {
@@ -19,7 +20,8 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         let pr_boundary = line.starts_with("pr:")
             && index > 0
             && previous_non_empty_line(&lines, index)
-                .is_some_and(|previous| !is_affirmative_child_owned_line(previous));
+                .is_some_and(|previous| !is_affirmative_child_owned_line(previous))
+            && !(child_owned && child_header_open);
         let ownership_boundary =
             is_lane_ownership_boundary(line) || is_parent_owned_owner_boundary(line);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
@@ -28,7 +30,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             if parent_fix && !reassigned {
                 return true;
             }
-            (child_owned, parent_fix, reassigned) = (false, false, false);
+            (child_owned, parent_fix, reassigned, child_header_open) = (false, false, false, false);
         }
         if pr_boundary {
             pending_parent_fix = Some(false);
@@ -39,6 +41,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         }
         if starts_lane {
             child_owned = true;
+            child_header_open = true;
             parent_fix |= pending_parent_fix.unwrap_or(false);
             reassigned |= pending_reassigned.unwrap_or(false);
             pending_parent_fix = Some(false);
@@ -52,6 +55,9 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             if let Some(pending) = pending_reassigned.as_mut() {
                 *pending |= line_reassigned;
             }
+        }
+        if child_header_open && !is_child_lane_header_metadata(line) {
+            child_header_open = false;
         }
     }
     child_owned && parent_fix && !reassigned
@@ -71,6 +77,16 @@ fn is_lane_ownership_boundary(line: &str) -> bool {
             "ownership" | "lane ownership" | "pr ownership" | "pull request ownership"
         )
     })
+}
+fn is_child_lane_header_metadata(line: &str) -> bool {
+    line.is_empty()
+        || line.starts_with("pr:")
+        || is_affirmative_child_owned_line(line)
+        || is_exact_owner_metadata_line(line)
+}
+fn is_exact_owner_metadata_line(line: &str) -> bool {
+    line.split_once(':')
+        .is_some_and(|(key, _)| matches!(metadata_key(key), "owner" | "lane owner"))
 }
 fn is_parent_owned_owner_boundary(line: &str) -> bool {
     field_value(line, "owner").is_some_and(is_parent_owned_value)
