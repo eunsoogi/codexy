@@ -63,21 +63,22 @@ pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
         let key = metadata_key(key);
         key.contains("maintainer reassignment")
-            && [
-                "no",
-                "not",
-                "without",
-                "missing",
-                "absent",
-                "pending",
-                "requested",
-                "needed",
-                "required",
-                "denied",
-                "rejected",
-            ]
-            .into_iter()
-            .any(|qualifier| key.contains(qualifier))
+            && (key.starts_with("[ ]")
+                || [
+                    "no",
+                    "not",
+                    "without",
+                    "missing",
+                    "absent",
+                    "pending",
+                    "requested",
+                    "needed",
+                    "required",
+                    "denied",
+                    "rejected",
+                ]
+                .into_iter()
+                .any(|qualifier| key.contains(qualifier)))
     })
 }
 
@@ -97,9 +98,16 @@ pub(super) fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("no ")
         || value.starts_with("missing ")
         || value.starts_with("absent ")
-        || ["pending ", "requested ", "needed ", "required "]
-            .into_iter()
-            .any(|prefix| value.starts_with(prefix))
+        || [
+            "pending ",
+            "requested ",
+            "needed ",
+            "required ",
+            "denied ",
+            "rejected ",
+        ]
+        .into_iter()
+        .any(|prefix| value.starts_with(prefix))
         || value.starts_with("not ")
         || value.starts_with("without ")
         || value.starts_with("[ ]")
