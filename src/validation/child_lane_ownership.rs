@@ -107,10 +107,18 @@ fn is_parent_owned_owner_boundary(line: &str) -> bool {
     field_value(line, "owner").is_some_and(is_parent_owned_value)
 }
 fn is_affirmative_child_owned_line(line: &str) -> bool {
-    field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)
+    has_present_child_owner_metadata(line)
+        || field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)
         || field_value(line, "child-owned")
             .is_some_and(|value| !has_absent_field_value(value, "child-owned"))
         || matches!(trimmed_value(line), "child-owned" | "child-owned lane")
+}
+fn has_present_child_owner_metadata(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, value)| {
+        metadata_key(key) == "child owner"
+            && !trimmed_value(value).is_empty()
+            && !has_absent_field_value(value, "child owner")
+    })
 }
 fn is_affirmative_child_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
@@ -133,9 +141,19 @@ fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bo
     };
     let value = value
         .is_empty()
-        .then(|| next_line_bullet_value(lines, index).unwrap_or(value))
+        .then(|| next_line_reassignment_value(lines, index).unwrap_or(value))
         .unwrap_or(value);
     is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
+}
+fn next_line_reassignment_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
+    let value = next_line_bullet_value(lines, index)?;
+    (!is_non_reassignment_metadata_field(value)).then_some(value)
+}
+fn is_non_reassignment_metadata_field(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, _)| {
+        let key = metadata_key(key);
+        !key.is_empty() && !key.contains("reassignment") && !key.contains("reassigned")
+    })
 }
 fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
