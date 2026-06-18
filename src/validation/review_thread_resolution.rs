@@ -94,14 +94,11 @@ fn thread_label(thread: &Value) -> String {
 }
 
 fn thread_referenced(text: &str, thread: &Value) -> bool {
-    [
-        thread.get("id").and_then(Value::as_str),
-        first_comment_url(thread),
-    ]
-    .into_iter()
-    .flatten()
-    .map(str::to_ascii_lowercase)
-    .any(|value| has_exact_reference(text, &value))
+    thread
+        .get("id")
+        .and_then(Value::as_str)
+        .is_some_and(|id| has_exact_reference(text, &id.to_ascii_lowercase()))
+        || comment_urls(thread).any(|url| has_exact_reference(text, &url.to_ascii_lowercase()))
 }
 
 fn has_exact_reference(text: &str, reference: &str) -> bool {
@@ -138,11 +135,15 @@ fn is_reference_char(ch: char) -> bool {
 }
 
 fn first_comment_url(thread: &Value) -> Option<&str> {
+    comment_urls(thread).next()
+}
+
+fn comment_urls(thread: &Value) -> impl Iterator<Item = &str> {
     thread
-        .get("comments")?
-        .get("nodes")?
-        .as_array()?
-        .first()?
-        .get("url")?
-        .as_str()
+        .get("comments")
+        .and_then(|comments| comments.get("nodes"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flat_map(|nodes| nodes.iter())
+        .filter_map(|comment| comment.get("url").and_then(Value::as_str))
 }

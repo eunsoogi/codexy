@@ -24,6 +24,22 @@ fn validator_rejects_comment_url_prefix_collision_for_thread_rationale() -> Test
     Ok(())
 }
 
+#[test]
+fn validator_accepts_later_comment_url_for_thread_rationale() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: addressed and verified current head. Accepted no-change rationale documented for https://github.com/eunsoogi/codexy/pull/134#discussion_r3435371456.\n",
+        multi_comment_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should match later comment URLs in a review thread\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
@@ -67,6 +83,32 @@ fn two_prefix_collision_review_threads_pr_state() -> &'static str {
                     "isOutdated": false,
                     "path": "plugins/codexy/skills/git-workflow/SKILL.md",
                     "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r10"}]}
+                }
+            ]
+        }
+    }"#
+}
+
+fn multi_comment_review_thread_pr_state() -> &'static str {
+    r#"{
+        "number": 134,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "reviewThreads": {
+            "nodes": [
+                {
+                    "id": "PRRT_kwDOS6i-_86KhdRE",
+                    "isResolved": false,
+                    "isOutdated": false,
+                    "path": "src/validation/review_thread_resolution.rs",
+                    "comments": {
+                        "nodes": [
+                            {"url": "https://github.com/eunsoogi/codexy/pull/134#discussion_r3435371000"},
+                            {"url": "https://github.com/eunsoogi/codexy/pull/134#discussion_r3435371456"}
+                        ]
+                    }
                 }
             ]
         }
