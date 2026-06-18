@@ -7,6 +7,10 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if let Some(error) = pr_state_input_error(&pr_state) {
         return vec![error];
     }
+    let review_thread_errors = super::review_thread_resolution::check(handoff, &pr_state);
+    if !review_thread_errors.is_empty() {
+        return review_thread_errors;
+    }
     if !is_open_pr(&pr_state) || !claims_completion(handoff) || states_explicit_deferral(handoff) {
         return Vec::new();
     }
