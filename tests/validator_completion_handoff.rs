@@ -59,7 +59,7 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: not requested. Work is complete after PR #128.\n",
         "No-merge instruction: no. Work is complete after PR #128.\n",
         "No-merge instruction: N/A. Work is complete after PR #128.\n",
-        "No-merge instruction: parent orchestrator will handle merge. Work is complete after PR #128.\n",
+        "No-merge instruction was requested by parent orchestrator. Work is complete after PR #128.\n",
         "No-merge instruction: maintainer did not request no merge. Work is complete after PR #128.\n",
         "No-merge instruction: not from maintainer. Work is complete after PR #128.\n",
         "No-merge instruction from maintainer was not requested. Work is complete after PR #128.\n",

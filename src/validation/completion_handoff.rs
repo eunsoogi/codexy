@@ -44,8 +44,6 @@ fn claims_completion(handoff: &str) -> bool {
     }
     [
         "work is complete",
-        "task is complete",
-        "lane is complete",
         "implementation is complete",
         "completed",
         "finished",
@@ -116,6 +114,8 @@ fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
 fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index: usize) -> bool {
     let suffix = text[after_index..].trim_start_matches([' ', '\t']);
     if suffix.starts_with("from maintainer was not requested")
+        || (suffix.starts_with("was requested by ")
+            && !suffix.starts_with("was requested by maintainer"))
         || ["is not requested", "was not requested", "? no"]
             .iter()
             .any(|phrase| {
