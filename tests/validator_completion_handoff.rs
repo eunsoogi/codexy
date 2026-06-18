@@ -1,5 +1,6 @@
 use std::process::Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
+type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
 fn validator_cli_rejects_completion_claim_with_clean_open_pr() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -99,6 +100,7 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "Draft-only instruction\nWork is complete after PR #128.\n",
         "No-merge instruction\nNone.\nWork is complete after PR #128.\n",
         "Maintainer requested no merge? No. Work is complete after PR #128.\n",
+        "Maintainer requested no merge? false. Work is complete after PR #128.\n",
         "No-merge instruction:\nWork is complete after PR #128.\n",
         "Draft-only instruction: not applicable. Work is complete after PR #128.\n",
         "Draft-only instruction: maintainer requested a Codex review only. Work is complete after PR #128.\n",
@@ -179,6 +181,7 @@ fn validator_cli_accepts_negated_completion_claim_after_pr() -> TestResult {
         "This lane is not complete after PR #128.\n",
         "This lane is incomplete after PR #128.\n",
         "Work isn't complete.\n",
+        "This lane is not yet complete until merge.\n",
         "Verification completed; this lane is not complete until merge.\n",
         "Verification completed. This lane is not complete until merge.\n",
     ] {
@@ -192,7 +195,7 @@ fn validator_cli_accepts_negated_completion_claim_after_pr() -> TestResult {
 fn validate_completion_handoff(
     handoff_path: &std::path::Path,
     pr_state_path: &std::path::Path,
-) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--check-completion-handoff",
@@ -228,10 +231,7 @@ fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     );
     Ok(())
 }
-fn validate_handoff_with_pr_state(
-    handoff: &str,
-    pr_state: &str,
-) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
     let pr_state_path = temp.path().join("pr-state.json");
@@ -239,9 +239,7 @@ fn validate_handoff_with_pr_state(
     std::fs::write(&pr_state_path, pr_state)?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
-fn validate_open_pr_handoff(
-    handoff: &str,
-) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     validate_handoff_with_pr_state(
         handoff,
         r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,

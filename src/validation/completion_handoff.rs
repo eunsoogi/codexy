@@ -101,18 +101,19 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
             .strip_prefix("was requested")
             .is_some_and(starts_with_boundary)
             && !suffix.starts_with("was requested by maintainer"))
-        || (suffix.starts_with("was requested by ")
-            && !suffix.starts_with("was requested by maintainer"))
-        || ["is not requested", "was not requested", "? no"]
+        || ["is not requested", "was not requested"]
             .iter()
             .any(|phrase| {
                 suffix
                     .strip_prefix(phrase)
                     .is_some_and(starts_with_boundary)
             })
-        || suffix
-            .strip_prefix('\n')
-            .is_some_and(|value| has_false_label_value(value.trim_start_matches([' ', '\t'])))
+        || ['?', '\n'].iter().any(|prefix| {
+            suffix
+                .strip_prefix(*prefix)
+                .map(str::trim_start)
+                .is_some_and(has_false_label_value)
+        })
         || (text[char_window_start(text, start, 80)..start]
             .trim_start()
             .starts_with("no explicit")
@@ -124,13 +125,10 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
     }
     let Some(value) = suffix.strip_prefix(':') else {
         if phrase.ends_with("instruction") {
-            return !["was requested by maintainer", "per maintainer"]
-                .iter()
-                .any(|phrase| {
-                    suffix
-                        .strip_prefix(phrase)
-                        .is_some_and(starts_with_boundary)
-                });
+            return !suffix
+                .strip_prefix("was requested by maintainer")
+                .or_else(|| suffix.strip_prefix("per maintainer"))
+                .is_some_and(starts_with_boundary);
         }
         return false;
     };
@@ -215,6 +213,7 @@ fn has_nearby_negation(prefix: &str) -> bool {
         "no user or",
         "no explicit",
         "not",
+        "not yet",
         "not explicit",
         "isn't",
         "is not",
