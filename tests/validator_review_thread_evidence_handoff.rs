@@ -10,16 +10,10 @@ fn validator_rejects_negated_no_change_rationale() -> TestResult {
         unresolved_review_thread_pr_state(),
     )?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject negated no-change rationale text\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOExample"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    assert_failure_contains(
+        &output,
+        "PRRT_kwDOExample",
+        "validator should reject negated no-change rationale text",
     );
     Ok(())
 }
@@ -31,16 +25,10 @@ fn validator_rejects_post_label_negated_no_change_rationale() -> TestResult {
         unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
     )?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject post-label negated no-change rationale text\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOS6i-_86KixXq"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    assert_failure_contains(
+        &output,
+        "PRRT_kwDOS6i-_86KixXq",
+        "validator should reject post-label negated no-change rationale text",
     );
     Ok(())
 }
@@ -52,16 +40,10 @@ fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> Test
         unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
     )?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject punctuated post-label negated rationale text\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOS6i-_86KixXq"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    assert_failure_contains(
+        &output,
+        "PRRT_kwDOS6i-_86KixXq",
+        "validator should reject punctuated post-label negated rationale text",
     );
     Ok(())
 }
@@ -73,16 +55,25 @@ fn validator_treats_review_comments_as_review_response() -> TestResult {
         r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
     )?;
 
-    assert!(
-        !output.status.success(),
-        "validator should require reviewThreads.nodes for addressed review comments\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+    assert_failure_contains(
+        &output,
+        "reviewThreads.nodes",
+        "validator should require reviewThreads.nodes for addressed review comments",
     );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("reviewThreads.nodes"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    Ok(())
+}
+
+#[test]
+fn validator_treats_resolved_review_comments_as_review_response() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Resolved Codex review comments on the current head.\n",
+        r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )?;
+
+    assert_failure_contains(
+        &output,
+        "reviewThreads.nodes",
+        "validator should require reviewThreads.nodes for resolved review comments",
     );
     Ok(())
 }
@@ -101,16 +92,10 @@ fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
         }"#,
     )?;
 
-    assert!(
-        !output.status.success(),
-        "validator should fail closed on incomplete review thread evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("incomplete reviewThreads.nodes"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    assert_failure_contains(
+        &output,
+        "incomplete reviewThreads.nodes",
+        "validator should fail closed on incomplete review thread evidence",
     );
     Ok(())
 }
@@ -154,16 +139,10 @@ fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestR
         outdated_unresolved_review_thread_pr_state(),
     )?;
 
-    assert!(
-        !output.status.success(),
-        "validator should require resolution for addressed outdated review threads\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOOutdated"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    assert_failure_contains(
+        &output,
+        "PRRT_kwDOOutdated",
+        "validator should require resolution for addressed outdated review threads",
     );
     Ok(())
 }
@@ -175,6 +154,20 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: impl AsRef<str>) -> O
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(&pr_state_path, pr_state.as_ref())?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn assert_failure_contains(output: &std::process::Output, needle: &str, message: &str) {
+    assert!(
+        !output.status.success(),
+        "{message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(needle),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 fn outdated_unresolved_review_thread_pr_state() -> &'static str {

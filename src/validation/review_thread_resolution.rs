@@ -50,7 +50,7 @@ fn claims_review_response(handoff: &str) -> bool {
             "no change rationale documented",
         ],
     ) || review_feedback_segments(&text).any(|segment| {
-        ["addressed", "fixed", "responded"]
+        ["addressed", "fixed", "responded", "resolved", "resolve"]
             .iter()
             .any(|phrase| has_unnegated_action(segment, phrase))
     })
