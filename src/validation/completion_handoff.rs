@@ -84,8 +84,6 @@ fn states_explicit_deferral(handoff: &str) -> bool {
         "leave open per maintainer",
         "left open per maintainer",
         "deferred by maintainer",
-        "parent will handle review and merge gates",
-        "parent orchestrator will handle review and merge gates",
     ]
     .iter()
     .any(|phrase| has_unnegated_phrase(&text, phrase, 80))
