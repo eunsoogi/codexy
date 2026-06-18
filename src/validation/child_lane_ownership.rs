@@ -46,7 +46,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
         }
         if line.contains("parent authored")
             && !has_negative_field_value(line, "parent")
-            && !has_absent_parent_phrase(line, "authored")
+            && !has_absent_actor_phrase(line, "parent", "authored")
         {
             return has_fix_marker(line);
         }
@@ -64,12 +64,16 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             || line.contains("fixed in parent")
             || line.contains("parent patched")
             || line.contains("orchestrator patched")
+            || (line.contains("orchestrator authored")
+                && has_fix_marker(line)
+                && !has_absent_actor_phrase(line, "orchestrator", "authored"))
             || line.contains("orchestrator fixed")
             || line.contains("orchestrator review-response")
             || line.contains("orchestrator review response")
             || line.contains("parent review-response")
             || line.contains("parent review response")
-            || (line.contains("parent commit") && !has_absent_parent_phrase(line, "commit"))
+            || (line.contains("parent commit")
+                && !has_absent_actor_phrase(line, "parent", "commit"))
             || has_passive_parent_fix(line)
             || line.contains("patched by parent"))
             && !has_negative_field_value(line, "parent")
@@ -94,7 +98,6 @@ fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str
         .or_else(|| value.strip_prefix('*'))
         .map(str::trim)
 }
-
 fn has_passive_parent_fix(line: &str) -> bool {
     (line.contains(" by parent")
         || line.contains(" by the parent")
@@ -118,7 +121,6 @@ fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
             && !after_draft.contains(&format!("{marker} review response"))
     })
 }
-
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
     line.split_once(':')
         .and_then(|(key, value)| key.contains(field).then_some(value.trim()))
@@ -131,7 +133,6 @@ fn has_non_affirmative_reassignment_key(line: &str) -> bool {
                 .any(|qualifier| key.contains(qualifier))
     })
 }
-
 fn is_positive_reassignment_value(value: &str) -> bool {
     value.contains("explicit maintainer reassignment to parent")
         || value.contains("explicit maintainer reassignment to the parent")
@@ -174,11 +175,11 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("waiting for ")
         || value.starts_with("there is no ")
         || value.starts_with("there was no ")
-        || value.ends_with(" not provided")
+        || value.contains(" not provided")
         || value.ends_with(" is missing")
-        || value.ends_with(" not granted")
-        || value.ends_with(" was not granted")
-        || value.ends_with(" not been granted")
+        || value.contains(" not granted")
+        || value.contains(" was not granted")
+        || value.contains(" not been granted")
         || value.contains(" was denied")
         || value.contains(" was rejected")
         || [" requested", " needed", " required", " pending"]
@@ -194,7 +195,6 @@ fn has_absent_value(value: &str) -> bool {
     let value = trimmed_value(value);
     matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
 }
-
 fn has_absent_field_value(value: &str, field: &str) -> bool {
     let value = trimmed_value(value);
     if has_absent_value(value) {
@@ -216,7 +216,6 @@ fn has_absent_field_value(value: &str, field: &str) -> bool {
             !after_marker.contains(field)
         })
 }
-
 fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
     ["no ", "not ", "without "]
         .into_iter()
@@ -229,20 +228,18 @@ fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
             !after_absence.contains(marker)
         })
 }
-
-fn has_absent_parent_phrase(line: &str, marker: &str) -> bool {
+fn has_absent_actor_phrase(line: &str, actor: &str, marker: &str) -> bool {
     ["no ", "not ", "without "]
         .into_iter()
-        .map(|prefix| format!("{prefix}parent {marker}"))
+        .map(|prefix| format!("{prefix}{actor} {marker}"))
         .any(|absent_marker| {
             let Some(index) = line.find(&absent_marker) else {
                 return false;
             };
             let after_absence = &line[index + absent_marker.len()..];
-            !after_absence.contains(&format!("parent {marker}"))
+            !after_absence.contains(&format!("{actor} {marker}"))
         })
 }
-
 fn trimmed_value(value: &str) -> &str {
     value.trim_matches(|character: char| {
         character.is_ascii_whitespace() || matches!(character, '.' | ',' | ';')
