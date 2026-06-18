@@ -9,6 +9,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             "review response handoff missing reviewThreads.nodes PR state evidence".into(),
         ];
     };
+    if let Some(error) = super::review_thread_evidence::check_nodes(nodes) {
+        return vec![error];
+    }
     let unresolved = nodes
         .iter()
         .filter(|thread| is_unresolved_current_thread(thread))
@@ -139,13 +142,32 @@ fn rationale_segments<'a>(text: &'a str, phrase: &str) -> impl Iterator<Item = &
     let mut rest = text;
     let mut offset = 0;
     std::iter::from_fn(move || {
-        let index = rest.find(phrase)?;
-        let start = offset + index;
-        let end = clause_end(text, start);
-        offset = start + phrase.len();
-        rest = &text[offset..];
-        Some(&text[start..end])
+        loop {
+            let index = rest.find(phrase)?;
+            let start = offset + index;
+            let end = clause_end(text, start);
+            offset = start + phrase.len();
+            rest = &text[offset..];
+            let segment = &text[start..end];
+            if !is_negated_rationale(text, start) && !is_empty_rationale(segment) {
+                return Some(segment);
+            }
+        }
     })
+}
+
+fn is_negated_rationale(text: &str, start: usize) -> bool {
+    let prefix_start = char_window_start(text, start, 32);
+    let prefix = &text[prefix_start..start];
+    ["no ", "not ", "without ", "missing "]
+        .iter()
+        .any(|negation| prefix.contains(negation))
+}
+
+fn is_empty_rationale(segment: &str) -> bool {
+    [": none", ": n/a", ": not applicable", "- none", "- n/a"]
+        .iter()
+        .any(|empty| segment.contains(empty))
 }
 
 fn clause_end(text: &str, start: usize) -> usize {
