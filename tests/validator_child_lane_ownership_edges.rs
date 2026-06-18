@@ -36,6 +36,7 @@ fn validator_rejects_contradictory_parent_authored_review_response()
     for review_response in [
         "Review response: no parent-authored implementation commits; parent-authored review-response commit abc123 fixed feedback",
         "Review response: no parent-authored implementation commits; parent review-response commit abc123 fixed feedback",
+        "Review response: no parent-authored implementation commits; parent commit abc123 fixed feedback",
     ] {
         let output = run_ownership_validator(&format!(
             "Lane ownership: child-owned\n{review_response}\nMaintainer reassignment: none\n"

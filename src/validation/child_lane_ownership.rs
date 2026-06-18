@@ -51,6 +51,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             || line.contains("orchestrator patched")
             || line.contains("parent review-response")
             || line.contains("parent review response")
+            || line.contains("parent commit")
             || line.contains("patched by parent"))
             && !has_negative_field_value(line, "parent")
     })
@@ -108,6 +109,8 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.ends_with(" not granted")
         || value.ends_with(" was not granted")
         || value.ends_with(" not been granted")
+        || value.ends_with(" was denied")
+        || value.ends_with(" was rejected")
 }
 
 fn has_absent_value(value: &str) -> bool {

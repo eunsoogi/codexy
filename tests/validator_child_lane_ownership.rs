@@ -94,6 +94,8 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: explicit maintainer reassignment to parent is not granted",
         "Maintainer reassignment: explicit maintainer reassignment to parent was not granted",
         "Maintainer reassignment: explicit maintainer reassignment to parent has not been granted",
+        "Maintainer reassignment: explicit maintainer reassignment to parent was denied",
+        "Maintainer reassignment: explicit maintainer reassignment to parent was rejected",
         "Maintainer reassignment: explicit maintainer reassignment to the parent is missing",
         "Maintainer reassignment: reassigns implementation ownership to the parent was not granted",
     ] {
