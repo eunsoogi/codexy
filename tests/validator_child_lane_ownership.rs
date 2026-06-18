@@ -5,6 +5,9 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
     for review_response in [
         "Review response: parent-authored implementation commit abc123 fixed feedback.",
+        "Review response: parent-authored commit abc123 fixed draft PR feedback.",
+        "Review response: parent-authored commit abc123 fixed draft diff feedback.",
+        "Review response: parent-authored commit abc123 fixed draft handoff feedback.",
         "Review response: parent authored implementation commit abc123 fixed feedback.",
         "Review response: parent pushed commit abc123 to fix feedback",
         "Review response: orchestrator-authored implementation commit abc123 fixed feedback.",
@@ -100,6 +103,7 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: needed explicit maintainer reassignment to parent",
         "Maintainer reassignment: needed explicit maintainer reassignment to orchestrator",
         "Maintainer reassignment: required explicit maintainer reassignment to parent",
+        "Maintainer reassignment:\n- [ ] explicit maintainer reassignment to parent",
         "Maintainer reassignment: no explicit maintainer reassignment",
         "Maintainer reassignment: no explicit maintainer reassignment to parent",
         "Maintainer reassignment: there is no explicit maintainer reassignment to parent",

@@ -77,7 +77,6 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
 fn has_negative_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(|value| has_absent_field_value(value, field))
 }
-
 fn has_empty_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(str::is_empty)
 }
@@ -87,7 +86,6 @@ fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
     };
     has_absent_value(value.trim_start_matches(['-', '*']).trim())
 }
-
 fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
     let value = lines.iter().skip(index + 1).find(|line| !line.is_empty())?;
     value
@@ -108,12 +106,13 @@ fn has_fix_marker(line: &str) -> bool {
         .split('|')
         .any(|marker| line.contains(marker))
 }
-
 fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
     line.find(marker).is_some_and(|index| {
         let after_draft = &line[index..];
         after_draft.contains("draft")
+            && (after_draft.contains("handoff") || after_draft.contains("routed"))
             && !after_draft.contains(&format!("{marker} implementation commit"))
+            && !after_draft.contains(&format!("{marker} commit"))
             && !after_draft.contains(&format!("{marker} review-response"))
             && !after_draft.contains(&format!("{marker} review response"))
     })
@@ -123,7 +122,6 @@ fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
     line.split_once(':')
         .and_then(|(key, value)| key.contains(field).then_some(value.trim()))
 }
-
 fn has_non_affirmative_reassignment_key(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
         key.contains("maintainer reassignment")
@@ -166,6 +164,7 @@ fn is_negative_reassignment_value(value: &str) -> bool {
             .any(|prefix| value.starts_with(prefix))
         || value.starts_with("not ")
         || value.starts_with("without ")
+        || value.starts_with("[ ]")
         || ["does not include ", "does not have "]
             .into_iter()
             .any(|marker| value.contains(marker))
