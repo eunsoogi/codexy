@@ -156,6 +156,33 @@ pub(super) fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
         })
 }
 
+pub(super) fn has_nested_absent_authored_field(line: &str, marker: &str) -> bool {
+    [
+        "implementation commits",
+        "implementation commit",
+        "implementation",
+        "review-response commits",
+        "review-response commit",
+        "review response commits",
+        "review response commit",
+    ]
+    .into_iter()
+    .map(|field| format!("{marker} {field}:"))
+    .any(|field| {
+        let Some((_, value)) = line.split_once(&field) else {
+            return false;
+        };
+        let absent_value = value.split(';').next().unwrap_or(value);
+        if !has_absent_field_value(absent_value, marker) {
+            return false;
+        }
+        value
+            .split_once(';')
+            .map(|(_, suffix)| !suffix.contains(marker))
+            .unwrap_or(true)
+    })
+}
+
 pub(super) fn has_absent_actor_phrase(line: &str, actor: &str, marker: &str) -> bool {
     ["no ", "not ", "without "]
         .into_iter()

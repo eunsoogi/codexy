@@ -18,7 +18,8 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         let starts_lane = is_affirmative_child_owned_line(line);
         let pr_boundary = line.starts_with("pr:")
             && index > 0
-            && !is_affirmative_child_owned_line(lines[index - 1]);
+            && previous_non_empty_line(&lines, index)
+                .is_some_and(|previous| !is_affirmative_child_owned_line(previous));
         let ownership_boundary = line.contains("ownership:");
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
@@ -53,6 +54,13 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         }
     }
     child_owned && parent_fix && !reassigned
+}
+fn previous_non_empty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
+    lines[..index]
+        .iter()
+        .rev()
+        .find(|line| !line.is_empty())
+        .copied()
 }
 fn is_affirmative_child_owned_line(line: &str) -> bool {
     field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)
@@ -91,6 +99,7 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     if line.contains("parent-authored")
         && !has_negative_field_value(line, "parent-authored")
         && !has_absent_authored_phrase(line, "parent-authored")
+        && !has_nested_absent_authored_field(line, "parent-authored")
         && !has_draft_handoff_phrase(line, "parent-authored")
     {
         return has_fix_marker(line) || has_affirmative_implementation_field(line);
@@ -104,6 +113,7 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     if line.contains("orchestrator-authored")
         && !has_negative_field_value(line, "orchestrator-authored")
         && !has_absent_authored_phrase(line, "orchestrator-authored")
+        && !has_nested_absent_authored_field(line, "orchestrator-authored")
         && !has_draft_handoff_phrase(line, "orchestrator-authored")
     {
         return has_fix_marker(line) || has_affirmative_implementation_field(line);
