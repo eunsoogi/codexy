@@ -72,7 +72,8 @@ fn validator_treats_present_tense_review_actions_as_review_response() -> TestRes
 #[test]
 fn validator_preserves_review_response_context_across_follow_up_sentences() -> TestResult {
     assert_requires_threads("## Review response\n- Fixed the requested changes.\n")?;
-    assert_requires_threads("Review response: current head verified. Addressed all feedback.\n")
+    assert_requires_threads("Review response: current head verified. Addressed all feedback.\n")?;
+    assert_requires_threads("Codex review left comments. Addressed the feedback.\n")
 }
 #[test]
 fn validator_preserves_review_feedback_context_across_all_bullets() -> TestResult {
@@ -104,7 +105,7 @@ fn validator_rejects_partial_review_thread_evidence() -> TestResult {
 #[test]
 fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> TestResult {
     assert_handoff_succeeds(
-        "Codex review passed, fixed the failing test.\n",
+        "Codex review passed. Fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
     )
 }

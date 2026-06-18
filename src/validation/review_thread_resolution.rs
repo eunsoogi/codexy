@@ -70,10 +70,15 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();
-            let no_feedback = segment.contains(": none") || segment.contains("none from codex");
+            let no_feedback = segment.contains(": none")
+                || "none from codex|no review feedback|no feedback|no comment|no comments|no suggestion|no suggestions"
+                    .split('|')
+                    .any(|term| segment.contains(term));
+            let output = "comment|feedback|suggestion|thread".split('|').any(|t| segment.contains(t));
             let matches = has_context || (section && !trimmed.is_empty());
             section = !no_feedback
-                && ((has_context && (segment.trim_end().ends_with(':') || trimmed.starts_with('#')))
+                && ((has_context
+                    && (output || segment.trim_end().ends_with(':') || trimmed.starts_with('#')))
                     || segment.contains("review response:")
                     || (section && (trimmed.starts_with('-') || trimmed.is_empty())));
             matches
