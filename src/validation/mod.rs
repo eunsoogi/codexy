@@ -11,6 +11,8 @@ mod mcp_runtime;
 mod merge_message;
 mod prompt_yaml;
 mod release_publish_contract;
+mod review_thread_evidence;
+mod review_thread_resolution;
 mod roles;
 mod roles_yaml;
 mod runtime;

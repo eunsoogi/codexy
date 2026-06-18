@@ -146,9 +146,44 @@ the claim does not stop at an open PR when the requested outcome includes
 completion or the default Codexy merge flow. Capture current PR state first:
 
 ```sh
-gh pr view <pr> --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.json
+pr=<pr>
+owner=<owner>
+repo=<repo>
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.base.json
+gh api graphql --paginate --slurp \
+  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      reviewThreads(first:100, after:$endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          isOutdated
+          path
+          comments(first:20) { nodes { url } }
+        }
+      }
+    }
+  }
+}' > pr-state.reviewThreads.pages.json
+jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
+  | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
+  pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
+jq --slurpfile reviewThreads pr-state.reviewThreads.json \
+  '. + {reviewThreads: $reviewThreads[0]}' \
+  pr-state.base.json > pr-state.json
+rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json
 scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file pr-state.json
 ```
+
+For review-response or review-feedback handoffs, the PR state file MUST also
+include GraphQL `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`,
+`path`, and comment URLs. The completion-handoff validator rejects addressed
+review-feedback reports when this thread evidence is missing, or when any
+addressed unresolved thread, including an outdated-but-fixed thread, remains
+unresolved without an accepted no-change rationale.
 
 If the validator flags the report, either continue through review, merge,
 branch deletion, and post-merge main sync, or rewrite the report to state the
@@ -396,8 +431,10 @@ query($owner:String!, $name:String!, $number:Int!) {
     pullRequest(number:$number) {
       reviewThreads(first:100) {
         nodes {
+          id
           isResolved
           isOutdated
+          path
           comments(first:20) {
             nodes {
               author { login }

@@ -27,7 +27,9 @@ been driven and inspected.
    - Completion handoff: final-answer or handoff artifact plus current
      `gh pr view` JSON through
      `scripts/validate-plugin-config --check-completion-handoff` when a
-     completion claim could otherwise stop at an open PR.
+     completion claim could otherwise stop at an open PR; include GraphQL
+     `reviewThreads.nodes` when the artifact reports review feedback was
+     addressed.
    - Plugin/config/docs: parser, schema, frontmatter, rendered preview, or
      structured dump.
    - Codexy architecture: `scripts/validate-plugin-config --check` when
