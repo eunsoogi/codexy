@@ -97,7 +97,8 @@ fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
 }
 fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index: usize) -> bool {
     let suffix = text[after_index..].trim_start_matches([' ', '\t']);
-    if has_false_label_value(suffix)
+    if (has_false_label_value(suffix)
+        && !suffix.strip_prefix("no").is_some_and(starts_with_boundary))
         || suffix.starts_with("from maintainer was not requested")
         || (suffix.starts_with("was requested by ")
             && !suffix.starts_with("was requested by maintainer"))
@@ -201,6 +202,7 @@ fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
 fn has_nearby_negation(prefix: &str) -> bool {
     [
         "no",
+        "no user or",
         "no explicit",
         "not",
         "not explicit",

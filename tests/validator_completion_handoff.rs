@@ -15,6 +15,7 @@ fn validator_cli_allows_explicit_stop_condition_with_clean_open_pr() -> TestResu
         "Maintainer requested draft only; Work is complete after PR #128.\n",
         "Maintainer requested no-merge; Work is complete after PR #128.\n",
         "Maintainer requested leave-open; Work is complete after PR #128.\n",
+        "Maintainer asked me to leave open no matter what. Work is complete after PR #128.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -105,6 +106,7 @@ fn validator_cli_rejects_false_or_unrelated_deferrals() -> TestResult {
         "Maintainer explicitly requested a Codex review. Work is complete after PR #128.\n",
         "No maintainer explicitly requested no merge. Work is complete after PR #128.\n",
         "No maintainer explicitly requested leave open. Work is complete after PR #128.\n",
+        "No user or maintainer requested no merge. Work is complete after PR #128.\n",
         "No draft-only instruction was requested. Work is complete after PR #128.\n",
         "No explicit draft-only instruction was requested. Work is complete after PR #128.\n",
         "The maintainer did not ask me to leave open. Work is complete after PR #128.\n",
