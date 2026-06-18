@@ -58,3 +58,107 @@ Maintainer reassignment: explicit maintainer reassignment to parent
     );
     Ok(())
 }
+
+#[test]
+fn validator_ignores_parent_fix_before_child_owned_lane() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"PR: #1
+Lane ownership: parent-owned
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+
+PR: #2
+Lane ownership: child-owned
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not attribute a preceding parent-owned lane fix to the child-owned lane\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_reassignment_before_child_owned_lane() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"PR: #1
+Lane ownership: parent-owned
+Maintainer reassignment: explicit maintainer reassignment to parent
+
+PR: #2
+Lane ownership: child-owned
+Review response: parent-authored implementation commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let preceding reassignment suppress a later child-owned violation"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_parent_owned_fix_between_child_owned_lanes()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"PR: #1
+Lane ownership: child-owned
+Review response: child-authored commit abc123 fixed feedback
+Maintainer reassignment: none
+
+PR: #2
+Lane ownership: parent-owned
+Review response: parent-authored implementation commit def456 fixed feedback
+Maintainer reassignment: none
+
+PR: #3
+Lane ownership: child-owned
+Review response: child-authored commit ghi789 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not leak a parent-owned fix between child-owned lanes\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_parent_owned_reassignment_between_child_owned_lanes()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"PR: #1
+Lane ownership: child-owned
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+
+PR: #2
+Lane ownership: parent-owned
+Maintainer reassignment: explicit maintainer reassignment to parent
+
+PR: #3
+Lane ownership: child-owned
+Review response: child-authored commit ghi789 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject the first child-owned lane before parent-owned reassignment can mask it"
+    );
+    Ok(())
+}

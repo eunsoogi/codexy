@@ -3,7 +3,6 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     if !has_unreassigned_parent_authored_fix(&normalized) {
         return Vec::new();
     }
-
     vec![
         "child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment".to_owned(),
     ]
@@ -13,15 +12,20 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let (mut child_owned, mut parent_fix, mut reassigned) = (false, false, false);
     for (index, line) in lines.iter().enumerate() {
         let starts_lane = is_affirmative_child_owned_line(line);
-        if starts_lane && child_owned {
+        let pr_boundary = line.starts_with("pr:")
+            && index > 0
+            && !is_affirmative_child_owned_line(lines[index - 1]);
+        if (starts_lane || pr_boundary || field_value(line, "owner").is_some()) && child_owned {
             if parent_fix && !reassigned {
                 return true;
             }
-            (parent_fix, reassigned) = (false, false);
+            (child_owned, parent_fix, reassigned) = (false, false, false);
         }
         child_owned |= starts_lane;
-        parent_fix |= line_has_parent_authored_fix(&lines, index);
-        reassigned |= line_has_explicit_maintainer_reassignment(&lines, index);
+        if child_owned {
+            parent_fix |= line_has_parent_authored_fix(&lines, index);
+            reassigned |= line_has_explicit_maintainer_reassignment(&lines, index);
+        }
     }
     child_owned && parent_fix && !reassigned
 }
@@ -54,7 +58,7 @@ fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bo
 }
 fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
-    if has_empty_field_value(line, "parent-authored")
+    if field_value(line, "parent-authored").is_some_and(str::is_empty)
         && next_line_bullet_value(lines, index).is_some_and(has_absent_value)
     {
         return false;
@@ -101,9 +105,6 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
 }
 fn has_negative_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(|value| has_absent_field_value(value, field))
-}
-fn has_empty_field_value(line: &str, field: &str) -> bool {
-    field_value(line, field).is_some_and(str::is_empty)
 }
 fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
     let value = lines.iter().skip(index + 1).find(|line| !line.is_empty())?;
@@ -187,12 +188,10 @@ fn is_negative_reassignment_value(value: &str) -> bool {
             .any(|marker| value.contains(marker))
         || [" requested", " needed", " required", " pending"]
             .into_iter()
-            .any(|suffix| contains_non_affirmative_reassignment_suffix(value, suffix))
+            .any(|marker| value.split_once(marker).is_some_and(is_empty_or_spaced))
 }
-fn contains_non_affirmative_reassignment_suffix(value: &str, marker: &str) -> bool {
-    value
-        .split_once(marker)
-        .is_some_and(|(_, suffix)| suffix.is_empty() || suffix.starts_with(char::is_whitespace))
+fn is_empty_or_spaced((_, suffix): (&str, &str)) -> bool {
+    suffix.is_empty() || suffix.starts_with(char::is_whitespace)
 }
 fn has_absent_value(value: &str) -> bool {
     let value = trimmed_value(value);
@@ -203,7 +202,6 @@ fn has_absent_field_value(value: &str, field: &str) -> bool {
     if has_absent_value(value) {
         return true;
     }
-
     "not provided|without|missing|absent|none|not|no"
         .split('|')
         .any(|marker| {
