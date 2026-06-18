@@ -19,6 +19,9 @@ fn is_child_owned(evidence: &str) -> bool {
 fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
     evidence.lines().any(|line| {
         let line = line.trim();
+        if has_non_affirmative_reassignment_key(line) {
+            return false;
+        }
         let Some(value) = field_value(line, "maintainer reassignment") else {
             return false;
         };
@@ -61,7 +64,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             || line.contains("orchestrator patched")
             || line.contains("parent review-response")
             || line.contains("parent review response")
-            || line.contains("parent commit")
+            || (line.contains("parent commit") && !has_absent_parent_phrase(line, "commit"))
             || line.contains("patched by parent"))
             && !has_negative_field_value(line, "parent")
     })
@@ -91,6 +94,15 @@ fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
     line.split_once(':')
         .and_then(|(key, value)| key.contains(field).then_some(value.trim()))
+}
+
+fn has_non_affirmative_reassignment_key(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, _)| {
+        key.contains("maintainer reassignment")
+            && ["pending", "requested", "needed"]
+                .into_iter()
+                .any(|qualifier| key.contains(qualifier))
+    })
 }
 
 fn is_positive_reassignment_value(value: &str) -> bool {
@@ -153,6 +165,19 @@ fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
             };
             let after_absence = &line[index + absent_marker.len()..];
             !after_absence.contains(marker)
+        })
+}
+
+fn has_absent_parent_phrase(line: &str, marker: &str) -> bool {
+    ["no ", "not ", "without "]
+        .into_iter()
+        .map(|prefix| format!("{prefix}parent {marker}"))
+        .any(|absent_marker| {
+            let Some(index) = line.find(&absent_marker) else {
+                return false;
+            };
+            let after_absence = &line[index + absent_marker.len()..];
+            !after_absence.contains(&format!("parent {marker}"))
         })
 }
 
