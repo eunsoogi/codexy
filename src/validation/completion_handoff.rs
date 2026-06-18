@@ -125,13 +125,21 @@ fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usiz
     }
     false
 }
-
 fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
     text[..start].trim_end().ends_with("- [ ]")
 }
-
 fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
     let suffix = text[after_index..].trim_start();
+    if ["is not requested", "was not requested"]
+        .iter()
+        .any(|phrase| {
+            suffix
+                .strip_prefix(phrase)
+                .is_some_and(starts_with_boundary)
+        })
+    {
+        return true;
+    }
     let Some(value) = suffix.strip_prefix(':') else {
         return false;
     };
@@ -150,13 +158,11 @@ fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
         "no",
     ]
     .iter()
-    .any(|word| {
-        value
-            .strip_prefix(word)
-            .is_some_and(|rest| is_boundary(rest.chars().next()))
-    })
+    .any(|word| value.strip_prefix(word).is_some_and(starts_with_boundary))
 }
-
+fn starts_with_boundary(rest: &str) -> bool {
+    is_boundary(rest.chars().next())
+}
 fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
     let mut rest = text;
     let mut offset = 0;
@@ -194,15 +200,12 @@ fn has_unnegated_word(text: &str, word: &str, negation_window: usize) -> bool {
     }
     false
 }
-
 fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())
 }
-
 fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
-
 fn has_nearby_negation(prefix: &str) -> bool {
     let prefix = prefix.trim_end();
     [
@@ -225,7 +228,6 @@ fn has_nearby_negation(prefix: &str) -> bool {
     .iter()
     .any(|phrase| prefix.ends_with(phrase))
 }
-
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {
     text[..end]
         .char_indices()
@@ -233,18 +235,15 @@ fn char_window_start(text: &str, end: usize, window: usize) -> usize {
         .nth(window)
         .map_or(0, |(index, _)| index)
 }
-
 fn pr_number(pr_state: &Value) -> String {
     pr_state
         .get("number")
         .and_then(Value::as_u64)
         .map_or_else(|| "<unknown>".to_owned(), |number| number.to_string())
 }
-
 fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
 }
-
 fn bool_field(value: &Value, key: &str) -> Option<bool> {
     value.get(key).and_then(Value::as_bool)
 }

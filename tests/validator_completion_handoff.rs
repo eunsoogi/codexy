@@ -46,7 +46,6 @@ fn validator_cli_rejects_completion_claim_that_negates_explicit_stop() -> TestRe
         "validator should reject completion claims that negate explicit stop instructions",
     )
 }
-
 #[test]
 fn validator_cli_rejects_empty_stop_condition_label() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -64,6 +63,8 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: no. Work is complete after PR #128.\n",
         "No-merge instruction: N/A. Work is complete after PR #128.\n",
         "Draft-only instruction: not applicable. Work is complete after PR #128.\n",
+        "Draft-only instruction was not requested. Work is complete after PR #128.\n",
+        "No-merge instruction is not requested. Work is complete after PR #128.\n",
         "No-merge instruction: . Work is complete after PR #128.\n",
     ] {
         reject_open_pr_completion_handoff(
@@ -73,7 +74,6 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_rejects_completion_claim_with_negated_maintainer_request() -> TestResult {
     reject_open_pr_completion_handoff(
