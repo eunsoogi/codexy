@@ -48,6 +48,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             || line.contains("parent fixed")
             || line.contains("fixed in parent")
             || line.contains("parent patched")
+            || line.contains("orchestrator patched")
             || line.contains("patched by parent"))
             && !has_negative_field_value(line, "parent")
     })

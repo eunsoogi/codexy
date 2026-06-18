@@ -6,6 +6,7 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
     for review_response in [
         "Review response: parent-authored implementation commit abc123 fixed feedback.",
         "Review response: parent patched the child-owned branch with commit abc123",
+        "Review response: orchestrator patched the child-owned branch with commit abc123",
     ] {
         let temp = tempfile::tempdir()?;
         let evidence_path = temp.path().join("handoff.md");
