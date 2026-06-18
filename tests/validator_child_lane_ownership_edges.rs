@@ -48,6 +48,43 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_comma_separated_parent_authored_review_response()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Review response: no parent-authored implementation commits, but parent-authored review-response commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject parent-authored evidence after a same-line denial"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_empty_parent_authored_field_with_next_line_absence()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent-authored implementation commits:
+none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow empty parent-authored fields with absence values on the next line\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_authored_fix_with_unrelated_no_value()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

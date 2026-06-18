@@ -27,8 +27,13 @@ fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
 }
 
 fn has_parent_authored_fix(evidence: &str) -> bool {
-    evidence.lines().any(|line| {
-        let line = line.trim();
+    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
+    lines.iter().enumerate().any(|(index, line)| {
+        if has_empty_field_value(line, "parent-authored")
+            && next_line_has_absent_value(&lines, index)
+        {
+            return false;
+        }
         if line.contains("parent-authored")
             && !has_negative_field_value(line, "parent-authored")
             && !has_absent_parent_authored_phrase(line)
@@ -53,6 +58,20 @@ fn has_negative_field_value(line: &str, field: &str) -> bool {
         return false;
     };
     has_absent_value(value)
+}
+
+fn has_empty_field_value(line: &str, field: &str) -> bool {
+    let Some(value) = field_value(line, field) else {
+        return false;
+    };
+    value.is_empty()
+}
+
+fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
+    let Some(value) = lines.iter().skip(index + 1).find(|line| !line.is_empty()) else {
+        return false;
+    };
+    has_absent_value(value.trim_start_matches(['-', '*']).trim())
 }
 
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
@@ -94,7 +113,11 @@ fn has_absent_value(value: &str) -> bool {
 }
 
 fn has_absent_parent_authored_phrase(line: &str) -> bool {
-    line.contains("no parent-authored") && !line.contains("; parent-authored")
+    let Some(index) = line.find("no parent-authored") else {
+        return false;
+    };
+    let after_absence = &line[index + "no parent-authored".len()..];
+    !after_absence.contains("parent-authored")
 }
 
 fn trimmed_value(value: &str) -> &str {
