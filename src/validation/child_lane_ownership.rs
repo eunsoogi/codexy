@@ -215,5 +215,8 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
         && !has_negative_field_value(line, "parent")
 }
 fn has_present_actor_action(line: &str, actor: &str, marker: &str) -> bool {
-    line.contains(&format!("{actor} {marker}")) && !has_absent_actor_phrase(line, actor, marker)
+    let field = format!("{actor} {marker}");
+    line.contains(&field)
+        && !has_negative_field_value(line, &field)
+        && !has_absent_actor_phrase(line, actor, marker)
 }
