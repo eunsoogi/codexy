@@ -194,6 +194,10 @@ Maintainer reassignment: none
 Review response: parent-authored implementation draft diff was routed to the child; child-authored commit def456 fixed feedback
 Maintainer reassignment: none
 "#,
+        r#"Lane ownership: child-owned
+Review response: parent-authored draft diff was routed to the child; child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
     ] {
         let temp = tempfile::tempdir()?;
         let evidence_path = temp.path().join("handoff.md");

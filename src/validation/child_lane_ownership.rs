@@ -29,7 +29,6 @@ fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
         is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
     })
 }
-
 fn has_parent_authored_fix(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
@@ -75,7 +74,6 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             && !has_negative_field_value(line, "parent")
     })
 }
-
 fn has_negative_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(|value| has_absent_field_value(value, field))
 }
@@ -83,7 +81,6 @@ fn has_negative_field_value(line: &str, field: &str) -> bool {
 fn has_empty_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(str::is_empty)
 }
-
 fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
     let Some(value) = lines.iter().skip(index + 1).find(|line| !line.is_empty()) else {
         return false;
@@ -100,9 +97,12 @@ fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str
 }
 
 fn has_passive_parent_fix(line: &str) -> bool {
-    (line.contains(" by parent") || line.contains(" by orchestrator")) && has_fix_marker(line)
+    (line.contains(" by parent")
+        || line.contains(" by the parent")
+        || line.contains(" by orchestrator")
+        || line.contains(" by the orchestrator"))
+        && has_fix_marker(line)
 }
-
 fn has_fix_marker(line: &str) -> bool {
     "review-response|review response|fix|commit"
         .split('|')
@@ -110,13 +110,13 @@ fn has_fix_marker(line: &str) -> bool {
 }
 
 fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
-    line.find(&format!("{marker} implementation draft"))
-        .is_some_and(|index| {
-            let after_draft = &line[index..];
-            !after_draft.contains(&format!("{marker} implementation commit"))
-                && !after_draft.contains(&format!("{marker} review-response"))
-                && !after_draft.contains(&format!("{marker} review response"))
-        })
+    line.find(marker).is_some_and(|index| {
+        let after_draft = &line[index..];
+        after_draft.contains("draft")
+            && !after_draft.contains(&format!("{marker} implementation commit"))
+            && !after_draft.contains(&format!("{marker} review-response"))
+            && !after_draft.contains(&format!("{marker} review response"))
+    })
 }
 
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
