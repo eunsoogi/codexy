@@ -14,19 +14,21 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 #[test]
 fn validator_allows_absent_parent_authored_review_response()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Lane ownership: child-owned
-Review response: no parent-authored implementation commits; child fixed feedback
-Maintainer reassignment: none
-"#,
-    )?;
+    for review_response in [
+        "Review response: no parent-authored implementation commits; child fixed feedback",
+        "Review response: no orchestrator-authored implementation commits; child fixed feedback",
+    ] {
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n{review_response}\nMaintainer reassignment: none\n"
+        ))?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow review-response evidence that explicitly denies parent-authored fixes\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should allow review-response evidence that explicitly denies parent/orchestrator-authored fixes `{review_response}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

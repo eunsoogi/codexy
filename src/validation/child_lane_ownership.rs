@@ -36,7 +36,17 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
         }
         if line.contains("parent-authored")
             && !has_negative_field_value(line, "parent-authored")
-            && !has_absent_parent_authored_phrase(line)
+            && !has_absent_authored_phrase(line, "parent-authored")
+        {
+            return line.contains("implementation")
+                || line.contains("review-response")
+                || line.contains("review response")
+                || line.contains("fix")
+                || line.contains("commit");
+        }
+        if line.contains("orchestrator-authored")
+            && !has_negative_field_value(line, "orchestrator-authored")
+            && !has_absent_authored_phrase(line, "orchestrator-authored")
         {
             return line.contains("implementation")
                 || line.contains("review-response")
@@ -86,14 +96,24 @@ fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
 fn is_positive_reassignment_value(value: &str) -> bool {
     value.contains("explicit maintainer reassignment to parent")
         || value.contains("explicit maintainer reassignment to the parent")
+        || value.contains("explicit maintainer reassignment to orchestrator")
+        || value.contains("explicit maintainer reassignment to the orchestrator")
         || value.contains("explicit reassignment to parent")
         || value.contains("explicit reassignment to the parent")
+        || value.contains("explicit reassignment to orchestrator")
+        || value.contains("explicit reassignment to the orchestrator")
         || value.contains("reassigned to parent")
         || value.contains("reassigned to the parent")
+        || value.contains("reassigned to orchestrator")
+        || value.contains("reassigned to the orchestrator")
         || value.contains("reassigns implementation ownership to parent")
         || value.contains("reassigns implementation ownership to the parent")
+        || value.contains("reassigns implementation ownership to orchestrator")
+        || value.contains("reassigns implementation ownership to the orchestrator")
         || value.contains("reassigned implementation ownership to parent")
         || value.contains("reassigned implementation ownership to the parent")
+        || value.contains("reassigned implementation ownership to orchestrator")
+        || value.contains("reassigned implementation ownership to the orchestrator")
 }
 
 fn is_negative_reassignment_value(value: &str) -> bool {
@@ -118,12 +138,13 @@ fn has_absent_value(value: &str) -> bool {
     matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
 }
 
-fn has_absent_parent_authored_phrase(line: &str) -> bool {
-    let Some(index) = line.find("no parent-authored") else {
+fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
+    let absent_marker = format!("no {marker}");
+    let Some(index) = line.find(&absent_marker) else {
         return false;
     };
-    let after_absence = &line[index + "no parent-authored".len()..];
-    !after_absence.contains("parent-authored")
+    let after_absence = &line[index + absent_marker.len()..];
+    !after_absence.contains(marker)
 }
 
 fn trimmed_value(value: &str) -> &str {

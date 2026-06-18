@@ -5,6 +5,8 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
     for review_response in [
         "Review response: parent-authored implementation commit abc123 fixed feedback.",
+        "Review response: orchestrator-authored implementation commit abc123 fixed feedback.",
+        "Review response: orchestrator-authored review-response commit abc123 fixed feedback.",
         "Review response: parent patched the child-owned branch with commit abc123",
         "Review response: orchestrator patched the child-owned branch with commit abc123",
     ] {
@@ -46,7 +48,10 @@ fn validator_allows_parent_authored_child_lane_fix_with_reassignment()
     for phrase in [
         "Maintainer reassignment: explicit maintainer reassignment to parent in thread.",
         "Maintainer reassignment: explicit maintainer reassignment to the parent",
+        "Maintainer reassignment: explicit maintainer reassignment to orchestrator",
+        "Maintainer reassignment: explicit maintainer reassignment to the orchestrator",
         "Maintainer reassignment: reassigns implementation ownership to the parent",
+        "Maintainer reassignment: reassigns implementation ownership to the orchestrator",
     ] {
         let temp = tempfile::tempdir()?;
         let evidence_path = temp.path().join("handoff.md");
