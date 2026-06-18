@@ -13,14 +13,16 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
     let (mut child_owned, mut parent_fix, mut reassigned) = (false, false, false);
     let mut pending_parent_fix = Some(false);
+    let mut pending_reassigned = Some(false);
     for (index, line) in lines.iter().enumerate() {
         let starts_lane = is_affirmative_child_owned_line(line);
         let pr_boundary = line.starts_with("pr:")
             && index > 0
             && !is_affirmative_child_owned_line(lines[index - 1]);
-        let owner_boundary = field_value(line, "owner").is_some() || line.contains("ownership:");
+        let ownership_boundary = line.contains("ownership:");
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
-        if (starts_lane || pr_boundary || owner_boundary) && child_owned {
+        let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
+        if (starts_lane || pr_boundary || ownership_boundary) && child_owned {
             if parent_fix && !reassigned {
                 return true;
             }
@@ -28,19 +30,26 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         }
         if pr_boundary {
             pending_parent_fix = Some(false);
-        } else if owner_boundary && line.contains("ownership:") && !starts_lane {
+            pending_reassigned = Some(false);
+        } else if ownership_boundary && !starts_lane {
             pending_parent_fix = None;
+            pending_reassigned = None;
         }
         if starts_lane {
             child_owned = true;
             parent_fix |= pending_parent_fix.unwrap_or(false);
+            reassigned |= pending_reassigned.unwrap_or(false);
             pending_parent_fix = Some(false);
+            pending_reassigned = Some(false);
         }
         if child_owned {
             parent_fix |= line_parent_fix;
-            reassigned |= line_has_explicit_maintainer_reassignment(&lines, index);
+            reassigned |= line_reassigned;
         } else if let Some(pending) = pending_parent_fix.as_mut() {
             *pending |= line_parent_fix;
+            if let Some(pending) = pending_reassigned.as_mut() {
+                *pending |= line_reassigned;
+            }
         }
     }
     child_owned && parent_fix && !reassigned

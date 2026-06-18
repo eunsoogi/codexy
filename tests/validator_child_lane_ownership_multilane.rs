@@ -122,6 +122,45 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_keeps_child_owned_lane_across_owner_metadata() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"PR: #130
+Lane ownership: child-owned
+Owner: child-thread-1
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not end a child-owned lane on owner metadata"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_preserves_reassignment_before_child_owned_line()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"PR: #130
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: explicit maintainer reassignment to parent
+Lane ownership: child-owned
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should carry reassignment evidence that appears before the child-owned marker\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_reassignment_before_child_owned_lane() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
