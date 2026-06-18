@@ -103,6 +103,7 @@ pub(super) fn is_negative_reassignment_value(value: &str) -> bool {
             .into_iter()
             .any(|marker| value.contains(marker))
         || value.contains(" not reassigned to ")
+        || value.contains(" not reassigned implementation ownership to ")
         || value.starts_with("we need ")
         || value.starts_with("waiting for ")
         || value.starts_with("there is no ")
