@@ -14,7 +14,12 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     }
     let unresolved = nodes
         .iter()
-        .filter(|thread| is_unresolved_thread(thread))
+        .filter(|thread| {
+            thread
+                .get("isResolved")
+                .and_then(Value::as_bool)
+                .is_some_and(|resolved| !resolved)
+        })
         .find(|thread| !documents_accepted_no_change_rationale(handoff, thread));
     if unresolved.is_none() {
         return Vec::new();
@@ -30,13 +35,6 @@ fn review_thread_nodes(pr_state: &Value) -> Option<&Vec<Value>> {
         .get("reviewThreads")
         .and_then(|threads| threads.get("nodes"))
         .and_then(Value::as_array)
-}
-
-fn is_unresolved_thread(thread: &Value) -> bool {
-    thread
-        .get("isResolved")
-        .and_then(Value::as_bool)
-        .is_some_and(|resolved| !resolved)
 }
 
 fn claims_review_response(handoff: &str) -> bool {
@@ -73,22 +71,29 @@ fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool
 fn has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| text.contains(needle))
 }
-
 fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
-    text.split(['.', '\n', ';']).filter(|segment| {
-        has_any(segment, &["review response", "review feedback"])
-            || has_any(segment, &["review thread", "review comments"])
-    })
+    let mut section = false;
+    text.split_inclusive(['.', '\n', ';'])
+        .filter(move |segment| {
+            let has_context = has_any(segment, &["review response", "review feedback"])
+                || has_any(segment, &["review thread", "review comments"]);
+            let matches = has_context || (section && segment.trim_start().starts_with('-'));
+            section = has_context && segment.trim_end().ends_with(':');
+            matches
+        })
 }
-
 fn has_unnegated_action(text: &str, phrase: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;
     while let Some(index) = rest.find(phrase) {
         let start = offset + index;
-        let prefix_start = char_window_start(text, start, 32);
-        let prefix = &text[prefix_start..start];
+        let prefix = &text[..start];
         if ![
+            "review response: none",
+            "review feedback: none",
+            "review thread: none",
+            "review comments: none",
+            "none from codex",
             "no review feedback was ",
             "no review feedback ",
             "no feedback was ",
@@ -105,7 +110,6 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
     }
     false
 }
-
 fn char_window_start(text: &str, end: usize, max_chars: usize) -> usize {
     text[..end]
         .char_indices()
@@ -113,7 +117,6 @@ fn char_window_start(text: &str, end: usize, max_chars: usize) -> usize {
         .nth(max_chars.saturating_sub(1))
         .map_or(0, |(index, _)| index)
 }
-
 fn thread_label(thread: &Value) -> String {
     let id = thread
         .get("id")
@@ -123,7 +126,7 @@ fn thread_label(thread: &Value) -> String {
         .get("path")
         .and_then(Value::as_str)
         .unwrap_or("unknown path");
-    let url = first_comment_url(thread).unwrap_or("no comment URL");
+    let url = comment_urls(thread).next().unwrap_or("no comment URL");
     format!("{id} at {path} ({url})")
 }
 
@@ -169,16 +172,17 @@ fn has_post_label_negation(segment: &str, phrase: &str) -> bool {
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
     let prefixes = ["not ", "was not ", "wasn't ", "is not ", "isn't "];
     let words = ["accepted", "approved", "documented"];
-    prefixes.iter().any(|prefix| {
-        after_label.strip_prefix(prefix).is_some_and(|rest| {
-            words.iter().any(|word| {
-                rest.strip_prefix(word).is_some_and(|tail| {
-                    tail.chars()
-                        .next()
-                        .is_none_or(|ch| !ch.is_ascii_alphanumeric())
-                })
-            })
-        })
+    prefixes
+        .iter()
+        .filter_map(|prefix| after_label.strip_prefix(prefix))
+        .any(|rest| words.iter().any(|word| has_word_prefix(rest, word)))
+}
+
+fn has_word_prefix(text: &str, word: &str) -> bool {
+    text.strip_prefix(word).is_some_and(|tail| {
+        tail.chars()
+            .next()
+            .is_none_or(|ch| !ch.is_ascii_alphanumeric())
     })
 }
 
@@ -233,10 +237,6 @@ fn is_reference_boundary(text: &str, start: usize, end: usize) -> bool {
 
 fn is_reference_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '/' | '#' | ':')
-}
-
-fn first_comment_url(thread: &Value) -> Option<&str> {
-    comment_urls(thread).next()
 }
 
 fn comment_urls(thread: &Value) -> impl Iterator<Item = &str> {
