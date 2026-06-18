@@ -209,6 +209,7 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
         || has_present_actor_action(line, "parent", "review-response")
         || has_present_actor_action(line, "parent", "review response")
         || has_present_actor_action(line, "parent", "commit")
+        || has_present_actor_action(line, "orchestrator", "commit")
         || has_passive_parent_fix(line)
         || line.contains("patched by parent"))
         && !has_negative_field_value(line, "parent")
