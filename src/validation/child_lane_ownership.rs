@@ -11,7 +11,6 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         "child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment".to_owned(),
     ]
 }
-
 fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
@@ -61,6 +60,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
         }
         (line.contains("parent implemented")
             || line.contains("parent fixed")
+            || line.contains("parent pushed")
             || line.contains("fixed in parent")
             || line.contains("parent patched")
             || line.contains("orchestrator patched")
@@ -167,6 +167,7 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("needed ")
         || value.starts_with("not ")
         || value.starts_with("without ")
+        || value.contains(" not reassigned to ")
         || value.starts_with("we need ")
         || value.starts_with("waiting for ")
         || value.starts_with("there is no ")
