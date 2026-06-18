@@ -53,11 +53,28 @@ fn validator_cli_rejects_completion_claim_that_negates_explicit_stop()
 }
 
 #[test]
+fn validator_cli_rejects_empty_stop_condition_label() -> Result<(), Box<dyn std::error::Error>> {
+    reject_open_pr_completion_handoff(
+        "Stop condition: none. Work is complete after PR #128.\n",
+        "validator should reject stop-condition labels without real deferral text",
+    )
+}
+
+#[test]
 fn validator_cli_rejects_completion_claim_with_negated_maintainer_request()
 -> Result<(), Box<dyn std::error::Error>> {
     reject_open_pr_completion_handoff(
         "No maintainer explicitly requested stop or wait. Work is complete. Waiting for merge after PR #128.\n",
         "validator should reject completion claims that negate a maintainer stop/wait request",
+    )
+}
+
+#[test]
+fn validator_cli_rejects_parent_orchestrator_wait_as_maintainer_deferral()
+-> Result<(), Box<dyn std::error::Error>> {
+    reject_open_pr_completion_handoff(
+        "The parent orchestrator asked me to wait for merge gates. Work is complete after PR #128.\n",
+        "validator should reject non-maintainer wait requests as explicit deferrals",
     )
 }
 
