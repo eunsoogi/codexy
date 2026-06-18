@@ -33,17 +33,19 @@ Maintainer reassignment: none
 #[test]
 fn validator_rejects_contradictory_parent_authored_review_response()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Lane ownership: child-owned
-Review response: no parent-authored implementation commits; parent-authored review-response commit abc123 fixed feedback
-Maintainer reassignment: none
-"#,
-    )?;
+    for review_response in [
+        "Review response: no parent-authored implementation commits; parent-authored review-response commit abc123 fixed feedback",
+        "Review response: no parent-authored implementation commits; parent review-response commit abc123 fixed feedback",
+    ] {
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n{review_response}\nMaintainer reassignment: none\n"
+        ))?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject contradictory parent-authored review-response evidence"
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject contradictory review-response evidence `{review_response}`"
+        );
+    }
     Ok(())
 }
 
