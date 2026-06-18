@@ -42,6 +42,8 @@ fn claims_completion(handoff: &str) -> bool {
         "implementation is complete",
         "complete after opening pr",
         "complete after pr",
+        "complete.",
+        "complete\n",
         "successfully completed",
         "completed",
         "all set",
@@ -107,7 +109,19 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
 fn has_nearby_negation(prefix: &str) -> bool {
     let prefix = prefix.trim_end();
     [
-        "no", "not", "did not", "was not", "were not", "without", "neither",
+        "no",
+        "no explicit",
+        "not",
+        "not explicit",
+        "did not",
+        "did not explicitly",
+        "was not",
+        "was not explicitly",
+        "were not",
+        "were not explicitly",
+        "without",
+        "without explicit",
+        "neither",
     ]
     .iter()
     .any(|phrase| prefix.ends_with(phrase))

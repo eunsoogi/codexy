@@ -96,6 +96,15 @@ fn validator_cli_rejects_negated_draft_only_instruction() -> Result<(), Box<dyn 
 }
 
 #[test]
+fn validator_cli_rejects_qualified_negated_draft_only_instruction()
+-> Result<(), Box<dyn std::error::Error>> {
+    reject_open_pr_completion_handoff(
+        "No explicit draft-only instruction was requested. Work is complete after PR #128.\n",
+        "validator should reject qualified negated draft-only instructions",
+    )
+}
+
+#[test]
 fn validator_cli_rejects_maintainer_did_not_ask_leave_open()
 -> Result<(), Box<dyn std::error::Error>> {
     reject_open_pr_completion_handoff(
@@ -114,6 +123,7 @@ fn validator_cli_rejects_natural_completion_claims_after_pr()
         "Complete after PR #128.\n",
         "Done after opening PR #128.\n",
         "Done after PR #128.\n",
+        "Implemented the fix and opened PR #128. Complete.\n",
         "Work is complete. Parent orchestrator will handle review and merge gates.\n",
         "No blockers. Work is complete.\n",
         "검토 완료입니다. Work is complete.\n",
