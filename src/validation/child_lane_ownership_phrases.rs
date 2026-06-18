@@ -78,7 +78,10 @@ pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
                     "rejected",
                 ]
                 .into_iter()
-                .any(|qualifier| key.contains(qualifier)))
+                .any(|qualifier| {
+                    key.split(|character: char| !character.is_ascii_alphanumeric())
+                        .any(|word| word == qualifier)
+                }))
     })
 }
 
@@ -125,6 +128,7 @@ pub(super) fn is_negative_reassignment_value(value: &str) -> bool {
         || value.ends_with(" is missing")
         || value.contains(" is missing from ")
         || value.contains(" not granted")
+        || value.contains(" not yet granted")
         || value.contains(" was not granted")
         || value.contains(" not been granted")
         || [" denied", " rejected"]
