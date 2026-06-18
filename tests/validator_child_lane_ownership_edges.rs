@@ -51,6 +51,7 @@ fn validator_rejects_contradictory_parent_authored_review_response()
         "Review response: no parent commit; parent commit abc123 fixed feedback",
         "Review response: no parent commit; parent review-response commit abc123 fixed feedback",
         "Review response: no parent commit; parent patched the child-owned branch with commit abc123",
+        "Review response: orchestrator implemented the fix in commit abc123",
         "Review response: orchestrator fixed the child-owned PR in commit abc123",
         "Review response: orchestrator review-response commit abc123 fixed feedback",
         "Review response: review-response commit abc123 by parent",
