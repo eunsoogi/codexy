@@ -103,8 +103,78 @@ fn validator_cli_rejects_untracked_loc_exception() -> Result<(), Box<dyn std::er
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_dirty_loc_exception_entry() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = touched_loc_fixture_with_exception_text(Some(
+        "# tracked exceptions without an oversized-file entry\n",
+    ))?;
+    let base = git_head(repo.path())?;
+    std::fs::write(
+        repo.path().join(".codexy-loc-exceptions"),
+        "src/too_large.rs integration harness needs dedicated follow-up split\n",
+    )?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--check-touched-loc", "--base-ref", base.trim()])
+        .current_dir(repo.path())
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject dirty LOC exception entries"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains(".codexy-loc-exceptions has uncommitted changes"),
+        "stderr should explain the clean exception requirement, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_staged_loc_exception_entry() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = touched_loc_fixture_with_exception_text(Some(
+        "# tracked exceptions without an oversized-file entry\n",
+    ))?;
+    let base = git_head(repo.path())?;
+    std::fs::write(
+        repo.path().join(".codexy-loc-exceptions"),
+        "src/too_large.rs integration harness needs dedicated follow-up split\n",
+    )?;
+    Command::new("git")
+        .args(["add", ".codexy-loc-exceptions"])
+        .current_dir(repo.path())
+        .status()?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--check-touched-loc", "--base-ref", base.trim()])
+        .current_dir(repo.path())
+        .output()?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject staged LOC exception entries"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains(".codexy-loc-exceptions has uncommitted changes"),
+        "stderr should explain the clean exception requirement, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn touched_loc_fixture(
     with_exception: bool,
+) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
+    let exception_text = with_exception
+        .then_some("src/too_large.rs integration harness needs dedicated follow-up split\n");
+    touched_loc_fixture_with_exception_text(exception_text)
+}
+
+fn touched_loc_fixture_with_exception_text(
+    exception_text: Option<&str>,
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let repo = temp.path();
@@ -134,11 +204,8 @@ fn touched_loc_fixture(
         .map(|index| format!("fn line_{index}() {{}}\n"))
         .collect::<String>();
     std::fs::write(repo.join("src/too_large.rs"), oversized)?;
-    if with_exception {
-        std::fs::write(
-            repo.join(".codexy-loc-exceptions"),
-            "src/too_large.rs integration harness needs dedicated follow-up split\n",
-        )?;
+    if let Some(text) = exception_text {
+        std::fs::write(repo.join(".codexy-loc-exceptions"), text)?;
     }
     Command::new("git")
         .args(["add", "."])

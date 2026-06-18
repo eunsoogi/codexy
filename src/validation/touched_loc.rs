@@ -137,6 +137,7 @@ fn load_exceptions(root: &Path) -> Result<BTreeMap<PathBuf, String>> {
         return Ok(BTreeMap::new());
     }
     ensure_tracked_exception_file(root)?;
+    ensure_clean_exception_file(root)?;
     let mut exceptions = BTreeMap::new();
     let text =
         std::fs::read_to_string(&path).with_context(|| format!("reading {}", EXCEPTIONS_PATH))?;
@@ -171,4 +172,35 @@ fn ensure_tracked_exception_file(root: &Path) -> Result<()> {
         return Ok(());
     }
     bail!("{EXCEPTIONS_PATH} must be tracked before it can exempt oversized touched files")
+}
+
+fn ensure_clean_exception_file(root: &Path) -> Result<()> {
+    ensure_no_exception_diff(root, false)?;
+    ensure_no_exception_diff(root, true)?;
+    Ok(())
+}
+
+fn ensure_no_exception_diff(root: &Path, cached: bool) -> Result<()> {
+    let mut command = Command::new("git");
+    command.arg("diff");
+    if cached {
+        command.arg("--cached");
+    }
+    command.args(["--quiet", "--", EXCEPTIONS_PATH]);
+    let output = command
+        .current_dir(root)
+        .output()
+        .context("checking clean LOC exception file")?;
+    if output.status.success() {
+        return Ok(());
+    }
+    if output.status.code() == Some(1) {
+        bail!(
+            "{EXCEPTIONS_PATH} has uncommitted changes; commit or discard them before it can exempt oversized touched files"
+        );
+    }
+    bail!(
+        "git diff for LOC exception file failed: {}",
+        String::from_utf8_lossy(&output.stderr).trim()
+    )
 }
