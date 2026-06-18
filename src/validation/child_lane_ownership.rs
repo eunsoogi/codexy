@@ -1,6 +1,6 @@
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_lowercase();
-    if !is_child_owned(&normalized)
+    if !normalized.contains("child-owned")
         || has_explicit_maintainer_reassignment(&normalized)
         || !has_parent_authored_fix(&normalized)
     {
@@ -10,10 +10,6 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     vec![
         "child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment".to_owned(),
     ]
-}
-
-fn is_child_owned(evidence: &str) -> bool {
-    evidence.contains("child-owned")
 }
 
 fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
@@ -46,6 +42,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
         if line.contains("parent-authored")
             && !has_negative_field_value(line, "parent-authored")
             && !has_absent_authored_phrase(line, "parent-authored")
+            && !has_draft_handoff_phrase(line, "parent-authored")
         {
             return has_fix_marker(line);
         }
@@ -58,6 +55,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
         if line.contains("orchestrator-authored")
             && !has_negative_field_value(line, "orchestrator-authored")
             && !has_absent_authored_phrase(line, "orchestrator-authored")
+            && !has_draft_handoff_phrase(line, "orchestrator-authored")
         {
             return has_fix_marker(line);
         }
@@ -79,17 +77,11 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
 }
 
 fn has_negative_field_value(line: &str, field: &str) -> bool {
-    let Some(value) = field_value(line, field) else {
-        return false;
-    };
-    has_absent_field_value(value, field)
+    field_value(line, field).is_some_and(|value| has_absent_field_value(value, field))
 }
 
 fn has_empty_field_value(line: &str, field: &str) -> bool {
-    let Some(value) = field_value(line, field) else {
-        return false;
-    };
-    value.is_empty()
+    field_value(line, field).is_some_and(str::is_empty)
 }
 
 fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
@@ -108,14 +100,23 @@ fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str
 }
 
 fn has_passive_parent_fix(line: &str) -> bool {
-    let authored = line.contains(" by parent") || line.contains(" by orchestrator");
-    authored && has_fix_marker(line)
+    (line.contains(" by parent") || line.contains(" by orchestrator")) && has_fix_marker(line)
 }
 
 fn has_fix_marker(line: &str) -> bool {
     "review-response|review response|fix|commit"
         .split('|')
         .any(|marker| line.contains(marker))
+}
+
+fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
+    line.find(&format!("{marker} implementation draft"))
+        .is_some_and(|index| {
+            let after_draft = &line[index..];
+            !after_draft.contains(&format!("{marker} implementation commit"))
+                && !after_draft.contains(&format!("{marker} review-response"))
+                && !after_draft.contains(&format!("{marker} review response"))
+        })
 }
 
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
@@ -177,9 +178,15 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.ends_with(" not been granted")
         || value.contains(" was denied")
         || value.contains(" was rejected")
-        || value.ends_with(" requested")
-        || value.ends_with(" needed")
-        || value.ends_with(" pending")
+        || contains_non_affirmative_reassignment_suffix(value, " requested")
+        || contains_non_affirmative_reassignment_suffix(value, " needed")
+        || contains_non_affirmative_reassignment_suffix(value, " pending")
+}
+
+fn contains_non_affirmative_reassignment_suffix(value: &str, marker: &str) -> bool {
+    value
+        .split_once(marker)
+        .is_some_and(|(_, suffix)| suffix.is_empty() || suffix.starts_with(char::is_whitespace))
 }
 
 fn has_absent_value(value: &str) -> bool {

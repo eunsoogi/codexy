@@ -120,6 +120,7 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: explicit maintainer reassignment to parent was denied by @maintainer",
         "Maintainer reassignment: explicit maintainer reassignment to parent was rejected",
         "Maintainer reassignment: explicit maintainer reassignment to parent requested",
+        "Maintainer reassignment: explicit maintainer reassignment to parent requested from @maintainer",
         "Maintainer reassignment: explicit maintainer reassignment to the parent is missing",
         "Maintainer reassignment: reassigns implementation ownership to the parent was not granted",
     ] {
@@ -185,6 +186,10 @@ Maintainer reassignment: none
 "#,
         r#"Lane ownership: child-owned
 Parent-authored implementation draft diff was routed to the child
+Maintainer reassignment: none
+"#,
+        r#"Lane ownership: child-owned
+Review response: parent-authored implementation draft diff was routed to the child; child-authored commit def456 fixed feedback
 Maintainer reassignment: none
 "#,
     ] {
