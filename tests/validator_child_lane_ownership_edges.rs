@@ -84,20 +84,26 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_empty_parent_authored_field_with_next_line_absence()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Lane ownership: child-owned
 Parent-authored implementation commits:
 none
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Lane ownership: child-owned
+Parent-authored implementation commits: none; child-authored commit def456
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow empty parent-authored fields with absence values on the next line\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should allow parent-authored fields with absence evidence\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

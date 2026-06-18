@@ -77,7 +77,7 @@ fn has_negative_field_value(line: &str, field: &str) -> bool {
     let Some(value) = field_value(line, field) else {
         return false;
     };
-    has_absent_value(value)
+    has_absent_field_value(value, field)
 }
 
 fn has_empty_field_value(line: &str, field: &str) -> bool {
@@ -151,11 +151,44 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.ends_with(" not been granted")
         || value.ends_with(" was denied")
         || value.ends_with(" was rejected")
+        || value.ends_with(" requested")
+        || value.ends_with(" needed")
+        || value.ends_with(" pending")
 }
 
 fn has_absent_value(value: &str) -> bool {
     let value = trimmed_value(value);
     matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
+}
+
+fn has_absent_field_value(value: &str, field: &str) -> bool {
+    let value = trimmed_value(value);
+    if has_absent_value(value) {
+        return true;
+    }
+
+    [
+        "not provided",
+        "without",
+        "missing",
+        "absent",
+        "none",
+        "not",
+        "no",
+    ]
+    .into_iter()
+    .any(|marker| {
+        let Some(after_marker) = value.strip_prefix(marker) else {
+            return false;
+        };
+        let Some(separator) = after_marker.chars().next() else {
+            return true;
+        };
+        if !separator.is_ascii_whitespace() && !matches!(separator, '.' | ',' | ';' | ':') {
+            return false;
+        }
+        !after_marker.contains(field)
+    })
 }
 
 fn has_absent_authored_phrase(line: &str, marker: &str) -> bool {
