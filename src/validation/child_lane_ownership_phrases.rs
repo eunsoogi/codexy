@@ -11,15 +11,16 @@ pub(super) fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Opt
 }
 
 pub(super) fn has_passive_parent_fix(line: &str) -> bool {
-    (line.contains(" by parent")
-        || line.contains(" by the parent")
-        || line.contains(" by orchestrator")
-        || line.contains(" by the orchestrator"))
-        && has_fix_marker(line)
-        && !line.contains("verified by parent")
-        && !line.contains("verified by the parent")
-        && !line.contains("verified by orchestrator")
-        && !line.contains("verified by the orchestrator")
+    let authored = line
+        .split("; verified by ")
+        .next()
+        .unwrap_or(line)
+        .trim_start();
+    (authored.contains(" by parent")
+        || authored.contains(" by the parent")
+        || authored.contains(" by orchestrator")
+        || authored.contains(" by the orchestrator"))
+        && has_fix_marker(authored)
 }
 
 pub(super) fn has_fix_marker(line: &str) -> bool {

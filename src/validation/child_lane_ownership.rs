@@ -28,7 +28,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         }
         if pr_boundary {
             pending_parent_fix = Some(false);
-        } else if owner_boundary && !starts_lane {
+        } else if owner_boundary && line.contains("ownership:") && !starts_lane {
             pending_parent_fix = None;
         }
         if starts_lane {

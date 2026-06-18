@@ -103,6 +103,25 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_preserves_pending_fix_across_owner_metadata() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"PR: #130
+Review response: parent-authored implementation commit abc123 fixed feedback
+Owner: child-thread-1
+Lane ownership: child-owned
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not drop pending parent-authored evidence across owner metadata"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_reassignment_before_child_owned_lane() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
