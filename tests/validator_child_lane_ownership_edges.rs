@@ -114,6 +114,31 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_ignores_non_affirmative_child_owned_mentions() -> Result<(), Box<dyn std::error::Error>>
+{
+    for evidence in [
+        r#"Child-owned lane: no
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+        r#"Lane ownership: parent-owned (not child-owned)
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
+
+        assert!(
+            output.status.success(),
+            "validator should require affirmative child-owned ownership\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_authored_fix_with_unrelated_no_value()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

@@ -1,6 +1,6 @@
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_lowercase();
-    if !normalized.contains("child-owned")
+    if !has_affirmative_child_owned_lane(&normalized)
         || has_explicit_maintainer_reassignment(&normalized)
         || !has_parent_authored_fix(&normalized)
     {
@@ -10,6 +10,21 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     vec![
         "child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment".to_owned(),
     ]
+}
+fn has_affirmative_child_owned_lane(evidence: &str) -> bool {
+    evidence.lines().map(str::trim).any(|line| {
+        field_value(line, "ownership").is_some_and(is_affirmative_child_owned_value)
+            || field_value(line, "child-owned lane")
+                .is_some_and(|value| matches!(trimmed_value(value), "yes" | "true" | "child-owned"))
+            || matches!(trimmed_value(line), "child-owned" | "child-owned lane")
+    })
+}
+fn is_affirmative_child_owned_value(value: &str) -> bool {
+    let value = trimmed_value(value);
+    value.contains("child-owned")
+        && !value.contains("not child-owned")
+        && !value.contains("parent-owned")
+        && !has_absent_field_value(value, "child-owned")
 }
 fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
@@ -93,10 +108,13 @@ fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
 }
 fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
     let value = lines.iter().skip(index + 1).find(|line| !line.is_empty())?;
-    value
-        .strip_prefix('-')
-        .or_else(|| value.strip_prefix('*'))
-        .map(str::trim)
+    Some(
+        value
+            .strip_prefix('-')
+            .or_else(|| value.strip_prefix('*'))
+            .unwrap_or(value)
+            .trim(),
+    )
 }
 fn has_passive_parent_fix(line: &str) -> bool {
     (line.contains(" by parent")
@@ -134,26 +152,9 @@ fn has_non_affirmative_reassignment_key(line: &str) -> bool {
     })
 }
 fn is_positive_reassignment_value(value: &str) -> bool {
-    value.contains("explicit maintainer reassignment to parent")
-        || value.contains("explicit maintainer reassignment to the parent")
-        || value.contains("explicit maintainer reassignment to orchestrator")
-        || value.contains("explicit maintainer reassignment to the orchestrator")
-        || value.contains("explicit reassignment to parent")
-        || value.contains("explicit reassignment to the parent")
-        || value.contains("explicit reassignment to orchestrator")
-        || value.contains("explicit reassignment to the orchestrator")
-        || value.contains("reassigned to parent")
-        || value.contains("reassigned to the parent")
-        || value.contains("reassigned to orchestrator")
-        || value.contains("reassigned to the orchestrator")
-        || value.contains("reassigns implementation ownership to parent")
-        || value.contains("reassigns implementation ownership to the parent")
-        || value.contains("reassigns implementation ownership to orchestrator")
-        || value.contains("reassigns implementation ownership to the orchestrator")
-        || value.contains("reassigned implementation ownership to parent")
-        || value.contains("reassigned implementation ownership to the parent")
-        || value.contains("reassigned implementation ownership to orchestrator")
-        || value.contains("reassigned implementation ownership to the orchestrator")
+    "explicit maintainer reassignment to parent|explicit maintainer reassignment to the parent|explicit maintainer reassignment to orchestrator|explicit maintainer reassignment to the orchestrator|explicit reassignment to parent|explicit reassignment to the parent|explicit reassignment to orchestrator|explicit reassignment to the orchestrator|reassigned to parent|reassigned to the parent|reassigned to orchestrator|reassigned to the orchestrator|reassigns implementation ownership to parent|reassigns implementation ownership to the parent|reassigns implementation ownership to orchestrator|reassigns implementation ownership to the orchestrator|reassigned implementation ownership to parent|reassigned implementation ownership to the parent|reassigned implementation ownership to orchestrator|reassigned implementation ownership to the orchestrator"
+        .split('|')
+        .any(|marker| value.contains(marker))
 }
 fn is_negative_reassignment_value(value: &str) -> bool {
     let value = trimmed_value(value);
