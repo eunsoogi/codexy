@@ -60,6 +60,11 @@ complete.
   child thread. The parent thread may coordinate, but it must not merge until
   the child thread returns current verification or a documented non-change
   rationale.
+- If a child-owned PR handoff or final-answer evidence mentions parent-authored
+  implementation or review-response commits, run
+  `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`.
+  A failing result blocks completion unless the evidence records explicit
+  maintainer reassignment of implementation ownership to the parent.
 - For delegated lanes that need their own branch, worktree, PR, or durable
   child context, require evidence that the child was created, forked, or
   assigned before implementation patches began. If parent-authored draft edits

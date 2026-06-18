@@ -1,4 +1,5 @@
 mod agent_registration;
+mod child_lane_ownership;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;
@@ -31,6 +32,9 @@ pub enum Mode {
     Hooks,
     Roles,
     RuntimeArtifacts,
+    ChildLaneOwnership {
+        evidence: String,
+    },
     TouchedLoc {
         base_ref: String,
     },
@@ -62,6 +66,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
+        Mode::ChildLaneOwnership { evidence } => child_lane_ownership::check(&evidence),
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),
     };
     if errors.is_empty() {

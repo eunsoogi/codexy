@@ -305,6 +305,11 @@ worker for that lane.
 - If Codex connector or human review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
+- If the owning child thread is unresponsive or cannot return required
+  review-response evidence, the parent MUST stop and report the blocker,
+  current PR head, child owner, last contact, and required next evidence. The
+  parent MUST NOT patch the child-owned branch as recovery unless a maintainer
+  explicitly reassigns implementation ownership to the parent.
 - After the owning child pushes a review-response commit, the parent MUST
   inspect the unresolved review threads after child fixes and fresh
   current-head review, then verify that the current head addresses each
@@ -329,6 +334,11 @@ worker for that lane.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.
+- Before accepting parent handoff or final-answer evidence for a child-owned PR,
+  run `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`
+  when the evidence mentions parent-authored implementation or review-response
+  commits. A failure is a workflow defect and blocks PR readiness until the
+  evidence is corrected or explicit maintainer reassignment is recorded.
 - The parent may resolve review threads only after child evidence proves the
   fix on the current head, or after a maintainer accepts a no-change rationale.
 - Fixed or accepted review threads MUST be resolved in GitHub before the PR is

@@ -70,6 +70,11 @@ Restart Codex or start a fresh session after registration before expecting new
   orchestrator MUST route the feedback back to the owning child thread with the
   PR number, latest head SHA, relevant comments or review threads, expected
   return evidence, and stop condition.
+- If the owning child thread becomes unresponsive, stale, or unable to return
+  required review-response evidence, the orchestrator MUST stop and report the
+  blocker, current PR head, child owner, last contact, and required next
+  evidence. It MUST NOT patch the child-owned branch during recovery unless a
+  maintainer explicitly reassigns implementation ownership to the orchestrator.
 - The orchestrator MUST NOT directly fix child-owned review feedback unless the
   lane is explicitly reassigned to the orchestrator by a maintainer, or the
   feedback belongs to the orchestrator's own scoped lane.
@@ -113,6 +118,11 @@ branch, worktree, PR, durable child context, or review-response ownership:
 4. Include the owner decision and stop condition in the handoff. PR readiness
    requires evidence that the child owner existed before implementation
    patches began, or explicit recovery evidence for an accidental parent draft.
+5. When handoff or final-answer evidence for a child-owned PR includes
+   parent-authored implementation or review-response commits, run
+   `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`
+   against that evidence. Treat a failure as a workflow defect unless the same
+   evidence records explicit maintainer reassignment to the parent.
 
 ## Child Thread Titles
 
@@ -319,6 +329,10 @@ edits.
    - Resolve cross-lane conflicts in the orchestrator thread.
    - Route child-owned review feedback back to the owning child thread instead
      of patching it in the orchestrator thread.
+   - If the child owner stops responding, stop and report the blocked state with
+     the PR head, owner, last contact, and required evidence. Do not recover by
+     patching the child-owned branch unless a maintainer explicitly reassigns
+     implementation ownership to the parent.
    - If parent-authored draft edits are discovered for a child-owned lane, stop
      parent implementation, preserve or revert only as needed to protect user
      work, and route the draft diff to the child as input evidence.

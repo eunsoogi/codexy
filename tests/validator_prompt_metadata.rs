@@ -115,7 +115,23 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details()
     assert!(skill.contains("Codex App Worktree Creation Preflight"));
     assert!(skill.contains("startingState.type=\"branch\""));
     assert!(skill.contains("git check-ref-format --branch"));
+    assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
+    assert!(skill.contains("If the owning child thread becomes unresponsive"));
     assert!(!skill.contains("## Registered MCP Exposure Defects"));
+    Ok(())
+}
+
+#[test]
+fn git_workflow_requires_child_lane_ownership_evidence_check()
+-> Result<(), Box<dyn std::error::Error>> {
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/git-workflow/SKILL.md"),
+    )?;
+
+    assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
+    assert!(skill.contains("parent MUST NOT patch the child-owned branch as recovery"));
+    assert!(skill.contains("explicit maintainer reassignment"));
     Ok(())
 }
 
