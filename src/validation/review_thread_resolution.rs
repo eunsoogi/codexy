@@ -1,7 +1,6 @@
 use serde_json::Value;
 const MISSING_REVIEW_THREADS: &str =
     "review response handoff missing reviewThreads.nodes PR state evidence";
-
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !claims_review_response(handoff) {
         return Vec::new();
@@ -119,10 +118,12 @@ fn is_word_match(text: &str, start: usize, end: usize) -> bool {
 fn local_action_prefix(prefix: &str) -> &str {
     let start = prefix
         .rfind(['\n', ',', ';'])
+        .map(|index| index + 1)
         .into_iter()
-        .chain(prefix.rfind(". "))
+        .chain(prefix.rfind(". ").map(|index| index + 1))
+        .chain(prefix.rfind(" but ").map(|index| index + 5))
         .max()
-        .map_or(0, |index| index + 1);
+        .unwrap_or(0);
     &prefix[start..]
 }
 fn thread_label(thread: &Value) -> String {

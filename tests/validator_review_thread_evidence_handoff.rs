@@ -133,7 +133,7 @@ fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> T
 }
 #[test]
 fn validator_limits_negation_to_matched_review_action() -> TestResult {
-    assert_requires_threads("Review feedback: did not change the API, fixed the requested test.\n")
+    assert_requires_threads("Review feedback: did not change the API but fixed the review comment.")
 }
 #[test]
 fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestResult {
