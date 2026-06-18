@@ -1,7 +1,6 @@
 use std::process::Command;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_cli_rejects_completion_claim_with_clean_open_pr() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -9,7 +8,6 @@ fn validator_cli_rejects_completion_claim_with_clean_open_pr() -> TestResult {
         "validator should reject completion claims while a matching clean PR remains open",
     )
 }
-
 #[test]
 fn validator_cli_allows_explicit_stop_condition_with_clean_open_pr() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -33,7 +31,6 @@ fn validator_cli_allows_explicit_stop_condition_with_clean_open_pr() -> TestResu
     );
     Ok(())
 }
-
 #[test]
 fn validator_cli_rejects_completion_claim_that_only_says_waiting_for_merge() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -158,6 +155,9 @@ fn validator_cli_rejects_natural_completion_claims_after_pr() -> TestResult {
         "Complete after opening PR #128.\n",
         "Complete after PR #128.\n",
         "Opened PR #128. Finished.\n",
+        "Opened PR #128. Finished. This lane is not complete until merge.\n",
+        "Verification completed; this lane is not complete until merge. Work completed.\n",
+        "Verification finished; this lane is not complete until merge. Finished.\n",
         "Opened PR #128. Finalized.\n",
         "Done",
         "Done — PR #128 is open.\n",
@@ -176,13 +176,13 @@ fn validator_cli_rejects_natural_completion_claims_after_pr() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_accepts_negated_completion_claim_after_pr() -> TestResult {
     for handoff in [
         "This lane is not complete after PR #128.\n",
         "This lane is incomplete after PR #128.\n",
         "Work isn't complete.\n",
+        "Verification completed; this lane is not complete until merge.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

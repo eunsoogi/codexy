@@ -32,7 +32,17 @@ fn is_clean_open_pr(pr_state: &Value) -> bool {
 }
 
 fn claims_completion(handoff: &str) -> bool {
-    let text = handoff.to_ascii_lowercase();
+    let mut text = handoff.to_ascii_lowercase();
+    if has_unnegated_phrase(&text, "not complete until merge", 16) {
+        for phrase in [
+            "successfully completed",
+            "completed",
+            "finished",
+            "finalized",
+        ] {
+            text = text.replace(&format!("verification {phrase};"), "verification evidence;");
+        }
+    }
     [
         "work is complete",
         "task is complete",
