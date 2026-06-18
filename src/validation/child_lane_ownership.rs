@@ -17,7 +17,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let mut pending_reassigned = Some(false);
     for (index, line) in lines.iter().enumerate() {
         let starts_lane = is_affirmative_child_owned_line(line);
-        let pr_boundary = line.starts_with("pr:")
+        let pr_boundary = is_pr_boundary(line)
             && index > 0
             && previous_non_empty_line(&lines, index)
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous))
@@ -70,6 +70,10 @@ fn previous_non_empty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a st
         .rev()
         .find(|line| !line.is_empty())
         .copied()
+}
+fn is_pr_boundary(line: &str) -> bool {
+    line.split_once(':')
+        .is_some_and(|(key, _)| metadata_key(key) == "pr")
 }
 fn is_lane_ownership_boundary(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {

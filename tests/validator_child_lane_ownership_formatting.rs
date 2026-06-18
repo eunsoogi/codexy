@@ -126,6 +126,30 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_treats_list_style_pr_metadata_as_boundary() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"- PR: #1
+- Lane ownership: child-owned
+- Review response: child-authored commit abc123 fixed feedback
+- Maintainer reassignment: none
+
+- PR: #2
+- Review response: parent-authored implementation commit def456 fixed feedback
+- Lane ownership: parent-owned
+- Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should recognize list-style PR metadata as lane boundaries\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_treats_parent_owned_owner_fields_as_lane_boundaries()
 -> Result<(), Box<dyn std::error::Error>> {
     for owner_field in ["Owner", "Lane owner"] {
