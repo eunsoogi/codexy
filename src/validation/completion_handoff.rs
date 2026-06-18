@@ -24,6 +24,7 @@ fn claims_completion(handoff: &str) -> bool {
         text = text.replace("verification completed.", "verification evidence.");
         for phrase in [
             "successfully completed",
+            "completed successfully",
             "completed",
             "finished",
             "finalized",
