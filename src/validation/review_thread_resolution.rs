@@ -96,7 +96,6 @@ fn thread_label(thread: &Value) -> String {
 fn thread_referenced(text: &str, thread: &Value) -> bool {
     [
         thread.get("id").and_then(Value::as_str),
-        thread.get("path").and_then(Value::as_str),
         first_comment_url(thread),
     ]
     .into_iter()
