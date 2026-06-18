@@ -133,6 +133,7 @@ fn validator_cli_rejects_false_or_unrelated_deferrals() -> TestResult {
         "The parent orchestrator asked me to wait for merge gates. Work is complete after PR #128.\n",
         "- [ ] **maintainer requested wait**\nWork is complete after PR #128.\n",
         "Maintainer explicitly requested a Codex review. Work is complete after PR #128.\n",
+        "Maintainer requested no merge = false. Work is complete after PR #128.\n",
         "No maintainer explicitly requested no merge. Work is complete after PR #128.\n",
         "No maintainer explicitly requested leave open. Work is complete after PR #128.\n",
         "No user or maintainer requested no merge. Work is complete after PR #128.\n",

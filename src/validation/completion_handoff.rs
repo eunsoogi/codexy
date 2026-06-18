@@ -101,7 +101,7 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
                     .strip_prefix(phrase)
                     .is_some_and(starts_with_boundary)
             })
-        || ['?', '\n'].iter().any(|prefix| {
+        || ['?', '\n', '=', '-'].iter().any(|prefix| {
             suffix
                 .strip_prefix(*prefix)
                 .map(str::trim_start)
