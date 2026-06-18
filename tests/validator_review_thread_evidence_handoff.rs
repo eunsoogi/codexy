@@ -3,7 +3,6 @@ use std::{path::Path, process::Command};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 const NORMAL_OPEN_PR_STATE: &str = r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#;
-
 #[test]
 fn validator_rejects_negated_no_change_rationale() -> TestResult {
     assert_handoff_fails(
@@ -13,7 +12,6 @@ fn validator_rejects_negated_no_change_rationale() -> TestResult {
         "validator should reject negated no-change rationale text",
     )
 }
-
 #[test]
 fn validator_rejects_post_label_negated_no_change_rationale() -> TestResult {
     assert_handoff_fails(
@@ -23,7 +21,6 @@ fn validator_rejects_post_label_negated_no_change_rationale() -> TestResult {
         "validator should reject post-label negated no-change rationale text",
     )
 }
-
 #[test]
 fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> TestResult {
     assert_handoff_fails(
@@ -33,7 +30,6 @@ fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> Test
         "validator should reject punctuated post-label negated rationale text",
     )
 }
-
 #[test]
 fn validator_treats_review_comments_as_review_response() -> TestResult {
     assert_handoff_fails(
@@ -43,7 +39,6 @@ fn validator_treats_review_comments_as_review_response() -> TestResult {
         "validator should require reviewThreads.nodes for addressed review comments",
     )
 }
-
 #[test]
 fn validator_treats_resolved_review_comments_as_review_response() -> TestResult {
     assert_handoff_fails(
@@ -53,7 +48,6 @@ fn validator_treats_resolved_review_comments_as_review_response() -> TestResult 
         "validator should require reviewThreads.nodes for resolved review comments",
     )
 }
-
 #[test]
 fn validator_preserves_review_feedback_context_across_section_breaks() -> TestResult {
     assert_handoff_fails(
@@ -63,7 +57,15 @@ fn validator_preserves_review_feedback_context_across_section_breaks() -> TestRe
         "validator should preserve review-feedback context across section breaks",
     )
 }
-
+#[test]
+fn validator_preserves_review_feedback_context_across_all_bullets() -> TestResult {
+    assert_handoff_fails(
+        "Review feedback:\n- Verification rerun.\n- Fixed the Codex comment.\n",
+        NORMAL_OPEN_PR_STATE,
+        "reviewThreads.nodes",
+        "validator should preserve review-feedback context across all bullets",
+    )
+}
 #[test]
 fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
     assert_handoff_fails(
@@ -80,7 +82,6 @@ fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
         "validator should fail closed on incomplete review thread evidence",
     )
 }
-
 #[test]
 fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> TestResult {
     assert_handoff_succeeds(
@@ -89,7 +90,6 @@ fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> T
         "validator should not treat unrelated fixes as review feedback responses",
     )
 }
-
 #[test]
 fn validator_allows_no_review_feedback_with_unrelated_fix_without_threads() -> TestResult {
     assert_handoff_succeeds(
@@ -98,7 +98,6 @@ fn validator_allows_no_review_feedback_with_unrelated_fix_without_threads() -> T
         "validator should not treat unrelated fixes after no-review-feedback text as review feedback responses",
     )
 }
-
 #[test]
 fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> TestResult {
     assert_handoff_succeeds(
@@ -107,7 +106,15 @@ fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> T
         "validator should not treat comma-separated no-review-feedback text as a response",
     )
 }
-
+#[test]
+fn validator_limits_negation_to_matched_review_action() -> TestResult {
+    assert_handoff_fails(
+        "Review feedback: did not change the API, fixed the requested test.\n",
+        NORMAL_OPEN_PR_STATE,
+        "reviewThreads.nodes",
+        "validator should not let unrelated negation suppress the matched action",
+    )
+}
 #[test]
 fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestResult {
     assert_handoff_fails(
@@ -126,7 +133,6 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: impl AsRef<str>) -> O
     std::fs::write(&pr_state_path, pr_state.as_ref())?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
-
 fn assert_handoff_fails(
     handoff: &str,
     pr_state: impl AsRef<str>,
@@ -137,13 +143,11 @@ fn assert_handoff_fails(
     assert_failure_contains(&output, needle, message);
     Ok(())
 }
-
 fn assert_handoff_succeeds(handoff: &str, pr_state: impl AsRef<str>, message: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
     assert_success(&output, message);
     Ok(())
 }
-
 fn assert_failure_contains(output: &std::process::Output, needle: &str, message: &str) {
     assert!(
         !output.status.success(),
@@ -157,7 +161,6 @@ fn assert_failure_contains(output: &std::process::Output, needle: &str, message:
         String::from_utf8_lossy(&output.stderr)
     );
 }
-
 fn assert_success(output: &std::process::Output, message: &str) {
     assert!(
         output.status.success(),
@@ -166,7 +169,6 @@ fn assert_success(output: &std::process::Output, message: &str) {
         String::from_utf8_lossy(&output.stderr)
     );
 }
-
 fn outdated_unresolved_review_thread_pr_state() -> &'static str {
     r#"{
         "number": 134,
@@ -193,7 +195,6 @@ fn outdated_unresolved_review_thread_pr_state() -> &'static str {
         }
     }"#
 }
-
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
@@ -205,11 +206,9 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
         ])
         .output()?)
 }
-
 fn unresolved_review_thread_pr_state() -> String {
     unresolved_review_thread_with_id_pr_state("PRRT_kwDOExample")
 }
-
 fn unresolved_review_thread_with_id_pr_state(id: &str) -> String {
     format!(
         r#"{{
