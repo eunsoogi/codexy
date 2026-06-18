@@ -48,6 +48,7 @@ pub(super) fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
         after_draft.contains("draft")
             && (after_draft.contains("handoff") || after_draft.contains("routed"))
             && !after_draft.contains(&format!("{marker} implementation commit"))
+            && !after_draft.contains(&format!("{marker} fix commit"))
             && !after_draft.contains(&format!("{marker} commit"))
             && !after_draft.contains(&format!("{marker} review-response"))
             && !after_draft.contains(&format!("{marker} review response"))

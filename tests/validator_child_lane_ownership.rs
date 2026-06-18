@@ -11,6 +11,7 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
         "Review response: parent-authored commit abc123 fixed draft PR feedback.",
         "Review response: parent-authored commit abc123 fixed draft diff feedback.",
         "Review response: parent-authored commit abc123 fixed draft handoff feedback.",
+        "Review response: parent-authored draft handoff was routed to the child; parent-authored fix commit abc123 addressed feedback.",
         "Review response: parent implementation commit abc123 fixed feedback.",
         "Review response: parent authored implementation commit abc123 fixed feedback.",
         "Review response: implementation commit abc123 by parent; verified by parent.",
