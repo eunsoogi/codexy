@@ -81,6 +81,10 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("not ")
         || value.starts_with("without ")
         || value.ends_with(" not provided")
+        || value.ends_with(" is missing")
+        || value.ends_with(" not granted")
+        || value.ends_with(" was not granted")
+        || value.ends_with(" not been granted")
 }
 
 fn has_absent_value(value: &str) -> bool {

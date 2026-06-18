@@ -82,6 +82,13 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: without explicit maintainer reassignment to parent",
         "Maintainer reassignment: explicit maintainer reassignment to parent not provided",
         "Maintainer reassignment: explicit maintainer reassignment to parent not provided.",
+        "Maintainer reassignment: explicit maintainer reassignment to parent is missing",
+        "Maintainer reassignment: explicit maintainer reassignment to parent not granted",
+        "Maintainer reassignment: explicit maintainer reassignment to parent is not granted",
+        "Maintainer reassignment: explicit maintainer reassignment to parent was not granted",
+        "Maintainer reassignment: explicit maintainer reassignment to parent has not been granted",
+        "Maintainer reassignment: explicit maintainer reassignment to the parent is missing",
+        "Maintainer reassignment: reassigns implementation ownership to the parent was not granted",
     ] {
         let temp = tempfile::tempdir()?;
         let evidence_path = temp.path().join("handoff.md");
