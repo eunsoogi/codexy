@@ -56,6 +56,7 @@ fn claims_completion(handoff: &str) -> bool {
     .iter()
     .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
         || has_unnegated_word(&text, "done", 16)
+        || has_unnegated_word(&text, "complete", 16)
 }
 
 fn states_explicit_deferral(handoff: &str) -> bool {
@@ -87,7 +88,43 @@ fn states_explicit_deferral(handoff: &str) -> bool {
         "deferred by maintainer",
     ]
     .iter()
-    .any(|phrase| has_unnegated_phrase(&text, phrase, 80))
+    .any(|phrase| has_unnegated_deferral_phrase(&text, phrase, 80))
+}
+
+fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(phrase) {
+        let absolute_index = offset + index;
+        let after_index = absolute_index + phrase.len();
+        if phrase_has_boundaries(text, absolute_index, after_index)
+            && !has_false_deferral_label_after(text, after_index)
+        {
+            let prefix_start = char_window_start(text, absolute_index, negation_window);
+            if !has_nearby_negation(&text[prefix_start..absolute_index]) {
+                return true;
+            }
+        }
+        offset = after_index;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
+    let suffix = text[after_index..].trim_start();
+    let Some(value) = suffix.strip_prefix(':') else {
+        return false;
+    };
+    let value = value.trim_start();
+    if matches!(value.chars().next(), None | Some('.') | Some(';')) {
+        return true;
+    }
+    ["none", "false"].iter().any(|word| {
+        value
+            .strip_prefix(word)
+            .is_some_and(|rest| is_boundary(rest.chars().next()))
+    })
 }
 
 fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
