@@ -124,3 +124,29 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_treats_parent_owned_owner_fields_as_lane_boundaries()
+-> Result<(), Box<dyn std::error::Error>> {
+    for owner_field in ["Owner", "Lane owner"] {
+        let output = run_ownership_validator(&format!(
+            r#"PR: #1
+Lane ownership: child-owned
+Review response: child-authored commit abc123 fixed feedback
+Maintainer reassignment: none
+
+{owner_field}: parent-owned
+Review response: parent-authored implementation commit def456 fixed feedback
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should treat `{owner_field}: parent-owned` as a lane boundary\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}

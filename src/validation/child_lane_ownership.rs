@@ -20,7 +20,8 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             && index > 0
             && previous_non_empty_line(&lines, index)
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous));
-        let ownership_boundary = is_lane_ownership_boundary(line);
+        let ownership_boundary =
+            is_lane_ownership_boundary(line) || is_parent_owned_owner_boundary(line);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
         if (starts_lane || pr_boundary || ownership_boundary) && child_owned {
@@ -71,6 +72,9 @@ fn is_lane_ownership_boundary(line: &str) -> bool {
         )
     })
 }
+fn is_parent_owned_owner_boundary(line: &str) -> bool {
+    field_value(line, "owner").is_some_and(is_parent_owned_value)
+}
 fn is_affirmative_child_owned_line(line: &str) -> bool {
     field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)
         || field_value(line, "child-owned")
@@ -83,6 +87,10 @@ fn is_affirmative_child_owned_value(value: &str) -> bool {
         && !value.contains("not child-owned")
         && !value.starts_with("parent-owned")
         && !has_absent_field_value(value, "child-owned")
+}
+fn is_parent_owned_value(value: &str) -> bool {
+    let value = trimmed_value(value);
+    value.starts_with("parent-owned") && !value.contains("not parent-owned")
 }
 fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
