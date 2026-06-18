@@ -1,9 +1,6 @@
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_lowercase();
-    if !has_affirmative_child_owned_lane(&normalized)
-        || has_explicit_maintainer_reassignment(&normalized)
-        || !has_parent_authored_fix(&normalized)
-    {
+    if !has_unreassigned_parent_authored_fix(&normalized) {
         return Vec::new();
     }
 
@@ -11,15 +8,28 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         "child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment".to_owned(),
     ]
 }
-fn has_affirmative_child_owned_lane(evidence: &str) -> bool {
-    evidence.lines().map(str::trim).any(|line| {
-        ["owner", "ownership"]
-            .into_iter()
-            .any(|field| field_value(line, field).is_some_and(is_affirmative_child_owned_value))
-            || field_value(line, "child-owned")
-                .is_some_and(|value| !has_absent_field_value(value, "child-owned"))
-            || matches!(trimmed_value(line), "child-owned" | "child-owned lane")
-    })
+fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
+    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
+    let (mut child_owned, mut parent_fix, mut reassigned) = (false, false, false);
+    for (index, line) in lines.iter().enumerate() {
+        let starts_lane = is_affirmative_child_owned_line(line);
+        if starts_lane && child_owned {
+            if parent_fix && !reassigned {
+                return true;
+            }
+            (parent_fix, reassigned) = (false, false);
+        }
+        child_owned |= starts_lane;
+        parent_fix |= line_has_parent_authored_fix(&lines, index);
+        reassigned |= line_has_explicit_maintainer_reassignment(&lines, index);
+    }
+    child_owned && parent_fix && !reassigned
+}
+fn is_affirmative_child_owned_line(line: &str) -> bool {
+    field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)
+        || field_value(line, "child-owned")
+            .is_some_and(|value| !has_absent_field_value(value, "child-owned"))
+        || matches!(trimmed_value(line), "child-owned" | "child-owned lane")
 }
 fn is_affirmative_child_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
@@ -28,82 +38,72 @@ fn is_affirmative_child_owned_value(value: &str) -> bool {
         && !value.starts_with("parent-owned")
         && !has_absent_field_value(value, "child-owned")
 }
-fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
-    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
-    lines.iter().enumerate().any(|(index, line)| {
-        let line = line.trim();
-        if has_non_affirmative_reassignment_key(line) {
-            return false;
-        }
-        let Some(value) = field_value(line, "maintainer reassignment") else {
-            return false;
-        };
-        let value = if value.is_empty() {
-            next_line_bullet_value(&lines, index).unwrap_or(value)
-        } else {
-            value
-        };
-        is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
-    })
+fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bool {
+    let line = lines[index];
+    if has_non_affirmative_reassignment_key(line) {
+        return false;
+    }
+    let Some(value) = field_value(line, "maintainer reassignment") else {
+        return false;
+    };
+    let value = value
+        .is_empty()
+        .then(|| next_line_bullet_value(lines, index).unwrap_or(value))
+        .unwrap_or(value);
+    is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
 }
-fn has_parent_authored_fix(evidence: &str) -> bool {
-    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
-    lines.iter().enumerate().any(|(index, line)| {
-        if has_empty_field_value(line, "parent-authored")
-            && next_line_has_absent_value(&lines, index)
-        {
-            return false;
-        }
-        if line.contains("parent-authored")
-            && !has_negative_field_value(line, "parent-authored")
-            && !has_absent_authored_phrase(line, "parent-authored")
-            && !has_draft_handoff_phrase(line, "parent-authored")
-        {
-            return has_fix_marker(line) || has_affirmative_implementation_field(line);
-        }
-        if line.contains("parent authored")
-            && !has_negative_field_value(line, "parent")
-            && !has_absent_actor_phrase(line, "parent", "authored")
-        {
-            return has_fix_marker(line);
-        }
-        if line.contains("orchestrator-authored")
-            && !has_negative_field_value(line, "orchestrator-authored")
-            && !has_absent_authored_phrase(line, "orchestrator-authored")
-            && !has_draft_handoff_phrase(line, "orchestrator-authored")
-        {
-            return has_fix_marker(line);
-        }
-        (line.contains("parent implemented")
-            || line.contains("parent fixed")
-            || line.contains("parent pushed")
-            || line.contains("parent implementation commit")
-            || line.contains("fixed in parent")
-            || line.contains("parent patched")
-            || line.contains("orchestrator patched")
-            || (line.contains("orchestrator authored")
-                && has_fix_marker(line)
-                && !has_absent_actor_phrase(line, "orchestrator", "authored"))
-            || line.contains("orchestrator fixed")
-            || line.contains("orchestrator review-response")
-            || line.contains("orchestrator review response")
-            || line.contains("parent review-response")
-            || line.contains("parent review response")
-            || (line.contains("parent commit")
-                && !has_absent_actor_phrase(line, "parent", "commit"))
-            || has_passive_parent_fix(line)
-            || line.contains("patched by parent"))
-            && !has_negative_field_value(line, "parent")
-    })
+fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
+    let line = lines[index];
+    if has_empty_field_value(line, "parent-authored")
+        && next_line_bullet_value(lines, index).is_some_and(has_absent_value)
+    {
+        return false;
+    }
+    if line.contains("parent-authored")
+        && !has_negative_field_value(line, "parent-authored")
+        && !has_absent_authored_phrase(line, "parent-authored")
+        && !has_draft_handoff_phrase(line, "parent-authored")
+    {
+        return has_fix_marker(line) || has_affirmative_implementation_field(line);
+    }
+    if line.contains("parent authored")
+        && !has_negative_field_value(line, "parent")
+        && !has_absent_actor_phrase(line, "parent", "authored")
+    {
+        return has_fix_marker(line);
+    }
+    if line.contains("orchestrator-authored")
+        && !has_negative_field_value(line, "orchestrator-authored")
+        && !has_absent_authored_phrase(line, "orchestrator-authored")
+        && !has_draft_handoff_phrase(line, "orchestrator-authored")
+    {
+        return has_fix_marker(line);
+    }
+    (line.contains("parent implemented")
+        || line.contains("parent fixed")
+        || line.contains("parent pushed")
+        || line.contains("parent implementation commit")
+        || line.contains("fixed in parent")
+        || line.contains("parent patched")
+        || line.contains("orchestrator patched")
+        || (line.contains("orchestrator authored")
+            && has_fix_marker(line)
+            && !has_absent_actor_phrase(line, "orchestrator", "authored"))
+        || line.contains("orchestrator fixed")
+        || line.contains("orchestrator review-response")
+        || line.contains("orchestrator review response")
+        || line.contains("parent review-response")
+        || line.contains("parent review response")
+        || (line.contains("parent commit") && !has_absent_actor_phrase(line, "parent", "commit"))
+        || has_passive_parent_fix(line)
+        || line.contains("patched by parent"))
+        && !has_negative_field_value(line, "parent")
 }
 fn has_negative_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(|value| has_absent_field_value(value, field))
 }
 fn has_empty_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(str::is_empty)
-}
-fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
-    next_line_bullet_value(lines, index).is_some_and(has_absent_value)
 }
 fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
     let value = lines.iter().skip(index + 1).find(|line| !line.is_empty())?;
