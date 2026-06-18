@@ -20,6 +20,8 @@ fn validator_allows_absent_parent_authored_review_response()
         "Review response: no parent commit; child-authored commit def456 fixed feedback",
         "Review response: child-authored commit def456 fixed feedback; verified by parent",
         "Review response: child-authored commit def456 fixed feedback; verified by orchestrator",
+        "Review response: child-authored commit def456 fixed feedback, verified by parent",
+        "Review response: child-authored commit def456 fixed feedback and verified by orchestrator",
         "Review response: not parent-authored; child-authored commit def456 fixed feedback",
         "Review response: without parent-authored commits; child-authored commit def456 fixed feedback",
         "Review response: not orchestrator-authored; child-authored commit def456 fixed feedback",
