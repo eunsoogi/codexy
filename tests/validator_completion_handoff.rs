@@ -9,25 +9,16 @@ fn validator_cli_rejects_completion_claim_with_clean_open_pr() -> TestResult {
 }
 #[test]
 fn validator_cli_allows_explicit_stop_condition_with_clean_open_pr() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let handoff_path = temp.path().join("handoff.md");
-    let pr_state_path = temp.path().join("pr-state.json");
-    std::fs::write(
-        &handoff_path,
+    for handoff in [
         "Draft PR #128 is open per the stop condition. Parent orchestrator will handle review and merge gates; this lane is not complete.\n",
-    )?;
-    std::fs::write(
-        &pr_state_path,
-        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
-    )?;
-
-    let output = validate_completion_handoff(&handoff_path, &pr_state_path)?;
-    assert!(
-        output.status.success(),
-        "validator should allow explicit defer/stop handoffs for open PRs\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Maintainer requested push only; Work is complete after PR #128.\n",
+        "Maintainer requested draft only; Work is complete after PR #128.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should allow explicit defer/stop handoffs for open PRs",
+        )?;
+    }
     Ok(())
 }
 #[test]
@@ -59,6 +50,7 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: not requested. Work is complete after PR #128.\n",
         "No-merge instruction: no. Work is complete after PR #128.\n",
         "No-merge instruction: N/A. Work is complete after PR #128.\n",
+        "Maintainer requested wait: not required. Work is complete after PR #128.\n",
         "No-merge instruction was requested by parent orchestrator. Work is complete after PR #128.\n",
         "No-merge instruction: maintainer did not request no merge. Work is complete after PR #128.\n",
         "No-merge instruction: maintainer requested a Codex review only. Work is complete after PR #128.\n",
