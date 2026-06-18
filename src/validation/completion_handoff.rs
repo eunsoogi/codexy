@@ -1,5 +1,4 @@
 use serde_json::Value;
-
 pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     let pr_state = match serde_json::from_str::<Value>(pr_state) {
         Ok(value) => value,
@@ -9,20 +8,17 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
             )];
         }
     };
-
     if !is_clean_open_pr(&pr_state)
         || !claims_completion(handoff)
         || states_explicit_deferral(handoff)
     {
         return Vec::new();
     }
-
     vec![format!(
         "opening a PR is not completion: PR #{} is still open and mergeable; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
         pr_number(&pr_state)
     )]
 }
-
 fn is_clean_open_pr(pr_state: &Value) -> bool {
     string_field(pr_state, "state").is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))
         && !bool_field(pr_state, "isDraft").unwrap_or(false)
@@ -30,7 +26,6 @@ fn is_clean_open_pr(pr_state: &Value) -> bool {
             matches!(status.to_ascii_uppercase().as_str(), "CLEAN" | "HAS_HOOKS")
         })
 }
-
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
     if has_unnegated_phrase(&text, "not complete until merge", 16) {
@@ -72,10 +67,8 @@ fn claims_completion(handoff: &str) -> bool {
         || has_unnegated_word(&text, "finish", 16)
         || has_unnegated_word(&text, "finalize", 16)
 }
-
 fn states_explicit_deferral(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-
     [
         "maintainer requested stop",
         "maintainer requested wait",
@@ -103,7 +96,6 @@ fn states_explicit_deferral(handoff: &str) -> bool {
     .iter()
     .any(|phrase| has_unnegated_deferral_phrase(&text, phrase, 80))
 }
-
 fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
     let mut rest = text;
     let mut offset = 0;
@@ -112,7 +104,7 @@ fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usiz
         let after_index = absolute_index + phrase.len();
         if phrase_has_boundaries(text, absolute_index, after_index)
             && !has_unchecked_checklist_marker_before(text, absolute_index)
-            && !has_false_deferral_label_after(text, after_index)
+            && !has_false_deferral_label(text, absolute_index, after_index)
         {
             let prefix_start = char_window_start(text, absolute_index, negation_window);
             if !has_nearby_negation(&text[prefix_start..absolute_index]) {
@@ -127,7 +119,7 @@ fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usiz
 fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
     text[..start].trim_end().ends_with("- [ ]")
 }
-fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
+fn has_false_deferral_label(text: &str, start: usize, after_index: usize) -> bool {
     let suffix = text[after_index..].trim_start_matches([' ', '\t']);
     if ["is not requested", "was not requested"]
         .iter()
@@ -136,6 +128,12 @@ fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
                 .strip_prefix(phrase)
                 .is_some_and(starts_with_boundary)
         })
+        || (text[char_window_start(text, start, 80)..start]
+            .trim_start()
+            .starts_with("no explicit")
+            && suffix
+                .strip_prefix("was requested")
+                .is_some_and(starts_with_boundary))
     {
         return true;
     }

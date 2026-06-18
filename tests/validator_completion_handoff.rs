@@ -64,6 +64,12 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction:\nWork is complete after PR #128.\n",
         "Draft-only instruction: not applicable. Work is complete after PR #128.\n",
         "Draft-only instruction was not requested. Work is complete after PR #128.\n",
+        "No explicit stop, wait, draft-only, no-merge instruction was requested. Work is complete after PR #128.\n",
+        "No explicit stop, wait, draft-only, or no-merge instruction was requested. Work is complete after PR #128.\n",
+        "No explicit stop, wait, draft-only or no-merge instruction was requested. Work is complete after PR #128.\n",
+        "No explicit stop or no-merge instruction was requested. Work is complete after PR #128.\n",
+        "No explicit stop, no-merge instruction was requested. Work is complete after PR #128.\n",
+        "No explicit stop, wait, no-merge instruction was requested. Work is complete after PR #128.\n",
         "No-merge instruction is not requested. Work is complete after PR #128.\n",
         "No-merge instruction: . Work is complete after PR #128.\n",
     ] {
@@ -81,7 +87,6 @@ fn validator_cli_rejects_completion_claim_with_negated_maintainer_request() -> T
         "validator should reject completion claims that negate a maintainer stop/wait request",
     )
 }
-
 #[test]
 fn validator_cli_rejects_parent_orchestrator_wait_as_maintainer_deferral() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -111,7 +116,6 @@ fn validator_cli_rejects_negated_no_merge_deferral() -> TestResult {
         "validator should reject negated no-merge deferrals",
     )
 }
-
 #[test]
 fn validator_cli_rejects_negated_leave_open_deferral() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -119,7 +123,6 @@ fn validator_cli_rejects_negated_leave_open_deferral() -> TestResult {
         "validator should reject negated leave-open deferrals",
     )
 }
-
 #[test]
 fn validator_cli_rejects_negated_draft_only_instruction() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -127,7 +130,6 @@ fn validator_cli_rejects_negated_draft_only_instruction() -> TestResult {
         "validator should reject negated draft-only instructions",
     )
 }
-
 #[test]
 fn validator_cli_rejects_qualified_negated_draft_only_instruction() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -135,7 +137,6 @@ fn validator_cli_rejects_qualified_negated_draft_only_instruction() -> TestResul
         "validator should reject qualified negated draft-only instructions",
     )
 }
-
 #[test]
 fn validator_cli_rejects_maintainer_did_not_ask_leave_open() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -143,7 +144,6 @@ fn validator_cli_rejects_maintainer_did_not_ask_leave_open() -> TestResult {
         "validator should reject maintainer leave-open denials",
     )
 }
-
 #[test]
 fn validator_cli_rejects_natural_completion_claims_after_pr() -> TestResult {
     for handoff in [
