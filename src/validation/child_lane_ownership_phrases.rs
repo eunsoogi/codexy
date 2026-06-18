@@ -49,11 +49,12 @@ pub(super) fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
 
 pub(super) fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
     line.split_once(':')
-        .and_then(|(key, value)| key.contains(field).then_some(value.trim()))
+        .and_then(|(key, value)| metadata_key(key).contains(field).then_some(value.trim()))
 }
 
 pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
+        let key = metadata_key(key);
         key.contains("maintainer reassignment")
             && [
                 "no",
@@ -69,6 +70,10 @@ pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
             .into_iter()
             .any(|qualifier| key.contains(qualifier))
     })
+}
+
+pub(super) fn metadata_key(key: &str) -> &str {
+    key.trim().trim_start_matches(['-', '*']).trim_start()
 }
 
 pub(super) fn is_positive_reassignment_value(value: &str) -> bool {

@@ -20,9 +20,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             && index > 0
             && previous_non_empty_line(&lines, index)
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous));
-        let ownership_boundary = line
-            .split_once(':')
-            .is_some_and(|(key, _)| key.contains("ownership"));
+        let ownership_boundary = is_lane_ownership_boundary(line);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
         if (starts_lane || pr_boundary || ownership_boundary) && child_owned {
@@ -63,6 +61,15 @@ fn previous_non_empty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a st
         .rev()
         .find(|line| !line.is_empty())
         .copied()
+}
+fn is_lane_ownership_boundary(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, _)| {
+        let key = metadata_key(key);
+        matches!(
+            key,
+            "ownership" | "lane ownership" | "pr ownership" | "pull request ownership"
+        )
+    })
 }
 fn is_affirmative_child_owned_line(line: &str) -> bool {
     field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)

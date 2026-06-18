@@ -86,3 +86,41 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_preserves_child_lane_across_implementation_ownership_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Implementation ownership: child thread
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not end child-owned lanes on non-lane implementation ownership metadata"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_treats_list_style_lane_ownership_as_boundary() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+- Lane ownership: parent-owned
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should recognize list-style lane ownership records as lane boundaries\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
