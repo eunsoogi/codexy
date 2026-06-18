@@ -57,7 +57,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             && !has_absent_authored_phrase(line, "parent-authored")
             && !has_draft_handoff_phrase(line, "parent-authored")
         {
-            return has_fix_marker(line);
+            return has_fix_marker(line) || has_affirmative_implementation_field(line);
         }
         if line.contains("parent authored")
             && !has_negative_field_value(line, "parent")
@@ -108,13 +108,7 @@ fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
 }
 fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
     let value = lines.iter().skip(index + 1).find(|line| !line.is_empty())?;
-    Some(
-        value
-            .strip_prefix('-')
-            .or_else(|| value.strip_prefix('*'))
-            .unwrap_or(value)
-            .trim(),
-    )
+    Some(value.trim_start_matches(['-', '*']).trim())
 }
 fn has_passive_parent_fix(line: &str) -> bool {
     (line.contains(" by parent")
@@ -122,11 +116,19 @@ fn has_passive_parent_fix(line: &str) -> bool {
         || line.contains(" by orchestrator")
         || line.contains(" by the orchestrator"))
         && has_fix_marker(line)
+        && !line.contains("verified by parent")
+        && !line.contains("verified by the parent")
+        && !line.contains("verified by orchestrator")
+        && !line.contains("verified by the orchestrator")
 }
 fn has_fix_marker(line: &str) -> bool {
-    "review-response|review response|fix|commit"
-        .split('|')
+    ["review-response", "review response", "fix", "commit"]
+        .into_iter()
         .any(|marker| line.contains(marker))
+}
+fn has_affirmative_implementation_field(line: &str) -> bool {
+    field_value(line, "parent-authored implementation")
+        .is_some_and(|value| matches!(trimmed_value(value), "yes" | "true"))
 }
 fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
     line.find(marker).is_some_and(|index| {

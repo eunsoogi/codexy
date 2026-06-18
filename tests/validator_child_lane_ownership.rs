@@ -5,6 +5,8 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
     for review_response in [
         "Review response: parent-authored implementation commit abc123 fixed feedback.",
+        "Parent-authored implementation changes: yes",
+        "Parent-authored implementation: yes",
         "Review response: parent-authored commit abc123 fixed draft PR feedback.",
         "Review response: parent-authored commit abc123 fixed draft diff feedback.",
         "Review response: parent-authored commit abc123 fixed draft handoff feedback.",
