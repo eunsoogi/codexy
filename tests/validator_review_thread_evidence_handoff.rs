@@ -104,7 +104,7 @@ fn validator_rejects_partial_review_thread_evidence() -> TestResult {
 #[test]
 fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> TestResult {
     assert_handoff_succeeds(
-        "Codex review passed. Fixed the failing test.\n",
+        "Codex review passed, fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
     )
 }

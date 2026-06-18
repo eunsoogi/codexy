@@ -89,18 +89,22 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
         }
         let prefix = &text[..start];
         let local_prefix = local_action_prefix(prefix);
-        if !has_any(
-            prefix,
-            &[
-                "review response: none",
-                "review feedback: none",
-                "review thread: none",
-                "review comments: none",
-                "none from codex",
-            ],
-        ) && !"no review feedback was |no review feedback |no feedback was |no feedback |not "
-            .split('|')
-            .any(|negation| local_prefix.contains(negation))
+        let clean_review_prefix = prefix.trim_end().ends_with("codex review passed,")
+            && !text[start..].contains("review");
+        if !clean_review_prefix
+            && !has_any(
+                prefix,
+                &[
+                    "review response: none",
+                    "review feedback: none",
+                    "review thread: none",
+                    "review comments: none",
+                    "none from codex",
+                ],
+            )
+            && !"no review feedback was |no review feedback |no feedback was |no feedback |not "
+                .split('|')
+                .any(|negation| local_prefix.contains(negation))
         {
             return true;
         }
@@ -227,14 +231,9 @@ fn has_exact_reference(text: &str, reference: &str) -> bool {
     false
 }
 fn is_reference_boundary(text: &str, start: usize, end: usize) -> bool {
-    text[..start]
-        .chars()
-        .next_back()
-        .is_none_or(|ch| !is_reference_char(ch))
-        && text[end..]
-            .chars()
-            .next()
-            .is_none_or(|ch| !is_reference_char(ch))
+    let before = text[..start].chars().next_back();
+    let after = text[end..].chars().next();
+    before.is_none_or(|ch| !is_reference_char(ch)) && after.is_none_or(|ch| !is_reference_char(ch))
 }
 fn is_reference_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '/' | '#' | ':')
