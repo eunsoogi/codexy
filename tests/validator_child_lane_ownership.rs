@@ -3,33 +3,39 @@ use std::process::Command;
 #[test]
 fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(
-        &evidence_path,
-        r#"Lane ownership: child-owned
-PR: #128
-Review response: parent-authored implementation commit abc123 fixed feedback.
-Maintainer reassignment: none
-"#,
-    )?;
+    for review_response in [
+        "Review response: parent-authored implementation commit abc123 fixed feedback.",
+        "Review response: parent patched the child-owned branch with commit abc123",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let evidence_path = temp.path().join("handoff.md");
+        std::fs::write(
+            &evidence_path,
+            format!(
+                "Lane ownership: child-owned\n\
+                 PR: #128\n\
+                 {review_response}\n\
+                 Maintainer reassignment: none\n"
+            ),
+        )?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?;
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args(["--check-child-lane-ownership", "--evidence-file"])
+            .arg(&evidence_path)
+            .output()?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject parent-authored child lane fixes without explicit reassignment"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains(
-            "child-owned lane contains parent-authored implementation or review-response evidence"
-        ),
-        "stderr should explain the ownership violation, got:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject `{review_response}` without explicit reassignment"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains(
+                "child-owned lane contains parent-authored implementation or review-response evidence"
+            ),
+            "stderr should explain the ownership violation, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
