@@ -124,6 +124,7 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.starts_with("absent ")
         || value.starts_with("not ")
         || value.starts_with("without ")
+        || value.starts_with("there is no ")
         || value.starts_with("there was no ")
         || value.ends_with(" not provided")
         || value.ends_with(" is missing")
