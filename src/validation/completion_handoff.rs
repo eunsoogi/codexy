@@ -7,10 +7,7 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if let Some(error) = pr_state_input_error(&pr_state) {
         return vec![error];
     }
-    if !is_open_non_draft_pr(&pr_state)
-        || !claims_completion(handoff)
-        || states_explicit_deferral(handoff)
-    {
+    if !is_open_pr(&pr_state) || !claims_completion(handoff) || states_explicit_deferral(handoff) {
         return Vec::new();
     }
     vec![format!(
@@ -18,12 +15,8 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
         pr_number(&pr_state)
     )]
 }
-fn is_open_non_draft_pr(pr_state: &Value) -> bool {
+fn is_open_pr(pr_state: &Value) -> bool {
     string_field(pr_state, "state").is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))
-        && !pr_state
-            .get("isDraft")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
 }
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();

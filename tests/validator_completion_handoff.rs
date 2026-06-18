@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{path::Path, process::Command};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
@@ -9,17 +9,22 @@ fn validator_cli_rejects_completion_claim_with_clean_open_pr() -> TestResult {
     )
 }
 #[test]
-fn validator_cli_rejects_completion_claim_with_open_non_draft_pr() -> TestResult {
-    for merge_state in ["UNKNOWN", "BLOCKED", "UNSTABLE"] {
+fn validator_cli_rejects_completion_claim_with_open_pr() -> TestResult {
+    for (merge_state, is_draft) in [
+        ("UNKNOWN", false),
+        ("BLOCKED", false),
+        ("UNSTABLE", false),
+        ("UNKNOWN", true),
+    ] {
         let output = validate_handoff_with_pr_state(
             "Work is complete after PR #128.\n",
             &format!(
-                r#"{{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"{merge_state}","reviewDecision":"APPROVED"}}"#
+                r#"{{"number":128,"state":"OPEN","isDraft":{is_draft},"mergeStateStatus":"{merge_state}","reviewDecision":"APPROVED"}}"#
             ),
         )?;
         assert!(
             !output.status.success(),
-            "validator should fail closed for open non-draft PR state {merge_state}\nstdout:\n{}\nstderr:\n{}",
+            "validator should fail closed for open PR state {merge_state} draft={is_draft}\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
@@ -192,10 +197,7 @@ fn validator_cli_accepts_negated_completion_claim_after_pr() -> TestResult {
     }
     Ok(())
 }
-fn validate_completion_handoff(
-    handoff_path: &std::path::Path,
-    pr_state_path: &std::path::Path,
-) -> OutputResult {
+fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--check-completion-handoff",
