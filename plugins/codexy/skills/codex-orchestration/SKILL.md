@@ -202,6 +202,13 @@ edits.
   merge prerequisites pass, advance the plan from review waiting into the
   merge/post-merge-sync step and continue unless the maintainer explicitly
   requested stop, wait, push only, no merge, draft only, or leaving the PR open.
+- Opening a PR is not completion when the requested outcome includes
+  completion, merge, default Codexy merge flow, or no explicit stop/wait/
+  draft-only/leave-open instruction. If a handoff, final answer, or evidence
+  artifact reports completion while a matching clean PR remains open, validate
+  it with
+  `scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`
+  and fix the claim or continue through merge instead of marking the lane done.
 - Reserve `blocked` for repeated true impasses where the orchestrator cannot
   make meaningful progress without user input or an external state change.
 - Maintain a visible todo list with real `update_plan` or todo-tool state for
@@ -351,6 +358,9 @@ edits.
 6. Finish:
    - Confirm no running sessions, open child lanes, untracked required files, or
      unverified claims remain.
+   - Confirm no final-answer or handoff artifact claims completion while a
+     matching clean PR remains open unless the maintainer explicitly requested
+     stop, wait, draft-only, or leave-open behavior.
    - Report what changed, what proved it, what was not run, and remaining risk.
 
 ## Multi-Agent Dispatch Template

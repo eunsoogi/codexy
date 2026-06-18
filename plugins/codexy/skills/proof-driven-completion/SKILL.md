@@ -71,6 +71,12 @@ complete.
   exist, require recovery evidence showing the parent stopped editing,
   disclosed the mistake, protected user and other-agent work, and handed the
   draft diff to the owning child thread.
+- For completion, merge, or default Codexy merge-flow requests, do not treat an
+  open PR as completion unless the maintainer explicitly requested stop, wait,
+  draft-only, no-merge, or leave-open behavior. When a final answer or handoff
+  artifact may claim completion while the matching PR is open, run
+  `scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`
+  against current PR state before accepting the claim.
 - For every non-trivial atomic unit, require evidence that the owning thread
   ran the packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/codexy-sentinel.toml` before handoff, PR readiness,
@@ -159,6 +165,8 @@ Include:
 ## Failure Modes
 
 - Reporting a merge before verifying branch deletion and main sync.
+- Reporting completion after opening a clean PR while merge gates are not
+  intentionally deferred.
 - Ignoring Codex connector comments because they are top-level PR comments
   instead of GitHub review objects.
 - Treating ordinary review or child-thread wait time as a blocker instead of an

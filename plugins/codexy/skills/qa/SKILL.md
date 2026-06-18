@@ -24,6 +24,10 @@ been driven and inspected.
    - Browser: URL, viewport, actions, visible text, screenshot or trace.
    - Desktop: app path, UI action, screenshot or accessibility evidence.
    - GitHub: PR, issue, review, branch, settings, or ruleset API state.
+   - Completion handoff: final-answer or handoff artifact plus current
+     `gh pr view` JSON through
+     `scripts/validate-plugin-config --check-completion-handoff` when a
+     completion claim could otherwise stop at an open PR.
    - Plugin/config/docs: parser, schema, frontmatter, rendered preview, or
      structured dump.
    - Codexy architecture: `scripts/validate-plugin-config --check` when
@@ -68,6 +72,9 @@ Cleanup:
 - Do not pass a child-owned lane when review feedback was fixed only in the
   parent thread. The owning child thread must validate the response or provide
   a documented non-change rationale.
+- Do not pass a completion handoff that claims done while a matching clean PR
+  remains open unless the artifact states the explicit stop, wait, draft-only,
+  no-merge, or leave-open instruction.
 
 ## Evidence Rules
 

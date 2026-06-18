@@ -60,6 +60,7 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
         (line.contains("parent implemented")
             || line.contains("parent fixed")
             || line.contains("parent pushed")
+            || line.contains("parent implementation commit")
             || line.contains("fixed in parent")
             || line.contains("parent patched")
             || line.contains("orchestrator patched")

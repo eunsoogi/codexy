@@ -141,6 +141,21 @@ for code exploration when it is available. Include the resulting files,
 neighbors, or dependency evidence with the handoff or PR evidence, then confirm
 exact files with direct reads before editing.
 
+Before a PR-readiness handoff or final answer claims completion, validate that
+the claim does not stop at an open PR when the requested outcome includes
+completion or the default Codexy merge flow. Capture current PR state first:
+
+```sh
+gh pr view <pr> --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.json
+scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file pr-state.json
+```
+
+If the validator flags the report, either continue through review, merge,
+branch deletion, and post-merge main sync, or rewrite the report to state the
+maintainer's explicit stop, wait, draft-only, no-merge, or leave-open
+instruction. Do not call opening the PR complete merely because local
+verification is green.
+
 ## Pull Requests
 
 Open PRs with GitHub or `gh`. Keep PRs draft only while local verification is missing or risk is intentionally unresolved.
