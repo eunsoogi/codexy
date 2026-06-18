@@ -61,7 +61,7 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: N/A. Work is complete after PR #128.\n",
         "No-merge instruction was requested by parent orchestrator. Work is complete after PR #128.\n",
         "No-merge instruction: maintainer did not request no merge. Work is complete after PR #128.\n",
-        "No-merge instruction: not from maintainer. Work is complete after PR #128.\n",
+        "No-merge instruction: maintainer requested a Codex review only. Work is complete after PR #128.\n",
         "No-merge instruction from maintainer was not requested. Work is complete after PR #128.\n",
         "No-merge instruction\nNone.\nWork is complete after PR #128.\n",
         "Maintainer requested no merge? No. Work is complete after PR #128.\n",
@@ -101,7 +101,7 @@ fn validator_cli_rejects_parent_orchestrator_wait_as_maintainer_deferral() -> Te
 #[test]
 fn validator_cli_rejects_unchecked_checklist_deferral() -> TestResult {
     reject_open_pr_completion_handoff(
-        "- [ ] maintainer requested wait\nWork is complete after PR #128.\n",
+        "- [ ] **maintainer requested wait**\nWork is complete after PR #128.\n",
         "validator should reject unchecked checklist deferral options",
     )
 }

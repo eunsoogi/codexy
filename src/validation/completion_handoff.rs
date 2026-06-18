@@ -42,17 +42,9 @@ fn claims_completion(handoff: &str) -> bool {
             text = text.replace(&format!("verification {phrase};"), "verification evidence;");
         }
     }
-    [
-        "work is complete",
-        "implementation is complete",
-        "completed",
-        "finished",
-        "finalized",
-        "all set",
-        "is done",
-    ]
-    .iter()
-    .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
+    ["completed", "finished", "finalized", "all set"]
+        .iter()
+        .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
         || has_unnegated_word(&text, "done", 16)
         || has_unnegated_word(&text, "complete", 16)
         || has_unnegated_word(&text, "completes", 16)
@@ -109,7 +101,9 @@ fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usiz
     false
 }
 fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
-    text[..start].trim_end().ends_with("- [ ]")
+    text[..start]
+        .trim_end_matches([' ', '\t', '*'])
+        .ends_with("- [ ]")
 }
 fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index: usize) -> bool {
     let suffix = text[after_index..].trim_start_matches([' ', '\t']);
@@ -146,6 +140,7 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
         && !["maintainer requested", "maintainer asked", "per maintainer"]
             .iter()
             .any(|phrase| has_unnegated_phrase(value, phrase, 16))
+        || (phrase == "no-merge instruction" && !value.contains("no merge"))
     {
         return true;
     }
