@@ -101,7 +101,40 @@ fn thread_referenced(text: &str, thread: &Value) -> bool {
     .into_iter()
     .flatten()
     .map(str::to_ascii_lowercase)
-    .any(|value| !value.is_empty() && text.contains(&value))
+    .any(|value| has_exact_reference(text, &value))
+}
+
+fn has_exact_reference(text: &str, reference: &str) -> bool {
+    if reference.is_empty() {
+        return false;
+    }
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(reference) {
+        let start = offset + index;
+        let end = start + reference.len();
+        if is_reference_boundary(text, start, end) {
+            return true;
+        }
+        offset = end;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn is_reference_boundary(text: &str, start: usize, end: usize) -> bool {
+    text[..start]
+        .chars()
+        .next_back()
+        .is_none_or(|ch| !is_reference_char(ch))
+        && text[end..]
+            .chars()
+            .next()
+            .is_none_or(|ch| !is_reference_char(ch))
+}
+
+fn is_reference_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '/' | '#' | ':')
 }
 
 fn first_comment_url(thread: &Value) -> Option<&str> {
