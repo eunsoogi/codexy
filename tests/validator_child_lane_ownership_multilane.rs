@@ -174,7 +174,6 @@ fn validator_ignores_reassignment_before_child_owned_lane() -> Result<(), Box<dy
 {
     let output = run_ownership_validator(
         r#"PR: #1
-Lane ownership: parent-owned
 Maintainer reassignment: explicit maintainer reassignment to parent
 
 PR: #2
