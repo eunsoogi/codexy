@@ -2,11 +2,7 @@ use serde_json::Value;
 pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     let pr_state = match serde_json::from_str::<Value>(pr_state) {
         Ok(value) => value,
-        Err(error) => {
-            return vec![format!(
-                "completion handoff PR state must be valid JSON: {error}"
-            )];
-        }
+        Err(error) => return vec![format!("completion handoff PR state JSON error: {error}")],
     };
     if !is_clean_open_pr(&pr_state)
         || !claims_completion(handoff)
@@ -111,7 +107,8 @@ fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
 }
 fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index: usize) -> bool {
     let suffix = text[after_index..].trim_start_matches([' ', '\t']);
-    if suffix.starts_with("from maintainer was not requested")
+    if has_false_label_value(suffix)
+        || suffix.starts_with("from maintainer was not requested")
         || (suffix.starts_with("was requested by ")
             && !suffix.starts_with("was requested by maintainer"))
         || ["is not requested", "was not requested", "? no"]
