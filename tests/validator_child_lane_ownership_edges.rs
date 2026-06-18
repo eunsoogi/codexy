@@ -125,6 +125,10 @@ fn validator_ignores_non_affirmative_child_owned_mentions() -> Result<(), Box<dy
 Review response: parent-authored implementation commit abc123 fixed feedback
 Maintainer reassignment: none
 "#,
+        r#"Child-owned lane: not child-owned
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
         r#"Lane ownership: parent-owned (not child-owned)
 Review response: parent-authored implementation commit abc123 fixed feedback
 Maintainer reassignment: none

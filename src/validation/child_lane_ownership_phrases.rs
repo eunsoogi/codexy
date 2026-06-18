@@ -138,6 +138,17 @@ pub(super) fn has_absent_field_value(value: &str, field: &str) -> bool {
     if has_absent_value(value) {
         return true;
     }
+    if value
+        .strip_prefix("not ")
+        .and_then(|suffix| suffix.strip_prefix(field))
+        .is_some_and(|suffix| {
+            suffix.is_empty()
+                || suffix.starts_with(char::is_whitespace)
+                || matches!(suffix.chars().next(), Some('.' | ',' | ';' | ':'))
+        })
+    {
+        return true;
+    }
     "not provided|without|missing|absent|none|not|no"
         .split('|')
         .any(|marker| {
