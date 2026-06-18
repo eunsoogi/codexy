@@ -82,11 +82,15 @@ fn is_child_lane_header_metadata(line: &str) -> bool {
     line.is_empty()
         || line.starts_with("pr:")
         || is_affirmative_child_owned_line(line)
-        || is_exact_owner_metadata_line(line)
+        || is_exact_child_header_metadata_line(line)
 }
-fn is_exact_owner_metadata_line(line: &str) -> bool {
-    line.split_once(':')
-        .is_some_and(|(key, _)| matches!(metadata_key(key), "owner" | "lane owner"))
+fn is_exact_child_header_metadata_line(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, _)| {
+        matches!(
+            metadata_key(key),
+            "owner" | "lane owner" | "branch" | "head"
+        )
+    })
 }
 fn is_parent_owned_owner_boundary(line: &str) -> bool {
     field_value(line, "owner").is_some_and(is_parent_owned_value)

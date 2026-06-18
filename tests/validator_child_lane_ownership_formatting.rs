@@ -169,3 +169,24 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_keeps_pr_metadata_inside_child_owned_header_fields()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Owner: child-thread-1
+Branch: codexy/129-prevent-parent-patching
+Head: 18d3102b8af7b0544e366b85deff457816da27ea
+PR: #130
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should keep branch/head metadata inside the child-owned header"
+    );
+    Ok(())
+}
