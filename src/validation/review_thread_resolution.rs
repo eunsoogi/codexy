@@ -66,7 +66,7 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
     text.split_inclusive(['.', '\n', ';'])
         .filter(move |segment| {
             let has_context =
-                "codex review|codex feedback|review response|review feedback|review thread|review comment|review comments|review suggestion|review suggestions"
+                "codex review|codex feedback|review response|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions"
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();
@@ -95,16 +95,9 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
         let clean_review_prefix = prefix.trim_end().ends_with("codex review passed,")
             && !text[start..].contains("review");
         if !clean_review_prefix
-            && !has_any(
-                prefix,
-                &[
-                    "review response: none",
-                    "review feedback: none",
-                    "review thread: none",
-                    "review comments: none",
-                    "none from codex",
-                ],
-            )
+            && !"review response: none|review feedback: none|reviewer feedback: none|review thread: none|review comments: none|reviewer comments: none|none from codex"
+                .split('|')
+                .any(|term| prefix.contains(term))
             && !"no review feedback was |no review feedback |no feedback was |no feedback |not "
                 .split('|')
                 .any(|negation| local_prefix.contains(negation))
@@ -177,7 +170,10 @@ fn has_post_label_negation(segment: &str, phrase: &str) -> bool {
         .strip_prefix(phrase)
         .unwrap_or_default()
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
-    if has_word_prefix(after_label, "is missing") {
+    if ["is missing", "missing"]
+        .iter()
+        .any(|word| has_word_prefix(after_label, word))
+    {
         return true;
     }
     let prefixes = "not |was not |wasn't |is not |isn't |has not been |hasn't been ";

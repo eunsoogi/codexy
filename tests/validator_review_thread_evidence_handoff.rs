@@ -35,8 +35,8 @@ fn validator_rejects_has_not_been_no_change_rationale() -> TestResult {
 #[test]
 fn validator_rejects_missing_no_change_rationale_labels() -> TestResult {
     assert_rejects_thread_rationale(
-        "Review response: addressed current head. Accepted no-change rationale is missing for thread PRRT_kwDOS6i-_86KnflQ.\n",
-        "PRRT_kwDOS6i-_86KnflQ",
+        "Review response: addressed current head. Accepted no-change rationale missing for thread PRRT_kwDOS6i-_86KqEHf.\n",
+        "PRRT_kwDOS6i-_86KqEHf",
     )?;
     assert_rejects_thread_rationale(
         "Review response: addressed current head. Accepted no-change rationale hasn't been documented for thread PRRT_kwDOS6i-_86KnflQ.\n",
@@ -46,7 +46,8 @@ fn validator_rejects_missing_no_change_rationale_labels() -> TestResult {
 #[test]
 fn validator_treats_review_comments_as_review_response() -> TestResult {
     assert_requires_threads("Addressed Codex review comments on the current head.\n")?;
-    assert_requires_threads("Addressed the Codex review comment on the current head.\n")
+    assert_requires_threads("Addressed reviewer comments on the current head.\n")?;
+    assert_requires_threads("Addressed reviewer feedback on the current head.\n")
 }
 #[test]
 fn validator_treats_review_suggestions_as_review_response() -> TestResult {
@@ -126,7 +127,7 @@ fn validator_limits_no_feedback_negation_to_current_clause() -> TestResult {
 #[test]
 fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> TestResult {
     assert_handoff_succeeds(
-        "Review feedback: none from Codex, fixed the failing test.\n",
+        "Reviewer feedback: none from Codex, fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
     )
 }
