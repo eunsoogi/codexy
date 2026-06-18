@@ -19,19 +19,18 @@ fn is_child_owned(evidence: &str) -> bool {
 fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
     evidence.lines().any(|line| {
         let line = line.trim();
-        line.contains("maintainer reassignment")
-            && (line.contains("explicit")
-                || line.contains("reassigned to parent")
-                || line.contains("reassigns implementation ownership")
-                || line.contains("reassigned implementation ownership"))
-            && !has_negative_value(line)
+        let Some(value) = field_value(line, "maintainer reassignment") else {
+            return false;
+        };
+        is_positive_reassignment_value(value)
+            && !has_negative_field_value(line, "maintainer reassignment")
     })
 }
 
 fn has_parent_authored_fix(evidence: &str) -> bool {
     evidence.lines().any(|line| {
         let line = line.trim();
-        if line.contains("parent-authored") && !has_negative_value(line) {
+        if line.contains("parent-authored") && !has_negative_field_value(line, "parent-authored") {
             return line.contains("implementation")
                 || line.contains("review-response")
                 || line.contains("review response")
@@ -42,14 +41,29 @@ fn has_parent_authored_fix(evidence: &str) -> bool {
             || line.contains("parent fixed")
             || line.contains("fixed in parent")
             || line.contains("patched by parent"))
-            && !has_negative_value(line)
+            && !has_negative_field_value(line, "parent")
     })
 }
 
-fn has_negative_value(line: &str) -> bool {
-    if line.contains("not provided") {
-        return true;
-    }
-    line.split(|character: char| !character.is_ascii_alphanumeric())
-        .any(|word| matches!(word, "no" | "none" | "missing" | "absent"))
+fn has_negative_field_value(line: &str, field: &str) -> bool {
+    let Some(value) = field_value(line, field) else {
+        return false;
+    };
+    let value = value.trim_matches(|character: char| {
+        character.is_ascii_whitespace() || matches!(character, '.' | ',' | ';')
+    });
+    matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
+}
+
+fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
+    line.split_once(':')
+        .and_then(|(key, value)| key.contains(field).then_some(value.trim()))
+}
+
+fn is_positive_reassignment_value(value: &str) -> bool {
+    value.contains("explicit maintainer reassignment to parent")
+        || value.contains("explicit reassignment to parent")
+        || value.contains("reassigned to parent")
+        || value.contains("reassigns implementation ownership to parent")
+        || value.contains("reassigned implementation ownership to parent")
 }
