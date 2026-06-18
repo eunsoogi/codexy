@@ -15,9 +15,11 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         (false, false, false, false);
     let mut pending_parent_fix = Some(false);
     let mut pending_reassigned = Some(false);
+    let mut pending_pr_seen = false;
     for (index, line) in lines.iter().enumerate() {
         let starts_lane = is_affirmative_child_owned_line(line);
-        let pr_boundary = is_pr_boundary(line)
+        let pr_metadata = is_pr_boundary(line);
+        let pr_boundary = pr_metadata
             && index > 0
             && previous_non_empty_line(&lines, index)
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous))
@@ -33,14 +35,16 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             (child_owned, parent_fix, reassigned, child_header_open) = (false, false, false, false);
         }
         if pr_boundary {
-            if !pending_parent_fix.unwrap_or(false) {
+            if pending_pr_seen || !pending_parent_fix.unwrap_or(false) {
                 pending_parent_fix = Some(false);
             }
             pending_reassigned = Some(false);
         } else if ownership_boundary && !starts_lane {
             pending_parent_fix = None;
             pending_reassigned = None;
+            pending_pr_seen = false;
         }
+        pending_pr_seen |= pr_metadata;
         if starts_lane {
             child_owned = true;
             child_header_open = true;
@@ -48,6 +52,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             reassigned |= pending_reassigned.unwrap_or(false);
             pending_parent_fix = Some(false);
             pending_reassigned = Some(false);
+            pending_pr_seen = false;
         }
         if child_owned {
             parent_fix |= line_parent_fix;
