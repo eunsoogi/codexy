@@ -59,6 +59,7 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "Maintainer requested no merge? No. Work is complete after PR #128.\n",
         "No-merge instruction:\nWork is complete after PR #128.\n",
         "Draft-only instruction: not applicable. Work is complete after PR #128.\n",
+        "Draft-only instruction: maintainer requested a Codex review only. Work is complete after PR #128.\n",
         "Draft-only instruction was not requested. Work is complete after PR #128.\n",
         "No explicit stop, wait, draft-only, no-merge instruction was requested. Work is complete after PR #128.\n",
         "No explicit stop, wait, draft-only, or no-merge instruction was requested. Work is complete after PR #128.\n",

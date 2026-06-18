@@ -144,7 +144,8 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
         && !["maintainer requested", "maintainer asked", "per maintainer"]
             .iter()
             .any(|phrase| has_unnegated_phrase(value, phrase, 16))
-        || (phrase == "no-merge instruction" && !value.contains("no merge"))
+        || (phrase == "no-merge instruction" && !value.contains("no merge")
+            || phrase == "draft-only instruction" && !value.contains("draft"))
     {
         return true;
     }
@@ -211,7 +212,6 @@ fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
 fn has_nearby_negation(prefix: &str) -> bool {
-    let prefix = prefix.trim_end();
     [
         "no",
         "no explicit",
@@ -230,7 +230,7 @@ fn has_nearby_negation(prefix: &str) -> bool {
         "neither",
     ]
     .iter()
-    .any(|phrase| prefix.ends_with(phrase))
+    .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {
     text[..end]
