@@ -53,7 +53,6 @@ fn validator_cli_rejects_empty_stop_condition_label() -> TestResult {
         "validator should reject stop-condition labels without real deferral text",
     )
 }
-
 #[test]
 fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
     for handoff in [
@@ -62,6 +61,7 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: not requested. Work is complete after PR #128.\n",
         "No-merge instruction: no. Work is complete after PR #128.\n",
         "No-merge instruction: N/A. Work is complete after PR #128.\n",
+        "No-merge instruction:\nWork is complete after PR #128.\n",
         "Draft-only instruction: not applicable. Work is complete after PR #128.\n",
         "Draft-only instruction was not requested. Work is complete after PR #128.\n",
         "No-merge instruction is not requested. Work is complete after PR #128.\n",
@@ -104,7 +104,6 @@ fn validator_cli_rejects_unrelated_maintainer_request_as_deferral() -> TestResul
         "validator should reject unrelated maintainer requests as merge deferrals",
     )
 }
-
 #[test]
 fn validator_cli_rejects_negated_no_merge_deferral() -> TestResult {
     reject_open_pr_completion_handoff(
@@ -165,6 +164,7 @@ fn validator_cli_rejects_natural_completion_claims_after_pr() -> TestResult {
         "Done after PR #128.\n",
         "Implemented the fix and opened PR #128. Complete.\n",
         "Work is complete. Parent orchestrator will handle review and merge gates.\n",
+        "Work is complete; PR #128 is open per the stop condition.\n",
         "No blockers. Work is complete.\n",
         "검토 완료입니다. Work is complete.\n",
         "검토🙂완료입니다. Work is complete.\n",

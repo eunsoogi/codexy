@@ -77,7 +77,6 @@ fn states_explicit_deferral(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
 
     [
-        "per the stop condition",
         "maintainer requested stop",
         "maintainer requested wait",
         "maintainer requested no merge",
@@ -129,7 +128,7 @@ fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
     text[..start].trim_end().ends_with("- [ ]")
 }
 fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
-    let suffix = text[after_index..].trim_start();
+    let suffix = text[after_index..].trim_start_matches([' ', '\t']);
     if ["is not requested", "was not requested"]
         .iter()
         .any(|phrase| {
@@ -143,8 +142,8 @@ fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
     let Some(value) = suffix.strip_prefix(':') else {
         return false;
     };
-    let value = value.trim_start();
-    if matches!(value.chars().next(), None | Some('.') | Some(';')) {
+    let value = value.trim_start_matches([' ', '\t']);
+    if matches!(value.chars().next(), None | Some('\n' | '\r' | '.' | ';')) {
         return true;
     }
     [
