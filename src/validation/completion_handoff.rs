@@ -4,6 +4,9 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
         Ok(value) => value,
         Err(error) => return vec![format!("completion handoff PR state JSON error: {error}")],
     };
+    if let Some(error) = pr_state_input_error(&pr_state) {
+        return vec![error];
+    }
     if !is_clean_open_pr(&pr_state)
         || !claims_completion(handoff)
         || states_explicit_deferral(handoff)
@@ -49,36 +52,23 @@ fn claims_completion(handoff: &str) -> bool {
 }
 fn states_explicit_deferral(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    [
-        "maintainer requested stop",
-        "maintainer requested wait",
-        "maintainer requested no merge",
-        "maintainer requested push only",
-        "maintainer requested leave open",
-        "maintainer explicitly requested stop",
-        "maintainer explicitly requested wait",
-        "maintainer explicitly requested no merge",
-        "maintainer explicitly requested push only",
-        "maintainer explicitly requested leave open",
-        "maintainer asked me to stop",
-        "maintainer asked me to wait",
-        "maintainer asked me to leave open",
-        "do not merge per maintainer",
-        "no merge per maintainer",
-        "no-merge instruction",
-        "maintainer requested draft-only",
-        "maintainer requested draft only",
-        "maintainer explicitly requested draft-only",
-        "maintainer explicitly requested draft only",
-        "draft pr per maintainer",
-        "draft pull request per maintainer",
-        "draft-only instruction",
-        "leave open per maintainer",
-        "left open per maintainer",
-        "deferred by maintainer",
-    ]
-    .iter()
-    .any(|phrase| has_unnegated_deferral_phrase(&text, phrase, 80))
+    "maintainer requested stop|maintainer requested wait|maintainer requested no merge|maintainer requested no-merge|maintainer requested push only|maintainer requested leave open|maintainer requested leave-open|maintainer explicitly requested stop|maintainer explicitly requested wait|maintainer explicitly requested no merge|maintainer explicitly requested no-merge|maintainer explicitly requested push only|maintainer explicitly requested leave open|maintainer explicitly requested leave-open|maintainer asked me to stop|maintainer asked me to wait|maintainer asked me to leave open|do not merge per maintainer|no merge per maintainer|no-merge instruction|maintainer requested draft-only|maintainer requested draft only|maintainer explicitly requested draft-only|maintainer explicitly requested draft only|draft pr per maintainer|draft pull request per maintainer|draft-only instruction|leave open per maintainer|left open per maintainer|deferred by maintainer"
+        .split('|')
+        .any(|phrase| has_unnegated_deferral_phrase(&text, phrase, 80))
+}
+fn pr_state_input_error(pr_state: &Value) -> Option<String> {
+    if let Some(field) = ["state", "mergeStateStatus"]
+        .iter()
+        .find(|field| string_field(pr_state, field).is_none())
+    {
+        return Some(format!(
+            "completion handoff PR state missing required field: {field}"
+        ));
+    }
+    if pr_state.get("isDraft").and_then(Value::as_bool).is_none() {
+        return Some("completion handoff PR state missing required field: isDraft".into());
+    }
+    None
 }
 fn has_unnegated_deferral_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
     let mut rest = text;

@@ -13,6 +13,8 @@ fn validator_cli_allows_explicit_stop_condition_with_clean_open_pr() -> TestResu
         "Draft PR #128 is open per the stop condition. Parent orchestrator will handle review and merge gates; this lane is not complete.\n",
         "Maintainer requested push only; Work is complete after PR #128.\n",
         "Maintainer requested draft only; Work is complete after PR #128.\n",
+        "Maintainer requested no-merge; Work is complete after PR #128.\n",
+        "Maintainer requested leave-open; Work is complete after PR #128.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -41,6 +43,21 @@ fn validator_cli_rejects_empty_stop_condition_label() -> TestResult {
         "Stop condition: none. Work is complete after PR #128.\n",
         "validator should reject stop-condition labels without real deferral text",
     )
+}
+#[test]
+fn validator_cli_rejects_missing_pr_state_fields() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Work is complete after PR #128.\n",
+        r#"{"number":128,"state":"OPEN","isDraft":false,"reviewDecision":"APPROVED"}"#,
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should fail closed on incomplete PR state\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("PR state"));
+    Ok(())
 }
 #[test]
 fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
@@ -80,67 +97,24 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
     Ok(())
 }
 #[test]
-fn validator_cli_rejects_completion_claim_with_negated_maintainer_request() -> TestResult {
-    reject_open_pr_completion_handoff(
+fn validator_cli_rejects_false_or_unrelated_deferrals() -> TestResult {
+    for handoff in [
         "No maintainer explicitly requested stop or wait. Work is complete. Waiting for merge after PR #128.\n",
-        "validator should reject completion claims that negate a maintainer stop/wait request",
-    )
-}
-#[test]
-fn validator_cli_rejects_parent_orchestrator_wait_as_maintainer_deferral() -> TestResult {
-    reject_open_pr_completion_handoff(
         "The parent orchestrator asked me to wait for merge gates. Work is complete after PR #128.\n",
-        "validator should reject non-maintainer wait requests as explicit deferrals",
-    )
-}
-#[test]
-fn validator_cli_rejects_unchecked_checklist_deferral() -> TestResult {
-    reject_open_pr_completion_handoff(
         "- [ ] **maintainer requested wait**\nWork is complete after PR #128.\n",
-        "validator should reject unchecked checklist deferral options",
-    )
-}
-#[test]
-fn validator_cli_rejects_unrelated_maintainer_request_as_deferral() -> TestResult {
-    reject_open_pr_completion_handoff(
         "Maintainer explicitly requested a Codex review. Work is complete after PR #128.\n",
-        "validator should reject unrelated maintainer requests as merge deferrals",
-    )
-}
-#[test]
-fn validator_cli_rejects_negated_no_merge_deferral() -> TestResult {
-    reject_open_pr_completion_handoff(
         "No maintainer explicitly requested no merge. Work is complete after PR #128.\n",
-        "validator should reject negated no-merge deferrals",
-    )
-}
-#[test]
-fn validator_cli_rejects_negated_leave_open_deferral() -> TestResult {
-    reject_open_pr_completion_handoff(
         "No maintainer explicitly requested leave open. Work is complete after PR #128.\n",
-        "validator should reject negated leave-open deferrals",
-    )
-}
-#[test]
-fn validator_cli_rejects_negated_draft_only_instruction() -> TestResult {
-    reject_open_pr_completion_handoff(
         "No draft-only instruction was requested. Work is complete after PR #128.\n",
-        "validator should reject negated draft-only instructions",
-    )
-}
-#[test]
-fn validator_cli_rejects_qualified_negated_draft_only_instruction() -> TestResult {
-    reject_open_pr_completion_handoff(
         "No explicit draft-only instruction was requested. Work is complete after PR #128.\n",
-        "validator should reject qualified negated draft-only instructions",
-    )
-}
-#[test]
-fn validator_cli_rejects_maintainer_did_not_ask_leave_open() -> TestResult {
-    reject_open_pr_completion_handoff(
         "The maintainer did not ask me to leave open. Work is complete after PR #128.\n",
-        "validator should reject maintainer leave-open denials",
-    )
+    ] {
+        reject_open_pr_completion_handoff(
+            handoff,
+            "validator should reject false or unrelated deferrals",
+        )?;
+    }
+    Ok(())
 }
 #[test]
 fn validator_cli_rejects_natural_completion_claims_after_pr() -> TestResult {
@@ -230,16 +204,22 @@ fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     );
     Ok(())
 }
-fn validate_open_pr_handoff(
+fn validate_handoff_with_pr_state(
     handoff: &str,
+    pr_state: &str,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
-    std::fs::write(
-        &pr_state_path,
-        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
-    )?;
+    std::fs::write(&pr_state_path, pr_state)?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+fn validate_open_pr_handoff(
+    handoff: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    validate_handoff_with_pr_state(
+        handoff,
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )
 }
