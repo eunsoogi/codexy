@@ -33,8 +33,12 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             (child_owned, parent_fix, reassigned, child_header_open) = (false, false, false, false);
         }
         if pr_boundary {
-            pending_parent_fix = Some(false);
-            pending_reassigned = Some(false);
+            if !pending_parent_fix.unwrap_or(false) {
+                pending_parent_fix = Some(false);
+            }
+            if !pending_reassigned.unwrap_or(false) {
+                pending_reassigned = Some(false);
+            }
         } else if ownership_boundary && !starts_lane {
             pending_parent_fix = None;
             pending_reassigned = None;
