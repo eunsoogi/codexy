@@ -13,7 +13,9 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 fn has_affirmative_child_owned_lane(evidence: &str) -> bool {
     evidence.lines().map(str::trim).any(|line| {
-        field_value(line, "ownership").is_some_and(is_affirmative_child_owned_value)
+        ["owner", "ownership"]
+            .into_iter()
+            .any(|field| field_value(line, field).is_some_and(is_affirmative_child_owned_value))
             || field_value(line, "child-owned")
                 .is_some_and(|value| !has_absent_field_value(value, "child-owned"))
             || matches!(trimmed_value(line), "child-owned" | "child-owned lane")
@@ -101,10 +103,7 @@ fn has_empty_field_value(line: &str, field: &str) -> bool {
     field_value(line, field).is_some_and(str::is_empty)
 }
 fn next_line_has_absent_value(lines: &[&str], index: usize) -> bool {
-    let Some(value) = lines.iter().skip(index + 1).find(|line| !line.is_empty()) else {
-        return false;
-    };
-    has_absent_value(value.trim_start_matches(['-', '*']).trim())
+    next_line_bullet_value(lines, index).is_some_and(has_absent_value)
 }
 fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
     let value = lines.iter().skip(index + 1).find(|line| !line.is_empty())?;
@@ -183,8 +182,9 @@ fn is_negative_reassignment_value(value: &str) -> bool {
         || value.contains(" not granted")
         || value.contains(" was not granted")
         || value.contains(" not been granted")
-        || value.contains(" was denied")
-        || value.contains(" was rejected")
+        || [" denied", " rejected"]
+            .into_iter()
+            .any(|marker| value.contains(marker))
         || [" requested", " needed", " required", " pending"]
             .into_iter()
             .any(|suffix| contains_non_affirmative_reassignment_suffix(value, suffix))

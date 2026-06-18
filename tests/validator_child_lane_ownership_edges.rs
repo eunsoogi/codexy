@@ -160,17 +160,27 @@ Maintainer reassignment: none
 #[test]
 fn validator_treats_child_owned_pr_as_child_owned_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Child-owned PR: #128
 Review response: parent-authored implementation commit abc123 fixed feedback
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Owner: child-owned
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+        r#"Lane owner: child-owned
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        !output.status.success(),
-        "validator should treat child-owned PR evidence as child-owned lane evidence"
-    );
+        assert!(
+            !output.status.success(),
+            "validator should treat child-owned PR/owner evidence as child-owned lane evidence"
+        );
+    }
     Ok(())
 }
 
