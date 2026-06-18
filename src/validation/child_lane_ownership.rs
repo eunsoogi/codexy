@@ -22,8 +22,7 @@ fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
         let Some(value) = field_value(line, "maintainer reassignment") else {
             return false;
         };
-        is_positive_reassignment_value(value)
-            && !has_negative_field_value(line, "maintainer reassignment")
+        is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
     })
 }
 
@@ -49,10 +48,7 @@ fn has_negative_field_value(line: &str, field: &str) -> bool {
     let Some(value) = field_value(line, field) else {
         return false;
     };
-    let value = value.trim_matches(|character: char| {
-        character.is_ascii_whitespace() || matches!(character, '.' | ',' | ';')
-    });
-    matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
+    has_absent_value(value)
 }
 
 fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
@@ -66,4 +62,20 @@ fn is_positive_reassignment_value(value: &str) -> bool {
         || value.contains("reassigned to parent")
         || value.contains("reassigns implementation ownership to parent")
         || value.contains("reassigned implementation ownership to parent")
+}
+
+fn is_negative_reassignment_value(value: &str) -> bool {
+    has_absent_value(value)
+        || value.starts_with("no ")
+        || value.starts_with("missing ")
+        || value.starts_with("absent ")
+        || value.starts_with("not ")
+        || value.starts_with("without ")
+}
+
+fn has_absent_value(value: &str) -> bool {
+    let value = value.trim_matches(|character: char| {
+        character.is_ascii_whitespace() || matches!(character, '.' | ',' | ';')
+    });
+    matches!(value, "no" | "none" | "missing" | "absent" | "not provided")
 }

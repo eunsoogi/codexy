@@ -69,7 +69,10 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: missing",
         "Maintainer reassignment: absent",
         "Maintainer reassignment: no explicit maintainer reassignment",
+        "Maintainer reassignment: no explicit maintainer reassignment to parent",
         "Maintainer reassignment: missing explicit maintainer reassignment",
+        "Maintainer reassignment: not reassigned to parent",
+        "Maintainer reassignment: without explicit maintainer reassignment to parent",
     ] {
         let temp = tempfile::tempdir()?;
         let evidence_path = temp.path().join("handoff.md");
