@@ -65,6 +65,8 @@ fn validator_cli_rejects_empty_no_merge_instruction_labels() -> TestResult {
         "No-merge instruction: false. Work is complete after PR #128.\n",
         "No-merge instruction: not requested. Work is complete after PR #128.\n",
         "No-merge instruction: no. Work is complete after PR #128.\n",
+        "No-merge instruction: N/A. Work is complete after PR #128.\n",
+        "Draft-only instruction: not applicable. Work is complete after PR #128.\n",
         "No-merge instruction: . Work is complete after PR #128.\n",
     ] {
         reject_open_pr_completion_handoff(

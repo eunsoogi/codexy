@@ -124,7 +124,18 @@ fn has_false_deferral_label_after(text: &str, after_index: usize) -> bool {
     if matches!(value.chars().next(), None | Some('.') | Some(';')) {
         return true;
     }
-    ["none", "false", "not requested", "no"].iter().any(|word| {
+    [
+        "none",
+        "false",
+        "not requested",
+        "not applicable",
+        "not-applicable",
+        "n/a",
+        "na",
+        "no",
+    ]
+    .iter()
+    .any(|word| {
         value
             .strip_prefix(word)
             .is_some_and(|rest| is_boundary(rest.chars().next()))
