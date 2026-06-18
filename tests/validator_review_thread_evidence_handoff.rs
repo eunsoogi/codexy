@@ -46,6 +46,48 @@ fn validator_rejects_post_label_negated_no_change_rationale() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: addressed current head. Accepted no-change rationale: was not documented for thread PRRT_kwDOS6i-_86KixXq.\n",
+        unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86KixXq"),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject punctuated post-label negated rationale text\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOS6i-_86KixXq"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_treats_review_comments_as_review_response() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Addressed Codex review comments on the current head.\n",
+        r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should require reviewThreads.nodes for addressed review comments\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("reviewThreads.nodes"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_incomplete_review_thread_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: addressed current head. PR ready for parent handoff.\n",

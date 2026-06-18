@@ -41,10 +41,8 @@ fn is_unresolved_thread(thread: &Value) -> bool {
 
 fn claims_review_response(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    let has_review_feedback = has_any(
-        &text,
-        &["review response", "review feedback", "review thread"],
-    );
+    let has_review_feedback = has_any(&text, &["review response", "review feedback"])
+        || has_any(&text, &["review thread", "review comments"]);
     has_any(
         &text,
         &[
@@ -161,8 +159,8 @@ fn is_negated_rationale(text: &str, start: usize, phrase: &str, segment: &str) -
 fn has_post_label_negation(segment: &str, phrase: &str) -> bool {
     let after_label = segment
         .strip_prefix(phrase)
-        .map(str::trim_start)
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
     let prefixes = ["not ", "was not ", "wasn't ", "is not ", "isn't "];
     let words = ["accepted", "approved", "documented"];
     prefixes.iter().any(|prefix| {
