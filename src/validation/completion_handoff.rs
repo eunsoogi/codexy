@@ -94,7 +94,7 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
     let mut offset = 0;
     while let Some(index) = rest.find(phrase) {
         let absolute_index = offset + index;
-        let prefix_start = absolute_index.saturating_sub(negation_window);
+        let prefix_start = char_window_start(text, absolute_index, negation_window);
         if !has_nearby_negation(&text[prefix_start..absolute_index]) {
             return true;
         }
@@ -105,25 +105,20 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
+    let prefix = prefix.trim_end();
     [
-        "no ",
-        " no ",
-        " no-",
-        "not ",
-        " not ",
-        "did not ",
-        " did not ",
-        "was not ",
-        " was not ",
-        "were not ",
-        " were not ",
-        "without ",
-        " without ",
-        "neither ",
-        " neither ",
+        "no", "not", "did not", "was not", "were not", "without", "neither",
     ]
     .iter()
-    .any(|phrase| prefix.contains(phrase))
+    .any(|phrase| prefix.ends_with(phrase))
+}
+
+fn char_window_start(text: &str, end: usize, window: usize) -> usize {
+    text[..end]
+        .char_indices()
+        .rev()
+        .nth(window)
+        .map_or(0, |(index, _)| index)
 }
 
 fn pr_number(pr_state: &Value) -> String {

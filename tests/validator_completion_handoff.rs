@@ -115,6 +115,9 @@ fn validator_cli_rejects_natural_completion_claims_after_pr()
         "Done after opening PR #128.\n",
         "Done after PR #128.\n",
         "Work is complete. Parent orchestrator will handle review and merge gates.\n",
+        "No blockers. Work is complete.\n",
+        "검토 완료입니다. Work is complete.\n",
+        "검토🙂완료입니다. Work is complete.\n",
     ] {
         reject_open_pr_completion_handoff(
             handoff,
