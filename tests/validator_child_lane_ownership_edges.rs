@@ -141,6 +141,40 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_keeps_child_owned_label_that_negates_parent_owned()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned (not parent-owned)
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should keep affirmative child-owned ownership labels that negate parent ownership"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_treats_child_owned_pr_as_child_owned_evidence()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Child-owned PR: #128
+Review response: parent-authored implementation commit abc123 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should treat child-owned PR evidence as child-owned lane evidence"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_authored_fix_with_unrelated_no_value()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

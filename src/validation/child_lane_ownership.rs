@@ -14,8 +14,8 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 fn has_affirmative_child_owned_lane(evidence: &str) -> bool {
     evidence.lines().map(str::trim).any(|line| {
         field_value(line, "ownership").is_some_and(is_affirmative_child_owned_value)
-            || field_value(line, "child-owned lane")
-                .is_some_and(|value| matches!(trimmed_value(value), "yes" | "true" | "child-owned"))
+            || field_value(line, "child-owned")
+                .is_some_and(|value| !has_absent_field_value(value, "child-owned"))
             || matches!(trimmed_value(line), "child-owned" | "child-owned lane")
     })
 }
@@ -23,7 +23,7 @@ fn is_affirmative_child_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
     value.contains("child-owned")
         && !value.contains("not child-owned")
-        && !value.contains("parent-owned")
+        && !value.starts_with("parent-owned")
         && !has_absent_field_value(value, "child-owned")
 }
 fn has_explicit_maintainer_reassignment(evidence: &str) -> bool {
