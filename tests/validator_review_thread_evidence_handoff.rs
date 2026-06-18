@@ -28,6 +28,14 @@ fn validator_rejects_punctuated_post_label_negated_no_change_rationale() -> Test
     )
 }
 #[test]
+fn validator_rejects_has_not_been_no_change_rationale() -> TestResult {
+    assert_handoff_fails(
+        "Review response: addressed current head. Accepted no-change rationale has not been documented for thread PRRT_kwDOS6i-_86Km2Tf.\n",
+        unresolved_review_thread_with_id_pr_state("PRRT_kwDOS6i-_86Km2Tf"),
+        "PRRT_kwDOS6i-_86Km2Tf",
+    )
+}
+#[test]
 fn validator_treats_review_comments_as_review_response() -> TestResult {
     assert_requires_threads("Addressed Codex review comments on the current head.\n")
 }

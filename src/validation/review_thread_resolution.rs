@@ -177,10 +177,10 @@ fn has_post_label_negation(segment: &str, phrase: &str) -> bool {
         .strip_prefix(phrase)
         .unwrap_or_default()
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
-    let prefixes = ["not ", "was not ", "wasn't ", "is not ", "isn't "];
+    let prefixes = "not |was not |wasn't |is not |isn't |has not been ";
     let words = ["accepted", "approved", "documented"];
     prefixes
-        .iter()
+        .split('|')
         .filter_map(|prefix| after_label.strip_prefix(prefix))
         .any(|rest| words.iter().any(|word| has_word_prefix(rest, word)))
 }
