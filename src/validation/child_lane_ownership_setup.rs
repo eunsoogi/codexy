@@ -35,8 +35,12 @@ fn line_value_has_parent_implementation_setup(line: &str) -> bool {
 }
 
 fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
-    if let Some(has_parent_setup) = actor_read_clauses_have_parent_implementation_setup(value) {
-        return has_parent_setup;
+    if let Some((has_parent_setup, has_non_read_clause)) =
+        actor_read_clauses_have_parent_implementation_setup(value)
+    {
+        if has_parent_setup || !has_parent_context(key) || !has_non_read_clause {
+            return has_parent_setup;
+        }
     }
 
     (has_parent_context(key) || has_present_parent_context(value))
@@ -106,8 +110,9 @@ fn actor_read_field_value(value: &str) -> Option<(&str, &str)> {
     })
 }
 
-fn actor_read_clauses_have_parent_implementation_setup(value: &str) -> Option<bool> {
+fn actor_read_clauses_have_parent_implementation_setup(value: &str) -> Option<(bool, bool)> {
     let mut has_actor_read_field = false;
+    let mut has_non_read_clause = false;
 
     for clause in value.split([';', ',']).map(trimmed_value) {
         if clause.is_empty() {
@@ -116,16 +121,17 @@ fn actor_read_clauses_have_parent_implementation_setup(value: &str) -> Option<bo
         if let Some((key, value)) = actor_read_field_value(clause) {
             has_actor_read_field = true;
             if actor_read_field_has_parent_implementation_setup(key, value) {
-                return Some(true);
+                return Some((true, has_non_read_clause));
             }
             continue;
         }
         if has_present_parent_context(clause) {
-            return Some(true);
+            return Some((true, has_non_read_clause));
         }
+        has_non_read_clause = true;
     }
 
-    has_actor_read_field.then_some(false)
+    has_actor_read_field.then_some((false, has_non_read_clause))
 }
 
 fn actor_read_field_has_parent_implementation_setup(key: &str, value: &str) -> bool {
