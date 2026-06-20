@@ -1,26 +1,20 @@
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_actor_phrase, has_absent_authored_phrase, has_absent_field_value,
-    is_metadata_field, metadata_key, trimmed_value,
+    metadata_key, trimmed_value,
 };
 
 pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
-    if line_value_has_parent_implementation_setup(line) {
-        return true;
+    if let Some((key, value)) = setup_field_value(line) {
+        return value
+            .is_empty()
+            .then(|| setup_continuation_has_parent_implementation_setup(lines, index, key))
+            .unwrap_or_else(|| setup_value_has_parent_implementation_setup(key, value));
     }
-    setup_field_value(line)
-        .filter(|(_, value)| value.is_empty())
-        .is_some_and(|(key, _)| {
-            setup_continuation_has_parent_implementation_setup(lines, index, key)
-        })
+    line_value_has_parent_implementation_setup(line)
 }
 
 fn line_value_has_parent_implementation_setup(line: &str) -> bool {
-    if setup_field_value(line)
-        .is_some_and(|(key, value)| setup_value_has_parent_implementation_setup(key, value))
-    {
-        return true;
-    }
     let line = trimmed_value(line);
     [
         "parent-created draft worktree",
@@ -54,9 +48,8 @@ fn setup_continuation_has_parent_implementation_setup(
         if line.is_empty() {
             continue;
         }
-        let is_bullet = line.starts_with(['-', '*']);
-        let value = line.trim_start_matches(['-', '*']).trim();
-        if !is_bullet && is_metadata_field(value) {
+        let value = continuation_value(line);
+        if is_setup_continuation_boundary(value) {
             break;
         }
         if setup_value_has_parent_implementation_setup(key, value) {
@@ -64,6 +57,38 @@ fn setup_continuation_has_parent_implementation_setup(
         }
     }
     false
+}
+
+fn continuation_value(value: &str) -> &str {
+    value.trim_start_matches(['-', '*']).trim()
+}
+
+fn is_setup_continuation_boundary(value: &str) -> bool {
+    value.split_once(':').is_some_and(|(key, _)| {
+        let key = metadata_key(key);
+        [
+            "branch",
+            "child owner",
+            "head",
+            "implementation surface reads",
+            "implementation-surface reads",
+            "lane owner",
+            "lane ownership",
+            "maintainer reassignment",
+            "orchestrator implementation setup",
+            "owner",
+            "parent implementation setup",
+            "pr",
+            "pr ownership",
+            "pull request ownership",
+            "recovery",
+            "review response",
+            "review-response",
+            "worktree path",
+        ]
+        .into_iter()
+        .any(|field| key == field || key.contains(field))
+    })
 }
 
 fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {

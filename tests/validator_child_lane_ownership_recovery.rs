@@ -29,6 +29,52 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_bullet_metadata_after_absent_parent_setup()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+- Parent implementation setup:
+- none
+- Recovery: not needed
+- Maintainer reassignment: none
+Review response: child-authored commit def456 fixed feedback
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should stop setup continuations at bullet metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_recovery_checklist_for_parent_setup() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: created draft worktree before child delegation
+Recovery:
+- disclosed the workflow defect
+- cleaned up the draft worktree and preserved the draft diff
+- inspected user and other-agent overlap
+- delegated to a clean child thread before implementation resumed
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accumulate parent setup recovery checklist bullets\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_read_in_setup_bullet() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Lane ownership: child-owned

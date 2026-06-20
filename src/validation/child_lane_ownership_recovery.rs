@@ -5,11 +5,61 @@ pub(super) fn line_has_parent_setup_recovery(lines: &[&str], index: usize) -> bo
     let Some(value) = field_value(line, "recovery") else {
         return false;
     };
-    let value = value
-        .is_empty()
-        .then(|| next_line_bullet_value(lines, index).unwrap_or(value))
-        .unwrap_or(value);
+    if value.is_empty() {
+        return recovery_continuation_value(lines, index)
+            .is_some_and(|value| has_parent_setup_recovery_value(&value));
+    }
     has_parent_setup_recovery_value(value)
+}
+
+fn recovery_continuation_value(lines: &[&str], index: usize) -> Option<String> {
+    let mut value = String::new();
+    for line in lines.iter().skip(index + 1) {
+        if line.is_empty() {
+            continue;
+        }
+        let continuation = continuation_value(line);
+        if is_recovery_continuation_boundary(continuation) {
+            break;
+        }
+        if !value.is_empty() {
+            value.push_str("; ");
+        }
+        value.push_str(continuation);
+    }
+    (!value.is_empty()).then_some(value)
+}
+
+fn continuation_value(value: &str) -> &str {
+    value.trim_start_matches(['-', '*']).trim()
+}
+
+fn is_recovery_continuation_boundary(value: &str) -> bool {
+    value.split_once(':').is_some_and(|(key, _)| {
+        let key = metadata_key(key);
+        [
+            "branch",
+            "child owner",
+            "head",
+            "implementation surface reads",
+            "implementation-surface reads",
+            "lane owner",
+            "lane ownership",
+            "maintainer reassignment",
+            "orchestrator implementation setup",
+            "owner",
+            "parent implementation setup",
+            "pr",
+            "pr ownership",
+            "pull request ownership",
+            "recovery",
+            "review response",
+            "review-response",
+            "worktree path",
+        ]
+        .into_iter()
+        .any(|field| key == field || key.contains(field))
+    })
 }
 
 fn has_parent_setup_recovery_value(value: &str) -> bool {
