@@ -32,18 +32,30 @@ pub(super) fn clause_has_absent_setup_artifact_marker(clause: &str) -> bool {
 fn has_present_generic_setup_artifact_marker(value: &str, marker: &str) -> bool {
     value.match_indices(marker).any(|(index, _)| {
         let prefix = &value[..index];
-        ![
-            "child-",
-            "child ",
-            "parent-",
-            "parent ",
-            "orchestrator-",
-            "orchestrator ",
-        ]
-        .into_iter()
-        .any(|actor_prefix| prefix.ends_with(actor_prefix))
+        !has_explicit_non_parent_setup_actor_prefix(prefix)
             && !has_absent_setup_marker(value, marker)
     })
+}
+
+fn has_explicit_non_parent_setup_actor_prefix(prefix: &str) -> bool {
+    [
+        "child-",
+        "child ",
+        "child thread ",
+        "child lane ",
+        "child-owned thread ",
+        "child-owned lane ",
+        "child owned thread ",
+        "child owned lane ",
+        "owning child thread ",
+        "owning child lane ",
+        "parent-",
+        "parent ",
+        "orchestrator-",
+        "orchestrator ",
+    ]
+    .into_iter()
+    .any(|actor_prefix| prefix.ends_with(actor_prefix))
 }
 
 fn has_absent_setup_marker(line: &str, marker: &str) -> bool {
