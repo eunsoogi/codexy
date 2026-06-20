@@ -34,6 +34,46 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_inline_child_reads_then_absent_parent_reads()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Implementation-surface reads: Child reads: src/foo; Parent reads: none
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow inline child reads followed by absent parent reads\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_inline_absent_parent_reads_then_child_reads()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Implementation-surface reads: Parent reads: none; Child reads: src/foo
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow inline absent parent reads followed by child reads\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_setup_when_recovery_is_empty_before_stop_condition()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

@@ -35,8 +35,8 @@ fn line_value_has_parent_implementation_setup(line: &str) -> bool {
 }
 
 fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
-    if let Some((key, value)) = actor_read_field_value(value) {
-        return actor_read_field_has_parent_implementation_setup(key, value);
+    if let Some(has_parent_setup) = actor_read_clauses_have_parent_implementation_setup(value) {
+        return has_parent_setup;
     }
 
     (has_parent_context(key) || has_present_parent_context(value))
@@ -104,6 +104,28 @@ fn actor_read_field_value(value: &str) -> Option<(&str, &str)> {
         let key = metadata_key(key);
         has_actor_read_phrase(key).then_some((key, value.trim()))
     })
+}
+
+fn actor_read_clauses_have_parent_implementation_setup(value: &str) -> Option<bool> {
+    let mut has_actor_read_field = false;
+
+    for clause in value.split([';', ',']).map(trimmed_value) {
+        if clause.is_empty() {
+            continue;
+        }
+        if let Some((key, value)) = actor_read_field_value(clause) {
+            has_actor_read_field = true;
+            if actor_read_field_has_parent_implementation_setup(key, value) {
+                return Some(true);
+            }
+            continue;
+        }
+        if has_present_parent_context(clause) {
+            return Some(true);
+        }
+    }
+
+    has_actor_read_field.then_some(false)
 }
 
 fn actor_read_field_has_parent_implementation_setup(key: &str, value: &str) -> bool {
