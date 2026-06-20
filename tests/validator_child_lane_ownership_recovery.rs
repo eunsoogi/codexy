@@ -133,6 +133,43 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_parent_read_line_number_in_setup_bullet()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Implementation-surface reads:
+- parent read src/validation/hooks.rs:42
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject parent setup reads with line-number continuations"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_parent_read_url_in_setup_bullet() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Implementation-surface reads:
+- parent read https://github.com/eunsoogi/codexy/blob/main/src/validation/hooks.rs
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject parent setup reads with URL-like continuations"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_parent_substring_in_child_read_path() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(

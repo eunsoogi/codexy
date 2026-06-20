@@ -64,9 +64,19 @@ fn continuation_value(value: &str) -> &str {
 }
 
 fn is_setup_continuation_boundary(value: &str) -> bool {
-    value
-        .split_once(':')
-        .is_some_and(|(key, _)| !metadata_key(key).is_empty())
+    value.split_once(':').is_some_and(|(key, _)| {
+        let key = metadata_key(key);
+        !key.is_empty() && !has_actor_read_phrase(key)
+    })
+}
+
+fn has_actor_read_phrase(value: &str) -> bool {
+    ["child", "parent", "orchestrator"]
+        .into_iter()
+        .any(|actor| {
+            has_actor_read_action(value, actor, "read")
+                || has_actor_read_action(value, actor, "reads")
+        })
 }
 
 fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
