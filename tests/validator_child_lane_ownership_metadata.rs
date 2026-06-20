@@ -84,6 +84,48 @@ fn validator_rejects_hyphenated_parent_created_implementation_branches()
 }
 
 #[test]
+fn validator_allows_child_implementation_surface_reads() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Child implementation-surface reads: child read src/validation/hooks.rs
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow child implementation-surface reads\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_absent_parent_created_setup_evidence() -> Result<(), Box<dyn std::error::Error>>
+{
+    for setup in [
+        "Parent-created implementation branch: none",
+        "No parent-created implementation branch",
+        "Orchestrator-created implementation worktree: none",
+        "No orchestrator-created implementation worktree",
+    ] {
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n{setup}\nMaintainer reassignment: none\n"
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should allow absent setup evidence `{setup}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_allows_parent_coordination_for_child_owned_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

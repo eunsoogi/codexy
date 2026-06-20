@@ -1,12 +1,12 @@
-use super::child_lane_ownership_phrases::{field_value, has_absent_field_value, trimmed_value};
+use super::child_lane_ownership_phrases::{
+    field_value, has_absent_authored_phrase, has_absent_field_value, metadata_key, trimmed_value,
+};
 
 pub(super) fn line_has_parent_implementation_setup(line: &str) -> bool {
-    if field_value(line, "parent implementation setup")
-        .or_else(|| field_value(line, "orchestrator implementation setup"))
-        .or_else(|| field_value(line, "implementation-surface reads"))
-        .or_else(|| field_value(line, "implementation surface reads"))
-        .is_some_and(|value| !has_absent_field_value(value, "implementation setup"))
-    {
+    if setup_field_value(line).is_some_and(|(key, value)| {
+        (has_parent_context(key) || has_parent_context(value))
+            && !has_absent_field_value(value, "implementation setup")
+    }) {
         return true;
     }
     let line = trimmed_value(line);
@@ -25,5 +25,29 @@ pub(super) fn line_has_parent_implementation_setup(line: &str) -> bool {
         "orchestrator created implementation branch",
     ]
     .into_iter()
-    .any(|marker| line.contains(marker))
+    .any(|marker| line.contains(marker) && !has_absent_setup_marker(line, marker))
+}
+
+fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
+    line.split_once(':').and_then(|(key, value)| {
+        let key = metadata_key(key);
+        [
+            "parent implementation setup",
+            "orchestrator implementation setup",
+            "implementation-surface reads",
+            "implementation surface reads",
+        ]
+        .into_iter()
+        .any(|field| key.contains(field))
+        .then_some((key, value.trim()))
+    })
+}
+
+fn has_parent_context(value: &str) -> bool {
+    value.contains("parent") || value.contains("orchestrator")
+}
+
+fn has_absent_setup_marker(line: &str, marker: &str) -> bool {
+    field_value(line, marker).is_some_and(|value| has_absent_field_value(value, marker))
+        || has_absent_authored_phrase(line, marker)
 }
