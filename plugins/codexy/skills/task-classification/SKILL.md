@@ -114,8 +114,8 @@ Stop/blocker:
 ## Gates
 
 - Missing classification evidence blocks branch/worktree setup, delegation,
-  implementation, PR handling, review-response routing, merge work, release
-  work, and PR-readiness claims.
+  validation/QA, implementation, PR handling, review-response routing, merge
+  work, release work, and PR-readiness claims.
 - Classification must happen before deciding parent or child ownership, and
   before using that decision to edit files or route review feedback.
 - Classification cannot waive root `AGENTS.md`, user stop conditions,

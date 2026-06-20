@@ -166,6 +166,9 @@ fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn st
         assert!(classification.contains(lane_type));
     }
 
+    assert!(classification.contains(
+        "Missing classification evidence blocks branch/worktree setup, delegation,\n  validation/QA"
+    ));
     assert!(orchestration.contains("$task-classification"));
     assert!(orchestration.contains("classification before setup"));
     assert!(git_workflow.contains("$task-classification"));
