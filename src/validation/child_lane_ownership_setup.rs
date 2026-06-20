@@ -64,31 +64,9 @@ fn continuation_value(value: &str) -> &str {
 }
 
 fn is_setup_continuation_boundary(value: &str) -> bool {
-    value.split_once(':').is_some_and(|(key, _)| {
-        let key = metadata_key(key);
-        [
-            "branch",
-            "child owner",
-            "head",
-            "implementation surface reads",
-            "implementation-surface reads",
-            "lane owner",
-            "lane ownership",
-            "maintainer reassignment",
-            "orchestrator implementation setup",
-            "owner",
-            "parent implementation setup",
-            "pr",
-            "pr ownership",
-            "pull request ownership",
-            "recovery",
-            "review response",
-            "review-response",
-            "worktree path",
-        ]
-        .into_iter()
-        .any(|field| key == field || key.contains(field))
-    })
+    value
+        .split_once(':')
+        .is_some_and(|(key, _)| !metadata_key(key).is_empty())
 }
 
 fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {

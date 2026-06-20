@@ -51,6 +51,27 @@ Review response: child-authored commit def456 fixed feedback
 }
 
 #[test]
+fn validator_allows_unlisted_metadata_after_empty_parent_setup()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup:
+Stop condition: hand back after push and do not merge
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should stop setup continuations at unlisted metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_recovery_checklist_for_parent_setup() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
