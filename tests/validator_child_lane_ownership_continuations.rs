@@ -130,6 +130,24 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_direct_mixed_absent_and_present_parent_setup_field()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: no parent-created implementation branch but parent-created draft worktree before child delegation
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject direct setup fields with present setup hidden by leading absence"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_setup_when_recovery_is_empty_before_stop_condition()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

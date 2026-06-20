@@ -36,7 +36,7 @@ fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
     }
 
     (has_parent_context(key) || has_present_parent_context(value))
-        && !has_absent_setup_field_value(value)
+        && !setup_value_is_absent(value)
         && !has_absent_keyed_actor_read_value(key, value)
 }
 
@@ -195,19 +195,21 @@ fn actor_read_clause_is_absent(clause: &str) -> bool {
 }
 
 fn setup_clause_is_absent(clause: &str) -> bool {
-    if SETUP_ARTIFACT_MARKERS
-        .split('|')
-        .any(|marker| clause.contains(marker) && !has_absent_setup_marker(clause, marker))
-    {
-        return false;
-    }
-    if has_absent_setup_field_value(clause) {
-        return true;
-    }
+    !setup_value_has_present_artifact_marker(clause)
+        && (setup_value_is_absent(clause)
+            || SETUP_ARTIFACT_MARKERS
+                .split('|')
+                .any(|marker| clause.contains(marker) && has_absent_setup_marker(clause, marker)))
+}
 
+fn setup_value_is_absent(value: &str) -> bool {
+    !setup_value_has_present_artifact_marker(value) && has_absent_setup_field_value(value)
+}
+
+fn setup_value_has_present_artifact_marker(value: &str) -> bool {
     SETUP_ARTIFACT_MARKERS
         .split('|')
-        .any(|marker| clause.contains(marker) && has_absent_setup_marker(clause, marker))
+        .any(|marker| value.contains(marker) && !has_absent_setup_marker(value, marker))
 }
 
 fn has_actor_read_phrase_for(value: &str, actor: &str) -> bool {
