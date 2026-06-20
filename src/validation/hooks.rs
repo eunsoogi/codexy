@@ -20,11 +20,15 @@ const REQUIRED_SESSION_START_CONTEXT: &[(&str, &str)] = &[
         "include codegraph findings",
         "must require codegraph evidence",
     ),
+    (
+        "registered-but-uncallable/unavailable-tool evidence",
+        "must require codegraph fallback evidence",
+    ),
     ("Use Codexy LSP", "must require LSP evidence"),
     ("lsp_status", "must require LSP evidence"),
     (
         "unavailable/not applicable evidence",
-        "must require unavailable-tool fallback evidence",
+        "must require LSP fallback evidence",
     ),
 ];
 const ALLOWED_EVENTS: &[&str] = &[
@@ -186,13 +190,19 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
 }
 
 fn check_session_start_context(path: &Path, plugin_root: &Path, command: &str) -> Result<()> {
-    if !command.contains(SESSION_START_SCRIPT) {
+    let (hook_path, _) = command::plugin_root_entrypoint_path(command).with_context(|| {
+        format!(
+            "{} {REQUIRED_EVENT} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
+            display_relative(path)
+        )
+    })?;
+    if hook_path != Path::new(SESSION_START_SCRIPT) {
         bail!(
             "{} {REQUIRED_EVENT} hook command must run {SESSION_START_SCRIPT}",
             display_relative(path)
         );
     }
-    let script_path = plugin_root.join(SESSION_START_SCRIPT);
+    let script_path = plugin_root.join(&hook_path);
     let script = std::fs::read_to_string(&script_path)
         .with_context(|| format!("reading {}", display_relative(&script_path)))?;
     for (fragment, message) in REQUIRED_SESSION_START_CONTEXT {

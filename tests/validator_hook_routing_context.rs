@@ -26,6 +26,7 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
     for required in [
         "codegraph MCP before direct file reads",
         "include codegraph findings",
+        "registered-but-uncallable/unavailable-tool evidence",
         "Use Codexy LSP",
         "lsp_status",
         "unavailable/not applicable evidence",
@@ -35,6 +36,33 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
             "SessionStart context missing required fragment: {required}"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_session_start_command_with_routing_path_substring()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    let script_path = plugin_root.join("hooks/codexy-routing-context.sh.disabled");
+    std::fs::write(&script_path, "#!/bin/sh\nprintf '%s\\n' not-routing\n")?;
+    set_session_start_hook_command(
+        &plugin_root,
+        "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh.disabled\" SessionStart",
+    )?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject SessionStart commands that only contain the routing script path"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("SessionStart hook command must run hooks/codexy-routing-context.sh"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
@@ -51,8 +79,12 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
             "SessionStart routing context must require LSP evidence",
         ),
         (
+            "registered-but-uncallable/unavailable-tool evidence",
+            "SessionStart routing context must require codegraph fallback evidence",
+        ),
+        (
             "unavailable/not applicable evidence",
-            "SessionStart routing context must require unavailable-tool fallback evidence",
+            "SessionStart routing context must require LSP fallback evidence",
         ),
     ] {
         let temp = tempfile::tempdir()?;
@@ -80,6 +112,30 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
         );
     }
     Ok(())
+}
+
+fn set_session_start_hook_command(
+    plugin_root: &std::path::Path,
+    command: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let hooks_path = plugin_root.join("hooks/hooks.json");
+    let mut hooks_config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
+    hooks_config["hooks"]["SessionStart"][0]["hooks"][0]["command"] = serde_json::json!(command);
+    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
+    Ok(())
+}
+
+fn validate_hooks(
+    plugin_root: &std::path::Path,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-hooks",
+        ])
+        .output()?)
 }
 
 fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {

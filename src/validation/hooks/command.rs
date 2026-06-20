@@ -122,7 +122,7 @@ pub(super) fn check_command(
     Ok(())
 }
 
-fn plugin_root_entrypoint_path(command: &str) -> Option<(PathBuf, &str)> {
+pub(super) fn plugin_root_entrypoint_path(command: &str) -> Option<(PathBuf, &str)> {
     let entrypoint = command_entrypoint(command)?;
     for marker in ["${PLUGIN_ROOT}/", "$PLUGIN_ROOT/"] {
         if let Some(path) = entrypoint.command.strip_prefix(marker) {
