@@ -184,42 +184,25 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_explicit_child_created_setup_artifact() -> Result<(), Box<dyn std::error::Error>>
-{
-    let output = run_ownership_validator(
-        r#"Lane ownership: child-owned
-Child created implementation branch before starting
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should not classify explicit child setup as parent setup\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_allows_explicit_child_thread_created_setup_artifact()
+fn validator_allows_explicit_child_created_setup_artifacts()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Lane ownership: child-owned
-Child thread created implementation branch before starting
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )?;
+    for setup_evidence in [
+        "Child created implementation branch before starting",
+        "Child thread created implementation branch before starting",
+        "Child-thread created implementation branch before starting",
+        "child-lane created draft worktree before starting",
+    ] {
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n{setup_evidence}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+        ))?;
 
-    assert!(
-        output.status.success(),
-        "validator should not classify explicit child-thread setup as parent setup\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should not classify explicit child setup as parent setup: {setup_evidence}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
