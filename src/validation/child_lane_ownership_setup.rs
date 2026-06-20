@@ -3,6 +3,8 @@ use super::child_lane_ownership_phrases::{
     metadata_key, trimmed_value,
 };
 
+const SETUP_ARTIFACT_MARKERS: &str = "parent-created draft worktree|parent-created implementation worktree|parent-created implementation branch|parent created draft worktree|parent created implementation worktree|parent created implementation branch|orchestrator-created draft worktree|orchestrator-created implementation worktree|orchestrator-created implementation branch|orchestrator created draft worktree|orchestrator created implementation worktree|orchestrator created implementation branch";
+
 pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
     if let Some((key, value)) = setup_field_value(line) {
@@ -16,9 +18,9 @@ pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize)
 
 fn line_value_has_parent_implementation_setup(line: &str) -> bool {
     let line = trimmed_value(line);
-    setup_artifact_marker_matches(|marker| {
-        line.contains(marker) && !has_absent_setup_marker(line, marker)
-    })
+    SETUP_ARTIFACT_MARKERS
+        .split('|')
+        .any(|marker| line.contains(marker) && !has_absent_setup_marker(line, marker))
 }
 
 fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
@@ -193,22 +195,19 @@ fn actor_read_clause_is_absent(clause: &str) -> bool {
 }
 
 fn setup_clause_is_absent(clause: &str) -> bool {
-    has_absent_setup_field_value(clause)
-        || setup_artifact_marker_matches(|marker| has_absent_setup_marker(clause, marker))
-}
+    if SETUP_ARTIFACT_MARKERS
+        .split('|')
+        .any(|marker| clause.contains(marker) && !has_absent_setup_marker(clause, marker))
+    {
+        return false;
+    }
+    if has_absent_setup_field_value(clause) {
+        return true;
+    }
 
-fn setup_artifact_marker_matches(mut predicate: impl FnMut(&str) -> bool) -> bool {
-    ["parent", "orchestrator"].into_iter().any(|actor| {
-        ["-created", " created"].into_iter().any(|verb| {
-            [
-                "draft worktree",
-                "implementation worktree",
-                "implementation branch",
-            ]
-            .into_iter()
-            .any(|artifact| predicate(&format!("{actor}{verb} {artifact}")))
-        })
-    })
+    SETUP_ARTIFACT_MARKERS
+        .split('|')
+        .any(|marker| clause.contains(marker) && has_absent_setup_marker(clause, marker))
 }
 
 fn has_actor_read_phrase_for(value: &str, actor: &str) -> bool {
