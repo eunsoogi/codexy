@@ -16,22 +16,9 @@ pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize)
 
 fn line_value_has_parent_implementation_setup(line: &str) -> bool {
     let line = trimmed_value(line);
-    [
-        "parent-created draft worktree",
-        "parent-created implementation worktree",
-        "parent-created implementation branch",
-        "parent created draft worktree",
-        "parent created implementation worktree",
-        "parent created implementation branch",
-        "orchestrator-created draft worktree",
-        "orchestrator-created implementation worktree",
-        "orchestrator-created implementation branch",
-        "orchestrator created draft worktree",
-        "orchestrator created implementation worktree",
-        "orchestrator created implementation branch",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker) && !has_absent_setup_marker(line, marker))
+    setup_artifact_marker_matches(|marker| {
+        line.contains(marker) && !has_absent_setup_marker(line, marker)
+    })
 }
 
 fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
@@ -40,6 +27,9 @@ fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
     {
         if has_parent_setup || !has_parent_context(key) || !has_non_read_clause {
             return has_parent_setup;
+        }
+        if value_clauses_are_absent_actor_reads_or_setup(value) {
+            return false;
         }
     }
 
@@ -177,6 +167,47 @@ fn value_clauses_are_absent_actor_reads(value: &str, actor: &str) -> bool {
         has_absent_field_value(clause, &format!("{actor} read"))
             || has_absent_field_value(clause, &format!("{actor} reads"))
             || has_absent_actor_read_phrase(clause, actor)
+    })
+}
+
+fn value_clauses_are_absent_actor_reads_or_setup(value: &str) -> bool {
+    let mut clauses = value
+        .split([';', ','])
+        .map(trimmed_value)
+        .filter(|clause| !clause.is_empty())
+        .peekable();
+    if clauses.peek().is_none() {
+        return false;
+    }
+
+    clauses.all(|clause| actor_read_clause_is_absent(clause) || setup_clause_is_absent(clause))
+}
+
+fn actor_read_clause_is_absent(clause: &str) -> bool {
+    ["parent", "orchestrator"].into_iter().any(|actor| {
+        actor_read_field_value(clause).is_some_and(|(key, value)| {
+            has_actor_read_phrase_for(key, actor)
+                && value_clauses_are_absent_actor_reads(value, actor)
+        }) || has_absent_actor_read_phrase(clause, actor)
+    })
+}
+
+fn setup_clause_is_absent(clause: &str) -> bool {
+    has_absent_setup_field_value(clause)
+        || setup_artifact_marker_matches(|marker| has_absent_setup_marker(clause, marker))
+}
+
+fn setup_artifact_marker_matches(mut predicate: impl FnMut(&str) -> bool) -> bool {
+    ["parent", "orchestrator"].into_iter().any(|actor| {
+        ["-created", " created"].into_iter().any(|verb| {
+            [
+                "draft worktree",
+                "implementation worktree",
+                "implementation branch",
+            ]
+            .into_iter()
+            .any(|artifact| predicate(&format!("{actor}{verb} {artifact}")))
+        })
     })
 }
 
