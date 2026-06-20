@@ -1,4 +1,5 @@
 mod command;
+mod context;
 
 use std::path::Path;
 
@@ -203,12 +204,11 @@ fn check_session_start_context(path: &Path, plugin_root: &Path, command: &str) -
         );
     }
     let script_path = plugin_root.join(&hook_path);
-    let script = std::fs::read_to_string(&script_path)
-        .with_context(|| format!("reading {}", display_relative(&script_path)))?;
+    let context = context::emitted_session_start_context(&script_path, REQUIRED_EVENT)?;
     for (fragment, message) in REQUIRED_SESSION_START_CONTEXT {
-        if !script.contains(fragment) {
+        if !context.contains(fragment) {
             bail!(
-                "{} {REQUIRED_EVENT} routing context {message}: {}",
+                "{} {REQUIRED_EVENT} emitted additionalContext {message}: {}",
                 display_relative(path),
                 display_relative(&script_path)
             );

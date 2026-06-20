@@ -67,24 +67,48 @@ fn validator_cli_rejects_session_start_command_with_routing_path_substring()
 }
 
 #[test]
+fn validator_cli_rejects_session_start_context_that_only_mentions_requirements_in_comments()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    let script_path = plugin_root.join("hooks/codexy-routing-context.sh");
+    let mut script = std::fs::read_to_string(&script_path)?;
+    for required in required_context_fragments() {
+        script = script.replace(required, "");
+        script.push_str(&format!("\n# {required}\n"));
+    }
+    std::fs::write(&script_path, script)?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject source-only routing context requirements"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("emitted additionalContext"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
     for (needle, expected) in [
         (
             "codegraph MCP before direct file reads",
-            "SessionStart routing context must require codegraph evidence",
+            "must require codegraph evidence",
         ),
-        (
-            "Use Codexy LSP",
-            "SessionStart routing context must require LSP evidence",
-        ),
+        ("Use Codexy LSP", "must require LSP evidence"),
         (
             "registered-but-uncallable/unavailable-tool evidence",
-            "SessionStart routing context must require codegraph fallback evidence",
+            "must require codegraph fallback evidence",
         ),
         (
             "unavailable/not applicable evidence",
-            "SessionStart routing context must require LSP fallback evidence",
+            "must require LSP fallback evidence",
         ),
     ] {
         let temp = tempfile::tempdir()?;
@@ -101,17 +125,28 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
                 "--check-hooks",
             ])
             .output()?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             !output.status.success(),
             "validator should reject SessionStart routing context missing {needle:?}"
         );
         assert!(
-            String::from_utf8_lossy(&output.stderr).contains(expected),
-            "unexpected stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
+            stderr.contains("emitted additionalContext") && stderr.contains(expected),
+            "unexpected stderr: {stderr}"
         );
     }
     Ok(())
+}
+
+fn required_context_fragments() -> [&'static str; 6] {
+    [
+        "codegraph MCP before direct file reads",
+        "include codegraph findings",
+        "registered-but-uncallable/unavailable-tool evidence",
+        "Use Codexy LSP",
+        "lsp_status",
+        "unavailable/not applicable evidence",
+    ]
 }
 
 fn set_session_start_hook_command(
