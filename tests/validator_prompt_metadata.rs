@@ -136,6 +136,62 @@ fn git_workflow_requires_child_lane_ownership_evidence_check()
 }
 
 #[test]
+fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn std::error::Error>> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let classification =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
+    let orchestration =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+    let git_workflow =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
+    let qa_prompt =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/qa/agents/openai.yaml"))?;
+    let release_prompt = std::fs::read_to_string(
+        root.join("plugins/codexy/skills/release-engineering/agents/openai.yaml"),
+    )?;
+
+    assert!(classification.contains("name: task-classification"));
+    assert!(classification.contains("Run this skill first for any Codexy work"));
+    assert!(classification.contains("Classification Output"));
+    assert!(classification.contains("Lane type:"));
+    assert!(classification.contains("Owner decision:"));
+    assert!(classification.contains("Required skills:"));
+    assert!(classification.contains("Required tools/evidence:"));
+    assert!(classification.contains("lane-relevant required evidence"));
+    assert!(classification.contains("unavailable-tool fallbacks"));
+    assert!(classification.contains("First allowed action:"));
+
+    for lane_type in [
+        "orchestration/lane setup",
+        "implementation",
+        "review response",
+        "GitHub/merge",
+        "validation/QA",
+        "documentation/skill authoring",
+        "plugin/release",
+    ] {
+        assert!(classification.contains(lane_type));
+    }
+
+    assert!(classification.contains(
+        "Missing classification evidence blocks branch/worktree setup, delegation,\n  validation/QA"
+    ));
+    assert!(
+        classification
+            .contains("Classification must happen before acting on or using the owner decision")
+    );
+    assert!(orchestration.contains("$task-classification"));
+    assert!(orchestration.contains(
+        "Missing classification before\nsetup, validation, release, or other workflow actions"
+    ));
+    assert!(git_workflow.contains("$task-classification"));
+    assert!(git_workflow.contains("classification evidence"));
+    assert!(qa_prompt.contains("$task-classification"));
+    assert!(release_prompt.contains("$task-classification"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
     assert_prompt_indent_rejected("  display_name:", "\tdisplay_name:")
 }

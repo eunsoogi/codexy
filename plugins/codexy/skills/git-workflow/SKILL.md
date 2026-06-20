@@ -18,13 +18,17 @@ Use local `git` for local worktree inspection, checkout, worktree creation, diff
 ## Start Work
 
 1. Read `AGENTS.md` and this skill.
-2. Create or confirm a GitHub issue before implementation. If the user provided an issue, treat that issue as the source of truth.
-3. For non-trivial work, keep a short plan and update it as evidence changes.
-4. Keep `main` as the protected integration branch. Do not implement directly on `main`.
-5. Create a branch only after the issue or explicit issue-sized scope exists.
-6. Use an isolated git worktree for the task branch.
-7. Use the `codexy/` branch prefix unless the user requests another naming scheme.
-8. Keep the branch scope aligned with the issue. Do not touch files outside the requested scope.
+2. Run `$task-classification` before issue setup, branch/worktree setup,
+   delegation, implementation, PR handling, review-response routing, merge
+   coordination, or validation-only work begins. Keep classification evidence
+   in the thread or handoff.
+3. Create or confirm a GitHub issue before implementation. If the user provided an issue, treat that issue as the source of truth.
+4. For non-trivial work, keep a short plan and update it as evidence changes.
+5. Keep `main` as the protected integration branch. Do not implement directly on `main`.
+6. Create a branch only after the issue or explicit issue-sized scope exists.
+7. Use an isolated git worktree for the task branch.
+8. Use the `codexy/` branch prefix unless the user requests another naming scheme.
+9. Keep the branch scope aligned with the issue. Do not touch files outside the requested scope.
 
 Issue titles should summarize the user-visible problem or needed work in plain prose. They must start with an uppercase letter and must not use Conventional Commit prefixes such as `feat(...)`.
 
@@ -693,6 +697,9 @@ After resolving, stage only the resolved files and run verification relevant to 
 ## Quick Checklist
 
 - Issue exists or a maintainer provided an explicit issue-sized scope.
+- `$task-classification` ran first and classification evidence names the lane
+  type, owner decision, atomic scope, required skills, required tools/evidence,
+  and first allowed action.
 - Issue and PR labels match the repository's current label taxonomy when labels
   are available; status-like labels have been updated after review, merge,
   close, or reopen transitions.
