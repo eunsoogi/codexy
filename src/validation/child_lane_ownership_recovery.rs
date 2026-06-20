@@ -66,6 +66,12 @@ fn has_completed_overlap_inspection(value: &str) -> bool {
             "need to inspect",
             "needs inspection",
             "not yet inspected",
+            "not checked",
+            "not reviewed",
+            "not yet checked",
+            "not yet reviewed",
+            "without checking",
+            "without reviewing",
         ]
         .into_iter()
         .any(|marker| value.contains(marker))

@@ -7,17 +7,20 @@ const GENERIC_SETUP_ARTIFACT_MARKERS: &str =
     "created draft worktree|created implementation worktree|created implementation branch";
 
 pub(super) fn line_has_present_setup_artifact(line: &str) -> bool {
-    let line = trimmed_value(line);
-    SETUP_ARTIFACT_MARKERS
-        .split('|')
-        .any(|marker| line.contains(marker) && !has_absent_setup_marker(line, marker))
+    value_has_present_setup_artifact(trimmed_value(line))
 }
 
 pub(super) fn value_has_present_setup_artifact(value: &str) -> bool {
-    line_has_present_setup_artifact(value)
+    value_has_present_actor_setup_artifact(value)
         || GENERIC_SETUP_ARTIFACT_MARKERS
             .split('|')
             .any(|marker| has_present_generic_setup_artifact_marker(value, marker))
+}
+
+fn value_has_present_actor_setup_artifact(value: &str) -> bool {
+    SETUP_ARTIFACT_MARKERS
+        .split('|')
+        .any(|marker| value.contains(marker) && !has_absent_setup_marker(value, marker))
 }
 
 pub(super) fn clause_has_absent_setup_artifact_marker(clause: &str) -> bool {

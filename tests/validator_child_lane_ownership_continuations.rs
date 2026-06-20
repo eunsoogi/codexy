@@ -166,6 +166,24 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_prose_generic_setup_artifact_after_negated_parent_setup()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+No parent implementation setup; created draft worktree before child delegation
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject prose setup artifacts after negated parent setup text"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_setup_when_recovery_is_empty_before_stop_condition()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
