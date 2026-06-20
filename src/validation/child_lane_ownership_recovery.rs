@@ -46,12 +46,29 @@ fn has_parent_setup_recovery_value(value: &str) -> bool {
             || value.contains("cleaned-up")
             || value.contains("preserved")
             || value.contains("preserve"))
+        && has_completed_overlap_inspection(value)
+        && (value.contains("clean child thread")
+            || (value.contains("delegated") && value.contains("child thread")))
+}
+
+fn has_completed_overlap_inspection(value: &str) -> bool {
+    (value.contains("inspected") || value.contains("reviewed") || value.contains("checked"))
         && value.contains("overlap")
         && (value.contains("user")
             || value.contains("other-agent")
             || value.contains("other agent"))
-        && (value.contains("clean child thread")
-            || (value.contains("delegated") && value.contains("child thread")))
+        && ![
+            "overlap pending",
+            "overlap inspection pending",
+            "pending overlap",
+            "planned overlap",
+            "will inspect",
+            "need to inspect",
+            "needs inspection",
+            "not yet inspected",
+        ]
+        .into_iter()
+        .any(|marker| value.contains(marker))
 }
 
 fn has_negated_recovery_step(value: &str) -> bool {

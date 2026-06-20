@@ -1,0 +1,42 @@
+use super::child_lane_ownership_phrases::{
+    field_value, has_absent_authored_phrase, has_absent_field_value, trimmed_value,
+};
+
+const SETUP_ARTIFACT_MARKERS: &str = "parent-created draft worktree|parent-created implementation worktree|parent-created implementation branch|parent created draft worktree|parent created implementation worktree|parent created implementation branch|orchestrator-created draft worktree|orchestrator-created implementation worktree|orchestrator-created implementation branch|orchestrator created draft worktree|orchestrator created implementation worktree|orchestrator created implementation branch";
+const GENERIC_SETUP_ARTIFACT_MARKERS: &str =
+    "created draft worktree|created implementation worktree|created implementation branch";
+
+pub(super) fn line_has_present_setup_artifact(line: &str) -> bool {
+    let line = trimmed_value(line);
+    SETUP_ARTIFACT_MARKERS
+        .split('|')
+        .any(|marker| line.contains(marker) && !has_absent_setup_marker(line, marker))
+}
+
+pub(super) fn value_has_present_setup_artifact(value: &str) -> bool {
+    line_has_present_setup_artifact(value)
+        || GENERIC_SETUP_ARTIFACT_MARKERS
+            .split('|')
+            .any(|marker| has_present_generic_setup_artifact_marker(value, marker))
+}
+
+pub(super) fn clause_has_absent_setup_artifact_marker(clause: &str) -> bool {
+    SETUP_ARTIFACT_MARKERS
+        .split('|')
+        .any(|marker| clause.contains(marker) && has_absent_setup_marker(clause, marker))
+}
+
+fn has_present_generic_setup_artifact_marker(value: &str, marker: &str) -> bool {
+    value.match_indices(marker).any(|(index, _)| {
+        let prefix = &value[..index];
+        !["parent-", "parent ", "orchestrator-", "orchestrator "]
+            .into_iter()
+            .any(|actor_prefix| prefix.ends_with(actor_prefix))
+            && !has_absent_setup_marker(value, marker)
+    })
+}
+
+fn has_absent_setup_marker(line: &str, marker: &str) -> bool {
+    field_value(line, marker).is_some_and(|value| has_absent_field_value(value, marker))
+        || has_absent_authored_phrase(line, marker)
+}

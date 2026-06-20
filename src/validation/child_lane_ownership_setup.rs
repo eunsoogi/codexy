@@ -1,9 +1,10 @@
 use super::child_lane_ownership_phrases::{
-    field_value, has_absent_actor_phrase, has_absent_authored_phrase, has_absent_field_value,
-    metadata_key, trimmed_value,
+    has_absent_actor_phrase, has_absent_field_value, metadata_key, trimmed_value,
 };
-
-const SETUP_ARTIFACT_MARKERS: &str = "parent-created draft worktree|parent-created implementation worktree|parent-created implementation branch|parent created draft worktree|parent created implementation worktree|parent created implementation branch|orchestrator-created draft worktree|orchestrator-created implementation worktree|orchestrator-created implementation branch|orchestrator created draft worktree|orchestrator created implementation worktree|orchestrator created implementation branch";
+use super::child_lane_ownership_setup_markers::{
+    clause_has_absent_setup_artifact_marker, line_has_present_setup_artifact,
+    value_has_present_setup_artifact,
+};
 
 pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
@@ -17,10 +18,7 @@ pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize)
 }
 
 fn line_value_has_parent_implementation_setup(line: &str) -> bool {
-    let line = trimmed_value(line);
-    SETUP_ARTIFACT_MARKERS
-        .split('|')
-        .any(|marker| line.contains(marker) && !has_absent_setup_marker(line, marker))
+    line_has_present_setup_artifact(line)
 }
 
 fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
@@ -196,10 +194,7 @@ fn actor_read_clause_is_absent(clause: &str) -> bool {
 
 fn setup_clause_is_absent(clause: &str) -> bool {
     !setup_value_has_present_artifact_marker(clause)
-        && (setup_value_is_absent(clause)
-            || SETUP_ARTIFACT_MARKERS
-                .split('|')
-                .any(|marker| clause.contains(marker) && has_absent_setup_marker(clause, marker)))
+        && (setup_value_is_absent(clause) || clause_has_absent_setup_artifact_marker(clause))
 }
 
 fn setup_value_is_absent(value: &str) -> bool {
@@ -207,9 +202,7 @@ fn setup_value_is_absent(value: &str) -> bool {
 }
 
 fn setup_value_has_present_artifact_marker(value: &str) -> bool {
-    SETUP_ARTIFACT_MARKERS
-        .split('|')
-        .any(|marker| value.contains(marker) && !has_absent_setup_marker(value, marker))
+    value_has_present_setup_artifact(value)
 }
 
 fn has_actor_read_phrase_for(value: &str, actor: &str) -> bool {
@@ -240,9 +233,4 @@ fn has_absent_setup_field_value(value: &str) -> bool {
     has_absent_field_value(value, "implementation setup")
         || has_absent_actor_phrase(value, "parent", "implementation setup")
         || has_absent_actor_phrase(value, "orchestrator", "implementation setup")
-}
-
-fn has_absent_setup_marker(line: &str, marker: &str) -> bool {
-    field_value(line, marker).is_some_and(|value| has_absent_field_value(value, marker))
-        || has_absent_authored_phrase(line, marker)
 }

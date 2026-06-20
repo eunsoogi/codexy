@@ -29,6 +29,24 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_pending_overlap_inspection_recovery() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: created draft worktree before child delegation
+Recovery: disclosed the defect, cleaned up the worktree, user overlap pending, and delegated to a clean child thread
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject incomplete parent setup recovery evidence"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_bullet_metadata_after_absent_parent_setup()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
