@@ -1,6 +1,6 @@
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_actor_phrase, has_absent_authored_phrase, has_absent_field_value,
-    is_metadata_field, metadata_key, next_line_bullet_value, trimmed_value,
+    is_metadata_field, metadata_key, trimmed_value,
 };
 
 pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize) -> bool {
@@ -10,12 +10,9 @@ pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize)
     }
     setup_field_value(line)
         .filter(|(_, value)| value.is_empty())
-        .and_then(|(key, _)| {
-            next_line_bullet_value(lines, index)
-                .filter(|value| !is_metadata_field(value))
-                .map(|value| (key, value))
+        .is_some_and(|(key, _)| {
+            setup_continuation_has_parent_implementation_setup(lines, index, key)
         })
-        .is_some_and(|(key, value)| setup_value_has_parent_implementation_setup(key, value))
 }
 
 fn line_value_has_parent_implementation_setup(line: &str) -> bool {
@@ -46,6 +43,27 @@ fn line_value_has_parent_implementation_setup(line: &str) -> bool {
 fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
     (has_parent_context(key) || has_present_parent_context(value))
         && !has_absent_setup_field_value(value)
+}
+
+fn setup_continuation_has_parent_implementation_setup(
+    lines: &[&str],
+    index: usize,
+    key: &str,
+) -> bool {
+    for line in lines.iter().skip(index + 1) {
+        if line.is_empty() {
+            continue;
+        }
+        let is_bullet = line.starts_with(['-', '*']);
+        let value = line.trim_start_matches(['-', '*']).trim();
+        if !is_bullet && is_metadata_field(value) {
+            break;
+        }
+        if setup_value_has_parent_implementation_setup(key, value) {
+            return true;
+        }
+    }
+    false
 }
 
 fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
