@@ -35,8 +35,13 @@ fn line_value_has_parent_implementation_setup(line: &str) -> bool {
 }
 
 fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
+    if let Some((key, value)) = actor_read_field_value(value) {
+        return actor_read_field_has_parent_implementation_setup(key, value);
+    }
+
     (has_parent_context(key) || has_present_parent_context(value))
         && !has_absent_setup_field_value(value)
+        && !has_absent_keyed_actor_read_value(key, value)
 }
 
 fn setup_continuation_has_parent_implementation_setup(
@@ -94,6 +99,19 @@ fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
     })
 }
 
+fn actor_read_field_value(value: &str) -> Option<(&str, &str)> {
+    value.split_once(':').and_then(|(key, value)| {
+        let key = metadata_key(key);
+        has_actor_read_phrase(key).then_some((key, value.trim()))
+    })
+}
+
+fn actor_read_field_has_parent_implementation_setup(key: &str, value: &str) -> bool {
+    ["parent", "orchestrator"].into_iter().any(|actor| {
+        has_actor_read_phrase_for(key, actor) && !value_clauses_are_absent_actor_reads(value, actor)
+    }) || has_present_parent_context(value)
+}
+
 fn has_parent_context(value: &str) -> bool {
     value.contains("parent") || value.contains("orchestrator")
 }
@@ -108,6 +126,34 @@ fn has_present_parent_context(value: &str) -> bool {
 fn has_present_actor_read_phrase(clause: &str, actor: &str) -> bool {
     (has_actor_read_action(clause, actor, "read") || has_actor_read_action(clause, actor, "reads"))
         && !has_absent_actor_read_phrase(clause, actor)
+}
+
+fn has_absent_keyed_actor_read_value(key: &str, value: &str) -> bool {
+    ["parent", "orchestrator"].into_iter().any(|actor| {
+        has_actor_read_phrase_for(key, actor) && value_clauses_are_absent_actor_reads(value, actor)
+    })
+}
+
+fn value_clauses_are_absent_actor_reads(value: &str, actor: &str) -> bool {
+    let mut clauses = value
+        .split([';', ','])
+        .map(trimmed_value)
+        .filter(|clause| !clause.is_empty())
+        .peekable();
+
+    if clauses.peek().is_none() {
+        return false;
+    }
+
+    clauses.all(|clause| {
+        has_absent_field_value(clause, &format!("{actor} read"))
+            || has_absent_field_value(clause, &format!("{actor} reads"))
+            || has_absent_actor_read_phrase(clause, actor)
+    })
+}
+
+fn has_actor_read_phrase_for(value: &str, actor: &str) -> bool {
+    has_actor_read_action(value, actor, "read") || has_actor_read_action(value, actor, "reads")
 }
 
 fn has_actor_read_action(clause: &str, actor: &str, action: &str) -> bool {

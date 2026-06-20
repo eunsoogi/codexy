@@ -35,31 +35,7 @@ fn continuation_value(value: &str) -> &str {
 }
 
 fn is_recovery_continuation_boundary(value: &str) -> bool {
-    value.split_once(':').is_some_and(|(key, _)| {
-        let key = metadata_key(key);
-        [
-            "branch",
-            "child owner",
-            "head",
-            "implementation surface reads",
-            "implementation-surface reads",
-            "lane owner",
-            "lane ownership",
-            "maintainer reassignment",
-            "orchestrator implementation setup",
-            "owner",
-            "parent implementation setup",
-            "pr",
-            "pr ownership",
-            "pull request ownership",
-            "recovery",
-            "review response",
-            "review-response",
-            "worktree path",
-        ]
-        .into_iter()
-        .any(|field| key == field || key.contains(field))
-    })
+    is_metadata_field(value)
 }
 
 fn has_parent_setup_recovery_value(value: &str) -> bool {
