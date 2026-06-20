@@ -1,4 +1,5 @@
 mod command;
+mod context;
 
 use std::path::Path;
 
@@ -10,6 +11,31 @@ use crate::validation::load_json;
 
 const HOOKS_PATH: &str = "hooks/hooks.json";
 const REQUIRED_EVENT: &str = "SessionStart";
+const SESSION_START_SCRIPT: &str = "hooks/codexy-routing-context.sh";
+const REQUIRED_SESSION_START_CONTEXT: &[(&str, &str)] = &[
+    (
+        "codegraph MCP before direct file reads",
+        "must require codegraph evidence",
+    ),
+    (
+        "include codegraph findings",
+        "must require codegraph evidence",
+    ),
+    (
+        "codegraph unavailable/uncallable fallback evidence",
+        "must require codegraph fallback evidence",
+    ),
+    (
+        "registered-but-uncallable/unavailable-tool evidence",
+        "must require codegraph fallback evidence",
+    ),
+    ("Use Codexy LSP", "must require LSP evidence"),
+    ("lsp_status", "must require LSP evidence"),
+    (
+        "unavailable/not applicable evidence",
+        "must require LSP fallback evidence",
+    ),
+];
 const ALLOWED_EVENTS: &[&str] = &[
     "PermissionRequest",
     "PostCompact",
@@ -133,6 +159,25 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             )
         })?;
     command::check_command(path, plugin_root, event, command)?;
+    let timeout = check_timeout(path, event, object)?;
+    if event == REQUIRED_EVENT {
+        check_session_start_context(path, plugin_root, command, timeout)?;
+    }
+    if let Some(status) = object.get("statusMessage") {
+        if !status
+            .as_str()
+            .is_some_and(|value| !value.trim().is_empty())
+        {
+            bail!(
+                "{} {event} hook statusMessage must be a non-empty string when present",
+                display_relative(path)
+            );
+        }
+    }
+    Ok(())
+}
+
+fn check_timeout(path: &Path, event: &str, object: &serde_json::Map<String, Value>) -> Result<u64> {
     let timeout = object.get("timeout").with_context(|| {
         format!(
             "{} {event} hook timeout is required",
@@ -151,14 +196,45 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             display_relative(path)
         );
     }
-    if let Some(status) = object.get("statusMessage") {
-        if !status
-            .as_str()
-            .is_some_and(|value| !value.trim().is_empty())
-        {
+    Ok(timeout)
+}
+
+fn check_session_start_context(
+    path: &Path,
+    plugin_root: &Path,
+    command: &str,
+    timeout_secs: u64,
+) -> Result<()> {
+    let (hook_path, arguments) = command::plugin_root_entrypoint_path(command).with_context(|| {
+        format!(
+            "{} {REQUIRED_EVENT} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
+            display_relative(path)
+        )
+    })?;
+    if hook_path != Path::new(SESSION_START_SCRIPT) {
+        bail!(
+            "{} {REQUIRED_EVENT} hook command must run {SESSION_START_SCRIPT}",
+            display_relative(path)
+        );
+    }
+    if !arguments
+        .split_ascii_whitespace()
+        .eq(std::iter::once(REQUIRED_EVENT))
+    {
+        bail!(
+            "{} {REQUIRED_EVENT} hook command must invoke {REQUIRED_EVENT} exactly",
+            display_relative(path)
+        );
+    }
+    let script_path = plugin_root.join(&hook_path);
+    let context =
+        context::emitted_session_start_context(&script_path, REQUIRED_EVENT, timeout_secs)?;
+    for (fragment, message) in REQUIRED_SESSION_START_CONTEXT {
+        if !context.contains(fragment) {
             bail!(
-                "{} {event} hook statusMessage must be a non-empty string when present",
-                display_relative(path)
+                "{} {REQUIRED_EVENT} emitted additionalContext {message}: {}",
+                display_relative(path),
+                display_relative(&script_path)
             );
         }
     }
