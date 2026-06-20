@@ -205,7 +205,7 @@ fn check_session_start_context(
     command: &str,
     timeout_secs: u64,
 ) -> Result<()> {
-    let (hook_path, _) = command::plugin_root_entrypoint_path(command).with_context(|| {
+    let (hook_path, arguments) = command::plugin_root_entrypoint_path(command).with_context(|| {
         format!(
             "{} {REQUIRED_EVENT} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
             display_relative(path)
@@ -214,6 +214,15 @@ fn check_session_start_context(
     if hook_path != Path::new(SESSION_START_SCRIPT) {
         bail!(
             "{} {REQUIRED_EVENT} hook command must run {SESSION_START_SCRIPT}",
+            display_relative(path)
+        );
+    }
+    if !arguments
+        .split_ascii_whitespace()
+        .eq(std::iter::once(REQUIRED_EVENT))
+    {
+        bail!(
+            "{} {REQUIRED_EVENT} hook command must invoke {REQUIRED_EVENT} exactly",
             display_relative(path)
         );
     }

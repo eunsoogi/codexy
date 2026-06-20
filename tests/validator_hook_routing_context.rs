@@ -68,6 +68,31 @@ fn validator_cli_rejects_session_start_command_with_routing_path_substring()
 }
 
 #[test]
+fn validator_cli_rejects_session_start_command_with_different_static_args()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    set_session_start_hook_command(
+        &plugin_root,
+        "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\" UserPromptSubmit",
+    )?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject SessionStart hooks configured with a different invocation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("SessionStart hook command must invoke SessionStart exactly"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_session_start_context_that_only_mentions_requirements_in_comments()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
