@@ -136,6 +136,44 @@ fn git_workflow_requires_child_lane_ownership_evidence_check()
 }
 
 #[test]
+fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn std::error::Error>> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let classification =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
+    let orchestration =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+    let git_workflow =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
+
+    assert!(classification.contains("name: task-classification"));
+    assert!(classification.contains("Run this skill first for any Codexy work"));
+    assert!(classification.contains("Classification Output"));
+    assert!(classification.contains("Lane type:"));
+    assert!(classification.contains("Owner decision:"));
+    assert!(classification.contains("Required skills:"));
+    assert!(classification.contains("Required tools/evidence:"));
+    assert!(classification.contains("First allowed action:"));
+
+    for lane_type in [
+        "orchestration/lane setup",
+        "implementation",
+        "review response",
+        "GitHub/merge",
+        "validation/QA",
+        "documentation/skill authoring",
+        "plugin/release",
+    ] {
+        assert!(classification.contains(lane_type));
+    }
+
+    assert!(orchestration.contains("$task-classification"));
+    assert!(orchestration.contains("classification before setup"));
+    assert!(git_workflow.contains("$task-classification"));
+    assert!(git_workflow.contains("classification evidence"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
     assert_prompt_indent_rejected("  display_name:", "\tdisplay_name:")
 }

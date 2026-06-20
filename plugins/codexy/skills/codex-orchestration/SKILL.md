@@ -19,6 +19,15 @@ thread/worktree preflights, merge-through-completion expectations, and
 parent/child ownership boundaries. This skill provides execution mechanics for
 the orchestration loop and must be read together with root `AGENTS.md`.
 
+## Classification Gate
+
+Run `$task-classification` before this skill starts setup, delegation,
+implementation, PR handling, review-response routing, or merge coordination for
+Codexy work. Classification evidence must name the lane type, owner decision,
+atomic scope, required skills, required tools or evidence, first allowed action,
+and any stop blocker. Missing classification before setup is a workflow defect:
+stop, classify, and only then continue through the matching Codexy workflow.
+
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
 TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
 `plugins/codexy/agents/catalog.toml`. Keep one specialist agent per file.
@@ -273,6 +282,9 @@ edits.
 ## Orchestration Loop
 
 1. Intake:
+   - Run `$task-classification` and record classification before setup,
+     delegation, implementation edits, PR handling, review-response routing, or
+     merge coordination begins.
    - Read the latest user request, repository instructions, active issue, and
      relevant local skills.
    - Separate hard requirements, preferences, assumptions, and non-goals.
@@ -282,6 +294,8 @@ edits.
 2. Plan:
    - Create a short `update_plan` with atomic outcomes.
    - Mark exactly one step `in_progress`.
+   - Carry classification evidence into the plan before branch, worktree,
+     child-thread, implementation, PR, or review-response actions.
    - Split independent outcomes into separate issues and, when implementation
      can proceed independently, separate Codex thread/worktree lanes. Treat
      bundling independent requested outcomes as a workflow violation unless a
@@ -289,6 +303,9 @@ edits.
    - Mark each lane as parent-owned or child-owned before any implementation
      patch is made.
 3. Dispatch:
+   - Do not dispatch until classification evidence proves the lane type,
+     owner, atomicity, required skills, required tools, and first allowed
+     action.
    - Start specialist subagents only for bounded lanes that do not need their
      own branch or PR.
    - For issue-sized implementation lanes, start or fork a separate Codex
@@ -371,6 +388,7 @@ edits.
 
 ```text
 Lane goal / success criteria:
+Task classification:
 Atomic lane:
 Issue:
 Branch:
@@ -380,6 +398,7 @@ Read first:
 Deliverable:
 Verification:
 Required evidence:
+Classification evidence:
 Review feedback route:
 Parent verification:
 Return evidence:
@@ -403,6 +422,7 @@ implementation context:
 Issue:
 Branch:
 Worktree path:
+Task classification:
 First message:
 Allowed files or paths:
 Read first:

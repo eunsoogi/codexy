@@ -36,7 +36,7 @@
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use $codex-orchestration with Codexy as orchestrator; split the request into atomic issue-sized lanes before editing.",
+      "Run $task-classification before setup, delegation, implementation, PR handling, review response, or merge work; then use $codex-orchestration with Codexy as orchestrator.",
       "Track goals and todos; assign specialist roles with multi-agent or multi-thread work.",
       "Verify evidence, require Codex review, and use squash-merge gates before completion."
     ],
