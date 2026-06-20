@@ -116,8 +116,9 @@ Stop/blocker:
 - Missing classification evidence blocks branch/worktree setup, delegation,
   validation/QA, implementation, PR handling, review-response routing, merge
   work, release work, and PR-readiness claims.
-- Classification must happen before deciding parent or child ownership, and
-  before using that decision to edit files or route review feedback.
+- Classification must happen before acting on or using the owner decision to
+  edit files, set up branches or worktrees, delegate lanes, or route review
+  feedback.
 - Classification cannot waive root `AGENTS.md`, user stop conditions,
   selected skills, current-head review gates, or packaged `codexy-sentinel`.
 - A broad or bundled request must be split into atomic lanes before any
