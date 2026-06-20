@@ -191,6 +191,8 @@ fn validator_allows_explicit_child_created_setup_artifacts()
         "Child thread created implementation branch before starting",
         "Child-thread created implementation branch before starting",
         "child-lane created draft worktree before starting",
+        "child-thread-created implementation branch before starting",
+        "child-lane-created draft worktree before starting",
     ] {
         let output = run_ownership_validator(&format!(
             "Lane ownership: child-owned\n{setup_evidence}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
