@@ -184,6 +184,26 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_explicit_child_created_setup_artifact() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Child created implementation branch before starting
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not classify explicit child setup as parent setup\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_parent_setup_when_recovery_is_empty_before_stop_condition()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

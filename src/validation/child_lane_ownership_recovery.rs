@@ -70,6 +70,8 @@ fn has_completed_overlap_inspection(value: &str) -> bool {
             "not reviewed",
             "not yet checked",
             "not yet reviewed",
+            "unchecked",
+            "unreviewed",
             "without checking",
             "without reviewing",
         ]

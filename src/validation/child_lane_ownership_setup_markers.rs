@@ -32,9 +32,16 @@ pub(super) fn clause_has_absent_setup_artifact_marker(clause: &str) -> bool {
 fn has_present_generic_setup_artifact_marker(value: &str, marker: &str) -> bool {
     value.match_indices(marker).any(|(index, _)| {
         let prefix = &value[..index];
-        !["parent-", "parent ", "orchestrator-", "orchestrator "]
-            .into_iter()
-            .any(|actor_prefix| prefix.ends_with(actor_prefix))
+        ![
+            "child-",
+            "child ",
+            "parent-",
+            "parent ",
+            "orchestrator-",
+            "orchestrator ",
+        ]
+        .into_iter()
+        .any(|actor_prefix| prefix.ends_with(actor_prefix))
             && !has_absent_setup_marker(value, marker)
     })
 }

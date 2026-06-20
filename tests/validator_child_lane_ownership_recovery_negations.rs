@@ -46,3 +46,39 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_unchecked_overlap_inspection_recovery()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: created draft worktree before child delegation
+Recovery: disclosed the defect, cleaned up the worktree, user overlap unchecked, and delegated to a clean child thread
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject recovery evidence with unchecked overlap"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_unreviewed_overlap_inspection_recovery()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: created draft worktree before child delegation
+Recovery: disclosed the defect, cleaned up the worktree, other-agent overlap unreviewed, and delegated to a clean child thread
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject recovery evidence with unreviewed overlap"
+    );
+    Ok(())
+}
