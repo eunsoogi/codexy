@@ -1,6 +1,10 @@
 mod agent_registration;
 mod child_lane_ownership;
+mod child_lane_ownership_fixes;
 mod child_lane_ownership_phrases;
+mod child_lane_ownership_recovery;
+mod child_lane_ownership_setup;
+mod child_lane_ownership_setup_markers;
 mod completion_handoff;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
