@@ -103,6 +103,43 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_child_reads_with_negated_parent_reads() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Implementation-surface reads: child read src/validation/hooks.rs; no parent reads
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow child reads with negated parent reads\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_child_reads_with_later_parent_read() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Implementation-surface reads: child read src/validation/hooks.rs; no parent reads, parent read src/validation/hooks.rs
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject later parent reads after a negated parent-read clause"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_absent_parent_created_setup_evidence() -> Result<(), Box<dyn std::error::Error>>
 {
     for setup in [

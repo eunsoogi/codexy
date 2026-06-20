@@ -1,10 +1,11 @@
 use super::child_lane_ownership_phrases::{
-    field_value, has_absent_authored_phrase, has_absent_field_value, metadata_key, trimmed_value,
+    field_value, has_absent_actor_phrase, has_absent_authored_phrase, has_absent_field_value,
+    metadata_key, trimmed_value,
 };
 
 pub(super) fn line_has_parent_implementation_setup(line: &str) -> bool {
     if setup_field_value(line).is_some_and(|(key, value)| {
-        (has_parent_context(key) || has_parent_context(value))
+        (has_parent_context(key) || has_present_parent_context(value))
             && !has_absent_field_value(value, "implementation setup")
     }) {
         return true;
@@ -45,6 +46,19 @@ fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
 
 fn has_parent_context(value: &str) -> bool {
     value.contains("parent") || value.contains("orchestrator")
+}
+
+fn has_present_parent_context(value: &str) -> bool {
+    value.split([';', ',']).any(|clause| {
+        has_parent_context(clause)
+            && !has_absent_actor_read_phrase(clause, "parent")
+            && !has_absent_actor_read_phrase(clause, "orchestrator")
+    })
+}
+
+fn has_absent_actor_read_phrase(clause: &str, actor: &str) -> bool {
+    has_absent_actor_phrase(clause, actor, "read")
+        || has_absent_actor_phrase(clause, actor, "reads")
 }
 
 fn has_absent_setup_marker(line: &str, marker: &str) -> bool {
