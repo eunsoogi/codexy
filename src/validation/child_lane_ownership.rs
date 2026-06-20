@@ -1,5 +1,6 @@
 use super::child_lane_ownership_fixes::line_has_parent_authored_fix;
 use super::child_lane_ownership_phrases::*;
+use super::child_lane_ownership_recovery::line_has_parent_setup_recovery;
 use super::child_lane_ownership_setup::line_has_parent_implementation_setup;
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_lowercase();
@@ -196,31 +197,6 @@ fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bo
         .then(|| next_line_reassignment_value(lines, index).unwrap_or(value))
         .unwrap_or(value);
     is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
-}
-fn line_has_parent_setup_recovery(lines: &[&str], index: usize) -> bool {
-    let line = lines[index];
-    let Some(value) = field_value(line, "recovery") else {
-        return false;
-    };
-    let value = value
-        .is_empty()
-        .then(|| next_line_bullet_value(lines, index).unwrap_or(value))
-        .unwrap_or(value);
-    has_parent_setup_recovery_value(value)
-}
-fn has_parent_setup_recovery_value(value: &str) -> bool {
-    let value = trimmed_value(value);
-    (value.contains("disclosed") || value.contains("disclose"))
-        && (value.contains("cleaned up")
-            || value.contains("cleaned-up")
-            || value.contains("preserved")
-            || value.contains("preserve"))
-        && value.contains("overlap")
-        && (value.contains("user")
-            || value.contains("other-agent")
-            || value.contains("other agent"))
-        && (value.contains("clean child thread")
-            || (value.contains("delegated") && value.contains("child thread")))
 }
 fn next_line_reassignment_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
     let value = next_line_bullet_value(lines, index)?;

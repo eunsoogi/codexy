@@ -50,9 +50,28 @@ fn has_parent_context(value: &str) -> bool {
 
 fn has_present_parent_context(value: &str) -> bool {
     value.split([';', ',']).any(|clause| {
-        has_parent_context(clause)
-            && !has_absent_actor_read_phrase(clause, "parent")
-            && !has_absent_actor_read_phrase(clause, "orchestrator")
+        has_present_actor_read_phrase(clause, "parent")
+            || has_present_actor_read_phrase(clause, "orchestrator")
+    })
+}
+
+fn has_present_actor_read_phrase(clause: &str, actor: &str) -> bool {
+    (has_actor_read_action(clause, actor, "read") || has_actor_read_action(clause, actor, "reads"))
+        && !has_absent_actor_read_phrase(clause, actor)
+}
+
+fn has_actor_read_action(clause: &str, actor: &str, action: &str) -> bool {
+    let marker = format!("{actor} {action}");
+    clause.match_indices(&marker).any(|(index, _)| {
+        let prefix = &clause[..index];
+        let suffix = &clause[index + marker.len()..];
+        is_action_boundary(prefix.chars().next_back()) && is_action_boundary(suffix.chars().next())
+    })
+}
+
+fn is_action_boundary(character: Option<char>) -> bool {
+    character.is_none_or(|character| {
+        character.is_ascii_whitespace() || matches!(character, '.' | ',' | ';' | ':')
     })
 }
 
