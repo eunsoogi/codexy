@@ -1,13 +1,27 @@
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_actor_phrase, has_absent_authored_phrase, has_absent_field_value,
-    metadata_key, trimmed_value,
+    is_metadata_field, metadata_key, next_line_bullet_value, trimmed_value,
 };
 
-pub(super) fn line_has_parent_implementation_setup(line: &str) -> bool {
-    if setup_field_value(line).is_some_and(|(key, value)| {
-        (has_parent_context(key) || has_present_parent_context(value))
-            && !has_absent_setup_field_value(value)
-    }) {
+pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize) -> bool {
+    let line = lines[index];
+    if line_value_has_parent_implementation_setup(line) {
+        return true;
+    }
+    setup_field_value(line)
+        .filter(|(_, value)| value.is_empty())
+        .and_then(|(key, _)| {
+            next_line_bullet_value(lines, index)
+                .filter(|value| !is_metadata_field(value))
+                .map(|value| (key, value))
+        })
+        .is_some_and(|(key, value)| setup_value_has_parent_implementation_setup(key, value))
+}
+
+fn line_value_has_parent_implementation_setup(line: &str) -> bool {
+    if setup_field_value(line)
+        .is_some_and(|(key, value)| setup_value_has_parent_implementation_setup(key, value))
+    {
         return true;
     }
     let line = trimmed_value(line);
@@ -27,6 +41,11 @@ pub(super) fn line_has_parent_implementation_setup(line: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| line.contains(marker) && !has_absent_setup_marker(line, marker))
+}
+
+fn setup_value_has_parent_implementation_setup(key: &str, value: &str) -> bool {
+    (has_parent_context(key) || has_present_parent_context(value))
+        && !has_absent_setup_field_value(value)
 }
 
 fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {

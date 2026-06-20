@@ -36,7 +36,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             && !(child_owned && child_header_open && !child_pr_seen);
         let ownership_boundary =
             is_lane_ownership_boundary(line) || is_parent_owned_owner_boundary(line);
-        let line_parent_setup = line_has_parent_implementation_setup(line);
+        let line_parent_setup = line_has_parent_implementation_setup(&lines, index);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
         let line_setup_recovered = line_has_parent_setup_recovery(&lines, index);
