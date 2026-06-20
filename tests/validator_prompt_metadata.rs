@@ -144,6 +144,11 @@ fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn st
         std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
     let git_workflow =
         std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
+    let qa_prompt =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/qa/agents/openai.yaml"))?;
+    let release_prompt = std::fs::read_to_string(
+        root.join("plugins/codexy/skills/release-engineering/agents/openai.yaml"),
+    )?;
 
     assert!(classification.contains("name: task-classification"));
     assert!(classification.contains("Run this skill first for any Codexy work"));
@@ -152,6 +157,8 @@ fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn st
     assert!(classification.contains("Owner decision:"));
     assert!(classification.contains("Required skills:"));
     assert!(classification.contains("Required tools/evidence:"));
+    assert!(classification.contains("lane-relevant required evidence"));
+    assert!(classification.contains("unavailable-tool fallbacks"));
     assert!(classification.contains("First allowed action:"));
 
     for lane_type in [
@@ -174,9 +181,13 @@ fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn st
             .contains("Classification must happen before acting on or using the owner decision")
     );
     assert!(orchestration.contains("$task-classification"));
-    assert!(orchestration.contains("classification before setup"));
+    assert!(orchestration.contains(
+        "Missing classification before\nsetup, validation, release, or other workflow actions"
+    ));
     assert!(git_workflow.contains("$task-classification"));
     assert!(git_workflow.contains("classification evidence"));
+    assert!(qa_prompt.contains("$task-classification"));
+    assert!(release_prompt.contains("$task-classification"));
     Ok(())
 }
 

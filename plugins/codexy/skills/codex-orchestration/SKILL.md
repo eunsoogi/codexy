@@ -21,11 +21,12 @@ the orchestration loop and must be read together with root `AGENTS.md`.
 
 ## Classification Gate
 
-Run `$task-classification` before this skill starts setup, delegation,
-implementation, PR handling, review-response routing, or merge coordination for
-Codexy work. Classification evidence must name the lane type, owner decision,
-atomic scope, required skills, required tools or evidence, first allowed action,
-and any stop blocker. Missing classification before setup is a workflow defect:
+Run `$task-classification` before this skill starts setup, validation, release,
+delegation, implementation, PR handling, review-response routing, or merge
+coordination for Codexy work. Classification evidence must name the lane type,
+owner decision, atomic scope, required skills, required tools or evidence,
+first allowed action, and any stop blocker. Missing classification before
+setup, validation, release, or other workflow actions is a workflow defect:
 stop, classify, and only then continue through the matching Codexy workflow.
 
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent

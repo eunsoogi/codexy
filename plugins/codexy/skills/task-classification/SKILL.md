@@ -105,8 +105,9 @@ Stop/blocker:
 - `Atomic scope:` states whether the request is issue-sized, bundled, or needs
   splitting before setup.
 - `Required skills:` lists the Codexy skills to read before acting.
-- `Required tools/evidence:` lists mandatory goal/plan, codegraph/LSP,
-  validator, GitHub, test, and reviewer evidence.
+- `Required tools/evidence:` lists lane-relevant required evidence, including
+  unavailable-tool fallbacks where a relevant Codexy tool, GitHub surface,
+  validator, test, LSP, codegraph, goal/plan, or reviewer gate is unavailable.
 - `First allowed action:` states the next concrete action that may happen only
   after this classification.
 - `Stop/blocker:` states `None` or the exact blocker that prevents proceeding.
