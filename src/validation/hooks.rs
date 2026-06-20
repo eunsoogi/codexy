@@ -22,6 +22,10 @@ const REQUIRED_SESSION_START_CONTEXT: &[(&str, &str)] = &[
         "must require codegraph evidence",
     ),
     (
+        "codegraph unavailable/uncallable fallback evidence",
+        "must require codegraph fallback evidence",
+    ),
+    (
         "registered-but-uncallable/unavailable-tool evidence",
         "must require codegraph fallback evidence",
     ),
@@ -155,9 +159,25 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             )
         })?;
     command::check_command(path, plugin_root, event, command)?;
+    let timeout = check_timeout(path, event, object)?;
     if event == REQUIRED_EVENT {
-        check_session_start_context(path, plugin_root, command)?;
+        check_session_start_context(path, plugin_root, command, timeout)?;
     }
+    if let Some(status) = object.get("statusMessage") {
+        if !status
+            .as_str()
+            .is_some_and(|value| !value.trim().is_empty())
+        {
+            bail!(
+                "{} {event} hook statusMessage must be a non-empty string when present",
+                display_relative(path)
+            );
+        }
+    }
+    Ok(())
+}
+
+fn check_timeout(path: &Path, event: &str, object: &serde_json::Map<String, Value>) -> Result<u64> {
     let timeout = object.get("timeout").with_context(|| {
         format!(
             "{} {event} hook timeout is required",
@@ -176,21 +196,15 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             display_relative(path)
         );
     }
-    if let Some(status) = object.get("statusMessage") {
-        if !status
-            .as_str()
-            .is_some_and(|value| !value.trim().is_empty())
-        {
-            bail!(
-                "{} {event} hook statusMessage must be a non-empty string when present",
-                display_relative(path)
-            );
-        }
-    }
-    Ok(())
+    Ok(timeout)
 }
 
-fn check_session_start_context(path: &Path, plugin_root: &Path, command: &str) -> Result<()> {
+fn check_session_start_context(
+    path: &Path,
+    plugin_root: &Path,
+    command: &str,
+    timeout_secs: u64,
+) -> Result<()> {
     let (hook_path, _) = command::plugin_root_entrypoint_path(command).with_context(|| {
         format!(
             "{} {REQUIRED_EVENT} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
@@ -204,7 +218,8 @@ fn check_session_start_context(path: &Path, plugin_root: &Path, command: &str) -
         );
     }
     let script_path = plugin_root.join(&hook_path);
-    let context = context::emitted_session_start_context(&script_path, REQUIRED_EVENT)?;
+    let context =
+        context::emitted_session_start_context(&script_path, REQUIRED_EVENT, timeout_secs)?;
     for (fragment, message) in REQUIRED_SESSION_START_CONTEXT {
         if !context.contains(fragment) {
             bail!(
