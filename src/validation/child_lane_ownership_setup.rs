@@ -6,7 +6,7 @@ use super::child_lane_ownership_phrases::{
 pub(super) fn line_has_parent_implementation_setup(line: &str) -> bool {
     if setup_field_value(line).is_some_and(|(key, value)| {
         (has_parent_context(key) || has_present_parent_context(value))
-            && !has_absent_field_value(value, "implementation setup")
+            && !has_absent_setup_field_value(value)
     }) {
         return true;
     }
@@ -59,6 +59,12 @@ fn has_present_parent_context(value: &str) -> bool {
 fn has_absent_actor_read_phrase(clause: &str, actor: &str) -> bool {
     has_absent_actor_phrase(clause, actor, "read")
         || has_absent_actor_phrase(clause, actor, "reads")
+}
+
+fn has_absent_setup_field_value(value: &str) -> bool {
+    has_absent_field_value(value, "implementation setup")
+        || has_absent_actor_phrase(value, "parent", "implementation setup")
+        || has_absent_actor_phrase(value, "orchestrator", "implementation setup")
 }
 
 fn has_absent_setup_marker(line: &str, marker: &str) -> bool {

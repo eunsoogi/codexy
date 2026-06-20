@@ -65,6 +65,64 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_repeated_field_negative_parent_implementation_setup()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: no parent implementation setup
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow repeated-field negative parent setup evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_recovered_parent_implementation_setup() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: created draft worktree before child delegation
+Recovery: disclosed the workflow defect, cleaned up the draft worktree, inspected user and other-agent overlap, and delegated to a clean child thread before implementation resumed
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow parent setup evidence with explicit recovery\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_parent_authored_fix_despite_setup_recovery()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: created draft worktree before child delegation
+Review response: parent-authored implementation commit abc123 fixed feedback
+Recovery: disclosed the workflow defect, cleaned up the draft worktree, inspected user and other-agent overlap, and delegated to a clean child thread before implementation resumed
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let setup recovery suppress parent-authored implementation fixes"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_hyphenated_parent_created_implementation_branches()
 -> Result<(), Box<dyn std::error::Error>> {
     for setup in [
