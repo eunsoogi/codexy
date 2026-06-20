@@ -45,3 +45,61 @@ Stop condition: explicit maintainer reassignment to parent
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_parent_implementation_setup_without_recovery()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent implementation setup: created branch codexy/135-enforce-codegraph-lsp and draft worktree before child delegation
+Implementation-surface reads: parent read src/validation/hooks.rs and tests/validator_hooks.rs
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject parent implementation setup artifacts in a child-owned lane"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_hyphenated_parent_created_implementation_branches()
+-> Result<(), Box<dyn std::error::Error>> {
+    for setup in [
+        "Parent-created implementation branch codexy/135-enforce-codegraph-lsp",
+        "Orchestrator-created implementation branch codexy/135-enforce-codegraph-lsp",
+    ] {
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n{setup}\nMaintainer reassignment: none\n"
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject `{setup}` as parent implementation setup"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_parent_coordination_for_child_owned_lane()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane ownership: child-owned
+Parent coordination: created issue #136, prepared branch name, and wrote handoff text
+Child owner: thread-136
+Review response: child-authored commit def456 fixed feedback
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow coordination-only parent evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

@@ -110,16 +110,25 @@ branch, worktree, PR, durable child context, or review-response ownership:
    `child-owned`.
 2. If the lane is `child-owned`, stop parent implementation before editing.
    The parent may prepare issue text, branch names, worktree requests, handoff
-   text, and acceptance criteria, but it MUST NOT patch implementation files.
+   text, and acceptance criteria, but it MUST NOT patch implementation files,
+   create implementation branches or worktrees in the parent context, or read
+   implementation surfaces as setup for a parent patch.
 3. If any parent draft implementation diff already exists for a `child-owned`
    lane, preserve the diff as evidence, disclose the mistake, inspect for user
    or other-agent overlap, and route the draft diff to the child. Do not
    continue by "finishing the small fix" in the parent.
-4. Include the owner decision and stop condition in the handoff. PR readiness
-   requires evidence that the child owner existed before implementation
-   patches began, or explicit recovery evidence for an accidental parent draft.
-5. When handoff or final-answer evidence for a child-owned PR includes
-   parent-authored implementation or review-response commits, run
+4. If parent implementation setup artifacts already exist for a child-owned
+   lane, such as a draft worktree, parent-created implementation branch, or
+   implementation-surface reads, disclose them as a workflow defect, preserve
+   or clean up the artifacts as appropriate, inspect for user or other-agent
+   overlap, and delegate to a clean child thread before implementation resumes.
+5. Include the owner decision and stop condition in the handoff. PR readiness
+   requires evidence that the child owner existed before implementation setup
+   or patches began, or explicit recovery evidence for accidental parent setup
+   or draft edits.
+6. When handoff or final-answer evidence for a child-owned PR includes
+   parent-authored implementation, implementation setup, or review-response
+   commits, run
    `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`
    against that evidence. Treat a failure as a workflow defect unless the same
    evidence records explicit maintainer reassignment to the parent.

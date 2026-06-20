@@ -1,11 +1,9 @@
 use super::child_lane_ownership_phrases::*;
-
+use super::child_lane_ownership_setup::line_has_parent_implementation_setup;
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_lowercase();
     if has_unreassigned_parent_authored_fix(&normalized) {
-        return vec![
-            "child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment".to_owned(),
-        ];
+        return vec!["child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment; parent implementation setup evidence is also a workflow defect".to_owned()];
     }
     Vec::new()
 }
@@ -203,29 +201,30 @@ fn line_has_parent_authored_fix(lines: &[&str], index: usize) -> bool {
     {
         return has_fix_marker(line) || has_affirmative_implementation_field(line);
     }
-    (has_present_actor_action(line, "parent", "implemented")
-        || has_present_actor_action(line, "orchestrator", "implemented")
-        || has_present_actor_action(line, "parent", "fixed")
-        || has_present_actor_action(line, "parent", "pushed")
-        || has_present_actor_action(line, "orchestrator", "pushed")
-        || has_present_actor_action(line, "parent", "implementation commit")
-        || has_present_actor_action(line, "orchestrator", "implementation commit")
-        || has_present_fixed_in_parent_phrase(line)
-        || has_present_actor_action(line, "parent", "patched")
-        || has_present_actor_action(line, "orchestrator", "patched")
-        || (line.contains("orchestrator authored")
-            && has_fix_marker(line)
-            && !has_absent_actor_phrase(line, "orchestrator", "authored"))
-        || has_present_actor_action(line, "orchestrator", "fixed")
-        || has_present_actor_action(line, "orchestrator", "review-response")
-        || has_present_actor_action(line, "orchestrator", "review response")
-        || has_present_actor_action(line, "parent", "review-response")
-        || has_present_actor_action(line, "parent", "review response")
-        || has_present_actor_action(line, "parent", "commit")
-        || has_present_actor_action(line, "orchestrator", "commit")
-        || has_passive_parent_fix(line)
-        || line.contains("patched by parent"))
-        && !has_negative_field_value(line, "parent")
+    line_has_parent_implementation_setup(line)
+        || ((has_present_actor_action(line, "parent", "implemented")
+            || has_present_actor_action(line, "orchestrator", "implemented")
+            || has_present_actor_action(line, "parent", "fixed")
+            || has_present_actor_action(line, "parent", "pushed")
+            || has_present_actor_action(line, "orchestrator", "pushed")
+            || has_present_actor_action(line, "parent", "implementation commit")
+            || has_present_actor_action(line, "orchestrator", "implementation commit")
+            || has_present_fixed_in_parent_phrase(line)
+            || has_present_actor_action(line, "parent", "patched")
+            || has_present_actor_action(line, "orchestrator", "patched")
+            || (line.contains("orchestrator authored")
+                && has_fix_marker(line)
+                && !has_absent_actor_phrase(line, "orchestrator", "authored"))
+            || has_present_actor_action(line, "orchestrator", "fixed")
+            || has_present_actor_action(line, "orchestrator", "review-response")
+            || has_present_actor_action(line, "orchestrator", "review response")
+            || has_present_actor_action(line, "parent", "review-response")
+            || has_present_actor_action(line, "parent", "review response")
+            || has_present_actor_action(line, "parent", "commit")
+            || has_present_actor_action(line, "orchestrator", "commit")
+            || has_passive_parent_fix(line)
+            || line.contains("patched by parent"))
+            && !has_negative_field_value(line, "parent"))
 }
 fn has_present_actor_action(line: &str, actor: &str, marker: &str) -> bool {
     let field = format!("{actor} {marker}");
