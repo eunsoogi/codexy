@@ -8,5 +8,5 @@ case "$event" in
 esac
 
 cat <<JSON
-{"hookSpecificOutput":{"hookEventName":"$event","additionalContext":"Codexy plugin context: route Codexy work through \$codex-orchestration when applicable; keep non-trivial work issue-sized with real goal and plan state, use Codexy codegraph MCP when available, run scripts/validate-plugin-config --check-touched-loc --base-ref origin/main for code or test-harness changes, and run the packaged reviewer gate before PR readiness."}}
+{"hookSpecificOutput":{"hookEventName":"$event","additionalContext":"Codexy plugin context: route Codexy work through \$codex-orchestration when applicable; keep non-trivial work issue-sized with real goal and plan state. Use Codexy codegraph MCP before direct file reads when callable; include codegraph findings in handoff or PR readiness evidence, or record registered-but-uncallable/unavailable-tool evidence. Use Codexy LSP for language-aware code edits when a matching server is registered and callable; run lsp_status or record unavailable/not applicable evidence when the server is not usable. Run scripts/validate-plugin-config --check-touched-loc --base-ref origin/main for code or test-harness changes, and run the packaged reviewer gate before PR readiness."}}
 JSON

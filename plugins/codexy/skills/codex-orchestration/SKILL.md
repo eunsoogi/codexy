@@ -248,6 +248,11 @@ edits.
   ad hoc text search. Use codegraph output to identify files, import edges,
   and nearby implementation surfaces, then confirm with direct file reads
   before editing.
+- For language-aware code edits, use Codexy `lsp` to check the matching server
+  registration and status when it is callable. If the matching server is not
+  callable, not installed, or not applicable, include the `lsp_status` output
+  or explicit unavailable/not applicable evidence in the handoff or PR
+  readiness packet.
 - If a packaged MCP such as `lsp` or `codegraph` is expected or registered but
   not callable in the active session, follow root `AGENTS.md` dogfooding policy:
   capture both surfaces as evidence and carry the exposure mismatch instead of
@@ -321,6 +326,9 @@ edits.
    - Tell child implementation threads and exploration agents to use Codexy
      `codegraph` MCP for code exploration when available, with ordinary file
      reads as confirmation before edits.
+   - Tell child implementation threads to use Codexy `lsp` for language-aware
+     code edits when a matching server is registered and callable, or return
+     unavailable/not applicable evidence from `lsp_status`.
    - Tell each non-trivial child implementation thread to run the packaged
      Codexy reviewer agent before handoff, PR readiness, completion, or parent
      acceptance, and include current-diff reviewer findings or approval in its
@@ -386,6 +394,7 @@ Return evidence:
   - Goal tool usage or unavailable-goal-tool fallback
   - Todo/plan tool usage or unavailable-todo-tool fallback
   - Touched implementation-file LOC gate output or not-applicable rationale
+  - Codegraph findings and LSP status or unavailable/not-applicable evidence
   - Multi-agent usage for separable subtasks, or a concrete not-useful
     rationale tied to atomicity, tiny scope, or unavailable tooling
   - Packaged Codexy reviewer gate result for the current diff, exact head or
@@ -415,6 +424,8 @@ Return format:
   - Include todo/plan tool usage or unavailable-todo-tool fallback.
   - Include multi-agent usage or a concrete not-useful/unavailable-tool
     rationale.
+  - Include codegraph findings and LSP status or unavailable/not-applicable
+    evidence for code-touching lanes.
   - Include touched implementation-file LOC gate output for non-trivial code,
     validator, harness, or workflow-rule lanes.
   - Include packaged Codexy reviewer gate findings or approval for the current

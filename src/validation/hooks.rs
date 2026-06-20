@@ -10,6 +10,23 @@ use crate::validation::load_json;
 
 const HOOKS_PATH: &str = "hooks/hooks.json";
 const REQUIRED_EVENT: &str = "SessionStart";
+const SESSION_START_SCRIPT: &str = "hooks/codexy-routing-context.sh";
+const REQUIRED_SESSION_START_CONTEXT: &[(&str, &str)] = &[
+    (
+        "codegraph MCP before direct file reads",
+        "must require codegraph evidence",
+    ),
+    (
+        "include codegraph findings",
+        "must require codegraph evidence",
+    ),
+    ("Use Codexy LSP", "must require LSP evidence"),
+    ("lsp_status", "must require LSP evidence"),
+    (
+        "unavailable/not applicable evidence",
+        "must require unavailable-tool fallback evidence",
+    ),
+];
 const ALLOWED_EVENTS: &[&str] = &[
     "PermissionRequest",
     "PostCompact",
@@ -133,6 +150,9 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             )
         })?;
     command::check_command(path, plugin_root, event, command)?;
+    if event == REQUIRED_EVENT {
+        check_session_start_context(path, plugin_root, command)?;
+    }
     let timeout = object.get("timeout").with_context(|| {
         format!(
             "{} {event} hook timeout is required",
@@ -159,6 +179,28 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             bail!(
                 "{} {event} hook statusMessage must be a non-empty string when present",
                 display_relative(path)
+            );
+        }
+    }
+    Ok(())
+}
+
+fn check_session_start_context(path: &Path, plugin_root: &Path, command: &str) -> Result<()> {
+    if !command.contains(SESSION_START_SCRIPT) {
+        bail!(
+            "{} {REQUIRED_EVENT} hook command must run {SESSION_START_SCRIPT}",
+            display_relative(path)
+        );
+    }
+    let script_path = plugin_root.join(SESSION_START_SCRIPT);
+    let script = std::fs::read_to_string(&script_path)
+        .with_context(|| format!("reading {}", display_relative(&script_path)))?;
+    for (fragment, message) in REQUIRED_SESSION_START_CONTEXT {
+        if !script.contains(fragment) {
+            bail!(
+                "{} {REQUIRED_EVENT} routing context {message}: {}",
+                display_relative(path),
+                display_relative(&script_path)
             );
         }
     }

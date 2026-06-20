@@ -141,6 +141,10 @@ for code exploration when it is available. Include the resulting files,
 neighbors, or dependency evidence with the handoff or PR evidence, then confirm
 exact files with direct reads before editing.
 
+For language-aware code edits, use Codexy `lsp` when a matching server is
+registered and callable. Include `lsp_status` output, or explicit
+unavailable/not applicable evidence, with the handoff or PR evidence.
+
 Before a PR-readiness handoff or final answer claims completion, validate that
 the claim does not stop at an open PR when the requested outcome includes
 completion or the default Codexy merge flow. Capture current PR state first:
@@ -332,6 +336,9 @@ worker for that lane.
 - For code-touching lanes, the child thread MUST use Codexy `codegraph` MCP
   for code exploration when it is available, and include that exploration
   evidence in its handoff.
+- For language-aware code edits, the child thread MUST use Codexy `lsp` when a
+  matching server is registered and callable, or include `lsp_status`
+  unavailable/not applicable evidence in its handoff.
 - Atomic trivial child tasks may stay lightweight, but substantial delegated
   work MUST NOT proceed as ad hoc edits without both real goal state and real
   todo/plan state when those tools are available. Using only one of goal or
@@ -380,7 +387,8 @@ worker for that lane.
   Codexy reviewer agent findings or approval for the current diff, exact head
   or file state, scope, touched implementation-file LOC evidence,
   verification outputs, and evidence. For code-touching lanes, require Codexy
-  `codegraph` MCP exploration evidence or a clear unavailable-tool fallback.
+  `codegraph` MCP exploration evidence plus Codexy `lsp` status evidence, or a
+  clear unavailable/not applicable fallback for each missing surface.
 - The parent may make implementation edits only for its own explicitly scoped
   lane, or when a maintainer explicitly overrides the boundary and reassigns
   the lane to the parent.
@@ -706,6 +714,9 @@ After resolving, stage only the resolved files and run verification relevant to 
   output; over-250 LOC implementation or test-harness files are fixed before
   PR readiness unless the tracked LOC exception mechanism names the file and
   rationale.
+- Code-touching changes include Codexy `codegraph` findings and Codexy `lsp`
+  status evidence, or unavailable/not applicable fallback evidence for each
+  missing surface.
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
   approval from `plugins/codexy/agents/codexy-sentinel.toml` for the current diff,
   exact head or file state, lane scope, touched implementation-file LOC
