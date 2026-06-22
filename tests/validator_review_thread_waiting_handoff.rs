@@ -36,6 +36,75 @@ fn validator_allows_waiting_rationale_referenced_by_github_url() -> TestResult {
 }
 
 #[test]
+fn validator_splits_terminal_period_after_waiting_thread_url() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. https://github.com/eunsoogi/codexy/pull/174#discussion_r2. It remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        mixed_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let a bare URL sentence reference a later generic waiting claim\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_waiting_rationale_with_contraction_negations() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it isn't fixed or accepted yet; this lane is not complete.\n",
+        mixed_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should recognize contraction negations in waiting claims\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_waiting_handoff_with_contracted_completion_negation() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane isn't complete.\n",
+        mixed_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should recognize contracted negation before completion claims\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_waiting_handoff_with_contracted_readiness_negation() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; we aren't ready for handoff.\n",
+        mixed_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should recognize contracted negation before readiness claims\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_verification_completed_waiting_until_merge() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. Verification completed. This lane is not complete until merge.\n",

@@ -35,17 +35,22 @@ fn waiting_segments(text: &str) -> impl Iterator<Item = &str> {
 }
 
 fn splits_sentence_dot(text: &str, dot_index: usize) -> bool {
-    text.as_bytes().get(dot_index) == Some(&b'.') && !url_token_before_dot(&text[..dot_index])
+    text.as_bytes().get(dot_index) == Some(&b'.') && !dot_inside_url_token(text, dot_index)
 }
 
-fn url_token_before_dot(prefix: &str) -> bool {
+fn dot_inside_url_token(text: &str, dot_index: usize) -> bool {
+    let prefix = &text[..dot_index];
     let start = prefix
         .rfind(|character: char| {
             character.is_ascii_whitespace() || matches!(character, '<' | '(' | '[')
         })
         .map_or(0, |index| index + 1);
     let token = &prefix[start..];
-    token.starts_with("http://") || token.starts_with("https://")
+    (token.starts_with("http://") || token.starts_with("https://"))
+        && text[dot_index + 1..]
+            .chars()
+            .next()
+            .is_some_and(is_reference_char)
 }
 
 fn claims_readiness(handoff: &str) -> bool {
@@ -114,11 +119,20 @@ fn mentions_not_fixed(segment: &str) -> bool {
     [
         "not fixed",
         "not yet fixed",
+        "isn't fixed",
+        "isn't yet fixed",
+        "wasn't fixed",
+        "hasn't been fixed",
         "unfixed",
         "not addressed",
         "not yet addressed",
+        "isn't addressed",
+        "wasn't addressed",
+        "hasn't been addressed",
         "not fixed/accepted",
         "not fixed or accepted",
+        "isn't fixed/accepted",
+        "isn't fixed or accepted",
     ]
     .iter()
     .any(|term| segment.contains(term))
@@ -128,8 +142,14 @@ fn mentions_not_accepted(segment: &str) -> bool {
     [
         "not accepted",
         "not yet accepted",
+        "isn't accepted",
+        "isn't yet accepted",
+        "wasn't accepted",
+        "hasn't been accepted",
         "not fixed/accepted",
         "not fixed or accepted",
+        "isn't fixed/accepted",
+        "isn't fixed or accepted",
     ]
     .iter()
     .any(|term| segment.contains(term))
@@ -169,9 +189,12 @@ fn is_reference_char(ch: char) -> bool {
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
-    ["no", "not", "not yet", "without", "neither"]
-        .iter()
-        .any(|term| prefix.trim_end().ends_with(term))
+    [
+        "no", "not", "not yet", "without", "neither", "isn't", "aren't", "wasn't", "weren't",
+        "hasn't", "haven't", "hadn't", "can't", "cannot", "won't", "don't", "doesn't", "didn't",
+    ]
+    .iter()
+    .any(|term| prefix.trim_end().ends_with(term))
 }
 
 fn is_boundary(character: Option<char>) -> bool {
