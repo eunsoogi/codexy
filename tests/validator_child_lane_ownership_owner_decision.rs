@@ -107,6 +107,26 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_parent_setup_when_child_routing_is_negated()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Lane type: implementation
+Owner decision: parent-owned for implementation setup; no child routing required
+Parent implementation setup: created implementation branch codexy/148-parent-owned-followup
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not treat negated child routing as child routing\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_parent_setup_after_multiline_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

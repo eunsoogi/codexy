@@ -189,7 +189,9 @@ fn is_parent_owned_value(value: &str) -> bool {
 fn is_child_delegation_owner_decision(value: &str) -> bool {
     let value = trimmed_value(value);
     is_affirmative_child_owned_value(value)
-        || (has_child_delegation(value) && has_routing_only_parent_context(value))
+        || (!has_negated_child_routing_requirement(value)
+            && has_child_delegation(value)
+            && has_routing_only_parent_context(value))
 }
 fn has_child_delegation(value: &str) -> bool {
     (value.contains("child delegation")
@@ -207,6 +209,20 @@ fn has_routing_only_parent_context(value: &str) -> bool {
         || value.contains("child routing required")
         || value.contains("tool discovery only")
         || value.contains("tool-discovery-only")
+}
+fn has_negated_child_routing_requirement(value: &str) -> bool {
+    [
+        "no child routing required",
+        "no child-routing required",
+        "child routing not required",
+        "child-routing not required",
+        "child routing is not required",
+        "child-routing is not required",
+        "without child routing",
+        "without child-routing",
+    ]
+    .into_iter()
+    .any(|marker| value.contains(marker))
 }
 fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
