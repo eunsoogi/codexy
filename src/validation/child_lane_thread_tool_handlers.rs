@@ -25,9 +25,11 @@ fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
 }
 
 fn has_thread_tool_handler_missing_evidence(evidence: &str) -> bool {
-    evidence
-        .lines()
-        .any(|line| line.contains("no handler registered for tool:") && has_thread_tool_name(line))
+    evidence.lines().any(|line| {
+        line.contains("no handler registered for tool:")
+            && has_thread_tool_name(line)
+            && !has_negated_handler_missing_claim(line)
+    })
 }
 
 fn has_actionable_handler_defect_report(evidence: &str) -> bool {
@@ -41,7 +43,68 @@ fn has_actionable_handler_defect_report(evidence: &str) -> bool {
             ]
             .into_iter()
             .any(|marker| line.contains(marker))
+            && has_affirmative_defect_capture(line)
+            && !has_absent_defect_capture(line)
     })
+}
+
+fn has_negated_handler_missing_claim(line: &str) -> bool {
+    let Some(start) = line.find("no handler registered for tool:") else {
+        return false;
+    };
+    let prefix_start = line[..start]
+        .rfind([';', '.'])
+        .map_or(0, |offset| offset + 1);
+    let prefix = &line[prefix_start..start];
+    [
+        "did not fail with",
+        "didn't fail with",
+        "does not fail with",
+        "do not fail with",
+        "not fail with",
+        "without failing with",
+        "did not produce",
+        "does not produce",
+        "no invocation produced",
+        "no thread tool invocation produced",
+    ]
+    .into_iter()
+    .any(|marker| prefix.contains(marker))
+}
+
+fn has_affirmative_defect_capture(line: &str) -> bool {
+    [
+        "captured",
+        "classified",
+        "recorded",
+        "reported",
+        "routed",
+        "tracked",
+    ]
+    .into_iter()
+    .any(|marker| line.contains(marker))
+}
+
+fn has_absent_defect_capture(line: &str) -> bool {
+    [
+        "defect: none",
+        "defect none",
+        "no dogfooding defect",
+        "no tool-exposure defect",
+        "not a dogfooding defect",
+        "not a tool-exposure defect",
+        "not captured",
+        "not classified",
+        "not recorded",
+        "not reported",
+        "not routed",
+        "not tracked",
+        "without capturing",
+        "without recording",
+        "without reporting",
+    ]
+    .into_iter()
+    .any(|marker| line.contains(marker))
 }
 
 fn has_thread_tool_name(line: &str) -> bool {

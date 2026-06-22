@@ -76,3 +76,46 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_allows_negated_handler_missing_evidence() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: no codex_app namespace and no true thread tools exposed.
+Unavailable-tool evidence: registered read_thread did not fail with `No handler registered for tool: read_thread`.
+Fallback: reported unavailable thread tooling and stopped before child-owned implementation setup.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow evidence that explicitly negates handler-missing runtime failure\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_absent_handler_defect_capture() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding defect: none; missing handler was treated as an unavailable-tool fallback.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject handler-missing evidence when defect capture is explicitly absent"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
