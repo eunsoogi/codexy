@@ -5,17 +5,22 @@ use serde_json::{Value, json};
 
 struct McpClient {
     child: Child,
+    _path_dir: tempfile::TempDir,
 }
 
 impl McpClient {
     fn spawn() -> Result<Self, Box<dyn std::error::Error>> {
+        let path_dir = tempfile::tempdir()?;
         let child = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
-            .env("PATH", "/usr/bin:/bin")
+            .env("PATH", path_dir.path())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        Ok(Self { child })
+        Ok(Self {
+            child,
+            _path_dir: path_dir,
+        })
     }
 
     fn send(&mut self, payload: &Value) -> Result<Value, Box<dyn std::error::Error>> {
