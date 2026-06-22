@@ -35,7 +35,11 @@ plugin repair until classification evidence exists in the thread.
    - Name required tool surfaces, including goal, plan/todo, codegraph, LSP,
      GitHub, validators, local tests, and packaged `codexy-sentinel`.
    - Decide whether multi-agent or separate Codex thread/worktree ownership is
-     required, not useful, or unavailable.
+     required, not useful, or unavailable. A `tool_search` miss alone is not
+     proof that Codex thread/worktree tooling is unavailable when another real
+     surface has produced `thread/start` or `turn/start` events; record that as
+     a discovery/exposure mismatch and keep routing through the real thread
+     surface.
 4. Gate:
    - State the first allowed action after classification.
    - If classification exposes missing scope, missing issue/PR identity,
@@ -80,6 +84,9 @@ plugin repair until classification evidence exists in the thread.
   GitHub permission, external service, secret, or manual decision.
 - If owner choice is ambiguous, ask or stop with a classification blocker
   before branch/worktree setup or edits.
+- Subagents are not child-owned implementation owners. They can assist bounded
+  research, review, or QA, but they do not satisfy a required Codex
+  thread/worktree owner for an issue-sized implementation lane.
 
 ## Required Output
 
@@ -128,6 +135,12 @@ Stop/blocker:
 - If the classified lane touches plugin packaging, skills, validators, MCP,
   LSP, release, or GitHub surfaces, include the matching validation or external
   observation in required evidence.
+- If thread/worktree tool discovery is part of the classification, required
+  evidence must distinguish true Codex thread evidence such as
+  `thread/start`/`turn/start` or `codex_app` thread tools from subagents,
+  GitHub review-thread tools, and `codex` CLI commands. `codex exec`,
+  `codex fork`, and generic `codex app-server` commands are not fallback
+  substitutes for a required thread owner.
 
 ## Failure Modes
 
