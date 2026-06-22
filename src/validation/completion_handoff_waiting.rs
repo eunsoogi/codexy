@@ -133,10 +133,12 @@ fn mentions_waiting_context(text: &str) -> bool {
 
 fn mentions_missing_child_evidence(text: &str) -> bool {
     mentions_child_work(text)
-        && has_any(
-            text,
-            "omitted|missing|required|evidence|goal tool|todo|plan|verification",
-        )
+        && (has_any(text, "omitted|missing")
+            || (has_any(text, "required|pending") && mentions_child_evidence_artifact(text)))
+}
+
+fn mentions_child_evidence_artifact(text: &str) -> bool {
+    has_any(text, "evidence|goal tool|todo|plan|verification evidence")
 }
 
 fn has_true_impasse_rationale(text: &str) -> bool {
