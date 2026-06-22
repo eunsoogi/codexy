@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::lsp::pathing::resolve_root;
 
-pub(super) fn resolve_command(command: &[String], root: Option<&str>) -> Result<Vec<String>> {
+pub(crate) fn resolve_command(command: &[String], root: Option<&str>) -> Result<Vec<String>> {
     let Some(first) = command.first() else {
         return Ok(Vec::new());
     };
@@ -18,7 +18,7 @@ pub(super) fn resolve_command(command: &[String], root: Option<&str>) -> Result<
     Ok(command.to_vec())
 }
 
-pub(super) fn resolve_executable(command: &[String]) -> (bool, Option<String>, Option<String>) {
+pub(crate) fn resolve_executable(command: &[String]) -> (bool, Option<String>, Option<String>) {
     let Some(executable) = command.first() else {
         return (false, None, Some("server command is missing".to_owned()));
     };

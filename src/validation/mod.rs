@@ -33,6 +33,7 @@ use anyhow::{Result, bail};
 pub enum Mode {
     All,
     Lsp,
+    RustLspReadiness,
     MergeMessage {
         expected_issue: u64,
         message: String,
@@ -71,6 +72,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all
         }
         Mode::Lsp => lsp::check(plugin_root),
+        Mode::RustLspReadiness => lsp::check_rust_readiness(plugin_root),
         Mode::MergeMessage {
             expected_issue,
             message,
