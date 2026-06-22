@@ -106,7 +106,8 @@ fn status_result(args: &Value) -> Result<Value> {
         },
         "available": server.available,
         "installHints": server.install_hints,
-        "reason": if server.available { Value::Null } else { json!(server.reason) }
+        "reason": if server.available { Value::Null } else { json!(server.reason) },
+        "readiness": readiness_payload(&server)
     }))
 }
 
@@ -170,7 +171,32 @@ fn unavailable_payload(file_path: &str, server: &crate::lsp::config::Server) -> 
         "path": file_path,
         "server": { "id": server.id, "executable": server.executable, "command": server.command },
         "reason": server.reason.clone().unwrap_or_else(|| "server executable unavailable".to_owned()),
-        "installHints": server.install_hints
+        "installHints": server.install_hints,
+        "readiness": readiness_payload(server)
+    })
+}
+
+fn readiness_payload(server: &crate::lsp::config::Server) -> Value {
+    if server.available {
+        return Value::Null;
+    }
+    let executable = server
+        .executable
+        .as_deref()
+        .unwrap_or("the language server");
+    let language = server.language.as_deref().unwrap_or("language-server");
+    let reason = server.reason.as_deref().unwrap_or_default();
+    if reason.contains("executable not found") {
+        return json!({
+            "defect": "missing-executable",
+            "action": format!(
+                "install {executable} or put it on PATH before relying on {language} LSP diagnostics"
+            )
+        });
+    }
+    json!({
+        "defect": "unavailable-language-server",
+        "action": "inspect lsp_status reason and install hints before relying on LSP diagnostics"
     })
 }
 
