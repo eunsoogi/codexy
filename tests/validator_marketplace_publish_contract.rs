@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use serde_json::Value;
 
 #[test]
@@ -20,12 +22,30 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "gh release upload",
         "mkdir -p \"${plugin_root}/runtime\"",
         "cp dist/generated-runtimes/*.bin \"${plugin_root}/runtime/\"",
+        "push:",
+        "tags:",
+        "\"v*\"",
+        "Generate commit-log changelog",
+        "git rev-list -n 1 \"$release_tag\"",
+        "scripts/generate-release-changelog \"$release_tag\" \"$PREVIOUS_TAG\" > release-notes.md",
+        "Create or update GitHub release",
+        "--target \"$RELEASE_TARGET\"",
+        "gh release create \"$release_tag\"",
+        "gh release edit \"$release_tag\"",
     ] {
         assert!(
             workflow.contains(required),
             "runtime workflow must package release artifacts; missing {required:?}"
         );
     }
+    assert!(
+        !workflow.contains("--target \"$GITHUB_SHA\""),
+        "manual release workflow must target the commit behind release_tag, not the workflow ref"
+    );
+    assert!(
+        workflow.matches("ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}").count() >= 2,
+        "manual release workflow must check out the requested release tag before building runtime binaries and package archive"
+    );
     let package_validation_order = concat!(
         "--check-runtime-artifacts\n",
         "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",
@@ -65,6 +85,60 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
             && !workflow.contains("${plugin_root}/bin")
             && !workflow.contains("\"$plugin_root\"/bin"),
         "runtime workflow must not use plugin bin paths as its install contract"
+    );
+    Ok(())
+}
+
+#[test]
+fn release_changelog_script_formats_single_commit_range() -> Result<(), Box<dyn std::error::Error>>
+{
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let temp = tempfile::tempdir()?;
+
+    run_git(temp.path(), &["init"])?;
+    run_git(temp.path(), &["config", "user.email", "codexy@example.com"])?;
+    run_git(temp.path(), &["config", "user.name", "Codexy Test"])?;
+    std::fs::write(temp.path().join("file.txt"), "before\n")?;
+    run_git(temp.path(), &["add", "file.txt"])?;
+    run_git(temp.path(), &["commit", "-m", "before release"])?;
+    run_git(temp.path(), &["tag", "v0.1.0"])?;
+    std::fs::write(temp.path().join("file.txt"), "after\n")?;
+    run_git(temp.path(), &["add", "file.txt"])?;
+    run_git(temp.path(), &["commit", "-m", "one change"])?;
+    run_git(temp.path(), &["tag", "v0.2.0"])?;
+
+    let output = Command::new(root.join("scripts/generate-release-changelog"))
+        .current_dir(temp.path())
+        .args(["v0.2.0", "v0.1.0"])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "script failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(stdout.contains("Changes since v0.1.0:"));
+    assert!(stdout.contains("- one change ("));
+    assert!(
+        !stdout.contains("No commits found"),
+        "one-commit range must not use empty-changelog fallback:\n{stdout}"
+    );
+    assert!(
+        stdout.ends_with('\n'),
+        "changelog output should end with a newline:\n{stdout}"
+    );
+    Ok(())
+}
+
+fn run_git(cwd: &std::path::Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    let output = Command::new("git").current_dir(cwd).args(args).output()?;
+    assert!(
+        output.status.success(),
+        "git {args:?} failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
 }
