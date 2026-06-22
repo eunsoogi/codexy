@@ -66,6 +66,7 @@ fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
     for handoff in [
         "Blocked: Codex review requested changes remain unresolved.\n",
         "Blocked: Codex review feedback is pending resolution.\n",
+        "Blocked: Codex review feedback from the connector is pending resolution.\n",
         "Blocked: current-head Codex review feedback is pending resolution.\n",
         "Blocked: current-head @codex review request has pending actionable feedback.\n",
         "Blocked until Codex review feedback is pending resolution and the connector returns.\n",
