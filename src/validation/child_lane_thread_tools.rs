@@ -22,7 +22,8 @@ pub(super) fn has_forbidden_codex_cli_thread_fallback(evidence: &str) -> bool {
         && evidence.lines().any(|line| {
             has_forbidden_codex_cli_surface(line)
                 && has_fallback_or_substitution_claim(line)
-                && (!has_negated_fallback_claim(line) || has_affirmative_satisfied_by_claim(line))
+                && (!has_negated_fallback_claim(line)
+                    || has_affirmative_forbidden_satisfied_by_claim(line))
         })
 }
 
@@ -96,10 +97,24 @@ fn has_fallback_or_substitution_claim(evidence: &str) -> bool {
     .any(|marker| evidence.contains(marker))
 }
 
-fn has_affirmative_satisfied_by_claim(line: &str) -> bool {
-    ["satisfied by", "satisfies"]
+fn has_affirmative_forbidden_satisfied_by_claim(line: &str) -> bool {
+    [
+        "codex exec",
+        "codex fork",
+        "codex app-server",
+        "codex debug app-server",
+        "app-server fallback",
+    ]
+    .into_iter()
+    .any(|surface| {
+        [
+            format!("satisfied by {surface}"),
+            format!("satisfies {surface}"),
+            format!("{surface} satisfies"),
+        ]
         .into_iter()
-        .any(|marker| line.contains(marker))
+        .any(|marker| line.contains(&marker))
+    })
 }
 
 fn has_negated_fallback_claim(line: &str) -> bool {

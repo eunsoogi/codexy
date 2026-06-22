@@ -71,3 +71,23 @@ Maintainer reassignment: none
 
     Ok(())
 }
+
+#[test]
+fn validator_allows_real_thread_surface_satisfied_by_with_negated_cli_fallback()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread requirement: satisfied by codex_app thread/start; did not use codex exec fallback.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow real thread surface satisfaction plus negated CLI fallback\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
