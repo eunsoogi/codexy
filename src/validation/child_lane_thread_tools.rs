@@ -25,11 +25,14 @@ pub(super) fn has_forbidden_codex_cli_thread_fallback(evidence: &str) -> bool {
 }
 
 fn has_real_thread_event_evidence(evidence: &str) -> bool {
-    evidence.lines().any(|line| {
-        line.contains("thread/start")
-            && line.contains("turn/start")
-            && !has_negated_thread_event_claim(line)
-    })
+    let has_thread_start = evidence
+        .lines()
+        .any(|line| line.contains("thread/start") && !has_negated_thread_event_claim(line));
+    let has_turn_start = evidence
+        .lines()
+        .any(|line| line.contains("turn/start") && !has_negated_thread_event_claim(line));
+
+    has_thread_start && has_turn_start
 }
 
 fn has_tool_search_miss(evidence: &str) -> bool {
@@ -94,7 +97,10 @@ fn has_affirmative_forbidden_satisfied_by_claim(line: &str) -> bool {
             format!("{surface} satisfies"),
         ]
         .into_iter()
-        .any(|marker| line.contains(&marker))
+        .any(|marker| {
+            line.match_indices(&marker)
+                .any(|(start, _)| !has_negated_marker_prefix(line, start))
+        })
     })
 }
 
@@ -165,6 +171,16 @@ fn has_negated_surface_fallback_claim(line: &str, start: usize, end: usize) -> b
         ]
         .into_iter()
         .any(|marker| text.contains(marker))
+}
+
+fn has_negated_marker_prefix(line: &str, start: usize) -> bool {
+    let prefix_start = line[..start]
+        .rfind([';', '.'])
+        .map_or(0, |offset| offset + 1);
+    let prefix = line[prefix_start..start].trim_end();
+    ["not", "no", "never"]
+        .into_iter()
+        .any(|marker| prefix.ends_with(marker))
 }
 
 fn has_negated_thread_event_claim(line: &str) -> bool {

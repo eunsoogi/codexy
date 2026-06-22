@@ -114,6 +114,74 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_false_blocker_when_thread_events_are_split_across_lines()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: no codex_app namespace and no true thread tools exposed.
+Event evidence: app-server-observed thread/start from a fresh child lane.
+Event evidence: app-server-observed turn/start from the same fresh child lane.
+Blocker: thread tools unavailable because tool_search did not expose real thread tools.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject false blockers when affirmative thread/start and turn/start evidence appears on separate lines"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("thread-tool discovery evidence"),
+        "stderr should name the false blocker, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_negated_forbidden_satisfied_by_claims() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread requirement: satisfied by codex_app thread/start; not satisfied by codex exec.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow evidence that explicitly negates forbidden satisfied-by fallback claims\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_forbidden_satisfied_by_with_unrelated_prefix_negation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread requirement: not reviewed, satisfied by codex exec.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject affirmative forbidden satisfied-by claims when unrelated earlier words are negated"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Codex CLI"),
+        "stderr should name the forbidden fallback, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_mixed_forbidden_fallback_claims_per_surface()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
