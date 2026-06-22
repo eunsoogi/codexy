@@ -34,15 +34,18 @@ pub(crate) fn resolve_executable(command: &[String]) -> (bool, Option<String>, O
         };
         return (false, None, Some(reason));
     }
+    let executable_names = executable_names(executable);
     for entry in std::env::var_os("PATH")
         .as_deref()
         .map(std::env::split_paths)
         .into_iter()
         .flatten()
     {
-        let candidate = entry.join(executable);
-        if is_executable(&candidate) {
-            return (true, Some(candidate.display().to_string()), None);
+        for name in &executable_names {
+            let candidate = entry.join(name);
+            if is_executable(&candidate) {
+                return (true, Some(candidate.display().to_string()), None);
+            }
         }
     }
     (
@@ -50,6 +53,43 @@ pub(crate) fn resolve_executable(command: &[String]) -> (bool, Option<String>, O
         None,
         Some(format!("executable not found on PATH: {executable}")),
     )
+}
+
+fn executable_names(executable: &str) -> Vec<String> {
+    let mut names = vec![executable.to_owned()];
+    if Path::new(executable).extension().is_some() {
+        return names;
+    }
+    let Some(pathext) = std::env::var_os("PATHEXT") else {
+        if cfg!(windows) {
+            names.push(format!("{executable}.exe"));
+        }
+        return names;
+    };
+    for extension in pathext.to_string_lossy().split(';') {
+        let extension = extension.trim();
+        if extension.is_empty() {
+            continue;
+        }
+        let suffix = if extension.starts_with('.') {
+            extension.to_owned()
+        } else {
+            format!(".{extension}")
+        };
+        push_name(&mut names, executable, &suffix);
+        let lowercase_suffix = suffix.to_ascii_lowercase();
+        if lowercase_suffix != suffix {
+            push_name(&mut names, executable, &lowercase_suffix);
+        }
+    }
+    names
+}
+
+fn push_name(names: &mut Vec<String>, executable: &str, suffix: &str) {
+    let candidate = format!("{executable}{suffix}");
+    if !names.iter().any(|name| name == &candidate) {
+        names.push(candidate);
+    }
 }
 
 #[cfg(unix)]

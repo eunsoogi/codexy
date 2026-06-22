@@ -22,6 +22,28 @@ fn validator_cli_accepts_available_rust_analyzer() -> Result<(), Box<dyn std::er
 }
 
 #[test]
+fn validator_cli_accepts_pathext_rust_analyzer_exe() -> Result<(), Box<dyn std::error::Error>> {
+    let path_dir = tempfile::tempdir()?;
+    let rust_analyzer = path_dir.path().join("rust-analyzer.exe");
+    std::fs::write(&rust_analyzer, "#!/bin/sh\nexit 0\n")?;
+    make_executable(&rust_analyzer)?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .arg("--check-rust-lsp-readiness")
+        .env("PATH", path_dir.path())
+        .env("PATHEXT", ".exe")
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "validator should honor PATHEXT executable suffixes\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_reports_missing_rust_analyzer_install_action()
 -> Result<(), Box<dyn std::error::Error>> {
     let path_dir = tempfile::tempdir()?;
