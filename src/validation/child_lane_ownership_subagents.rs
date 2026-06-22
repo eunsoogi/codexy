@@ -30,8 +30,8 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if value_is_non_child_owned_decision_with_subagent_rationale(value) {
         return false;
     }
-    if value_is_parent_owned_routing_only(value) {
-        return false;
+    if value_has_codexy_specialist_agent(value) {
+        return true;
     }
     if thread_owner_key(key) {
         return !has_true_codex_thread_owner(value);
@@ -40,15 +40,6 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
         return false;
     }
     !has_true_codex_thread_owner(value)
-}
-
-fn value_is_parent_owned_routing_only(value: &str) -> bool {
-    let value = trimmed_value(value);
-    value.contains("parent-owned")
-        && (value.contains("routing")
-            || value.contains("tool discovery")
-            || value.contains("thread/worktree tool discovery"))
-        && value_has_non_owner_subagent_rationale(value)
 }
 
 fn value_is_non_child_owned_decision_with_subagent_rationale(value: &str) -> bool {
@@ -114,9 +105,14 @@ fn has_subagent_surface(value: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
-        || CODEXY_SPECIALIST_AGENTS
-            .split_whitespace()
-            .any(|marker| value.contains(marker))
+        || value_has_codexy_specialist_agent(value)
+}
+
+fn value_has_codexy_specialist_agent(value: &str) -> bool {
+    let value = trimmed_value(value);
+    CODEXY_SPECIALIST_AGENTS
+        .split_whitespace()
+        .any(|marker| value.contains(marker))
 }
 
 fn has_subagent_owner_assignment(value: &str) -> bool {
