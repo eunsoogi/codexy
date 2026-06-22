@@ -40,7 +40,7 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if value_denies_subagent_owner(value) {
         return false;
     }
-    !has_true_codex_thread_owner(value)
+    !has_true_codex_thread_owner(value) || !value_has_non_owner_subagent_rationale(value)
 }
 
 fn value_is_non_child_owned_decision_with_subagent_rationale(value: &str) -> bool {

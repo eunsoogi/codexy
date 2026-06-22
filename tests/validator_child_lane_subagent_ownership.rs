@@ -204,6 +204,10 @@ Maintainer reassignment: none
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef; multi_agent_v1 subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
         r#"Owner decision: child-owned implementation lane
 Subthread/worktree owner: Codex worktree thread 019ef; multi_agent_v1 subagent Gauss
 Parent implementation setup: none
