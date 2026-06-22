@@ -5,11 +5,47 @@ pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> 
         return false;
     }
     let text = handoff.to_ascii_lowercase();
-    text.split_inclusive(['.', '\n', ';']).any(|segment| {
+    waiting_segments(&text).any(|segment| {
         thread_referenced(segment, thread)
             && mentions_unresolved(segment)
             && (mentions_not_fixed(segment) || mentions_not_accepted(segment))
     })
+}
+
+fn waiting_segments(text: &str) -> impl Iterator<Item = &str> {
+    let mut start = 0;
+    std::iter::from_fn(move || {
+        if start >= text.len() {
+            return None;
+        }
+        let suffix = &text[start..];
+        for (relative_index, character) in suffix.char_indices() {
+            if character == '\n' || character == ';' || splits_sentence_dot(suffix, relative_index)
+            {
+                let end = start + relative_index + character.len_utf8();
+                let segment = &text[start..end];
+                start = end;
+                return Some(segment);
+            }
+        }
+        let segment = &text[start..];
+        start = text.len();
+        Some(segment)
+    })
+}
+
+fn splits_sentence_dot(text: &str, dot_index: usize) -> bool {
+    text.as_bytes().get(dot_index) == Some(&b'.') && !url_token_before_dot(&text[..dot_index])
+}
+
+fn url_token_before_dot(prefix: &str) -> bool {
+    let start = prefix
+        .rfind(|character: char| {
+            character.is_ascii_whitespace() || matches!(character, '<' | '(' | '[')
+        })
+        .map_or(0, |index| index + 1);
+    let token = &prefix[start..];
+    token.starts_with("http://") || token.starts_with("https://")
 }
 
 fn claims_readiness(handoff: &str) -> bool {

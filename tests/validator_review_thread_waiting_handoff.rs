@@ -20,6 +20,22 @@ fn validator_allows_review_response_waiting_on_thread_not_fixed_or_accepted() ->
 }
 
 #[test]
+fn validator_allows_waiting_rationale_referenced_by_github_url() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. https://github.com/eunsoogi/codexy/pull/174#discussion_r2 remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        mixed_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve GitHub discussion URLs while segmenting waiting evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_eyes_only_codex_review_as_waiting() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Fresh @codex review requested for the current head and has eyes only. Waiting for review output; this lane is not blocked and not complete.\n",
