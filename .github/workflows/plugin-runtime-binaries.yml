@@ -12,6 +12,8 @@ on:
       - "src/**"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
+      - "plugins/codexy/agents/**"
+      - "plugins/codexy/skills/codex-orchestration/scripts/**"
       - ".agents/plugins/release-publish-contract.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
   pull_request:
@@ -21,6 +23,8 @@ on:
       - "src/**"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
+      - "plugins/codexy/agents/**"
+      - "plugins/codexy/skills/codex-orchestration/scripts/**"
       - ".agents/plugins/release-publish-contract.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
 

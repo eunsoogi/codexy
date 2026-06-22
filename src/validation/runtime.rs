@@ -174,12 +174,17 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
                 display_relative(&path)
             )
         })?;
-        if !trigger_text.contains("plugins/codexy/hooks/**") {
-            bail!(
-                "{} runtime package workflow {trigger} paths must include {:?}",
-                display_relative(&path),
-                "plugins/codexy/hooks/**"
-            );
+        for required_path in [
+            "plugins/codexy/hooks/**",
+            "plugins/codexy/agents/**",
+            "plugins/codexy/skills/codex-orchestration/scripts/**",
+        ] {
+            if !trigger_text.contains(required_path) {
+                bail!(
+                    "{} runtime package workflow {trigger} paths must include {required_path:?}",
+                    display_relative(&path)
+                );
+            }
         }
     }
     for platform in platforms {
