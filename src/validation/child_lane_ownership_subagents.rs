@@ -30,9 +30,6 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if value_is_non_child_owned_decision_with_subagent_rationale(value) {
         return false;
     }
-    if value_has_codexy_specialist_agent(value) {
-        return true;
-    }
     if thread_owner_key(key) {
         return !has_true_codex_thread_owner(value)
             || !value_has_non_owner_subagent_rationale(value);

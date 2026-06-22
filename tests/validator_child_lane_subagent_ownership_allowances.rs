@@ -81,6 +81,26 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_codexy_helper_non_owner_on_true_worktree_owner_field()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef
+Subthread/worktree owner: Codex worktree thread 019ef; codexy-sentinel reviewer gate not the owner
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow Codexy specialist helper metadata on a thread-owner field when it is explicitly not the owner\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_multi_agent_rationale_with_true_child_thread_owner()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
