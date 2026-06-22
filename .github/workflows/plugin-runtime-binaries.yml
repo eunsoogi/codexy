@@ -2,10 +2,18 @@ name: Plugin marketplace packages
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Version tag to create or update, for example v1.0.0"
+        required: true
+      previous_tag:
+        description: "Optional previous tag for changelog range"
+        required: false
   release:
     types: [published]
   push:
     branches: [main]
+    tags: ["v*"]
     paths:
       - "Cargo.lock"
       - "Cargo.toml"
@@ -47,6 +55,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          fetch-depth: 0
 
       - name: Build MCP runtime binaries
         run: |
@@ -78,6 +89,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          fetch-depth: 0
 
       - name: Download generated runtime binaries
         uses: actions/download-artifact@v4
@@ -110,9 +124,57 @@ jobs:
           path: dist/codexy-marketplace-plugin.tar.gz
           if-no-files-found: error
 
-      - name: Attach marketplace package to release
-        if: github.event_name == 'release'
+      - name: Resolve release tag
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_EVENT_TAG: ${{ github.event.release.tag_name }}
+          WORKFLOW_RELEASE_TAG: ${{ inputs.release_tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          case "$EVENT_NAME" in
+            release)
+              release_tag="$RELEASE_EVENT_TAG"
+              ;;
+            workflow_dispatch)
+              release_tag="$WORKFLOW_RELEASE_TAG"
+              ;;
+            *)
+              release_tag="$REF_NAME"
+              ;;
+          esac
+          if [ -z "$release_tag" ]; then
+            echo "release_tag is required for manual release runs" >&2
+            exit 1
+          fi
+          echo "RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
+
+      - name: Generate commit-log changelog
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        env:
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: |
+          git fetch --tags --force
+          release_tag="$RELEASE_TAG"
+          release_target="$(git rev-list -n 1 "$release_tag")"
+          echo "RELEASE_TARGET=$release_target" >> "$GITHUB_ENV"
+          scripts/generate-release-changelog "$release_tag" "$PREVIOUS_TAG" > release-notes.md
+
+      - name: Create or update GitHub release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" "dist/codexy-marketplace-plugin.tar.gz" --clobber
+          release_tag="$RELEASE_TAG"
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release edit "$release_tag" --title "$release_tag" --notes-file release-notes.md --target "$RELEASE_TARGET"
+          else
+            gh release create "$release_tag" --title "$release_tag" --notes-file release-notes.md --target "$RELEASE_TARGET"
+          fi
+
+      - name: Attach marketplace package to release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$RELEASE_TAG" "dist/codexy-marketplace-plugin.tar.gz" --clobber

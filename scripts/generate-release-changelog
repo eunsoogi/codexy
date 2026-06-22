@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+release_tag="${1:?release tag required}"
+previous_tag="${2:-}"
+
+if [ -z "$previous_tag" ]; then
+  previous_tag="$(git tag --sort=-creatordate | grep -v "^${release_tag}$" | head -n 1 || true)"
+fi
+
+echo "## Codexy ${release_tag}"
+echo
+if [ -n "$previous_tag" ]; then
+  echo "Changes since ${previous_tag}:"
+  changelog_body="$(git log --pretty=format:'- %s (%h)' "${previous_tag}..${release_tag}")"
+else
+  echo "Changes:"
+  changelog_body="$(git log --pretty=format:'- %s (%h)' "$release_tag")"
+fi
+
+if [ -n "$changelog_body" ]; then
+  printf '%s\n' "$changelog_body"
+else
+  echo "- No commits found for changelog range."
+fi

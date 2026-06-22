@@ -9,6 +9,7 @@ use crate::validation::{json_array_strings, load_json, require_string};
 const CONTRACT_PATH: &str = ".agents/plugins/release-publish-contract.json";
 const CONTRACT_SCHEMA: &str = "codexy.internal.release-publish-contract.v1";
 const WORKFLOW_PATH: &str = ".github/workflows/plugin-runtime-binaries.yml";
+const CHANGELOG_SCRIPT_PATH: &str = "scripts/generate-release-changelog";
 const CURRENT_INSTALL_REF: &str = "main";
 const MARKETPLACE_PATH: &str = ".agents/plugins/marketplace.json";
 const PLUGIN_PATH: &str = "./plugins/codexy";
@@ -29,7 +30,8 @@ pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
     check_current_marketplace_target(&contract, &contract_path)?;
     check_package_contract(&contract, &contract_path, platforms)?;
     check_source_marketplace_mode(&contract, &contract_path)?;
-    check_workflow_packages_release_artifacts(&repo_root.join(WORKFLOW_PATH))
+    check_workflow_packages_release_artifacts(&repo_root.join(WORKFLOW_PATH))?;
+    check_changelog_script(&repo_root.join(CHANGELOG_SCRIPT_PATH))
 }
 
 fn check_current_marketplace_target(contract: &Value, path: &Path) -> Result<()> {
@@ -140,6 +142,15 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
+        "tags:",
+        "\"v*\"",
+        "Generate commit-log changelog",
+        "git rev-list -n 1 \"$release_tag\"",
+        "scripts/generate-release-changelog \"$release_tag\" \"$PREVIOUS_TAG\" > release-notes.md",
+        "Create or update GitHub release",
+        "--target \"$RELEASE_TARGET\"",
+        "gh release create \"$release_tag\"",
+        "gh release edit \"$release_tag\"",
         "gh release upload",
     ] {
         if !text.contains(required) {
@@ -148,6 +159,22 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
                 display_relative(path)
             );
         }
+    }
+    if text.contains("--target \"$GITHUB_SHA\"") {
+        bail!(
+            "{} must target the commit behind release_tag, not the workflow ref",
+            display_relative(path)
+        );
+    }
+    if text
+        .matches("ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}")
+        .count()
+        < 2
+    {
+        bail!(
+            "{} must check out the requested release tag before building runtime binaries and package archive",
+            display_relative(path)
+        );
     }
     for forbidden in [
         "Publish generated marketplace snapshot",
@@ -161,6 +188,32 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
                 display_relative(path)
             );
         }
+    }
+    Ok(())
+}
+
+fn check_changelog_script(path: &Path) -> Result<()> {
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("reading {}", display_relative(path)))?;
+    for required in [
+        "git log --pretty=format:'- %s (%h)'",
+        "changelog_body=\"$(",
+        "if [ -n \"$changelog_body\" ]; then",
+        "printf '%s\\n' \"$changelog_body\"",
+        "No commits found for changelog range.",
+    ] {
+        if !text.contains(required) {
+            bail!(
+                "{} must generate release notes from commit logs safely; missing {required:?}",
+                display_relative(path)
+            );
+        }
+    }
+    if text.contains("wc -l") {
+        bail!(
+            "{} must not detect empty changelogs by counting lines",
+            display_relative(path)
+        );
     }
     Ok(())
 }
