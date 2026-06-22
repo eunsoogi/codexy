@@ -338,8 +338,11 @@ edits.
    - Start specialist subagents only for bounded lanes that do not need their
      own branch or PR.
    - For issue-sized implementation lanes, start or fork a separate Codex
-     thread in a worktree when the tool is available. Fall back to manual
-     `git worktree` only when thread tooling is unavailable, and record why.
+     thread in a worktree when the tool is available. Run the Thread Tool
+     Discovery Procedure below before reporting unavailable tooling or choosing
+     any fallback path. Manual `git worktree` setup, `codex` CLI commands, and
+     ad hoc branch edits do not satisfy a required clean Codex thread unless a
+     maintainer explicitly re-scopes the lane away from that requirement.
    - Before calling Codex app worktree or thread tools, run the Codex App
      Worktree Creation Preflight below. Do not retry failed setup by creating
      a second active owner until the pending or failed owner is resolved.
@@ -489,6 +492,50 @@ Return format:
   draft-diff input and stop parent implementation.
 - The invoking Codex thread re-reads diffs, reruns required checks, handles PR
   review gates, merges through GitHub, deletes branches, and syncs main.
+
+## Thread Tool Discovery Procedure
+
+Use this before declaring Codex thread/worktree tooling unavailable, before
+reporting a parent blocker caused by missing thread tools, or before routing a
+child-owned implementation lane through another surface.
+
+1. Search the actual callable tool surface for true Codex thread/worktree tool
+   names and namespaces. Include exact and broad terms such as
+   `codex_app create_thread fork_thread list_threads read_thread
+   send_message_to_thread set_thread_title`, `thread/start`, `turn/start`,
+   `Thread Coordination`, `Codex managed worktree`, `worktree`, and
+   `child thread`.
+2. Separately record `tool_search` results and any actual thread-event
+   evidence. A tool_search mismatch is an exposure/discovery defect when it
+   misses the thread namespace while another real surface produces
+   `thread/start` and `turn/start` events. Do not report the tools absent or
+   block the lane only because `tool_search` missed them when those events
+   exist.
+3. Treat app-server-observed `thread/start` and `turn/start` evidence from a
+   freshly created child lane as proof that a real Codex thread started. Record
+   the observed event source, issue or lane, branch or worktree target when
+   available, and the active owner identity. This is evidence of the thread
+   surface; it is not permission to replace thread tooling with generic
+   app-server or CLI commands.
+4. Subagents are not child-owned implementation owners. `spawn_agent`,
+   `multi_agent_v1`, specialist agents, or other subagent tools may help with
+   bounded research or review, but they do not satisfy the clean Codex
+   thread/worktree requirement for an issue-sized implementation branch or PR.
+5. Do not use `codex exec`, `codex fork`, or `codex app-server` commands as
+   fallback substitutes for true thread/worktree tools. In particular, an
+   app-server command that only sends a message is not equivalent to a thread
+   creation tool with project, worktree, starting ref, branch, and owner
+   targeting.
+6. If no real thread surface is found after the searches above, record an
+   exposure/discovery defect with both surfaces: the expected/registered or
+   historically observed thread tool names, the exact `tool_search` query and
+   result categories, and any missing prompt/tool namespace evidence. Stop
+   parent implementation routing until a real thread owner is assigned or a
+   maintainer explicitly changes the lane requirement.
+7. If a real thread surface is already producing `thread/start` or
+   `turn/start`, keep the lane active and route through that surface instead
+   of immediately reporting a blocker. False blockers caused by `tool_search`
+   alone are workflow defects.
 
 ## Codex App Worktree Creation Preflight
 

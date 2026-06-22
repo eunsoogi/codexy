@@ -113,6 +113,12 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details()
     assert!(skill.contains("Root `AGENTS.md` owns repo-wide dogfooding policy"));
     assert!(skill.contains("Parent Stop Preflight"));
     assert!(skill.contains("Codex App Worktree Creation Preflight"));
+    assert!(skill.contains("Thread Tool Discovery Procedure"));
+    assert!(skill.contains("thread/start"));
+    assert!(skill.contains("turn/start"));
+    assert!(skill.contains("tool_search mismatch is an exposure/discovery defect"));
+    assert!(skill.contains("Subagents are not child-owned implementation owners"));
+    assert!(skill.contains("Do not use `codex exec`, `codex fork`, or `codex app-server`"));
     assert!(skill.contains("startingState.type=\"branch\""));
     assert!(skill.contains("git check-ref-format --branch"));
     assert!(skill.contains("--check-child-lane-ownership --evidence-file"));

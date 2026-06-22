@@ -147,6 +147,89 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_tool_search_false_blocker_when_thread_events_exist()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: no codex_app namespace and no true thread tools exposed.
+App-server observed events: fresh child lane emitted thread/start and turn/start.
+Blocker: thread tools are absent because tool_search missed them.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject false thread-tool blockers when real thread events exist"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("thread/start"),
+        "stderr should name the false blocker evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_negated_tool_search_blocker_evidence() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: no codex_app namespace and no true thread tools exposed.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+No blocker: thread tools are not absent because tool_search missed them; route through the real thread surface.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow evidence that negates a tool_search-only blocker"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_codex_cli_thread_fallback_claim() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread fallback: used codex exec as a substitute for missing thread tools.
+Thread requirement: satisfied by codex app-server fallback.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject Codex CLI fallback claims for thread requirements"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Codex CLI"),
+        "stderr should name the forbidden fallback, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_negated_codex_cli_fallback_evidence() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Forbidden route: did not use codex exec, codex fork, or codex app-server fallback as a substitute.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow evidence that explicitly negates forbidden CLI fallback use"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_parent_setup_after_multiline_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

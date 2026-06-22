@@ -332,6 +332,13 @@ or routing-only lane.
   context, the parent MUST create, fork, or assign the child thread before
   implementation patches begin. The parent MUST NOT make draft implementation
   edits first and delegate afterward.
+- For thread/worktree tool discovery, follow the `$codex-orchestration` Thread
+  Tool Discovery Procedure before reporting unavailable tooling. A
+  `tool_search` miss is an exposure/discovery defect, not proof of absence,
+  when a real surface has produced `thread/start` or `turn/start` events.
+  Subagents are not child-owned implementation owners, and `codex exec`,
+  `codex fork`, or generic `codex app-server` commands must not be claimed as
+  fallback substitutes for a required Codex thread/worktree owner.
 - For non-trivial lanes, the child thread MUST create or maintain a
   lane-specific goal with the real Codex goal tools when they exist, such as
   `create_goal`, `get_goal`, and `update_goal`; keep real todo/plan state
