@@ -8,6 +8,38 @@ use serde_json::Value;
 
 use crate::paths::display_relative;
 
+const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
+    "codegraph MCP before direct file reads",
+    "include codegraph findings",
+    "codegraph unavailable/uncallable fallback evidence",
+    "registered-but-uncallable/unavailable-tool evidence",
+    "Use Codexy LSP",
+    "lsp_status",
+    "unavailable/not applicable evidence",
+    "$dreaming",
+    "compacted or resumed context hygiene",
+];
+
+pub(super) fn required_session_start_context() -> &'static [&'static str] {
+    REQUIRED_SESSION_START_CONTEXT
+}
+
+pub(super) fn requirement_message(fragment: &str) -> &str {
+    match fragment {
+        "codegraph MCP before direct file reads" | "include codegraph findings" => {
+            "must require codegraph evidence"
+        }
+        "codegraph unavailable/uncallable fallback evidence"
+        | "registered-but-uncallable/unavailable-tool evidence" => {
+            "must require codegraph fallback evidence"
+        }
+        "Use Codexy LSP" | "lsp_status" => "must require LSP evidence",
+        "unavailable/not applicable evidence" => "must require LSP fallback evidence",
+        "$dreaming" | "compacted or resumed context hygiene" => "must require dreaming hygiene",
+        _ => "must include required context",
+    }
+}
+
 pub(super) fn emitted_session_start_context(
     script_path: &Path,
     required_event: &str,

@@ -12,30 +12,6 @@ use crate::validation::load_json;
 const HOOKS_PATH: &str = "hooks/hooks.json";
 const REQUIRED_EVENT: &str = "SessionStart";
 const SESSION_START_SCRIPT: &str = "hooks/codexy-routing-context.sh";
-const REQUIRED_SESSION_START_CONTEXT: &[(&str, &str)] = &[
-    (
-        "codegraph MCP before direct file reads",
-        "must require codegraph evidence",
-    ),
-    (
-        "include codegraph findings",
-        "must require codegraph evidence",
-    ),
-    (
-        "codegraph unavailable/uncallable fallback evidence",
-        "must require codegraph fallback evidence",
-    ),
-    (
-        "registered-but-uncallable/unavailable-tool evidence",
-        "must require codegraph fallback evidence",
-    ),
-    ("Use Codexy LSP", "must require LSP evidence"),
-    ("lsp_status", "must require LSP evidence"),
-    (
-        "unavailable/not applicable evidence",
-        "must require LSP fallback evidence",
-    ),
-];
 const ALLOWED_EVENTS: &[&str] = &[
     "PermissionRequest",
     "PostCompact",
@@ -95,16 +71,29 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
     let object = group
         .as_object()
         .with_context(|| format!("{} {event} group must be an object", display_relative(path)))?;
-    if let Some(matcher) = object.get("matcher") {
-        if !matcher
-            .as_str()
-            .is_some_and(|value| !value.trim().is_empty())
-        {
+    match object.get("matcher") {
+        Some(value) => {
+            let matcher = value.as_str().filter(|value| !value.trim().is_empty());
+            let Some(matcher) = matcher else {
+                bail!(
+                    "{} {event}.matcher must be a non-empty string when present",
+                    display_relative(path)
+                );
+            };
+            if event == REQUIRED_EVENT && !has_resume_and_compact(matcher) {
+                bail!(
+                    "{} {REQUIRED_EVENT}.matcher must include resume and compact",
+                    display_relative(path)
+                );
+            }
+        }
+        None if event == REQUIRED_EVENT => {
             bail!(
-                "{} {event}.matcher must be a non-empty string when present",
+                "{} {REQUIRED_EVENT}.matcher must include resume and compact",
                 display_relative(path)
             );
         }
+        None => {}
     }
     let handlers = object
         .get("hooks")
@@ -229,14 +218,20 @@ fn check_session_start_context(
     let script_path = plugin_root.join(&hook_path);
     let context =
         context::emitted_session_start_context(&script_path, REQUIRED_EVENT, timeout_secs)?;
-    for (fragment, message) in REQUIRED_SESSION_START_CONTEXT {
+    for fragment in context::required_session_start_context() {
         if !context.contains(fragment) {
             bail!(
-                "{} {REQUIRED_EVENT} emitted additionalContext {message}: {}",
+                "{} {REQUIRED_EVENT} emitted additionalContext {}: {}",
                 display_relative(path),
+                context::requirement_message(fragment),
                 display_relative(&script_path)
             );
         }
     }
     Ok(())
+}
+
+fn has_resume_and_compact(matcher: &str) -> bool {
+    let tokens = matcher.split('|').map(str::trim).collect::<Vec<_>>();
+    tokens.contains(&"resume") && tokens.contains(&"compact")
 }
