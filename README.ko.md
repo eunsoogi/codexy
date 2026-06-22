@@ -46,13 +46,67 @@ codex mcp list
 
 ## Codexy가 제공하는 것
 
-Codexy는 Codex에 저장소 작업용 하네스를 붙입니다. 큰 요청을 검토 가능한
-범위로 나누고, 올바른 소유자를 정하고, 결과를 검증하고, 그 증거를 GitHub
-리뷰와 merge까지 이어 가는 반복 가능한 운영 방식입니다. 한 번의 답변으로
-끝나지 않는 issue triage, branch 작업, PR 리뷰 대응, 릴리스 준비, 플러그인
-패키징, 긴 구현 루프에 맞춰져 있습니다.
+Codexy는 첫 프롬프트 이후에도 저장소 작업이 흐트러지지 않도록 돕는 Codex
+하네스 플러그인입니다. 설치하면 작업 계획, 소유권 배정, 저장소 증거 수집,
+리뷰 준비 상태 확인, 플러그인 릴리스 준비에 필요한 구체적인 Codex 표면을
+추가합니다. 실제로는 issue에서 branch, PR, review, merge, release로 작업이
+이동하는 동안 현재 소유자와 다음 단계에 필요한 증거를 잃지 않도록 Codex가
+공유할 운영 모델을 제공합니다.
 
-### 1. 작업 계획과 소유권
+### 설치되는 하네스 표면
+
+#### 워크플로 스킬
+
+- **작업 분류**: agent가 편집을 시작하기 전에 lane type, owner, 필요한 증거,
+  첫 허용 동작, 중단 조건을 먼저 이름 붙입니다.
+- **Orchestration workflow**: parent session은 routing, status, merge decision을
+  맡고 child worktree thread는 자기 branch 변경을 소유하게 합니다.
+- **Git과 GitHub workflow**: issue intake, branch creation, PR body, label,
+  review request, squash merge, branch cleanup, merge 후 동기화를 표준화합니다.
+- **Proof-driven completion**: "완료"를 현재 파일 상태, branch head, PR 상태,
+  check, review output, 외부 표면에 묶인 증거 checklist로 바꿉니다.
+- **Release workflow**: version sync, package shape, marketplace metadata,
+  archive check, release note, release handoff 작업을 안내합니다.
+
+#### 저장소 도구 표면
+
+- **Codegraph MCP**: 직접 파일을 읽고 patch하기 전에 관련 파일, symbol,
+  dependency neighbor, validation touchpoint를 찾을 수 있는 repository graph
+  표면을 제공합니다.
+- **LSP MCP**: active workspace에서 language-aware diagnostic이 설정되어 있고
+  실제 호출 가능한지 기록합니다. registered tool과 session에서 실제 callable한
+  tool의 차이도 드러냅니다.
+- **패키지된 MCP 등록**: session마다 MCP 설정을 손으로 다시 만들지 않고 같은
+  설정을 검증할 수 있도록 plugin 안에 MCP 설정을 함께 제공합니다.
+
+#### 전문 역할
+
+- **Worker 역할**: implementation, refactoring, architecture, repository
+  mapping, release preparation 등 focused lane에 쓸 수 있는 재사용 가능한 역할
+  정의를 제공합니다.
+- **Reviewer 역할**: regression, 누락된 verification, workflow rule 위반,
+  readiness gap을 찾는 current-diff review prompt를 반복 가능하게 제공합니다.
+- **Sentinel review gate**: non-trivial lane의 PR readiness 전에 사용할 packaged
+  reviewer 기대치를 제공해, review evidence가 주장하는 정확한 branch나 diff에
+  묶이게 합니다.
+
+### 소스 저장소 유지보수 도구
+
+소스 checkout에는 plugin author와 release 작업을 위한 repository-maintenance
+script도 포함되어 있습니다. 이 script들은 marketplace plugin을 설치했을 때
+end-user Codex command surface로 함께 설치되는 항목이 아닙니다. 이 저장소
+자체를 개발하거나 검증할 때 사용합니다.
+
+- **Plugin configuration validator**: manifest metadata, marketplace
+  registration, MCP entry, LSP catalog entry, skill frontmatter, agent
+  definition, release metadata를 함께 확인합니다.
+- **Workflow contract validator**: child-lane ownership claim, completion
+  handoff, dirty-state exception, merge-message issue reference,
+  review-readiness evidence를 검증합니다.
+- **Version synchronization helper**: plugin version과 marketplace version을
+  하나의 release surface로 확인하거나 갱신합니다.
+
+### 작업 계획과 소유권 모델
 
 #### 작업 접수
 
@@ -69,7 +123,7 @@ Codexy는 Codex에 저장소 작업용 하네스를 붙입니다. 큰 요청을 
   merge 후 동기화를 조정합니다.
 - **Child worktree thread**: 특정 branch와 issue-sized lane의 구현 및 review
   response patch를 소유합니다.
-- **Specialist role**: focused analysis, 구현 조언, QA, current-diff review를
+- **Specialist subagent**: focused analysis, 구현 조언, QA, current-diff review를
   보조하지만 branch owner가 되지는 않습니다.
 - **소유권 증거**: 어느 표면이 branch를 소유하고 어느 표면이 보조했는지 남겨
   리뷰 피드백이 올바른 lane으로 돌아가게 합니다.
@@ -83,7 +137,7 @@ Codexy는 Codex에 저장소 작업용 하네스를 붙입니다. 큰 요청을 
 - **Handoff discipline**: 다음 소유자에게 branch, head commit, 증거, blocker,
   중단 조건을 함께 전달하게 합니다.
 
-### 2. 검증과 리뷰 게이트
+### 검증과 리뷰 게이트
 
 #### 저장소 Validator
 
@@ -113,47 +167,7 @@ Codexy는 Codex에 저장소 작업용 하네스를 붙입니다. 큰 요청을 
 - **중단 조건 보고**: PR을 merge할 수 없을 때 open PR을 완료로 보지 않고 정확한
   blocker를 보고하게 합니다.
 
-### 3. 저장소 인텔리전스
-
-#### 코드와 설정 탐색
-
-- **Codegraph access**: 편집 전에 관련 파일, symbol, dependency neighbor,
-  validation touchpoint를 찾을 수 있는 repository graph를 제공합니다.
-- **직접 읽기 규칙**: graph 결과를 현재 파일 내용 확인과 함께 사용하게 하여,
-  추측한 구조가 아니라 실제 저장소 상태에 기반해 patch하게 합니다.
-- **Touched surface 인식**: active lane이 바꾼 파일과 계약에 맞춰 검증 범위를
-  좁히도록 돕습니다.
-
-#### 언어와 도구 가시성
-
-- **LSP status check**: language diagnostic이 등록되어 있고, 실제 호출 가능하며,
-  active workspace에서 쓸 수 있는지 기록합니다.
-- **MCP visibility check**: 설정된 MCP server와 현재 Codex session에 실제 노출된
-  tool을 구분합니다.
-- **노출 불일치 처리**: 기대한 tool이 보이지 않을 때 조용히 넘어가지 않고,
-  workflow defect로 증거를 남겨 라우팅하게 합니다.
-
-### 4. 전문 역할 묶음
-
-#### 작업 역할
-
-- **저장소 매핑**: 영향 파일, ownership boundary, 주변 test, 검증 표면을 찾는
-  데 도움을 줍니다.
-- **구현과 리팩터링**: issue-sized lane 안에서 code, documentation, validator,
-  workflow rule 변경을 집중적으로 수행하도록 돕습니다.
-- **릴리스 준비**: manifest, marketplace, version, archive, release note 작업을
-  지원합니다.
-
-#### 리뷰 역할
-
-- **Current-diff review**: active branch나 diff에서 regression, 누락된 검증,
-  stale evidence, workflow-rule 위반을 확인합니다.
-- **Sentinel gate**: non-trivial lane의 PR readiness 전에 사용할 packaged final
-  reviewer 기대치를 제공합니다.
-- **Review-feedback routing**: actionable PR feedback을 다른 표면이 대신 고치지
-  않고 lane owner에게 돌려보내게 합니다.
-
-### 5. 플러그인 패키징과 릴리스 지원
+### 플러그인 패키징과 릴리스 지원
 
 #### 마켓플레이스 준비
 
@@ -180,19 +194,3 @@ Codexy는 Codex에 저장소 작업용 하네스를 붙입니다. 큰 요청을 
   확인합니다.
 - **Fresh-session guidance**: 새로 설치한 plugin 표면이 active session에 보이지
   않을 때 restart 또는 새 session 확인을 명시합니다.
-
-## 저장소 기여자용 도구
-
-소스 checkout에는 이 저장소 자체를 개발하는 사람을 위한 maintenance script도
-포함되어 있습니다. 이 script들은 CI, release preparation, local repository
-validation에는 유용하지만, 설치된 marketplace plugin이 end-user Codex command로
-보여 주는 항목은 아닙니다.
-
-- **Plugin configuration validator**: manifest metadata, marketplace
-  registration, MCP entry, LSP catalog entry, instruction frontmatter, agent
-  definition, release metadata를 함께 확인합니다.
-- **Workflow contract validator**: child-lane ownership claim, completion
-  handoff, dirty-state exception, merge-message issue reference,
-  review-readiness evidence를 검증합니다.
-- **Version synchronization helper**: plugin version과 marketplace version을
-  하나의 release surface로 확인하거나 갱신합니다.

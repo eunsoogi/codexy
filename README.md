@@ -46,13 +46,72 @@ MCP surfaces do not appear in the active session.
 
 ## What Codexy Provides
 
-Codexy gives Codex a repository-work harness: a repeatable way to turn a broad
-request into scoped work, assign the right owner, verify the result, and carry
-the evidence through GitHub review and merge. It is meant for work where a
-single answer is not enough: issue triage, branch work, PR review response,
-release preparation, plugin packaging, and long-running implementation loops.
+Codexy is a harness plugin for Codex users who want repository work to stay
+structured after the first prompt. After installation, it adds concrete Codex
+surfaces for planning work, assigning ownership, gathering evidence, checking
+review readiness, and preparing plugin releases. In practice, it gives Codex a
+shared operating model for moving repository work from an issue to a branch, PR,
+review, merge, and release without losing the current owner or the proof needed
+for the next step.
 
-### 1. Work Planning and Ownership
+### Installed Harness Surfaces
+
+#### Workflow Skills
+
+- **Task classification**: starts work by naming the lane type, owner, required
+  evidence, first allowed action, and stop condition before the agent edits.
+- **Orchestration workflow**: keeps parent sessions responsible for routing,
+  status, and merge decisions while child worktree threads own their branch
+  changes.
+- **Git and GitHub workflow**: standardizes issue intake, branch creation, PR
+  bodies, labels, review requests, squash merges, branch cleanup, and post-merge
+  synchronization.
+- **Proof-driven completion**: turns "done" into an evidence checklist tied to
+  the current files, branch head, PR state, checks, review output, and external
+  surfaces.
+- **Release workflow**: guides version sync, package shape, marketplace
+  metadata, archive checks, release notes, and release handoff work.
+
+#### Repository Tooling
+
+- **Codegraph MCP**: gives Codex a repository graph surface for finding relevant
+  files, symbols, dependency neighbors, and likely validation touchpoints before
+  direct file reads and patches.
+- **LSP MCP**: records whether language-aware diagnostics are configured and
+  callable for the active workspace, including the difference between registered
+  tools and tools that are actually available in a session.
+- **Packaged MCP registrations**: ships the MCP configuration with the plugin,
+  so sessions can verify the same setup instead of rebuilding it by hand.
+
+#### Specialist Roles
+
+- **Worker roles**: provide reusable role definitions for implementation,
+  refactoring, architecture, repository mapping, release preparation, and other
+  focused lanes.
+- **Reviewer roles**: provide repeatable current-diff review prompts for finding
+  regressions, missing verification, workflow-rule violations, and readiness
+  gaps.
+- **Sentinel review gate**: supplies a packaged reviewer expectation for
+  non-trivial lanes before PR readiness, so review evidence is attached to the
+  exact branch or diff being claimed.
+
+### Source Repository Maintenance
+
+The source checkout also includes repository-maintenance scripts for plugin
+authors and release work. These are not installed as end-user Codex command
+surfaces by the marketplace plugin; use them when you are developing or
+validating this repository itself.
+
+- **Plugin configuration validator**: checks manifest metadata, marketplace
+  registration, MCP entries, LSP catalog entries, skill frontmatter, agent
+  definitions, and release metadata together.
+- **Workflow contract validators**: check child-lane ownership claims,
+  completion handoffs, dirty-state exceptions, merge-message issue references,
+  and review-readiness evidence.
+- **Version synchronization helper**: checks or updates plugin and marketplace
+  versions as one release surface.
+
+### Work Planning and Ownership Model
 
 #### Task Intake
 
@@ -70,8 +129,8 @@ release preparation, plugin packaging, and long-running implementation loops.
   decisions, merge readiness, and post-merge synchronization.
 - **Child worktree threads**: own implementation and review-response patches for
   a specific branch and issue-sized lane.
-- **Specialist roles**: assist with focused analysis, implementation advice, QA,
-  or current-diff review, but do not become branch owners.
+- **Specialist subagents**: assist with focused analysis, implementation advice,
+  QA, or current-diff review, but do not become branch owners.
 - **Ownership evidence**: records which surface owns the branch and which
   surfaces only assisted, so review feedback is sent to the right place.
 
@@ -84,7 +143,7 @@ release preparation, plugin packaging, and long-running implementation loops.
 - **Handoff discipline**: requires the next owner to receive the branch, head
   commit, evidence, blocker, and stop condition instead of vague status prose.
 
-### 2. Verification and Review Gates
+### Verification and Review Gates
 
 #### Repository Validators
 
@@ -115,49 +174,7 @@ release preparation, plugin packaging, and long-running implementation loops.
 - **Stop-condition reporting**: reports the exact blocker when a PR cannot be
   merged instead of treating an open PR as finished work.
 
-### 3. Repository Intelligence
-
-#### Code and Configuration Discovery
-
-- **Codegraph access**: gives Codex a repository graph for finding relevant
-  files, symbols, dependency neighbors, and validation touchpoints before
-  editing.
-- **Direct-read discipline**: pairs graph results with exact file reads, so
-  patches are based on the current repository state rather than guessed
-  structure.
-- **Touched-surface awareness**: keeps validation focused on the files and
-  contracts changed by the active lane.
-
-#### Language and Tooling Visibility
-
-- **LSP status checks**: records whether language diagnostics are registered,
-  callable, and usable in the active workspace.
-- **MCP visibility checks**: distinguishes configured MCP servers from tools
-  that are actually exposed to the current Codex session.
-- **Exposure-mismatch handling**: treats missing expected tools as a workflow
-  defect to capture and route, not as a silent fallback.
-
-### 4. Specialist Role Pack
-
-#### Work Roles
-
-- **Repository mapping**: helps locate affected files, ownership boundaries,
-  nearby tests, and likely validation surfaces.
-- **Implementation and refactoring**: supports focused code, documentation,
-  validator, and workflow-rule changes inside an issue-sized lane.
-- **Release preparation**: supports manifest, marketplace, version, archive,
-  and release-note work.
-
-#### Review Roles
-
-- **Current-diff review**: checks the active branch or diff for regressions,
-  missing verification, stale evidence, and workflow-rule violations.
-- **Sentinel gate**: provides the packaged final reviewer expectation for
-  non-trivial lanes before PR readiness.
-- **Review-feedback routing**: sends actionable PR feedback back to the lane
-  owner instead of letting another surface patch over ownership boundaries.
-
-### 5. Plugin Packaging and Release Support
+### Plugin Packaging and Release Support
 
 #### Marketplace Readiness
 
@@ -184,19 +201,3 @@ release preparation, plugin packaging, and long-running implementation loops.
   registrations.
 - **Fresh-session guidance**: makes restart or new-session checks explicit when
   newly installed plugin surfaces are not visible in the active session.
-
-## Repository Contributor Tools
-
-The source checkout also includes maintenance scripts for people developing this
-repository itself. These scripts are useful for CI, release preparation, and
-local repository validation, but they are not presented as end-user Codex
-commands by the installed marketplace plugin.
-
-- **Plugin configuration validator**: checks manifest metadata, marketplace
-  registration, MCP entries, LSP catalog entries, instruction frontmatter,
-  agent definitions, and release metadata together.
-- **Workflow contract validators**: check child-lane ownership claims,
-  completion handoffs, dirty-state exceptions, merge-message issue references,
-  and review-readiness evidence.
-- **Version synchronization helper**: checks or updates plugin and marketplace
-  versions as one release surface.
