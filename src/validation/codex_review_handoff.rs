@@ -109,7 +109,7 @@ fn is_codex_review_output_item(item: &Value) -> bool {
         return false;
     }
     is_inline_review_comment_item(item)
-        || text_field(item, "body")
+        || non_blank_text_field(item, "body")
             .or_else(|| text_field(item, "state"))
             .is_some_and(is_review_output_text)
 }
@@ -225,6 +225,10 @@ fn is_boundary(character: Option<char>) -> bool {
 
 fn text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
+}
+
+fn non_blank_text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+    text_field(value, key).filter(|text| !text.trim().is_empty())
 }
 
 fn iter_json_objects(value: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {

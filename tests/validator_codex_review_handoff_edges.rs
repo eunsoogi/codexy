@@ -69,6 +69,30 @@ fn validator_cli_allows_non_codex_review_approval_wait_state() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review approved on the current head. PR is merge-ready.\n",
+        r#"{
+            "number":156,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "reviewDecision":"APPROVED",
+            "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+            "comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],
+            "reviews":[{"body":"","state":"APPROVED","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}]
+        }"#,
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should accept empty-body Codex approval review state as output\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn eyes_only_pr_state() -> &'static str {
     r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
 }
