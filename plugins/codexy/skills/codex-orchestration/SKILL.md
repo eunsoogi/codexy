@@ -511,6 +511,12 @@ child-owned implementation lane through another surface.
    `thread/start` and `turn/start` events. Do not report the tools absent or
    block the lane only because `tool_search` missed them when those events
    exist.
+   If `tool_search` or the visible tool surface discovers a Codex app thread
+   tool such as `read_thread` or `set_thread_title`, but invocation fails with
+   `No handler registered for tool: ...`, record both surfaces as a
+   dogfooding/tool-exposure defect: the discovered or listed tool metadata and
+   the runtime missing-handler evidence. Do not treat handler-missing evidence
+   as an ordinary unavailable-tool fallback.
 3. Treat app-server-observed `thread/start` and `turn/start` evidence from a
    freshly created child lane as proof that a real Codex thread started. Record
    the observed event source, issue or lane, branch or worktree target when
