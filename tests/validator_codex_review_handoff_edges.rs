@@ -54,6 +54,21 @@ fn validator_cli_accepts_later_inline_codex_review_comment() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_allows_non_codex_review_approval_wait_state() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Maintainer review approved; Codex review is not complete.\n",
+        eyes_only_pr_state(),
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should not treat unrelated review approval as Codex readiness\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn eyes_only_pr_state() -> &'static str {
     r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
 }

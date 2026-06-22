@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr ready|pull-request-ready|pull request ready|review passed|review completed|review complete|review approved";
+const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr ready|pull-request-ready|pull request ready|codex review passed|codex review completed|codex review complete|codex review approved";
 const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
