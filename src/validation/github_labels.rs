@@ -110,12 +110,20 @@ fn string_field(value: &Value, keys: &[&str]) -> Vec<String> {
 fn has_label_consideration_evidence(handoff: &str) -> bool {
     handoff.lines().any(|line| {
         let line = line.to_ascii_lowercase();
-        ["labels considered", "label consideration", "labels applied"]
+        ["labels considered", "label consideration"]
+            .into_iter()
+            .any(|phrase| line.contains(phrase))
+            && [
+                "no matching",
+                "no-match",
+                "no applicable",
+                "not applicable",
+                "not-applicable",
+            ]
             .into_iter()
             .any(|phrase| line.contains(phrase))
             && ![
                 "missing",
-                "none",
                 "empty",
                 "absent",
                 "not applied",

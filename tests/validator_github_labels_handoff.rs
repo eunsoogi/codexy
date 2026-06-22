@@ -103,6 +103,24 @@ fn validator_accepts_codexy_readiness_with_label_consideration_evidence() -> Tes
 }
 
 #[test]
+fn validator_rejects_stale_applied_label_claim_without_state_labels() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "PR-readiness evidence: all gates passed. Labels applied: type/fix, status/review.\n",
+        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[],"closingIssuesReferences":[{"number":180,"labels":[]}]}"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject stale textual label application claims without captured GitHub label state\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("PR labels"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("issue #180 labels"));
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_user_repo_without_codexy_label_taxonomy() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "PR is merge-ready after verification.\n",
