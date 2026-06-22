@@ -7,6 +7,7 @@ mod child_lane_ownership_setup;
 mod child_lane_ownership_setup_markers;
 mod child_lane_thread_tools;
 mod completion_handoff;
+mod completion_handoff_compaction;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;
