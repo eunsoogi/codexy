@@ -142,6 +142,7 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
+        "scripts/generate-release-changelog",
         "tags:",
         "\"v*\"",
         "Generate commit-log changelog",
@@ -197,6 +198,8 @@ fn check_changelog_script(path: &Path) -> Result<()> {
         .with_context(|| format!("reading {}", display_relative(path)))?;
     for required in [
         "git log --pretty=format:'- %s (%h)'",
+        "git tag --merged \"$release_tag\"",
+        "grep -vxF \"$release_tag\"",
         "changelog_body=\"$(",
         "if [ -n \"$changelog_body\" ]; then",
         "printf '%s\\n' \"$changelog_body\"",

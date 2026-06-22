@@ -5,7 +5,7 @@ release_tag="${1:?release tag required}"
 previous_tag="${2:-}"
 
 if [ -z "$previous_tag" ]; then
-  previous_tag="$(git tag --sort=-creatordate | grep -v "^${release_tag}$" | head -n 1 || true)"
+  previous_tag="$(git tag --merged "$release_tag" --sort=-creatordate | grep -vxF "$release_tag" | head -n 1 || true)"
 fi
 
 echo "## Codexy ${release_tag}"
