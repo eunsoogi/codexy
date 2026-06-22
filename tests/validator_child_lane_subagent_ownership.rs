@@ -181,6 +181,16 @@ Parent implementation setup: none
 Maintainer reassignment: none
 "#,
         r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: codexy-forge
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: codexy-pathfinder
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
 Subthread/worktree owner: reviewer agent Gauss; reviewer only
 Parent implementation setup: none
 Maintainer reassignment: none

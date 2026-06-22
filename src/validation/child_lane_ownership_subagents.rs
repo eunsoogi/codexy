@@ -1,5 +1,7 @@
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 
+const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
+
 pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
     evidence
         .lines()
@@ -109,10 +111,12 @@ fn has_subagent_surface(value: &str) -> bool {
         "explorer agent",
         "reviewer agent",
         "reviewer gate",
-        "codexy-sentinel",
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
+        || CODEXY_SPECIALIST_AGENTS
+            .split_whitespace()
+            .any(|marker| value.contains(marker))
 }
 
 fn has_subagent_owner_assignment(value: &str) -> bool {

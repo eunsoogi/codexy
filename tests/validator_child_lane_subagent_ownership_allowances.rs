@@ -127,6 +127,31 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_non_agent_codexy_slugs_in_non_child_owner_decisions()
+-> Result<(), Box<dyn std::error::Error>> {
+    for evidence in [
+        r#"Owner decision: parent-owned for codexy-mcp-lsp validation
+Parent implementation setup: parent owns implementation
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: current-thread-owned for codexy-mcp-codegraph validation
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
+
+        assert!(
+            output.status.success(),
+            "validator should allow non-agent Codexy slugs in non-child owner decisions\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_allows_no_subagent_substitute_exposure_blocker()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
