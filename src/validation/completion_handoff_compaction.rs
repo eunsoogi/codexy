@@ -61,6 +61,25 @@ fn has_codexy_orchestration_contract(text: &str) -> bool {
 }
 
 fn has_duplicate_or_no_active_work_state(text: &str) -> bool {
+    text.lines().any(|line| {
+        let line = line.trim();
+        duplicate_state_value(line)
+            .is_some_and(|state| has_real_value(state) && has_duplicate_state_phrase(state))
+    })
+}
+
+fn duplicate_state_value<'a>(line: &'a str) -> Option<&'a str> {
+    [
+        "duplicate/no-active-work state",
+        "duplicate state",
+        "no-active-work state",
+        "no active work state",
+    ]
+    .iter()
+    .find_map(|label| field_value(line, label))
+}
+
+fn has_duplicate_state_phrase(text: &str) -> bool {
     has_any(
         text,
         &[
@@ -97,6 +116,10 @@ fn has_authoritative_stop_condition(text: &str) -> bool {
 }
 
 fn stop_condition_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
+    field_value(line, label)
+}
+
+fn field_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
     line.strip_prefix(label)
         .and_then(|rest| {
             rest.strip_prefix(':')
@@ -138,12 +161,42 @@ fn starts_with_boundary(rest: &str) -> bool {
 }
 
 fn has_git_graph_log_preflight(text: &str) -> bool {
-    text.lines().any(|line| {
-        let line = line.trim();
-        has_all_git_preflight_commands(line)
-            && has_positive_git_preflight_evidence(line)
-            && !has_negated_git_preflight_evidence(line)
+    let lines: Vec<_> = text.lines().map(str::trim).collect();
+    lines.iter().enumerate().any(|(index, line)| {
+        is_git_preflight_line(line) && has_positive_git_preflight_evidence(line) && {
+            let block = git_preflight_block(&lines, index);
+            has_all_git_preflight_commands(&block) && !has_negated_git_preflight_evidence(line)
+        }
     })
+}
+
+fn is_git_preflight_line(line: &str) -> bool {
+    line.contains("git graph/log preflight") || line.contains("git preflight")
+}
+
+fn git_preflight_block(lines: &[&str], start: usize) -> String {
+    let mut block = String::new();
+    for (index, line) in lines.iter().enumerate().skip(start) {
+        if index > start && starts_handoff_section(line) {
+            break;
+        }
+        block.push_str(line);
+        block.push('\n');
+    }
+    block
+}
+
+fn starts_handoff_section(line: &str) -> bool {
+    [
+        "codexy orchestration contract",
+        "duplicate/no-active-work state",
+        "parent/child ownership boundary",
+        "stop condition",
+        "authoritative stop condition",
+        "next action",
+    ]
+    .iter()
+    .any(|section| line.starts_with(section))
 }
 
 fn has_all_git_preflight_commands(text: &str) -> bool {
