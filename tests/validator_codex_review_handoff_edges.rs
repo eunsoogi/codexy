@@ -35,6 +35,8 @@ fn validator_cli_accepts_later_inline_codex_review_comment() -> TestResult {
                 }]
             }],
             "reviewThreads":{"nodes":[{
+                "isResolved":true,
+                "isOutdated":false,
                 "path":"src/validation/codex_review_handoff.rs",
                 "comments":{"nodes":[{
                     "body":"Use the existing helper here.",
@@ -50,6 +52,43 @@ fn validator_cli_accepts_later_inline_codex_review_comment() -> TestResult {
         "validator should accept later inline Codex comments as review output\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_unresolved_inline_codex_review_comment() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review passed on the current head. PR is merge-ready.\n",
+        r##"{
+            "number":156,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "reviewDecision":"APPROVED",
+            "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+            "comments":[{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-06-22T12:45:06Z",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
+            }],
+            "reviewThreads":{"nodes":[{
+                "isResolved":false,
+                "isOutdated":false,
+                "path":"src/validation/codex_review_handoff.rs",
+                "comments":{"nodes":[{
+                    "body":"Use the existing helper here.",
+                    "url":"https://github.com/eunsoogi/codexy/pull/165#discussion_r3454309679",
+                    "author":{"login":"chatgpt-codex-connector"},
+                    "createdAt":"2026-06-22T12:50:03Z"
+                }]}
+            }]}
+        }"##,
+    )?;
+    assert_rejected_codex_thread(
+        &output,
+        "validator should reject readiness claims with unresolved Codex review threads",
     );
     Ok(())
 }
@@ -97,6 +136,7 @@ fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult 
 fn validator_cli_rejects_unchecked_maintainer_override_with_eyes_only_review() -> TestResult {
     for marker in [
         "- [ ]", "* [ ]", "+ [ ]", "-  [ ]", "*  [ ]", "+  [ ]", "-\t[ ]", "*\t[ ]", "+\t[ ]",
+        "1. [ ]", "2.  [ ]", "3.\t[ ]",
     ] {
         let output = validate_handoff_with_pr_state(
             &format!(
@@ -125,6 +165,20 @@ fn assert_rejected_eyes_only(output: &std::process::Output, message: &str) {
     );
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("eyes-only Codex review request"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn assert_rejected_codex_thread(output: &std::process::Output, message: &str) {
+    assert!(
+        !output.status.success(),
+        "{message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("unresolved Codex review thread"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

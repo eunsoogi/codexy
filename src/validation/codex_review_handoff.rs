@@ -2,6 +2,12 @@ use serde_json::Value;
 const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr ready|pull-request-ready|pull request ready|codex review passed|codex review completed|codex review complete|codex review approved";
 const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
+    if claims_codex_review_ready(handoff) && has_unresolved_codex_review_thread(pr_state) {
+        return vec![format!(
+            "unresolved Codex review thread blocks merge/readiness claims: PR #{}",
+            pr_number(pr_state)
+        )];
+    }
     if claims_codex_review_ready(handoff)
         && has_latest_eyes_request_without_later_codex_output(pr_state)
         && !states_codex_review_override(handoff)
@@ -13,26 +19,37 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     }
     Vec::new()
 }
-
 fn claims_codex_review_ready(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     READY_PHRASES
         .split('|')
         .any(|phrase| has_affirmed_phrase(&text, phrase))
 }
-
 fn states_codex_review_override(handoff: &str) -> bool {
     handoff.lines().any(|line| {
         let line = line.trim_start();
         let text = line.to_ascii_lowercase();
-        (!matches!(line.as_bytes().first(), Some(b'-' | b'*' | b'+'))
-            || !line[1..].trim_start().starts_with("[ ]"))
+        let unordered = matches!(line.as_bytes().first(), Some(b'-' | b'*' | b'+'))
+            && line[1..].trim_start().starts_with("[ ]");
+        let ordered = line.split_once('.').is_some_and(|(number, rest)| {
+            !number.is_empty()
+                && number.chars().all(|character| character.is_ascii_digit())
+                && rest.trim_start().starts_with("[ ]")
+        });
+        !unordered
+            && !ordered
             && OVERRIDE_PHRASES
                 .split('|')
                 .any(|phrase| has_affirmed_phrase(&text, phrase))
     })
 }
-
+fn has_unresolved_codex_review_thread(pr_state: &Value) -> bool {
+    iter_json_objects(pr_state).any(|item| {
+        item.get("isResolved").and_then(Value::as_bool) == Some(false)
+            && item.get("isOutdated").and_then(Value::as_bool) != Some(true)
+            && iter_json_objects(item).any(is_codex_connector_item)
+    })
+}
 fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool {
     let events = review_events(pr_state);
     let Some(latest_eyes_request) = events
@@ -51,7 +68,6 @@ fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool 
         .filter(|(_, event)| is_after_event(event, &events[latest_eyes_request]))
         .any(|(index, _)| index != latest_eyes_request)
 }
-
 fn review_events(pr_state: &Value) -> Vec<ReviewEvent<'_>> {
     iter_json_objects(pr_state)
         .enumerate()
@@ -71,42 +87,35 @@ fn review_events(pr_state: &Value) -> Vec<ReviewEvent<'_>> {
         })
         .collect()
 }
-
 #[derive(Clone, Copy)]
 struct ReviewEvent<'a> {
     kind: ReviewEventKind,
     timestamp: Option<&'a str>,
     order: usize,
 }
-
 #[derive(Clone, Copy)]
 enum ReviewEventKind {
     EyesRequest,
     CodexOutput,
 }
-
 fn is_after_event(event: &ReviewEvent<'_>, baseline: &ReviewEvent<'_>) -> bool {
     matches!((event.timestamp, baseline.timestamp), (Some(event), Some(baseline)) if event > baseline)
 }
-
 fn compare_event_order(left: &ReviewEvent<'_>, right: &ReviewEvent<'_>) -> std::cmp::Ordering {
     match (left.timestamp, right.timestamp) {
         (Some(left), Some(right)) if left != right => left.cmp(right),
         _ => left.order.cmp(&right.order),
     }
 }
-
 fn event_timestamp(item: &Value) -> Option<&str> {
     ["createdAt", "submittedAt", "updatedAt"]
         .iter()
         .find_map(|field| text_field(item, field))
 }
-
 fn is_codex_review_request_with_eyes(item: &Value) -> bool {
     text_field(item, "body").is_some_and(|body| body.contains("@codex review"))
         && has_eyes_reaction(item)
 }
-
 fn is_codex_review_output_item(item: &Value) -> bool {
     if !is_codex_connector_item(item) {
         return false;
@@ -117,7 +126,6 @@ fn is_codex_review_output_item(item: &Value) -> bool {
             .or_else(|| text_field(item, "state"))
             .is_some_and(is_review_output_text)
 }
-
 fn is_inline_review_comment_item(item: &Value) -> bool {
     ["url", "html_url"]
         .iter()
@@ -128,7 +136,6 @@ fn is_inline_review_comment_item(item: &Value) -> bool {
                 .iter()
                 .any(|field| item.get(*field).is_some())
 }
-
 fn is_codex_connector_item(item: &Value) -> bool {
     ["author", "user"]
         .iter()
@@ -138,14 +145,12 @@ fn is_codex_connector_item(item: &Value) -> bool {
             .get("performed_via_github_app")
             .is_some_and(is_codex_connector_identity)
 }
-
 fn is_codex_connector_identity(value: &Value) -> bool {
     text_field(value, "slug").is_some_and(|slug| slug == "chatgpt-codex-connector")
         || text_field(value, "login").is_some_and(|login| {
             login == "chatgpt-codex-connector" || login == "chatgpt-codex-connector[bot]"
         })
 }
-
 fn is_review_output_text(text: &str) -> bool {
     let text = text.to_ascii_lowercase();
     let output = "didn't find any major issues|no major issues|no actionable issues|no suggestions|no issues|suggestion|review complete|review completed|completed review|finished review|looks good|actionable issue|approved|+1";
@@ -154,14 +159,12 @@ fn is_review_output_text(text: &str) -> bool {
         && !is_review_progress_text(&text)
         && output.split('|').any(|phrase| text.contains(phrase))
 }
-
 fn is_review_progress_text(text: &str) -> bool {
     let future = "will post|will provide|will add|i'll post|i will post|when complete|once complete|after review completes|review is still running|review is in progress|review started";
     let result = "suggestion|finding|issue|comment";
     future.split('|').any(|phrase| text.contains(phrase))
         && result.split('|').any(|phrase| text.contains(phrase))
 }
-
 fn has_eyes_reaction(item: &Value) -> bool {
     item.get("reactionGroups")
         .and_then(Value::as_array)
@@ -210,7 +213,6 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     }
     false
 }
-
 fn is_locally_negated(prefix: &str) -> bool {
     let clause = prefix
         .rsplit_once(['.', '!', '?', ';', ':', '\n'])
@@ -222,15 +224,12 @@ fn is_locally_negated(prefix: &str) -> bool {
         .take(4)
         .any(|word| matches!(word, "no" | "not" | "never" | "without"))
 }
-
 fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())
 }
-
 fn text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
 }
-
 fn iter_json_objects(value: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {
     match value {
         Value::Object(map) => Box::new(
@@ -240,7 +239,6 @@ fn iter_json_objects(value: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {
         _ => Box::new(std::iter::empty()),
     }
 }
-
 fn pr_number(pr_state: &Value) -> String {
     pr_state
         .get("number")
