@@ -14,8 +14,11 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     if !has_parent_child_ownership_boundary(&text) {
         errors.push("compacted continuation evidence missing parent/child ownership boundary: preserve who may edit and who may only orchestrate".into());
     }
+    if !has_authoritative_stop_condition(&text) {
+        errors.push("compacted continuation evidence missing authoritative stop condition: include the current stop condition before continuing".into());
+    }
     if !has_git_graph_log_preflight(&text) {
-        errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, status, head/base refs, and recent graph before editing".into());
+        errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph before editing".into());
     }
     errors
 }
@@ -84,14 +87,58 @@ fn has_parent_child_ownership_boundary(text: &str) -> bool {
     )
 }
 
+fn has_authoritative_stop_condition(text: &str) -> bool {
+    text.lines().any(|line| {
+        let line = line.trim();
+        ["stop condition", "authoritative stop condition"]
+            .iter()
+            .any(|label| stop_condition_value(line, label).is_some_and(has_real_value))
+    })
+}
+
+fn stop_condition_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
+    line.strip_prefix(label)
+        .and_then(|rest| {
+            rest.strip_prefix(':')
+                .or_else(|| rest.strip_prefix(" -"))
+                .or_else(|| rest.strip_prefix(" is "))
+        })
+        .map(str::trim)
+}
+
+fn has_real_value(value: &str) -> bool {
+    !value.is_empty()
+        && ![
+            "none",
+            "false",
+            "no",
+            "not captured",
+            "not available",
+            "not applicable",
+            "not-applicable",
+            "n/a",
+            "na",
+        ]
+        .iter()
+        .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
+}
+
+fn starts_with_boundary(rest: &str) -> bool {
+    rest.chars()
+        .next()
+        .is_none_or(|character| !character.is_ascii_alphanumeric())
+}
+
 fn has_git_graph_log_preflight(text: &str) -> bool {
-    has_any(
-        text,
-        &["git log --graph", "git graph/log", "graph/log preflight"],
-    ) && has_any(
-        text,
-        &["git status", "git rev-parse", "head/base", "head and base"],
-    )
+    [
+        "pwd",
+        "git status --short --branch",
+        "git rev-parse head",
+        "git rev-parse origin/main",
+    ]
+    .iter()
+    .all(|phrase| text.contains(phrase))
+        && text.contains("git log --graph")
 }
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {

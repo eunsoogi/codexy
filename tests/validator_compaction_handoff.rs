@@ -33,7 +33,8 @@ fn validator_cli_accepts_compacted_continuation_with_required_codexy_evidence() 
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
          Duplicate/no-active-work state: PR #170 is a duplicate PR and has no active work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Git graph/log preflight: pwd, git status, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+         Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+         Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.\n\
          Next action: stop without implementation edits.\n",
     )?;
     assert!(
@@ -57,6 +58,99 @@ fn validator_cli_rejects_compacted_continuation_without_git_graph_preflight() ->
     assert!(
         !output.status.success(),
         "validator should reject continuation readiness without git graph/log preflight\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("compacted continuation evidence missing git graph/log preflight"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_compacted_continuation_without_stop_condition() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+         Next action: edit files.\n",
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should reject continuation readiness without authoritative stop condition\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("compacted continuation evidence missing authoritative stop condition"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_empty_or_negated_stop_condition() -> TestResult {
+    for handoff in [
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+         Stop condition:\n\
+         Next action: edit files.\n",
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+         Authoritative stop condition was not captured.\n\
+         Next action: edit files.\n",
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+         Stop condition: none.\n\
+         Next action: edit files.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject empty or negated stop condition evidence\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("compacted continuation evidence missing authoritative stop condition"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_compacted_continuation_with_git_preflight_shorthand() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.\n\
+         Git graph/log preflight: git log --graph and head/base were checked before editing.\n\
+         Next action: stop.\n",
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should reject shorthand git preflight evidence\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
