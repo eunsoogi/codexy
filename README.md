@@ -18,10 +18,28 @@ Codexy is a harness and loop engineering project for Codex. It helps structure, 
 
 ## What's Included
 
-Codexy packages workflow-focused Codex skills, MCP wrappers such as
-`codegraph` and `lsp`, specialist reviewer and helper role definitions,
-validators for proof gates, and release/package helper scripts. Availability
-depends on the installed plugin version and the active Codex session.
+Codexy packages a Codex harness as a plugin: workflow skills, specialist
+roles, MCP/LSP evidence surfaces, validators, and release helpers that make
+agent work easier to steer and easier to prove.
+
+It is aimed at repository work where the agent needs more than a single prompt:
+
+- Orchestration workflows for issue-sized lanes, child worktrees, handoffs,
+  review-response routing, and long-running verification loops.
+- Specialist review roles for planning, pathfinding, QA, and sentinel-style
+  readiness checks before work is handed back or opened as a PR.
+- MCP and LSP surfaces, including `codegraph` and `lsp`, so agents can gather
+  repository evidence, inspect dependencies, and report when expected tools are
+  registered but unavailable in the active session.
+- Validators and release checks for plugin configuration, marketplace metadata,
+  workflow contracts, touched-file size, and completion handoff evidence.
+- Proof-driven GitHub and PR support for branch discipline, current-head
+  review requests, status checks, unresolved review threads, and merge-ready
+  evidence packets.
+
+The root README stays high level on purpose. Executable workflow rules live in
+the packaged skills so first-time users can understand the project without
+needing operational setup details.
 
 ## Installation
 
