@@ -11,6 +11,9 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
+    if let Some(error) = super::completion_handoff_waiting::check(handoff) {
+        return vec![error];
+    }
     if !is_open_pr(&pr_state) || !claims_completion(handoff) || states_explicit_deferral(handoff) {
         return Vec::new();
     }

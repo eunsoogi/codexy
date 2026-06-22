@@ -1,0 +1,159 @@
+use std::{path::Path, process::Command};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
+
+#[test]
+fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
+    for handoff in [
+        "Blocked: current-head @codex review request has an eyes reaction and is still pending.\n",
+        "Blocked: current-head @codex review comment has an eyes reaction and is still pending.\n",
+        "Blocked: pending @codex review request has no actionable feedback yet.\n",
+        "Blocked: missing Codex review response is pending.\n",
+        "Blocked.\nWaiting: pending Codex review is still processing.\n",
+        "Goal blocked because child-thread work is still pending.\n",
+        "Goal blocked.\nPending child thread response.\n",
+        "Goal blocked until Codex connector review returns.\n",
+        "Goal blocked until child thread returns.\n",
+        "Blocker: queued worktree setup has not completed yet.\n",
+        "Blocked on asynchronous tool completion.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject non-blocking wait classified as blocked\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("waiting state"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_true_impasse_blocked_handoff() -> TestResult {
+    accept_open_pr_handoff(
+        "Blocked after repeated true impasse: cannot make meaningful progress without maintainer input.\n",
+        "validator should preserve true impasse blocked handoffs",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
+    for handoff in [
+        "Blocked: required security review is still pending.\n",
+        "Blocked: required security review is still pending.\nWaiting: pending Codex review is still processing.\n",
+        "Blocked: required security review is still pending; waiting for pending Codex review is still processing.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should not treat real blockers plus separate waiting evidence as false blocked claims",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
+    for handoff in [
+        "Blocked: Codex review requested changes remain unresolved.\n",
+        "Blocked: Codex review feedback is pending resolution.\n",
+        "Blocked: current-head Codex review feedback is pending resolution.\n",
+        "Blocked: current-head @codex review request has pending actionable feedback.\n",
+        "Blocked until Codex review feedback is pending resolution and the connector returns.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should preserve actionable Codex review blockers",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
+    for handoff in [
+        "Blocked: child thread omitted required goal tool evidence.\n",
+        "Blocked until child thread returns required goal tool evidence.\n",
+        "Blocked: child thread is still pending required goal tool evidence.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should preserve missing child-lane evidence blockers",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
+    for handoff in [
+        "Not a blocker: pending Codex review is still processing.\n",
+        "Blockers: None.\nNot a blocker: pending Codex review is still processing.\n",
+        "Blockers: None.\nWaiting: pending Codex review is still processing.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should allow waiting evidence that is not classified as blocked",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_failed_setup_blockers() -> TestResult {
+    for handoff in [
+        "Blocked: worktree setup failed because the requested base branch does not exist.\n",
+        "Blocked: thread setup failed with fatal invalid reference.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should preserve real setup failure blockers",
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-completion-handoff",
+            "--handoff-file",
+            handoff_path.to_str().ok_or("handoff path")?,
+            "--pr-state-file",
+            pr_state_path.to_str().ok_or("pr state path")?,
+        ])
+        .output()?)
+}
+
+fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
+    let output = validate_open_pr_handoff(handoff)?;
+    assert!(
+        output.status.success(),
+        "{failure_message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
+    let temp = tempfile::tempdir()?;
+    let handoff_path = temp.path().join("handoff.md");
+    let pr_state_path = temp.path().join("pr-state.json");
+    std::fs::write(&handoff_path, handoff)?;
+    std::fs::write(&pr_state_path, pr_state)?;
+    validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
+    validate_handoff_with_pr_state(
+        handoff,
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+    )
+}
