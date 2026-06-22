@@ -60,10 +60,11 @@ fn executable_names(executable: &str) -> Vec<String> {
     if Path::new(executable).extension().is_some() {
         return names;
     }
+    if !cfg!(windows) {
+        return names;
+    }
     let Some(pathext) = std::env::var_os("PATHEXT") else {
-        if cfg!(windows) {
-            names.push(format!("{executable}.exe"));
-        }
+        names.push(format!("{executable}.exe"));
         return names;
     };
     for extension in pathext.to_string_lossy().split(';') {
