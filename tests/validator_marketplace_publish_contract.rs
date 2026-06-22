@@ -38,10 +38,16 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
     for trigger in ["push:", "pull_request:"] {
         let trigger_text = workflow_trigger_block(&workflow, trigger)
             .ok_or_else(|| format!("runtime workflow missing {trigger}"))?;
-        assert!(
-            trigger_text.contains("plugins/codexy/hooks/**"),
-            "runtime workflow {trigger} paths must include hooks"
-        );
+        for required_path in [
+            "plugins/codexy/hooks/**",
+            "plugins/codexy/agents/**",
+            "plugins/codexy/skills/codex-orchestration/scripts/**",
+        ] {
+            assert!(
+                trigger_text.contains(required_path),
+                "runtime workflow {trigger} paths must include {required_path}"
+            );
+        }
     }
     for forbidden in [
         "Publish generated marketplace snapshot",
