@@ -349,7 +349,11 @@ Codex review completion signals include:
 - Inline review comments or review suggestions from `chatgpt-codex-connector`; these are complete review output, but actionable comments block merge until fixed or explicitly accepted by a human maintainer.
 - A top-level PR comment from `chatgpt-codex-connector` that contains actual review results, suggestions, or no-issue/no-suggestion wording; this is also Codex review output, even when no GitHub review object appears.
 - A Codex comment such as `Didn't find any major issues` or equivalent no-suggestion wording; this means the reviewed head has no major actionable suggestions.
-- A Codex thumbs-up/no-suggestion result, such as `+1` or a thumbs-up reaction, when no inline suggestions are produced; this is acceptable only after confirming it applies to the latest PR head.
+
+Aggregate PR or comment reactions alone are not Codex review completion
+signals because the captured PR state does not prove which actor supplied the
+reaction. Require connector-authored review text, inline review output, a
+recognized no-suggestion body, or an explicit maintainer override.
 
 Setup or environment comments, such as `create an environment for this repo`,
 are connector responses but not review content and not review completion. Treat

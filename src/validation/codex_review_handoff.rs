@@ -132,6 +132,7 @@ fn is_review_output_text(text: &str) -> bool {
     let text = text.to_ascii_lowercase();
     !text.trim().eq("@codex review")
         && !text.contains("create an environment for this repo")
+        && !is_review_progress_text(&text)
         && [
             "didn't find any major issues",
             "no major issues",
@@ -150,6 +151,13 @@ fn is_review_output_text(text: &str) -> bool {
         ]
         .iter()
         .any(|phrase| text.contains(phrase))
+}
+
+fn is_review_progress_text(text: &str) -> bool {
+    let future = "will post|will provide|will add|i'll post|i will post|when complete|once complete|after review completes|review is still running|review is in progress|review started";
+    let result = "suggestion|finding|issue|comment";
+    future.split('|').any(|phrase| text.contains(phrase))
+        && result.split('|').any(|phrase| text.contains(phrase))
 }
 
 fn has_eyes_reaction(item: &Value) -> bool {
@@ -183,7 +191,6 @@ fn has_eyes_reaction(item: &Value) -> bool {
                 _ => false,
             })
 }
-
 fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;

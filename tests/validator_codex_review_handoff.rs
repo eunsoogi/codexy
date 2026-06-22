@@ -114,7 +114,7 @@ fn validator_cli_rejects_codex_progress_comment_after_eyes_request() -> TestResu
                     "users":{"totalCount":1}
                 }]
             },{
-                "body":"Review started; I will post findings when complete.",
+                "body":"Review started; I will post suggestions when complete.",
                 "author":{"login":"chatgpt-codex-connector[bot]"},
                 "createdAt":"2026-06-22T10:01:00Z"
             }]

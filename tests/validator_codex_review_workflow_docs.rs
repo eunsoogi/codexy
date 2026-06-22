@@ -1,0 +1,18 @@
+#[test]
+fn git_workflow_does_not_accept_thumbs_up_only_codex_completion()
+-> Result<(), Box<dyn std::error::Error>> {
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/git-workflow/SKILL.md"),
+    )?;
+
+    assert!(
+        !skill.contains("thumbs-up reaction"),
+        "aggregate thumbs-up reactions do not prove the actor was Codex"
+    );
+    assert!(
+        !skill.contains("such as `+1`"),
+        "Codex completion signals should require connector-authored output, not bare reactions"
+    );
+    Ok(())
+}
