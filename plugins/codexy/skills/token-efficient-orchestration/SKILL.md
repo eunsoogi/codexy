@@ -29,7 +29,12 @@ Never compress away these current facts for an active lane:
 - verification commands and results,
 - merge readiness or explicit wait/stop condition.
 
-If any gate is missing, refresh that gate directly instead of inferring it from
+Some lane gates legitimately do not exist yet, especially in issue-only,
+pre-PR, parent-owned, or pre-review loops. Record those slots explicitly as
+not-created or not-applicable states with a short reason instead of inventing
+evidence or stalling the lane. Use those states only when the gate genuinely
+does not apply or has not been created yet. For gates that should exist for the
+current lane, refresh existing gates directly instead of inferring them from
 older context.
 
 ## Token Budget Loop

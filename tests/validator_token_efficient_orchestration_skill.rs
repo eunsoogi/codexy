@@ -20,6 +20,8 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "current head SHA and base SHA",
         "Codex review state for the current head",
         "unresolved review thread ids",
+        "not-created or not-applicable",
+        "refresh existing gates",
         "Poll by delta",
         "delta since last poll",
         "stale/demoted",
