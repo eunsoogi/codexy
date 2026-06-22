@@ -158,10 +158,12 @@ fn is_exact_child_header_metadata_line(line: &str) -> bool {
 }
 fn is_parent_owned_owner_boundary(line: &str) -> bool {
     field_value(line, "owner").is_some_and(is_parent_owned_value)
+        || field_value(line, "owner decision").is_some_and(is_parent_owned_value)
 }
 fn is_affirmative_child_owned_line(line: &str) -> bool {
     has_present_child_owner_metadata(line)
         || field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)
+        || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
         || field_value(line, "child-owned")
             .is_some_and(|value| !has_absent_field_value(value, "child-owned"))
         || matches!(trimmed_value(line), "child-owned" | "child-owned lane")
@@ -183,6 +185,42 @@ fn is_affirmative_child_owned_value(value: &str) -> bool {
 fn is_parent_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
     value.starts_with("parent-owned") && !value.contains("not parent-owned")
+}
+fn is_child_delegation_owner_decision(value: &str) -> bool {
+    let value = trimmed_value(value);
+    is_affirmative_child_owned_value(value)
+        || (!has_negated_child_routing_requirement(value)
+            && has_child_delegation(value)
+            && has_routing_only_parent_context(value))
+}
+fn has_child_delegation(value: &str) -> bool {
+    (value.contains("child delegation")
+        || value.contains("child-lane setup")
+        || value.contains("child routing")
+        || value.contains("thread/worktree tool discovery")
+        || value.contains("thread tool discovery")
+        || value.contains("worktree tool discovery"))
+        && !value.contains("without child delegation")
+}
+fn has_routing_only_parent_context(value: &str) -> bool {
+    value.contains("routing-only")
+        || value.contains("coordination-only")
+        || value.contains("delegation-only")
+        || value.contains("child routing required")
+        || value.contains("tool discovery only")
+        || value.contains("tool-discovery-only")
+}
+fn has_negated_child_routing_requirement(value: &str) -> bool {
+    let value = value.replace("child-routing", "child routing");
+    [
+        "no child routing required",
+        "child routing not required",
+        "no child routing is required",
+        "child routing is not required",
+        "without child routing",
+    ]
+    .into_iter()
+    .any(|marker| value.contains(marker))
 }
 fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
