@@ -32,7 +32,13 @@ The current repository marketplace entry is registered with:
 codex plugin marketplace add eunsoogi/codexy --ref main
 ```
 
-After installation, verify that Codex can see the plugin and its MCP servers:
+Then install the plugin from that marketplace:
+
+```sh
+codex plugin add codexy@codexy
+```
+
+After installation, verify that Codex can see the plugin and MCP servers:
 
 ```sh
 codex plugin list
@@ -40,98 +46,81 @@ codex mcp list
 ```
 
 Restart Codex or open a fresh Codex session after installation if newly
-installed skills, specialist roles, or MCP tools do not appear in the active
-session.
+installed plugin, skill, or MCP surfaces do not appear in the active session.
 
 ## What Codexy Provides
 
-Codexy is for Codex sessions that need durable workflow control: issue-sized
+Codexy is for Codex sessions that need durable workflow control: scoped
 implementation lanes, isolated worktrees, review-response routing, verification
-evidence, and PRs that should not merge until the current head is actually
-reviewed.
+evidence, and PRs that remain understandable after several agent turns.
 
 ### Orchestration and Lane Control
 
-- **Task classification before action**: Codexy makes the agent name the lane
-  type, owner, scope, required evidence, and first allowed action before it
-  starts setup, edits, PR handling, or merge work. This prevents broad requests
-  from turning into one tangled branch.
-- **Issue-sized lane decomposition**: independent outcomes are split into
-  separate branches, worktrees, and PRs. Parent orchestration stays focused on
-  routing and integration, while child worktree threads own implementation.
-- **Goal and plan discipline**: long-running work keeps visible goal and plan
-  state, so waiting on child threads, reviews, or asynchronous tools remains an
-  active workflow instead of disappearing into vague "done soon" status.
-- **Parent/child ownership boundaries**: Codexy distinguishes true Codex
-  worktree threads from helper agents. Branch-and-PR implementation work stays
-  with the owning child thread, and review feedback is routed back to that
-  owner instead of being patched casually from the parent.
+- **Task classification**: Codexy helps the agent name the kind of work, the
+  owner, the scope, and the evidence that will prove progress before work
+  spreads across files or branches.
+- **Issue-sized lanes**: broad requests can be split into focused branches,
+  worktrees, and PRs, so unrelated outcomes do not get bundled into one review.
+- **Goal and plan state**: long-running work keeps visible progress markers for
+  handoffs, review waits, verification, and follow-up steps.
+- **Parent/child boundaries**: orchestration stays separate from implementation
+  ownership, which makes it clearer who should patch, verify, and respond to
+  review feedback.
 
 ### Specialist Roles and Review Gates
 
-- **Purpose-built specialist roles**: Codexy includes roles for planning,
+- **Purpose-built roles**: Codexy packages focused roles for planning,
   architecture, implementation, refactoring, QA, release work, workflow safety,
-  and repository mapping. They give agents a clearer division of labor than a
-  single all-purpose assistant loop.
-- **Sentinel readiness review**: non-trivial lanes end with a reviewer gate
-  that checks the current diff, exact head, scope, verification output, and
-  evidence before PR readiness is claimed.
-- **Helper roles without ownership confusion**: specialist agents can explore,
-  review, or assist inside a lane, but they do not replace the Codex worktree
-  thread that owns a branch, PR, or review-response fix.
-- **Review-feedback routing**: when GitHub or Codex review comments land on a
-  child-owned PR, Codexy routes the feedback to the owner with the PR number,
-  head SHA, comments, expected evidence, and stop condition.
+  and repository mapping.
+- **Readiness review**: sentinel-style review gives a second pass over scope,
+  evidence, and verification before a lane is handed back or presented as PR
+  ready.
+- **Clear helper semantics**: specialist help is treated as assistance inside a
+  lane, while worktree-based implementation remains tied to the branch and PR
+  that users can inspect.
+- **Review response support**: review comments can be routed back into the
+  lane that owns the change, preserving context for the fix and follow-up
+  evidence.
 
 ### Evidence Surfaces: MCP, LSP, and Repository Exploration
 
-- **Codegraph exploration**: the `codegraph` surface helps agents find relevant
-  files, dependencies, and nearby implementation surfaces before they edit.
-  Direct file reads still confirm the final context.
-- **Language-aware checks**: the `lsp` surface records whether a matching
-  language server is configured and usable. When a server is missing or
-  unavailable, the handoff records that fact instead of pretending diagnostics
-  ran.
-- **Tool exposure evidence**: Codexy treats "registered" and "callable in this
-  session" as different facts. If a packaged tool is expected but unavailable,
-  the workflow records the mismatch as evidence.
-- **Repository-native proof**: evidence is captured from local commands,
-  validators, PR state, review threads, checks, and tool output that the next
-  agent or maintainer can inspect.
+- **Codegraph exploration**: `codegraph` helps agents find relevant files,
+  dependencies, and nearby surfaces before they edit.
+- **Language-aware checks**: `lsp` records whether a matching language server
+  is configured and usable for the files under review.
+- **Tool availability evidence**: Codexy distinguishes configured tools from
+  tools that are actually callable in the active session.
+- **Repository-native proof**: command output, validator results, PR state,
+  review threads, and tool output become evidence that another agent or
+  maintainer can inspect.
 
 ### Validators and Proof-Driven Completion
 
-- **Plugin configuration validation**: validators check manifest metadata,
-  marketplace registration, MCP/LSP config, skills, specialist role metadata,
-  and release contracts.
-- **Completion-handoff checks**: Codexy can reject handoffs that claim
-  completion while a PR is still open, review threads are unresolved, review
-  evidence is stale, or Codex review is only acknowledged with `eyes`.
-- **Child-lane ownership checks**: evidence that assigns implementation
-  ownership to the wrong surface is treated as a workflow defect before PR
-  readiness.
-- **Touched-file size checks**: implementation and test-harness files are kept
-  small enough to review unless a narrow, tracked exception exists.
-- **Proof before claims**: a lane is not considered ready because tests passed
-  once. The proof has to match the current files, current commit, current PR
-  head, and the external surface being claimed.
+- **Plugin configuration validation**: validators cover manifest metadata,
+  marketplace registration, MCP/LSP configuration, skills, role metadata, and
+  release contracts.
+- **Completion evidence checks**: handoff evidence can be checked against PR
+  state, review status, and current-head review output before a lane is called
+  ready.
+- **Ownership evidence checks**: child-lane evidence helps catch confusion
+  between orchestration, helper work, and branch-owning implementation.
+- **Reviewable file sizes**: touched implementation and test-harness files can
+  be checked against local size targets to keep reviews manageable.
+- **Current-state proof**: Codexy emphasizes evidence that matches the current
+  files, commit, PR head, and external surface being discussed.
 
 ### GitHub, PR, and Merge Workflow Support
 
-- **Branch and PR discipline**: work starts from an issue-sized scope, lands on
-  a topic branch, and opens a structured PR with summary, rationale, changed
-  areas, verification, not-run notes, follow-ups, and the final issue link.
-- **Current-head review handling**: Codex review requests are tied to the PR
-  head. If new commits land, old review output is stale; an `eyes` reaction is
-  only an acknowledgement that review is in progress.
-- **Review thread cleanup**: actionable review comments and unresolved threads
-  block merge until fixed, verified on the current head, and resolved or
-  explicitly accepted as no-change by a maintainer.
-- **Squash-merge safety**: merge flow preserves the PR body, validates issue
-  references, uses the reviewed head, deletes branches, and verifies the main
-  worktree after merge.
-- **Post-merge synchronization**: after merge, Codexy expects main to be
-  refreshed and the merge evidence checked before the lane is reported done.
+- **Structured PRs**: Codexy encourages PRs with clear summaries, rationale,
+  changed areas, verification, not-run notes, follow-ups, and issue links.
+- **Current-head review awareness**: review evidence is associated with the PR
+  head it reviewed, which helps users spot stale feedback after new commits.
+- **Review thread visibility**: actionable comments and unresolved threads stay
+  visible as part of the readiness picture.
+- **Squash-merge support**: merge helpers focus on preserving PR body context,
+  issue references, branch cleanup, and post-merge verification.
+- **Post-merge evidence**: refreshed main state and merge-message checks help
+  prove that the repository ended up where the PR said it would.
 
 ### Release and Plugin Packaging Support
 
