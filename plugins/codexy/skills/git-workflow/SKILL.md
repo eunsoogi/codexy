@@ -319,6 +319,13 @@ When a PR was produced by a delegated child Codex worktree thread, the
 plugin-invoking parent thread is the orchestrator, not the implementation
 worker for that lane.
 
+Parent issue setup, PR or issue comments, branch-name planning, handoff text,
+and thread/worktree tool discovery are coordination. Parent-created
+implementation branches, implementation worktrees, implementation file reads
+for a parent patch, and file edits are implementation setup and require
+explicit maintainer reassignment before the parent may do them for a child-owned
+or routing-only lane.
+
 - The child thread owns implementation edits, local verification, and
   review-response fixes for its assigned issue-sized lane.
 - For any lane that needs its own branch, worktree, PR, or durable child

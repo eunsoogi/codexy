@@ -116,6 +116,14 @@ Restart Codex or start a fresh session after registration before expecting new
 Run this checkpoint before any implementation edit when a lane may need a
 branch, worktree, PR, durable child context, or review-response ownership:
 
+Issue creation, PR or issue commenting, branch-name planning, handoff drafting,
+and thread/worktree tool discovery are parent coordination. Creating an
+implementation branch, creating an implementation worktree, reading
+implementation files as setup for a parent patch, or editing files is
+implementation setup and is not allowed for a child-owned or routing-only lane
+unless a maintainer explicitly reassigns implementation ownership to the
+parent.
+
 1. Name the atomic lane and decide ownership as `parent-owned` or
    `child-owned`.
 2. If the lane is `child-owned`, stop parent implementation before editing.
@@ -142,6 +150,12 @@ branch, worktree, PR, durable child context, or review-response ownership:
    `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`
    against that evidence. Treat a failure as a workflow defect unless the same
    evidence records explicit maintainer reassignment to the parent.
+7. A failed first search for thread or worktree tooling is not proof that the
+   tooling is unavailable. Keep discovering the correct surface, inspect
+   `tool_search` or registered tools again with narrower terms, or ask the
+   maintainer for the exact thread/worktree surface. Do not create an
+   implementation branch, read implementation files for a parent patch, or edit
+   files while the stop condition is tool discovery or child-lane routing.
 
 ## Child Thread Titles
 
