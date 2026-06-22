@@ -155,11 +155,21 @@ Subthread/worktree owner: explorer agent Gauss
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: reviewer agent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: codexy-sentinel reviewer gate
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
     ] {
         let output = run_ownership_validator(evidence)?;
         assert!(
             !output.status.success(),
-            "validator should reject role-only spawned agent owners\nstdout:\n{}\nstderr:\n{}",
+            "validator should reject role-only spawned agent or reviewer-gate owners\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );

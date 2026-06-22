@@ -115,6 +115,9 @@ fn has_subagent_surface(value: &str) -> bool {
         "specialist helper",
         "worker agent",
         "explorer agent",
+        "reviewer agent",
+        "reviewer gate",
+        "codexy-sentinel",
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
