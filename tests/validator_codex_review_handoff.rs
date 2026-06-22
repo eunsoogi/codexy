@@ -129,36 +129,35 @@ fn validator_cli_rejects_codex_progress_comment_after_eyes_request() -> TestResu
 
 #[test]
 fn validator_cli_rejects_generic_merge_ready_claim_with_eyes_only_review() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "This branch is PR-ready. This lane is not complete until merge.\n",
-        r#"{
-            "number":156,
-            "state":"OPEN",
-            "isDraft":false,
-            "mergeStateStatus":"CLEAN",
-            "reviewDecision":"APPROVED",
-            "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
-            "comments":[{
-                "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T10:00:00Z",
-                "reactionGroups":[{
-                    "content":"EYES",
-                    "users":{"totalCount":1}
-                }]
-            }]
-        }"#,
-    )?;
-    assert_rejected_eyes_only(
-        &output,
-        "validator should reject generic merge-ready claims with eyes-only Codex review evidence",
-    );
+        "PR is not merge-ready while waiting. After this gate, PR is merge-ready.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
+        assert_rejected_eyes_only(
+            &output,
+            "validator should reject generic merge-ready claims with eyes-only Codex review evidence",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_negated_wait_state_with_eyes_only_review() -> TestResult {
+    for handoff in [
+        "Codex review is not complete. Waiting for review output.\n",
+        "PR is not merge-ready because Codex review is pending.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
+        assert!(output.status.success());
+    }
     Ok(())
 }
 
 #[test]
 fn validator_cli_rejects_negated_maintainer_override_with_eyes_only_review() -> TestResult {
     for handoff in [
+        "No maintainer override provided. Codex review passed. PR is merge-ready.\n",
         "No maintainer override was provided. Codex review passed. PR is merge-ready.\n",
         "Maintainer override: none. Codex review passed. PR is merge-ready.\n",
     ] {

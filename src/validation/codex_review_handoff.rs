@@ -14,8 +14,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 }
 
 fn claims_codex_review_ready(handoff: &str) -> bool {
-    let text = handoff.to_ascii_lowercase();
-    [
+    let phrases = [
         "merge-ready",
         "merge ready",
         "ready to merge",
@@ -29,9 +28,16 @@ fn claims_codex_review_ready(handoff: &str) -> bool {
         "review completed",
         "review complete",
         "review approved",
-    ]
-    .iter()
-    .any(|phrase| has_phrase_with_boundaries(&text, phrase))
+    ];
+    let mut text = handoff.to_ascii_lowercase();
+    for phrase in &phrases {
+        for prefix in ["not yet ", "not ", "no "] {
+            text = text.replace(&format!("{prefix}{phrase}"), "");
+        }
+    }
+    phrases
+        .iter()
+        .any(|phrase| has_phrase_with_boundaries(&text, phrase))
 }
 
 fn states_codex_review_override(handoff: &str) -> bool {
@@ -39,10 +45,6 @@ fn states_codex_review_override(handoff: &str) -> bool {
     [
         "maintainer override: yes",
         "maintainer override: granted",
-        "maintainer override: approved",
-        "maintainer override granted",
-        "maintainer override approved",
-        "maintainer override provided",
         "maintainer accepted proceeding without codex review",
         "maintainer accepted proceeding without full codex review",
         "maintainer explicitly accepted proceeding without codex review",
