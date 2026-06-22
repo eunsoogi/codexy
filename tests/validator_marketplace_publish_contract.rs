@@ -62,6 +62,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
             "plugins/codexy/hooks/**",
             "plugins/codexy/agents/**",
             "plugins/codexy/skills/codex-orchestration/scripts/**",
+            "scripts/generate-release-changelog",
         ] {
             assert!(
                 trigger_text.contains(required_path),
