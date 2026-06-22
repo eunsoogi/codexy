@@ -88,6 +88,16 @@ Parent implementation setup: none
 Maintainer reassignment: none
 "#,
         r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: Codex thread not available; multi_agent_v1 subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: Codex thread was not available; multi_agent_v1 subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
 Subthread/worktree owner: not a Codex thread; multi_agent_v1 subagent Gauss
 Parent implementation setup: none
 Maintainer reassignment: none
@@ -162,6 +172,16 @@ Maintainer reassignment: none
 "#,
         r#"Owner decision: child-owned implementation lane
 Subthread/worktree owner: codexy-sentinel reviewer gate
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: reviewer agent Gauss; reviewer only
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: codexy-sentinel reviewer gate; helper only
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,

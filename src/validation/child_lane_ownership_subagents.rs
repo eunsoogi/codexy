@@ -31,11 +31,11 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if value_is_parent_owned_routing_only(value) {
         return false;
     }
-    if value_denies_subagent_owner(value) {
-        return false;
-    }
     if thread_owner_key(key) {
         return !has_true_codex_thread_owner(value);
+    }
+    if value_denies_subagent_owner(value) {
+        return false;
     }
     !has_true_codex_thread_owner(value)
 }
@@ -175,6 +175,8 @@ fn negates_codex_thread_owner(value: &str) -> bool {
         "codex thread tools unavailable",
         "worktree thread unavailable",
         "child thread unavailable",
+        "thread not available",
+        "thread was not available",
         "not codex worktree thread",
         "not codex child thread",
         "not codex thread",
