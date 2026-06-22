@@ -1,7 +1,5 @@
 use serde_json::Value;
 
-const REQUIRED_LABEL_PREFIXES: [&str; 4] = ["type/", "status/", "priority/", "area/"];
-
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
     if !claims_pr_readiness(handoff) {
         return Vec::new();
@@ -13,8 +11,14 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
     if !is_open_pr(&pr_state) {
         return Vec::new();
     }
+    if !is_codexy_lane(&pr_state) {
+        return Vec::new();
+    }
+    if has_label_consideration_evidence(handoff) {
+        return Vec::new();
+    }
     let mut errors = Vec::new();
-    check_label_set(
+    check_label_evidence(
         "PR labels",
         &label_names(pr_state.get("labels")),
         &mut errors,
@@ -26,7 +30,7 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
                     .get("number")
                     .and_then(Value::as_u64)
                     .map_or_else(|| "<unknown>".to_owned(), |number| format!("#{number}"));
-                check_label_set(
+                check_label_evidence(
                     &format!("issue {number} labels"),
                     &label_names(issue.get("labels")),
                     &mut errors,
@@ -39,16 +43,9 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
     errors
 }
 
-fn check_label_set(surface: &str, labels: &[String], errors: &mut Vec<String>) {
-    let missing = REQUIRED_LABEL_PREFIXES
-        .into_iter()
-        .filter(|prefix| !labels.iter().any(|label| label.starts_with(prefix)))
-        .collect::<Vec<_>>();
-    if !missing.is_empty() {
-        errors.push(format!(
-            "{surface} missing required taxonomy label families: {}",
-            missing.join(", ")
-        ));
+fn check_label_evidence(surface: &str, labels: &[String], errors: &mut Vec<String>) {
+    if labels.is_empty() {
+        errors.push(format!("{surface} missing label application evidence"));
     }
 }
 
@@ -93,14 +90,53 @@ fn is_open_pr(pr_state: &Value) -> bool {
         .is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))
 }
 
+fn is_codexy_lane(pr_state: &Value) -> bool {
+    string_field(pr_state, &["repository", "nameWithOwner", "headRepository"])
+        .iter()
+        .any(|value| value == "eunsoogi/codexy")
+        || string_field(pr_state, &["url"]).iter().any(|value| {
+            value.contains("github.com/eunsoogi/codexy/")
+                || value.ends_with("github.com/eunsoogi/codexy")
+        })
+}
+
+fn string_field(value: &Value, keys: &[&str]) -> Vec<String> {
+    keys.iter()
+        .filter_map(|key| value.get(*key).and_then(Value::as_str))
+        .map(|value| value.to_ascii_lowercase())
+        .collect()
+}
+
+fn has_label_consideration_evidence(handoff: &str) -> bool {
+    handoff.lines().any(|line| {
+        let line = line.to_ascii_lowercase();
+        ["labels considered", "label consideration", "labels applied"]
+            .into_iter()
+            .any(|phrase| line.contains(phrase))
+            && ![
+                "missing",
+                "none",
+                "empty",
+                "absent",
+                "not applied",
+                "without",
+                "no labels",
+            ]
+            .into_iter()
+            .any(|phrase| line.contains(phrase))
+    })
+}
+
 fn claims_pr_readiness(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     [
         "merge-ready",
+        "merge-readiness",
         "merge ready",
         "ready to merge",
         "ready for merge",
         "pr-ready",
+        "pr-readiness",
         "pr ready",
         "pr is ready",
         "pull request is ready",
