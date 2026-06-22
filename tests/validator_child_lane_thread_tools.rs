@@ -29,3 +29,45 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_satisfied_by_cli_even_with_not_fallback_substitute_wording()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread requirement: satisfied by codex exec, not a fallback substitute.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject affirmative codex exec satisfaction claims even when the line also says not a fallback substitute"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Codex CLI"),
+        "stderr should name the forbidden fallback, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread requirement: satisfied by codex app-server, not a fallback substitute.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject affirmative codex app-server satisfaction claims even when the line also says not a fallback substitute"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Codex CLI"),
+        "stderr should name the forbidden fallback, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    Ok(())
+}
