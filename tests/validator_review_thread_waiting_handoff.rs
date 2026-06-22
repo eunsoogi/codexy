@@ -36,6 +36,22 @@ fn validator_allows_waiting_rationale_referenced_by_github_url() -> TestResult {
 }
 
 #[test]
+fn validator_allows_verification_completed_waiting_until_merge() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. Verification completed. This lane is not complete until merge.\n",
+        mixed_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should treat verification-completed wording as waiting evidence when the lane is explicitly not complete until merge\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_eyes_only_codex_review_as_waiting() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Fresh @codex review requested for the current head and has eyes only. Waiting for review output; this lane is not blocked and not complete.\n",

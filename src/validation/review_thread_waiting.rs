@@ -66,7 +66,19 @@ fn claims_readiness(handoff: &str) -> bool {
 }
 
 fn claims_completion(handoff: &str) -> bool {
-    let text = handoff.to_ascii_lowercase();
+    let mut text = handoff.to_ascii_lowercase();
+    if has_unnegated_phrase(&text, "not complete until merge") {
+        text = text.replace("verification completed.", "verification evidence.");
+        for phrase in [
+            "successfully completed",
+            "completed successfully",
+            "completed",
+            "finished",
+            "finalized",
+        ] {
+            text = text.replace(&format!("verification {phrase};"), "verification evidence;");
+        }
+    }
     [
         "completed",
         "finished",
