@@ -47,11 +47,66 @@ MCP surfaces do not appear in the active session.
 ## What Codexy Provides
 
 Codexy is a harness plugin for Codex users who want repository work to stay
-structured after the first prompt. It bundles workflow instructions, specialist
-role definitions, MCP server registrations, validators, and release utilities
-that make multi-step coding work easier to route, verify, review, and finish.
+structured after the first prompt. After installation, it adds concrete Codex
+surfaces for planning work, assigning ownership, gathering evidence, checking
+review readiness, and preparing plugin releases. In practice, it gives Codex a
+shared operating model for moving repository work from an issue to a branch, PR,
+review, merge, and release without losing the current owner or the proof needed
+for the next step.
 
-### Work Planning and Ownership
+### Installed Harness Surfaces
+
+#### Workflow Skills
+
+- **Task classification**: starts work by naming the lane type, owner, required
+  evidence, first allowed action, and stop condition before the agent edits.
+- **Orchestration workflow**: keeps parent sessions responsible for routing,
+  status, and merge decisions while child worktree threads own their branch
+  changes.
+- **Git and GitHub workflow**: standardizes issue intake, branch creation, PR
+  bodies, labels, review requests, squash merges, branch cleanup, and post-merge
+  synchronization.
+- **Proof-driven completion**: turns "done" into an evidence checklist tied to
+  the current files, branch head, PR state, checks, review output, and external
+  surfaces.
+- **Release workflow**: guides version sync, package shape, marketplace
+  metadata, archive checks, release notes, and release handoff work.
+
+#### Repository Tooling
+
+- **Codegraph MCP**: gives Codex a repository graph surface for finding relevant
+  files, symbols, dependency neighbors, and likely validation touchpoints before
+  direct file reads and patches.
+- **LSP MCP**: records whether language-aware diagnostics are configured and
+  callable for the active workspace, including the difference between registered
+  tools and tools that are actually available in a session.
+- **Packaged MCP registrations**: ships the MCP configuration with the plugin,
+  so sessions can verify the same setup instead of rebuilding it by hand.
+
+#### Specialist Roles
+
+- **Worker roles**: provide reusable role definitions for implementation,
+  refactoring, architecture, repository mapping, release preparation, and other
+  focused lanes.
+- **Reviewer roles**: provide repeatable current-diff review prompts for finding
+  regressions, missing verification, workflow-rule violations, and readiness
+  gaps.
+- **Sentinel review gate**: supplies a packaged reviewer expectation for
+  non-trivial lanes before PR readiness, so review evidence is attached to the
+  exact branch or diff being claimed.
+
+#### Validation and Release Scripts
+
+- **Plugin configuration validator**: checks manifest metadata, marketplace
+  registration, MCP entries, LSP catalog entries, skill frontmatter, agent
+  definitions, and release metadata together.
+- **Workflow contract validators**: check child-lane ownership claims,
+  completion handoffs, dirty-state exceptions, merge-message issue references,
+  and review-readiness evidence.
+- **Version synchronization helper**: checks or updates plugin and marketplace
+  versions as one release surface.
+
+### Work Planning and Ownership Model
 
 #### Task Intake
 
@@ -65,13 +120,12 @@ that make multi-step coding work easier to route, verify, review, and finish.
 
 #### Thread and Agent Boundaries
 
-- **Parent orchestration**: keeps the coordinating session responsible for
-  routing, status checks, review-thread decisions, and merge readiness.
-- **Child worktree threads**: treats Codex threads with their own worktree and
-  branch as the owners of implementation work for that lane.
-- **Specialist subagents**: uses helper or reviewer agents for focused
-  analysis, implementation advice, or current-diff review without confusing
-  them with branch-owning child threads.
+- **Parent sessions**: coordinate routing, status checks, review-thread
+  decisions, merge readiness, and post-merge synchronization.
+- **Child worktree threads**: own implementation and review-response patches for
+  a specific branch and issue-sized lane.
+- **Specialist subagents**: assist with focused analysis, implementation advice,
+  QA, or current-diff review, but do not become branch owners.
 - **Ownership evidence**: records which surface owns the branch and which
   surfaces only assisted, so review feedback is sent to the right place.
 
@@ -83,32 +137,6 @@ that make multi-step coding work easier to route, verify, review, and finish.
   steps.
 - **Handoff discipline**: requires the next owner to receive the branch, head
   commit, evidence, blocker, and stop condition instead of vague status prose.
-
-### Repository Intelligence and Tooling
-
-#### Code Navigation
-
-- **Codegraph registration**: provides a repository graph surface for finding
-  relevant files, symbols, dependencies, and validation touchpoints before
-  patching code.
-- **Direct readback expectations**: keeps graph output as discovery evidence and
-  still requires exact file reads before edits.
-
-#### Language-Aware Work
-
-- **LSP registration**: packages language-server configuration so agents can
-  check whether language-aware diagnostics are available in the active session.
-- **Exposure checks**: separates configured tools from actually callable tools,
-  which helps catch plugin or session setup defects.
-
-#### Specialist Role Catalog
-
-- **Worker roles**: defines focused roles for implementation, architecture,
-  refactoring, repository mapping, and release preparation.
-- **Reviewer roles**: defines current-diff review roles that look for
-  regressions, missing verification, and workflow-rule violations.
-- **Role consistency**: gives repeatable prompts and boundaries to roles that
-  would otherwise be improvised in each session.
 
 ### Verification and Review Gates
 
