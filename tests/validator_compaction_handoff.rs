@@ -7,18 +7,18 @@ const DUPLICATE_STATE: &str = "Duplicate/no-active-work state: PR #170 is duplic
 const GIT_PREFLIGHT: &str = "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.";
 const OPEN_PR_STATE: &str = r#"{"number":170,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#;
 
-fn assert_valid(output: &Output, message: &str) {
+fn assert_valid(output: &Output) {
     assert!(
         output.status.success(),
-        "{message}\nstderr: {}",
+        "validator should accept handoff\nstderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
 
-fn assert_invalid(output: &Output, message: &str, expected_stderr: &str) {
+fn assert_invalid(output: &Output, expected_stderr: &str) {
     assert!(
         !output.status.success(),
-        "{message}\nstdout: {}",
+        "validator should reject handoff\nstdout: {}",
         String::from_utf8_lossy(&output.stdout)
     );
     assert!(
@@ -37,7 +37,6 @@ fn validator_cli_rejects_compacted_continuation_without_codexy_contract() -> Tes
     )?;
     assert_invalid(
         &output,
-        "validator should reject continuation readiness that omits Codexy contract evidence",
         "compacted continuation evidence missing Codexy orchestration contract",
     );
     Ok(())
@@ -50,10 +49,7 @@ fn validator_cli_accepts_compacted_continuation_with_required_codexy_evidence() 
         "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.",
         "Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.",
     ))?;
-    assert_valid(
-        &output,
-        "validator should accept continuation readiness with required Codexy evidence",
-    );
+    assert_valid(&output);
     Ok(())
 }
 
@@ -68,7 +64,6 @@ fn validator_cli_rejects_compacted_continuation_without_git_graph_preflight() ->
     )?;
     assert_invalid(
         &output,
-        "validator should reject continuation readiness without git graph/log preflight",
         "compacted continuation evidence missing git graph/log preflight",
     );
     Ok(())
@@ -86,7 +81,6 @@ fn validator_cli_rejects_compacted_continuation_without_stop_condition() -> Test
     )?;
     assert_invalid(
         &output,
-        "validator should reject continuation readiness without authoritative stop condition",
         "compacted continuation evidence missing authoritative stop condition",
     );
     Ok(())
@@ -106,7 +100,6 @@ fn validator_cli_rejects_empty_or_negated_stop_condition() -> TestResult {
         let output = validate_open_pr_handoff(&handoff)?;
         assert_invalid(
             &output,
-            "validator should reject empty or negated stop condition evidence",
             "compacted continuation evidence missing authoritative stop condition",
         );
     }
@@ -124,10 +117,7 @@ fn validator_cli_accepts_substantive_no_stop_conditions() -> TestResult {
             "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.",
             stop_condition,
         ))?;
-        assert_valid(
-            &output,
-            "validator should accept substantive no-prefixed stop conditions",
-        );
+        assert_valid(&output);
     }
     Ok(())
 }
@@ -145,10 +135,7 @@ fn validator_cli_accepts_multiline_git_preflight_evidence() -> TestResult {
          * abc1234 fix(validation): reject missing review thread evidence",
         "Stop condition: no merge; leave PR open until current-head Codex review is clean.",
     ))?;
-    assert_valid(
-        &output,
-        "validator should accept multiline git preflight evidence",
-    );
+    assert_valid(&output);
     Ok(())
 }
 
@@ -165,11 +152,15 @@ fn validator_cli_rejects_uncaptured_duplicate_state() -> TestResult {
             GIT_PREFLIGHT,
             "Stop condition: stop until duplicate/no-active-work evidence is rebuilt.",
         ),
+        valid_handoff_with(
+            "Duplicate/no-active-work state: duplicate/no-active-work was not captured.",
+            GIT_PREFLIGHT,
+            "Stop condition: no merge; leave PR open until review is clean.",
+        ),
     ] {
         let output = validate_open_pr_handoff(&handoff)?;
         assert_invalid(
             &output,
-            "validator should reject missing or uncaptured duplicate/no-active-work state",
             "compacted continuation evidence missing duplicate/no-active-work state",
         );
     }
@@ -189,7 +180,6 @@ fn validator_cli_rejects_compacted_continuation_with_git_preflight_shorthand() -
     )?;
     assert_invalid(
         &output,
-        "validator should reject shorthand git preflight evidence",
         "compacted continuation evidence missing git graph/log preflight",
     );
     Ok(())
@@ -197,20 +187,29 @@ fn validator_cli_rejects_compacted_continuation_with_git_preflight_shorthand() -
 
 #[test]
 fn validator_cli_rejects_negated_git_preflight_evidence() -> TestResult {
-    let output = validate_open_pr_handoff(
-        "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
-         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
-         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.\n\
-         Git graph/log preflight: did not run pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, or git log --graph before editing.\n\
-         Next action: stop.\n",
-    )?;
-    assert_invalid(
-        &output,
-        "validator should reject negated git preflight evidence",
-        "compacted continuation evidence missing git graph/log preflight",
-    );
+    for handoff in [
+        valid_handoff_with(
+            DUPLICATE_STATE,
+            "Git graph/log preflight: did not run pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, or git log --graph before editing.",
+            "Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.",
+        ),
+        valid_handoff_with(
+            DUPLICATE_STATE,
+            "Git graph/log preflight captured before editing:\n\
+             - did not run pwd\n\
+             - git status --short --branch\n\
+             - git rev-parse HEAD\n\
+             - git rev-parse origin/main\n\
+             - git log --graph --oneline --decorate --all --max-count=50",
+            "Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.",
+        ),
+    ] {
+        let output = validate_open_pr_handoff(&handoff)?;
+        assert_invalid(
+            &output,
+            "compacted continuation evidence missing git graph/log preflight",
+        );
+    }
     Ok(())
 }
 

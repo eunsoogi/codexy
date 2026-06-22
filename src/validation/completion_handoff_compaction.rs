@@ -1,3 +1,6 @@
+mod evidence_fields;
+mod git_preflight;
+
 pub(super) fn check(handoff: &str) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_compacted_continuation_readiness(&text) {
@@ -5,19 +8,19 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     }
 
     let mut errors = Vec::new();
-    if !has_codexy_orchestration_contract(&text) {
+    if !evidence_fields::has_codexy_orchestration_contract(&text) {
         errors.push("compacted continuation evidence missing Codexy orchestration contract: include active @Codexy or $codex-orchestration workflow instructions before continuing".into());
     }
-    if !has_duplicate_or_no_active_work_state(&text) {
+    if !evidence_fields::has_duplicate_or_no_active_work_state(&text) {
         errors.push("compacted continuation evidence missing duplicate/no-active-work state: re-check current issue and PR status before editing".into());
     }
-    if !has_parent_child_ownership_boundary(&text) {
+    if !evidence_fields::has_parent_child_ownership_boundary(&text) {
         errors.push("compacted continuation evidence missing parent/child ownership boundary: preserve who may edit and who may only orchestrate".into());
     }
-    if !has_authoritative_stop_condition(&text) {
+    if !evidence_fields::has_authoritative_stop_condition(&text) {
         errors.push("compacted continuation evidence missing authoritative stop condition: include the current stop condition before continuing".into());
     }
-    if !has_git_graph_log_preflight(&text) {
+    if !git_preflight::has_git_graph_log_preflight(&text) {
         errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph before editing".into());
     }
     errors
@@ -43,192 +46,6 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
             "continue",
             "next action",
             "before editing",
-        ],
-    )
-}
-
-fn has_codexy_orchestration_contract(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "@codexy",
-            "$codex-orchestration",
-            "codexy orchestration contract",
-            "codexy plugin workflow",
-            "active codexy workflow",
-        ],
-    )
-}
-
-fn has_duplicate_or_no_active_work_state(text: &str) -> bool {
-    text.lines().any(|line| {
-        let line = line.trim();
-        duplicate_state_value(line)
-            .is_some_and(|state| has_real_value(state) && has_duplicate_state_phrase(state))
-    })
-}
-
-fn duplicate_state_value<'a>(line: &'a str) -> Option<&'a str> {
-    [
-        "duplicate/no-active-work state",
-        "duplicate state",
-        "no-active-work state",
-        "no active work state",
-    ]
-    .iter()
-    .find_map(|label| field_value(line, label))
-}
-
-fn has_duplicate_state_phrase(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "duplicate/no-active-work",
-            "no-active-work",
-            "no active work",
-            "duplicate pr",
-            "duplicate issue",
-            "duplicate lane",
-        ],
-    )
-}
-
-fn has_parent_child_ownership_boundary(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "parent/child ownership",
-            "parent-child ownership",
-            "child-owned",
-            "parent orchestrator",
-            "ownership boundary",
-        ],
-    )
-}
-
-fn has_authoritative_stop_condition(text: &str) -> bool {
-    text.lines().any(|line| {
-        let line = line.trim();
-        ["stop condition", "authoritative stop condition"]
-            .iter()
-            .any(|label| stop_condition_value(line, label).is_some_and(has_real_value))
-    })
-}
-
-fn stop_condition_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
-    field_value(line, label)
-}
-
-fn field_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
-    line.strip_prefix(label)
-        .and_then(|rest| {
-            rest.strip_prefix(':')
-                .or_else(|| rest.strip_prefix(" -"))
-                .or_else(|| rest.strip_prefix(" is "))
-        })
-        .map(str::trim)
-}
-
-fn has_real_value(value: &str) -> bool {
-    if value.is_empty() || is_bare_no_value(value) {
-        return false;
-    }
-
-    ![
-        "none",
-        "false",
-        "not captured",
-        "not available",
-        "not applicable",
-        "not-applicable",
-        "n/a",
-        "na",
-    ]
-    .iter()
-    .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
-}
-
-fn is_bare_no_value(value: &str) -> bool {
-    value.trim_matches(|character: char| {
-        character.is_ascii_punctuation() || character.is_whitespace()
-    }) == "no"
-}
-
-fn starts_with_boundary(rest: &str) -> bool {
-    rest.chars()
-        .next()
-        .is_none_or(|character| !character.is_ascii_alphanumeric())
-}
-
-fn has_git_graph_log_preflight(text: &str) -> bool {
-    let lines: Vec<_> = text.lines().map(str::trim).collect();
-    lines.iter().enumerate().any(|(index, line)| {
-        is_git_preflight_line(line) && has_positive_git_preflight_evidence(line) && {
-            let block = git_preflight_block(&lines, index);
-            has_all_git_preflight_commands(&block) && !has_negated_git_preflight_evidence(line)
-        }
-    })
-}
-
-fn is_git_preflight_line(line: &str) -> bool {
-    line.contains("git graph/log preflight") || line.contains("git preflight")
-}
-
-fn git_preflight_block(lines: &[&str], start: usize) -> String {
-    let mut block = String::new();
-    for (index, line) in lines.iter().enumerate().skip(start) {
-        if index > start && starts_handoff_section(line) {
-            break;
-        }
-        block.push_str(line);
-        block.push('\n');
-    }
-    block
-}
-
-fn starts_handoff_section(line: &str) -> bool {
-    [
-        "codexy orchestration contract",
-        "duplicate/no-active-work state",
-        "parent/child ownership boundary",
-        "stop condition",
-        "authoritative stop condition",
-        "next action",
-    ]
-    .iter()
-    .any(|section| line.starts_with(section))
-}
-
-fn has_all_git_preflight_commands(text: &str) -> bool {
-    [
-        "pwd",
-        "git status --short --branch",
-        "git rev-parse head",
-        "git rev-parse origin/main",
-    ]
-    .iter()
-    .all(|phrase| text.contains(phrase))
-        && text.contains("git log --graph")
-}
-
-fn has_positive_git_preflight_evidence(line: &str) -> bool {
-    has_any(
-        line,
-        &["captured", "ran", "were run", "checked", "recorded"],
-    )
-}
-
-fn has_negated_git_preflight_evidence(line: &str) -> bool {
-    has_any(
-        line,
-        &[
-            "did not run",
-            "didn't run",
-            "not run",
-            "not captured",
-            "without running",
-            "missing",
-            "omitted",
         ],
     )
 }
