@@ -14,20 +14,28 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 #[test]
 fn validator_rejects_colonized_subagent_owner_continuation()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Owner decision: child-owned implementation lane
 Subthread/worktree owner:
 - multi_agent_v1: subagent Gauss
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner:
+multi_agent_v1: subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject colonized subagent bullets under an owner field\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject colonized subagent continuations under an owner field\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }

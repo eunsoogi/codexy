@@ -9,7 +9,7 @@ pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
             owner_context = None;
             continue;
         }
-        if !line.starts_with(['-', '*']) || owner_context.is_none() {
+        if owner_context.is_none() {
             if let Some((key, value)) = line.split_once(':') {
                 let key = metadata_key(key);
                 if owner_key_requires_thread_owner(key) {
