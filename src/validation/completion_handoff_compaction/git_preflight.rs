@@ -79,6 +79,7 @@ fn has_negated_evidence(line: &str) -> bool {
             "didn't run",
             "not run",
             "not captured",
+            "not checked",
             "without running",
             "missing",
             "omitted",

@@ -186,6 +186,8 @@ fn has_real_value(value: &str) -> bool {
         "not available",
         "not applicable",
         "not-applicable",
+        "not requested",
+        "not checked",
         "n/a",
         "na",
     ]

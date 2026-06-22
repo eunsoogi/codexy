@@ -66,6 +66,43 @@ fn validator_cli_rejects_placeholder_ownership_boundary() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_negated_stop_condition_placeholders() -> TestResult {
+    for stop_condition in [
+        "Stop condition: not requested.",
+        "Stop condition: not checked.",
+    ] {
+        let output = validate_open_pr_handoff(&valid_handoff_with(
+            "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",
+            DUPLICATE_STATE,
+            OWNERSHIP_BOUNDARY,
+            GIT_PREFLIGHT,
+            stop_condition,
+        ))?;
+        assert_invalid(
+            &output,
+            "compacted continuation evidence missing authoritative stop condition",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_not_checked_git_preflight() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",
+        DUPLICATE_STATE,
+        OWNERSHIP_BOUNDARY,
+        "Git graph/log preflight: not checked; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
+        STOP_CONDITION,
+    ))?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_accepts_markdown_list_evidence_fields() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
