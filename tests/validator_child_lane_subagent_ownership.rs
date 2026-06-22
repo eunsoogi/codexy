@@ -88,6 +88,26 @@ Parent implementation setup: none
 Maintainer reassignment: none
 "#,
         r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: not a Codex thread; multi_agent_v1 subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: not a child thread; multi_agent_v1 subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: worker agent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: explorer agent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
 Specialist helper owner: specialist helper Gauss
 Parent implementation setup: none
 Maintainer reassignment: none
@@ -123,128 +143,26 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_subagent_helper_with_true_worktree_owner()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef for implementation ownership
-Subthread/worktree owner: Codex worktree thread 019ef
-Specialist helper: multi_agent_v1 codexy-sentinel used only for reviewer gate
-Parent implementation setup: none
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should allow subagents as helpers when a true worktree thread owns implementation\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_allows_multi_agent_rationale_with_true_worktree_owner()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef; multi-agent not useful because the change is atomic
-Subthread/worktree owner: Codex worktree thread 019ef
-Parent implementation setup: none
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should allow a multi-agent not-useful rationale when a true Codex worktree thread owns implementation\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_allows_multi_agent_rationale_on_true_worktree_owner_field()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef
-Subthread/worktree owner: Codex worktree thread 019ef; multi-agent not useful because the lane is atomic
-Parent implementation setup: none
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should allow multi-agent rationale on a thread-owner field when a true Codex worktree thread owns implementation\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_allows_multi_agent_rationale_with_true_child_thread_owner()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: routing-only child delegation to child thread thread-148; multi-agent not useful because atomic
-Subthread/worktree owner: child thread thread-148
-Parent implementation setup: none
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should allow a multi-agent not-useful rationale when a true child thread owns implementation\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_allows_parent_owned_routing_only_multi_agent_rationale()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_role_only_spawned_agent_owners() -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required; multi-agent not useful because atomic
-Parent coordination: searching for thread tools and preparing handoff text
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: worker agent Gauss
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
-        r#"Owner decision: parent-owned for implementation; multi-agent not useful because atomic
-Parent implementation setup: parent owns implementation
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: explorer agent Gauss
+Parent implementation setup: none
 Maintainer reassignment: none
 "#,
     ] {
         let output = run_ownership_validator(evidence)?;
-
         assert!(
-            output.status.success(),
-            "validator should allow parent-owned evidence with a multi-agent not-useful rationale\nstdout:\n{}\nstderr:\n{}",
+            !output.status.success(),
+            "validator should reject role-only spawned agent owners\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
     }
-    Ok(())
-}
-
-#[test]
-fn validator_allows_no_subagent_substitute_exposure_blocker()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: child-owned routing blocked because thread/worktree tools are unavailable; no subagent substitute used.
-Thread/worktree tool blocker: codex_app thread tools unavailable in this session.
-Parent implementation setup: none
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should allow exposure blockers that explicitly deny using a subagent substitute\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
     Ok(())
 }

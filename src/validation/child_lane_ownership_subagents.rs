@@ -113,6 +113,8 @@ fn has_subagent_surface(value: &str) -> bool {
         "spawned agent",
         "specialist agent",
         "specialist helper",
+        "worker agent",
+        "explorer agent",
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
@@ -175,6 +177,11 @@ fn negates_codex_thread_owner(value: &str) -> bool {
         "not codex thread",
         "not worktree thread",
         "not child thread",
+        "not a codex worktree thread",
+        "not a codex child thread",
+        "not a codex thread",
+        "not a worktree thread",
+        "not a child thread",
         "without codex worktree thread",
         "without codex child thread",
         "without codex thread",
