@@ -351,6 +351,12 @@ or routing-only lane.
   useful" is acceptable only with a concrete rationale tied to atomicity, tiny
   scope, or the absence of separable work; a generic manual fallback is not
   enough.
+- Multi-agent subagents are not Codex subthread/worktree owners. A subagent may
+  provide bounded research, worker help, QA, or the packaged reviewer gate, but
+  it must not be recorded as the child-owned implementation owner for a lane
+  that needs its own branch, durable worktree, PR, or review-response fixes.
+  If true Codex thread/worktree ownership is required but unavailable, record
+  the blocker instead of routing implementation through a subagent.
 - For code-touching lanes, the child thread MUST use Codexy `codegraph` MCP
   for code exploration when it is available, and include that exploration
   evidence in its handoff.
