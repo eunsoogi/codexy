@@ -63,11 +63,20 @@ fn mentions_actionable_review_feedback(text: &str) -> bool {
     !has_any(
         text,
         "no actionable feedback|no feedback|no review feedback",
-    ) && (has_any(
-        text,
-        "feedback|requested changes|changes requested|suggestion|unresolved|actionable|resolution",
-    ) || (has_any(text, "review comment|review comments")
-        && !mentions_pending_request_context(text)))
+    ) && !mentions_pending_review_feedback_arrival(text)
+        && (has_any(
+            text,
+            "feedback|requested changes|changes requested|suggestion|unresolved|actionable|resolution",
+        ) || (has_any(text, "review comment|review comments")
+            && !mentions_pending_request_context(text)))
+}
+
+fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
+    mentions_codex_review(text)
+        && has_any(
+            text,
+            "waiting for codex review feedback|waiting for review feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
+        )
 }
 
 fn mentions_pending_request_context(text: &str) -> bool {
@@ -194,7 +203,7 @@ fn has_unnegated_word(text: &str, word: &str, negation_window: usize) -> bool {
 }
 
 fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
-    if !matches!(word, "blocker" | "blockers") {
+    if !matches!(word, "blocked" | "blocker" | "blockers") {
         return false;
     }
     let Some(value) = text[after_index..].trim_start().strip_prefix(':') else {
