@@ -211,15 +211,13 @@ fn has_routing_only_parent_context(value: &str) -> bool {
         || value.contains("tool-discovery-only")
 }
 fn has_negated_child_routing_requirement(value: &str) -> bool {
+    let value = value.replace("child-routing", "child routing");
     [
         "no child routing required",
-        "no child-routing required",
         "child routing not required",
-        "child-routing not required",
+        "no child routing is required",
         "child routing is not required",
-        "child-routing is not required",
         "without child routing",
-        "without child-routing",
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
