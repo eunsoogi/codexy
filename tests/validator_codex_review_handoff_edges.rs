@@ -34,7 +34,8 @@ fn validator_cli_accepts_later_inline_codex_review_comment() -> TestResult {
                     "users":{"totalCount":1}
                 }]
             }],
-            "reviewThreads":{"nodes":[{
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{
+                "id":"PRRT_kwDOS6i-_86LUQLC",
                 "isResolved":true,
                 "isOutdated":false,
                 "path":"src/validation/codex_review_handoff.rs",
@@ -73,7 +74,7 @@ fn validator_cli_rejects_unresolved_inline_codex_review_comment() -> TestResult 
                 "createdAt":"2026-06-22T12:45:06Z",
                 "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
-            "reviewThreads":{"nodes":[{
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{
                 "isResolved":false,
                 "isOutdated":false,
                 "path":"src/validation/codex_review_handoff.rs",
@@ -86,9 +87,44 @@ fn validator_cli_rejects_unresolved_inline_codex_review_comment() -> TestResult 
             }]}
         }"##,
     )?;
-    assert_rejected_codex_thread(
+    assert_rejected_with_stderr(
         &output,
         "validator should reject readiness claims with unresolved Codex review threads",
+        "unresolved Codex review thread",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_readiness_without_complete_review_thread_evidence() -> TestResult {
+    for review_threads in [
+        "",
+        r#","reviewThreads":{"pageInfo":{"hasNextPage":true},"nodes":[]}"#,
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "Codex review passed on the current head. PR is merge-ready.\n",
+            &format!(
+                r#"{{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{{"body":"@codex review","author":{{"login":"eunsoogi"}},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{{"content":"EYES","users":{{"totalCount":1}}}}]}},{{"body":"Didn't find any major issues.","author":{{"login":"chatgpt-codex-connector"}},"createdAt":"2026-06-22T12:50:03Z"}}]{review_threads}}}"#
+            ),
+        )?;
+        assert_rejected_with_stderr(
+            &output,
+            "validator should require complete reviewThreads evidence before readiness",
+            "reviewThreads.nodes",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_codex_output_for_prior_head() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review passed on the current head. PR is merge-ready.\n",
+        r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],"latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+    )?;
+    assert_rejected_eyes_only(
+        &output,
+        "validator should reject Codex output reviewed on an older head",
     );
     Ok(())
 }
@@ -120,7 +156,8 @@ fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult 
             "reviewDecision":"APPROVED",
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],
-            "reviews":[{"body":"","state":"APPROVED","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}]
+            "reviews":[{"body":"","state":"APPROVED","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
     assert!(
@@ -170,7 +207,7 @@ fn assert_rejected_eyes_only(output: &std::process::Output, message: &str) {
     );
 }
 
-fn assert_rejected_codex_thread(output: &std::process::Output, message: &str) {
+fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, expected: &str) {
     assert!(
         !output.status.success(),
         "{message}\nstdout:\n{}\nstderr:\n{}",
@@ -178,7 +215,7 @@ fn assert_rejected_codex_thread(output: &std::process::Output, message: &str) {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("unresolved Codex review thread"),
+        String::from_utf8_lossy(&output.stderr).contains(expected),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
