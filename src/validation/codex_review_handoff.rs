@@ -1,8 +1,6 @@
 use serde_json::Value;
-
 const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr ready|pull-request-ready|pull request ready|codex review passed|codex review completed|codex review complete|codex review approved";
 const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
-
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if claims_codex_review_ready(handoff)
         && has_latest_eyes_request_without_later_codex_output(pr_state)
@@ -27,10 +25,12 @@ fn states_codex_review_override(handoff: &str) -> bool {
     handoff.lines().any(|line| {
         let line = line.trim_start();
         let text = line.to_ascii_lowercase();
-        !line.starts_with("- [ ]")
-            && OVERRIDE_PHRASES
-                .split('|')
-                .any(|phrase| has_affirmed_phrase(&text, phrase))
+        !matches!(
+            line.as_bytes(),
+            [b'-' | b'*' | b'+', b' ', b'[', b' ', b']', ..]
+        ) && OVERRIDE_PHRASES
+            .split('|')
+            .any(|phrase| has_affirmed_phrase(&text, phrase))
     })
 }
 
