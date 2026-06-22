@@ -138,6 +138,32 @@ fn validator_cli_rejects_empty_or_negated_stop_condition() -> TestResult {
 }
 
 #[test]
+fn validator_cli_accepts_substantive_no_stop_conditions() -> TestResult {
+    for stop_condition in [
+        "Stop condition: no merge; leave PR open until current-head Codex review is clean.",
+        "Stop condition: no implementation edits until the duplicate lane is closed.",
+    ] {
+        let handoff = format!(
+            "Post-compaction continuation readiness:\n\
+             Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+             Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+             Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+             Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+             {stop_condition}\n\
+             Next action: stop.\n",
+        );
+        let output = validate_open_pr_handoff(&handoff)?;
+        assert!(
+            output.status.success(),
+            "validator should accept substantive no-prefixed stop conditions\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_compacted_continuation_with_git_preflight_shorthand() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
@@ -151,6 +177,32 @@ fn validator_cli_rejects_compacted_continuation_with_git_preflight_shorthand() -
     assert!(
         !output.status.success(),
         "validator should reject shorthand git preflight evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("compacted continuation evidence missing git graph/log preflight"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_negated_git_preflight_evidence() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.\n\
+         Git graph/log preflight: did not run pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, or git log --graph before editing.\n\
+         Next action: stop.\n",
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should reject negated git preflight evidence\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

@@ -107,20 +107,28 @@ fn stop_condition_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
 }
 
 fn has_real_value(value: &str) -> bool {
-    !value.is_empty()
-        && ![
-            "none",
-            "false",
-            "no",
-            "not captured",
-            "not available",
-            "not applicable",
-            "not-applicable",
-            "n/a",
-            "na",
-        ]
-        .iter()
-        .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
+    if value.is_empty() || is_bare_no_value(value) {
+        return false;
+    }
+
+    ![
+        "none",
+        "false",
+        "not captured",
+        "not available",
+        "not applicable",
+        "not-applicable",
+        "n/a",
+        "na",
+    ]
+    .iter()
+    .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
+}
+
+fn is_bare_no_value(value: &str) -> bool {
+    value.trim_matches(|character: char| {
+        character.is_ascii_punctuation() || character.is_whitespace()
+    }) == "no"
 }
 
 fn starts_with_boundary(rest: &str) -> bool {
@@ -130,6 +138,15 @@ fn starts_with_boundary(rest: &str) -> bool {
 }
 
 fn has_git_graph_log_preflight(text: &str) -> bool {
+    text.lines().any(|line| {
+        let line = line.trim();
+        has_all_git_preflight_commands(line)
+            && has_positive_git_preflight_evidence(line)
+            && !has_negated_git_preflight_evidence(line)
+    })
+}
+
+fn has_all_git_preflight_commands(text: &str) -> bool {
     [
         "pwd",
         "git status --short --branch",
@@ -139,6 +156,28 @@ fn has_git_graph_log_preflight(text: &str) -> bool {
     .iter()
     .all(|phrase| text.contains(phrase))
         && text.contains("git log --graph")
+}
+
+fn has_positive_git_preflight_evidence(line: &str) -> bool {
+    has_any(
+        line,
+        &["captured", "ran", "were run", "checked", "recorded"],
+    )
+}
+
+fn has_negated_git_preflight_evidence(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "did not run",
+            "didn't run",
+            "not run",
+            "not captured",
+            "without running",
+            "missing",
+            "omitted",
+        ],
+    )
 }
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {
