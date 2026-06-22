@@ -26,6 +26,12 @@ marketplace entry. For source-checkout development, register or use this
 repository's marketplace entry according to your Codex plugin marketplace
 configuration, then install Codexy from that marketplace.
 
+The current repository marketplace entry is registered with:
+
+```sh
+codex plugin marketplace add eunsoogi/codexy --ref main
+```
+
 After installation, verify that Codex can see the plugin and its MCP servers:
 
 ```sh
