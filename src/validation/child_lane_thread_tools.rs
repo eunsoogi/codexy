@@ -19,16 +19,17 @@ pub(super) fn has_false_thread_tool_blocker(evidence: &str) -> bool {
 
 pub(super) fn has_forbidden_codex_cli_thread_fallback(evidence: &str) -> bool {
     has_thread_requirement_context(evidence)
-        && evidence.lines().any(|line| {
-            has_forbidden_codex_cli_surface(line)
-                && has_fallback_or_substitution_claim(line)
-                && (!has_negated_fallback_claim(line)
-                    || has_affirmative_forbidden_satisfied_by_claim(line))
-        })
+        && evidence
+            .lines()
+            .any(has_affirmative_forbidden_fallback_claim)
 }
 
 fn has_real_thread_event_evidence(evidence: &str) -> bool {
-    evidence.contains("thread/start") && evidence.contains("turn/start")
+    evidence.lines().any(|line| {
+        line.contains("thread/start")
+            && line.contains("turn/start")
+            && !has_negated_thread_event_claim(line)
+    })
 }
 
 fn has_tool_search_miss(evidence: &str) -> bool {
@@ -71,18 +72,6 @@ fn has_thread_requirement_context(evidence: &str) -> bool {
         || evidence.contains("thread/worktree tool discovery")
 }
 
-fn has_forbidden_codex_cli_surface(evidence: &str) -> bool {
-    [
-        "codex exec",
-        "codex fork",
-        "codex app-server",
-        "codex debug app-server",
-        "app-server fallback",
-    ]
-    .into_iter()
-    .any(|marker| evidence.contains(marker))
-}
-
 fn has_fallback_or_substitution_claim(evidence: &str) -> bool {
     [
         "fallback",
@@ -98,15 +87,7 @@ fn has_fallback_or_substitution_claim(evidence: &str) -> bool {
 }
 
 fn has_affirmative_forbidden_satisfied_by_claim(line: &str) -> bool {
-    [
-        "codex exec",
-        "codex fork",
-        "codex app-server",
-        "codex debug app-server",
-        "app-server fallback",
-    ]
-    .into_iter()
-    .any(|surface| {
+    forbidden_surfaces().into_iter().any(|surface| {
         [
             format!("satisfied by {surface}"),
             format!("satisfies {surface}"),
@@ -117,21 +98,85 @@ fn has_affirmative_forbidden_satisfied_by_claim(line: &str) -> bool {
     })
 }
 
-fn has_negated_fallback_claim(line: &str) -> bool {
+fn has_affirmative_forbidden_fallback_claim(line: &str) -> bool {
+    if has_affirmative_forbidden_satisfied_by_claim(line) {
+        return true;
+    }
+    forbidden_surfaces().into_iter().any(|surface| {
+        surface_claims(line, surface)
+            .into_iter()
+            .any(|claim| has_fallback_or_substitution_claim(claim.text) && !claim.is_negated)
+    })
+}
+
+fn forbidden_surfaces() -> [&'static str; 5] {
+    [
+        "codex exec",
+        "codex fork",
+        "codex app-server",
+        "codex debug app-server",
+        "app-server fallback",
+    ]
+}
+
+struct SurfaceClaim<'a> {
+    text: &'a str,
+    is_negated: bool,
+}
+
+fn surface_claims<'a>(line: &'a str, surface: &str) -> Vec<SurfaceClaim<'a>> {
+    line.match_indices(surface)
+        .map(|(start, _)| {
+            let end = line[start..]
+                .find([';', '.'])
+                .map_or(line.len(), |offset| start + offset);
+            SurfaceClaim {
+                text: &line[start..end],
+                is_negated: has_negated_surface_fallback_claim(line, start, end),
+            }
+        })
+        .collect()
+}
+
+fn has_negated_surface_fallback_claim(line: &str, start: usize, end: usize) -> bool {
+    let prefix_start = line[..start]
+        .rfind([';', '.'])
+        .map_or(0, |offset| offset + 1);
+    let prefix = &line[prefix_start..start];
+    let text = &line[start..end];
     [
         "did not use",
         "didn't use",
         "do not use",
-        "not used",
         "not use",
-        "not fallback substitute",
-        "not fallback substitutes",
-        "not a fallback substitute",
-        "not fallback or substitute",
-        "no fallback",
-        "no cli fallback",
-        "without fallback",
         "without using",
+    ]
+    .into_iter()
+    .any(|marker| prefix.contains(marker))
+        || [
+            "not used",
+            "not fallback substitute",
+            "not fallback substitutes",
+            "not a fallback substitute",
+            "not fallback or substitute",
+            "no fallback",
+            "no cli fallback",
+            "without fallback",
+        ]
+        .into_iter()
+        .any(|marker| text.contains(marker))
+}
+
+fn has_negated_thread_event_claim(line: &str) -> bool {
+    [
+        "no thread/start",
+        "not thread/start",
+        "without thread/start",
+        "thread/start not",
+        "thread/start or turn/start events were not",
+        "thread/start and turn/start events were not",
+        "thread/start or turn/start events were absent",
+        "thread/start and turn/start events were absent",
     ]
     .into_iter()
     .any(|marker| line.contains(marker))

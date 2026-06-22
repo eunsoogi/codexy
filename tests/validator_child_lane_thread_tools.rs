@@ -91,3 +91,65 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_allows_absence_blocker_when_thread_events_are_negated()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: no codex_app namespace and no true thread tools exposed.
+Unavailable-tool evidence: no thread/start or turn/start events were observed.
+Blocker: thread tools unavailable because tool_search did not expose real thread tools.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow legitimate thread-tool blockers when thread events are explicitly absent\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_mixed_forbidden_fallback_claims_per_surface()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread fallback: used codex exec as a substitute; did not use codex app-server fallback.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject an affirmative codex exec substitute even when a different forbidden surface is negated"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Codex CLI"),
+        "stderr should name the forbidden fallback, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Thread fallback: used codex exec as a substitute and did not use codex app-server fallback.
+Thread evidence: app-server-observed thread/start and turn/start events from a fresh child lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject an affirmative codex exec substitute even when a same-clause different surface is negated"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Codex CLI"),
+        "stderr should name the forbidden fallback, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
