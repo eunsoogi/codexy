@@ -3,19 +3,31 @@ use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_val
 const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
 
 pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
-    evidence
-        .lines()
-        .map(str::trim)
-        .any(line_claims_subagent_thread_owner)
-}
-
-fn line_claims_subagent_thread_owner(line: &str) -> bool {
-    if line.is_empty() || line_is_helper_only(line) {
-        return false;
-    }
-    if let Some((key, value)) = line.split_once(':') {
-        let key = metadata_key(key);
-        return owner_key_requires_thread_owner(key) && value_claims_subagent_owner(key, value);
+    let mut owner_context = None;
+    for line in evidence.lines().map(str::trim) {
+        if line.is_empty() || line_is_helper_only(line) {
+            owner_context = None;
+            continue;
+        }
+        if let Some((key, value)) = line.split_once(':') {
+            let key = metadata_key(key);
+            if owner_key_requires_thread_owner(key) {
+                owner_context = Some((key, value.to_owned()));
+                if value_claims_subagent_owner(key, &format!("{key} {value}")) {
+                    return true;
+                }
+            } else {
+                owner_context = None;
+            }
+            continue;
+        }
+        if let Some((key, value)) = owner_context.as_mut() {
+            value.push(' ');
+            value.push_str(line);
+            if value_claims_subagent_owner(key, value) {
+                return true;
+            }
+        }
     }
     false
 }
@@ -48,14 +60,8 @@ fn value_is_non_child_owned_decision_with_subagent_rationale(value: &str) -> boo
 
 fn value_has_non_owner_subagent_rationale(value: &str) -> bool {
     value_denies_subagent_owner(value)
-        || [
-            "subagent not useful",
-            "sub-agent not useful",
-            "multi_agent not useful",
-            "multi-agent not useful",
-            "specialist helper not useful",
-        ]
-        .into_iter()
+        || "subagent not useful|sub-agent not useful|multi_agent not useful|multi-agent not useful|specialist helper not useful"
+            .split('|')
         .any(|marker| value.contains(marker))
 }
 

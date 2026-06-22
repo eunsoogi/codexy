@@ -63,20 +63,28 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_multi_agent_rationale_on_true_worktree_owner_field()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef
 Subthread/worktree owner: Codex worktree thread 019ef; multi-agent not useful because the lane is atomic
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef
+Subthread/worktree owner: Codex worktree thread 019ef
+- multi-agent not useful because the lane is atomic
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow multi-agent rationale on a thread-owner field when a true Codex worktree thread owns implementation\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should allow multi-agent rationale on a thread-owner field when a true Codex worktree thread owns implementation\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

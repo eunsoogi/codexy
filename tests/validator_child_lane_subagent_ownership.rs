@@ -228,6 +228,9 @@ Subthread/worktree owner: codexy-sentinel reviewer gate; helper only
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
+        "Owner decision: child-owned implementation lane\nSubagent owner: Gauss\n",
+        "Owner decision: child-owned implementation lane\nMulti-agent owner: Gauss\n",
+        "Owner decision: child-owned implementation lane\nSubthread/worktree owner:\n- multi_agent_v1 subagent Gauss\n",
     ] {
         let output = run_ownership_validator(evidence)?;
         assert!(
