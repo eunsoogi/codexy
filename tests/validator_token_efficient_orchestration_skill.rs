@@ -38,7 +38,7 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "changed ids:",
         "stale or demoted:",
         "Codex review current-head state:",
-        "unresolved review thread ids:",
+        "unresolved review thread ids and outdated status:",
         "child owner evidence:",
         "merge readiness or stop condition:",
         "one next action:",

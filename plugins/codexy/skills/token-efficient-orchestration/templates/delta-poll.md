@@ -20,7 +20,7 @@
 
 - checks:
 - Codex review current-head state:
-- unresolved review thread ids:
+- unresolved review thread ids and outdated status:
 - child owner evidence:
 - verification:
 - merge readiness or stop condition:
