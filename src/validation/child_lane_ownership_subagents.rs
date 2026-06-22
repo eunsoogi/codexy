@@ -34,7 +34,8 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
         return true;
     }
     if thread_owner_key(key) {
-        return !has_true_codex_thread_owner(value);
+        return !has_true_codex_thread_owner(value)
+            || !value_has_non_owner_subagent_rationale(value);
     }
     if value_denies_subagent_owner(value) {
         return false;
@@ -237,8 +238,6 @@ fn value_denies_subagent_owner(value: &str) -> bool {
         "sub-agent fallback not used",
         "multi_agent fallback not used",
         "multi-agent fallback not used",
-        "helper only",
-        "reviewer only",
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
