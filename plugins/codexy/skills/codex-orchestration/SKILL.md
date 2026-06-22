@@ -229,6 +229,9 @@ edits.
   worktree/thread setup, or asynchronous tool completion as a non-blocking goal
   state. Keep the goal active, keep polling, send follow-up prompts when
   progress stalls, and continue the merge loop when evidence arrives.
+- In long multi-issue or multi-PR polling loops, use
+  `$token-efficient-orchestration` to carry deltas, exact ids, stale-context
+  demotion, and one next action per lane while preserving all proof gates.
 - For PR merge coordination, keep an active goal and real plan or todo item
   open through the review gate, merge gate, GitHub squash merge, branch
   deletion, and main sync. When the latest-head review gate is satisfied and
