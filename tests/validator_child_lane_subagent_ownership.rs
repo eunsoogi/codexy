@@ -98,6 +98,11 @@ Parent implementation setup: none
 Maintainer reassignment: none
 "#,
         r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: multi_agent_v1 subagent Gauss instead of Codex worktree thread
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
 Subthread/worktree owner: not a Codex thread; multi_agent_v1 subagent Gauss
 Parent implementation setup: none
 Maintainer reassignment: none

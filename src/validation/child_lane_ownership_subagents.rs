@@ -69,18 +69,10 @@ fn value_has_non_owner_subagent_rationale(value: &str) -> bool {
 }
 
 fn owner_key_requires_thread_owner(key: &str) -> bool {
-    [
-        "owner",
-        "owner decision",
-        "child owner",
-        "lane owner",
-        "subthread/worktree owner",
-        "thread/worktree owner",
-        "subthread owner",
-        "worktree owner",
-    ]
-    .into_iter()
-    .any(|field| key == field || key.contains(field))
+    if key.contains("non-owner") || key.contains("non owner") {
+        return false;
+    }
+    key.contains("owner")
 }
 
 fn line_is_helper_only(line: &str) -> bool {
@@ -192,6 +184,16 @@ fn negates_codex_thread_owner(value: &str) -> bool {
         "without codex thread",
         "without worktree thread",
         "without child thread",
+        "instead of codex worktree thread",
+        "instead of codex child thread",
+        "instead of codex thread",
+        "instead of worktree thread",
+        "instead of child thread",
+        "rather than codex worktree thread",
+        "rather than codex child thread",
+        "rather than codex thread",
+        "rather than worktree thread",
+        "rather than child thread",
     ]
     .into_iter()
     .any(|marker| value.contains(marker))

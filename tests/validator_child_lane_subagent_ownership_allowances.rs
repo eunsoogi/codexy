@@ -14,21 +14,29 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 #[test]
 fn validator_allows_subagent_helper_with_true_worktree_owner()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef for implementation ownership
 Subthread/worktree owner: Codex worktree thread 019ef
 Specialist helper: multi_agent_v1 codexy-sentinel used only for reviewer gate
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef for implementation ownership
+Subthread/worktree owner: Codex worktree thread 019ef
+Non-owner helper: multi_agent_v1 codexy-sentinel reviewer gate
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow subagents as helpers when a true worktree thread owns implementation\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should allow subagents as helpers when a true worktree thread owns implementation\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
