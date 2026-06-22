@@ -147,6 +147,7 @@ fn validator_cli_allows_negated_wait_state_with_eyes_only_review() -> TestResult
     for handoff in [
         "Codex review is not complete. Waiting for review output.\n",
         "PR is not merge-ready because Codex review is pending.\n",
+        "PR is not currently merge-ready because Codex review is pending.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
         assert!(output.status.success());
@@ -160,6 +161,7 @@ fn validator_cli_rejects_negated_maintainer_override_with_eyes_only_review() -> 
         "No maintainer override provided. Codex review passed. PR is merge-ready.\n",
         "No maintainer override was provided. Codex review passed. PR is merge-ready.\n",
         "Maintainer override: none. Codex review passed. PR is merge-ready.\n",
+        "No maintainer accepted proceeding without Codex review. Codex review passed. PR is merge-ready.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
         assert_rejected_eyes_only(

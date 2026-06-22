@@ -1,5 +1,8 @@
 use serde_json::Value;
 
+const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr ready|pull-request-ready|pull request ready|review passed|review completed|review complete|review approved";
+const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
+
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if claims_codex_review_ready(handoff)
         && has_latest_eyes_request_without_later_codex_output(pr_state)
@@ -14,44 +17,17 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 }
 
 fn claims_codex_review_ready(handoff: &str) -> bool {
-    let phrases = [
-        "merge-ready",
-        "merge ready",
-        "ready to merge",
-        "ready for merge",
-        "ready for parent handoff",
-        "pr-ready",
-        "pr ready",
-        "pull-request-ready",
-        "pull request ready",
-        "review passed",
-        "review completed",
-        "review complete",
-        "review approved",
-    ];
-    let mut text = handoff.to_ascii_lowercase();
-    for phrase in &phrases {
-        for prefix in ["not yet ", "not ", "no "] {
-            text = text.replace(&format!("{prefix}{phrase}"), "");
-        }
-    }
-    phrases
-        .iter()
-        .any(|phrase| has_phrase_with_boundaries(&text, phrase))
+    let text = handoff.to_ascii_lowercase();
+    READY_PHRASES
+        .split('|')
+        .any(|phrase| has_affirmed_phrase(&text, phrase))
 }
 
 fn states_codex_review_override(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    [
-        "maintainer override: yes",
-        "maintainer override: granted",
-        "maintainer accepted proceeding without codex review",
-        "maintainer accepted proceeding without full codex review",
-        "maintainer explicitly accepted proceeding without codex review",
-        "maintainer explicitly accepted proceeding without full codex review",
-    ]
-    .iter()
-    .any(|phrase| has_phrase_with_boundaries(&text, phrase))
+    OVERRIDE_PHRASES
+        .split('|')
+        .any(|phrase| has_affirmed_phrase(&text, phrase))
 }
 
 fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool {
@@ -208,13 +184,15 @@ fn has_eyes_reaction(item: &Value) -> bool {
             })
 }
 
-fn has_phrase_with_boundaries(text: &str, phrase: &str) -> bool {
+fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;
     while let Some(index) = rest.find(phrase) {
         let start = offset + index;
         let end = start + phrase.len();
-        if is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
+        if is_boundary(text[..start].chars().next_back())
+            && is_boundary(text[end..].chars().next())
+            && !is_locally_negated(&text[..start])
         {
             return true;
         }
@@ -222,6 +200,18 @@ fn has_phrase_with_boundaries(text: &str, phrase: &str) -> bool {
         rest = &text[offset..];
     }
     false
+}
+
+fn is_locally_negated(prefix: &str) -> bool {
+    let clause = prefix
+        .rsplit_once(['.', '!', '?', ';', '\n'])
+        .map_or(prefix, |(_, clause)| clause);
+    clause
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .rev()
+        .take(4)
+        .any(|word| matches!(word, "no" | "not" | "never" | "without"))
 }
 
 fn is_boundary(character: Option<char>) -> bool {
