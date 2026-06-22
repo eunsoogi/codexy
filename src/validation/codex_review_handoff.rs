@@ -105,10 +105,24 @@ fn is_codex_review_request_with_eyes(item: &Value) -> bool {
 }
 
 fn is_codex_review_output_item(item: &Value) -> bool {
-    is_codex_connector_item(item)
-        && text_field(item, "body")
+    if !is_codex_connector_item(item) {
+        return false;
+    }
+    is_inline_review_comment_item(item)
+        || text_field(item, "body")
             .or_else(|| text_field(item, "state"))
             .is_some_and(is_review_output_text)
+}
+
+fn is_inline_review_comment_item(item: &Value) -> bool {
+    ["url", "html_url"]
+        .iter()
+        .filter_map(|field| text_field(item, field))
+        .any(|url| url.contains("#discussion_r"))
+        || item.get("path").is_some()
+            && ["line", "position", "originalLine", "original_line"]
+                .iter()
+                .any(|field| item.get(*field).is_some())
 }
 
 fn is_codex_connector_item(item: &Value) -> bool {
@@ -130,27 +144,11 @@ fn is_codex_connector_identity(value: &Value) -> bool {
 
 fn is_review_output_text(text: &str) -> bool {
     let text = text.to_ascii_lowercase();
+    let output = "didn't find any major issues|no major issues|no actionable issues|no suggestions|no issues|suggestion|review complete|review completed|completed review|finished review|looks good|actionable issue|approved|+1";
     !text.trim().eq("@codex review")
         && !text.contains("create an environment for this repo")
         && !is_review_progress_text(&text)
-        && [
-            "didn't find any major issues",
-            "no major issues",
-            "no actionable issues",
-            "no suggestions",
-            "no issues",
-            "suggestion",
-            "review complete",
-            "review completed",
-            "completed review",
-            "finished review",
-            "looks good",
-            "actionable issue",
-            "approved",
-            "+1",
-        ]
-        .iter()
-        .any(|phrase| text.contains(phrase))
+        && output.split('|').any(|phrase| text.contains(phrase))
 }
 
 fn is_review_progress_text(text: &str) -> bool {
@@ -211,7 +209,7 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
 
 fn is_locally_negated(prefix: &str) -> bool {
     let clause = prefix
-        .rsplit_once(['.', '!', '?', ';', '\n'])
+        .rsplit_once(['.', '!', '?', ';', ':', '\n'])
         .map_or(prefix, |(_, clause)| clause);
     clause
         .split(|character: char| !character.is_ascii_alphanumeric())
