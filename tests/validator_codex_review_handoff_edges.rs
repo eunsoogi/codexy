@@ -93,6 +93,19 @@ fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult 
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_unchecked_maintainer_override_with_eyes_only_review() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "- [ ] Maintainer override: yes\nCodex review passed. PR is merge-ready.\n",
+        eyes_only_pr_state(),
+    )?;
+    assert_rejected_eyes_only(
+        &output,
+        "validator should ignore unchecked maintainer override checklist items",
+    );
+    Ok(())
+}
+
 fn eyes_only_pr_state() -> &'static str {
     r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
 }

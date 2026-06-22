@@ -24,10 +24,14 @@ fn claims_codex_review_ready(handoff: &str) -> bool {
 }
 
 fn states_codex_review_override(handoff: &str) -> bool {
-    let text = handoff.to_ascii_lowercase();
-    OVERRIDE_PHRASES
-        .split('|')
-        .any(|phrase| has_affirmed_phrase(&text, phrase))
+    handoff.lines().any(|line| {
+        let line = line.trim_start();
+        let text = line.to_ascii_lowercase();
+        !line.starts_with("- [ ]")
+            && OVERRIDE_PHRASES
+                .split('|')
+                .any(|phrase| has_affirmed_phrase(&text, phrase))
+    })
 }
 
 fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool {
@@ -109,7 +113,8 @@ fn is_codex_review_output_item(item: &Value) -> bool {
         return false;
     }
     is_inline_review_comment_item(item)
-        || non_blank_text_field(item, "body")
+        || text_field(item, "body")
+            .filter(|text| !text.trim().is_empty())
             .or_else(|| text_field(item, "state"))
             .is_some_and(is_review_output_text)
 }
@@ -225,10 +230,6 @@ fn is_boundary(character: Option<char>) -> bool {
 
 fn text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
-}
-
-fn non_blank_text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
-    text_field(value, key).filter(|text| !text.trim().is_empty())
 }
 
 fn iter_json_objects(value: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {
