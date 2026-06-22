@@ -21,118 +21,119 @@ capture evidence, and keep GitHub work behind verification and review gates.
 
 ## Installation
 
-Install Codexy from your configured Codex plugin marketplace or local
-marketplace entry. For source-checkout development, register or use this
-repository's marketplace entry according to your Codex plugin marketplace
-configuration, then install Codexy from that marketplace.
-
-The current repository marketplace entry is registered with:
+Install Codexy through your Codex plugin marketplace. If this repository is not
+already registered as a marketplace source, add it first:
 
 ```sh
 codex plugin marketplace add eunsoogi/codexy --ref main
 ```
 
-Then install the plugin from that marketplace:
+Then install the plugin:
 
 ```sh
 codex plugin add codexy@codexy
 ```
 
-After installation, verify that Codex can see the plugin and MCP servers:
+Verify that Codex can see the installed plugin and its MCP servers:
 
 ```sh
 codex plugin list
 codex mcp list
 ```
 
-Restart Codex or open a fresh Codex session after installation if newly
-installed plugin, skill, or MCP surfaces do not appear in the active session.
+Restart Codex or open a fresh Codex session if newly installed plugin, skill, or
+MCP surfaces do not appear in the active session.
 
 ## What Codexy Provides
 
-Codexy is for Codex sessions that need durable workflow control: scoped
-implementation lanes, isolated worktrees, review-response routing, verification
-evidence, and PRs that remain understandable after several agent turns.
+Codexy turns Codex from a single-session coding assistant into a harness for
+longer repository work. It packages instructions, specialist roles, MCP
+servers, validators, and release helpers so agents can plan, implement, verify,
+review, and merge work without losing the thread of ownership or evidence.
 
-### Orchestration and Lane Control
+### Workflow Control
 
-- **Task classification**: Codexy helps the agent name the kind of work, the
-  owner, the scope, and the evidence that will prove progress before work
-  spreads across files or branches.
-- **Issue-sized lanes**: broad requests can be split into focused branches,
-  worktrees, and PRs, so unrelated outcomes do not get bundled into one review.
-- **Goal and plan state**: long-running work keeps visible progress markers for
-  handoffs, review waits, verification, and follow-up steps.
-- **Parent/child boundaries**: orchestration stays separate from implementation
-  ownership, which makes it clearer who should patch, verify, and respond to
-  review feedback.
+#### Scoping
 
-### Specialist Roles and Review Gates
+- **Task classification**: names the lane type, owner, scope, and proof needed
+  before repository work spreads across files or branches.
+- **Atomic lanes**: helps split broad requests into issue-sized branches,
+  worktrees, and PRs.
 
-- **Purpose-built roles**: Codexy packages focused roles for planning,
-  architecture, implementation, refactoring, QA, release work, workflow safety,
-  and repository mapping.
-- **Readiness review**: sentinel-style review gives a second pass over scope,
-  evidence, and verification before a lane is handed back or presented as PR
-  ready.
-- **Clear helper semantics**: specialist help is treated as assistance inside a
-  lane, while worktree-based implementation remains tied to the branch and PR
-  that users can inspect.
-- **Review response support**: review comments can be routed back into the
-  lane that owns the change, preserving context for the fix and follow-up
-  evidence.
+#### Ownership
 
-### Evidence Surfaces: MCP, LSP, and Repository Exploration
+- **Subthreads**: supports Codex worktree threads that own implementation for a
+  specific branch or PR.
+- **Subagents**: supports specialist helper and reviewer agents without
+  treating them as branch-owning implementation threads.
+- **Parent orchestration**: keeps routing, review follow-up, and merge
+  coordination separate from child-owned patch work.
 
-- **Codegraph exploration**: `codegraph` helps agents find relevant files,
-  dependencies, and nearby surfaces before they edit.
-- **Language-aware checks**: `lsp` records whether a matching language server
-  is configured and usable for the files under review.
-- **Tool availability evidence**: Codexy distinguishes configured tools from
-  tools that are actually callable in the active session.
-- **Repository-native proof**: command output, validator results, PR state,
-  review threads, and tool output become evidence that another agent or
-  maintainer can inspect.
+#### Progress
 
-### Validators and Proof-Driven Completion
+- **Goal and plan discipline**: keeps long-running work visible across review
+  waits, verification, and handoffs.
+- **Review routing**: sends feedback back to the lane that owns the change.
 
-- **Plugin configuration validation**: validators cover manifest metadata,
-  marketplace registration, MCP/LSP configuration, skills, role metadata, and
-  release contracts.
-- **Completion evidence checks**: handoff evidence can be checked against PR
-  state, review status, and current-head review output before a lane is called
-  ready.
-- **Ownership evidence checks**: child-lane evidence helps catch confusion
-  between orchestration, helper work, and branch-owning implementation.
-- **Reviewable file sizes**: touched implementation and test-harness files can
-  be checked against local size targets to keep reviews manageable.
-- **Current-state proof**: Codexy emphasizes evidence that matches the current
-  files, commit, PR head, and external surface being discussed.
+### Agent and Tooling Surfaces
 
-### GitHub, PR, and Merge Workflow Support
+#### Skills
 
-- **Structured PRs**: Codexy encourages PRs with clear summaries, rationale,
-  changed areas, verification, not-run notes, follow-ups, and issue links.
-- **Current-head review awareness**: review evidence is associated with the PR
-  head it reviewed, which helps users spot stale feedback after new commits.
-- **Review thread visibility**: actionable comments and unresolved threads stay
-  visible as part of the readiness picture.
-- **Squash-merge support**: merge helpers focus on preserving PR body context,
-  issue references, branch cleanup, and post-merge verification.
-- **Post-merge evidence**: refreshed main state and merge-message checks help
-  prove that the repository ended up where the PR said it would.
+- **Workflow skills**: orchestration, Git/GitHub flow, QA, debugging,
+  refactoring, TDD, release engineering, and proof-driven completion.
+- **Installed guidance**: ships those instructions inside the plugin so fresh
+  Codex sessions can follow the same workflow.
 
-### Release and Plugin Packaging Support
+#### Specialist Agents
 
-- **Version synchronization**: release helpers keep plugin metadata,
-  marketplace entries, and package metadata aligned.
-- **Runtime artifact checks**: packaging validation covers runtime binaries,
-  platform support, and generated plugin archives.
-- **Changelog generation**: release tooling can build changelog text from Git
-  tags while avoiding newer tags outside the release history.
-- **Marketplace publication contracts**: validators check the source
-  marketplace, package archive, workflow triggers, and publication expectations
-  before release work is treated as ready.
-- **Local install verification**: release lanes include observable install and
-  MCP visibility checks so a published plugin is not considered ready only
-  because files were generated.
+- **Worker roles**: packaged agents for architecture, implementation,
+  refactoring, repository mapping, and release work.
+- **Reviewer roles**: a sentinel reviewer for current-diff readiness checks.
+
+#### MCP and LSP Integration
+
+- **Codegraph**: maps relevant files and dependencies before code changes.
+- **LSP**: checks language-server registration and availability for
+  language-aware edits.
+- **Tool exposure checks**: distinguishes configured tools from tools that are
+  actually callable in the active Codex session.
+
+### Verification and Review Gates
+
+#### Validators
+
+- **Plugin checks**: validate manifest metadata, marketplace entries, MCP/LSP
+  configuration, skills, agents, and release metadata.
+- **Workflow checks**: validate completion handoffs, child-lane ownership
+  evidence, review state, and merge-message issue references.
+
+#### Review Readiness
+
+- **Current-head evidence**: ties readiness to the exact file state, commit, or
+  PR head being claimed.
+- **Codex review gate**: treats actual Codex review output as required evidence
+  and treats an `eyes` reaction as in-progress only.
+- **Review thread handling**: keeps actionable comments visible until they are
+  fixed or explicitly accepted.
+
+#### GitHub and Merge Safety
+
+- **Structured PRs**: encourages clear summaries, rationale, verification,
+  follow-ups, and issue links.
+- **Merge discipline**: supports squash-merge flow, branch cleanup, and
+  post-merge main synchronization.
+
+### Release and Plugin Packaging
+
+#### Marketplace Readiness
+
+- **Manifest and asset checks**: validates plugin metadata, marketplace
+  registration, and packaged assets together.
+- **Version sync**: keeps plugin, marketplace, and package metadata aligned.
+- **Runtime artifacts**: checks generated archives and packaged MCP runtimes.
+
+#### Release Workflow Support
+
+- **Changelog helpers**: build release notes from the intended Git history.
+- **Install verification**: checks that the released plugin is installable and
+  that Codex can see its MCP surfaces.
