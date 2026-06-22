@@ -95,7 +95,12 @@ for the next step.
   non-trivial lanes before PR readiness, so review evidence is attached to the
   exact branch or diff being claimed.
 
-#### Validation and Release Scripts
+### Source Repository Maintenance
+
+The source checkout also includes repository-maintenance scripts for plugin
+authors and release work. These are not installed as end-user Codex command
+surfaces by the marketplace plugin; use them when you are developing or
+validating this repository itself.
 
 - **Plugin configuration validator**: checks manifest metadata, marketplace
   registration, MCP entries, LSP catalog entries, skill frontmatter, agent
