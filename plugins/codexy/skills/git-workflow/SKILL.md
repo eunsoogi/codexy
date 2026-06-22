@@ -157,7 +157,7 @@ completion or the default Codexy merge flow. Capture current PR state first:
 pr=<pr>
 owner=<owner>
 repo=<repo>
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.base.json
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid,comments,reviews,latestReviews > pr-state.base.json
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -170,19 +170,71 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
           isResolved
           isOutdated
           path
-          comments(first:20) { nodes { url } }
+          comments(first:20) {
+            nodes {
+              author { login }
+              body
+              url
+              createdAt
+            }
+          }
         }
       }
     }
   }
 }' > pr-state.reviewThreads.pages.json
+gh api graphql --paginate --slurp \
+  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      comments(first:100, after:$endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          author { login }
+          body
+          url
+          createdAt
+          reactionGroups {
+            content
+            users { totalCount }
+          }
+        }
+      }
+    }
+  }
+}' > pr-state.comments.pages.json
+gh api graphql --paginate --slurp \
+  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      reviews(first:100, after:$endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          author { login }
+          body
+          state
+          url
+          submittedAt
+        }
+      }
+    }
+  }
+}' > pr-state.reviews.pages.json
 jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
   | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
   pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
+jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
+  pr-state.comments.pages.json > pr-state.comments.json
+jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
+  pr-state.reviews.pages.json > pr-state.reviews.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
-  '. + {reviewThreads: $reviewThreads[0]}' \
+  --slurpfile comments pr-state.comments.json \
+  --slurpfile reviews pr-state.reviews.json \
+  '. + {reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
   pr-state.base.json > pr-state.json
-rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json
+rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json pr-state.comments.pages.json pr-state.comments.json pr-state.reviews.pages.json pr-state.reviews.json
 scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file pr-state.json
 ```
 
@@ -277,6 +329,10 @@ gh pr comment <pr> --body "@codex review"
 
 An `eyes` reaction on the `@codex review` comment means Codex noticed the request
 and is processing it. It is not approval and does not mean review is complete.
+Eyes-only evidence on a current-head review request is not merge-ready and must
+not be described as a completed Codex review result. Actual review output, an
+explicit completion signal, or a maintainer override is required before any
+merge/readiness claim.
 Waiting for that review is a non-blocking goal state: keep the orchestrator
 active, poll the PR review/comment/thread surfaces, and continue as soon as the
 latest-head review output arrives. Do not mark the broader goal blocked merely
@@ -476,6 +532,7 @@ query($owner:String!, $name:String!, $number:Int!) {
               author { login }
               body
               url
+              createdAt
             }
           }
         }
