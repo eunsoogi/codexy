@@ -157,12 +157,19 @@ completion or the default Codexy merge flow. Capture current PR state first:
 pr=<pr>
 owner=<owner>
 repo=<repo>
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.base.json
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid,labels,closingIssuesReferences > pr-state.base.json
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
     pullRequest(number:$number) {
+      labels(first:50) { nodes { name } }
+      closingIssuesReferences(first:20) {
+        nodes {
+          number
+          labels(first:50) { nodes { name } }
+        }
+      }
       reviewThreads(first:100, after:$endCursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
@@ -179,10 +186,13 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
 jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
   | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
   pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
+jq '.[0].data.repository.pullRequest | {labels, closingIssuesReferences}' \
+  pr-state.reviewThreads.pages.json > pr-state.labels.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
-  '. + {reviewThreads: $reviewThreads[0]}' \
+  --slurpfile labels pr-state.labels.json \
+  '. + $labels[0] + {reviewThreads: $reviewThreads[0]}' \
   pr-state.base.json > pr-state.json
-rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json
+rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json pr-state.labels.json
 scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file pr-state.json
 ```
 
@@ -192,6 +202,12 @@ include GraphQL `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`,
 review-feedback reports when this thread evidence is missing, or when any
 addressed unresolved thread, including an outdated-but-fixed thread, remains
 unresolved without an accepted no-change rationale.
+
+For PR-readiness or merge-readiness handoffs, the PR state file MUST include PR
+`labels` and `closingIssuesReferences` with issue labels. The
+completion-handoff validator rejects readiness evidence when either the PR or a
+linked issue is missing the repository taxonomy label families `type/`,
+`status/`, `priority/`, and `area/`.
 
 If the validator flags the report, either continue through review, merge,
 branch deletion, and post-merge main sync, or rewrite the report to state the
@@ -459,7 +475,7 @@ Before merging, inspect the latest PR state, checks, reviews, comments, and
 review threads:
 
 ```sh
-gh pr view <pr> --json number,title,state,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,reviewDecision,latestReviews,reviews,comments
+gh pr view <pr> --json number,title,state,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,reviewDecision,latestReviews,reviews,comments,labels,closingIssuesReferences
 gh pr view <pr> --comments
 gh api graphql -f owner=<owner> -f name=<repo> -F number=<pr-number> -f query='
 query($owner:String!, $name:String!, $number:Int!) {
@@ -725,6 +741,8 @@ After resolving, stage only the resolved files and run verification relevant to 
 - Issue and PR labels match the repository's current label taxonomy when labels
   are available; status-like labels have been updated after review, merge,
   close, or reopen transitions.
+- PR-readiness evidence includes PR labels and closing issue labels with
+  `type/`, `status/`, `priority/`, and `area/` taxonomy families.
 - Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
 - Branch scope matches the issue or sub-scope.
 - Local `.omo/**` evidence remains uncommitted unless explicitly requested.

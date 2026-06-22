@@ -1,0 +1,148 @@
+use serde_json::Value;
+
+const REQUIRED_LABEL_PREFIXES: [&str; 4] = ["type/", "status/", "priority/", "area/"];
+
+pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
+    if !claims_pr_readiness(handoff) {
+        return Vec::new();
+    }
+    let pr_state = match serde_json::from_str::<Value>(pr_state) {
+        Ok(value) => value,
+        Err(error) => return vec![format!("GitHub label PR state JSON error: {error}")],
+    };
+    if !is_open_pr(&pr_state) {
+        return Vec::new();
+    }
+    let mut errors = Vec::new();
+    check_label_set(
+        "PR labels",
+        &label_names(pr_state.get("labels")),
+        &mut errors,
+    );
+    match issue_nodes(pr_state.get("closingIssuesReferences")) {
+        issues if !issues.is_empty() => {
+            for issue in issues {
+                let number = issue
+                    .get("number")
+                    .and_then(Value::as_u64)
+                    .map_or_else(|| "<unknown>".to_owned(), |number| format!("#{number}"));
+                check_label_set(
+                    &format!("issue {number} labels"),
+                    &label_names(issue.get("labels")),
+                    &mut errors,
+                );
+            }
+        }
+        _ => errors
+            .push("GitHub label evidence missing closingIssuesReferences with issue labels".into()),
+    }
+    errors
+}
+
+fn check_label_set(surface: &str, labels: &[String], errors: &mut Vec<String>) {
+    let missing = REQUIRED_LABEL_PREFIXES
+        .into_iter()
+        .filter(|prefix| !labels.iter().any(|label| label.starts_with(prefix)))
+        .collect::<Vec<_>>();
+    if !missing.is_empty() {
+        errors.push(format!(
+            "{surface} missing required taxonomy label families: {}",
+            missing.join(", ")
+        ));
+    }
+}
+
+fn label_names(labels: Option<&Value>) -> Vec<String> {
+    match labels {
+        Some(Value::Array(items)) => items.iter().filter_map(label_name).collect(),
+        Some(Value::Object(map)) => map
+            .get("nodes")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(label_name)
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn label_name(value: &Value) -> Option<String> {
+    value
+        .as_str()
+        .or_else(|| value.get("name").and_then(Value::as_str))
+        .map(str::to_owned)
+}
+
+fn issue_nodes(issues: Option<&Value>) -> Vec<&Value> {
+    match issues {
+        Some(Value::Array(items)) => items.iter().collect(),
+        Some(Value::Object(map)) => map
+            .get("nodes")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn is_open_pr(pr_state: &Value) -> bool {
+    pr_state
+        .get("state")
+        .and_then(Value::as_str)
+        .is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))
+}
+
+fn claims_pr_readiness(handoff: &str) -> bool {
+    let text = handoff.to_ascii_lowercase();
+    [
+        "merge-ready",
+        "merge ready",
+        "ready to merge",
+        "ready for merge",
+        "pr-ready",
+        "pr ready",
+        "pr is ready",
+        "pull request is ready",
+    ]
+    .into_iter()
+    .any(|phrase| has_unnegated_phrase(&text, phrase, 24))
+}
+
+fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(phrase) {
+        let absolute_index = offset + index;
+        let after_index = absolute_index + phrase.len();
+        if is_boundary(text[..absolute_index].chars().next_back())
+            && is_boundary(text[after_index..].chars().next())
+            && !has_nearby_negation(
+                &text[char_window_start(text, absolute_index, negation_window)..absolute_index],
+            )
+        {
+            return true;
+        }
+        offset = after_index;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn has_nearby_negation(prefix: &str) -> bool {
+    ["no", "not", "not yet", "without", "isn't", "is not"]
+        .into_iter()
+        .any(|phrase| prefix.trim_end().ends_with(phrase))
+}
+
+fn char_window_start(text: &str, end: usize, window: usize) -> usize {
+    text[..end]
+        .char_indices()
+        .rev()
+        .nth(window)
+        .map_or(0, |(index, _)| index)
+}
+
+fn is_boundary(character: Option<char>) -> bool {
+    character.is_none_or(|character| !character.is_ascii_alphanumeric())
+}
