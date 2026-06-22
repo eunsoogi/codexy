@@ -95,10 +95,12 @@ fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult 
 
 #[test]
 fn validator_cli_rejects_unchecked_maintainer_override_with_eyes_only_review() -> TestResult {
-    for marker in ["-", "*", "+"] {
+    for marker in [
+        "- [ ]", "* [ ]", "+ [ ]", "-  [ ]", "*  [ ]", "+  [ ]", "-\t[ ]", "*\t[ ]", "+\t[ ]",
+    ] {
         let output = validate_handoff_with_pr_state(
             &format!(
-                "{marker} [ ] Maintainer override: yes\nCodex review passed. PR is merge-ready.\n"
+                "{marker} Maintainer override: yes\nCodex review passed. PR is merge-ready.\n"
             ),
             eyes_only_pr_state(),
         )?;

@@ -25,12 +25,11 @@ fn states_codex_review_override(handoff: &str) -> bool {
     handoff.lines().any(|line| {
         let line = line.trim_start();
         let text = line.to_ascii_lowercase();
-        !matches!(
-            line.as_bytes(),
-            [b'-' | b'*' | b'+', b' ', b'[', b' ', b']', ..]
-        ) && OVERRIDE_PHRASES
-            .split('|')
-            .any(|phrase| has_affirmed_phrase(&text, phrase))
+        (!matches!(line.as_bytes().first(), Some(b'-' | b'*' | b'+'))
+            || !line[1..].trim_start().starts_with("[ ]"))
+            && OVERRIDE_PHRASES
+                .split('|')
+                .any(|phrase| has_affirmed_phrase(&text, phrase))
     })
 }
 
