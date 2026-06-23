@@ -36,6 +36,7 @@ fn contains_preflight_command(line: &str) -> bool {
 }
 
 fn starts_handoff_section(line: &str) -> bool {
+    let line = metadata_line(line);
     [
         "codexy orchestration contract",
         "duplicate/no-active-work state",
@@ -46,6 +47,15 @@ fn starts_handoff_section(line: &str) -> bool {
     ]
     .iter()
     .any(|section| line.starts_with(section))
+}
+
+fn metadata_line(line: &str) -> &str {
+    let line = line.trim().trim_start_matches(['-', '*']).trim_start();
+    line.strip_prefix("[x]")
+        .or_else(|| line.strip_prefix("[X]"))
+        .or_else(|| line.strip_prefix("[ ]"))
+        .unwrap_or(line)
+        .trim_start()
 }
 
 fn has_all_commands(text: &str) -> bool {

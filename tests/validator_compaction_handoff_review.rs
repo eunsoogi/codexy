@@ -70,6 +70,8 @@ fn validator_cli_rejects_negated_stop_condition_placeholders() -> TestResult {
     for stop_condition in [
         "Stop condition: not requested.",
         "Stop condition: not checked.",
+        "Stop condition: missing.",
+        "Stop condition: was not captured during compaction.",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(
             "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",
@@ -95,6 +97,25 @@ fn validator_cli_rejects_not_checked_git_preflight() -> TestResult {
         "Git graph/log preflight: not checked; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
         STOP_CONDITION,
     ))?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_list_section_text_after_partial_git_preflight() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         - Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         - Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         - Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         - Git graph/log preflight captured before editing:\n\
+           - pwd\n\
+         - [x] Stop condition: no merge; later text mentions git status --short --branch.\n\
+         - Next action: do not backfill git rev-parse HEAD, git rev-parse origin/main, or git log --graph from this section.\n",
+    )?;
     assert_invalid(
         &output,
         "compacted continuation evidence missing git graph/log preflight",
