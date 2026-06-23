@@ -30,6 +30,30 @@ fn validator_cli_rejects_session_start_matcher_without_compact_resume()
 }
 
 #[test]
+fn validator_cli_accepts_session_start_regex_matchers_covering_compact_resume()
+-> Result<(), Box<dyn std::error::Error>> {
+    for matcher in ["^(startup|resume|clear|compact)$", ".*"] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_plugin(&plugin_root)?;
+        let hooks_path = plugin_root.join("hooks/hooks.json");
+        let mut hooks_config: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
+        hooks_config["hooks"]["SessionStart"][0]["matcher"] = serde_json::json!(matcher);
+        std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
+
+        let output = validate_hooks(&plugin_root)?;
+        assert!(
+            output.status.success(),
+            "validator should accept SessionStart regex matcher {matcher:?}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_non_string_matcher_when_present() -> Result<(), Box<dyn std::error::Error>>
 {
     let temp = tempfile::tempdir()?;

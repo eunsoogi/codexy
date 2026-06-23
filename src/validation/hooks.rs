@@ -4,6 +4,7 @@ mod context;
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
+use regex::Regex;
 use serde_json::Value;
 
 use crate::paths::display_relative;
@@ -80,7 +81,7 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
                     display_relative(path)
                 );
             };
-            if event == REQUIRED_EVENT && !has_resume_and_compact(matcher) {
+            if event == REQUIRED_EVENT && !has_resume_and_compact(path, matcher)? {
                 bail!(
                     "{} {REQUIRED_EVENT}.matcher must include resume and compact",
                     display_relative(path)
@@ -231,7 +232,12 @@ fn check_session_start_context(
     Ok(())
 }
 
-fn has_resume_and_compact(matcher: &str) -> bool {
-    let tokens = matcher.split('|').map(str::trim).collect::<Vec<_>>();
-    tokens.contains(&"resume") && tokens.contains(&"compact")
+fn has_resume_and_compact(path: &Path, matcher: &str) -> Result<bool> {
+    let matcher = Regex::new(matcher).with_context(|| {
+        format!(
+            "{} {REQUIRED_EVENT}.matcher must be a valid regex",
+            display_relative(path)
+        )
+    })?;
+    Ok(matcher.is_match("resume") && matcher.is_match("compact"))
 }
