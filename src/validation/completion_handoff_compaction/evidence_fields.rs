@@ -32,7 +32,11 @@ pub(super) fn has_authoritative_stop_condition(text: &str) -> bool {
     text.lines().any(|line| {
         ["stop condition", "authoritative stop condition"]
             .iter()
-            .any(|label| field_value(line.trim(), label).is_some_and(has_real_value))
+            .any(|label| {
+                field_value(line.trim(), label).is_some_and(|condition| {
+                    has_real_value(condition) && !has_negated_stop_condition_evidence(condition)
+                })
+            })
     })
 }
 
@@ -170,6 +174,25 @@ fn has_negated_ownership_boundary_evidence(text: &str) -> bool {
             "omitted",
             "without boundary",
             "without ownership",
+        ],
+    )
+}
+
+fn has_negated_stop_condition_evidence(text: &str) -> bool {
+    has_any(
+        text,
+        &[
+            "current stop condition was not captured",
+            "current stop condition was not preserved",
+            "authoritative stop condition was not captured",
+            "authoritative stop condition was not preserved",
+            "stop condition was not captured",
+            "stop condition was not preserved",
+            "stop condition is missing",
+            "stop condition was missing",
+            "stop condition missing",
+            "evidence is missing",
+            "evidence was missing",
         ],
     )
 }

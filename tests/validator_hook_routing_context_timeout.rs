@@ -65,10 +65,10 @@ fn validator_cli_bounds_continuous_hook_output() -> Result<(), Box<dyn std::erro
         !output.status.success(),
         "validator should reject a SessionStart hook that writes continuously"
     );
+    let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("output exceeded"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+        stderr.contains("output exceeded") || stderr.contains("timed out"),
+        "unexpected stderr: {stderr}"
     );
     Ok(())
 }

@@ -51,11 +51,13 @@ fn starts_handoff_section(line: &str) -> bool {
 
 fn metadata_line(line: &str) -> &str {
     let line = line.trim().trim_start_matches(['-', '*']).trim_start();
-    line.strip_prefix("[x]")
+    let line = line
+        .strip_prefix("[x]")
         .or_else(|| line.strip_prefix("[X]"))
         .or_else(|| line.strip_prefix("[ ]"))
         .unwrap_or(line)
-        .trim_start()
+        .trim_start();
+    line.trim_start_matches('#').trim_start()
 }
 
 fn has_all_commands(text: &str) -> bool {
