@@ -1,10 +1,11 @@
 use serde_json::Value;
 
 pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> bool {
-    if claims_readiness(handoff) || claims_completion(handoff) {
+    let text = handoff.to_ascii_lowercase();
+    if claims_readiness(handoff) || claims_completion(handoff) || claims_thread_fixed(&text, thread)
+    {
         return false;
     }
-    let text = handoff.to_ascii_lowercase();
     waiting_segments(&text).any(|segment| {
         thread_referenced(segment, thread)
             && mentions_unresolved(segment)
@@ -82,7 +83,7 @@ fn claims_readiness(handoff: &str) -> bool {
         "merge-ready",
     ]
     .iter()
-    .any(|phrase| has_unnegated_phrase(&text, phrase))
+    .any(|phrase| has_unnegated_readiness_phrase(&text, phrase))
 }
 
 fn claims_completion(handoff: &str) -> bool {
@@ -122,6 +123,23 @@ fn has_unnegated_phrase(text: &str, phrase: &str) -> bool {
             && is_boundary(text[start + phrase.len()..].chars().next())
             && !has_nearby_negation(prefix)
     })
+}
+
+fn has_unnegated_readiness_phrase(text: &str, phrase: &str) -> bool {
+    text.match_indices(phrase).any(|(start, _)| {
+        let end = start + phrase.len();
+        is_boundary(text[..start].chars().next_back())
+            && is_boundary(text[end..].chars().next())
+            && !has_nearby_negation(&text[char_window_start(text, start, 16)..start])
+            && !has_negative_label_value(&text[end..])
+    })
+}
+
+fn has_negative_label_value(suffix: &str) -> bool {
+    let value = suffix.trim_start_matches([' ', '\t', ':', '-', '?']);
+    "not ready|not yet ready|isn't ready|isn't yet ready|aren't ready|aren't yet ready"
+        .split('|')
+        .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
 }
 
 fn mentions_unresolved(segment: &str) -> bool {
@@ -170,6 +188,11 @@ fn mentions_not_accepted(segment: &str) -> bool {
     .any(|term| segment.contains(term))
 }
 
+fn claims_thread_fixed(text: &str, thread: &Value) -> bool {
+    waiting_segments(text)
+        .any(|segment| thread_referenced(segment, thread) && has_unnegated_phrase(segment, "fixed"))
+}
+
 fn thread_referenced(text: &str, thread: &Value) -> bool {
     thread
         .get("id")
@@ -211,6 +234,10 @@ fn has_nearby_negation(prefix: &str) -> bool {
 
 fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())
+}
+
+fn starts_with_boundary(rest: &str) -> bool {
+    is_boundary(rest.chars().next())
 }
 
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {
