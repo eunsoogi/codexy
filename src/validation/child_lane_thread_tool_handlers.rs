@@ -23,25 +23,16 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
 }
 
 const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
+const THREAD_TOOL_DISCOVERY_MARKERS: &str = "available|callable|discovered|expected|exposed|found|listed|registered|tool_search|tool search|visible";
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
 
 fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
     evidence.lines().any(|line| {
+        let normalized = line.to_ascii_lowercase();
         has_thread_tool_name(line)
-            && [
-                "available",
-                "callable",
-                "discovered",
-                "expected",
-                "exposed",
-                "found",
-                "listed",
-                "registered",
-                "tool_search",
-                "tool search",
-            ]
-            .into_iter()
-            .any(|marker| line.contains(marker))
+            && THREAD_TOOL_DISCOVERY_MARKERS
+                .split('|')
+                .any(|marker| normalized.contains(marker))
     })
 }
 

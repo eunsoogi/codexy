@@ -1,0 +1,84 @@
+use std::process::{Command, Output};
+
+fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let evidence_path = temp.path().join("handoff.md");
+    std::fs::write(&evidence_path, evidence)?;
+
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--check-child-lane-ownership", "--evidence-file"])
+        .arg(&evidence_path)
+        .output()?)
+}
+
+#[test]
+fn validator_rejects_placeholder_handler_missing_for_exposed_thread_tools()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Visible tool surface: list_threads, read_thread, send_message_to_thread, list_projects, and create_thread are exposed.
+Invocation evidence: list_threads/read_thread/send_message_to_thread/list_projects/create_thread all return `No handler registered for tool: ...`.
+Fallback: reported ordinary unavailable thread tooling and continued without recording a dogfooding defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject placeholder handler-missing evidence when exposed thread setup tools are named"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the placeholder missing-handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_split_line_placeholder_handler_missing_for_exposed_thread_tools()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Visible tool surface: list_threads, read_thread, send_message_to_thread, list_projects, and create_thread are exposed.
+Invocation evidence: all return `No handler registered for tool: ...`.
+Fallback: reported ordinary unavailable thread tooling and continued without recording a dogfooding defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should associate split-line placeholder handler evidence with the exposed thread tool list"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the split-line placeholder missing-handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_visible_thread_surface_handler_missing()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Visible tool surface: read_thread.
+Invocation evidence: all return `No handler registered for tool: ...`.
+Fallback: reported ordinary unavailable thread tooling and continued without recording a dogfooding defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should treat visible thread tool surfaces as discovered for missing-handler checks"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the visible-surface missing-handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
