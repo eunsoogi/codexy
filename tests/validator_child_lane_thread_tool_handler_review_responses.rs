@@ -146,3 +146,24 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_allows_multiline_handler_defect_capture() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Dogfooding/tool-exposure defect:
+- Recorded discovered codex_app.read_thread as a callable thread tool.
+- Recorded runtime missing-handler evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept defect capture recorded across a scoped multiline block\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

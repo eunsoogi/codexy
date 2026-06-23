@@ -41,21 +41,19 @@ fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
 }
 
 fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
-    evidence.lines().any(|line| {
-        has_defect_label(line)
-            && [
-                "no handler registered",
-                "handler registered",
-                "handler-missing",
-                "missing-handler",
-                "missing handler",
-            ]
-            .into_iter()
-            .any(|marker| line.contains(marker))
-            && has_tool_name(line, tool)
-            && has_affirmative_defect_capture(line)
-            && !has_absent_defect_capture(line)
-    })
+    has_defect_label(evidence)
+        && [
+            "no handler registered",
+            "handler registered",
+            "handler-missing",
+            "missing-handler",
+            "missing handler",
+        ]
+        .into_iter()
+        .any(|marker| evidence.contains(marker))
+        && has_tool_name(evidence, tool)
+        && has_affirmative_defect_capture(evidence)
+        && !has_absent_defect_capture(evidence)
 }
 
 fn has_defect_label(line: &str) -> bool {
@@ -105,12 +103,34 @@ fn line_containing(text: &str, offset: usize) -> (&str, usize) {
 
 fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
     let (_, line_start) = line_containing(evidence, start);
+    let capture_start = multiline_capture_start(evidence, line_start);
     let next_start = evidence[start + HANDLER_MISSING_MARKER.len()..]
         .find(HANDLER_MISSING_MARKER)
         .map_or(evidence.len(), |offset| {
             start + HANDLER_MISSING_MARKER.len() + offset
         });
-    &evidence[line_start..next_start]
+    &evidence[capture_start..next_start]
+}
+
+fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
+    let mut capture_start = line_start;
+    let mut cursor = line_start;
+    while cursor > 0 {
+        let previous_end = cursor - 1;
+        let previous_start = evidence[..previous_end]
+            .rfind('\n')
+            .map_or(0, |index| index + 1);
+        let previous_line = &evidence[previous_start..previous_end];
+        let trimmed = previous_line.trim_start();
+        if trimmed.starts_with("- ") || trimmed.starts_with("* ") || has_defect_label(previous_line)
+        {
+            capture_start = previous_start;
+            cursor = previous_start;
+        } else {
+            break;
+        }
+    }
+    capture_start
 }
 
 fn handler_tool_fragment(line: &str, start: usize) -> &str {
