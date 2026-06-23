@@ -144,11 +144,13 @@ fn claims_pr_readiness(handoff: &str) -> bool {
     [
         "merge-ready",
         "merge-readiness",
+        "merge readiness",
         "merge ready",
         "ready to merge",
         "ready for merge",
         "pr-ready",
         "pr-readiness",
+        "pr readiness",
         "pr ready",
         "pr is ready",
         "pull request is ready",

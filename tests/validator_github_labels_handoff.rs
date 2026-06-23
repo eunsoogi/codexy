@@ -21,6 +21,29 @@ fn validator_rejects_readiness_without_pr_labels() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_spaced_readiness_without_label_evidence() -> TestResult {
+    for handoff in [
+        "PR readiness evidence: all gates passed.\n",
+        "merge readiness evidence: all gates passed.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            handoff,
+            r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[],"closingIssuesReferences":[{"number":180,"labels":[]}]}"#,
+        )?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject spaced readiness evidence without captured GitHub labels\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("PR labels"));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("issue #180 labels"));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_deferred_readiness_without_pr_labels() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "PR is merge-ready after verification. Maintainer requested no merge.\n",
