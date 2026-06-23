@@ -122,6 +122,30 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_repeated_qualified_handler_missing_after_negated_occurrence()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
+Invocation evidence: codex_app.read_thread did not fail with `No handler registered for tool: codex_app.read_thread`; codex_app.send_message_to_thread failed with `No handler registered for tool: codex_app.send_message_to_thread`.
+Fallback: treated the failure as an unavailable-tool fallback and continued without recording a dogfooding defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject a repeated fully qualified handler-missing occurrence even when an earlier occurrence is negated"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_absent_handler_defect_capture() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
