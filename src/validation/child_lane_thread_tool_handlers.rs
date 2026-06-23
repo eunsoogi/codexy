@@ -8,17 +8,22 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
         .any(|(start, _)| {
             let (line, line_start) = line_containing(evidence, start);
             let line_offset = start - line_start;
-            handler_missing_tool(line, line_offset).is_some_and(|tool| {
-                !has_negated_handler_missing_claim(line, line_offset)
-                    && !has_actionable_handler_defect_report(
-                        handler_missing_capture_scope(evidence, start),
-                        tool,
-                    )
-            })
+            let capture_scope = handler_missing_capture_scope(evidence, start);
+            if let Some(tool) = handler_missing_tool(line, line_offset) {
+                return !has_negated_handler_missing_claim(line, line_offset)
+                    && !has_actionable_handler_defect_report(capture_scope, tool);
+            }
+
+            let placeholder_scope = handler_missing_placeholder_scope(evidence, line_start);
+            handler_missing_placeholder(line, line_offset)
+                && has_thread_tool_name(placeholder_scope)
+                && !has_negated_handler_missing_claim(line, line_offset)
+                && !has_actionable_handler_placeholder_report(capture_scope)
         })
 }
 
 const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
+const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
 
 fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
     evidence.lines().any(|line| {
@@ -52,6 +57,13 @@ fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
         .into_iter()
         .any(|marker| evidence.contains(marker))
         && has_tool_name(evidence, tool)
+        && has_affirmative_defect_capture(evidence)
+        && !has_absent_defect_capture(evidence)
+}
+
+fn has_actionable_handler_placeholder_report(evidence: &str) -> bool {
+    has_defect_label(evidence)
+        && evidence.contains(HANDLER_MISSING_MARKER)
         && has_affirmative_defect_capture(evidence)
         && !has_absent_defect_capture(evidence)
 }
@@ -112,7 +124,35 @@ fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
     &evidence[capture_start..next_start]
 }
 
+fn handler_missing_placeholder_scope(evidence: &str, line_start: usize) -> &str {
+    let mut previous_start = line_start;
+    let mut cursor = line_start;
+    while cursor > 0 {
+        let previous_end = cursor - 1;
+        let candidate_start = evidence[..previous_end]
+            .rfind('\n')
+            .map_or(0, |index| index + 1);
+        if !evidence[candidate_start..previous_end].trim().is_empty() {
+            previous_start = candidate_start;
+            break;
+        }
+        cursor = candidate_start;
+    }
+    let current_line_end = evidence[line_start..]
+        .find('\n')
+        .map_or(evidence.len(), |index| line_start + index);
+    &evidence[previous_start..current_line_end]
+}
+
 fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
+    let current_line_end = evidence[line_start..]
+        .find('\n')
+        .map_or(evidence.len(), |index| line_start + index);
+    let current_trimmed = evidence[line_start..current_line_end].trim_start();
+    if !current_trimmed.starts_with("- ") && !current_trimmed.starts_with("* ") {
+        return line_start;
+    }
+
     let mut capture_start = line_start;
     let mut cursor = line_start;
     while cursor > 0 {
@@ -139,6 +179,14 @@ fn handler_tool_fragment(line: &str, start: usize) -> &str {
         .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '.'))
         .next()
         .unwrap_or_default()
+}
+
+fn handler_missing_placeholder(line: &str, start: usize) -> bool {
+    let fragment =
+        line[start + HANDLER_MISSING_MARKER.len()..].trim_start_matches([' ', '`', '\'', '"']);
+    fragment.starts_with("...")
+        || fragment.starts_with('…')
+        || handler_tool_fragment(line, start).is_empty()
 }
 
 fn has_affirmative_defect_capture(line: &str) -> bool {
@@ -197,13 +245,6 @@ fn has_tool_name(line: &str, tool: &str) -> bool {
     line.contains(tool) || line.contains(&format!("codex_app.{tool}"))
 }
 
-fn thread_tool_names() -> [&'static str; 6] {
-    [
-        "create_thread",
-        "fork_thread",
-        "list_threads",
-        "read_thread",
-        "send_message_to_thread",
-        "set_thread_title",
-    ]
+fn thread_tool_names() -> impl Iterator<Item = &'static str> {
+    THREAD_TOOL_NAMES.split('|')
 }
