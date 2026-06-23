@@ -89,6 +89,27 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_helper_metadata_after_true_worktree_owner_field()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef
+Subthread/worktree owner: Codex worktree thread 019ef
+Multi-agent: spawn_agent worker used only for QA
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should close owner context before independent helper metadata fields\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_codexy_helper_non_owner_on_true_worktree_owner_field()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -102,6 +123,26 @@ Maintainer reassignment: none
     assert!(
         output.status.success(),
         "validator should allow Codexy specialist helper metadata on a thread-owner field when it is explicitly not the owner\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_negated_subagent_owner_phrase_with_true_worktree_owner()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef; no subagent owner used
+Subthread/worktree owner: Codex worktree thread 019ef
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should treat negated subagent-owner phrases as non-owner denials\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

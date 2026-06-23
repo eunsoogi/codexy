@@ -1,13 +1,26 @@
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 
 const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
+const SUBAGENT_OWNER_ACTION_MARKERS: &str = "assigned to subagent|assigned to sub-agent|assigned to multi_agent|assigned to multi-agent|routed to subagent|routed to sub-agent|routed to multi_agent|routed to multi-agent|owned by subagent|owned by multi_agent|owned by multi-agent";
+const SUBAGENT_OWNER_LABEL_MARKERS: &str =
+    "subagent owner|multi_agent owner|multi-agent owner|spawn_agent owner";
+const SUBAGENT_OWNER_DENIAL_MARKERS: &str = "not the owner|not owner|not implementation owner|not a child owner|not a subthread owner|not a worktree owner|no subagent owner|no sub-agent owner|no multi_agent owner|no multi-agent owner|subagent owner not used|sub-agent owner not used|multi_agent owner not used|multi-agent owner not used|no subagent substitute|no sub-agent substitute|no multi_agent substitute|no multi-agent substitute|not a subagent substitute|not a sub-agent substitute|not a multi_agent substitute|not a multi-agent substitute|subagent substitute not used|sub-agent substitute not used|multi_agent substitute not used|multi-agent substitute not used|subagent fallback not used|sub-agent fallback not used|multi_agent fallback not used|multi-agent fallback not used";
 
 pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
-    let mut owner_context = None;
+    let mut owner_context: Option<(&str, String)> = None;
     for line in evidence.lines().map(str::trim) {
         if line.is_empty() || line_is_helper_only(line) {
             owner_context = None;
             continue;
+        }
+        if owner_context
+            .as_ref()
+            .is_some_and(|(_, value)| !trimmed_value(value).is_empty())
+            && line
+                .split_once(':')
+                .is_some_and(|(key, _)| !metadata_key(key).is_empty())
+        {
+            owner_context = None;
         }
         if owner_context.is_none() {
             if let Some((key, value)) = line.split_once(':') {
@@ -123,25 +136,13 @@ fn value_has_codexy_specialist_agent(value: &str) -> bool {
 
 fn has_subagent_owner_assignment(value: &str) -> bool {
     let value = trimmed_value(value);
-    [
-        "assigned to subagent",
-        "assigned to sub-agent",
-        "assigned to multi_agent",
-        "assigned to multi-agent",
-        "routed to subagent",
-        "routed to sub-agent",
-        "routed to multi_agent",
-        "routed to multi-agent",
-        "owned by subagent",
-        "owned by multi_agent",
-        "owned by multi-agent",
-        "subagent owner",
-        "multi_agent owner",
-        "multi-agent owner",
-        "spawn_agent owner",
-    ]
-    .into_iter()
-    .any(|marker| value.contains(marker))
+    SUBAGENT_OWNER_ACTION_MARKERS
+        .split('|')
+        .any(|marker| value.contains(marker))
+        || (!value_denies_subagent_owner(value)
+            && SUBAGENT_OWNER_LABEL_MARKERS
+                .split('|')
+                .any(|marker| value.contains(marker)))
 }
 
 fn has_true_codex_thread_owner(value: &str) -> bool {
@@ -220,30 +221,7 @@ fn thread_owner_key(key: &str) -> bool {
 
 fn value_denies_subagent_owner(value: &str) -> bool {
     let value = trimmed_value(value);
-    [
-        "not the owner",
-        "not owner",
-        "not implementation owner",
-        "not a child owner",
-        "not a subthread owner",
-        "not a worktree owner",
-        "no subagent substitute",
-        "no sub-agent substitute",
-        "no multi_agent substitute",
-        "no multi-agent substitute",
-        "not a subagent substitute",
-        "not a sub-agent substitute",
-        "not a multi_agent substitute",
-        "not a multi-agent substitute",
-        "subagent substitute not used",
-        "sub-agent substitute not used",
-        "multi_agent substitute not used",
-        "multi-agent substitute not used",
-        "subagent fallback not used",
-        "sub-agent fallback not used",
-        "multi_agent fallback not used",
-        "multi-agent fallback not used",
-    ]
-    .into_iter()
-    .any(|marker| value.contains(marker))
+    SUBAGENT_OWNER_DENIAL_MARKERS
+        .split('|')
+        .any(|marker| value.contains(marker))
 }
