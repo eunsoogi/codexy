@@ -5,17 +5,18 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_allows_review_response_waiting_on_thread_not_fixed_or_accepted() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
-        mixed_review_thread_pr_state(),
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should allow explicit waiting evidence for a thread not fixed or accepted\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting at src/lib.rs remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should allow explicit waiting evidence for a thread not fixed or accepted\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

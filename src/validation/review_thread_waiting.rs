@@ -36,7 +36,9 @@ fn waiting_segments(text: &str) -> impl Iterator<Item = &str> {
 }
 
 fn splits_sentence_dot(text: &str, dot_index: usize) -> bool {
-    text.as_bytes().get(dot_index) == Some(&b'.') && !dot_inside_url_token(text, dot_index)
+    text.as_bytes().get(dot_index) == Some(&b'.')
+        && !dot_inside_url_token(text, dot_index)
+        && !dot_inside_path_token(text, dot_index)
 }
 
 fn dot_inside_url_token(text: &str, dot_index: usize) -> bool {
@@ -48,6 +50,18 @@ fn dot_inside_url_token(text: &str, dot_index: usize) -> bool {
         .map_or(0, |index| index + 1);
     let token = &prefix[start..];
     (token.starts_with("http://") || token.starts_with("https://"))
+        && text[dot_index + 1..]
+            .chars()
+            .next()
+            .is_some_and(is_reference_char)
+}
+
+fn dot_inside_path_token(text: &str, dot_index: usize) -> bool {
+    let prefix = &text[..dot_index];
+    let start = prefix
+        .rfind(|character: char| character.is_ascii_whitespace())
+        .map_or(0, |index| index + 1);
+    prefix[start..].contains('/')
         && text[dot_index + 1..]
             .chars()
             .next()
