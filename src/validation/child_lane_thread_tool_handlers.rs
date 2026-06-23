@@ -23,16 +23,23 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
 }
 
 const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
+const AFFIRMATIVE_DEFECT_CAPTURE_MARKERS: &str =
+    "captured|classified|recorded|reported|routed|tracked";
 const THREAD_TOOL_DISCOVERY_MARKERS: &str = "available|callable|discovered|expected|exposed|found|listed|registered|tool_search|tool search|visible";
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
 
 fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
+    let mut previous_discovery_marker = false;
     evidence.lines().any(|line| {
         let normalized = line.to_ascii_lowercase();
-        has_thread_tool_name(line)
-            && THREAD_TOOL_DISCOVERY_MARKERS
-                .split('|')
-                .any(|marker| normalized.contains(marker))
+        let has_marker = THREAD_TOOL_DISCOVERY_MARKERS
+            .split('|')
+            .any(|marker| normalized.contains(marker));
+        let discovered = has_thread_tool_name(line)
+            && (has_marker
+                || previous_discovery_marker && line.trim_start().starts_with(['-', '*']));
+        previous_discovery_marker = has_marker && !has_thread_tool_name(line);
+        discovered
     })
 }
 
@@ -181,16 +188,9 @@ fn handler_missing_placeholder(line: &str, start: usize) -> bool {
 }
 
 fn has_affirmative_defect_capture(line: &str) -> bool {
-    [
-        "captured",
-        "classified",
-        "recorded",
-        "reported",
-        "routed",
-        "tracked",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
+    AFFIRMATIVE_DEFECT_CAPTURE_MARKERS
+        .split('|')
+        .any(|marker| line.contains(marker))
 }
 
 fn has_absent_defect_capture(line: &str) -> bool {
