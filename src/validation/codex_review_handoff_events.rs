@@ -100,7 +100,14 @@ fn unresolved_thread_lacks_comment_identity(thread: &Value) -> bool {
 fn has_comment_identity(comment: &Value) -> bool {
     ["author", "user", "performed_via_github_app"]
         .iter()
-        .any(|field| comment.get(*field).is_some())
+        .filter_map(|field| comment.get(*field))
+        .any(has_concrete_identity)
+}
+
+fn has_concrete_identity(value: &Value) -> bool {
+    text_field(value, "login")
+        .or_else(|| text_field(value, "slug"))
+        .is_some_and(|identity| !identity.trim().is_empty())
 }
 
 fn is_codex_review_request(item: &Value) -> bool {

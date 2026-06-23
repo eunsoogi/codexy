@@ -9,6 +9,15 @@ const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for me
 const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_ready = claims_codex_review_ready(handoff);
+    if claims_ready
+        && pr_state.get("headRefOid").and_then(Value::as_str).is_none()
+        && uses_codex_review_evidence(handoff, pr_state)
+    {
+        return vec![
+            "completion handoff PR state missing required field: headRefOid before Codex review readiness claims"
+                .into(),
+        ];
+    }
     if claims_ready && has_unresolved_codex_review_thread(pr_state) {
         return vec![format!(
             "unresolved Codex review thread blocks merge/readiness claims: PR #{}",
@@ -40,6 +49,10 @@ fn claims_codex_review_ready(handoff: &str) -> bool {
     READY_PHRASES
         .split('|')
         .any(|phrase| has_affirmed_phrase(&text, phrase))
+}
+fn uses_codex_review_evidence(_handoff: &str, pr_state: &Value) -> bool {
+    has_codex_review_output(pr_state)
+        || has_latest_eyes_request_without_later_codex_output(pr_state)
 }
 fn states_codex_review_override(handoff: &str) -> bool {
     handoff.lines().any(|line| {
