@@ -75,10 +75,11 @@ fn main() -> Result<()> {
     } else if cli.check_rust_lsp_readiness {
         validation::Mode::RustLspReadiness
     } else if cli.check_merge_message {
+        if cli.expected_issue.is_none() && cli.expected_pr.is_none() {
+            anyhow::bail!("--expected-issue or --expected-pr is required");
+        }
         validation::Mode::MergeMessage {
-            expected_issue: cli
-                .expected_issue
-                .ok_or_else(|| anyhow::anyhow!("--expected-issue is required"))?,
+            expected_issue: cli.expected_issue,
             expected_pr: cli.expected_pr,
             message: merge_message(&cli)?,
         }

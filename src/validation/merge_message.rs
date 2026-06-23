@@ -1,4 +1,8 @@
-pub(super) fn check(expected_issue: u64, expected_pr: Option<u64>, message: &str) -> Vec<String> {
+pub(super) fn check(
+    expected_issue: Option<u64>,
+    expected_pr: Option<u64>,
+    message: &str,
+) -> Vec<String> {
     let mut errors = Vec::new();
     if let Some(expected_pr) = expected_pr {
         if !has_expected_pr_suffix(expected_pr, message) {
@@ -7,10 +11,12 @@ pub(super) fn check(expected_issue: u64, expected_pr: Option<u64>, message: &str
             ));
         }
     }
-    if !has_unique_final_closing_reference(expected_issue, message) {
-        errors.push(format!(
-            "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
-        ));
+    if let Some(expected_issue) = expected_issue {
+        if !has_unique_final_closing_reference(expected_issue, message) {
+            errors.push(format!(
+                "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
+            ));
+        }
     }
     errors
 }

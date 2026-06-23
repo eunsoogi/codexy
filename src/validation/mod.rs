@@ -36,7 +36,7 @@ pub enum Mode {
     Lsp,
     RustLspReadiness,
     MergeMessage {
-        expected_issue: u64,
+        expected_issue: Option<u64>,
         expected_pr: Option<u64>,
         message: String,
     },
