@@ -23,8 +23,7 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
 }
 
 const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
-const AFFIRMATIVE_DEFECT_CAPTURE_MARKERS: &str =
-    "captured|classified|recorded|reported|routed|tracked";
+const CAPTURE_MARKERS: &str = "captured|classified|recorded|reported|routed|tracked";
 const THREAD_TOOL_DISCOVERY_MARKERS: &str = "available|callable|discovered|expected|exposed|found|listed|registered|tool_search|tool search|visible";
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
 
@@ -54,7 +53,9 @@ fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
         ]
         .into_iter()
         .any(|marker| evidence.contains(marker))
-        && has_tool_name(evidence, tool)
+        && evidence
+            .find("defect")
+            .is_some_and(|start| has_tool_name(&evidence[start..], tool))
         && has_affirmative_defect_capture(evidence)
         && !has_absent_defect_capture(evidence)
 }
@@ -188,7 +189,7 @@ fn handler_missing_placeholder(line: &str, start: usize) -> bool {
 }
 
 fn has_affirmative_defect_capture(line: &str) -> bool {
-    AFFIRMATIVE_DEFECT_CAPTURE_MARKERS
+    CAPTURE_MARKERS
         .split('|')
         .any(|marker| line.contains(marker))
 }

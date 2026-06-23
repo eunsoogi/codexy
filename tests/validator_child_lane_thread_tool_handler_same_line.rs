@@ -31,3 +31,27 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_same_line_handler_failure_missing_from_defect_report()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.list_threads and codex_app.list_projects as available thread tools.
+Invocation evidence: codex_app.list_threads failed with `No handler registered for tool: list_threads`; codex_app.list_projects failed with `No handler registered for tool: list_projects`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject grouped same-line handler evidence when the defect report omits one failed tool"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
