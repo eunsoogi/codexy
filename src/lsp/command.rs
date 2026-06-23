@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::Path;
 
 use anyhow::Result;
@@ -56,41 +57,26 @@ pub(crate) fn resolve_executable(command: &[String]) -> (bool, Option<String>, O
 }
 
 fn executable_names(executable: &str) -> Vec<String> {
+    executable_names_for_platform(
+        executable,
+        cfg!(windows),
+        std::env::var_os("PATHEXT").as_deref(),
+    )
+}
+
+fn executable_names_for_platform(
+    executable: &str,
+    is_windows: bool,
+    _pathext: Option<&OsStr>,
+) -> Vec<String> {
     let mut names = vec![executable.to_owned()];
     if Path::new(executable).extension().is_some() {
         return names;
     }
-    if !cfg!(windows) {
-        return names;
-    }
-    let Some(pathext) = std::env::var_os("PATHEXT") else {
+    if is_windows {
         names.push(format!("{executable}.exe"));
-        return names;
-    };
-    for extension in pathext.to_string_lossy().split(';') {
-        let extension = extension.trim();
-        if extension.is_empty() {
-            continue;
-        }
-        let suffix = if extension.starts_with('.') {
-            extension.to_owned()
-        } else {
-            format!(".{extension}")
-        };
-        push_name(&mut names, executable, &suffix);
-        let lowercase_suffix = suffix.to_ascii_lowercase();
-        if lowercase_suffix != suffix {
-            push_name(&mut names, executable, &lowercase_suffix);
-        }
     }
     names
-}
-
-fn push_name(names: &mut Vec<String>, executable: &str, suffix: &str) {
-    let candidate = format!("{executable}{suffix}");
-    if !names.iter().any(|name| name == &candidate) {
-        names.push(candidate);
-    }
 }
 
 #[cfg(unix)]
@@ -103,4 +89,22 @@ fn is_executable(path: &Path) -> bool {
 #[cfg(not(unix))]
 fn is_executable(path: &Path) -> bool {
     path.exists()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+
+    use super::executable_names_for_platform;
+
+    #[test]
+    fn windows_names_ignore_unlaunchable_pathext_shims() {
+        let names = executable_names_for_platform(
+            "rust-analyzer",
+            true,
+            Some(OsStr::new(".CMD;.BAT;.EXE")),
+        );
+
+        assert_eq!(names, vec!["rust-analyzer", "rust-analyzer.exe"]);
+    }
 }
