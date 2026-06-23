@@ -98,6 +98,7 @@ fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
 fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     for handoff in [
         "Not a blocker: pending Codex review is still processing.\n",
+        "Non-blocker: pending Codex review is still processing.\n",
         "Blockers: None.\nNot a blocker: pending Codex review is still processing.\n",
         "Blockers: None.\nWaiting: pending Codex review is still processing.\n",
         "Blocked: no. Waiting: pending Codex review is still processing.\n",

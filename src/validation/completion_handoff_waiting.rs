@@ -234,9 +234,11 @@ fn is_boundary(character: Option<char>) -> bool {
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
-    ["no", "not", "not a", "not an", "isn't", "is not", "without"]
-        .iter()
-        .any(|phrase| prefix.trim_end().ends_with(phrase))
+    [
+        "no", "non", "non-", "not", "not a", "not an", "isn't", "is not", "without",
+    ]
+    .iter()
+    .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
 
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {
