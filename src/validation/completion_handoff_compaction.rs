@@ -43,6 +43,7 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
             "ready to continue",
             "continuation readiness",
             "resume",
+            "resuming",
             "continue",
             "next action",
             "before editing",

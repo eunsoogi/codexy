@@ -86,7 +86,6 @@ fn metadata_line(line: &str) -> &str {
     let line = line.trim().trim_start_matches(['-', '*']).trim_start();
     line.strip_prefix("[x]")
         .or_else(|| line.strip_prefix("[X]"))
-        .or_else(|| line.strip_prefix("[ ]"))
         .unwrap_or(line)
         .trim_start()
 }
@@ -141,6 +140,8 @@ fn has_negated_contract_evidence(text: &str) -> bool {
             "not captured",
             "not active",
             "not available",
+            "not preserved",
+            "was not preserved",
             "missing",
             "omitted",
             "without @codexy",
@@ -156,6 +157,8 @@ fn has_negated_duplicate_state_evidence(text: &str) -> bool {
             "not captured",
             "not checked",
             "not re-checked",
+            "not preserved",
+            "was not preserved",
             "did not check",
             "missing",
             "omitted",
@@ -170,6 +173,8 @@ fn has_negated_ownership_boundary_evidence(text: &str) -> bool {
         &[
             "not captured",
             "not available",
+            "not preserved",
+            "was not preserved",
             "missing",
             "omitted",
             "without boundary",
@@ -209,11 +214,13 @@ fn has_real_value(value: &str) -> bool {
         "not available",
         "not applicable",
         "not-applicable",
+        "not preserved",
         "not requested",
         "not checked",
         "missing",
         "was not captured",
         "was not checked",
+        "was not preserved",
         "n/a",
         "na",
     ]

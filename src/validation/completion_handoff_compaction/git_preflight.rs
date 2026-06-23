@@ -3,8 +3,7 @@ pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
     lines.iter().enumerate().any(|(index, line)| {
         is_git_preflight_line(line) && has_positive_evidence(line) && {
             let block = git_preflight_block(&lines, index, false);
-            let evidence = git_preflight_block(&lines, index, true);
-            has_all_commands(&block) && !has_negated_evidence(&evidence)
+            has_all_commands(&block) && !has_negated_evidence(&block)
         }
     })
 }
@@ -36,6 +35,10 @@ fn contains_preflight_command(line: &str) -> bool {
 }
 
 fn starts_handoff_section(line: &str) -> bool {
+    if line.trim_start().starts_with('#') {
+        return true;
+    }
+
     let line = metadata_line(line);
     [
         "codexy orchestration contract",
@@ -93,8 +96,6 @@ fn has_negated_evidence(line: &str) -> bool {
             "not captured",
             "not checked",
             "without running",
-            "missing",
-            "omitted",
         ],
     )
 }
