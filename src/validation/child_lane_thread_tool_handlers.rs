@@ -26,9 +26,11 @@ fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
 
 fn has_thread_tool_handler_missing_evidence(evidence: &str) -> bool {
     evidence.lines().any(|line| {
-        line.contains("no handler registered for tool:")
-            && has_thread_tool_name(line)
-            && !has_negated_handler_missing_claim(line)
+        line.match_indices("no handler registered for tool:")
+            .any(|(start, _)| {
+                let claim = handler_missing_claim(line, start);
+                has_thread_tool_name(claim) && !has_negated_handler_missing_claim(line, start)
+            })
     })
 }
 
@@ -48,10 +50,7 @@ fn has_actionable_handler_defect_report(evidence: &str) -> bool {
     })
 }
 
-fn has_negated_handler_missing_claim(line: &str) -> bool {
-    let Some(start) = line.find("no handler registered for tool:") else {
-        return false;
-    };
+fn has_negated_handler_missing_claim(line: &str, start: usize) -> bool {
     let prefix_start = line[..start]
         .rfind([';', '.'])
         .map_or(0, |offset| offset + 1);
@@ -70,6 +69,14 @@ fn has_negated_handler_missing_claim(line: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| prefix.contains(marker))
+}
+
+fn handler_missing_claim(line: &str, start: usize) -> &str {
+    let prefix_start = line[..start].rfind(';').map_or(0, |offset| offset + 1);
+    let suffix_end = line[start..]
+        .find(';')
+        .map_or(line.len(), |offset| start + offset);
+    &line[prefix_start..suffix_end]
 }
 
 fn has_affirmative_defect_capture(line: &str) -> bool {
