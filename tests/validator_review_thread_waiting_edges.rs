@@ -4,22 +4,25 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
-fn validator_rejects_waiting_evidence_that_contradicts_same_thread_fix() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Review response: fixed PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
-    )?;
+fn validator_rejects_waiting_evidence_that_contradicts_same_thread_action() -> TestResult {
+    for action in ["fixed", "addressed", "implemented", "resolved"] {
+        let handoff = format!(
+            "Review response: {action} PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        );
+        let output = validate_handoff_with_pr_state(&handoff)?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject waiting evidence when the same thread is also claimed fixed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject waiting evidence when the same thread is also claimed {action}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

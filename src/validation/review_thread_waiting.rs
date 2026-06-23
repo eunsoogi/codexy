@@ -172,25 +172,18 @@ fn mentions_not_fixed(segment: &str) -> bool {
 }
 
 fn mentions_not_accepted(segment: &str) -> bool {
-    [
-        "not accepted",
-        "not yet accepted",
-        "isn't accepted",
-        "isn't yet accepted",
-        "wasn't accepted",
-        "hasn't been accepted",
-        "not fixed/accepted",
-        "not fixed or accepted",
-        "isn't fixed/accepted",
-        "isn't fixed or accepted",
-    ]
-    .iter()
+    "not accepted|not yet accepted|isn't accepted|isn't yet accepted|wasn't accepted|hasn't been accepted|not fixed/accepted|not fixed or accepted|isn't fixed/accepted|isn't fixed or accepted"
+        .split('|')
     .any(|term| segment.contains(term))
 }
 
 fn claims_thread_fixed(text: &str, thread: &Value) -> bool {
-    waiting_segments(text)
-        .any(|segment| thread_referenced(segment, thread) && has_unnegated_phrase(segment, "fixed"))
+    waiting_segments(text).any(|segment| {
+        thread_referenced(segment, thread)
+            && "addressed|fixed|implemented|resolved"
+                .split('|')
+                .any(|action| has_unnegated_phrase(segment, action))
+    })
 }
 
 fn thread_referenced(text: &str, thread: &Value) -> bool {
