@@ -93,33 +93,35 @@ fn validator_allows_waiting_rationale_with_contraction_negations() -> TestResult
 
 #[test]
 fn validator_allows_waiting_handoff_with_contracted_completion_negation() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane isn't complete.\n",
-        mixed_review_thread_pr_state(),
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should recognize contracted negation before completion claims\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane isn't yet complete.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should recognize contracted negation before completion claims\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
 #[test]
 fn validator_allows_waiting_handoff_with_contracted_readiness_negation() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; we aren't ready for handoff.\n",
-        mixed_review_thread_pr_state(),
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should recognize contracted negation before readiness claims\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; we aren't yet ready for handoff.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should recognize contracted negation before readiness claims\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

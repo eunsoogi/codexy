@@ -214,6 +214,8 @@ fn has_nearby_negation(prefix: &str) -> bool {
         "not yet",
         "not explicit",
         "isn't",
+        "isn't yet",
+        "aren't yet",
         "is not",
         "did not",
         "did not explicitly",
