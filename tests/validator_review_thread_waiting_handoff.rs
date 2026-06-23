@@ -20,6 +20,24 @@ fn validator_allows_review_response_waiting_on_thread_not_fixed_or_accepted() ->
 }
 
 #[test]
+fn validator_rejects_waiting_thread_with_only_half_evidence() -> TestResult {
+    for handoff in [
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not accepted yet; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed yet; this lane is not complete.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should reject waiting evidence that omits not-fixed or not-accepted evidence\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_allows_waiting_rationale_referenced_by_github_url() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed PRRT_kwDOFixed. https://github.com/eunsoogi/codexy/pull/174#discussion_r2 remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",

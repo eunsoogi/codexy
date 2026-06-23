@@ -8,7 +8,8 @@ pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> 
     waiting_segments(&text).any(|segment| {
         thread_referenced(segment, thread)
             && mentions_unresolved(segment)
-            && (mentions_not_fixed(segment) || mentions_not_accepted(segment))
+            && mentions_not_fixed(segment)
+            && mentions_not_accepted(segment)
     })
 }
 
