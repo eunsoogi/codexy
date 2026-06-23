@@ -115,10 +115,10 @@ fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
     let (_, line_start) = line_containing(evidence, start);
     let capture_start = multiline_capture_start(evidence, line_start);
     let next_start = evidence[start + HANDLER_MISSING_MARKER.len()..]
-        .find(HANDLER_MISSING_MARKER)
-        .map_or(evidence.len(), |offset| {
-            start + HANDLER_MISSING_MARKER.len() + offset
-        });
+        .match_indices(HANDLER_MISSING_MARKER)
+        .map(|(offset, _)| start + HANDLER_MISSING_MARKER.len() + offset)
+        .find(|next| evidence[start..*next].contains('\n'))
+        .unwrap_or(evidence.len());
     &evidence[capture_start..next_start]
 }
 
