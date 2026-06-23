@@ -15,6 +15,18 @@ pub(super) fn has_codex_review_output(pr_state: &Value) -> bool {
         .any(|event| matches!(event.kind, ReviewEventKind::CodexOutput))
 }
 
+pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
+    iter_json_objects(pr_state).any(|item| {
+        is_codex_review_request(item)
+            || is_codex_connector_item(item)
+                && (is_inline_review_comment_item(item)
+                    || text_field(item, "body")
+                        .filter(|text| !text.trim().is_empty())
+                        .or_else(|| text_field(item, "state"))
+                        .is_some_and(is_review_output_text))
+    })
+}
+
 pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool {
     let events = review_events(pr_state);
     let Some(latest_eyes_request) = events
@@ -128,7 +140,9 @@ fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
 }
 
 fn codex_output_matches_head(item: &Value, head: Option<&str>) -> bool {
-    let Some(head) = head else { return true };
+    let Some(head) = head.filter(|head| !head.trim().is_empty()) else {
+        return false;
+    };
     let Some(oid) = item
         .get("commit")
         .and_then(|commit| text_field(commit, "oid"))

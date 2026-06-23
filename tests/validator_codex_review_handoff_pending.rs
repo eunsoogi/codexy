@@ -147,6 +147,39 @@ fn validator_cli_rejects_codex_readiness_without_head_ref_oid() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_codex_readiness_with_blank_head_ref_oid() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review passed on the current head. PR is merge-ready.\n",
+        r#"{
+            "number":156,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "reviewDecision":"APPROVED",
+            "headRefOid":"   ",
+            "comments":[{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-06-22T12:45:06Z",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
+            }],
+            "latestReviews":[{
+                "body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
+                "author":{"login":"chatgpt-codex-connector"},
+                "submittedAt":"2026-06-22T12:50:03Z"
+            }],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+    assert_rejected_with_stderr(
+        &output,
+        "validator should reject blank headRefOid before current-head Codex readiness claims",
+        "headRefOid",
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_accepts_connector_output_with_review_request_footer() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Codex review passed on the current head. PR is merge-ready.\n",

@@ -1,8 +1,8 @@
 use serde_json::Value;
 
 use super::codex_review_handoff_events::{
-    has_codex_review_output, has_latest_eyes_request_without_later_codex_output,
-    has_unresolved_codex_review_thread,
+    has_codex_review_activity, has_codex_review_output,
+    has_latest_eyes_request_without_later_codex_output, has_unresolved_codex_review_thread,
 };
 
 const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr ready|pull-request-ready|pull request ready|codex review passed|codex review completed|codex review complete|codex review approved";
@@ -10,8 +10,8 @@ const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: gr
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_ready = claims_codex_review_ready(handoff);
     if claims_ready
-        && pr_state.get("headRefOid").and_then(Value::as_str).is_none()
-        && uses_codex_review_evidence(handoff, pr_state)
+        && !has_head_ref_oid(pr_state)
+        && (claims_codex_review_completion(handoff) || has_codex_review_activity(pr_state))
     {
         return vec![
             "completion handoff PR state missing required field: headRefOid before Codex review readiness claims"
@@ -50,9 +50,22 @@ fn claims_codex_review_ready(handoff: &str) -> bool {
         .split('|')
         .any(|phrase| has_affirmed_phrase(&text, phrase))
 }
-fn uses_codex_review_evidence(_handoff: &str, pr_state: &Value) -> bool {
-    has_codex_review_output(pr_state)
-        || has_latest_eyes_request_without_later_codex_output(pr_state)
+fn claims_codex_review_completion(handoff: &str) -> bool {
+    let text = handoff.to_ascii_lowercase();
+    [
+        "codex review passed",
+        "codex review completed",
+        "codex review complete",
+        "codex review approved",
+    ]
+    .iter()
+    .any(|phrase| has_affirmed_phrase(&text, phrase))
+}
+fn has_head_ref_oid(pr_state: &Value) -> bool {
+    pr_state
+        .get("headRefOid")
+        .and_then(Value::as_str)
+        .is_some_and(|head| !head.trim().is_empty())
 }
 fn states_codex_review_override(handoff: &str) -> bool {
     handoff.lines().any(|line| {
