@@ -31,17 +31,23 @@ Maintainer reassignment: none
 #[test]
 fn validator_rejects_explicit_subagent_assignment_despite_substitute_denial()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Owner decision: child-owned implementation lane assigned to subagent Gauss; not a subagent substitute for a Codex thread
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef; assigned to subagent Gauss; not assigned to subagent Beta
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject explicit subagent assignment even when the value also denies substitute usage"
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject explicit subagent assignment even when the value also denies substitute usage"
+        );
+    }
     Ok(())
 }
 

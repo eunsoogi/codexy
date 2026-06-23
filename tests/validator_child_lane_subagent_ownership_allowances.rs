@@ -132,20 +132,27 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_negated_subagent_owner_phrase_with_true_worktree_owner()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef; no subagent owner used
 Subthread/worktree owner: Codex worktree thread 019ef
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef; not assigned to subagent
+Subthread/worktree owner: Codex worktree thread 019ef
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        output.status.success(),
-        "validator should treat negated subagent-owner phrases as non-owner denials\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should treat negated subagent-owner phrases as non-owner denials\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

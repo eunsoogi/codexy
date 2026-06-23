@@ -2,6 +2,7 @@ use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_val
 
 const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
 const SUBAGENT_OWNER_ACTION_MARKERS: &str = "assigned to subagent|assigned to sub-agent|assigned to multi_agent|assigned to multi-agent|routed to subagent|routed to sub-agent|routed to multi_agent|routed to multi-agent|owned by subagent|owned by multi_agent|owned by multi-agent";
+const SUBAGENT_OWNER_ACTION_DENIAL_MARKERS: &str = "not assigned to subagent|not assigned to sub-agent|not assigned to multi_agent|not assigned to multi-agent|not routed to subagent|not routed to sub-agent|not routed to multi_agent|not routed to multi-agent|not owned by subagent|not owned by multi_agent|not owned by multi-agent";
 const SUBAGENT_OWNER_LABEL_MARKERS: &str =
     "subagent owner|multi_agent owner|multi-agent owner|spawn_agent owner";
 const SUBAGENT_OWNER_DENIAL_MARKERS: &str = "not the owner|not owner|not implementation owner|not a child owner|not a subthread owner|not a worktree owner|no subagent owner|no sub-agent owner|no multi_agent owner|no multi-agent owner|subagent owner not used|sub-agent owner not used|multi_agent owner not used|multi-agent owner not used|no subagent substitute|no sub-agent substitute|no multi_agent substitute|no multi-agent substitute|not a subagent substitute|not a sub-agent substitute|not a multi_agent substitute|not a multi-agent substitute|subagent substitute not used|sub-agent substitute not used|multi_agent substitute not used|multi-agent substitute not used|subagent fallback not used|sub-agent fallback not used|multi_agent fallback not used|multi-agent fallback not used";
@@ -75,6 +76,7 @@ fn value_is_non_child_owned_decision_with_subagent_rationale(value: &str) -> boo
 
 fn value_has_non_owner_subagent_rationale(value: &str) -> bool {
     value_denies_subagent_owner(value)
+        || value_denies_subagent_owner_assignment(value)
         || "subagent not useful|sub-agent not useful|multi_agent not useful|multi-agent not useful|specialist helper not useful"
             .split('|')
         .any(|marker| value.contains(marker))
@@ -138,11 +140,27 @@ fn has_subagent_owner_assignment(value: &str) -> bool {
     let value = trimmed_value(value);
     SUBAGENT_OWNER_ACTION_MARKERS
         .split('|')
-        .any(|marker| value.contains(marker))
+        .any(|marker| value_has_unnegated_marker(value, marker))
         || (!value_denies_subagent_owner(value)
             && SUBAGENT_OWNER_LABEL_MARKERS
                 .split('|')
                 .any(|marker| value.contains(marker)))
+}
+
+fn value_has_unnegated_marker(value: &str, marker: &str) -> bool {
+    value.match_indices(marker).any(|(index, _)| {
+        !value[..index]
+            .trim_end_matches(|character: char| {
+                character.is_ascii_whitespace() || matches!(character, ',' | ';')
+            })
+            .ends_with("not")
+    })
+}
+
+fn value_denies_subagent_owner_assignment(value: &str) -> bool {
+    SUBAGENT_OWNER_ACTION_DENIAL_MARKERS
+        .split('|')
+        .any(|marker| value.contains(marker))
 }
 
 fn has_true_codex_thread_owner(value: &str) -> bool {
