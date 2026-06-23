@@ -198,7 +198,7 @@ fn validator_cli_accepts_later_completed_compact_codex_review() -> TestResult {
             "reviewDecision":"APPROVED",
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],
-            "latestReviews":[{"body":"Didn't find any major issues.","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+            "latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
     assert!(

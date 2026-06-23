@@ -103,11 +103,15 @@ fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
 
 fn codex_output_matches_head(item: &Value, head: Option<&str>) -> bool {
     let Some(head) = head else { return true };
-    item.get("commit")
+    let Some(oid) = item
+        .get("commit")
         .and_then(|commit| text_field(commit, "oid"))
         .filter(|oid| !oid.is_empty())
         .or_else(|| text_field(item, "body").and_then(reviewed_commit))
-        .is_none_or(|oid| head.starts_with(oid) || oid.starts_with(head))
+    else {
+        return false;
+    };
+    head.starts_with(oid) || oid.starts_with(head)
 }
 
 fn reviewed_commit(text: &str) -> Option<&str> {
