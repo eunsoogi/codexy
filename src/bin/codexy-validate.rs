@@ -21,6 +21,8 @@ struct Cli {
     check_merge_message: bool,
     #[arg(long, requires = "check_merge_message")]
     expected_issue: Option<u64>,
+    #[arg(long, requires = "check_merge_message")]
+    expected_pr: Option<u64>,
     #[arg(
         long,
         requires = "check_merge_message",
@@ -77,6 +79,7 @@ fn main() -> Result<()> {
             expected_issue: cli
                 .expected_issue
                 .ok_or_else(|| anyhow::anyhow!("--expected-issue is required"))?,
+            expected_pr: cli.expected_pr,
             message: merge_message(&cli)?,
         }
     } else if cli.check_completion_handoff {

@@ -37,6 +37,7 @@ pub enum Mode {
     RustLspReadiness,
     MergeMessage {
         expected_issue: u64,
+        expected_pr: Option<u64>,
         message: String,
     },
     CompletionHandoff {
@@ -76,8 +77,9 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         Mode::RustLspReadiness => lsp::check_rust_readiness(plugin_root),
         Mode::MergeMessage {
             expected_issue,
+            expected_pr,
             message,
-        } => merge_message::check(expected_issue, &message),
+        } => merge_message::check(expected_issue, expected_pr, &message),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(&handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));

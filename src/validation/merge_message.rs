@@ -1,11 +1,26 @@
-pub(super) fn check(expected_issue: u64, message: &str) -> Vec<String> {
-    if has_unique_final_closing_reference(expected_issue, message) {
-        Vec::new()
-    } else {
-        vec![format!(
-            "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
-        )]
+pub(super) fn check(expected_issue: u64, expected_pr: Option<u64>, message: &str) -> Vec<String> {
+    let mut errors = Vec::new();
+    if let Some(expected_pr) = expected_pr {
+        if !has_expected_pr_suffix(expected_pr, message) {
+            errors.push(format!(
+                "merge commit subject must end with the expected PR suffix: (#{expected_pr})"
+            ));
+        }
     }
+    if !has_unique_final_closing_reference(expected_issue, message) {
+        errors.push(format!(
+            "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
+        ));
+    }
+    errors
+}
+
+fn has_expected_pr_suffix(expected_pr: u64, message: &str) -> bool {
+    let expected_suffix = format!("(#{expected_pr})");
+    message
+        .lines()
+        .next()
+        .is_some_and(|line| line.ends_with(&expected_suffix))
 }
 
 fn has_unique_final_closing_reference(expected_issue: u64, message: &str) -> bool {

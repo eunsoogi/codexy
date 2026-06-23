@@ -594,8 +594,8 @@ if ! cat "$pr_body_file" >> "$merge_message_file"; then
   exit 1
 fi
 if [ -n "${issue_number:-}" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --merge-message-file "$merge_message_file"; then
-    printf '%s\n' "Squash merge message is missing the expected final issue reference or has extra closing references; aborting merge." >&2
+  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --expected-pr "$pr_number" --merge-message-file "$merge_message_file"; then
+    printf '%s\n' "Squash merge message is missing the expected final issue reference, has extra closing references, or lacks the PR suffix; aborting merge." >&2
     exit 1
   fi
 fi
@@ -645,7 +645,9 @@ inspection and approval gate above must pass before `gh pr merge` runs. The
 pre-merge message validator MUST check the composed squash merge message
 (`merge_subject` plus the captured PR body), not the body alone, so subject-line
 closing references such as `fix: #120 ...` are rejected before they can reach
-`main`. The expected body file is stored under the shared Git common directory
+`main`. When the PR number is known, the validator MUST receive
+`--expected-pr "$pr_number"` so a subject missing the exact `(#<pr>)` suffix is
+rejected before merge. The expected body file is stored under the shared Git common directory
 from `git rev-parse --git-common-dir` so it remains local and untracked but
 survives post-merge verification from a separate worktree shell.
 
@@ -698,8 +700,8 @@ print(match[/\d+/]) if match
 RUBY
 )
 if [ -n "$expected_issue_number" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$expected_issue_number" --merge-message-file "$commit_message_file"; then
-    printf '%s\n' "Merged commit message is missing the expected issue reference; leaving evidence at: $expected_body_file" >&2
+  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$expected_issue_number" --expected-pr "$pr_number" --merge-message-file "$commit_message_file"; then
+    printf '%s\n' "Merged commit message is missing the expected issue reference or PR suffix; leaving evidence at: $expected_body_file" >&2
     exit 1
   fi
 fi
@@ -710,8 +712,8 @@ The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body must match the PR body captured from GitHub
 before merge. For issue-backed PRs, the refreshed commit message must also pass
 `scripts/validate-plugin-config --check-merge-message --expected-issue
-<issue-number> --merge-message-file <commit-message-file>` before merge
-completion is reported. Use the raw commit object instead of `git log
+<issue-number> --expected-pr <pr-number> --merge-message-file
+<commit-message-file>` before merge completion is reported. Use the raw commit object instead of `git log
 --pretty=%B` for the body comparison so formatter-added trailing newlines do not
 create false failures. If GitHub did not delete the remote topic branch, delete
 it only after confirming the PR was merged and no dependent work needs the
