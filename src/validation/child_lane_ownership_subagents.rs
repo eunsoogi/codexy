@@ -20,6 +20,7 @@ pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
             && line
                 .split_once(':')
                 .is_some_and(|(key, _)| !metadata_key(key).is_empty())
+            && !line_is_list_item(line)
         {
             owner_context = None;
         }
@@ -106,6 +107,10 @@ fn line_is_helper_only(line: &str) -> bool {
                 line.split_once(':')
                     .is_some_and(|(key, _)| metadata_key(key).contains(marker))
             })
+}
+
+fn line_is_list_item(line: &str) -> bool {
+    matches!(line.trim_start().as_bytes(), [b'-' | b'*' | b'+', b' ', ..])
 }
 
 fn has_subagent_surface(value: &str) -> bool {
