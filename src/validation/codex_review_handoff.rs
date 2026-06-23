@@ -20,7 +20,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         && !states_codex_review_override(handoff)
     {
         return vec![format!(
-            "eyes-only Codex review request is not review completion: PR #{} needs actual Codex review output, an explicit completion signal, or a maintainer override before merge/readiness claims",
+            "eyes-only Codex review request or unacknowledged Codex review request is not review completion: PR #{} needs actual Codex review output, an explicit completion signal, or a maintainer override before merge/readiness claims",
             pr_number(pr_state)
         )];
     }

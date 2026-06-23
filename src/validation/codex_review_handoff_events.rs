@@ -4,7 +4,8 @@ pub(super) fn has_unresolved_codex_review_thread(pr_state: &Value) -> bool {
     iter_json_objects(pr_state).any(|item| {
         item.get("isResolved").and_then(Value::as_bool) == Some(false)
             && item.get("isOutdated").and_then(Value::as_bool) != Some(true)
-            && iter_json_objects(item).any(is_codex_connector_item)
+            && (iter_json_objects(item).any(is_codex_connector_item)
+                || unresolved_thread_lacks_comment_identity(item))
     })
 }
 
@@ -19,7 +20,7 @@ pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Valu
     let Some(latest_eyes_request) = events
         .iter()
         .enumerate()
-        .filter(|(_, event)| matches!(event.kind, ReviewEventKind::EyesRequest))
+        .filter(|(_, event)| matches!(event.kind, ReviewEventKind::CodexRequest))
         .max_by(|(_, left), (_, right)| compare_event_order(left, right))
         .map(|(index, _)| index)
     else {
@@ -38,8 +39,8 @@ fn review_events(pr_state: &Value) -> Vec<ReviewEvent<'_>> {
     iter_json_objects(pr_state)
         .enumerate()
         .filter_map(|(order, item)| {
-            let kind = if is_codex_review_request_with_eyes(item) {
-                ReviewEventKind::EyesRequest
+            let kind = if is_codex_review_request(item) {
+                ReviewEventKind::CodexRequest
             } else if is_codex_review_output_item(item, head) {
                 ReviewEventKind::CodexOutput
             } else {
@@ -63,7 +64,7 @@ struct ReviewEvent<'a> {
 
 #[derive(Clone, Copy)]
 enum ReviewEventKind {
-    EyesRequest,
+    CodexRequest,
     CodexOutput,
 }
 
@@ -84,9 +85,27 @@ fn event_timestamp(item: &Value) -> Option<&str> {
         .find_map(|field| text_field(item, field))
 }
 
-fn is_codex_review_request_with_eyes(item: &Value) -> bool {
-    text_field(item, "body").is_some_and(|body| body.contains("@codex review"))
-        && has_eyes_reaction(item)
+fn unresolved_thread_lacks_comment_identity(thread: &Value) -> bool {
+    thread
+        .get("comments")
+        .and_then(|comments| comments.get("nodes"))
+        .and_then(Value::as_array)
+        .is_none_or(|comments| {
+            comments
+                .iter()
+                .any(|comment| !has_comment_identity(comment))
+        })
+}
+
+fn has_comment_identity(comment: &Value) -> bool {
+    ["author", "user", "performed_via_github_app"]
+        .iter()
+        .any(|field| comment.get(*field).is_some())
+}
+
+fn is_codex_review_request(item: &Value) -> bool {
+    !is_codex_connector_item(item)
+        && text_field(item, "body").is_some_and(|body| body.contains("@codex review"))
 }
 
 fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
@@ -160,38 +179,6 @@ fn is_review_progress_text(text: &str) -> bool {
     let result = "suggestion|finding|issue|comment";
     future.split('|').any(|phrase| text.contains(phrase))
         && result.split('|').any(|phrase| text.contains(phrase))
-}
-
-fn has_eyes_reaction(item: &Value) -> bool {
-    item.get("reactionGroups")
-        .and_then(Value::as_array)
-        .is_some_and(|groups| {
-            groups.iter().any(|group| {
-                text_field(group, "content").is_some_and(|content| {
-                    content.eq_ignore_ascii_case("EYES")
-                        && group
-                            .get("users")
-                            .and_then(|users| users.get("totalCount"))
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0)
-                            > 0
-                })
-            })
-        })
-        || item
-            .get("reactions")
-            .is_some_and(|reactions| match reactions {
-                Value::Object(map) => map
-                    .get("eyes")
-                    .and_then(Value::as_u64)
-                    .is_some_and(|count| count > 0),
-                Value::Array(items) => items.iter().any(|reaction| {
-                    text_field(reaction, "content")
-                        .or_else(|| text_field(reaction, "name"))
-                        .is_some_and(|content| content.eq_ignore_ascii_case("eyes"))
-                }),
-                _ => false,
-            })
 }
 
 fn text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
