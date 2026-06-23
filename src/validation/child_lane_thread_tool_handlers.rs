@@ -104,12 +104,13 @@ fn line_containing(text: &str, offset: usize) -> (&str, usize) {
 }
 
 fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
+    let (_, line_start) = line_containing(evidence, start);
     let next_start = evidence[start + HANDLER_MISSING_MARKER.len()..]
         .find(HANDLER_MISSING_MARKER)
         .map_or(evidence.len(), |offset| {
             start + HANDLER_MISSING_MARKER.len() + offset
         });
-    &evidence[start..next_start]
+    &evidence[line_start..next_start]
 }
 
 fn handler_tool_fragment(line: &str, start: usize) -> &str {
@@ -144,7 +145,6 @@ fn has_absent_defect_capture(line: &str) -> bool {
         "not captured",
         "not classified",
         "not recorded",
-        "not reported",
         "not routed",
         "not tracked",
         "without capturing",
@@ -153,6 +153,18 @@ fn has_absent_defect_capture(line: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| line.contains(marker))
+        || [
+            "defect not reported",
+            "handler defect not reported",
+            "handler-missing defect not reported",
+            "missing-handler defect not reported",
+            "not reported as a dogfooding defect",
+            "not reported as a tool-exposure defect",
+            "not reported as dogfooding defect",
+            "not reported as tool-exposure defect",
+        ]
+        .into_iter()
+        .any(|marker| line.contains(marker))
 }
 
 fn has_thread_tool_name(line: &str) -> bool {
