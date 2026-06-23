@@ -1,26 +1,15 @@
+const WAITING_STATE_ERROR: &str = "pending Codex review, child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
+
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
-    for segment in text.split(['\n', '.', ';']) {
-        if claims_blocked_state(segment)
-            && mentions_non_blocking_wait(segment)
-            && !has_true_impasse_rationale(segment)
-            && !mentions_true_blocker(segment)
-        {
-            return Some(
-                "pending Codex review, child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence"
-                    .into(),
-            );
-        }
-    }
-    if claims_blocked_state(&text)
-        && mentions_non_blocking_wait(&text)
-        && !has_true_impasse_rationale(&text)
-        && !mentions_true_blocker(&text)
-    {
-        return Some(
-            "pending Codex review, child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence"
-                .into(),
-        );
+    let false_blocked_wait = |text: &str| {
+        claims_blocked_state(text)
+            && mentions_non_blocking_wait(text)
+            && !has_true_impasse_rationale(text)
+            && !mentions_true_blocker(text)
+    };
+    if text.split(['\n', '.', ';']).any(false_blocked_wait) || false_blocked_wait(&text) {
+        return Some(WAITING_STATE_ERROR.into());
     }
     None
 }
@@ -29,7 +18,7 @@ fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
         || mentions_missing_child_evidence(text)
         || mentions_setup_failure_blocker(text)
-        || has_any(text, "security review")
+        || mentions_active_security_review_blocker(text)
 }
 
 fn claims_blocked_state(text: &str) -> bool {
@@ -79,8 +68,18 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
         )
         && has_any(
             text,
-            "waiting for codex review feedback|waiting for review feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
+            "pending codex review feedback|pending review feedback|waiting for codex review feedback|waiting for review feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
         )
+}
+
+fn mentions_active_security_review_blocker(text: &str) -> bool {
+    has_any(
+        text,
+        "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure",
+    ) && !has_any(
+        text,
+        "security review passed|security review complete|security review completed|security review not required|no security review",
+    )
 }
 
 fn mentions_pending_request_context(text: &str) -> bool {
@@ -234,11 +233,9 @@ fn is_boundary(character: Option<char>) -> bool {
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
-    [
-        "no", "non", "non-", "not", "not a", "not an", "isn't", "is not", "without",
-    ]
-    .iter()
-    .any(|phrase| prefix.trim_end().ends_with(phrase))
+    "no|non|non-|not|not a|not an|isn't|is not|without"
+        .split('|')
+        .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
 
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {

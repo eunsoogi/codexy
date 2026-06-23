@@ -9,6 +9,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: current-head @codex review request has an eyes reaction and is still pending.\n",
         "Blocked: current-head @codex review comment has an eyes reaction and is still pending.\n",
         "Blocked: pending @codex review request has no actionable feedback yet.\n",
+        "Blocked: pending Codex review feedback.\n",
+        "Blocked: pending @codex review, security review passed.\n",
         "Blocked: waiting for Codex review feedback from the connector.\n",
         "Blocked: missing Codex review response is pending.\n",
         "Blocked.\nWaiting: pending Codex review is still processing.\n",
