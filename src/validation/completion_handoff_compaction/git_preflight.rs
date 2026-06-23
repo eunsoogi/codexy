@@ -1,10 +1,13 @@
 pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
     let lines: Vec<_> = text.lines().map(str::trim).collect();
     lines.iter().enumerate().any(|(index, line)| {
-        is_git_preflight_line(line) && has_positive_evidence(line) && {
-            let block = git_preflight_block(&lines, index, false);
-            has_all_commands(&block) && !has_negated_evidence(&block)
-        }
+        is_git_preflight_line(line)
+            && !is_unchecked_checklist_item(line)
+            && has_positive_evidence(line)
+            && {
+                let block = git_preflight_block(&lines, index, false);
+                has_all_commands(&block) && !has_negated_evidence(&block)
+            }
     })
 }
 
@@ -38,6 +41,9 @@ fn starts_handoff_section(line: &str) -> bool {
     if line.trim_start().starts_with('#') {
         return true;
     }
+    if starts_unrelated_list_section(line) {
+        return true;
+    }
 
     let line = metadata_line(line);
     [
@@ -50,6 +56,35 @@ fn starts_handoff_section(line: &str) -> bool {
     ]
     .iter()
     .any(|section| line.starts_with(section))
+}
+
+fn starts_unrelated_list_section(line: &str) -> bool {
+    let line = line.trim();
+    if !line.starts_with(['-', '*']) {
+        return false;
+    }
+
+    let line = metadata_line(line);
+    line.contains(':') && !is_git_preflight_line(line) && !starts_with_preflight_command(line)
+}
+
+fn is_unchecked_checklist_item(line: &str) -> bool {
+    line.trim()
+        .trim_start_matches(['-', '*'])
+        .trim_start()
+        .starts_with("[ ]")
+}
+
+fn starts_with_preflight_command(line: &str) -> bool {
+    [
+        "pwd",
+        "git status --short --branch",
+        "git rev-parse head",
+        "git rev-parse origin/main",
+        "git log --graph",
+    ]
+    .iter()
+    .any(|phrase| line.starts_with(phrase))
 }
 
 fn metadata_line(line: &str) -> &str {

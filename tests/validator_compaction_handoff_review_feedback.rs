@@ -147,6 +147,49 @@ fn validator_cli_rejects_arbitrary_heading_text_after_partial_git_preflight() ->
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_unrelated_list_section_after_partial_git_preflight() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         - Git graph/log preflight captured before editing:\n\
+           - pwd\n\
+         - Verification: later prose mentions git status --short --branch, git rev-parse HEAD,\n\
+           git rev-parse origin/main, and git log --graph, but not as preflight evidence.\n",
+    )?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_unchecked_git_preflight_checklist_item() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         - [x] Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         - [x] Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         - [x] Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         - [ ] Git graph/log preflight captured before editing:\n\
+           - pwd\n\
+           - git status --short --branch\n\
+           - git rev-parse HEAD\n\
+           - git rev-parse origin/main\n\
+           - git log --graph --oneline --decorate --all --max-count=50\n\
+         - [x] Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Next action: stop.\n",
+    )?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
 fn valid_handoff_with(
     contract: &str,
     duplicate_state: &str,
