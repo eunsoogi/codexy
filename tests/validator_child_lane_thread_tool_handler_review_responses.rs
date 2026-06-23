@@ -133,7 +133,7 @@ fn validator_allows_capture_that_negates_unavailable_fallback_reporting()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not reported as an ordinary unavailable-tool fallback.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not captured as an ordinary unavailable-tool fallback.
 Maintainer reassignment: none
 "#,
     )?;

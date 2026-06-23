@@ -169,6 +169,25 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_defect_scoped_not_captured_evidence() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: not captured runtime missing-handler evidence for codex_app.read_thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject defect-scoped not-captured evidence"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_list_projects_handler_missing_for_thread_setup()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

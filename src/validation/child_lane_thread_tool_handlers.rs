@@ -202,7 +202,6 @@ fn has_absent_defect_capture(line: &str) -> bool {
         "no tool-exposure defect",
         "not a dogfooding defect",
         "not a tool-exposure defect",
-        "not captured",
         "not classified",
         "not routed",
         "not tracked",
@@ -228,6 +227,7 @@ fn has_absent_defect_capture(line: &str) -> bool {
             "not reported as a tool-exposure defect",
             "not reported as dogfooding defect",
             "not reported as tool-exposure defect",
+            "defect: not captured|defect not captured|handler defect not captured|handler-missing defect not captured|missing-handler defect not captured|not captured as a dogfooding defect|not captured as a tool-exposure defect|not captured as dogfooding defect|not captured as tool-exposure defect",
             "without recording a dogfooding defect|without recording a tool-exposure defect|without recording dogfooding defect|without recording tool-exposure defect",
         ]
         .into_iter()
