@@ -74,25 +74,26 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
         .with_context(|| format!("{} {event} group must be an object", display_relative(path)))?;
     match object.get("matcher") {
         Some(value) => {
-            let matcher = value.as_str().filter(|value| !value.trim().is_empty());
+            let matcher = value.as_str();
             let Some(matcher) = matcher else {
                 bail!(
                     "{} {event}.matcher must be a non-empty string when present",
                     display_relative(path)
                 );
             };
-            if event == REQUIRED_EVENT && !has_resume_and_compact(path, matcher)? {
+            if event == REQUIRED_EVENT
+                && !session_start_covers_resume_and_compact(path, Some(matcher))?
+            {
                 bail!(
                     "{} {REQUIRED_EVENT}.matcher must include resume and compact",
                     display_relative(path)
                 );
+            } else if event != REQUIRED_EVENT && matcher.trim().is_empty() {
+                bail!(
+                    "{} {event}.matcher must be a non-empty string when present",
+                    display_relative(path)
+                );
             }
-        }
-        None if event == REQUIRED_EVENT => {
-            bail!(
-                "{} {REQUIRED_EVENT}.matcher must include resume and compact",
-                display_relative(path)
-            );
         }
         None => {}
     }
@@ -232,12 +233,18 @@ fn check_session_start_context(
     Ok(())
 }
 
-fn has_resume_and_compact(path: &Path, matcher: &str) -> Result<bool> {
-    let matcher = Regex::new(matcher).with_context(|| {
+fn session_start_covers_resume_and_compact(path: &Path, matcher: Option<&str>) -> Result<bool> {
+    let Some(matcher) = matcher else {
+        return Ok(true);
+    };
+    if matcher.is_empty() || matcher == "*" {
+        return Ok(true);
+    }
+    let regex = Regex::new(matcher).with_context(|| {
         format!(
             "{} {REQUIRED_EVENT}.matcher must be a valid regex",
             display_relative(path)
         )
     })?;
-    Ok(matcher.is_match("resume") && matcher.is_match("compact"))
+    Ok(regex.is_match("resume") && regex.is_match("compact"))
 }
