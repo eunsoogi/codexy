@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
-    if !claims_pr_readiness(handoff) {
+    if !claims_label_guarded_handoff(handoff) {
         return Vec::new();
     }
     let pr_state = match serde_json::from_str::<Value>(pr_state) {
@@ -41,6 +41,10 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
             .push("GitHub label evidence missing closingIssuesReferences with issue labels".into()),
     }
     errors
+}
+
+fn claims_label_guarded_handoff(handoff: &str) -> bool {
+    claims_pr_readiness(handoff) || claims_completion(handoff)
 }
 
 fn check_label_evidence(surface: &str, labels: &[String], errors: &mut Vec<String>) {
@@ -151,6 +155,28 @@ fn claims_pr_readiness(handoff: &str) -> bool {
     ]
     .into_iter()
     .any(|phrase| has_unnegated_phrase(&text, phrase, 24))
+}
+
+fn claims_completion(handoff: &str) -> bool {
+    let mut text = handoff.to_ascii_lowercase();
+    if has_unnegated_phrase(&text, "not complete until merge", 16) {
+        text = text.replace("verification completed.", "verification evidence.");
+        for phrase in [
+            "successfully completed",
+            "completed successfully",
+            "completed",
+            "finished",
+            "finalized",
+        ] {
+            text = text.replace(&format!("verification {phrase};"), "verification evidence;");
+        }
+    }
+    ["completed", "finished", "finalized", "all set"]
+        .iter()
+        .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
+        || ["done", "complete", "completes", "finish", "finalize"]
+            .iter()
+            .any(|word| has_unnegated_phrase(&text, word, 16))
 }
 
 fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
