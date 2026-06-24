@@ -553,7 +553,7 @@ PR body when building the merge commit message. Prefer `--match-head-commit
 <headRefOid>` when available so a newly pushed unreviewed head cannot be merged
 by accident:
 
-```sh
+```bash
 pr_number=<explicit-pr-number>
 issue_number=<linked-issue-number>
 repo=eunsoogi/codexy
@@ -593,11 +593,13 @@ if ! cat "$pr_body_file" >> "$merge_message_file"; then
   printf '%s\n' "Could not append PR body to composed squash merge message; aborting merge." >&2
   exit 1
 fi
+merge_validation_args=(--check-merge-message --expected-pr "$pr_number")
 if [ -n "${issue_number:-}" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --expected-pr "$pr_number" --merge-message-file "$merge_message_file"; then
-    printf '%s\n' "Squash merge message is missing the expected final issue reference, has extra closing references, or lacks the PR suffix; aborting merge." >&2
-    exit 1
-  fi
+  merge_validation_args+=(--expected-issue "$issue_number")
+fi
+if ! scripts/validate-plugin-config "${merge_validation_args[@]}" --merge-message-file "$merge_message_file"; then
+  printf '%s\n' "Squash merge message is missing the expected final issue reference when issue-backed, has extra closing references, or lacks the PR suffix; aborting merge." >&2
+  exit 1
 fi
 
 printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
@@ -660,7 +662,7 @@ Do not locally merge feature branches into `main` as a substitute for the PR wor
 
 After merge, update the main worktree:
 
-```sh
+```bash
 pr_number=<explicit-pr-number>
 git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
@@ -699,11 +701,13 @@ match = body.lines.map(&:strip).reverse.find { |line| line.match?(/\AFixes #\d+\
 print(match[/\d+/]) if match
 RUBY
 )
+post_merge_validation_args=(--check-merge-message --expected-pr "$pr_number")
 if [ -n "$expected_issue_number" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$expected_issue_number" --expected-pr "$pr_number" --merge-message-file "$commit_message_file"; then
-    printf '%s\n' "Merged commit message is missing the expected issue reference or PR suffix; leaving evidence at: $expected_body_file" >&2
-    exit 1
-  fi
+  post_merge_validation_args+=(--expected-issue "$expected_issue_number")
+fi
+if ! scripts/validate-plugin-config "${post_merge_validation_args[@]}" --merge-message-file "$commit_message_file"; then
+  printf '%s\n' "Merged commit message is missing the expected issue reference when issue-backed or PR suffix; leaving evidence at: $expected_body_file" >&2
+  exit 1
 fi
 rm -f "$expected_body_file"
 ```
