@@ -107,3 +107,55 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_broader_bulleted_visible_thread_surface_handler_missing()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Visible tool surface:
+- apply_patch
+- read_thread
+Invocation evidence: all return `No handler registered for tool: ...`.
+Fallback: reported ordinary unavailable thread tooling and continued without recording a dogfooding defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should preserve visible-surface discovery across non-thread bullets"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the broad-list missing-handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_placeholder_handler_missing_after_invocation_header()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Visible tool surface:
+- read_thread
+Invocation evidence:
+all return `No handler registered for tool: ...`.
+Fallback: reported ordinary unavailable thread tooling and continued without recording a dogfooding defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should associate placeholder handler evidence across invocation headers"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the header-separated placeholder evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

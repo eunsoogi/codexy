@@ -31,16 +31,20 @@ const THREAD_TOOL_DISCOVERY_MARKERS: &str = "available|callable|discovered|expec
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
 
 fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
-    let mut previous_discovery_marker = false;
+    let mut in_discovery_list = false;
     evidence.lines().any(|line| {
+        let trimmed = line.trim_start();
         let normalized = line.to_ascii_lowercase();
         let has_marker = THREAD_TOOL_DISCOVERY_MARKERS
             .split('|')
             .any(|marker| normalized.contains(marker));
         let discovered = has_thread_tool_name(line)
-            && (has_marker
-                || previous_discovery_marker && line.trim_start().starts_with(['-', '*']));
-        previous_discovery_marker = has_marker && !has_thread_tool_name(line);
+            && (has_marker || in_discovery_list && is_list_item(trimmed));
+        in_discovery_list = if has_marker && !has_thread_tool_name(line) {
+            true
+        } else {
+            in_discovery_list && is_list_item(trimmed)
+        };
         discovered
     })
 }
@@ -154,10 +158,10 @@ fn handler_missing_placeholder_scope(evidence: &str, line_start: usize) -> &str 
         let candidate_start = evidence[..previous_end]
             .rfind('\n')
             .map_or(0, |index| index + 1);
-        if !evidence[candidate_start..previous_end].trim().is_empty() {
-            previous_start = candidate_start;
+        if evidence[candidate_start..previous_end].trim().is_empty() {
             break;
         }
+        previous_start = candidate_start;
         cursor = candidate_start;
     }
     let current_line_end = evidence[line_start..]
