@@ -34,7 +34,6 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         )];
     }
     if claims_ready
-        && (claims_completion || has_codex_review_activity(pr_state))
         && !has_codex_review_output(pr_state)
         && !has_override
     {
@@ -128,11 +127,30 @@ fn is_locally_negated(prefix: &str) -> bool {
         .rsplit_once(['.', '!', '?', ';', ':', ',', '\n'])
         .map_or(prefix, |(_, clause)| clause);
     clause
-        .split(|character: char| !character.is_ascii_alphanumeric())
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '\'')
         .filter(|word| !word.is_empty())
         .rev()
         .take(4)
-        .any(|word| matches!(word, "no" | "not" | "never" | "without"))
+        .any(|word| {
+            matches!(
+                word,
+                "no"
+                    | "not"
+                    | "never"
+                    | "without"
+                    | "isn't"
+                    | "wasn't"
+                    | "hasn't"
+                    | "haven't"
+                    | "aren't"
+                    | "don't"
+                    | "doesn't"
+                    | "didn't"
+                    | "won't"
+                    | "can't"
+                    | "cannot"
+            )
+        })
 }
 fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())

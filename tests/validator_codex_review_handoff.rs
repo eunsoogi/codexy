@@ -1,5 +1,4 @@
 use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
@@ -148,6 +147,7 @@ fn validator_cli_allows_negated_wait_state_with_eyes_only_review() -> TestResult
         "Codex review is not complete. Waiting for review output.\n",
         "PR is not merge-ready because Codex review is pending.\n",
         "PR is not currently merge-ready because Codex review is pending.\n",
+        "PR isn't merge-ready because Codex review is pending.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
         assert!(output.status.success());

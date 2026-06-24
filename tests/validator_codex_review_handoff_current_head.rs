@@ -38,6 +38,20 @@ fn validator_cli_rejects_generic_ready_claim_with_only_stale_codex_output() -> T
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_generic_ready_claim_without_codex_activity() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "PR is merge-ready.\n",
+        r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+    )?;
+    assert_rejected_with_stderr(
+        &output,
+        "validator should reject generic readiness claims without Codex review activity",
+        "current-head Codex review output",
+    );
+    Ok(())
+}
+
 fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, expected: &str) {
     assert!(
         !output.status.success(),
