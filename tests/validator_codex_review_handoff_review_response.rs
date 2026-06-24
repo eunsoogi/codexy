@@ -65,7 +65,9 @@ fn validator_cli_rejects_unhandled_top_level_codex_actionable_output() -> TestRe
 fn validator_cli_accepts_none_valued_codex_suggestion_sections() -> TestResult {
     for body in [
         "Suggestions: none\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
+        "Suggestions: none.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
         "Actionable issues: none\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
+        "Actionable issues: none!\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
     ] {
         let output = validate_handoff_with_pr_state(
             "Codex review passed on the current head. PR is merge-ready.\n",

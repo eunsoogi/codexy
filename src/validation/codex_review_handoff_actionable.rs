@@ -102,6 +102,8 @@ fn has_none_value_after_label(suffix: &str) -> bool {
     let value = value.strip_prefix([':', '-']).unwrap_or(value).trim_start();
     value.strip_prefix("none").is_some_and(|rest| {
         let rest = rest.trim_start_matches([' ', '\t']);
+        let rest = rest.trim_start_matches(|character: char| character.is_ascii_punctuation());
+        let rest = rest.trim_start_matches([' ', '\t']);
         rest.is_empty() || rest.starts_with('\n') || rest.starts_with('\r')
     })
 }
