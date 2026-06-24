@@ -98,7 +98,7 @@ fn validator_rejects_readiness_without_issue_labels() -> TestResult {
 #[test]
 fn validator_accepts_readiness_with_codexy_lane_labels() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "PR is merge-ready after verification.\n",
+        "Maintainer override: yes. PR is merge-ready after verification.\n",
         r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[{"name":"bug"},{"name":"review"}],"closingIssuesReferences":[{"number":180,"labels":[{"name":"workflow"},{"name":"urgent"}]}]}"#,
     )?;
 
@@ -114,7 +114,7 @@ fn validator_accepts_readiness_with_codexy_lane_labels() -> TestResult {
 #[test]
 fn validator_accepts_graphql_label_nodes() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "PR is merge-ready after verification.\n",
+        "Maintainer override: yes. PR is merge-ready after verification.\n",
         r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":{"nodes":[{"name":"bug"},{"name":"review"}]},"closingIssuesReferences":{"nodes":[{"number":180,"labels":{"nodes":[{"name":"workflow"},{"name":"urgent"}]}}]}}"#,
     )?;
 
@@ -164,7 +164,7 @@ fn validator_rejects_stale_applied_label_claim_without_state_labels() -> TestRes
 #[test]
 fn validator_accepts_user_repo_without_codexy_label_taxonomy() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "PR is merge-ready after verification.\n",
+        "Maintainer override: yes. PR is merge-ready after verification.\n",
         r#"{"number":7,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"feature/customer-report","repository":"example/user-app","labels":[],"closingIssuesReferences":[{"number":3,"labels":[]}]}"#,
     )?;
 
@@ -180,7 +180,7 @@ fn validator_accepts_user_repo_without_codexy_label_taxonomy() -> TestResult {
 #[test]
 fn validator_accepts_user_repo_with_codexy_in_name() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "PR is merge-ready after verification.\n",
+        "Maintainer override: yes. PR is merge-ready after verification.\n",
         r#"{"number":7,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/local-helper","repository":"example/codexy-helper","labels":[],"closingIssuesReferences":[{"number":3,"labels":[]}]}"#,
     )?;
 

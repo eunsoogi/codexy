@@ -118,6 +118,9 @@ complete.
 - Narrow evidence proves only narrow claims. A parser check does not prove UX; a
   unit test does not prove GitHub settings; an `eyes` reaction does not prove
   Codex review completion.
+- Eyes-only current-head `@codex review` evidence is not merge-ready. Require
+  actual Codex review output, an explicit completion signal, or a maintainer
+  override before reporting review completion or readiness to merge.
 - If new commits land after review, request or wait for fresh review on the new
   head.
 - If review feedback is addressed by a child thread, evidence must include the
