@@ -12,6 +12,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: pending Codex review feedback.\n",
         "Blocked: pending @codex review feedback.\n",
         "Blocked: pending @codex review, awaiting feedback.\n",
+        "Blocked: @codex review is waiting for feedback.\n",
+        "Blocked: @codex review is awaiting feedback.\n",
         "Blocked: awaiting Codex review feedback.\n",
         "Blocked: Codex review feedback is pending.\n",
         "Blocked: Codex review is pending feedback from the connector.\n",
@@ -36,6 +38,10 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked on asynchronous Codex tool completion.\n",
         "Blocked: asynchronous tool has not returned yet.\n",
         "Blocked: async tool has not returned yet.\n",
+        "Blocked until the asynchronous tool returns.\n",
+        "Blocked: waiting for the tool result to return.\n",
+        "Blocked: background operation has not yet returned.\n",
+        "Blocked: async operation result has not yet returned.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(

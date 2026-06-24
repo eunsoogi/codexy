@@ -68,7 +68,7 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
         )
         && has_any(
             text,
-            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|awaiting codex review feedback|awaiting @codex review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
+            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|waiting for feedback|awaiting codex review feedback|awaiting @codex review feedback|awaiting review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
         )
 }
 
@@ -120,11 +120,11 @@ fn mentions_setup_failure_blocker(text: &str) -> bool {
 }
 
 fn mentions_async_completion(text: &str) -> bool {
-    has_any(text, "asynchronous|async")
-        && has_any(text, "tool")
+    ((has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
+        || has_any(text, "tool result|background operation"))
         && has_any(
             text,
-            "completion|pending|waiting|running|in progress|not returned|not yet returned|hasn't returned",
+            "completion|pending|waiting|running|in progress|not returned|not yet returned|has not returned|hasn't returned|to return|returns|return|returned",
         )
 }
 
