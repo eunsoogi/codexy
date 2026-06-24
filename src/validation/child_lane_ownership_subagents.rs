@@ -6,6 +6,7 @@ const SUBAGENT_OWNER_ACTION_DENIAL_MARKERS: &str = "not assigned to subagent|not
 const SUBAGENT_OWNER_LABEL_MARKERS: &str =
     "subagent owner|multi_agent owner|multi-agent owner|spawn_agent owner";
 const SUBAGENT_OWNER_DENIAL_MARKERS: &str = "not the owner|not owner|not implementation owner|not a child owner|not a subthread owner|not a worktree owner|no subagent owner|no sub-agent owner|no multi_agent owner|no multi-agent owner|subagent owner not used|sub-agent owner not used|multi_agent owner not used|multi-agent owner not used|no subagent substitute|no sub-agent substitute|no multi_agent substitute|no multi-agent substitute|not a subagent substitute|not a sub-agent substitute|not a multi_agent substitute|not a multi-agent substitute|subagent substitute not used|sub-agent substitute not used|multi_agent substitute not used|multi-agent substitute not used|subagent fallback not used|sub-agent fallback not used|multi_agent fallback not used|multi-agent fallback not used";
+const NEGATED_CODEX_THREAD_OWNER_MARKERS: &str = "no codex worktree thread|no codex child thread|no codex thread|no worktree thread|no child thread|codex worktree thread unavailable|codex child thread unavailable|codex thread unavailable|codex thread tools unavailable|worktree thread unavailable|child thread unavailable|thread not available|thread was not available|not codex worktree thread|not codex child thread|not codex thread|not worktree thread|not child thread|not a codex worktree thread|not a codex child thread|not a codex thread|not a worktree thread|not a child thread|without codex worktree thread|without codex child thread|without codex thread|without worktree thread|without child thread|instead of codex worktree thread|instead of codex child thread|instead of codex thread|instead of worktree thread|instead of child thread|rather than codex worktree thread|rather than codex child thread|rather than codex thread|rather than worktree thread|rather than child thread";
 
 pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
     let mut owner_context: Option<(&str, String)> = None;
@@ -17,10 +18,7 @@ pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
         if owner_context
             .as_ref()
             .is_some_and(|(_, value)| !trimmed_value(value).is_empty())
-            && line
-                .split_once(':')
-                .is_some_and(|(key, _)| !metadata_key(key).is_empty())
-            && !line_is_list_item(line)
+            && line_starts_metadata_boundary(line)
         {
             owner_context = None;
         }
@@ -113,6 +111,30 @@ fn line_is_list_item(line: &str) -> bool {
     matches!(line.trim_start().as_bytes(), [b'-' | b'*' | b'+', b' ', ..])
 }
 
+fn line_starts_metadata_boundary(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, _)| {
+        let key = metadata_key(strip_list_marker(key));
+        !key.is_empty() && (!line_is_list_item(line) || key_allows_list_metadata_boundary(key))
+    })
+}
+
+fn strip_list_marker(value: &str) -> &str {
+    value
+        .trim_start()
+        .strip_prefix(['-', '*', '+'])
+        .unwrap_or(value)
+        .trim_start()
+}
+
+fn key_allows_list_metadata_boundary(key: &str) -> bool {
+    key.chars().any(|character| character.is_ascii_alphabetic())
+        && key.chars().all(|character| {
+            character.is_ascii_alphabetic()
+                || character.is_ascii_whitespace()
+                || matches!(character, '-' | '/')
+        })
+}
+
 fn has_subagent_surface(value: &str) -> bool {
     let value = trimmed_value(value);
     [
@@ -185,48 +207,9 @@ fn has_true_codex_thread_owner(value: &str) -> bool {
 }
 
 fn negates_codex_thread_owner(value: &str) -> bool {
-    [
-        "no codex worktree thread",
-        "no codex child thread",
-        "no codex thread",
-        "no worktree thread",
-        "no child thread",
-        "codex worktree thread unavailable",
-        "codex child thread unavailable",
-        "codex thread unavailable",
-        "codex thread tools unavailable",
-        "worktree thread unavailable",
-        "child thread unavailable",
-        "thread not available",
-        "thread was not available",
-        "not codex worktree thread",
-        "not codex child thread",
-        "not codex thread",
-        "not worktree thread",
-        "not child thread",
-        "not a codex worktree thread",
-        "not a codex child thread",
-        "not a codex thread",
-        "not a worktree thread",
-        "not a child thread",
-        "without codex worktree thread",
-        "without codex child thread",
-        "without codex thread",
-        "without worktree thread",
-        "without child thread",
-        "instead of codex worktree thread",
-        "instead of codex child thread",
-        "instead of codex thread",
-        "instead of worktree thread",
-        "instead of child thread",
-        "rather than codex worktree thread",
-        "rather than codex child thread",
-        "rather than codex thread",
-        "rather than worktree thread",
-        "rather than child thread",
-    ]
-    .into_iter()
-    .any(|marker| value.contains(marker))
+    NEGATED_CODEX_THREAD_OWNER_MARKERS
+        .split('|')
+        .any(|marker| value.contains(marker))
 }
 
 fn thread_owner_key(key: &str) -> bool {

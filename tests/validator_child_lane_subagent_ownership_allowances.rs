@@ -94,7 +94,7 @@ fn validator_allows_helper_metadata_after_true_worktree_owner_field()
     let output = run_ownership_validator(
         r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef
 Subthread/worktree owner: Codex worktree thread 019ef
-Multi-agent: spawn_agent worker used only for QA
+- Multi-agent: spawn_agent worker used only for QA
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
