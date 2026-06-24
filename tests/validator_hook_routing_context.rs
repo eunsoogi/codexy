@@ -31,6 +31,8 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
         "Use Codexy LSP",
         "lsp_status",
         "unavailable/not applicable evidence",
+        "$dreaming",
+        "compacted or resumed context hygiene",
     ] {
         assert!(
             context.contains(required),
@@ -101,7 +103,7 @@ fn validator_cli_rejects_session_start_context_that_only_mentions_requirements_i
     let script_path = plugin_root.join("hooks/codexy-routing-context.sh");
     let mut script = std::fs::read_to_string(&script_path)?;
     for required in required_context_fragments() {
-        script = script.replace(required, "");
+        script = script.replace(source_context_fragment(required), "");
         script.push_str(&format!("\n# {required}\n"));
     }
     std::fs::write(&script_path, script)?;
@@ -140,12 +142,18 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
             "unavailable/not applicable evidence",
             "must require LSP fallback evidence",
         ),
+        ("$dreaming", "must require dreaming hygiene"),
+        (
+            "compacted or resumed context hygiene",
+            "must require dreaming hygiene",
+        ),
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
         copy_plugin(&plugin_root)?;
         let script_path = plugin_root.join("hooks/codexy-routing-context.sh");
-        let script = std::fs::read_to_string(&script_path)?.replace(needle, "");
+        let script =
+            std::fs::read_to_string(&script_path)?.replace(source_context_fragment(needle), "");
         std::fs::write(&script_path, script)?;
 
         let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -168,7 +176,7 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
     Ok(())
 }
 
-fn required_context_fragments() -> [&'static str; 7] {
+fn required_context_fragments() -> [&'static str; 9] {
     [
         "codegraph MCP before direct file reads",
         "include codegraph findings",
@@ -177,7 +185,16 @@ fn required_context_fragments() -> [&'static str; 7] {
         "Use Codexy LSP",
         "lsp_status",
         "unavailable/not applicable evidence",
+        "$dreaming",
+        "compacted or resumed context hygiene",
     ]
+}
+
+fn source_context_fragment(fragment: &str) -> &str {
+    match fragment {
+        "$dreaming" => "\\$dreaming",
+        _ => fragment,
+    }
 }
 
 fn set_session_start_hook_command(

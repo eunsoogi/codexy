@@ -1,0 +1,6 @@
+interface:
+  display_name: "Dreaming"
+  short_description: "Clean up compacted Codexy context before continuing."
+  default_prompt: "Use $dreaming after compaction or noisy handoff to refresh current anchors, separate Remember, Fix, and Forget or demote items, and prevent resolved review feedback or stale branch state from being carried forward as active work."
+policy:
+  allow_implicit_invocation: true

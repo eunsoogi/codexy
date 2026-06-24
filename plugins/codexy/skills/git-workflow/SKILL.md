@@ -157,12 +157,19 @@ completion or the default Codexy merge flow. Capture current PR state first:
 pr=<pr>
 owner=<owner>
 repo=<repo>
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefOid > pr-state.base.json
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > pr-state.base.json
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
     pullRequest(number:$number) {
+      labels(first:50) { nodes { name } }
+      closingIssuesReferences(first:20) {
+        nodes {
+          number
+          labels(first:50) { nodes { name } }
+        }
+      }
       reviewThreads(first:100, after:$endCursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
@@ -170,19 +177,76 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
           isResolved
           isOutdated
           path
-          comments(first:20) { nodes { url } }
+          comments(first:20) {
+            nodes {
+              author { login }
+              body
+              url
+              createdAt
+              commit { oid }
+            }
+          }
         }
       }
     }
   }
 }' > pr-state.reviewThreads.pages.json
+gh api graphql --paginate --slurp \
+  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      comments(first:100, after:$endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          author { login }
+          body
+          url
+          createdAt
+          reactionGroups {
+            content
+            users { totalCount }
+          }
+        }
+      }
+    }
+  }
+}' > pr-state.comments.pages.json
+gh api graphql --paginate --slurp \
+  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      reviews(first:100, after:$endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          author { login }
+          body
+          state
+          url
+          submittedAt
+          commit { oid }
+        }
+      }
+    }
+  }
+}' > pr-state.reviews.pages.json
 jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
   | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
   pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
+jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
+  pr-state.comments.pages.json > pr-state.comments.json
+jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
+  pr-state.reviews.pages.json > pr-state.reviews.json
+jq '.[0].data.repository.pullRequest | {labels, closingIssuesReferences}' \
+  pr-state.reviewThreads.pages.json > pr-state.labels.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
-  '. + {reviewThreads: $reviewThreads[0]}' \
+  --slurpfile labels pr-state.labels.json \
+  --slurpfile comments pr-state.comments.json \
+  --slurpfile reviews pr-state.reviews.json \
+  '. + $labels[0] + {reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
   pr-state.base.json > pr-state.json
-rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json
+rm -f pr-state.base.json pr-state.reviewThreads.pages.json pr-state.reviewThreads.json pr-state.comments.pages.json pr-state.comments.json pr-state.reviews.pages.json pr-state.reviews.json pr-state.labels.json
 scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file pr-state.json
 ```
 
@@ -192,6 +256,14 @@ include GraphQL `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`,
 review-feedback reports when this thread evidence is missing, or when any
 addressed unresolved thread, including an outdated-but-fixed thread, remains
 unresolved without an accepted no-change rationale.
+
+For PR-readiness or merge-readiness handoffs, the PR state file MUST include PR
+`headRefName`, PR `labels`, and `closingIssuesReferences` with issue labels.
+For Codexy repository lanes, the completion-handoff validator rejects readiness
+evidence when either the PR or a linked issue is missing label application
+evidence, unless the handoff explicitly records that repository labels were
+considered. Do not treat Codexy's `type/`, `status/`, `priority/`, or `area/`
+labels as a universal taxonomy for arbitrary user repositories.
 
 If the validator flags the report, either continue through review, merge,
 branch deletion, and post-merge main sync, or rewrite the report to state the
@@ -277,6 +349,10 @@ gh pr comment <pr> --body "@codex review"
 
 An `eyes` reaction on the `@codex review` comment means Codex noticed the request
 and is processing it. It is not approval and does not mean review is complete.
+Eyes-only evidence on a current-head review request is not merge-ready and must
+not be described as a completed Codex review result. Actual review output, an
+explicit completion signal, or a maintainer override is required before any
+merge/readiness claim.
 Waiting for that review is a non-blocking goal state: keep the orchestrator
 active, poll the PR review/comment/thread surfaces, and continue as soon as the
 latest-head review output arrives. Do not mark the broader goal blocked merely
@@ -293,7 +369,11 @@ Codex review completion signals include:
 - Inline review comments or review suggestions from `chatgpt-codex-connector`; these are complete review output, but actionable comments block merge until fixed or explicitly accepted by a human maintainer.
 - A top-level PR comment from `chatgpt-codex-connector` that contains actual review results, suggestions, or no-issue/no-suggestion wording; this is also Codex review output, even when no GitHub review object appears.
 - A Codex comment such as `Didn't find any major issues` or equivalent no-suggestion wording; this means the reviewed head has no major actionable suggestions.
-- A Codex thumbs-up/no-suggestion result, such as `+1` or a thumbs-up reaction, when no inline suggestions are produced; this is acceptable only after confirming it applies to the latest PR head.
+
+Aggregate PR or comment reactions alone are not Codex review completion
+signals because the captured PR state does not prove which actor supplied the
+reaction. Require connector-authored review text, inline review output, a
+recognized no-suggestion body, or an explicit maintainer override.
 
 Setup or environment comments, such as `create an environment for this repo`,
 are connector responses but not review content and not review completion. Treat
@@ -351,6 +431,12 @@ or routing-only lane.
   useful" is acceptable only with a concrete rationale tied to atomicity, tiny
   scope, or the absence of separable work; a generic manual fallback is not
   enough.
+- Multi-agent subagents are not Codex subthread/worktree owners. A subagent may
+  provide bounded research, worker help, QA, or the packaged reviewer gate, but
+  it must not be recorded as the child-owned implementation owner for a lane
+  that needs its own branch, durable worktree, PR, or review-response fixes.
+  If true Codex thread/worktree ownership is required but unavailable, record
+  the blocker instead of routing implementation through a subagent.
 - For code-touching lanes, the child thread MUST use Codexy `codegraph` MCP
   for code exploration when it is available, and include that exploration
   evidence in its handoff.
@@ -459,7 +545,7 @@ Before merging, inspect the latest PR state, checks, reviews, comments, and
 review threads:
 
 ```sh
-gh pr view <pr> --json number,title,state,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,reviewDecision,latestReviews,reviews,comments
+gh pr view <pr> --json number,title,state,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,reviewDecision,latestReviews,reviews,comments,labels,closingIssuesReferences
 gh pr view <pr> --comments
 gh api graphql -f owner=<owner> -f name=<repo> -F number=<pr-number> -f query='
 query($owner:String!, $name:String!, $number:Int!) {
@@ -476,6 +562,7 @@ query($owner:String!, $name:String!, $number:Int!) {
               author { login }
               body
               url
+              createdAt
             }
           }
         }
@@ -535,7 +622,7 @@ PR body when building the merge commit message. Prefer `--match-head-commit
 <headRefOid>` when available so a newly pushed unreviewed head cannot be merged
 by accident:
 
-```sh
+```bash
 pr_number=<explicit-pr-number>
 issue_number=<linked-issue-number>
 repo=eunsoogi/codexy
@@ -575,11 +662,13 @@ if ! cat "$pr_body_file" >> "$merge_message_file"; then
   printf '%s\n' "Could not append PR body to composed squash merge message; aborting merge." >&2
   exit 1
 fi
+merge_validation_args=(--check-merge-message --expected-pr "$pr_number")
 if [ -n "${issue_number:-}" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --merge-message-file "$merge_message_file"; then
-    printf '%s\n' "Squash merge message is missing the expected final issue reference or has extra closing references; aborting merge." >&2
-    exit 1
-  fi
+  merge_validation_args+=(--expected-issue "$issue_number")
+fi
+if ! scripts/validate-plugin-config "${merge_validation_args[@]}" --merge-message-file "$merge_message_file"; then
+  printf '%s\n' "Squash merge message is missing the expected final issue reference when issue-backed, has extra closing references, or lacks the PR suffix; aborting merge." >&2
+  exit 1
 fi
 
 printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
@@ -627,7 +716,9 @@ inspection and approval gate above must pass before `gh pr merge` runs. The
 pre-merge message validator MUST check the composed squash merge message
 (`merge_subject` plus the captured PR body), not the body alone, so subject-line
 closing references such as `fix: #120 ...` are rejected before they can reach
-`main`. The expected body file is stored under the shared Git common directory
+`main`. When the PR number is known, the validator MUST receive
+`--expected-pr "$pr_number"` so a subject missing the exact `(#<pr>)` suffix is
+rejected before merge. The expected body file is stored under the shared Git common directory
 from `git rev-parse --git-common-dir` so it remains local and untracked but
 survives post-merge verification from a separate worktree shell.
 
@@ -640,7 +731,7 @@ Do not locally merge feature branches into `main` as a substitute for the PR wor
 
 After merge, update the main worktree:
 
-```sh
+```bash
 pr_number=<explicit-pr-number>
 git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
@@ -679,11 +770,13 @@ match = body.lines.map(&:strip).reverse.find { |line| line.match?(/\AFixes #\d+\
 print(match[/\d+/]) if match
 RUBY
 )
+post_merge_validation_args=(--check-merge-message --expected-pr "$pr_number")
 if [ -n "$expected_issue_number" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$expected_issue_number" --merge-message-file "$commit_message_file"; then
-    printf '%s\n' "Merged commit message is missing the expected issue reference; leaving evidence at: $expected_body_file" >&2
-    exit 1
-  fi
+  post_merge_validation_args+=(--expected-issue "$expected_issue_number")
+fi
+if ! scripts/validate-plugin-config "${post_merge_validation_args[@]}" --merge-message-file "$commit_message_file"; then
+  printf '%s\n' "Merged commit message is missing the expected issue reference when issue-backed or PR suffix; leaving evidence at: $expected_body_file" >&2
+  exit 1
 fi
 rm -f "$expected_body_file"
 ```
@@ -692,8 +785,8 @@ The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body must match the PR body captured from GitHub
 before merge. For issue-backed PRs, the refreshed commit message must also pass
 `scripts/validate-plugin-config --check-merge-message --expected-issue
-<issue-number> --merge-message-file <commit-message-file>` before merge
-completion is reported. Use the raw commit object instead of `git log
+<issue-number> --expected-pr <pr-number> --merge-message-file
+<commit-message-file>` before merge completion is reported. Use the raw commit object instead of `git log
 --pretty=%B` for the body comparison so formatter-added trailing newlines do not
 create false failures. If GitHub did not delete the remote topic branch, delete
 it only after confirming the PR was merged and no dependent work needs the
@@ -725,6 +818,9 @@ After resolving, stage only the resolved files and run verification relevant to 
 - Issue and PR labels match the repository's current label taxonomy when labels
   are available; status-like labels have been updated after review, merge,
   close, or reopen transitions.
+- PR-readiness evidence for Codexy repository lanes includes PR labels and
+  closing issue labels, or explicit evidence that repository labels were
+  considered when no matching label was available.
 - Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
 - Branch scope matches the issue or sub-scope.
 - Local `.omo/**` evidence remains uncommitted unless explicitly requested.

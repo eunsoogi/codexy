@@ -7,6 +7,7 @@ use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json, load_toml, toml_array_strings};
 
 const REQUIRED_LSP_EXTENSIONS: &[&str] = &[".py", ".pyi", ".yaml", ".yml", ".json", ".toml", ".md"];
+const RUST_ANALYZER_ID: &str = "rust-analyzer";
 
 #[derive(Debug, Clone)]
 struct CatalogEntry {
@@ -161,6 +162,13 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     }
 }
 
+pub(super) fn check_rust_readiness(plugin_root: &Path) -> Vec<String> {
+    match check_rust_readiness_inner(plugin_root) {
+        Ok(()) => Vec::new(),
+        Err(error) => vec![error.to_string()],
+    }
+}
+
 fn check_inner(plugin_root: &Path) -> Result<()> {
     let entries = entries(plugin_root)?;
     let catalog = catalog(plugin_root)?;
@@ -201,6 +209,35 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
         bail!(
             "LSP coverage missing required extensions: {}",
             missing.join(", ")
+        )
+    }
+}
+
+fn check_rust_readiness_inner(plugin_root: &Path) -> Result<()> {
+    check_inner(plugin_root)?;
+    let entries = entries(plugin_root)?;
+    let catalog = catalog(plugin_root)?;
+    let entry = entries.get(RUST_ANALYZER_ID).with_context(
+        || "Rust LSP config missing rust-analyzer entry for .rs readiness evidence",
+    )?;
+    let catalog_entry = catalog.get(RUST_ANALYZER_ID).with_context(
+        || "Rust LSP catalog missing rust-analyzer entry for .rs readiness evidence",
+    )?;
+    let extensions = json_array_strings(entry.get("extensions")).unwrap_or_default();
+    if !extensions.iter().any(|extension| extension == ".rs") {
+        bail!("Rust LSP config must map .rs files to rust-analyzer before PR readiness");
+    }
+    let command =
+        json_array_strings(entry.get("command")).unwrap_or_else(|| catalog_entry.command.clone());
+    let command =
+        crate::lsp::command::resolve_command(&command, Some(&plugin_root.display().to_string()))?;
+    let (available, _, reason) = crate::lsp::command::resolve_executable(&command);
+    if available {
+        Ok(())
+    } else {
+        bail!(
+            "Rust LSP command unavailable: {}; install rust-analyzer, for example with `rustup component add rust-analyzer`, or put rust-analyzer on PATH before PR readiness",
+            reason.unwrap_or_else(|| "rust-analyzer executable unavailable".to_owned())
         )
     }
 }

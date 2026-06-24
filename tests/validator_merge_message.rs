@@ -117,6 +117,25 @@ fn validator_cli_accepts_valid_squash_subject_and_body() -> Result<(), Box<dyn s
 }
 
 #[test]
+fn validator_cli_checks_known_pr_suffix() -> Result<(), Box<dyn std::error::Error>> {
+    reject_message_for_pr(
+        "fix(workflow): require issue references in merge messages\n\nFixes #121\n",
+        123,
+        "subject must end with the expected PR suffix",
+    )?;
+    let message =
+        "fix(workflow): require issue references in merge messages (#123)\n\nFixes #121\n";
+    let output = validate_message_for_pr(message, 123)?;
+    assert!(
+        output.status.success(),
+        "validator should accept a squash subject ending with the expected PR suffix\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_cross_repo_closing_reference() -> Result<(), Box<dyn std::error::Error>> {
     reject_message(
         "fix(workflow): tighten merge evidence (#122)\n\nFixes owner/repo#120\n\nFixes #121\n",
@@ -181,8 +200,43 @@ fn validate_message(message: &str) -> Result<std::process::Output, Box<dyn std::
         .output()?)
 }
 
+fn validate_message_for_pr(
+    message: &str,
+    expected_pr: u64,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-merge-message",
+            "--expected-issue",
+            "121",
+            "--expected-pr",
+            &expected_pr.to_string(),
+            "--merge-message",
+            message,
+        ])
+        .output()?)
+}
+
 fn reject_message(message: &str, expected: &str) -> Result<(), Box<dyn std::error::Error>> {
     let output = validate_message(message)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject {message:?}"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(expected),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn reject_message_for_pr(
+    message: &str,
+    expected_pr: u64,
+    expected: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = validate_message_for_pr(message, expected_pr)?;
     assert!(
         !output.status.success(),
         "validator should reject {message:?}"
