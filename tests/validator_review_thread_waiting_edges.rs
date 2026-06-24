@@ -116,6 +116,26 @@ fn validator_ignores_action_words_inside_waiting_file_paths() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_perfect_tense_negated_waiting_actions() -> TestResult {
+    for rationale in [
+        "hasn't been fixed and hasn't been accepted",
+        "hasn't been addressed and hasn't been accepted",
+    ] {
+        let output = validate_handoff_with_pr_state(&format!(
+            "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it {rationale} yet; this lane is not complete.\n",
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should treat `{rationale}` as negated waiting evidence, not a same-thread action claim\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
