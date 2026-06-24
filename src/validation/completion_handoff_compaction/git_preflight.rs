@@ -25,9 +25,6 @@ fn git_preflight_evidence_block(lines: &[&str], start: usize) -> String {
         }
         block.push_str(line);
         block.push('\n');
-        if has_all_commands(&block) {
-            break;
-        }
     }
     block
 }
@@ -85,7 +82,16 @@ fn is_git_status_short_branch_line(line: &str) -> bool {
         .next()
         .unwrap_or(status)
         .trim();
+    if is_known_markdown_section_heading(branch) {
+        return false;
+    }
     !branch.is_empty() && branch.chars().all(|character| !character.is_whitespace())
+}
+
+fn is_known_markdown_section_heading(text: &str) -> bool {
+    "acceptance blockers checks evidence findings handoff notes results review summary tests verification"
+        .split_whitespace()
+        .any(|heading| heading == text)
 }
 
 fn is_followed_by_status_or_command(lines: &[&str], index: usize) -> bool {
@@ -110,22 +116,7 @@ fn is_porcelain_status_line(line: &str) -> bool {
 }
 
 fn is_status_byte(byte: u8) -> bool {
-    matches!(
-        byte,
-        b'M' | b'A'
-            | b'D'
-            | b'R'
-            | b'C'
-            | b'U'
-            | b'm'
-            | b'a'
-            | b'd'
-            | b'r'
-            | b'c'
-            | b'u'
-            | b'?'
-            | b'!'
-    )
+    b"MADRCUmadrcu?!".contains(&byte)
 }
 
 fn starts_unrelated_list_section(line: &str) -> bool {
@@ -217,17 +208,36 @@ fn has_positive_evidence(line: &str) -> bool {
 }
 
 fn has_negated_evidence(line: &str) -> bool {
-    has_any(
-        line,
-        &[
-            "did not run",
-            "didn't run",
-            "not run",
-            "not captured",
-            "not checked",
-            "without running",
-        ],
-    )
+    line.lines().any(|line| {
+        has_any(
+            line,
+            &[
+                "did not run",
+                "didn't run",
+                "not run",
+                "not captured",
+                "not checked",
+                "without running",
+            ],
+        ) && refers_to_git_preflight(line)
+    })
+}
+
+fn refers_to_git_preflight(line: &str) -> bool {
+    is_git_preflight_line(line)
+        || [
+            "preflight",
+            "preflight commands",
+            "these commands",
+            "the commands",
+            "pwd",
+            "git status --short --branch",
+            "git rev-parse head",
+            "git rev-parse origin/main",
+            "git log --graph",
+        ]
+        .iter()
+        .any(|phrase| line.contains(phrase))
 }
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {

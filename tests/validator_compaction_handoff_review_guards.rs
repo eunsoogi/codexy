@@ -41,14 +41,16 @@ fn assert_invalid(output: &std::process::Output, expected_stderr: &str) {
 
 #[test]
 fn validator_cli_accepts_git_preflight_when_later_prose_negates_other_checks() -> TestResult {
-    let output = validate_open_pr_handoff(&valid_handoff_with(
-        DUPLICATE_STATE,
-        &format!(
-            "{GIT_PREFLIGHT}\n\
-             I did not run full cargo test because the review-response lane only needed focused validation."
-        ),
-    ))?;
-    assert_valid(&output);
+    for skipped_check in [
+        "I did not run full cargo test because the review-response lane only needed focused validation.",
+        "I did not run additional validation commands because the review-response lane only needed focused validation.",
+    ] {
+        let output = validate_open_pr_handoff(&valid_handoff_with(
+            DUPLICATE_STATE,
+            &format!("{GIT_PREFLIGHT}\n{skipped_check}"),
+        ))?;
+        assert_valid(&output);
+    }
     Ok(())
 }
 
