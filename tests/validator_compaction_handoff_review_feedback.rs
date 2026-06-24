@@ -28,10 +28,7 @@ fn assert_invalid(output: &std::process::Output, expected_stderr: &str) {
 
 #[test]
 fn validator_cli_rejects_after_compaction_continuation_without_evidence() -> TestResult {
-    for handoff in [
-        "Resuming after compaction; I will edit the PR now.\n",
-        "Continuing after compaction; I will edit the PR now.\n",
-    ] {
+    for handoff in "Resuming after compaction; I will edit the PR now.|Continuing after compaction; I will edit the PR now.|Conversation compaction: ready to continue.|Compaction handoff: next action is to edit the PR.".split('|') {
         let output = validate_open_pr_handoff(handoff)?;
         assert_invalid(
             &output,

@@ -115,7 +115,7 @@ fn validator_cli_rejects_one_word_markdown_heading_after_git_status_command() ->
          $ pwd\n\
          /repo/codexy\n\
          $ git status --short --branch\n\
-         ## Verification\n\
+         ## Commands\n\
          $ git rev-parse HEAD\n\
          141283b684a5bf7db85ecd49d197ce81ffe28e95\n\
          $ git rev-parse origin/main\n\

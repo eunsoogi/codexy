@@ -96,7 +96,7 @@ fn is_git_status_short_branch_line(line: &str) -> bool {
 }
 
 fn is_known_markdown_section_heading(text: &str) -> bool {
-    "acceptance blockers checks evidence findings handoff notes results review summary tests verification"
+    "acceptance blockers checks commands evidence findings handoff notes results review summary tests verification"
         .split_whitespace()
         .any(|heading| heading == text)
 }
