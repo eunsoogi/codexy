@@ -144,10 +144,14 @@ fn line_starts_metadata_boundary(line: &str) -> bool {
 
 fn line_is_owner_scoped_subagent_list_metadata(line: &str) -> bool {
     line_is_list_item(line)
-        && line.split_once(':').is_some_and(|(key, _)| {
+        && line.split_once(':').is_some_and(|(key, value)| {
             let key = metadata_key(strip_list_marker(key));
-            has_subagent_surface(key)
+            has_subagent_surface(key) || (owner_scoped_role_key(key) && has_subagent_surface(value))
         })
+}
+
+fn owner_scoped_role_key(key: &str) -> bool {
+    matches!(key, "agent" | "worker" | "reviewer" | "helper" | "explorer")
 }
 
 fn has_subagent_surface(value: &str) -> bool {

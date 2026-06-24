@@ -20,7 +20,14 @@ pub(super) fn key_allows_list_metadata_boundary(key: &str) -> bool {
 }
 
 pub(super) fn has_helper_only_purpose(value: &str) -> bool {
-    if !value.contains("used only for") || value.contains("review-response") {
+    if !value.contains("used only for") {
+        return false;
+    }
+    let has_review_response_validation_purpose = value.contains("review-response")
+        && ["qa", "QA", "verification", "validation"]
+            .into_iter()
+            .any(|marker| value.contains(marker));
+    if value.contains("review-response") && !has_review_response_validation_purpose {
         return false;
     }
     [
@@ -31,6 +38,7 @@ pub(super) fn has_helper_only_purpose(value: &str) -> bool {
         "reviewer gate",
         "research",
         "verification",
+        "validation",
         "test",
     ]
     .into_iter()

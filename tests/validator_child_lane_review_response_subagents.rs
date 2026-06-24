@@ -33,6 +33,25 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_subagent_used_only_for_review_response_validation() -> TestResult {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned review-response lane assigned to Codex worktree thread 019ef
+Subthread/worktree owner: Codex worktree thread 019ef; subagent Gauss used only for review-response QA validation
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow helper-only review-response validation when a true worktree thread owns the lane\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_spawn_agent_owner_denials_with_true_worktree_owner() -> TestResult {
     for evidence in [
         r#"Owner decision: child-owned implementation lane assigned to Codex worktree thread 019ef; no spawn_agent owner used

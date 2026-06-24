@@ -33,6 +33,18 @@ Subthread/worktree owner: Codex worktree thread 019ef
 Parent implementation setup: none
 Maintainer reassignment: none
 "#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: Codex worktree thread 019ef
+- worker: subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: Codex worktree thread 019ef
+- agent: spawn_agent worker
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
     ] {
         let output = run_ownership_validator(evidence)?;
 
