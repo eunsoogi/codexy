@@ -88,7 +88,7 @@ fn states_codex_review_override(handoff: &str) -> bool {
         let text = line.to_ascii_lowercase();
         let unordered = matches!(line.as_bytes().first(), Some(b'-' | b'*' | b'+'))
             && line[1..].trim_start().starts_with("[ ]");
-        let ordered = line.split_once('.').is_some_and(|(number, rest)| {
+        let ordered = line.split_once(['.', ')']).is_some_and(|(number, rest)| {
             !number.is_empty()
                 && number.chars().all(|character| character.is_ascii_digit())
                 && rest.trim_start().starts_with("[ ]")
@@ -129,9 +129,8 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     false
 }
 fn is_locally_negated(prefix: &str) -> bool {
-    let clause = prefix
-        .rsplit_once(['.', '!', '?', ';', ':', ',', '\n'])
-        .map_or(prefix, |(_, clause)| clause);
+    let clause_start = last_clause_boundary(prefix).map_or(0, |index| index);
+    let clause = &prefix[clause_start..];
     clause
         .split(|character: char| !character.is_ascii_alphanumeric() && character != '\'')
         .filter(|word| !word.is_empty())
@@ -156,6 +155,30 @@ fn is_locally_negated(prefix: &str) -> bool {
                     | "cannot"
             )
         })
+}
+fn last_clause_boundary(text: &str) -> Option<usize> {
+    let mut boundary = None;
+    for (index, character) in text.char_indices() {
+        let end = index + character.len_utf8();
+        if matches!(character, '.' | '!' | '?' | ';' | ':' | ',' | '\n')
+            || is_dash_separator(text, index, character)
+        {
+            boundary = Some(end);
+        }
+    }
+    boundary
+}
+fn is_dash_separator(text: &str, index: usize, character: char) -> bool {
+    if matches!(character, '–' | '—') {
+        return true;
+    }
+    if character != '-' {
+        return false;
+    }
+    let previous = text[..index].chars().next_back();
+    let next = text[index + character.len_utf8()..].chars().next();
+    previous.is_some_and(char::is_whitespace)
+        && next.is_some_and(|character| character.is_whitespace() || character == '-')
 }
 fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())

@@ -180,7 +180,7 @@ fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult 
 fn validator_cli_rejects_unchecked_maintainer_override_with_eyes_only_review() -> TestResult {
     for marker in [
         "- [ ]", "* [ ]", "+ [ ]", "-  [ ]", "*  [ ]", "+  [ ]", "-\t[ ]", "*\t[ ]", "+\t[ ]",
-        "1. [ ]", "2.  [ ]", "3.\t[ ]",
+        "1. [ ]", "2.  [ ]", "3.\t[ ]", "1) [ ]", "2)  [ ]", "3)\t[ ]",
     ] {
         let output = validate_handoff_with_pr_state(
             &format!(

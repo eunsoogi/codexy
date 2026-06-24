@@ -56,6 +56,37 @@ fn validator_cli_rejects_generic_ready_claim_without_codex_activity() -> TestRes
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_dash_label_before_merge_ready_claim() -> TestResult {
+    for separator in ["-", "--", "—"] {
+        let output = validate_handoff_with_pr_state(
+            &format!("No blockers {separator} PR is merge-ready.\n"),
+            eyes_only_pr_state(),
+        )?;
+        assert_rejected_with_stderr(
+            &output,
+            "validator should treat dash-delimited labels as clause boundaries",
+            "eyes-only Codex review request",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_hyphenated_negated_ready_claim() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "PR is not-merge-ready because Codex review is pending.\n",
+        eyes_only_pr_state(),
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should not treat hyphenated negation as an affirmed readiness claim\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, expected: &str) {
     assert!(
         !output.status.success(),
@@ -68,6 +99,10 @@ fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, exp
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+fn eyes_only_pr_state() -> &'static str {
+    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
 }
 
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
