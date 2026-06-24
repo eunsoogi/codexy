@@ -2,8 +2,8 @@ use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
 use super::child_lane_ownership_subagent_format::{
-    has_helper_only_purpose, key_allows_list_metadata_boundary, line_is_list_item,
-    strip_list_marker,
+    has_helper_only_purpose, has_unavailable_helper_rationale, key_allows_list_metadata_boundary,
+    line_is_list_item, strip_list_marker,
 };
 
 const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
@@ -104,6 +104,7 @@ fn value_has_non_owner_subagent_rationale(value: &str) -> bool {
         || "subagent not useful|sub-agent not useful|multi_agent not useful|multi-agent not useful|specialist helper not useful"
             .split('|')
             .any(|marker| value.contains(marker))
+        || has_unavailable_helper_rationale(value)
         || has_helper_only_purpose(value)
 }
 

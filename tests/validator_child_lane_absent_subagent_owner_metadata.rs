@@ -62,6 +62,30 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_unavailable_multi_agent_metadata_for_non_child_owned_lanes() -> TestResult {
+    for evidence in [
+        r#"Owner decision: parent-owned for implementation; multi-agent unavailable in this session
+Parent implementation setup: parent retains implementation
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: current-thread-owned implementation lane; multi-agent unavailable in this session
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
+
+        assert!(
+            output.status.success(),
+            "validator should allow unavailable multi-agent metadata as non-owner rationale for non-child owner evidence\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_bare_subagent_owner_with_unrelated_denial_marker() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: child-owned implementation lane

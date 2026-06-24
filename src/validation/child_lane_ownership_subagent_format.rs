@@ -25,3 +25,9 @@ pub(super) fn has_helper_only_purpose(value: &str) -> bool {
             .split('|')
             .any(|marker| value.contains(marker))
 }
+
+pub(super) fn has_unavailable_helper_rationale(value: &str) -> bool {
+    "subagent unavailable|sub-agent unavailable|multi_agent unavailable|multi-agent unavailable|subagent tools unavailable|sub-agent tools unavailable|multi_agent tools unavailable|multi-agent tools unavailable|spawn_agent unavailable"
+        .split('|')
+        .any(|marker| value.contains(marker))
+}
