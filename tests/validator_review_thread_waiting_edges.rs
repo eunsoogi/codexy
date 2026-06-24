@@ -171,6 +171,26 @@ fn validator_allows_yet_been_perfect_tense_waiting_actions() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_long_form_perfect_tense_waiting_actions_without_yet() -> TestResult {
+    for rationale in [
+        "has not been fixed and has not been accepted",
+        "has not been addressed and has not been accepted",
+    ] {
+        let output = validate_handoff_with_pr_state(&format!(
+            "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it {rationale}; this lane is not complete.\n",
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should treat `{rationale}` as complete waiting evidence, not a same-thread action claim\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

@@ -137,6 +137,7 @@ fn mentions_not_fixed(segment: &str) -> bool {
         "isn't fixed",
         "isn't yet fixed",
         "wasn't fixed",
+        "has not been fixed",
         "has not yet been fixed",
         "hasn't been fixed",
         "hasn't yet been fixed",
@@ -145,6 +146,7 @@ fn mentions_not_fixed(segment: &str) -> bool {
         "not yet addressed",
         "isn't addressed",
         "wasn't addressed",
+        "has not been addressed",
         "has not yet been addressed",
         "hasn't been addressed",
         "hasn't yet been addressed",
@@ -158,7 +160,7 @@ fn mentions_not_fixed(segment: &str) -> bool {
 }
 
 fn mentions_not_accepted(segment: &str) -> bool {
-    "not accepted|not yet accepted|isn't accepted|isn't yet accepted|wasn't accepted|has not yet been accepted|hasn't been accepted|hasn't yet been accepted|not fixed/accepted|not fixed or accepted|not yet fixed/accepted|not yet fixed or accepted|isn't fixed/accepted|isn't fixed or accepted|isn't yet fixed/accepted|isn't yet fixed or accepted"
+    "not accepted|not yet accepted|isn't accepted|isn't yet accepted|wasn't accepted|has not been accepted|has not yet been accepted|hasn't been accepted|hasn't yet been accepted|not fixed/accepted|not fixed or accepted|not yet fixed/accepted|not yet fixed or accepted|isn't fixed/accepted|isn't fixed or accepted|isn't yet fixed/accepted|isn't yet fixed or accepted"
         .split('|')
     .any(|term| segment.contains(term))
 }
