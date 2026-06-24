@@ -137,7 +137,7 @@ fn has_unnegated_readiness_phrase(text: &str, phrase: &str) -> bool {
 
 fn has_negative_label_value(suffix: &str) -> bool {
     let value = suffix.trim_start_matches([' ', '\t', ':', '-', '?']);
-    "not ready|not yet ready|isn't ready|isn't yet ready|aren't ready|aren't yet ready"
+    "not ready|not yet ready|isn't ready|isn't yet ready|aren't ready|aren't yet ready|no|false|not requested"
         .split('|')
         .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
 }
@@ -180,8 +180,8 @@ fn mentions_not_accepted(segment: &str) -> bool {
 fn claims_thread_fixed(text: &str, thread: &Value) -> bool {
     waiting_segments(text).any(|segment| {
         thread_referenced(segment, thread)
-            && "addressed|fixed|implemented|resolved"
-                .split('|')
+            && "addressed addresses addressing applied fixed fixes handled implemented responded resolved resolve resolves updated"
+                .split_whitespace()
                 .any(|action| has_unnegated_phrase(segment, action))
     })
 }

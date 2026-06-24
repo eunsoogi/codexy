@@ -5,7 +5,18 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_waiting_evidence_that_contradicts_same_thread_action() -> TestResult {
-    for action in ["fixed", "addressed", "implemented", "resolved"] {
+    for action in [
+        "fixed",
+        "addressed",
+        "implemented",
+        "resolved",
+        "applied",
+        "handled",
+        "updated",
+        "responded",
+        "fixes",
+        "resolves",
+    ] {
         let handoff = format!(
             "Review response: {action} PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
         );
@@ -28,16 +39,23 @@ fn validator_rejects_waiting_evidence_that_contradicts_same_thread_action() -> T
 
 #[test]
 fn validator_allows_negative_pr_readiness_label_before_waiting_evidence() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "PR readiness: not ready. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
-    )?;
+    for label in [
+        "PR readiness: not ready",
+        "PR ready: no",
+        "PR ready: false",
+        "PR ready: not requested",
+    ] {
+        let output = validate_handoff_with_pr_state(&format!(
+            "{label}. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        ))?;
 
-    assert!(
-        output.status.success(),
-        "validator should treat negative PR-readiness labels as waiting evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should treat negative PR-readiness label `{label}` as waiting evidence\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
