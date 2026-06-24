@@ -1,3 +1,10 @@
+#[rustfmt::skip]
+const DUPLICATE_STATE_PHRASES: &[&str] = &["duplicate/no-active-work", "no-active-work", "no active work", "duplicate pr", "duplicate issue", "duplicate lane"];
+#[rustfmt::skip]
+const DUPLICATE_STATE_TARGETS: &[&str] = &["pr #", "pull request #", "issue #", "github state", "current issue", "current pr", "current pull request"];
+#[rustfmt::skip]
+const DUPLICATE_STATE_CHECKS: &[&str] = &["re-check", "rechecked", "re-checked", "checked", "confirmed", "current github state", "after current"];
+
 pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
     text.lines().any(|line| {
         codexy_contract_value(line.trim()).is_some_and(|contract| {
@@ -13,6 +20,7 @@ pub(super) fn has_duplicate_or_no_active_work_state(text: &str) -> bool {
         duplicate_state_value(line.trim()).is_some_and(|state| {
             has_real_value(state)
                 && has_duplicate_state_phrase(state)
+                && has_concrete_duplicate_state_evidence(state)
                 && !has_negated_duplicate_state_evidence(state)
         })
     })
@@ -105,17 +113,11 @@ fn has_codexy_contract_phrase(text: &str) -> bool {
 }
 
 fn has_duplicate_state_phrase(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "duplicate/no-active-work",
-            "no-active-work",
-            "no active work",
-            "duplicate pr",
-            "duplicate issue",
-            "duplicate lane",
-        ],
-    )
+    has_any(text, DUPLICATE_STATE_PHRASES)
+}
+
+fn has_concrete_duplicate_state_evidence(text: &str) -> bool {
+    has_any(text, DUPLICATE_STATE_TARGETS) && has_any(text, DUPLICATE_STATE_CHECKS)
 }
 
 fn has_ownership_boundary_phrase(text: &str) -> bool {

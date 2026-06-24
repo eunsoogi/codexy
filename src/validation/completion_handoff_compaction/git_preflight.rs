@@ -5,13 +5,13 @@ pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
             && !is_unchecked_checklist_item(line)
             && has_positive_evidence(line)
             && {
-                let block = git_preflight_block(&lines, index, false);
+                let block = git_preflight_evidence_block(&lines, index);
                 has_all_commands(&block) && !has_negated_evidence(&block)
             }
     })
 }
 
-fn git_preflight_block(lines: &[&str], start: usize, commands_only: bool) -> String {
+fn git_preflight_evidence_block(lines: &[&str], start: usize) -> String {
     let mut block = String::new();
     for (index, line) in lines.iter().enumerate().skip(start) {
         if index > start
@@ -20,24 +20,13 @@ fn git_preflight_block(lines: &[&str], start: usize, commands_only: bool) -> Str
         {
             break;
         }
-        if !commands_only || index == start || contains_preflight_command(line) {
-            block.push_str(line);
-            block.push('\n');
+        block.push_str(line);
+        block.push('\n');
+        if has_all_commands(&block) {
+            break;
         }
     }
     block
-}
-
-fn contains_preflight_command(line: &str) -> bool {
-    [
-        "pwd",
-        "git status --short --branch",
-        "git rev-parse head",
-        "git rev-parse origin/main",
-        "git log --graph",
-    ]
-    .iter()
-    .any(|phrase| line.contains(phrase))
 }
 
 fn starts_handoff_section(line: &str) -> bool {
