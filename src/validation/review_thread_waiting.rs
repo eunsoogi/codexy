@@ -81,6 +81,7 @@ fn claims_readiness(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     [
         "pr ready",
+        "pr-ready",
         "pr readiness",
         "pr-readiness",
         "ready for parent handoff",
