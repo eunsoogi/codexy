@@ -190,11 +190,21 @@ fn mentions_not_accepted(segment: &str) -> bool {
 
 fn claims_thread_fixed(text: &str, thread: &Value) -> bool {
     waiting_segments(text).any(|segment| {
-        thread_referenced(segment, thread)
-            && "addressed addresses addressing applied fixed fixes handled implemented responded resolved resolve resolves updated"
-                .split_whitespace()
-                .any(|action| has_unnegated_action_phrase(segment, action))
+        action_claim_segments(segment).any(|claim| {
+            thread_referenced(claim, thread)
+                && "addressed addresses addressing applied fixed fixes handled implemented responded resolved resolve resolves updated"
+                    .split_whitespace()
+                    .any(|action| has_unnegated_action_phrase(claim, action))
+        })
     })
+}
+
+fn action_claim_segments(segment: &str) -> impl Iterator<Item = &str> {
+    segment
+        .split(',')
+        .flat_map(|clause| clause.split(" but "))
+        .map(str::trim)
+        .filter(|clause| !clause.is_empty())
 }
 
 fn thread_referenced(text: &str, thread: &Value) -> bool {
