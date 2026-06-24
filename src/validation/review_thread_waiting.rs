@@ -24,6 +24,12 @@ fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
     let mut segments = Vec::new();
     let mut carry = String::new();
     for segment in waiting_segments(text) {
+        if !carry.is_empty()
+            && !thread_referenced(segment, thread)
+            && (segment.contains("prrt_") || segment.contains("#discussion_r"))
+        {
+            segments.push(std::mem::take(&mut carry));
+        }
         let candidate = format!("{carry}{segment}");
         let continues_waiting_clause = segment.ends_with(';')
             && thread_referenced(&candidate, thread)
