@@ -169,7 +169,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
             .rfind('\n')
             .map_or(0, |index| index + 1);
         let previous_line = &evidence[previous_start..previous_end];
-        return if has_defect_label(previous_line) {
+        return if has_defect_label(previous_line) && !has_absent_defect_capture(previous_line) {
             previous_start
         } else {
             line_start

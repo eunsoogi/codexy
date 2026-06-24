@@ -75,6 +75,28 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_defect_capture_after_invocation_with_prior_no_defect_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+LSP evidence: no dogfooding defect; rust-analyzer was unavailable on PATH.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not expand an invocation capture into unrelated prior no-defect metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_placeholder_capture_without_handler_defect_on_capture_line()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
