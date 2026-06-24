@@ -17,6 +17,8 @@ pub(super) fn check(
                 "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
             ));
         }
+    } else if expected_pr.is_some() && has_closing_reference(message) {
+        errors.push("merge commit message must not contain closing references".to_string());
     }
     errors
 }
@@ -35,11 +37,17 @@ fn has_unique_final_closing_reference(expected_issue: u64, message: &str) -> boo
         .lines()
         .filter(|line| !line.trim().is_empty())
         .collect::<Vec<_>>();
-    let closing_reference_count = non_empty_lines
-        .iter()
-        .map(|line| closing_reference_count(line))
-        .sum::<usize>();
+    let closing_reference_count =
+        closing_reference_count_for_lines(non_empty_lines.iter().copied());
     closing_reference_count == 1 && non_empty_lines.last() == Some(&expected_line.as_str())
+}
+
+fn has_closing_reference(message: &str) -> bool {
+    closing_reference_count_for_lines(message.lines()) > 0
+}
+
+fn closing_reference_count_for_lines<'a>(lines: impl Iterator<Item = &'a str>) -> usize {
+    lines.map(closing_reference_count).sum()
 }
 
 fn closing_reference_count(line: &str) -> usize {
