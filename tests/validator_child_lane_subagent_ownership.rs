@@ -1,5 +1,7 @@
 use std::process::{Command, Output};
 
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");
@@ -12,7 +14,7 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 }
 
 #[test]
-fn validator_rejects_subagent_as_child_subthread_owner() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_subagent_as_child_subthread_owner() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: child-owned implementation lane assigned to subagent Gauss via multi_agent_v1.spawn_agent
 Subthread/worktree owner: multi_agent_v1 subagent Gauss
@@ -29,8 +31,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_explicit_subagent_assignment_despite_substitute_denial()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_explicit_subagent_assignment_despite_substitute_denial() -> TestResult {
     for evidence in [
         r#"Owner decision: child-owned implementation lane assigned to subagent Gauss; not a subagent substitute for a Codex thread
 Parent implementation setup: none
@@ -52,8 +53,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_hyphenated_multi_agent_owner_assignment()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_hyphenated_multi_agent_owner_assignment() -> TestResult {
     for evidence in [
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required; multi-agent owner Gauss
 Parent implementation setup: none
@@ -76,8 +76,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_subagent_routes_and_negated_thread_owner_claims()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_subagent_routes_and_negated_thread_owner_claims() -> TestResult {
     for evidence in [
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required; routed to multi_agent_v1 subagent Gauss
 Parent implementation setup: none
@@ -119,16 +118,6 @@ Parent implementation setup: none
 Maintainer reassignment: none
 "#,
         r#"Owner decision: child-owned implementation lane
-Subthread/worktree owner: worker agent Gauss
-Parent implementation setup: none
-Maintainer reassignment: none
-"#,
-        r#"Owner decision: child-owned implementation lane
-Subthread/worktree owner: explorer agent Gauss
-Parent implementation setup: none
-Maintainer reassignment: none
-"#,
-        r#"Owner decision: child-owned implementation lane
 Specialist helper owner: specialist helper Gauss
 Parent implementation setup: none
 Maintainer reassignment: none
@@ -146,8 +135,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_specialist_helper_as_child_subthread_owner()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_specialist_helper_as_child_subthread_owner() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: child-owned implementation lane assigned to specialist helper Gauss
 Subthread/worktree owner: specialist helper Gauss
@@ -164,7 +152,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_role_only_spawned_agent_owners() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_role_only_spawned_agent_owners() -> TestResult {
     for evidence in [
         r#"Owner decision: child-owned implementation lane
 Subthread/worktree owner: worker agent Gauss
@@ -237,6 +225,9 @@ Maintainer reassignment: none
         "Owner decision: child-owned implementation lane\nSubagent owner: Gauss\n",
         "Owner decision: child-owned implementation lane\nMulti-agent owner: Gauss\n",
         "Owner decision: child-owned implementation lane\nSubthread/worktree owner:\n- multi_agent_v1 subagent Gauss\n",
+        "Owner decision: child-owned implementation lane\nSubthread/worktree owner: no Codex thread tools available\n- subagent: Gauss\n",
+        "Owner decision: child-owned implementation lane\nSubthread/worktree owner: no Codex thread tools available\n- multi-agent: Gauss\n",
+        "Owner decision: child-owned implementation lane\nSubthread/worktree owner: no Codex thread tools available\n- specialist agent: Gauss\n",
     ] {
         let output = run_ownership_validator(evidence)?;
         assert!(

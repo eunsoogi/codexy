@@ -11,7 +11,13 @@ const NEGATED_CODEX_THREAD_OWNER_MARKERS: &str = "no codex worktree thread|no co
 pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
     let mut owner_context: Option<(&str, String)> = None;
     for line in evidence.lines().map(str::trim) {
-        if line.is_empty() || line_is_helper_only(line) {
+        if line.is_empty() {
+            owner_context = None;
+            continue;
+        }
+        let owner_scoped_subagent_metadata =
+            owner_context.is_some() && line_is_owner_scoped_subagent_list_metadata(line);
+        if line_is_helper_only(line) && !owner_scoped_subagent_metadata {
             owner_context = None;
             continue;
         }
@@ -19,6 +25,7 @@ pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
             .as_ref()
             .is_some_and(|(_, value)| !trimmed_value(value).is_empty())
             && line_starts_metadata_boundary(line)
+            && !owner_scoped_subagent_metadata
         {
             owner_context = None;
         }
@@ -76,7 +83,7 @@ fn value_is_non_child_owned_decision_with_subagent_rationale(value: &str) -> boo
 fn value_has_non_owner_subagent_rationale(value: &str) -> bool {
     value_denies_subagent_owner(value)
         || value_denies_subagent_owner_assignment(value)
-        || "subagent not useful|sub-agent not useful|multi_agent not useful|multi-agent not useful|specialist helper not useful"
+        || "subagent not useful|sub-agent not useful|multi_agent not useful|multi-agent not useful|specialist helper not useful|used only for"
             .split('|')
         .any(|marker| value.contains(marker))
 }
@@ -116,6 +123,14 @@ fn line_starts_metadata_boundary(line: &str) -> bool {
         let key = metadata_key(strip_list_marker(key));
         !key.is_empty() && (!line_is_list_item(line) || key_allows_list_metadata_boundary(key))
     })
+}
+
+fn line_is_owner_scoped_subagent_list_metadata(line: &str) -> bool {
+    line_is_list_item(line)
+        && line.split_once(':').is_some_and(|(key, _)| {
+            let key = metadata_key(strip_list_marker(key));
+            has_subagent_surface(key)
+        })
 }
 
 fn strip_list_marker(value: &str) -> &str {
