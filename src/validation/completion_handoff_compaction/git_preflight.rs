@@ -11,7 +11,9 @@ pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
     lines.iter().enumerate().any(|(index, line)| {
         is_git_preflight_line(line) && !is_unchecked_checklist_item(line) && {
             let block = git_preflight_evidence_block(&lines, index);
-            has_all_commands(&block) && !has_negated_evidence(&block)
+            has_all_commands(&block)
+                && has_executed_evidence(&block)
+                && !has_negated_evidence(&block)
         }
     })
 }
@@ -191,6 +193,11 @@ fn has_all_commands(text: &str) -> bool {
 
 fn is_git_preflight_line(line: &str) -> bool {
     line.contains("git graph/log preflight") || line.contains("git preflight")
+}
+
+fn has_executed_evidence(text: &str) -> bool {
+    has_any(text, &["captured", "were run", "checked", "recorded"])
+        || text.lines().any(|line| line.starts_with("$ "))
 }
 
 fn has_negated_evidence(line: &str) -> bool {
