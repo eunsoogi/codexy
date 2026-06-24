@@ -4,15 +4,15 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
-fn validator_allows_waiting_thread_after_comma_delimited_unrelated_fixed_thread() -> TestResult {
-    for separator in [",", ", but"] {
+fn validator_allows_waiting_thread_after_unrelated_fixed_thread_clause() -> TestResult {
+    for separator in [",", ", but", " and"] {
         let output = validate_handoff_with_pr_state(&format!(
             "Review response: fixed PRRT_kwDOFixed{separator} Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
         ))?;
 
         assert!(
             output.status.success(),
-            "validator should tie fixed claims to the referenced thread across `{separator}` clauses\nstdout:\n{}\nstderr:\n{}",
+            "validator should tie fixed claims to the referenced thread across `{separator}` clause boundaries\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );

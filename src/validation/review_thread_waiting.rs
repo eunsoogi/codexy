@@ -209,6 +209,7 @@ fn action_claim_segments(segment: &str) -> impl Iterator<Item = &str> {
     segment
         .split(',')
         .flat_map(|clause| clause.split(" but "))
+        .flat_map(|clause| clause.split(" and "))
         .map(str::trim)
         .filter(|clause| !clause.is_empty())
 }
