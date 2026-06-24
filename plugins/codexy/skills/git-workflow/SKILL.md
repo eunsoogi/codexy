@@ -225,6 +225,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
           state
           url
           submittedAt
+          commit { oid }
         }
       }
     }

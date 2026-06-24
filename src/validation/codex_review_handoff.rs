@@ -9,9 +9,11 @@ const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for me
 const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_ready = claims_codex_review_ready(handoff);
+    let claims_completion = claims_codex_review_completion(handoff);
+    let has_override = states_codex_review_override(handoff);
     if claims_ready
         && !has_head_ref_oid(pr_state)
-        && (claims_codex_review_completion(handoff) || has_codex_review_activity(pr_state))
+        && (claims_completion || has_codex_review_activity(pr_state))
     {
         return vec![
             "completion handoff PR state missing required field: headRefOid before Codex review readiness claims"
@@ -24,12 +26,16 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             pr_number(pr_state)
         )];
     }
-    if claims_ready
-        && has_latest_eyes_request_without_later_codex_output(pr_state)
-        && !states_codex_review_override(handoff)
+    if claims_ready && has_latest_eyes_request_without_later_codex_output(pr_state) && !has_override
     {
         return vec![format!(
             "eyes-only Codex review request or unacknowledged Codex review request is not review completion: PR #{} needs actual Codex review output, an explicit completion signal, or a maintainer override before merge/readiness claims",
+            pr_number(pr_state)
+        )];
+    }
+    if claims_ready && claims_completion && !has_codex_review_output(pr_state) && !has_override {
+        return vec![format!(
+            "current-head Codex review output is required before Codex review completion claims: PR #{} needs matching Codex review output or a maintainer override before merge/readiness claims",
             pr_number(pr_state)
         )];
     }
