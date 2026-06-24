@@ -68,7 +68,7 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
         )
         && has_any(
             text,
-            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
+            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|awaiting codex review feedback|awaiting @codex review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
         )
 }
 
@@ -76,7 +76,7 @@ fn mentions_external_gate_blocker(text: &str) -> bool {
     mentions_security_review_blocker(text)
         || has_any(
             text,
-            "required status checks are failing|status checks are failing|status checks failed",
+            "required checks are failing|required checks failed|required status checks are failing|status checks are failing|status checks failed",
         )
 }
 
@@ -142,7 +142,7 @@ fn mentions_return_wait(text: &str) -> bool {
 fn mentions_waiting_context(text: &str) -> bool {
     has_any(
         text,
-        "pending|waiting|in progress|processing|eyes reaction|working|not returned|not yet returned|has not returned|hasn't returned",
+        "pending|waiting|awaiting|in progress|processing|eyes reaction|working|not returned|not yet returned|has not returned|hasn't returned",
     )
 }
 
