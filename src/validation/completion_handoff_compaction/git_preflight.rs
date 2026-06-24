@@ -163,27 +163,44 @@ fn has_planned_execution_evidence(line: &str) -> bool {
     )
 }
 
-fn has_negated_evidence(line: &str) -> bool {
-    line.lines().any(|line| {
-        has_any(
-            line,
-            &[
-                "did not run",
-                "didn't run",
-                "not run",
-                "not all commands were run",
-                "not all commands were captured",
-                "not all preflight commands were run",
-                "not all preflight commands were captured",
-                "not actually run",
-                "not captured",
-                "not checked",
-                "no preflight command execution",
-                "no preflight command capture",
-                "without running",
-            ],
-        ) && refers_to_git_preflight(line)
+fn has_negated_evidence(text: &str) -> bool {
+    text.lines().any(|line| {
+        has_negation_phrase(line)
+            && (refers_to_git_preflight(line) || is_block_local_preflight_negation(line))
     })
+}
+
+fn has_negation_phrase(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "did not run",
+            "didn't run",
+            "not run",
+            "not all commands were run",
+            "not all commands were captured",
+            "not all preflight commands were run",
+            "not all preflight commands were captured",
+            "not actually run",
+            "not captured",
+            "not checked",
+            "no preflight command execution",
+            "no preflight command capture",
+            "without running",
+        ],
+    )
+}
+
+fn is_block_local_preflight_negation(line: &str) -> bool {
+    let line = line.trim().trim_end_matches([':', '.', ';']);
+    [
+        "not actually run",
+        "not captured",
+        "not checked",
+        "without running",
+    ]
+    .iter()
+    .any(|phrase| line == *phrase)
 }
 
 fn refers_to_git_preflight(line: &str) -> bool {

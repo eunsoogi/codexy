@@ -43,6 +43,13 @@ fn validator_cli_rejects_git_preflight_block_with_generic_run_capture_negation()
          - git rev-parse HEAD\n\
          - git rev-parse origin/main\n\
          - git log --graph --oneline --decorate --all --max-count=50",
+        "Git graph/log preflight captured before editing:\n\
+         Not actually run.\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=50",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(git_preflight))?;
         assert!(

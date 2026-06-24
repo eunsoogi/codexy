@@ -31,8 +31,22 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 }
 
 fn claims_compacted_continuation_readiness(text: &str) -> bool {
+    let lines: Vec<_> = text.lines().map(str::trim).collect();
+    lines.iter().enumerate().any(|(index, line)| {
+        has_compaction_context(line)
+            && (has_continuation_context(line)
+                || (is_compaction_context_heading(line)
+                    && next_nonempty_line(&lines, index).is_some_and(has_continuation_context)))
+    })
+}
+
+fn has_any(text: &str, phrases: &[&str]) -> bool {
+    phrases.iter().any(|phrase| text.contains(phrase))
+}
+
+fn has_compaction_context(line: &str) -> bool {
     has_any(
-        text,
+        line,
         &[
             "compacted continuation",
             "after compaction",
@@ -46,8 +60,12 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
             "context compaction",
             "goal continuation",
         ],
-    ) && has_any(
-        text,
+    )
+}
+
+fn has_continuation_context(line: &str) -> bool {
+    has_any(
+        line,
         &[
             "ready to continue",
             "continuation readiness",
@@ -61,6 +79,41 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
     )
 }
 
-fn has_any(text: &str, phrases: &[&str]) -> bool {
-    phrases.iter().any(|phrase| text.contains(phrase))
+fn is_compaction_context_heading(line: &str) -> bool {
+    let line = handoff_line_metadata(line);
+    [
+        "compacted continuation",
+        "compaction continuation",
+        "compaction handoff",
+        "compaction resume",
+        "compaction summary",
+        "conversation compaction",
+        "post-compaction",
+        "post compaction",
+        "context compaction",
+        "goal continuation",
+    ]
+    .iter()
+    .any(|phrase| {
+        line.starts_with(phrase) && line[phrase.len()..].trim_start().starts_with([':', '-'])
+    })
+}
+
+fn handoff_line_metadata(line: &str) -> &str {
+    let line = line.trim().trim_start_matches(['-', '*']).trim_start();
+    let line = line
+        .strip_prefix("[x]")
+        .or_else(|| line.strip_prefix("[X]"))
+        .or_else(|| line.strip_prefix("[ ]"))
+        .unwrap_or(line)
+        .trim_start();
+    line.trim_start_matches('#').trim_start()
+}
+
+fn next_nonempty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
+    lines
+        .iter()
+        .skip(index + 1)
+        .find(|line| !line.is_empty())
+        .copied()
 }

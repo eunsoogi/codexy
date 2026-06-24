@@ -8,15 +8,19 @@ const OPEN_PR_STATE: &str =
 
 #[test]
 fn validator_cli_allows_compaction_topic_status_handoff_next_action() -> TestResult {
-    let output = validate_open_pr_handoff(
+    for handoff in [
         "Status update for PR #172: implemented the compaction validator.\n\
          Next action: wait for review per maintainer instruction.\n",
-    )?;
-    assert!(
-        output.status.success(),
-        "validator should accept handoff\nstderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Status update for PR #172: implemented the compaction summary readiness trigger.\n\
+         Next action: wait for review per maintainer instruction.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            output.status.success(),
+            "validator should accept handoff\nstderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
