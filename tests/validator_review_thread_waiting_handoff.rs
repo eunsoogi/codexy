@@ -139,6 +139,10 @@ fn validator_rejects_ready_handoff_synonyms_with_thread_not_fixed_or_accepted() 
         "Status: PR-ready",
         "Pull request ready",
         "pull-request-ready handoff",
+        "Codex review passed",
+        "Codex review approved",
+        "Codex review completed",
+        "Codex review complete",
     ] {
         let output = validate_handoff_with_pr_state(
             &format!(
