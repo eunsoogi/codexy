@@ -161,6 +161,9 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
     let current_line_end = line_end(evidence, line_start);
     let current_trimmed = evidence[line_start..current_line_end].trim_start();
     if !is_list_item(current_trimmed) {
+        if has_defect_label(current_trimmed) {
+            return line_start;
+        }
         let previous_end = line_start.saturating_sub(1);
         let previous_start = evidence[..previous_end]
             .rfind('\n')
