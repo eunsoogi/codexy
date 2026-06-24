@@ -197,7 +197,7 @@ fn validator_cli_accepts_connector_output_with_review_request_footer() -> TestRe
                 "reactionGroups":[]
             }],
             "latestReviews":[{
-                "body":"Here are some automated review suggestions.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`\n\nComment \"@codex review\" to request another review.",
+                "body":"Review completed.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`\n\nComment \"@codex review\" to request another review.",
                 "author":{"login":"chatgpt-codex-connector"},
                 "submittedAt":"2026-06-22T12:50:03Z"
             }],

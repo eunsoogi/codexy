@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+use super::codex_review_handoff_actionable::has_actionable_codex_review_output;
 use super::codex_review_handoff_events::{
     has_codex_review_activity, has_codex_review_output,
     has_latest_eyes_request_without_later_codex_output, has_unresolved_codex_review_thread,
@@ -26,6 +27,15 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             pr_number(pr_state)
         )];
     }
+    if claims_ready
+        && has_actionable_codex_review_output(pr_state)
+        && !super::review_thread_resolution::claims_review_response(handoff)
+    {
+        return vec![format!(
+            "actionable Codex review output blocks merge/readiness claims until the handoff documents addressed feedback or an accepted no-change rationale: PR #{}",
+            pr_number(pr_state)
+        )];
+    }
     if claims_ready && has_latest_eyes_request_without_later_codex_output(pr_state) && !has_override
     {
         return vec![format!(
@@ -33,10 +43,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             pr_number(pr_state)
         )];
     }
-    if claims_ready
-        && !has_codex_review_output(pr_state)
-        && !has_override
-    {
+    if claims_ready && !has_codex_review_output(pr_state) && !has_override {
         return vec![format!(
             "current-head Codex review output is required before Codex review completion claims: PR #{} needs matching Codex review output or a maintainer override before merge/readiness claims",
             pr_number(pr_state)
@@ -133,8 +140,7 @@ fn is_locally_negated(prefix: &str) -> bool {
         .any(|word| {
             matches!(
                 word,
-                "no"
-                    | "not"
+                "no" | "not"
                     | "never"
                     | "without"
                     | "isn't"

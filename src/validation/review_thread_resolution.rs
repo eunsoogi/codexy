@@ -29,7 +29,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 fn review_thread_nodes(threads: &Value) -> Option<&Vec<Value>> {
     threads.get("nodes").and_then(Value::as_array)
 }
-fn claims_review_response(handoff: &str) -> bool {
+pub(super) fn claims_review_response(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     has_any(
         &text,

@@ -18,12 +18,7 @@ pub(super) fn has_codex_review_output(pr_state: &Value) -> bool {
 pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
     iter_json_objects(pr_state).any(|item| {
         is_codex_review_request(item)
-            || is_codex_connector_item(item)
-                && (is_inline_review_comment_item(item)
-                    || text_field(item, "body")
-                        .filter(|text| !text.trim().is_empty())
-                        .or_else(|| text_field(item, "state"))
-                        .is_some_and(is_review_output_text))
+            || is_codex_connector_item(item) && is_review_output_signal(item)
     })
 }
 
@@ -131,12 +126,15 @@ fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
     if !is_codex_connector_item(item) {
         return false;
     }
-    (is_inline_review_comment_item(item)
+    is_review_output_signal(item) && codex_output_matches_head(item, head)
+}
+
+fn is_review_output_signal(item: &Value) -> bool {
+    is_inline_review_comment_item(item)
+        || text_field(item, "state").is_some_and(is_review_output_text)
         || text_field(item, "body")
             .filter(|text| !text.trim().is_empty())
-            .or_else(|| text_field(item, "state"))
-            .is_some_and(is_review_output_text))
-        && codex_output_matches_head(item, head)
+            .is_some_and(is_review_output_text)
 }
 
 fn codex_output_matches_head(item: &Value, head: Option<&str>) -> bool {
