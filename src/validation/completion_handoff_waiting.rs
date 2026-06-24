@@ -73,7 +73,11 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
 }
 
 fn mentions_external_gate_blocker(text: &str) -> bool {
-    mentions_security_review_blocker(text) || mentions_status_check_blocker(text)
+    mentions_security_review_blocker(text)
+        || has_any(
+            text,
+            "required status checks are failing|status checks are failing|status checks failed",
+        )
 }
 
 fn mentions_security_review_blocker(text: &str) -> bool {
@@ -83,13 +87,6 @@ fn mentions_security_review_blocker(text: &str) -> bool {
     ) && !has_any(
         text,
         "security review passed|security review complete|security review completed|security review not required|no security review",
-    )
-}
-
-fn mentions_status_check_blocker(text: &str) -> bool {
-    has_any(
-        text,
-        "required status checks are failing|status checks are failing|status checks failed",
     )
 }
 
@@ -123,7 +120,8 @@ fn mentions_setup_failure_blocker(text: &str) -> bool {
 }
 
 fn mentions_async_completion(text: &str) -> bool {
-    has_any(text, "asynchronous tool|async tool")
+    has_any(text, "asynchronous|async")
+        && has_any(text, "tool")
         && has_any(
             text,
             "completion|pending|waiting|running|in progress|not returned|not yet returned|hasn't returned",
