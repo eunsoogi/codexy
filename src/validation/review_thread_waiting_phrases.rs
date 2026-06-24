@@ -22,8 +22,9 @@ pub(super) fn has_unnegated_action_phrase(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(start, _)| {
         let prefix_start = char_window_start(text, start, 16);
         let prefix = &text[prefix_start..start];
+        let end = start + phrase.len();
         is_action_boundary(text[..start].chars().next_back())
-            && is_action_boundary(text[start + phrase.len()..].chars().next())
+            && is_action_suffix_boundary(text[end..].chars())
             && !has_nearby_negation(prefix)
     })
 }
@@ -52,6 +53,13 @@ fn is_action_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| {
         !character.is_ascii_alphanumeric() && !matches!(character, '_' | '-' | '/' | '.')
     })
+}
+
+fn is_action_suffix_boundary(mut characters: impl Iterator<Item = char>) -> bool {
+    match characters.next() {
+        Some('.') => is_boundary(characters.next()),
+        character => is_action_boundary(character),
+    }
 }
 
 fn starts_with_boundary(rest: &str) -> bool {

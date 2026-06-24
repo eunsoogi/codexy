@@ -66,11 +66,15 @@ fn dot_inside_path_token(text: &str, dot_index: usize) -> bool {
     let start = prefix
         .rfind(|character: char| character.is_ascii_whitespace())
         .map_or(0, |index| index + 1);
-    prefix[start..].contains('/')
-        && text[dot_index + 1..]
-            .chars()
-            .next()
-            .is_some_and(is_reference_char)
+    let previous_is_token_char = prefix[start..]
+        .chars()
+        .next_back()
+        .is_some_and(is_reference_char);
+    let next_is_token_char = text[dot_index + 1..]
+        .chars()
+        .next()
+        .is_some_and(is_reference_char);
+    next_is_token_char && (previous_is_token_char || prefix[start..].contains('/'))
 }
 
 fn claims_readiness(handoff: &str) -> bool {

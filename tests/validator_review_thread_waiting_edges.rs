@@ -38,6 +38,26 @@ fn validator_rejects_waiting_evidence_that_contradicts_same_thread_action() -> T
 }
 
 #[test]
+fn validator_rejects_waiting_evidence_after_sentence_final_same_thread_action() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: PRRT_kwDOWaiting fixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject waiting evidence when the same thread is claimed fixed in a normal sentence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_negative_pr_readiness_label_before_waiting_evidence() -> TestResult {
     for label in [
         "PR readiness: not ready",
@@ -81,7 +101,7 @@ fn validator_rejects_affirmative_no_blockers_readiness_label() -> TestResult {
 
 #[test]
 fn validator_ignores_action_words_inside_waiting_file_paths() -> TestResult {
-    for path in ["src/fixed/review.rs", "src/updated/foo.rs"] {
+    for path in ["src/fixed/review.rs", "src/updated/foo.rs", "fixed.rs"] {
         let output = validate_handoff_with_pr_state(&format!(
             "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting at {path} remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
         ))?;
