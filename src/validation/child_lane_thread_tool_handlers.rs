@@ -10,7 +10,6 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
     if !has_discovered_or_expected_thread_tool(evidence) {
         return false;
     }
-
     evidence
         .match_indices(HANDLER_MISSING_MARKER)
         .any(|(start, _)| {
@@ -185,7 +184,9 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
             .map_or(0, |index| index + 1);
         let previous_line = &evidence[previous_start..previous_end];
         let trimmed = previous_line.trim_start();
-        if is_list_item(trimmed) || has_defect_label(previous_line) {
+        if !has_absent_defect_capture(previous_line)
+            && (is_list_item(trimmed) || has_defect_label(previous_line))
+        {
             capture_start = previous_start;
             cursor = previous_start;
         } else {
