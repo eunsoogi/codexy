@@ -42,14 +42,13 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             pr_number(pr_state)
         )];
     }
-    if claims_ready
-        && has_codex_review_output(pr_state)
-        && let Some(error) = review_thread_evidence_error(pr_state)
-    {
-        return vec![format!(
-            "{error} before merge/readiness claims: PR #{}",
-            pr_number(pr_state)
-        )];
+    if claims_ready && has_codex_review_output(pr_state) {
+        if let Some(error) = review_thread_evidence_error(pr_state) {
+            return vec![format!(
+                "{error} before merge/readiness claims: PR #{}",
+                pr_number(pr_state)
+            )];
+        }
     }
     Vec::new()
 }
