@@ -1,5 +1,8 @@
 use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
 use super::child_lane_thread_tool_handler_defect_capture::has_tool_name_in_defect_capture;
+use super::child_lane_thread_tool_handler_scope::{
+    previous_nonempty_block_start, scope_start_until_blank,
+};
 
 pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
     if !has_discovered_or_expected_thread_tool(evidence) {
@@ -151,22 +154,16 @@ fn line_end(text: &str, line_start: usize) -> usize {
 }
 
 fn handler_missing_placeholder_scope(evidence: &str, line_start: usize) -> &str {
-    let mut previous_start = line_start;
-    let mut cursor = line_start;
-    while cursor > 0 {
-        let previous_end = cursor - 1;
-        let candidate_start = evidence[..previous_end]
-            .rfind('\n')
-            .map_or(0, |index| index + 1);
-        if evidence[candidate_start..previous_end].trim().is_empty() {
-            break;
-        }
-        previous_start = candidate_start;
-        cursor = candidate_start;
+    let current_line_end = line_end(evidence, line_start);
+    let (mut previous_start, blank_start) = scope_start_until_blank(evidence, line_start);
+    let discovery_start = blank_start
+        .and_then(|blank_start| previous_nonempty_block_start(evidence, blank_start))
+        .filter(|start| has_discovered_or_expected_thread_tool(&evidence[*start..line_start]));
+    if !has_thread_tool_name(&evidence[previous_start..current_line_end])
+        && let Some(discovery_start) = discovery_start
+    {
+        previous_start = discovery_start;
     }
-    let current_line_end = evidence[line_start..]
-        .find('\n')
-        .map_or(evidence.len(), |index| line_start + index);
     &evidence[previous_start..current_line_end]
 }
 

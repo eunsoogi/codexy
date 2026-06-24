@@ -109,6 +109,32 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_blank_line_separated_visible_surface_handler_missing()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Visible tool surface:
+- read_thread
+
+Invocation evidence: all return `No handler registered for tool: ...`.
+Fallback: reported ordinary unavailable thread tooling and continued without recording a dogfooding defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should associate blank-line-separated placeholder handler evidence with the exposed thread tool list"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the blank-line-separated placeholder evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_broader_bulleted_visible_thread_surface_handler_missing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
