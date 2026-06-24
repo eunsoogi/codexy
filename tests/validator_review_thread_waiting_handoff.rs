@@ -7,6 +7,8 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_allows_review_response_waiting_on_thread_not_fixed_or_accepted() -> TestResult {
     for handoff in [
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not yet fixed or accepted; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it isn't yet fixed or accepted; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting at src/lib.rs remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
@@ -19,7 +21,6 @@ fn validator_allows_review_response_waiting_on_thread_not_fixed_or_accepted() ->
     }
     Ok(())
 }
-
 #[test]
 fn validator_rejects_waiting_thread_with_only_half_evidence() -> TestResult {
     for handoff in [
