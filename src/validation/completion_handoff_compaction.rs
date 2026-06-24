@@ -39,6 +39,7 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
             "compaction continuation",
             "compaction handoff",
             "compaction resume",
+            "compaction summary",
             "conversation compaction",
             "post-compaction",
             "post compaction",

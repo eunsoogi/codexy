@@ -117,6 +117,13 @@ fn validator_cli_rejects_planned_git_preflight_execution_wording() -> TestResult
          - git rev-parse origin/main\n\
          - git log --graph --oneline --decorate --all --max-count=5",
         "Git graph/log preflight:\n\
+         Required commands should be checked before editing.\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=5",
+        "Git graph/log preflight:\n\
          Required commands will be recorded/captured:\n\
          - pwd\n\
          - git status --short --branch\n\
