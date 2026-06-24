@@ -106,6 +106,40 @@ fn validator_cli_rejects_neutral_git_preflight_template_without_execution_eviden
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_planned_git_preflight_execution_wording() -> TestResult {
+    for git_preflight in [
+        "Git graph/log preflight:\n\
+         Required commands to be checked:\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=5",
+        "Git graph/log preflight:\n\
+         Required commands will be recorded/captured:\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=5",
+    ] {
+        let output = validate_open_pr_handoff(&valid_handoff_with(git_preflight))?;
+        assert!(
+            !output.status.success(),
+            "validator should reject handoff\nstdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("compacted continuation evidence missing git graph/log preflight"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn valid_handoff_with(git_preflight: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\

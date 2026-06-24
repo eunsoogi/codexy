@@ -154,6 +154,34 @@ fn validator_cli_rejects_git_preflight_block_negated_after_all_commands() -> Tes
 }
 
 #[test]
+fn validator_cli_rejects_git_preflight_negated_after_git_log_output() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Git graph/log preflight captured before editing:\n\
+         $ pwd\n\
+         /repo/codexy\n\
+         $ git status --short --branch\n\
+         ## HEAD (no branch)\n\
+         $ git rev-parse HEAD\n\
+         217ef660aaf0d31c318b09059f9bb51fc10bffdc\n\
+         $ git rev-parse origin/main\n\
+         8d541f1cb59a03704815d0c5e97a41e570494131\n\
+         $ git log --graph --oneline --decorate --all --max-count=5\n\
+         * 217ef66 fix(validation): cover compaction handoff review gaps\n\
+         These commands were not run.\n",
+    )?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_git_preflight_block_when_not_all_commands_were_run() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\

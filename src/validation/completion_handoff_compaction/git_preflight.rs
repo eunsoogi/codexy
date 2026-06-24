@@ -1,3 +1,7 @@
+use super::git_preflight_lines::{
+    is_git_log_graph_output_line, is_git_status_output_after_command,
+};
+
 const REQUIRED_PREFLIGHT_COMMANDS: &[&str] = &[
     "pwd",
     "git status --short --branch",
@@ -20,15 +24,20 @@ pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
 
 fn git_preflight_evidence_block(lines: &[&str], start: usize) -> String {
     let mut block = String::new();
+    let mut saw_git_log_command = false;
     for (index, line) in lines.iter().enumerate().skip(start) {
         if index > start
             && starts_handoff_section(line)
             && !is_git_status_output_after_command(lines, index)
+            && !(saw_git_log_command && is_git_log_graph_output_line(line))
         {
             break;
         }
         if is_unchecked_checklist_item(line) {
             continue;
+        }
+        if line.contains("git log --graph") {
+            saw_git_log_command = true;
         }
         block.push_str(line);
         block.push('\n');
@@ -57,73 +66,6 @@ fn starts_handoff_section(line: &str) -> bool {
     .any(|section| line.starts_with(section));
 
     starts_known_section || starts_unbulleted_section_label(line)
-}
-
-fn is_git_status_output_after_command(lines: &[&str], index: usize) -> bool {
-    index > 0
-        && lines[index - 1].contains("git status --short --branch")
-        && is_git_status_short_branch_line(lines[index])
-        && is_followed_by_status_or_command(lines, index)
-}
-
-fn is_git_status_short_branch_line(line: &str) -> bool {
-    let Some(status) = line.strip_prefix("## ") else {
-        return false;
-    };
-    let status = status.trim();
-    if status.is_empty() {
-        return false;
-    }
-    if status == "head (no branch)"
-        || status.starts_with("no commits yet on ")
-        || status.starts_with("initial commit on ")
-    {
-        return true;
-    }
-
-    let branch = status
-        .split("...")
-        .next()
-        .unwrap_or(status)
-        .split('[')
-        .next()
-        .unwrap_or(status)
-        .trim();
-    if is_known_markdown_section_heading(branch) {
-        return false;
-    }
-    !branch.is_empty() && branch.chars().all(|character| !character.is_whitespace())
-}
-
-fn is_known_markdown_section_heading(text: &str) -> bool {
-    "acceptance blockers checks commands evidence findings handoff notes results review summary tests verification"
-        .split_whitespace()
-        .any(|heading| heading == text)
-}
-
-fn is_followed_by_status_or_command(lines: &[&str], index: usize) -> bool {
-    lines
-        .get(index + 1)
-        .is_none_or(|line| line.starts_with("$ ") || is_porcelain_status_line(line))
-}
-
-fn is_porcelain_status_line(line: &str) -> bool {
-    if line.len() < 3 {
-        return false;
-    }
-    let bytes = line.as_bytes();
-    if bytes.first().is_some_and(|byte| is_status_byte(*byte)) && matches!(bytes.get(1), Some(b' '))
-    {
-        return true;
-    }
-    (matches!(bytes.first(), Some(b' ')) || bytes.first().is_some_and(|byte| is_status_byte(*byte)))
-        && (matches!(bytes.get(1), Some(b' '))
-            || bytes.get(1).is_some_and(|byte| is_status_byte(*byte)))
-        && matches!(bytes.get(2), Some(b' '))
-}
-
-fn is_status_byte(byte: u8) -> bool {
-    b"MADRCUmadrcu?!".contains(&byte)
 }
 
 fn starts_unrelated_list_section(line: &str) -> bool {
@@ -196,8 +138,26 @@ fn is_git_preflight_line(line: &str) -> bool {
 }
 
 fn has_executed_evidence(text: &str) -> bool {
+    if text.lines().any(has_planned_execution_evidence) {
+        return false;
+    }
     has_any(text, &["captured", "were run", "checked", "recorded"])
         || text.lines().any(|line| line.starts_with("$ "))
+}
+
+fn has_planned_execution_evidence(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "to be checked",
+            "to be captured",
+            "to be recorded",
+            "will be checked",
+            "will be captured",
+            "will be recorded",
+            "will be recorded/captured",
+        ],
+    )
 }
 
 fn has_negated_evidence(line: &str) -> bool {
