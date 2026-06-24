@@ -33,7 +33,11 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             pr_number(pr_state)
         )];
     }
-    if claims_ready && claims_completion && !has_codex_review_output(pr_state) && !has_override {
+    if claims_ready
+        && (claims_completion || has_codex_review_activity(pr_state))
+        && !has_codex_review_output(pr_state)
+        && !has_override
+    {
         return vec![format!(
             "current-head Codex review output is required before Codex review completion claims: PR #{} needs matching Codex review output or a maintainer override before merge/readiness claims",
             pr_number(pr_state)
@@ -121,7 +125,7 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
 }
 fn is_locally_negated(prefix: &str) -> bool {
     let clause = prefix
-        .rsplit_once(['.', '!', '?', ';', ':', '\n'])
+        .rsplit_once(['.', '!', '?', ';', ':', ',', '\n'])
         .map_or(prefix, |(_, clause)| clause);
     clause
         .split(|character: char| !character.is_ascii_alphanumeric())

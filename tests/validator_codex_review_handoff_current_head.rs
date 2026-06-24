@@ -24,6 +24,20 @@ fn validator_cli_rejects_codex_completion_claim_without_current_head_output() ->
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_generic_ready_claim_with_only_stale_codex_output() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "PR is merge-ready.\n",
+        r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+    )?;
+    assert_rejected_with_stderr(
+        &output,
+        "validator should reject generic readiness claims with only stale Codex output",
+        "current-head Codex review output",
+    );
+    Ok(())
+}
+
 fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, expected: &str) {
     assert!(
         !output.status.success(),
