@@ -1,13 +1,18 @@
-pub(super) fn has_tool_name_in_defect_capture(evidence: &str, tool: &str) -> bool {
+pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
+    evidence: &str,
+    tool: &str,
+) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
-            && (has_tool_name_in_defect_clause(line, tool)
+            && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
                 || opens_defect_list(line)
                     && lines[index + 1..]
                         .iter()
                         .take_while(|following| is_list_item(following))
-                        .any(|following| has_tool_name(following, tool)))
+                        .any(|following| {
+                            has_handler_marker(following) && has_tool_name(following, tool)
+                        }))
     })
 }
 
@@ -30,12 +35,13 @@ fn is_defect_capture_line(line: &str) -> bool {
         || line.contains("dogfooding/tool-exposure defect")
 }
 
-fn has_tool_name_in_defect_clause(line: &str, tool: &str) -> bool {
-    defect_capture_clause(line).is_some_and(|clause| has_tool_name(clause, tool))
-}
-
 fn has_handler_marker_in_defect_clause(line: &str) -> bool {
     defect_capture_clause(line).is_some_and(has_handler_marker)
+}
+
+fn has_handler_marker_and_tool_name_in_defect_clause(line: &str, tool: &str) -> bool {
+    defect_capture_clause(line)
+        .is_some_and(|clause| has_handler_marker(clause) && has_tool_name(clause, tool))
 }
 
 fn opens_defect_list(line: &str) -> bool {
