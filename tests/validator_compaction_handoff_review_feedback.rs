@@ -1,8 +1,7 @@
 use std::process::Command;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-type Output = std::process::Output;
-type OutputResult = Result<Output, Box<dyn std::error::Error>>;
+type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 const OPEN_PR_STATE: &str =
     r#"{"number":170,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN"}"#;
@@ -14,7 +13,7 @@ const GIT_PREFLIGHT: &str = "Git graph/log preflight: pwd, git status --short --
 const STOP_CONDITION: &str =
     "Stop condition: no merge; leave PR open until current-head Codex review is clean.";
 
-fn assert_invalid(output: &Output, expected_stderr: &str) {
+fn assert_invalid(output: &std::process::Output, expected_stderr: &str) {
     assert!(
         !output.status.success(),
         "validator should reject handoff\nstdout: {}",
@@ -28,12 +27,17 @@ fn assert_invalid(output: &Output, expected_stderr: &str) {
 }
 
 #[test]
-fn validator_cli_rejects_resuming_after_compaction_without_evidence() -> TestResult {
-    let output = validate_open_pr_handoff("Resuming after compaction; I will edit the PR now.\n")?;
-    assert_invalid(
-        &output,
-        "compacted continuation evidence missing Codexy orchestration contract",
-    );
+fn validator_cli_rejects_after_compaction_continuation_without_evidence() -> TestResult {
+    for handoff in [
+        "Resuming after compaction; I will edit the PR now.\n",
+        "Continuing after compaction; I will edit the PR now.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert_invalid(
+            &output,
+            "compacted continuation evidence missing Codexy orchestration contract",
+        );
+    }
     Ok(())
 }
 
@@ -159,6 +163,26 @@ fn validator_cli_rejects_unrelated_list_section_after_partial_git_preflight() ->
            - pwd\n\
          - Verification: later prose mentions git status --short --branch, git rev-parse HEAD,\n\
            git rev-parse origin/main, and git log --graph, but not as preflight evidence.\n",
+    )?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_unbulleted_section_label_after_partial_git_preflight() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Git graph/log preflight captured before editing:\n\
+         - pwd\n\
+         Verification: git status --short --branch, git rev-parse HEAD,\n\
+         git rev-parse origin/main, and git log --graph were mentioned later.\n",
     )?;
     assert_invalid(
         &output,

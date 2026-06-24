@@ -49,7 +49,7 @@ fn starts_handoff_section(line: &str) -> bool {
     }
 
     let line = metadata_line(line);
-    [
+    let starts_known_section = [
         "codexy orchestration contract",
         "duplicate/no-active-work state",
         "parent/child ownership boundary",
@@ -58,7 +58,9 @@ fn starts_handoff_section(line: &str) -> bool {
         "next action",
     ]
     .iter()
-    .any(|section| line.starts_with(section))
+    .any(|section| line.starts_with(section));
+
+    starts_known_section || starts_unbulleted_section_label(line)
 }
 
 fn is_git_status_output_after_command(lines: &[&str], index: usize) -> bool {
@@ -76,9 +78,9 @@ fn is_git_status_short_branch_line(line: &str) -> bool {
     if status.is_empty() {
         return false;
     }
-    if status == "HEAD (no branch)"
-        || status.starts_with("No commits yet on ")
-        || status.starts_with("Initial commit on ")
+    if status == "head (no branch)"
+        || status.starts_with("no commits yet on ")
+        || status.starts_with("initial commit on ")
     {
         return true;
     }
@@ -105,13 +107,33 @@ fn is_porcelain_status_line(line: &str) -> bool {
         return false;
     }
     let bytes = line.as_bytes();
+    if bytes.first().is_some_and(|byte| is_status_byte(*byte)) && matches!(bytes.get(1), Some(b' '))
+    {
+        return true;
+    }
+    (matches!(bytes.first(), Some(b' ')) || bytes.first().is_some_and(|byte| is_status_byte(*byte)))
+        && (matches!(bytes.get(1), Some(b' '))
+            || bytes.get(1).is_some_and(|byte| is_status_byte(*byte)))
+        && matches!(bytes.get(2), Some(b' '))
+}
+
+fn is_status_byte(byte: u8) -> bool {
     matches!(
-        bytes.get(0),
-        Some(b' ' | b'M' | b'A' | b'D' | b'R' | b'C' | b'U' | b'?' | b'!')
-    ) && matches!(
-        bytes.get(1),
-        Some(b' ' | b'M' | b'A' | b'D' | b'R' | b'C' | b'U' | b'?' | b'!')
-    ) && matches!(bytes.get(2), Some(b' '))
+        byte,
+        b'M' | b'A'
+            | b'D'
+            | b'R'
+            | b'C'
+            | b'U'
+            | b'm'
+            | b'a'
+            | b'd'
+            | b'r'
+            | b'c'
+            | b'u'
+            | b'?'
+            | b'!'
+    )
 }
 
 fn starts_unrelated_list_section(line: &str) -> bool {
@@ -122,6 +144,21 @@ fn starts_unrelated_list_section(line: &str) -> bool {
 
     let line = metadata_line(line);
     line.contains(':') && !is_git_preflight_line(line) && !starts_with_preflight_command(line)
+}
+
+fn starts_unbulleted_section_label(line: &str) -> bool {
+    let line = line.trim();
+    let Some((label, _)) = line.split_once(':') else {
+        return false;
+    };
+    let label = label.trim();
+    !label.is_empty()
+        && !line.starts_with(['-', '*'])
+        && !is_git_preflight_line(line)
+        && !starts_with_preflight_command(line)
+        && label
+            .chars()
+            .all(|character| character.is_ascii_alphabetic() || character.is_ascii_whitespace())
 }
 
 fn is_unchecked_checklist_item(line: &str) -> bool {
