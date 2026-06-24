@@ -43,10 +43,15 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
         let line = &evidence[line_start..line_end];
-        if line.trim().is_empty() || saw_capture && is_unrelated_metadata_line(line) {
+        let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
+        let line_extends_capture = is_capture_related(line)
+            && (!line_is_unrelated_metadata || is_affirmative_capture_line(line));
+        if line.trim().is_empty()
+            || saw_capture && !line_extends_capture && line_is_unrelated_metadata
+        {
             return line_start;
         }
-        saw_capture |= is_capture_related(line);
+        saw_capture |= line_extends_capture;
         cursor = line_end;
     }
     evidence.len()
@@ -76,4 +81,17 @@ fn is_unrelated_metadata_line(line: &str) -> bool {
         return false;
     };
     !is_capture_related(&key.to_ascii_lowercase())
+}
+
+fn is_affirmative_capture_line(line: &str) -> bool {
+    [
+        "captured",
+        "classified",
+        "recorded",
+        "reported",
+        "routed",
+        "tracked",
+    ]
+    .into_iter()
+    .any(|marker| line.contains(marker))
 }
