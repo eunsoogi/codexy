@@ -23,11 +23,12 @@ pub(super) fn has_helper_only_purpose(value: &str) -> bool {
     if !value.contains("used only for") {
         return false;
     }
-    let has_review_response_validation_purpose = value.contains("review-response")
+    let has_review_response_purpose = has_review_response_purpose(value);
+    let has_review_response_validation_purpose = has_review_response_purpose
         && ["qa", "QA", "verification", "validation"]
             .into_iter()
             .any(|marker| value.contains(marker));
-    if value.contains("review-response") {
+    if has_review_response_purpose {
         if !has_review_response_validation_purpose
             || has_review_response_implementation_purpose(value)
         {
@@ -47,6 +48,10 @@ pub(super) fn has_helper_only_purpose(value: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
+}
+
+fn has_review_response_purpose(value: &str) -> bool {
+    value.contains("review-response") || value.contains("review response")
 }
 
 fn has_review_response_implementation_purpose(value: &str) -> bool {
