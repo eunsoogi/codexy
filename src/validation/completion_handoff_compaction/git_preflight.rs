@@ -9,13 +9,10 @@ const REQUIRED_PREFLIGHT_COMMANDS: &[&str] = &[
 pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
     let lines: Vec<_> = text.lines().map(str::trim).collect();
     lines.iter().enumerate().any(|(index, line)| {
-        is_git_preflight_line(line)
-            && !is_unchecked_checklist_item(line)
-            && has_positive_evidence(line)
-            && {
-                let block = git_preflight_evidence_block(&lines, index);
-                has_all_commands(&block) && !has_negated_evidence(&block)
-            }
+        is_git_preflight_line(line) && !is_unchecked_checklist_item(line) && {
+            let block = git_preflight_evidence_block(&lines, index);
+            has_all_commands(&block) && !has_negated_evidence(&block)
+        }
     })
 }
 
@@ -194,13 +191,6 @@ fn has_all_commands(text: &str) -> bool {
 
 fn is_git_preflight_line(line: &str) -> bool {
     line.contains("git graph/log preflight") || line.contains("git preflight")
-}
-
-fn has_positive_evidence(line: &str) -> bool {
-    has_any(
-        line,
-        &["captured", "ran", "were run", "checked", "recorded"],
-    )
 }
 
 fn has_negated_evidence(line: &str) -> bool {

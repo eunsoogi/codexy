@@ -166,6 +166,26 @@ fn validator_cli_accepts_markdown_list_evidence_fields() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_accepts_markdown_heading_evidence_fields() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         ### Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         ### Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         ### Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         ### Git graph/log preflight captured before editing:\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=50\n\
+         ### Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Next action: stop.\n",
+    )?;
+    assert_valid(&output);
+    Ok(())
+}
+
 fn valid_handoff_with(
     contract: &str,
     duplicate_state: &str,

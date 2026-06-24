@@ -60,6 +60,28 @@ fn validator_cli_rejects_git_preflight_block_with_generic_run_capture_negation()
     Ok(())
 }
 
+#[test]
+fn validator_cli_accepts_neutral_git_preflight_transcript_heading() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Git graph/log preflight:\n\
+         $ pwd\n\
+         /Users/eunsoo/.codex/worktrees/e219/codexy\n\
+         $ git status --short --branch\n\
+         ## HEAD (no branch)\n\
+         $ git rev-parse HEAD\n\
+         fb023f4068c63c52ba0ecd4839c3495295791c93\n\
+         $ git rev-parse origin/main\n\
+         1111111111111111111111111111111111111111\n\
+         $ git log --graph --oneline --decorate --all --max-count=5",
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator should accept handoff\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn valid_handoff_with(git_preflight: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
