@@ -66,12 +66,12 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if value_is_non_child_owned_decision_with_subagent_rationale(value) {
         return false;
     }
+    if value_denies_subagent_owner(value) || value_denies_subagent_owner_assignment(value) {
+        return false;
+    }
     if thread_owner_key(key) {
         return !has_true_codex_thread_owner(value)
             || !value_has_non_owner_subagent_rationale(value);
-    }
-    if value_denies_subagent_owner(value) {
-        return false;
     }
     !has_true_codex_thread_owner(value) || !value_has_non_owner_subagent_rationale(value)
 }

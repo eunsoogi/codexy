@@ -40,3 +40,23 @@ Maintainer reassignment: none
     }
     Ok(())
 }
+
+#[test]
+fn validator_allows_owner_field_with_unavailable_thread_tools_and_no_subagent_substitute()
+-> TestResult {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned routing blocked because thread/worktree tools are unavailable
+Subthread/worktree owner: none; codex thread tools unavailable; no subagent substitute used
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow owner-field evidence that denies any subagent substitute while reporting unavailable thread tools\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
