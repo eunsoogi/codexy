@@ -79,3 +79,41 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_bare_subagent_owner_after_conjoined_denial_marker() -> TestResult {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: codexy-sentinel reviewer gate not the owner and subagent Gauss
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should scope non-owner denials across conjunctions before accepting bare subagent owners\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_subagent_used_only_for_implementation_owner() -> TestResult {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: Codex worktree thread 019ef; subagent Gauss used only for implementation owner
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject used-only-for rationale when it names an implementation-owner purpose\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

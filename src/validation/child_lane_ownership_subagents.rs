@@ -2,7 +2,8 @@ use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
 use super::child_lane_ownership_subagent_format::{
-    key_allows_list_metadata_boundary, line_is_list_item, strip_list_marker,
+    has_helper_only_purpose, key_allows_list_metadata_boundary, line_is_list_item,
+    strip_list_marker,
 };
 
 const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
@@ -66,12 +67,15 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if has_subagent_owner_assignment(value) {
         return true;
     }
-    let has_bare_subagent_owner_claim = trimmed_value(value).split([';', ',']).any(|clause| {
-        let clause = trimmed_value(clause);
-        has_subagent_surface(clause)
-            && !has_true_codex_thread_owner(clause)
-            && !value_has_non_owner_subagent_rationale(clause)
-    });
+    let has_bare_subagent_owner_claim = trimmed_value(value)
+        .split([';', ','])
+        .flat_map(|clause| clause.split(" and "))
+        .any(|clause| {
+            let clause = trimmed_value(clause);
+            has_subagent_surface(clause)
+                && !has_true_codex_thread_owner(clause)
+                && !value_has_non_owner_subagent_rationale(clause)
+        });
     if has_bare_subagent_owner_claim {
         return true;
     }
@@ -97,9 +101,10 @@ fn value_is_non_child_owned_decision_with_subagent_rationale(value: &str) -> boo
 fn value_has_non_owner_subagent_rationale(value: &str) -> bool {
     value_denies_subagent_owner(value)
         || value_denies_subagent_owner_assignment(value)
-        || "subagent not useful|sub-agent not useful|multi_agent not useful|multi-agent not useful|specialist helper not useful|used only for"
+        || "subagent not useful|sub-agent not useful|multi_agent not useful|multi-agent not useful|specialist helper not useful"
             .split('|')
-        .any(|marker| value.contains(marker))
+            .any(|marker| value.contains(marker))
+        || has_helper_only_purpose(value)
 }
 
 fn owner_key_requires_thread_owner(key: &str) -> bool {

@@ -18,3 +18,10 @@ pub(super) fn key_allows_list_metadata_boundary(key: &str) -> bool {
                 || matches!(character, '-' | '/')
         })
 }
+
+pub(super) fn has_helper_only_purpose(value: &str) -> bool {
+    value.contains("used only for")
+        && "helper|qa|QA|review|reviewer|research|verification|test"
+            .split('|')
+            .any(|marker| value.contains(marker))
+}
