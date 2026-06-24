@@ -124,7 +124,7 @@ fn mentions_return_wait(text: &str) -> bool {
         && has_any(text, "until|waiting for")
         && has_any(
             text,
-            "returns|return|comes back|responds|response|finishes|completes",
+            "returns|return|returned|not returned|not yet returned|has not returned|hasn't returned|comes back|responds|response|finishes|completes",
         )
         && !mentions_actionable_review_feedback(text)
         && !mentions_missing_child_evidence(text)
@@ -133,14 +133,14 @@ fn mentions_return_wait(text: &str) -> bool {
 fn mentions_waiting_context(text: &str) -> bool {
     has_any(
         text,
-        "pending|waiting|in progress|processing|eyes reaction|working",
+        "pending|waiting|in progress|processing|eyes reaction|working|not returned|not yet returned|has not returned|hasn't returned",
     )
 }
 
 fn mentions_missing_child_evidence(text: &str) -> bool {
     mentions_child_work(text)
-        && (has_any(text, "omitted|missing")
-            || (has_any(text, "required|pending") && mentions_child_evidence_artifact(text)))
+        && has_any(text, "omitted|missing|required|pending")
+        && mentions_child_evidence_artifact(text)
 }
 
 fn mentions_child_evidence_artifact(text: &str) -> bool {
