@@ -65,6 +65,45 @@ fn validator_cli_rejects_tautological_duplicate_state() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_colonless_list_heading_after_partial_git_preflight() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         - Git graph/log preflight captured before editing:\n\
+           - pwd\n\
+         - Verification\n\
+           Later prose mentions git status --short --branch, git rev-parse HEAD,\n\
+           git rev-parse origin/main, and git log --graph, but not as preflight evidence.\n",
+    )?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_unchecked_git_preflight_command_rows() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        DUPLICATE_STATE,
+        "Git graph/log preflight captured before editing:\n\
+         - [ ] pwd\n\
+         - [ ] git status --short --branch\n\
+         - [ ] git rev-parse HEAD\n\
+         - [ ] git rev-parse origin/main\n\
+         - [ ] git log --graph --oneline --decorate --all --max-count=50",
+    ))?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
 fn valid_handoff_with(duplicate_state: &str, git_preflight: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\

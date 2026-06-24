@@ -20,6 +20,9 @@ fn git_preflight_evidence_block(lines: &[&str], start: usize) -> String {
         {
             break;
         }
+        if is_unchecked_checklist_item(line) {
+            continue;
+        }
         block.push_str(line);
         block.push('\n');
         if has_all_commands(&block) {
@@ -132,7 +135,17 @@ fn starts_unrelated_list_section(line: &str) -> bool {
     }
 
     let line = metadata_line(line);
-    line.contains(':') && !is_git_preflight_line(line) && !starts_with_preflight_command(line)
+    if is_git_preflight_line(line) || starts_with_preflight_command(line) {
+        return false;
+    }
+    line.contains(':') || is_plain_list_section_heading(line)
+}
+
+fn is_plain_list_section_heading(line: &str) -> bool {
+    !line.is_empty()
+        && line
+            .chars()
+            .all(|character| character.is_ascii_alphabetic() || character.is_ascii_whitespace())
 }
 
 fn starts_unbulleted_section_label(line: &str) -> bool {
