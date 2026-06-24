@@ -5,6 +5,7 @@ mod child_lane_ownership_phrases;
 mod child_lane_ownership_recovery;
 mod child_lane_ownership_setup;
 mod child_lane_ownership_setup_markers;
+mod child_lane_thread_tool_handler_capture;
 mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
 mod completion_handoff;

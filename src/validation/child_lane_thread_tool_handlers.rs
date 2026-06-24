@@ -1,3 +1,5 @@
+use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
+
 pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
     if !has_discovered_or_expected_thread_tool(evidence) {
         return false;
@@ -118,9 +120,30 @@ fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
     let next_start = evidence[start + HANDLER_MISSING_MARKER.len()..]
         .match_indices(HANDLER_MISSING_MARKER)
         .map(|(offset, _)| start + HANDLER_MISSING_MARKER.len() + offset)
-        .find(|next| evidence[start..*next].contains('\n'))
+        .find(|next| {
+            evidence[start..*next].contains('\n')
+                && !same_handler_list_group(evidence, line_start, *next)
+        })
         .unwrap_or(evidence.len());
     &evidence[capture_start..next_start]
+}
+
+fn same_handler_list_group(evidence: &str, line_start: usize, next: usize) -> bool {
+    let (next_line, next_line_start) = line_containing(evidence, next);
+    if !evidence[line_start..next_line_start]
+        .lines()
+        .all(|line| line.trim().is_empty() || is_handler_missing_list_item(line))
+    {
+        return false;
+    }
+    is_handler_missing_list_item(&evidence[line_start..line_end(evidence, line_start)])
+        && is_handler_missing_list_item(next_line)
+}
+
+fn line_end(text: &str, line_start: usize) -> usize {
+    text[line_start..]
+        .find('\n')
+        .map_or(text.len(), |index| line_start + index)
 }
 
 fn handler_missing_placeholder_scope(evidence: &str, line_start: usize) -> &str {
@@ -148,7 +171,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
         .find('\n')
         .map_or(evidence.len(), |index| line_start + index);
     let current_trimmed = evidence[line_start..current_line_end].trim_start();
-    if !current_trimmed.starts_with("- ") && !current_trimmed.starts_with("* ") {
+    if !is_list_item(current_trimmed) {
         return line_start;
     }
 
@@ -161,8 +184,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
             .map_or(0, |index| index + 1);
         let previous_line = &evidence[previous_start..previous_end];
         let trimmed = previous_line.trim_start();
-        if trimmed.starts_with("- ") || trimmed.starts_with("* ") || has_defect_label(previous_line)
-        {
+        if is_list_item(trimmed) || has_defect_label(previous_line) {
             capture_start = previous_start;
             cursor = previous_start;
         } else {
@@ -170,6 +192,15 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
         }
     }
     capture_start
+}
+
+fn is_list_item(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with("- ") || trimmed.starts_with("* ")
+}
+
+fn is_handler_missing_list_item(line: &str) -> bool {
+    is_list_item(line) && line.contains(HANDLER_MISSING_MARKER)
 }
 
 fn handler_tool_fragment(line: &str, start: usize) -> &str {
@@ -191,47 +222,6 @@ fn handler_missing_placeholder(line: &str, start: usize) -> bool {
 fn has_affirmative_defect_capture(line: &str) -> bool {
     CAPTURE_MARKERS
         .split('|')
-        .any(|marker| line.contains(marker))
-}
-
-fn has_absent_defect_capture(line: &str) -> bool {
-    [
-        "defect: none",
-        "defect none",
-        "no dogfooding defect",
-        "no tool-exposure defect",
-        "not a dogfooding defect",
-        "not a tool-exposure defect",
-        "not classified",
-        "not routed",
-        "not tracked",
-        "without capturing",
-        "without reporting",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
-        || [
-            "defect not recorded",
-            "defect not reported",
-            "handler defect not recorded",
-            "handler defect not reported",
-            "handler-missing defect not recorded",
-            "handler-missing defect not reported",
-            "missing-handler defect not recorded",
-            "missing-handler defect not reported",
-            "not recorded as a dogfooding defect",
-            "not recorded as a tool-exposure defect",
-            "not recorded as dogfooding defect",
-            "not recorded as tool-exposure defect",
-            "not reported as a dogfooding defect",
-            "not reported as a tool-exposure defect",
-            "not reported as dogfooding defect",
-            "not reported as tool-exposure defect",
-            "defect: not captured|defect not captured|handler defect not captured|handler-missing defect not captured|missing-handler defect not captured|not captured as a dogfooding defect|not captured as a tool-exposure defect|not captured as dogfooding defect|not captured as tool-exposure defect",
-            "without recording a dogfooding defect|without recording a tool-exposure defect|without recording dogfooding defect|without recording tool-exposure defect",
-        ]
-        .into_iter()
-        .flat_map(|marker| marker.split('|'))
         .any(|marker| line.contains(marker))
 }
 
