@@ -73,12 +73,23 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
 }
 
 fn mentions_external_gate_blocker(text: &str) -> bool {
+    mentions_security_review_blocker(text) || mentions_status_check_blocker(text)
+}
+
+fn mentions_security_review_blocker(text: &str) -> bool {
     has_any(
         text,
-        "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure|required status checks are failing|status checks are failing|status checks failed",
+        "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure",
     ) && !has_any(
         text,
         "security review passed|security review complete|security review completed|security review not required|no security review",
+    )
+}
+
+fn mentions_status_check_blocker(text: &str) -> bool {
+    has_any(
+        text,
+        "required status checks are failing|status checks are failing|status checks failed",
     )
 }
 
@@ -140,28 +151,17 @@ fn mentions_waiting_context(text: &str) -> bool {
 fn mentions_missing_child_evidence(text: &str) -> bool {
     mentions_child_work(text)
         && has_any(text, "omitted|missing|required|pending")
-        && mentions_child_evidence_artifact(text)
-}
-
-fn mentions_child_evidence_artifact(text: &str) -> bool {
-    has_any(text, "evidence|goal tool|todo|plan|verification evidence")
+        && has_any(text, "evidence|goal tool|todo|plan|verification evidence")
 }
 
 fn has_true_impasse_rationale(text: &str) -> bool {
     (has_unnegated_phrase(text, "true impasse", 16)
         || has_unnegated_phrase(text, "cannot make meaningful progress", 16)
         || has_unnegated_phrase(text, "can't make meaningful progress", 16))
-        && [
-            "without user input",
-            "without maintainer input",
-            "without human input",
-            "external state change",
-            "requires user input",
-            "requires maintainer input",
-            "requires human input",
-        ]
-        .iter()
-        .any(|phrase| has_unnegated_phrase(text, phrase, 16))
+        && has_any(
+            text,
+            "without user input|without maintainer input|without human input|external state change|requires user input|requires maintainer input|requires human input",
+        )
 }
 
 fn has_any(text: &str, phrases: &str) -> bool {

@@ -62,6 +62,7 @@ fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
         "Blocked: required security review is still pending.\nWaiting: pending Codex review is still processing.\n",
         "Blocked: required security review is still pending; waiting for pending Codex review is still processing.\n",
         "Blocked: required status checks are failing. Waiting: pending Codex review is still processing.\n",
+        "Blocked: status checks are failing. No security review required. Waiting: pending Codex review is still processing.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
