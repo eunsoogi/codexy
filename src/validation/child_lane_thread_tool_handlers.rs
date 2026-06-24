@@ -149,10 +149,10 @@ fn handler_missing_placeholder_scope(evidence: &str, line_start: usize) -> &str 
     let discovery_start = blank_start
         .and_then(|blank_start| previous_nonempty_block_start(evidence, blank_start))
         .filter(|start| has_discovered_or_expected_thread_tool(&evidence[*start..line_start]));
-    if !has_thread_tool_name(&evidence[previous_start..current_line_end])
-        && let Some(discovery_start) = discovery_start
-    {
-        previous_start = discovery_start;
+    if !has_thread_tool_name(&evidence[previous_start..current_line_end]) {
+        if let Some(discovery_start) = discovery_start {
+            previous_start = discovery_start;
+        }
     }
     &evidence[previous_start..current_line_end]
 }
