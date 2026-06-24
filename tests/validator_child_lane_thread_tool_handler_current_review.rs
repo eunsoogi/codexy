@@ -33,6 +33,27 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_preceding_non_bulleted_handler_defect_capture()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept a non-bulleted defect capture immediately before the missing-handler line\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_placeholder_capture_without_handler_defect_on_capture_line()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
