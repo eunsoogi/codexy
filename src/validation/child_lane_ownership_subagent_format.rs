@@ -27,8 +27,12 @@ pub(super) fn has_helper_only_purpose(value: &str) -> bool {
         && ["qa", "QA", "verification", "validation"]
             .into_iter()
             .any(|marker| value.contains(marker));
-    if value.contains("review-response") && !has_review_response_validation_purpose {
-        return false;
+    if value.contains("review-response") {
+        if !has_review_response_validation_purpose
+            || has_review_response_implementation_purpose(value)
+        {
+            return false;
+        }
     }
     [
         "helper",
@@ -43,6 +47,27 @@ pub(super) fn has_helper_only_purpose(value: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| value.contains(marker))
+}
+
+fn has_review_response_implementation_purpose(value: &str) -> bool {
+    let value = value.to_ascii_lowercase();
+    value
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|word| {
+            matches!(
+                word,
+                "fix"
+                    | "fixed"
+                    | "fixes"
+                    | "patch"
+                    | "patched"
+                    | "patches"
+                    | "commit"
+                    | "commits"
+                    | "implementation"
+                    | "implementing"
+            )
+        })
 }
 
 pub(super) fn has_unavailable_helper_rationale(value: &str) -> bool {
