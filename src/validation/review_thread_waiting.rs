@@ -10,12 +10,34 @@ pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> 
     {
         return false;
     }
-    waiting_segments(&text).any(|segment| {
-        thread_referenced(segment, thread)
-            && mentions_unresolved(segment)
-            && mentions_not_fixed(segment)
-            && mentions_not_accepted(segment)
-    })
+    waiting_evidence_segments(&text, thread)
+        .iter()
+        .any(|segment| {
+            thread_referenced(segment, thread)
+                && mentions_unresolved(segment)
+                && mentions_not_fixed(segment)
+                && mentions_not_accepted(segment)
+        })
+}
+
+fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
+    let mut segments = Vec::new();
+    let mut carry = String::new();
+    for segment in waiting_segments(text) {
+        let candidate = format!("{carry}{segment}");
+        let continues_waiting_clause = segment.ends_with(';')
+            && thread_referenced(&candidate, thread)
+            && mentions_unresolved(&candidate);
+        carry.push_str(segment);
+        if continues_waiting_clause {
+            continue;
+        }
+        segments.push(std::mem::take(&mut carry));
+    }
+    if !carry.is_empty() {
+        segments.push(carry);
+    }
+    segments
 }
 
 fn waiting_segments(text: &str) -> impl Iterator<Item = &str> {
