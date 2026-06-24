@@ -40,7 +40,7 @@ fn has_negative_label_value(suffix: &str) -> bool {
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
-    "no|not|not yet|without|neither|isn't|isn't yet|aren't|aren't yet|wasn't|wasn't yet|weren't|weren't yet|has not been|has not yet been|hasn't|hasn't yet|hasn't been|hasn't yet been|have not been|have not yet been|haven't|haven't yet|haven't been|haven't yet been|had not been|had not yet been|hadn't|hadn't yet|hadn't been|hadn't yet been|can't|can't yet|cannot|cannot yet|won't|won't yet|don't|don't yet|doesn't|doesn't yet|didn't|didn't yet"
+    "no|not|not yet|not currently|without|neither|isn't|isn't yet|aren't|aren't yet|wasn't|wasn't yet|weren't|weren't yet|has not been|has not yet been|hasn't|hasn't yet|hasn't been|hasn't yet been|have not been|have not yet been|haven't|haven't yet|haven't been|haven't yet been|had not been|had not yet been|hadn't|hadn't yet|hadn't been|hadn't yet been|can't|can't yet|cannot|cannot yet|won't|won't yet|don't|don't yet|doesn't|doesn't yet|didn't|didn't yet"
         .split('|')
         .any(|term| prefix.trim_end().ends_with(term))
 }

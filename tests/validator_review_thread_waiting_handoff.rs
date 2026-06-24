@@ -10,6 +10,8 @@ fn validator_allows_review_response_waiting_on_thread_not_fixed_or_accepted() ->
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not yet fixed or accepted; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it isn't yet fixed or accepted; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting at src/lib.rs remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting: remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. https://github.com/eunsoogi/codexy/pull/174#discussion_r2: remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
         assert_success(
@@ -95,6 +97,7 @@ fn validator_allows_waiting_handoff_with_contracted_readiness_negation() -> Test
     for handoff in [
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; we aren't ready for handoff.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; we aren't yet ready for handoff.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; PR is not currently ready for handoff.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
         assert_success(

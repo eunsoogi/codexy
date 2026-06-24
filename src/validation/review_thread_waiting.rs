@@ -228,7 +228,7 @@ fn has_exact_reference(text: &str, reference: &str) -> bool {
             let before = text[..start].chars().next_back();
             let after = text[end..].chars().next();
             before.is_none_or(|ch| !is_reference_char(ch))
-                && after.is_none_or(|ch| !is_reference_char(ch))
+                && after.is_none_or(|ch| ch == ':' || !is_reference_char(ch))
         })
 }
 
