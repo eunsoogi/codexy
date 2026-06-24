@@ -229,16 +229,14 @@ fn has_affirmative_defect_capture(line: &str) -> bool {
 }
 
 fn is_fallback_negation_marker(line: &str, start: usize, marker: &str) -> bool {
-    line[..start].ends_with("was not ")
+    (line[..start].ends_with("was not ") || line[..start].ends_with("were not "))
         && "as an ordinary unavailable-tool fallback|as a normal fallback|as an unavailable-tool fallback"
             .split('|')
             .any(|suffix| line[start + marker.len()..].contains(suffix))
 }
 
 fn has_thread_tool_name(line: &str) -> bool {
-    thread_tool_names()
-        .into_iter()
-        .any(|tool| has_tool_name(line, tool))
+    thread_tool_names().any(|tool| has_tool_name(line, tool))
 }
 
 fn has_tool_name(line: &str, tool: &str) -> bool {
