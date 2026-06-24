@@ -31,3 +31,49 @@ pub(super) fn previous_nonempty_block_start(evidence: &str, block_end: usize) ->
     }
     (block_start != block_end).then_some(block_start)
 }
+
+pub(super) fn capture_end_before_unrelated_evidence(
+    evidence: &str,
+    capture_start: usize,
+    handler_start: usize,
+) -> usize {
+    let mut cursor = line_end(evidence, handler_start);
+    let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
+    while cursor < evidence.len() {
+        let line_start = cursor + 1;
+        let line_end = line_end(evidence, line_start);
+        let line = &evidence[line_start..line_end];
+        if line.trim().is_empty() || saw_capture && is_unrelated_metadata_line(line) {
+            return line_start;
+        }
+        saw_capture |= is_capture_related(line);
+        cursor = line_end;
+    }
+    evidence.len()
+}
+
+fn line_end(text: &str, line_start: usize) -> usize {
+    text[line_start..]
+        .find('\n')
+        .map_or(text.len(), |index| line_start + index)
+}
+
+fn is_capture_related(line: &str) -> bool {
+    [
+        "dogfooding defect",
+        "tool-exposure defect",
+        "dogfooding/tool-exposure defect",
+        "handler",
+        "missing-handler",
+        "no handler registered",
+    ]
+    .into_iter()
+    .any(|marker| line.contains(marker))
+}
+
+fn is_unrelated_metadata_line(line: &str) -> bool {
+    let Some((key, _)) = line.trim_start().split_once(':') else {
+        return false;
+    };
+    !is_capture_related(&key.to_ascii_lowercase())
+}

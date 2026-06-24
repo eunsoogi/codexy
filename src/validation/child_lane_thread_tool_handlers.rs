@@ -1,7 +1,7 @@
 use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
 use super::child_lane_thread_tool_handler_defect_capture::has_tool_name_in_defect_capture;
 use super::child_lane_thread_tool_handler_scope::{
-    previous_nonempty_block_start, scope_start_until_blank,
+    capture_end_before_unrelated_evidence, previous_nonempty_block_start, scope_start_until_blank,
 };
 
 pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
@@ -131,7 +131,7 @@ fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
             evidence[start..*next].contains('\n')
                 && !same_handler_list_group(evidence, line_start, *next)
         })
-        .unwrap_or(evidence.len());
+        .unwrap_or_else(|| capture_end_before_unrelated_evidence(evidence, capture_start, start));
     &evidence[capture_start..next_start]
 }
 
