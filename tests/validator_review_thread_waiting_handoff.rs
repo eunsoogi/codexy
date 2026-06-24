@@ -98,6 +98,7 @@ fn validator_allows_waiting_handoff_with_contracted_readiness_negation() -> Test
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; we aren't ready for handoff.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; we aren't yet ready for handoff.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; PR is not currently ready for handoff.\n",
+        "PR readiness: not currently ready for handoff. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
         assert_success(
