@@ -20,10 +20,21 @@ pub(super) fn key_allows_list_metadata_boundary(key: &str) -> bool {
 }
 
 pub(super) fn has_helper_only_purpose(value: &str) -> bool {
-    value.contains("used only for")
-        && "helper|qa|QA|review|reviewer|research|verification|test"
-            .split('|')
-            .any(|marker| value.contains(marker))
+    if !value.contains("used only for") || value.contains("review-response") {
+        return false;
+    }
+    [
+        "helper",
+        "qa",
+        "QA",
+        "reviewer",
+        "reviewer gate",
+        "research",
+        "verification",
+        "test",
+    ]
+    .into_iter()
+    .any(|marker| value.contains(marker))
 }
 
 pub(super) fn has_unavailable_helper_rationale(value: &str) -> bool {
