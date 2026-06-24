@@ -1,4 +1,5 @@
 use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
+use super::child_lane_thread_tool_handler_defect_capture::has_tool_name_in_defect_capture;
 
 pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
     if !has_discovered_or_expected_thread_tool(evidence) {
@@ -55,9 +56,7 @@ fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
         ]
         .into_iter()
         .any(|marker| evidence.contains(marker))
-        && evidence
-            .find("defect")
-            .is_some_and(|start| has_tool_name(&evidence[start..], tool))
+        && has_tool_name_in_defect_capture(evidence, tool)
         && has_affirmative_defect_capture(evidence)
         && !has_absent_defect_capture(evidence)
 }
@@ -99,7 +98,8 @@ fn has_negated_handler_missing_claim(line: &str, start: usize) -> bool {
 fn handler_missing_tool(line: &str, start: usize) -> Option<&'static str> {
     let tool = handler_tool_fragment(line, start)
         .strip_prefix("codex_app.")
-        .unwrap_or_else(|| handler_tool_fragment(line, start));
+        .unwrap_or_else(|| handler_tool_fragment(line, start))
+        .trim_end_matches('.');
 
     thread_tool_names()
         .into_iter()
