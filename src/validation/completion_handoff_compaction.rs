@@ -1,7 +1,10 @@
+mod duplicate_state_targets;
 mod evidence_fields;
 mod git_preflight;
 
-pub(super) fn check(handoff: &str) -> Vec<String> {
+use serde_json::Value;
+
+pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_compacted_continuation_readiness(&text) {
         return Vec::new();
@@ -11,7 +14,7 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     if !evidence_fields::has_codexy_orchestration_contract(&text) {
         errors.push("compacted continuation evidence missing Codexy orchestration contract: include active @Codexy or $codex-orchestration workflow instructions before continuing".into());
     }
-    if !evidence_fields::has_duplicate_or_no_active_work_state(&text) {
+    if !evidence_fields::has_duplicate_or_no_active_work_state(&text, pr_state) {
         errors.push("compacted continuation evidence missing duplicate/no-active-work state: re-check current issue and PR status before editing".into());
     }
     if !evidence_fields::has_parent_child_ownership_boundary(&text) {

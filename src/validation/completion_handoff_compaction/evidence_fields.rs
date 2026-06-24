@@ -1,3 +1,6 @@
+use super::duplicate_state_targets;
+use serde_json::Value;
+
 #[rustfmt::skip]
 const DUPLICATE_STATE_PHRASES: &[&str] = &["duplicate/no-active-work", "no-active-work", "no active work", "duplicate pr", "duplicate issue", "duplicate lane"];
 #[rustfmt::skip]
@@ -15,12 +18,13 @@ pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
     })
 }
 
-pub(super) fn has_duplicate_or_no_active_work_state(text: &str) -> bool {
+pub(super) fn has_duplicate_or_no_active_work_state(text: &str, pr_state: &Value) -> bool {
     text.lines().any(|line| {
         duplicate_state_value(line.trim()).is_some_and(|state| {
             has_real_value(state)
                 && has_duplicate_state_phrase(state)
                 && has_concrete_duplicate_state_evidence(state)
+                && duplicate_state_targets::matches_current_duplicate_state_target(state, pr_state)
                 && !has_negated_duplicate_state_evidence(state)
         })
     })
@@ -115,7 +119,6 @@ fn has_codexy_contract_phrase(text: &str) -> bool {
 fn has_duplicate_state_phrase(text: &str) -> bool {
     has_any(text, DUPLICATE_STATE_PHRASES)
 }
-
 fn has_concrete_duplicate_state_evidence(text: &str) -> bool {
     has_any(text, DUPLICATE_STATE_TARGETS) && has_any(text, DUPLICATE_STATE_CHECKS)
 }
@@ -239,11 +242,8 @@ fn is_bare_no_value(value: &str) -> bool {
     }) == "no"
 }
 
-fn starts_with_boundary(rest: &str) -> bool {
-    rest.chars()
-        .next()
-        .is_none_or(|character| !character.is_ascii_alphanumeric())
-}
+#[rustfmt::skip]
+fn starts_with_boundary(rest: &str) -> bool { rest.chars().next().is_none_or(|character| !character.is_ascii_alphanumeric()) }
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {
     phrases.iter().any(|phrase| text.contains(phrase))
