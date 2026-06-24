@@ -1,3 +1,11 @@
+const REQUIRED_PREFLIGHT_COMMANDS: &[&str] = &[
+    "pwd",
+    "git status --short --branch",
+    "git rev-parse head",
+    "git rev-parse origin/main",
+    "git log --graph",
+];
+
 pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
     let lines: Vec<_> = text.lines().map(str::trim).collect();
     lines.iter().enumerate().any(|(index, line)| {
@@ -162,15 +170,9 @@ fn is_unchecked_checklist_item(line: &str) -> bool {
 }
 
 fn starts_with_preflight_command(line: &str) -> bool {
-    [
-        "pwd",
-        "git status --short --branch",
-        "git rev-parse head",
-        "git rev-parse origin/main",
-        "git log --graph",
-    ]
-    .iter()
-    .any(|phrase| line.starts_with(phrase))
+    REQUIRED_PREFLIGHT_COMMANDS
+        .iter()
+        .any(|phrase| line.starts_with(phrase))
 }
 
 fn metadata_line(line: &str) -> &str {
@@ -185,15 +187,9 @@ fn metadata_line(line: &str) -> &str {
 }
 
 fn has_all_commands(text: &str) -> bool {
-    [
-        "pwd",
-        "git status --short --branch",
-        "git rev-parse head",
-        "git rev-parse origin/main",
-        "git log --graph",
-    ]
-    .iter()
-    .all(|phrase| text.contains(phrase))
+    REQUIRED_PREFLIGHT_COMMANDS
+        .iter()
+        .all(|phrase| text.contains(phrase))
 }
 
 fn is_git_preflight_line(line: &str) -> bool {
@@ -219,8 +215,11 @@ fn has_negated_evidence(line: &str) -> bool {
                 "not all commands were captured",
                 "not all preflight commands were run",
                 "not all preflight commands were captured",
+                "not actually run",
                 "not captured",
                 "not checked",
+                "no preflight command execution",
+                "no preflight command capture",
                 "without running",
             ],
         ) && refers_to_git_preflight(line)
@@ -232,6 +231,8 @@ fn refers_to_git_preflight(line: &str) -> bool {
         || [
             "preflight",
             "preflight commands",
+            "commands were not run",
+            "commands were not captured",
             "these commands",
             "the commands",
             "pwd",
