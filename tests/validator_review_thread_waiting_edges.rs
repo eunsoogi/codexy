@@ -34,6 +34,19 @@ fn validator_rejects_waiting_evidence_that_contradicts_same_thread_action() -> T
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    for handoff in [
+        "Review response: fixed and verified PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed and PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject waiting evidence when conjunctions keep the action tied to the same thread\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"));
+    }
     Ok(())
 }
 
@@ -213,29 +226,5 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
 }
 
 fn mixed_review_thread_pr_state() -> &'static str {
-    r#"{
-        "number": 174,
-        "state": "OPEN",
-        "isDraft": false,
-        "mergeStateStatus": "CLEAN",
-        "reviewDecision": "APPROVED",
-        "reviewThreads": {"pageInfo":{"hasNextPage":false},
-            "nodes": [
-                {
-                    "id": "PRRT_kwDOFixed",
-                    "isResolved": true,
-                    "isOutdated": false,
-                    "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r1"}]}
-                },
-                {
-                    "id": "PRRT_kwDOWaiting",
-                    "isResolved": false,
-                    "isOutdated": false,
-                    "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}
-                }
-            ]
-        }
-    }"#
+    r#"{"number":174,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOFixed","isResolved":true,"isOutdated":false,"path":"src/validation/review_thread_resolution.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/174#discussion_r1"}]}},{"id":"PRRT_kwDOWaiting","isResolved":false,"isOutdated":false,"path":"src/validation/review_thread_resolution.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}}]}}"#
 }

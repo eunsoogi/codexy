@@ -1,5 +1,6 @@
 use serde_json::Value;
-const MISSING_REVIEW_THREADS: &str = "missing reviewThreads.nodes PR state evidence";
+const MISSING_REVIEW_THREADS: &str =
+    "review response handoff missing reviewThreads.nodes PR state evidence";
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !claims_review_response(handoff) {
         return Vec::new();
@@ -28,7 +29,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         thread_label(unresolved)
     )]
 }
-fn claims_review_response(handoff: &str) -> bool {
+pub(super) fn claims_review_response(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     has_any(
         &text,
