@@ -59,6 +59,43 @@ fn validator_allows_negative_pr_readiness_label_before_waiting_evidence() -> Tes
     Ok(())
 }
 
+#[test]
+fn validator_rejects_affirmative_no_blockers_readiness_label() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "PR ready: no blockers. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject affirmative no-blockers readiness while a thread is not fixed or accepted\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_action_words_inside_waiting_file_paths() -> TestResult {
+    for path in ["src/fixed/review.rs", "src/updated/foo.rs"] {
+        let output = validate_handoff_with_pr_state(&format!(
+            "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting at {path} remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should ignore review action words inside path token `{path}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

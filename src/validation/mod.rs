@@ -21,6 +21,7 @@ mod release_publish_contract;
 mod review_thread_evidence;
 mod review_thread_resolution;
 mod review_thread_waiting;
+mod review_thread_waiting_phrases;
 mod roles;
 mod roles_yaml;
 mod runtime;

@@ -1,5 +1,9 @@
 use serde_json::Value;
 
+use super::review_thread_waiting_phrases::{
+    has_unnegated_action_phrase, has_unnegated_phrase, has_unnegated_readiness_phrase,
+};
+
 pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> bool {
     let text = handoff.to_ascii_lowercase();
     if claims_readiness(handoff) || claims_completion(handoff) || claims_thread_fixed(&text, thread)
@@ -115,33 +119,6 @@ fn claims_completion(handoff: &str) -> bool {
     .any(|phrase| has_unnegated_phrase(&text, phrase))
 }
 
-fn has_unnegated_phrase(text: &str, phrase: &str) -> bool {
-    text.match_indices(phrase).any(|(start, _)| {
-        let prefix_start = char_window_start(text, start, 16);
-        let prefix = &text[prefix_start..start];
-        is_boundary(text[..start].chars().next_back())
-            && is_boundary(text[start + phrase.len()..].chars().next())
-            && !has_nearby_negation(prefix)
-    })
-}
-
-fn has_unnegated_readiness_phrase(text: &str, phrase: &str) -> bool {
-    text.match_indices(phrase).any(|(start, _)| {
-        let end = start + phrase.len();
-        is_boundary(text[..start].chars().next_back())
-            && is_boundary(text[end..].chars().next())
-            && !has_nearby_negation(&text[char_window_start(text, start, 16)..start])
-            && !has_negative_label_value(&text[end..])
-    })
-}
-
-fn has_negative_label_value(suffix: &str) -> bool {
-    let value = suffix.trim_start_matches([' ', '\t', ':', '-', '?']);
-    "not ready|not yet ready|isn't ready|isn't yet ready|aren't ready|aren't yet ready|no|false|not requested"
-        .split('|')
-        .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
-}
-
 fn mentions_unresolved(segment: &str) -> bool {
     ["unresolved", "still open", "remains open", "left open"]
         .iter()
@@ -182,7 +159,7 @@ fn claims_thread_fixed(text: &str, thread: &Value) -> bool {
         thread_referenced(segment, thread)
             && "addressed addresses addressing applied fixed fixes handled implemented responded resolved resolve resolves updated"
                 .split_whitespace()
-                .any(|action| has_unnegated_phrase(segment, action))
+                .any(|action| has_unnegated_action_phrase(segment, action))
     })
 }
 
@@ -217,26 +194,4 @@ fn has_exact_reference(text: &str, reference: &str) -> bool {
 
 fn is_reference_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '/' | '#' | ':')
-}
-
-fn has_nearby_negation(prefix: &str) -> bool {
-    "no|not|not yet|without|neither|isn't|isn't yet|aren't|aren't yet|wasn't|wasn't yet|weren't|weren't yet|hasn't|hasn't yet|haven't|haven't yet|hadn't|hadn't yet|can't|can't yet|cannot|cannot yet|won't|won't yet|don't|don't yet|doesn't|doesn't yet|didn't|didn't yet"
-        .split('|')
-    .any(|term| prefix.trim_end().ends_with(term))
-}
-
-fn is_boundary(character: Option<char>) -> bool {
-    character.is_none_or(|character| !character.is_ascii_alphanumeric())
-}
-
-fn starts_with_boundary(rest: &str) -> bool {
-    is_boundary(rest.chars().next())
-}
-
-fn char_window_start(text: &str, end: usize, window: usize) -> usize {
-    text[..end]
-        .char_indices()
-        .rev()
-        .nth(window)
-        .map_or(0, |(index, _)| index)
 }
