@@ -34,12 +34,16 @@ plugin repair until classification evidence exists in the thread.
    - Name the required Codexy skills and any explicit user-named skills.
    - Name required tool surfaces, including goal, plan/todo, codegraph, LSP,
      GitHub, validators, local tests, and packaged `codexy-sentinel`.
-   - Decide whether multi-agent or separate Codex thread/worktree ownership is
-     required, not useful, or unavailable. A `tool_search` miss alone is not
-     proof that Codex thread/worktree tooling is unavailable when another real
-     surface has produced `thread/start` or `turn/start` events; record that as
-     a discovery/exposure mismatch and keep routing through the real thread
-     surface.
+   - Decide whether multi-agent helper work or separate Codex
+     thread/worktree ownership is required, not useful, or unavailable. Treat
+     them as different surfaces: subagents may assist with bounded research,
+     review, or worker tasks, but they are not child-owned Codex
+     subthread/worktree owners for issue-sized lanes that need a branch,
+     durable worktree, PR, or review-response ownership. A `tool_search` miss
+     alone is not proof that Codex thread/worktree tooling is unavailable when
+     another real surface has produced `thread/start` or `turn/start` events;
+     record that as a discovery/exposure mismatch and keep routing through the
+     real thread surface.
 4. Gate:
    - State the first allowed action after classification.
    - If classification exposes missing scope, missing issue/PR identity,
@@ -87,6 +91,10 @@ plugin repair until classification evidence exists in the thread.
 - Subagents are not child-owned implementation owners. They can assist bounded
   research, review, or QA, but they do not satisfy a required Codex
   thread/worktree owner for an issue-sized implementation lane.
+- Do not classify `spawn_agent`, `multi_agent`, specialist, reviewer, or
+  worker delegation as a Codex subthread/worktree owner. If true
+  thread/worktree tooling is required but unavailable, record the exposure
+  blocker instead of satisfying ownership with a subagent.
 
 ## Required Output
 

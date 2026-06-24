@@ -5,6 +5,8 @@ mod child_lane_ownership_phrases;
 mod child_lane_ownership_recovery;
 mod child_lane_ownership_setup;
 mod child_lane_ownership_setup_markers;
+mod child_lane_ownership_subagent_format;
+mod child_lane_ownership_subagents;
 mod child_lane_thread_tools;
 mod codex_review_handoff;
 mod codex_review_handoff_actionable;

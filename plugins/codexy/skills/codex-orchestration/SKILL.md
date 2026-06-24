@@ -263,13 +263,20 @@ edits.
   worktree, PR, or durable child context, dispatch the child thread first; do
   not use the parent thread for a preliminary implementation pass.
 - Use multi-agent dispatch for bounded specialist help inside the current
-  thread when the lane does not need its own branch or PR. Multi-agent use is
-  required when independent research questions, disjoint implementation slices,
-  parallel QA or verification, review gates, review-feedback validation, or
-  separable subtasks in a non-trivial atomic lane can be isolated. Use the
-  packaged specialist agent files and lightweight catalog metadata as routing
-  context. If `spawn_agent` supports the Codexy role, invoke specialists by
-  exact agent type, such as `spawn_agent(agent_type="codexy-sentinel", message="Review
+  thread when the lane does not need its own branch or PR. A `spawn_agent`
+  subagent is a helper, reviewer, explorer, or worker inside the current
+  orchestration context; it is not a Codex subthread/worktree owner for an
+  issue-sized child implementation lane that needs its own branch, durable
+  worktree, PR, or review-response ownership. When true Codex
+  thread/worktree ownership is requested or available, route those lanes
+  through Codex thread/worktree tools instead of recording a subagent as the
+  child owner. Multi-agent use is required when independent research
+  questions, disjoint implementation slices, parallel QA or verification,
+  review gates, review-feedback validation, or separable subtasks in a
+  non-trivial atomic lane can be isolated. Use the packaged specialist agent
+  files and lightweight catalog metadata as routing context. If `spawn_agent`
+  supports the Codexy role, invoke specialists by exact agent type, such as
+  `spawn_agent(agent_type="codexy-sentinel", message="Review
   the current diff, exact head, scope, verification output, and evidence.")` or
   `spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and
   verification checklist.")`. Use
@@ -278,7 +285,10 @@ edits.
   If `spawn_agent` or the requested Codexy
   `agent_type` is unavailable, report that the Codexy agents have not been
   registered in the active Codex config and fall back to packaged TOML/catalog
-  context without claiming native-agent success.
+  context without claiming native-agent success. If true Codex thread/worktree
+  tools are unavailable for a lane that requires them, record an exposure
+  blocker and stop routing; do not substitute a subagent as the implementation
+  owner.
 - For repository code exploration, route threads and agents through the
   packaged Codexy `codegraph` MCP when it is available before falling back to
   ad hoc text search. Use codegraph output to identify files, import edges,
