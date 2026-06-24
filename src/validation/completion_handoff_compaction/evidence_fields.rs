@@ -184,13 +184,16 @@ fn has_negated_ownership_boundary_evidence(text: &str) -> bool {
 }
 
 fn has_negated_stop_condition_evidence(text: &str) -> bool {
+    let text = text.to_ascii_lowercase();
     has_any(
-        text,
+        &text,
         &[
             "current stop condition was not captured",
             "current stop condition was not preserved",
             "authoritative stop condition was not captured",
             "authoritative stop condition was not preserved",
+            "no stop condition",
+            "no authoritative stop condition",
             "stop condition was not captured",
             "stop condition was not preserved",
             "stop condition is missing",

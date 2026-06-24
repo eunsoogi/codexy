@@ -14,7 +14,10 @@ pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
 fn git_preflight_block(lines: &[&str], start: usize, commands_only: bool) -> String {
     let mut block = String::new();
     for (index, line) in lines.iter().enumerate().skip(start) {
-        if index > start && starts_handoff_section(line) {
+        if index > start
+            && starts_handoff_section(line)
+            && !is_git_status_output_after_command(lines, index)
+        {
             break;
         }
         if !commands_only || index == start || contains_preflight_command(line) {
@@ -56,6 +59,59 @@ fn starts_handoff_section(line: &str) -> bool {
     ]
     .iter()
     .any(|section| line.starts_with(section))
+}
+
+fn is_git_status_output_after_command(lines: &[&str], index: usize) -> bool {
+    index > 0
+        && lines[index - 1].contains("git status --short --branch")
+        && is_git_status_short_branch_line(lines[index])
+        && is_followed_by_status_or_command(lines, index)
+}
+
+fn is_git_status_short_branch_line(line: &str) -> bool {
+    let Some(status) = line.strip_prefix("## ") else {
+        return false;
+    };
+    let status = status.trim();
+    if status.is_empty() {
+        return false;
+    }
+    if status == "HEAD (no branch)"
+        || status.starts_with("No commits yet on ")
+        || status.starts_with("Initial commit on ")
+    {
+        return true;
+    }
+
+    let branch = status
+        .split("...")
+        .next()
+        .unwrap_or(status)
+        .split('[')
+        .next()
+        .unwrap_or(status)
+        .trim();
+    !branch.is_empty() && branch.chars().all(|character| !character.is_whitespace())
+}
+
+fn is_followed_by_status_or_command(lines: &[&str], index: usize) -> bool {
+    lines
+        .get(index + 1)
+        .is_none_or(|line| line.starts_with("$ ") || is_porcelain_status_line(line))
+}
+
+fn is_porcelain_status_line(line: &str) -> bool {
+    if line.len() < 3 {
+        return false;
+    }
+    let bytes = line.as_bytes();
+    matches!(
+        bytes.get(0),
+        Some(b' ' | b'M' | b'A' | b'D' | b'R' | b'C' | b'U' | b'?' | b'!')
+    ) && matches!(
+        bytes.get(1),
+        Some(b' ' | b'M' | b'A' | b'D' | b'R' | b'C' | b'U' | b'?' | b'!')
+    ) && matches!(bytes.get(2), Some(b' '))
 }
 
 fn starts_unrelated_list_section(line: &str) -> bool {
