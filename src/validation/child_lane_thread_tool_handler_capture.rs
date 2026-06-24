@@ -41,8 +41,10 @@ pub(super) fn has_absent_defect_capture(line: &str) -> bool {
 }
 
 fn has_absent_capture_phrase(line: &str, marker: &str) -> bool {
-    line.match_indices(&format!("was not {marker}"))
-        .any(|(start, phrase)| !has_fallback_negation_suffix(&line[start + phrase.len()..]))
+    ["was", "were"].into_iter().any(|auxiliary| {
+        line.match_indices(&format!("{auxiliary} not {marker}"))
+            .any(|(start, phrase)| !has_fallback_negation_suffix(&line[start + phrase.len()..]))
+    })
 }
 
 fn has_fallback_negation_suffix(suffix: &str) -> bool {

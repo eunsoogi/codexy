@@ -195,6 +195,10 @@ fn validator_distinguishes_negated_capture_wording() -> Result<(), Box<dyn std::
             false,
         ),
         (
+            "Dogfooding/tool-exposure defect: runtime missing-handler failures for codex_app.read_thread were not captured.",
+            false,
+        ),
+        (
             "Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; it was not captured as an ordinary unavailable-tool fallback.",
             true,
         ),
