@@ -61,6 +61,81 @@ fn validator_cli_rejects_unhandled_top_level_codex_actionable_output() -> TestRe
     Ok(())
 }
 
+#[test]
+fn validator_cli_accepts_none_valued_codex_suggestion_sections() -> TestResult {
+    for body in [
+        "Suggestions: none\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
+        "Actionable issues: none\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "Codex review passed on the current head. PR is merge-ready.\n",
+            &format!(
+                r#"{{
+                    "number":156,
+                    "state":"OPEN",
+                    "isDraft":false,
+                    "mergeStateStatus":"CLEAN",
+                    "reviewDecision":"APPROVED",
+                    "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+                    "comments":[{{
+                        "body":"@codex review",
+                        "author":{{"login":"eunsoogi"}},
+                        "createdAt":"2026-06-22T12:45:06Z",
+                        "reactionGroups":[{{"content":"EYES","users":{{"totalCount":1}}}}]
+                    }}],
+                    "latestReviews":[{{
+                        "body":{},
+                        "author":{{"login":"chatgpt-codex-connector"}},
+                        "submittedAt":"2026-06-22T12:50:03Z"
+                    }}],
+                    "reviewThreads":{{"pageInfo":{{"hasNextPage":false}},"nodes":[]}}
+                }}"#,
+                serde_json::to_string(body)?
+            ),
+        )?;
+        assert!(
+            output.status.success(),
+            "validator should accept none-valued Codex section body: {body}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_none_prefixed_actionable_section_values() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review passed on the current head. PR is merge-ready.\n",
+        r#"{
+            "number":156,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "reviewDecision":"APPROVED",
+            "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+            "comments":[{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-06-22T12:45:06Z",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
+            }],
+            "latestReviews":[{
+                "body":"Suggestion: none of the validator tests cover non-empty none-prefixed label values.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
+                "author":{"login":"chatgpt-codex-connector"},
+                "submittedAt":"2026-06-22T12:50:03Z"
+            }],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+    assert_rejected_with_stderr(
+        &output,
+        "validator should reject actionable Codex section values that only start with none",
+        "actionable Codex review output",
+    );
+    Ok(())
+}
+
 fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, expected: &str) {
     assert!(
         !output.status.success(),

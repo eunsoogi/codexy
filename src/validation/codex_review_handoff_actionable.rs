@@ -87,6 +87,7 @@ fn has_unnegated_phrase(text: &str, phrase: &str) -> bool {
         if is_phrase_boundary(text[..start].chars().next_back())
             && is_phrase_boundary(text[end..].chars().next())
             && !is_locally_negated(&text[..start])
+            && !has_none_value_after_label(&text[end..])
         {
             return true;
         }
@@ -94,6 +95,15 @@ fn has_unnegated_phrase(text: &str, phrase: &str) -> bool {
         rest = &text[offset..];
     }
     false
+}
+
+fn has_none_value_after_label(suffix: &str) -> bool {
+    let value = suffix.trim_start();
+    let value = value.strip_prefix([':', '-']).unwrap_or(value).trim_start();
+    value.strip_prefix("none").is_some_and(|rest| {
+        let rest = rest.trim_start_matches([' ', '\t']);
+        rest.is_empty() || rest.starts_with('\n') || rest.starts_with('\r')
+    })
 }
 
 fn is_locally_negated(prefix: &str) -> bool {
