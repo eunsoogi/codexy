@@ -11,6 +11,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: pending @codex review request has no actionable feedback yet.\n",
         "Blocked: pending Codex review feedback.\n",
         "Blocked: pending @codex review feedback.\n",
+        "Blocked: Codex review feedback is pending.\n",
         "Blocked: pending @codex review, security review passed.\n",
         "Blocked: waiting for Codex review feedback from the connector.\n",
         "Blocked: missing Codex review response is pending.\n",
@@ -60,6 +61,7 @@ fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
         "Blocked: required security review is still pending.\n",
         "Blocked: required security review is still pending.\nWaiting: pending Codex review is still processing.\n",
         "Blocked: required security review is still pending; waiting for pending Codex review is still processing.\n",
+        "Blocked: required status checks are failing. Waiting: pending Codex review is still processing.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -110,6 +112,7 @@ fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
         "Blockers: None.\nNot a blocker: pending Codex review is still processing.\n",
         "Blockers: None.\nWaiting: pending Codex review is still processing.\n",
         "Blocked: no. Waiting: pending Codex review is still processing.\n",
+        "No known blockers. Waiting: pending Codex review is still processing.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

@@ -18,7 +18,7 @@ fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
         || mentions_missing_child_evidence(text)
         || mentions_setup_failure_blocker(text)
-        || mentions_active_security_review_blocker(text)
+        || mentions_external_gate_blocker(text)
 }
 
 fn claims_blocked_state(text: &str) -> bool {
@@ -68,14 +68,14 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
         )
         && has_any(
             text,
-            "pending codex review feedback|pending @codex review feedback|pending review feedback|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
+            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
         )
 }
 
-fn mentions_active_security_review_blocker(text: &str) -> bool {
+fn mentions_external_gate_blocker(text: &str) -> bool {
     has_any(
         text,
-        "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure",
+        "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure|required status checks are failing|status checks are failing|status checks failed",
     ) && !has_any(
         text,
         "security review passed|security review complete|security review completed|security review not required|no security review",
@@ -236,7 +236,7 @@ fn is_boundary(character: Option<char>) -> bool {
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
-    "no|non|non-|not|not a|not an|isn't|is not|without"
+    "no|no known|non|non-|not|not a|not an|isn't|is not|without"
         .split('|')
         .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
