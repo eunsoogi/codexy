@@ -23,6 +23,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Goal blocked until child thread returns.\n",
         "Blocker: queued worktree setup has not completed yet.\n",
         "Blocked on asynchronous tool completion.\n",
+        "Blocked: asynchronous tool has not returned yet.\n",
+        "Blocked: async tool has not returned yet.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(

@@ -113,7 +113,10 @@ fn mentions_setup_failure_blocker(text: &str) -> bool {
 
 fn mentions_async_completion(text: &str) -> bool {
     has_any(text, "asynchronous tool|async tool")
-        && has_any(text, "completion|pending|waiting|running|in progress")
+        && has_any(
+            text,
+            "completion|pending|waiting|running|in progress|not returned|not yet returned|hasn't returned",
+        )
 }
 
 fn mentions_return_wait(text: &str) -> bool {
