@@ -110,6 +110,8 @@ fn claims_readiness(handoff: &str) -> bool {
     [
         "pr ready",
         "pr-ready",
+        "pull request ready",
+        "pull-request-ready",
         "pr readiness",
         "pr-readiness",
         "ready for parent handoff",

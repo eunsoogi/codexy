@@ -132,44 +132,26 @@ fn validator_preserves_eyes_only_codex_review_as_waiting() -> TestResult {
 }
 
 #[test]
-fn validator_rejects_pr_ready_handoff_with_thread_not_fixed_or_accepted() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. PR ready for parent handoff.\n",
-        mixed_review_thread_pr_state(),
-    )?;
-    assert_failure_contains(
-        &output,
-        "validator should reject PR readiness while a thread is not fixed or accepted",
-        "PRRT_kwDOWaiting",
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_pr_readiness_handoff_with_thread_not_fixed_or_accepted() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. PR-readiness handoff.\n",
-        mixed_review_thread_pr_state(),
-    )?;
-    assert_failure_contains(
-        &output,
-        "validator should reject PR-readiness handoff while a thread is not fixed or accepted",
-        "PRRT_kwDOWaiting",
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_pr_ready_hyphenated_handoff_with_thread_not_fixed_or_accepted() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. Status: PR-ready.\n",
-        mixed_review_thread_pr_state(),
-    )?;
-    assert_failure_contains(
-        &output,
-        "validator should reject PR-ready handoff while a thread is not fixed or accepted",
-        "PRRT_kwDOWaiting",
-    );
+fn validator_rejects_ready_handoff_synonyms_with_thread_not_fixed_or_accepted() -> TestResult {
+    for ready_claim in [
+        "PR ready for parent handoff",
+        "PR-readiness handoff",
+        "Status: PR-ready",
+        "Pull request ready",
+        "pull-request-ready handoff",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            &format!(
+                "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. {ready_claim}.\n"
+            ),
+            mixed_review_thread_pr_state(),
+        )?;
+        assert_failure_contains(
+            &output,
+            "validator should reject readiness while a thread is not fixed or accepted",
+            "PRRT_kwDOWaiting",
+        );
+    }
     Ok(())
 }
 
@@ -224,6 +206,8 @@ fn mixed_review_thread_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {
@@ -231,14 +215,14 @@ fn mixed_review_thread_pr_state() -> &'static str {
                     "isResolved": true,
                     "isOutdated": false,
                     "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r1"}]}
+                    "comments": {"nodes": [{"author":{"login":"reviewer"},"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r1"}]}
                 },
                 {
                     "id": "PRRT_kwDOWaiting",
                     "isResolved": false,
                     "isOutdated": false,
                     "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}
+                    "comments": {"nodes": [{"author":{"login":"reviewer"},"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}
                 }
             ]
         }
