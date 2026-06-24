@@ -27,6 +27,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Goal blocked until Codex connector review returns.\n",
         "Goal blocked until child thread returns.\n",
         "Blocker: queued worktree setup has not completed yet.\n",
+        "Blocked: worktree setup is queued.\n",
+        "Blocked: thread setup is queued.\n",
         "Blocked on asynchronous tool completion.\n",
         "Blocked on asynchronous GitHub tool completion.\n",
         "Blocked on asynchronous Codex tool completion.\n",

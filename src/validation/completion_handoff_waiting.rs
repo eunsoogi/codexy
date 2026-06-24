@@ -104,7 +104,7 @@ fn mentions_child_work(text: &str) -> bool {
 fn mentions_queued_setup(text: &str) -> bool {
     has_any(text, "queued worktree|queued thread")
         || (has_any(text, "worktree setup|thread setup")
-            && mentions_waiting_context(text)
+            && (mentions_waiting_context(text) || has_any(text, "queued"))
             && !mentions_setup_failure(text))
 }
 
