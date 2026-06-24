@@ -35,4 +35,22 @@ pub(super) fn has_absent_defect_capture(line: &str) -> bool {
         .into_iter()
         .flat_map(|marker| marker.split('|'))
         .any(|marker| line.contains(marker))
+        || ["captured", "classified", "recorded", "reported", "routed", "tracked"]
+            .into_iter()
+            .any(|marker| has_absent_capture_phrase(line, marker))
+}
+
+fn has_absent_capture_phrase(line: &str, marker: &str) -> bool {
+    line.match_indices(&format!("was not {marker}"))
+        .any(|(start, phrase)| !has_fallback_negation_suffix(&line[start + phrase.len()..]))
+}
+
+fn has_fallback_negation_suffix(suffix: &str) -> bool {
+    [
+        "as an ordinary unavailable-tool fallback",
+        "as a normal fallback",
+        "as an unavailable-tool fallback",
+    ]
+    .into_iter()
+    .any(|marker| suffix.contains(marker))
 }

@@ -220,9 +220,17 @@ fn handler_missing_placeholder(line: &str, start: usize) -> bool {
 }
 
 fn has_affirmative_defect_capture(line: &str) -> bool {
-    CAPTURE_MARKERS
-        .split('|')
-        .any(|marker| line.contains(marker))
+    CAPTURE_MARKERS.split('|').any(|marker| {
+        line.match_indices(marker)
+            .any(|(start, _)| !is_fallback_negation_marker(line, start, marker))
+    })
+}
+
+fn is_fallback_negation_marker(line: &str, start: usize, marker: &str) -> bool {
+    line[..start].ends_with("was not ")
+        && "as an ordinary unavailable-tool fallback|as a normal fallback|as an unavailable-tool fallback"
+            .split('|')
+            .any(|suffix| line[start + marker.len()..].contains(suffix))
 }
 
 fn has_thread_tool_name(line: &str) -> bool {

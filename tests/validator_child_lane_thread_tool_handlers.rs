@@ -188,6 +188,36 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_distinguishes_negated_capture_wording() -> Result<(), Box<dyn std::error::Error>> {
+    for (defect_line, should_pass) in [
+        (
+            "Dogfooding/tool-exposure defect: missing-handler evidence for codex_app.read_thread was not captured.",
+            false,
+        ),
+        (
+            "Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; it was not captured as an ordinary unavailable-tool fallback.",
+            true,
+        ),
+        (
+            "Dogfooding/tool-exposure defect: missing-handler evidence for codex_app.read_thread was not captured as an ordinary unavailable-tool fallback.",
+            false,
+        ),
+    ] {
+        let output = run_ownership_validator(&format!(
+            "Owner decision: parent-owned for thread/worktree tool discovery only; child routing required\nTool search: discovered codex_app.read_thread as an available thread tool.\nInvocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.\n{defect_line}\nMaintainer reassignment: none\n"
+        ))?;
+        assert_eq!(
+            output.status.success(),
+            should_pass,
+            "unexpected validator result for `{defect_line}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_list_projects_handler_missing_for_thread_setup()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
