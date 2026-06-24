@@ -56,15 +56,7 @@ fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
 
 fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
     has_defect_label(evidence)
-        && [
-            "no handler registered",
-            "handler registered",
-            "handler-missing",
-            "missing-handler",
-            "missing handler",
-        ]
-        .into_iter()
-        .any(|marker| evidence.contains(marker))
+        && has_handler_marker_in_defect_capture(evidence)
         && has_tool_name_in_defect_capture(evidence, tool)
         && has_affirmative_defect_capture(evidence)
         && !has_absent_defect_capture(evidence)

@@ -45,7 +45,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line = &evidence[line_start..line_end];
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
         let line_extends_capture = is_capture_related(line)
-            && (!line_is_unrelated_metadata || is_affirmative_capture_line(line));
+            && (!line_is_unrelated_metadata || is_handler_capture_line(line));
         if line.trim().is_empty()
             || saw_capture && !line_extends_capture && line_is_unrelated_metadata
         {
@@ -94,4 +94,11 @@ fn is_affirmative_capture_line(line: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| line.contains(marker))
+}
+
+fn is_handler_capture_line(line: &str) -> bool {
+    is_affirmative_capture_line(line)
+        && ["handler", "missing-handler", "no handler registered"]
+            .into_iter()
+            .any(|marker| line.contains(marker))
 }
