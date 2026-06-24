@@ -60,3 +60,22 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_bare_subagent_owner_with_unrelated_denial_marker() -> TestResult {
+    let output = run_ownership_validator(
+        r#"Owner decision: child-owned implementation lane
+Subthread/worktree owner: subagent Gauss; codexy-sentinel reviewer gate not the owner
+Parent implementation setup: none
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject a bare subagent owner even when another clause denies a different owner\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

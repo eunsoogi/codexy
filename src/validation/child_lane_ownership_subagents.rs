@@ -1,6 +1,9 @@
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
+use super::child_lane_ownership_subagent_format::{
+    key_allows_list_metadata_boundary, line_is_list_item, strip_list_marker,
+};
 
 const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
 const SUBAGENT_OWNER_ACTION_MARKERS: &str = "assigned to subagent|assigned to sub-agent|assigned to multi_agent|assigned to multi-agent|routed to subagent|routed to sub-agent|routed to multi_agent|routed to multi-agent|owned by subagent|owned by multi_agent|owned by multi-agent";
@@ -63,6 +66,15 @@ fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if has_subagent_owner_assignment(value) {
         return true;
     }
+    let has_bare_subagent_owner_claim = trimmed_value(value).split([';', ',']).any(|clause| {
+        let clause = trimmed_value(clause);
+        has_subagent_surface(clause)
+            && !has_true_codex_thread_owner(clause)
+            && !value_has_non_owner_subagent_rationale(clause)
+    });
+    if has_bare_subagent_owner_claim {
+        return true;
+    }
     if value_is_non_child_owned_decision_with_subagent_rationale(value) {
         return false;
     }
@@ -116,10 +128,6 @@ fn line_is_helper_only(line: &str) -> bool {
             })
 }
 
-fn line_is_list_item(line: &str) -> bool {
-    matches!(line.trim_start().as_bytes(), [b'-' | b'*' | b'+', b' ', ..])
-}
-
 fn line_starts_metadata_boundary(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
         let key = metadata_key(strip_list_marker(key));
@@ -132,23 +140,6 @@ fn line_is_owner_scoped_subagent_list_metadata(line: &str) -> bool {
         && line.split_once(':').is_some_and(|(key, _)| {
             let key = metadata_key(strip_list_marker(key));
             has_subagent_surface(key)
-        })
-}
-
-fn strip_list_marker(value: &str) -> &str {
-    value
-        .trim_start()
-        .strip_prefix(['-', '*', '+'])
-        .unwrap_or(value)
-        .trim_start()
-}
-
-fn key_allows_list_metadata_boundary(key: &str) -> bool {
-    key.chars().any(|character| character.is_ascii_alphabetic())
-        && key.chars().all(|character| {
-            character.is_ascii_alphabetic()
-                || character.is_ascii_whitespace()
-                || matches!(character, '-' | '/')
         })
 }
 
@@ -232,8 +223,7 @@ fn negates_codex_thread_owner(value: &str) -> bool {
 fn thread_owner_key(key: &str) -> bool {
     "child owner|lane owner|subthread/worktree owner|thread/worktree owner|subthread owner|worktree owner"
         .split('|')
-    .into_iter()
-    .any(|field| key == field || key.contains(field))
+        .any(|field| key == field || key.contains(field))
 }
 
 fn value_denies_subagent_owner(value: &str) -> bool {
