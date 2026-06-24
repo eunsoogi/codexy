@@ -68,7 +68,7 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
         )
         && has_any(
             text,
-            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
+            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
         )
 }
 
