@@ -1,4 +1,6 @@
-use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
+use super::child_lane_ownership_phrases::{
+    field_value, has_absent_field_value, metadata_key, trimmed_value,
+};
 
 const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
 const SUBAGENT_OWNER_ACTION_MARKERS: &str = "assigned to subagent|assigned to sub-agent|assigned to multi_agent|assigned to multi-agent|routed to subagent|routed to sub-agent|routed to multi_agent|routed to multi-agent|owned by subagent|owned by multi_agent|owned by multi-agent";
@@ -228,14 +230,8 @@ fn negates_codex_thread_owner(value: &str) -> bool {
 }
 
 fn thread_owner_key(key: &str) -> bool {
-    [
-        "child owner",
-        "lane owner",
-        "subthread/worktree owner",
-        "thread/worktree owner",
-        "subthread owner",
-        "worktree owner",
-    ]
+    "child owner|lane owner|subthread/worktree owner|thread/worktree owner|subthread owner|worktree owner"
+        .split('|')
     .into_iter()
     .any(|field| key == field || key.contains(field))
 }
@@ -245,4 +241,9 @@ fn value_denies_subagent_owner(value: &str) -> bool {
     SUBAGENT_OWNER_DENIAL_MARKERS
         .split('|')
         .any(|marker| value.contains(marker))
+        || SUBAGENT_OWNER_LABEL_MARKERS.split('|').any(|marker| {
+            value
+                .strip_prefix(marker)
+                .is_some_and(|suffix| has_absent_field_value(suffix, marker))
+        })
 }
