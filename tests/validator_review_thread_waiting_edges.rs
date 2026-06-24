@@ -136,6 +136,41 @@ fn validator_allows_perfect_tense_negated_waiting_actions() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_colon_labeled_verification_waiting_until_merge() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. Verification completed: focused tests passed. This lane is not complete until merge.\n",
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should treat colon-labeled verification evidence as waiting, not completion\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_yet_been_perfect_tense_waiting_actions() -> TestResult {
+    for rationale in [
+        "hasn't yet been fixed and has not yet been accepted",
+        "hasn't yet been addressed and has not yet been accepted",
+    ] {
+        let output = validate_handoff_with_pr_state(&format!(
+            "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it {rationale}; this lane is not complete.\n",
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should treat `{rationale}` as complete waiting evidence, not a same-thread action claim\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
