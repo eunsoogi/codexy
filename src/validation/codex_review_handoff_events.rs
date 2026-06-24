@@ -146,7 +146,7 @@ fn codex_output_matches_head(item: &Value, head: Option<&str>) -> bool {
     let Some(oid) = item
         .get("commit")
         .and_then(|commit| text_field(commit, "oid"))
-        .filter(|oid| !oid.is_empty())
+        .filter(|oid| is_commit_oid(oid))
         .or_else(|| text_field(item, "body").and_then(reviewed_commit))
     else {
         return false;
@@ -155,7 +155,15 @@ fn codex_output_matches_head(item: &Value, head: Option<&str>) -> bool {
 }
 
 fn reviewed_commit(text: &str) -> Option<&str> {
-    text.split("Reviewed commit").nth(1)?.split('`').nth(1)
+    text.split("Reviewed commit")
+        .nth(1)?
+        .split('`')
+        .nth(1)
+        .filter(|oid| is_commit_oid(oid))
+}
+
+fn is_commit_oid(oid: &str) -> bool {
+    (7..=40).contains(&oid.len()) && oid.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 fn is_inline_review_comment_item(item: &Value) -> bool {
