@@ -553,7 +553,7 @@ PR body when building the merge commit message. Prefer `--match-head-commit
 <headRefOid>` when available so a newly pushed unreviewed head cannot be merged
 by accident:
 
-```sh
+```bash
 pr_number=<explicit-pr-number>
 issue_number=<linked-issue-number>
 repo=eunsoogi/codexy
@@ -593,11 +593,13 @@ if ! cat "$pr_body_file" >> "$merge_message_file"; then
   printf '%s\n' "Could not append PR body to composed squash merge message; aborting merge." >&2
   exit 1
 fi
+merge_validation_args=(--check-merge-message --expected-pr "$pr_number")
 if [ -n "${issue_number:-}" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$issue_number" --merge-message-file "$merge_message_file"; then
-    printf '%s\n' "Squash merge message is missing the expected final issue reference or has extra closing references; aborting merge." >&2
-    exit 1
-  fi
+  merge_validation_args+=(--expected-issue "$issue_number")
+fi
+if ! scripts/validate-plugin-config "${merge_validation_args[@]}" --merge-message-file "$merge_message_file"; then
+  printf '%s\n' "Squash merge message is missing the expected final issue reference when issue-backed, has extra closing references, or lacks the PR suffix; aborting merge." >&2
+  exit 1
 fi
 
 printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
@@ -645,7 +647,9 @@ inspection and approval gate above must pass before `gh pr merge` runs. The
 pre-merge message validator MUST check the composed squash merge message
 (`merge_subject` plus the captured PR body), not the body alone, so subject-line
 closing references such as `fix: #120 ...` are rejected before they can reach
-`main`. The expected body file is stored under the shared Git common directory
+`main`. When the PR number is known, the validator MUST receive
+`--expected-pr "$pr_number"` so a subject missing the exact `(#<pr>)` suffix is
+rejected before merge. The expected body file is stored under the shared Git common directory
 from `git rev-parse --git-common-dir` so it remains local and untracked but
 survives post-merge verification from a separate worktree shell.
 
@@ -658,7 +662,7 @@ Do not locally merge feature branches into `main` as a substitute for the PR wor
 
 After merge, update the main worktree:
 
-```sh
+```bash
 pr_number=<explicit-pr-number>
 git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
@@ -697,11 +701,13 @@ match = body.lines.map(&:strip).reverse.find { |line| line.match?(/\AFixes #\d+\
 print(match[/\d+/]) if match
 RUBY
 )
+post_merge_validation_args=(--check-merge-message --expected-pr "$pr_number")
 if [ -n "$expected_issue_number" ]; then
-  if ! scripts/validate-plugin-config --check-merge-message --expected-issue "$expected_issue_number" --merge-message-file "$commit_message_file"; then
-    printf '%s\n' "Merged commit message is missing the expected issue reference; leaving evidence at: $expected_body_file" >&2
-    exit 1
-  fi
+  post_merge_validation_args+=(--expected-issue "$expected_issue_number")
+fi
+if ! scripts/validate-plugin-config "${post_merge_validation_args[@]}" --merge-message-file "$commit_message_file"; then
+  printf '%s\n' "Merged commit message is missing the expected issue reference when issue-backed or PR suffix; leaving evidence at: $expected_body_file" >&2
+  exit 1
 fi
 rm -f "$expected_body_file"
 ```
@@ -710,8 +716,8 @@ The refreshed `main` commit subject must end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body must match the PR body captured from GitHub
 before merge. For issue-backed PRs, the refreshed commit message must also pass
 `scripts/validate-plugin-config --check-merge-message --expected-issue
-<issue-number> --merge-message-file <commit-message-file>` before merge
-completion is reported. Use the raw commit object instead of `git log
+<issue-number> --expected-pr <pr-number> --merge-message-file
+<commit-message-file>` before merge completion is reported. Use the raw commit object instead of `git log
 --pretty=%B` for the body comparison so formatter-added trailing newlines do not
 create false failures. If GitHub did not delete the remote topic branch, delete
 it only after confirming the PR was merged and no dependent work needs the
