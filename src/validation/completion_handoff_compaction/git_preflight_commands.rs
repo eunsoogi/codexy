@@ -105,9 +105,12 @@ fn has_planned_execution_evidence(line: &str) -> bool {
 fn has_negated_execution_evidence(text: &str) -> bool {
     text.lines().any(|line| {
         line.split([';', ',', '.']).any(|clause| {
-            has_any(clause, &["no ", "not "])
-                && refers_to_git_preflight_evidence(clause)
-                && has_any(clause, &["captured", "checked", "recorded", "run"])
+            refers_to_git_preflight_evidence(clause)
+                && has_ordered_pair(
+                    clause,
+                    &["no ", "not "],
+                    &["captured", "checked", "recorded", "run"],
+                )
         })
     })
 }
@@ -122,6 +125,16 @@ fn contains_token(text: &str, token: &str) -> bool {
         let after = text[index + token.len()..].chars().next();
         before.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
             && after.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
+    })
+}
+
+fn has_ordered_pair(text: &str, before_phrases: &[&str], after_phrases: &[&str]) -> bool {
+    before_phrases.iter().any(|before| {
+        text.find(before).is_some_and(|index| {
+            after_phrases
+                .iter()
+                .any(|after| text[index + before.len()..].contains(after))
+        })
     })
 }
 
