@@ -7,6 +7,18 @@ const DUPLICATE_STATE_PHRASES: &[&str] = &["duplicate/no-active-work", "no-activ
 const DUPLICATE_STATE_TARGETS: &[&str] = &["pr #", "pull request #", "issue #", "github state", "current issue", "current pr", "current pull request"];
 #[rustfmt::skip]
 const DUPLICATE_STATE_CHECKS: &[&str] = &["re-check", "rechecked", "re-checked", "checked", "confirmed", "current github state", "after current"];
+#[rustfmt::skip]
+const CODEXY_CONTRACT_PHRASES: &[&str] = &["@codexy", "$codex-orchestration", "active codexy workflow", "active codexy plugin workflow", "preserve codexy workflow", "preserved codexy workflow", "routes through $codex-orchestration", "route through $codex-orchestration"];
+#[rustfmt::skip]
+const OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["child-owned", "child owned", "parent orchestrator", "parent monitors", "parent monitor", "who may edit", "who may only orchestrate", "only orchestrate", "receive edits"];
+#[rustfmt::skip]
+const NEGATED_CONTRACT_PHRASES: &[&str] = &["not captured", "not active", "not available", "not preserved", "was not preserved", "missing", "omitted", "without @codexy", "without codexy"];
+#[rustfmt::skip]
+const NEGATED_DUPLICATE_STATE_PHRASES: &[&str] = &["not captured", "not checked", "not re-checked", "not preserved", "was not preserved", "did not check", "missing", "omitted", "without checking"];
+#[rustfmt::skip]
+const PLANNED_DUPLICATE_STATE_PHRASES: &[&str] = &["should be checked", "should be re-checked", "to be checked", "to be re-checked", "will be checked", "will be re-checked", "needs to be checked", "needs to be re-checked"];
+#[rustfmt::skip]
+const NEGATED_OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["not captured", "not available", "not preserved", "was not preserved", "missing", "omitted", "without boundary", "without ownership"];
 
 pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
     text.lines().any(|line| {
@@ -25,6 +37,7 @@ pub(super) fn has_duplicate_or_no_active_work_state(text: &str, pr_state: &Value
                 && has_duplicate_state_phrase(state)
                 && has_concrete_duplicate_state_evidence(state)
                 && duplicate_state_targets::matches_current_duplicate_state_target(state, pr_state)
+                && !has_planned_duplicate_state_evidence(state)
                 && !has_negated_duplicate_state_evidence(state)
         })
     })
@@ -98,17 +111,7 @@ fn field_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
 fn metadata_line(line: &str) -> &str { let line = line.trim().trim_start_matches(['-', '*']).trim_start(); let line = line.strip_prefix("[x]").or_else(|| line.strip_prefix("[X]")).unwrap_or(line).trim_start(); line.trim_start_matches('#').trim_start() }
 
 fn has_codexy_contract_phrase(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "@codexy",
-            "$codex-orchestration",
-            "active codexy workflow",
-            "codexy plugin workflow",
-            "codexy workflow",
-            "orchestration workflow",
-        ],
-    )
+    has_any(text, CODEXY_CONTRACT_PHRASES)
 }
 
 fn has_duplicate_state_phrase(text: &str) -> bool {
@@ -119,68 +122,23 @@ fn has_concrete_duplicate_state_evidence(text: &str) -> bool {
 }
 
 fn has_ownership_boundary_phrase(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "child-owned",
-            "child owned",
-            "parent orchestrator",
-            "parent monitors",
-            "parent monitor",
-            "owner boundary",
-            "ownership boundary",
-        ],
-    )
+    has_any(text, OWNERSHIP_BOUNDARY_PHRASES)
 }
 
 fn has_negated_contract_evidence(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "not captured",
-            "not active",
-            "not available",
-            "not preserved",
-            "was not preserved",
-            "missing",
-            "omitted",
-            "without @codexy",
-            "without codexy",
-        ],
-    )
+    has_any(text, NEGATED_CONTRACT_PHRASES)
 }
 
 fn has_negated_duplicate_state_evidence(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "not captured",
-            "not checked",
-            "not re-checked",
-            "not preserved",
-            "was not preserved",
-            "did not check",
-            "missing",
-            "omitted",
-            "without checking",
-        ],
-    )
+    has_any(text, NEGATED_DUPLICATE_STATE_PHRASES)
+}
+
+fn has_planned_duplicate_state_evidence(text: &str) -> bool {
+    has_any(text, PLANNED_DUPLICATE_STATE_PHRASES)
 }
 
 fn has_negated_ownership_boundary_evidence(text: &str) -> bool {
-    has_any(
-        text,
-        &[
-            "not captured",
-            "not available",
-            "not preserved",
-            "was not preserved",
-            "missing",
-            "omitted",
-            "without boundary",
-            "without ownership",
-        ],
-    )
+    has_any(text, NEGATED_OWNERSHIP_BOUNDARY_PHRASES)
 }
 
 fn has_negated_stop_condition_evidence(text: &str) -> bool {

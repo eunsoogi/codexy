@@ -35,33 +35,60 @@ fn assert_invalid(output: &Output, expected_stderr: &str) {
 
 #[test]
 fn validator_cli_rejects_placeholder_codexy_contract() -> TestResult {
-    let output = validate_open_pr_handoff(&valid_handoff_with(
+    for contract in [
         "Codexy orchestration contract: not captured.",
-        DUPLICATE_STATE,
+        "Codexy workflow: codexy workflow.",
+        "Codexy orchestration contract: orchestration workflow.",
+    ] {
+        let output = validate_open_pr_handoff(&valid_handoff_with(
+            contract,
+            DUPLICATE_STATE,
+            OWNERSHIP_BOUNDARY,
+            GIT_PREFLIGHT,
+            STOP_CONDITION,
+        ))?;
+        assert_invalid(
+            &output,
+            "compacted continuation evidence missing Codexy orchestration contract",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_planned_duplicate_state_check() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",
+        "Duplicate/no-active-work state: current PR should be checked for duplicate/no-active-work.",
         OWNERSHIP_BOUNDARY,
         GIT_PREFLIGHT,
         STOP_CONDITION,
     ))?;
     assert_invalid(
         &output,
-        "compacted continuation evidence missing Codexy orchestration contract",
+        "compacted continuation evidence missing duplicate/no-active-work state",
     );
     Ok(())
 }
 
 #[test]
 fn validator_cli_rejects_placeholder_ownership_boundary() -> TestResult {
-    let output = validate_open_pr_handoff(&valid_handoff_with(
-        "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",
-        DUPLICATE_STATE,
+    for ownership_boundary in [
         "Parent/child ownership boundary: not captured.",
-        GIT_PREFLIGHT,
-        STOP_CONDITION,
-    ))?;
-    assert_invalid(
-        &output,
-        "compacted continuation evidence missing parent/child ownership boundary",
-    );
+        "Ownership boundary: ownership boundary.",
+    ] {
+        let output = validate_open_pr_handoff(&valid_handoff_with(
+            "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",
+            DUPLICATE_STATE,
+            ownership_boundary,
+            GIT_PREFLIGHT,
+            STOP_CONDITION,
+        ))?;
+        assert_invalid(
+            &output,
+            "compacted continuation evidence missing parent/child ownership boundary",
+        );
+    }
     Ok(())
 }
 
