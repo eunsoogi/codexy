@@ -23,7 +23,9 @@ pub(super) fn check(handoff: &str) -> Option<String> {
             && !has_true_impasse_rationale(fragment)
             && (!mentions_resolved_blocker(fragment) || fragment.trim().starts_with("blocked"))
             && !mentions_true_blocker(fragment)
-            && !mentions_current_true_blocker_context(context)
+            && !context
+                .split([',', ';'])
+                .any(|part| mentions_true_blocker(part) && !mentions_resolved_blocker(part))
             && !mentions_returned_async_failure_context(fragment, &text)
     };
     if text.split(['\n', '.']).any(|context| {
@@ -47,18 +49,16 @@ fn mentions_true_blocker(text: &str) -> bool {
         || mentions_external_gate_blocker(text)
         || mentions_async_tool_failure(text)
 }
-fn mentions_current_true_blocker_context(text: &str) -> bool {
-    text.split([',', ';'])
-        .any(|part| mentions_true_blocker(part) && !mentions_resolved_blocker(part))
-}
 fn mentions_resolved_blocker(text: &str) -> bool {
-    has_any(
-        text,
-        "blocker resolved|blocker was resolved|previous blocker resolved|previous blocker was resolved|resolved blocker",
-    ) || has_any(
-        text,
-        "required checks failed and were fixed|required checks failed and were resolved|required checks failed and were cleared|required status checks failed and were fixed|required status checks failed and were resolved|required status checks failed and were cleared|status checks failed and were fixed|status checks failed and were resolved|status checks failed and were cleared|required checks were fixed|required checks were resolved|required checks were cleared|required status checks were fixed|required status checks were resolved|required status checks were cleared|status checks were fixed|status checks were resolved|status checks were cleared",
-    )
+    (!has_any(text, "are failing")
+        && has_any(
+            text,
+            "blocker resolved|blocker was resolved|previous blocker resolved|previous blocker was resolved|resolved blocker",
+        ))
+        || has_any(
+            text,
+            "required checks failed and were fixed|required checks failed and were resolved|required checks failed and were cleared|required status checks failed and were fixed|required status checks failed and were resolved|required status checks failed and were cleared|status checks failed and were fixed|status checks failed and were resolved|status checks failed and were cleared|required checks were fixed|required checks were resolved|required checks were cleared|required status checks were fixed|required status checks were resolved|required status checks were cleared|status checks were fixed|status checks were resolved|status checks were cleared",
+        )
 }
 fn claims_blocked_state(text: &str) -> bool {
     has_unnegated_word(text, "blocked", 16)

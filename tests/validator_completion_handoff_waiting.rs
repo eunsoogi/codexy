@@ -112,7 +112,7 @@ fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
         "Blocked: pending review feedback from the maintainer; waiting for feedback to arrive. Codex review context noted.\n",
         "Blocked: pending @codex review, required status checks are failing.\n",
         "Blocked: pending @codex review; required status checks are failing.\n",
-        "Blocked: pending @codex review; required status checks are failing; previous blocker resolved: async GitHub tool returned a permission error and was fixed.\n",
+        "Blocked: pending @codex review, required status checks are failing after previous blocker was resolved.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
