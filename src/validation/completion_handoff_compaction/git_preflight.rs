@@ -207,7 +207,12 @@ fn is_block_local_preflight_negation(line: &str) -> bool {
         "without running",
     ]
     .iter()
-    .any(|phrase| line == *phrase)
+    .any(|phrase| {
+        line == *phrase
+            || line
+                .strip_prefix(phrase)
+                .is_some_and(|rest| rest.trim_start().starts_with('('))
+    })
 }
 
 fn refers_to_git_preflight(line: &str) -> bool {

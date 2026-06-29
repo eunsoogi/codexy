@@ -95,7 +95,12 @@ fn is_compaction_context_heading(line: &str) -> bool {
     ]
     .iter()
     .any(|phrase| {
-        line.starts_with(phrase) && line[phrase.len()..].trim_start().starts_with([':', '-'])
+        line.starts_with(phrase)
+            && line[phrase.len()..]
+                .trim_start()
+                .chars()
+                .next()
+                .is_none_or(|character| matches!(character, ':' | '-'))
     })
 }
 
