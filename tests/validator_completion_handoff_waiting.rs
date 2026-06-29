@@ -106,9 +106,9 @@ fn validator_cli_allows_true_impasse_blocked_handoff() -> TestResult {
 fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
     for handoff in [
         "Blocked: required security review is still pending.\n",
-        "Blocked: required security review is still pending.\nWaiting: pending Codex review is still processing.\n",
-        "Blocked: required security review is still pending; waiting for pending Codex review is still processing.\n",
-        "Blocked: required checks are failing. Waiting: pending Codex review is still processing.\n",
+        "Blocked: waiting for feedback from the maintainer to choose the release path. Codex review context noted.\n",
+        "Blocked: awaiting feedback from the maintainer to choose the release path. Codex review context noted.\n",
+        "Blocked: waiting on feedback from the maintainer to choose the release path. Codex review context noted.\n",
         "Blocked: required status checks are failing. Waiting: pending Codex review is still processing.\n",
         "Blocked: status checks are failing. No security review required. Waiting: pending Codex review is still processing.\n",
         "Blocked: pending @codex review, required status checks are failing.\n",
