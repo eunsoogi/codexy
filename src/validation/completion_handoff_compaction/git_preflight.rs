@@ -1,14 +1,9 @@
+use super::git_preflight_commands::{
+    REQUIRED_PREFLIGHT_COMMANDS, has_all_commands, has_executed_evidence,
+};
 use super::git_preflight_lines::{
     is_git_log_graph_output_line, is_git_status_output_after_command,
 };
-
-const REQUIRED_PREFLIGHT_COMMANDS: &[&str] = &[
-    "pwd",
-    "git status --short --branch",
-    "git rev-parse head",
-    "git rev-parse origin/main",
-    "git log --graph",
-];
 
 pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
     let lines: Vec<_> = text.lines().map(str::trim).collect();
@@ -128,47 +123,9 @@ fn metadata_line(line: &str) -> &str {
     line.trim_start_matches('#').trim_start()
 }
 
-fn has_all_commands(text: &str) -> bool {
-    let text = text.to_ascii_lowercase();
-    REQUIRED_PREFLIGHT_COMMANDS
-        .iter()
-        .all(|phrase| text.contains(phrase))
-}
-
 fn is_git_preflight_line(line: &str) -> bool {
     let line = line.to_ascii_lowercase();
     line.contains("git graph/log preflight") || line.contains("git preflight")
-}
-
-fn has_executed_evidence(text: &str) -> bool {
-    if text.lines().any(has_planned_execution_evidence) {
-        return false;
-    }
-    let text = text.to_ascii_lowercase();
-    has_any(&text, &["captured", "were run", "checked", "recorded"])
-        || text.lines().any(|line| line.starts_with("$ "))
-}
-
-fn has_planned_execution_evidence(line: &str) -> bool {
-    let line = line.to_ascii_lowercase();
-    has_any(
-        &line,
-        &[
-            "to be checked",
-            "to be captured",
-            "to be recorded",
-            "to be run",
-            "should be checked",
-            "should be captured",
-            "should be recorded",
-            "should be run",
-            "will be checked",
-            "will be captured",
-            "will be recorded",
-            "will be recorded/captured",
-            "will be run",
-        ],
-    )
 }
 
 fn has_negated_evidence(text: &str) -> bool {

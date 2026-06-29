@@ -1,6 +1,7 @@
 mod duplicate_state_targets;
 mod evidence_fields;
 mod git_preflight;
+mod git_preflight_commands;
 mod git_preflight_lines;
 
 use serde_json::Value;
