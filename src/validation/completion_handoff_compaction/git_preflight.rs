@@ -94,9 +94,11 @@ fn starts_unbulleted_section_label(line: &str) -> bool {
         && !is_git_preflight_line(line)
         && !starts_with_preflight_command(line)
         && !is_block_local_preflight_negation(label)
-        && label
-            .chars()
-            .all(|character| character.is_ascii_alphabetic() || character.is_ascii_whitespace())
+        && label.chars().all(is_section_label_character)
+}
+
+fn is_section_label_character(character: char) -> bool {
+    character.is_ascii_alphabetic() || character.is_ascii_whitespace() || character == '-'
 }
 
 fn is_unchecked_checklist_item(line: &str) -> bool {

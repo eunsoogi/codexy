@@ -40,8 +40,7 @@ fn validator_cli_accepts_git_status_branch_output_in_preflight_block() -> TestRe
          $ pwd\n\
          /repo/codexy\n\
          $ git status --short --branch\n\
-         ## work\n\
-          M src/foo:bar.rs\n\
+         ## work\n\n\
          $ git rev-parse HEAD\n\
          141283b684a5bf7db85ecd49d197ce81ffe28e95\n\
          $ git rev-parse origin/main\n\

@@ -178,8 +178,8 @@ fn validator_cli_rejects_unbulleted_section_label_after_partial_git_preflight() 
          Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
          Git graph/log preflight captured before editing:\n\
          - pwd\n\
-         Verification: git status --short --branch, git rev-parse HEAD,\n\
-         git rev-parse origin/main, and git log --graph were mentioned later.\n",
+         Post-review verification: git status --short --branch, git rev-parse HEAD,\n\
+         git rev-parse origin/main, and git log --graph were checked later.\n",
     )?;
     assert_invalid(
         &output,

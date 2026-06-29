@@ -68,7 +68,9 @@ fn is_known_markdown_section_heading(text: &str) -> bool {
 
 fn is_followed_by_status_or_command(lines: &[&str], index: usize) -> bool {
     lines
-        .get(index + 1)
+        .iter()
+        .skip(index + 1)
+        .find(|line| !line.trim().is_empty())
         .is_none_or(|line| line.starts_with("$ ") || is_porcelain_status_line(line))
 }
 
