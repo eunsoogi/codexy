@@ -13,13 +13,9 @@ pub(super) fn has_all_commands(text: &str) -> bool {
         .collect::<Vec<_>>()
         .join("\n")
         .to_ascii_lowercase();
-    REQUIRED_PREFLIGHT_COMMANDS.iter().all(|phrase| {
-        if matches!(*phrase, "git rev-parse head" | "git rev-parse origin/main") {
-            contains_command_target(&text, phrase)
-        } else {
-            text.contains(phrase)
-        }
-    })
+    REQUIRED_PREFLIGHT_COMMANDS
+        .iter()
+        .all(|phrase| contains_command_target(&text, phrase))
 }
 
 pub(super) fn has_executed_evidence(text: &str) -> bool {
@@ -58,13 +54,19 @@ fn command_starts_with_phrase(command: &str, phrase: &str) -> bool {
 
 fn contains_command_target(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
-        text[index + phrase.len()..]
+        text[..index]
             .chars()
-            .next()
-            .is_none_or(|character| {
-                character.is_ascii_whitespace() || matches!(character, ',' | '.' | ';')
-            })
+            .next_back()
+            .is_none_or(is_command_boundary)
+            && text[index + phrase.len()..]
+                .chars()
+                .next()
+                .is_none_or(is_command_boundary)
     })
+}
+
+fn is_command_boundary(character: char) -> bool {
+    character.is_ascii_whitespace() || matches!(character, ',' | '.' | ';' | ':')
 }
 
 pub(super) fn pre_log_output_lines(text: &str) -> impl Iterator<Item = &str> {

@@ -1,8 +1,7 @@
 use std::process::Command;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-type Output = std::process::Output;
-type OutputResult = Result<Output, Box<dyn std::error::Error>>;
+type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 const OPEN_PR_STATE: &str =
     r#"{"number":170,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN"}"#;
 const DUPLICATE_STATE: &str = "Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.";
@@ -11,7 +10,7 @@ const GIT_PREFLIGHT: &str = "Git graph/log preflight: pwd, git status --short --
 const STOP_CONDITION: &str =
     "Stop condition: no merge; leave PR open until current-head Codex review is clean.";
 
-fn assert_valid(output: &Output) {
+fn assert_valid(output: &std::process::Output) {
     assert!(
         output.status.success(),
         "validator should accept handoff\nstderr: {}",
@@ -19,7 +18,7 @@ fn assert_valid(output: &Output) {
     );
 }
 
-fn assert_invalid(output: &Output, expected_stderr: &str) {
+fn assert_invalid(output: &std::process::Output, expected_stderr: &str) {
     assert!(
         !output.status.success(),
         "validator should reject handoff\nstdout: {}",
@@ -76,6 +75,7 @@ fn validator_cli_rejects_placeholder_ownership_boundary() -> TestResult {
     for ownership_boundary in [
         "Parent/child ownership boundary: not captured.",
         "Ownership boundary: ownership boundary.",
+        "Parent/child ownership boundary: child-owned lanes receive edits; boundary should be preserved before continuing.",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(
             "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",

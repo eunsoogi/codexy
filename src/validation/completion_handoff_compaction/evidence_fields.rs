@@ -16,11 +16,13 @@ const NEGATED_CONTRACT_PHRASES: &[&str] = &["not captured", "not active", "not a
 #[rustfmt::skip]
 const PLANNED_CODEXY_CONTRACT_PHRASES: &[&str] = &["should be restored", "should be preserved", "to be restored", "to be preserved", "will be restored", "will be preserved", "needs to be restored", "needs to be preserved"];
 #[rustfmt::skip]
-const NEGATED_DUPLICATE_STATE_PHRASES: &[&str] = &["not captured", "not checked", "not re-checked", "not preserved", "was not preserved", "did not check", "missing", "omitted", "without checking"];
+const NEGATED_DUPLICATE_STATE_PHRASES: &[&str] = &["not captured", "not checked", "not re-checked", "not preserved", "was not preserved", "did not check", "missing", "omitted", "without checking", "no duplicate/no-active-work state was captured", "no duplicate state was captured", "no no-active-work state was captured"];
 #[rustfmt::skip]
 const PLANNED_DUPLICATE_STATE_PHRASES: &[&str] = &["should be checked", "should be re-checked", "to be checked", "to be re-checked", "will be checked", "will be re-checked", "needs to be checked", "needs to be re-checked"];
 #[rustfmt::skip]
-const NEGATED_OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["not captured", "not available", "not preserved", "was not preserved", "missing", "omitted", "without boundary", "without ownership"];
+const NEGATED_OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["not captured", "not available", "not preserved", "was not preserved", "missing", "omitted", "without boundary", "without ownership", "no parent/child ownership boundary was captured", "no parent-child ownership boundary was captured", "no ownership boundary was captured"];
+#[rustfmt::skip]
+const PLANNED_OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["should be captured", "should be preserved", "to be captured", "to be preserved", "will be captured", "will be preserved", "needs to be captured", "needs to be preserved"];
 #[rustfmt::skip]
 const PLANNED_STOP_CONDITION_PHRASES: &[&str] = &["should stop", "should be checked", "should be captured", "should be preserved", "to be checked", "to be captured", "to be preserved", "will be checked", "will be captured", "will be preserved"];
 
@@ -53,6 +55,7 @@ pub(super) fn has_parent_child_ownership_boundary(text: &str) -> bool {
         ownership_boundary_value(line.trim()).is_some_and(|boundary| {
             has_real_value(boundary)
                 && has_ownership_boundary_phrase(boundary)
+                && !has_planned_ownership_boundary_evidence(boundary)
                 && !has_negated_ownership_boundary_evidence(boundary)
         })
     })
@@ -152,6 +155,10 @@ fn has_negated_ownership_boundary_evidence(text: &str) -> bool {
     has_any(text, NEGATED_OWNERSHIP_BOUNDARY_PHRASES)
 }
 
+fn has_planned_ownership_boundary_evidence(text: &str) -> bool {
+    has_any(text, PLANNED_OWNERSHIP_BOUNDARY_PHRASES)
+}
+
 fn has_negated_stop_condition_evidence(text: &str) -> bool {
     let text = text.to_ascii_lowercase();
     has_any(
@@ -162,6 +169,7 @@ fn has_negated_stop_condition_evidence(text: &str) -> bool {
             "authoritative stop condition was not captured",
             "authoritative stop condition was not preserved",
             "no stop condition",
+            "no current stop condition",
             "no authoritative stop condition",
             "stop condition was not captured",
             "stop condition was not preserved",

@@ -38,7 +38,7 @@ fn validator_cli_accepts_planned_words_outside_preflight_evidence() -> TestResul
 
 #[test]
 fn validator_cli_rejects_wrong_rev_parse_targets() -> TestResult {
-    let output = validate_open_pr_handoff(&valid_handoff_with(
+    for git_preflight in [
         "Git graph/log preflight captured before editing:\n\
          $ pwd\n\
          /repo/codexy\n\
@@ -50,18 +50,24 @@ fn validator_cli_rejects_wrong_rev_parse_targets() -> TestResult {
          06a57800817c259a22d6a507650d22cf04bdded0\n\
          $ git log --graph --oneline --decorate --all --max-count=5\n\
          * 141283b fix(validation): bound git preflight evidence blocks\n",
-    ))?;
-    assert!(
-        !output.status.success(),
-        "validator should reject handoff\nstdout: {}",
-        String::from_utf8_lossy(&output.stdout)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("compacted continuation evidence missing git graph/log preflight"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Git graph/log preflight: pwd, git status --short --branching, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.",
+        "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graphical were captured before editing.",
+        "Git graph/log preflight: pwd, xgit status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.",
+        "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and xgit log --graph were captured before editing.",
+    ] {
+        let output = validate_open_pr_handoff(&valid_handoff_with(git_preflight))?;
+        assert!(
+            !output.status.success(),
+            "validator should reject handoff\nstdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("compacted continuation evidence missing git graph/log preflight"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
