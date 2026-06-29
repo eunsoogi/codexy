@@ -44,7 +44,8 @@ fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
             }
         }
         let candidate = format!("{carry}{segment}");
-        let continues_waiting_clause = (segment.ends_with(';')
+        let continues_waiting_clause = (segment.trim().is_empty()
+            || segment.ends_with(';')
             || (segment.ends_with('\n') && segment.trim_end().ends_with(':'))
             || (!carry.is_empty() && is_markdown_list_item(segment)))
             && thread_referenced(&candidate, thread)
