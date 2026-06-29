@@ -54,7 +54,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: background operation has not yet returned.\n",
         "Blocked: async operation result has not yet returned.\n",
         "Previous test failure was fixed. Blocked: async GitHub tool hasn't returned yet.\n",
-        "Earlier failure is resolved. Blocked: asynchronous Codex tool hasn't returned yet.\n",
+        "Blocked: async GitHub tool is still pending after previous permission error was fixed.\n",
         "Blocked: @codex review has not returned yet, previous async tool returned a permission error earlier.\n",
         "Previous blocker resolved: required status checks failed and were fixed. Blocked: pending @codex review.\n",
         "Previous blocker resolved: async GitHub tool returned a permission error and was fixed. Blocked: @codex review has not returned yet.\n",
@@ -105,7 +105,7 @@ fn validator_cli_allows_true_impasse_blocked_handoff() -> TestResult {
 #[test]
 fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
     for handoff in [
-        "Blocked: required security review is still pending.\n",
+        "Blocked: security review is waiting for approval. Codex review context noted.\n",
         "Blocked: waiting for feedback from the maintainer to choose the release path. Codex review context noted.\n",
         "Blocked: awaiting feedback from the maintainer to choose the release path. Codex review context noted.\n",
         "Blocked: waiting on feedback from the maintainer to choose the release path. Codex review context noted.\n",
