@@ -21,6 +21,22 @@ fn validator_allows_waiting_thread_after_unrelated_fixed_thread_clause() -> Test
 }
 
 #[test]
+fn validator_allows_waiting_thread_after_unrelated_fixed_thread_and_determiner_clause() -> TestResult
+{
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed and the thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should split waiting thread clauses after `and the thread`\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_url_waiting_thread_after_and_clause() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed PRRT_kwDOFixed and https://github.com/eunsoogi/codexy/pull/174#discussion_r2 remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
@@ -75,6 +91,21 @@ fn validator_allows_punctuated_split_bullet_waiting_rationale_after_unresolved_l
     assert!(
         output.status.success(),
         "validator should carry punctuated split markdown bullet waiting rationale after an unresolved-thread label\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_semicolon_waiting_evidence_before_unresolved_state() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting is not fixed or accepted yet; it remains unresolved. This lane is not complete.\n",
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should carry referenced not-fixed/not-accepted evidence until unresolved state appears\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

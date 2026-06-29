@@ -49,7 +49,8 @@ fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
             || (segment.ends_with('\n') && segment.trim_end().ends_with(':'))
             || (!carry.is_empty() && is_markdown_list_item(segment)))
             && thread_referenced(&candidate, thread)
-            && mentions_unresolved(&candidate);
+            && (mentions_unresolved(&candidate)
+                || (mentions_not_fixed(&candidate) && mentions_not_accepted(&candidate)));
         carry.push_str(segment);
         if continues_waiting_clause {
             continue;
@@ -206,6 +207,7 @@ fn action_claim_segments(segment: &str) -> impl Iterator<Item = &str> {
         .split(',')
         .flat_map(|clause| clause.split(" but "))
         .flat_map(|clause| clause.split(" and thread "))
+        .flat_map(|clause| clause.split(" and the thread "))
         .flat_map(split_and_url_reference)
         .flat_map(|clause| clause.split(" and it "))
         .flat_map(|clause| clause.split(": remains unresolved"))
