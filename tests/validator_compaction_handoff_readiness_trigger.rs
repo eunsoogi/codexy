@@ -61,6 +61,7 @@ fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> Te
          - Next action: edit the PR branch.\n",
         "Compaction summary: Review request: @codex review current head.\n",
         "Compaction summary: no @codex review blockers remain; ready for review on current head.\n",
+        "Compaction summary: No review request has been sent yet; ready for review on current head.\n",
         "Compaction summary:\n\
          Ready for review on current head.\n",
         "## Compaction summary\n\

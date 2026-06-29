@@ -113,11 +113,14 @@ fn has_pending_edit_plan(line: &str) -> bool {
 }
 
 fn has_review_request_context(line: &str) -> bool {
-    !has_negated_review_request_context(line)
-        && has_any(
-            line,
-            &["review request", "ready for review", "@codex review"],
-        )
+    line.split([';', '.', '!', '?', ',']).any(|clause| {
+        let clause = clause.trim();
+        !has_negated_review_request_context(clause)
+            && has_any(
+                clause,
+                &["review request", "ready for review", "@codex review"],
+            )
+    })
 }
 
 fn has_negated_review_request_context(line: &str) -> bool {
