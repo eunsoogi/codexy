@@ -34,12 +34,12 @@ fn contains_command_target(text: &str, phrase: &str) -> bool {
             .chars()
             .next()
             .is_none_or(|character| {
-                character.is_ascii_whitespace() || matches!(character, ',' | '.' | ';' | ':')
+                character.is_ascii_whitespace() || matches!(character, ',' | '.' | ';')
             })
     })
 }
 
-fn pre_log_output_lines(text: &str) -> impl Iterator<Item = &str> {
+pub(super) fn pre_log_output_lines(text: &str) -> impl Iterator<Item = &str> {
     let mut saw_git_log_command = false;
     text.lines().filter(move |line| {
         if saw_git_log_command && is_git_log_graph_output_line(line) {

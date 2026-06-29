@@ -1,5 +1,5 @@
 use super::git_preflight_commands::{
-    REQUIRED_PREFLIGHT_COMMANDS, has_all_commands, has_executed_evidence,
+    REQUIRED_PREFLIGHT_COMMANDS, has_all_commands, has_executed_evidence, pre_log_output_lines,
 };
 use super::git_preflight_lines::{
     is_git_log_graph_output_line, is_git_status_output_after_command,
@@ -129,7 +129,7 @@ fn is_git_preflight_line(line: &str) -> bool {
 }
 
 fn has_negated_evidence(text: &str) -> bool {
-    text.lines().any(|line| {
+    pre_log_output_lines(text).any(|line| {
         let line = line.to_ascii_lowercase();
         has_negation_phrase(&line)
             && (refers_to_git_preflight(&line) || is_block_local_preflight_negation(&line))

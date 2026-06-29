@@ -64,6 +64,58 @@ fn validator_cli_rejects_wrong_rev_parse_targets() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_accepts_negation_words_inside_git_log_subjects() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Git graph/log preflight captured before editing:\n\
+         $ pwd\n\
+         /repo/codexy\n\
+         $ git status --short --branch\n\
+         ## work\n\
+         $ git rev-parse HEAD\n\
+         141283b684a5bf7db85ecd49d197ce81ffe28e95\n\
+         $ git rev-parse origin/main\n\
+         06a57800817c259a22d6a507650d22cf04bdded0\n\
+         $ git log --graph --oneline --decorate --all --max-count=5\n\
+         * deadbee docs: these commands were not run before resume\n",
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator should accept handoff\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_rev_parse_pathspec_targets() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Git graph/log preflight captured before editing:\n\
+         $ pwd\n\
+         /repo/codexy\n\
+         $ git status --short --branch\n\
+         ## work\n\
+         $ git rev-parse HEAD:README.md\n\
+         141283b684a5bf7db85ecd49d197ce81ffe28e95\n\
+         $ git rev-parse origin/main:README.md\n\
+         06a57800817c259a22d6a507650d22cf04bdded0\n\
+         $ git log --graph --oneline --decorate --all --max-count=5\n\
+         * 141283b fix(validation): bound git preflight evidence blocks\n",
+    ))?;
+    assert!(
+        !output.status.success(),
+        "validator should reject handoff\nstdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("compacted continuation evidence missing git graph/log preflight"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn valid_handoff_with(git_preflight: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
