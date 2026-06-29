@@ -225,9 +225,20 @@ fn is_boundary(character: Option<char>) -> bool {
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
+    let prefix = prefix.trim_end();
+    negation_phrase_matches(prefix)
+        || prefix.rsplit_once(' ').is_some_and(|(before, word)| {
+            matches!(
+                word,
+                "actually" | "currently" | "presently" | "still" | "yet"
+            ) && negation_phrase_matches(before)
+        })
+}
+
+fn negation_phrase_matches(prefix: &str) -> bool {
     "no|no known|non|non-|not|not a|not an|isn't|is not|without"
         .split('|')
-        .any(|phrase| prefix.trim_end().ends_with(phrase))
+        .any(|phrase| prefix.ends_with(phrase))
 }
 
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {

@@ -7,6 +7,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
     for handoff in [
         "Blocked: current-head @codex review request has an eyes reaction and is still pending.\n",
+        "Currently blocked: pending @codex review is still processing.\n",
         "Blocked: current-head @codex review comment has an eyes reaction and is still pending.\n",
         "Blocked: pending @codex review request has no actionable feedback yet.\n",
         "Blocked: pending Codex review feedback.\n",
@@ -130,6 +131,7 @@ fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
 fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     for handoff in [
         "Not a blocker: pending Codex review is still processing.\n",
+        "Not currently blocked: pending @codex review is still processing.\n",
         "Non-blocker: pending Codex review is still processing.\n",
         "Blockers: None.\nNot a blocker: pending Codex review is still processing.\n",
         "Blockers: None.\nWaiting: pending Codex review is still processing.\n",
