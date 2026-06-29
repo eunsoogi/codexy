@@ -31,6 +31,9 @@ fn validator_cli_allows_negated_compaction_continuation_deferral() -> TestResult
         "Compaction summary: Not ready for review; do not continue.\n",
         "Compaction summary: No review request will be made; do not continue.\n",
         "Compaction summary: No @codex review request was sent; do not continue.\n",
+        "Compaction summary: No Codex review request was sent; do not continue.\n",
+        "Compaction summary:\n\
+         Next action: wait for review per maintainer instruction.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -53,6 +56,7 @@ fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> Te
          - Goal: preserve Codexy compaction handoffs.\n\
          - Next action: edit the PR branch.\n",
         "Compaction summary: Review request: @codex review current head.\n",
+        "Compaction summary: no @codex review blockers remain; ready for review on current head.\n",
         "Compaction summary:\n\
          Ready for review on current head.\n",
         "## Compaction summary\n\

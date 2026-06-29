@@ -72,7 +72,7 @@ fn has_compaction_context(line: &str) -> bool {
 
 fn has_continuation_context(line: &str) -> bool {
     !has_negated_continuation_or_edit_context(line)
-        && has_any(
+        && (has_any(
             line,
             &[
                 "ready to continue",
@@ -81,10 +81,20 @@ fn has_continuation_context(line: &str) -> bool {
                 "resuming",
                 "continue",
                 "continuing",
-                "next action",
                 "before editing",
             ],
-        )
+        ) || has_next_action_continuation_context(line))
+}
+
+fn has_next_action_continuation_context(line: &str) -> bool {
+    let Some((_, action)) = line.split_once("next action") else {
+        return false;
+    };
+    let action = action.trim_start_matches(|c: char| c == ':' || c == '-' || c.is_whitespace());
+    has_any(
+        action,
+        &["continue", "continuing", "resume", "resuming", "edit"],
+    ) || has_review_request_context(action)
 }
 
 fn has_pending_edit_plan(line: &str) -> bool {
@@ -115,9 +125,11 @@ fn has_negated_review_request_context(line: &str) -> bool {
         line,
         &[
             "not ready for review",
-            "no @codex review",
+            "no @codex review request",
+            "no codex review request",
             "no review request",
-            "without @codex review",
+            "without @codex review request",
+            "without codex review request",
             "without review request",
         ],
     )
