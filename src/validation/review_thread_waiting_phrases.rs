@@ -33,7 +33,7 @@ fn has_negative_label_value(suffix: &str) -> bool {
     let Some(value) = label_value(suffix) else {
         return false;
     };
-    "not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|isn't currently ready|aren't ready|aren't yet ready|aren't currently ready|false|not requested|not applicable|isn't applicable|aren't applicable"
+    "not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|isn't currently ready|aren't ready|aren't yet ready|aren't currently ready|false|not requested|isn't requested|aren't requested|not applicable|isn't applicable|aren't applicable"
         .split('|')
         .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
         || value
