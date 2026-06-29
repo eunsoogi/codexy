@@ -229,7 +229,8 @@ fn has_affirmative_defect_capture(line: &str) -> bool {
 }
 
 fn is_fallback_negation_marker(line: &str, start: usize, marker: &str) -> bool {
-    (line[..start].ends_with("was not ") || line[..start].ends_with("were not "))
+    let prefix = &line[..start];
+    (prefix.ends_with("was not ") || prefix.ends_with("were not ") || prefix.ends_with("not "))
         && "as an ordinary unavailable-tool fallback|as a normal fallback|as an unavailable-tool fallback"
             .split('|')
             .any(|suffix| line[start + marker.len()..].contains(suffix))

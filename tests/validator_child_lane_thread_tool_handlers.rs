@@ -1,5 +1,7 @@
 use std::process::{Command, Output};
 
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");
@@ -12,8 +14,7 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 }
 
 #[test]
-fn validator_rejects_handler_missing_for_discovered_thread_tool()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_handler_missing_for_discovered_thread_tool() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.set_thread_title as an available thread tool.
@@ -36,8 +37,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_captured_handler_missing_dogfooding_defect()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_allows_captured_handler_missing_dogfooding_defect() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
@@ -57,8 +57,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_genuinely_unavailable_thread_tool_fallback()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_allows_genuinely_unavailable_thread_tool_fallback() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: no codex_app namespace and no true thread tools exposed.
@@ -78,7 +77,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_negated_handler_missing_evidence() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_allows_negated_handler_missing_evidence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: no codex_app namespace and no true thread tools exposed.
@@ -98,8 +97,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_repeated_handler_missing_after_negated_occurrence()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_repeated_handler_missing_after_negated_occurrence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
@@ -122,8 +120,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_repeated_qualified_handler_missing_after_negated_occurrence()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_repeated_qualified_handler_missing_after_negated_occurrence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
@@ -146,7 +143,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_absent_handler_defect_capture() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_absent_handler_defect_capture() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
@@ -169,8 +166,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_defect_scoped_not_captured_evidence() -> Result<(), Box<dyn std::error::Error>>
-{
+fn validator_rejects_defect_scoped_not_captured_evidence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
@@ -188,7 +184,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_distinguishes_negated_capture_wording() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_distinguishes_negated_capture_wording() -> TestResult {
     for (defect_line, should_pass) in [
         (
             "Dogfooding/tool-exposure defect: missing-handler evidence for codex_app.read_thread was not captured.",
@@ -210,6 +206,10 @@ fn validator_distinguishes_negated_capture_wording() -> Result<(), Box<dyn std::
             "Dogfooding/tool-exposure defect: missing-handler evidence for codex_app.read_thread was not captured as an ordinary unavailable-tool fallback.",
             false,
         ),
+        (
+            "Dogfooding/tool-exposure defect: runtime missing-handler evidence for codex_app.read_thread, not captured as an ordinary unavailable-tool fallback.",
+            false,
+        ),
     ] {
         let output = run_ownership_validator(&format!(
             "Owner decision: parent-owned for thread/worktree tool discovery only; child routing required\nTool search: discovered codex_app.read_thread as an available thread tool.\nInvocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.\n{defect_line}\nMaintainer reassignment: none\n"
@@ -226,8 +226,7 @@ fn validator_distinguishes_negated_capture_wording() -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn validator_rejects_list_projects_handler_missing_for_thread_setup()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_list_projects_handler_missing_for_thread_setup() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.create_thread as an available thread tool.
