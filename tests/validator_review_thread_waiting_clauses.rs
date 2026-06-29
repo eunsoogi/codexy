@@ -113,6 +113,21 @@ fn validator_allows_semicolon_waiting_evidence_before_unresolved_state() -> Test
 }
 
 #[test]
+fn validator_allows_contracted_not_complete_verification_wait_until_merge() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet. Verification completed. This lane isn't complete until merge.\n",
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should treat verification-completed wording as waiting evidence when the lane is contracted-not-complete until merge\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_waiting_thread_after_grouped_fixed_url_claim() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed https://github.com/eunsoogi/codexy/pull/174#discussion_r1 and https://github.com/eunsoogi/codexy/pull/174#discussion_r2. https://github.com/eunsoogi/codexy/pull/174#discussion_r2 remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",

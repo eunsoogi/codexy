@@ -164,7 +164,7 @@ fn claims_completion(handoff: &str) -> bool {
 }
 
 fn has_not_complete_until_merge(text: &str) -> bool {
-    "not complete until merge|not currently complete until merge"
+    "not complete until merge|not currently complete until merge|isn't complete until merge|isn't currently complete until merge|aren't complete until merge|aren't currently complete until merge"
         .split('|')
         .any(|phrase| has_unnegated_phrase(text, phrase))
 }
