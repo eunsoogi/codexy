@@ -6,6 +6,23 @@ mod git_preflight_lines;
 
 use serde_json::Value;
 
+const COMPACTION_CONTEXT_PHRASES: &[&str] = &[
+    "compacted continuation",
+    "after compaction",
+    "after-compaction",
+    "compaction continuation",
+    "compaction handoff",
+    "compaction resume",
+    "compaction summary",
+    "from compaction",
+    "summary after compaction",
+    "conversation compaction",
+    "post-compaction",
+    "post compaction",
+    "context compaction",
+    "goal continuation",
+];
+
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_compacted_continuation_readiness(&text) {
@@ -52,24 +69,7 @@ fn has_any(text: &str, phrases: &[&str]) -> bool {
 }
 
 fn has_compaction_context(line: &str) -> bool {
-    has_any(
-        line,
-        &[
-            "compacted continuation",
-            "after compaction",
-            "after-compaction",
-            "compaction continuation",
-            "compaction handoff",
-            "compaction resume",
-            "compaction summary",
-            "summary after compaction",
-            "conversation compaction",
-            "post-compaction",
-            "post compaction",
-            "context compaction",
-            "goal continuation",
-        ],
-    )
+    has_any(line, COMPACTION_CONTEXT_PHRASES)
 }
 
 fn has_continuation_context(line: &str) -> bool {
@@ -118,11 +118,23 @@ fn has_review_request_context(line: &str) -> bool {
     line.split([';', '.', '!', '?', ',']).any(|clause| {
         let clause = clause.trim();
         !has_negated_review_request_context(clause)
-            && has_any(
+            && (has_any(
                 clause,
-                &["review request", "ready for review", "@codex review"],
-            )
+                &[
+                    "review request",
+                    "ready for review",
+                    "@codex review",
+                    "request codex review",
+                    "request a codex review",
+                    "request fresh codex review",
+                    "request a fresh codex review",
+                ],
+            ) || has_request_codex_review_context(clause))
     })
+}
+
+fn has_request_codex_review_context(line: &str) -> bool {
+    line.contains("request") && (line.contains("codex review") || line.contains("@codex review"))
 }
 
 fn has_negated_review_request_context(line: &str) -> bool {
@@ -136,8 +148,27 @@ fn has_negated_review_request_context(line: &str) -> bool {
             "without @codex review request",
             "without codex review request",
             "without review request",
+            "do not request codex review",
+            "don't request codex review",
+            "not request codex review",
+            "will not request codex review",
+            "won't request codex review",
         ],
-    )
+    ) || has_negated_request_codex_review_context(line)
+}
+
+fn has_negated_request_codex_review_context(line: &str) -> bool {
+    has_request_codex_review_context(line)
+        && has_any(
+            line,
+            &[
+                "do not request",
+                "don't request",
+                "not request",
+                "will not request",
+                "won't request",
+            ],
+        )
 }
 
 fn has_negated_continuation_or_edit_context(line: &str) -> bool {
@@ -164,23 +195,7 @@ fn has_negated_continuation_or_edit_context(line: &str) -> bool {
 
 fn is_compaction_context_heading(line: &str) -> bool {
     let line = handoff_line_metadata(line);
-    [
-        "compacted continuation",
-        "after compaction",
-        "after-compaction",
-        "compaction continuation",
-        "compaction handoff",
-        "compaction resume",
-        "compaction summary",
-        "summary after compaction",
-        "conversation compaction",
-        "post-compaction",
-        "post compaction",
-        "context compaction",
-        "goal continuation",
-    ]
-    .iter()
-    .any(|phrase| {
+    COMPACTION_CONTEXT_PHRASES.iter().any(|phrase| {
         line.starts_with(phrase) && starts_heading_suffix_or_boundary(&line[phrase.len()..])
     })
 }

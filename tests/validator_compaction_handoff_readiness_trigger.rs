@@ -90,6 +90,80 @@ fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> Te
 }
 
 #[test]
+fn validator_cli_rejects_resume_from_compaction_without_evidence() -> TestResult {
+    for handoff in [
+        "Resume from compaction; I will edit the PR now.",
+        "Resuming from compaction; I will edit the PR now.",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject handoff\nstdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("compacted continuation evidence missing Codexy orchestration contract"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_compaction_review_request_verbs_without_evidence() -> TestResult {
+    for handoff in [
+        "Compaction summary:\n\
+         Next action: request Codex review on current head.\n",
+        "Compaction summary:\n\
+         Next action: request fresh @codex review after push.\n",
+        "After compaction:\n\
+         Next action: request a fresh Codex review for the current head.\n",
+        "Compaction summary:\n\
+         Next action: request current-head Codex review after push.\n",
+        "Compaction summary:\n\
+         Next action: request another Codex review after push.\n",
+        "Compaction summary:\n\
+         Next action: request the Codex review after push.\n",
+        "Compaction summary:\n\
+         Next action: request current head Codex review after push.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject handoff\nstdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("compacted continuation evidence missing Codexy orchestration contract"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_negated_review_request_verbs_after_compaction() -> TestResult {
+    for handoff in [
+        "Compaction summary:\n\
+         Next action: do not request current-head Codex review yet.\n",
+        "Compaction summary:\n\
+         Next action: do not request another Codex review yet.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            output.status.success(),
+            "validator should accept handoff\nstderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_after_compaction_edit_plan_without_evidence() -> TestResult {
     let output = validate_open_pr_handoff("After compaction, I will edit the PR now.")?;
     assert!(
