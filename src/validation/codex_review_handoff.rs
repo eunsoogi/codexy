@@ -130,7 +130,9 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     false
 }
 fn has_negative_label_value(suffix: &str) -> bool {
-    let value = suffix.trim_start_matches([' ', '\t', '\n', '\r', ':', '-', '*', '?']);
+    let Some(value) = label_value(suffix) else {
+        return false;
+    };
     [
         "not ready",
         "not yet ready",
@@ -154,6 +156,13 @@ fn has_negative_label_value(suffix: &str) -> bool {
         || value
             .strip_prefix("no")
             .is_some_and(starts_with_standalone_label_boundary)
+}
+fn label_value(suffix: &str) -> Option<&str> {
+    let suffix = suffix.trim_start_matches([' ', '\t']);
+    let value = suffix
+        .strip_prefix(':')
+        .or_else(|| suffix.strip_prefix('?'))?;
+    Some(value.trim_start_matches([' ', '\t', '\n', '\r', '-', '*']))
 }
 fn starts_with_boundary(rest: &str) -> bool {
     is_boundary(rest.chars().next())

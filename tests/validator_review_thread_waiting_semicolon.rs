@@ -44,6 +44,18 @@ fn validator_keeps_comma_while_waiting_evidence_thread_local() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_preserves_semicolon_waiting_rationale_before_later_thread_ref() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved; it is not fixed or accepted, while PRRT_kwDOResolved remains unresolved because it is not fixed or accepted. This lane is not complete.\n",
+    )?;
+    assert_success(
+        &output,
+        "validator should preserve carried waiting evidence before a later different thread reference",
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

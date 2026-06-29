@@ -97,6 +97,7 @@ fn validator_cli_allows_hyphenated_negated_ready_claim() -> TestResult {
 fn validator_cli_allows_multiline_negative_ready_label() -> TestResult {
     for handoff in [
         "PR ready:\n- not currently ready for handoff because Codex review is pending.\n",
+        "PR ready?\n- not currently ready for handoff because Codex review is pending.\n",
         "PR readiness:\n- isn't currently ready for handoff because Codex review is pending.\n",
         "PR readiness:\n- aren't applicable while Codex review is pending.\n",
     ] {
@@ -114,6 +115,16 @@ fn validator_cli_allows_multiline_negative_ready_label() -> TestResult {
     assert_rejected_with_stderr(
         &output,
         "validator should preserve affirmative multiline readiness labels",
+        "eyes-only Codex review request",
+    );
+
+    let output = validate_handoff_with_pr_state(
+        "Ready for merge\n- not applicable: labels still need syncing.\n",
+        eyes_only_pr_state(),
+    )?;
+    assert_rejected_with_stderr(
+        &output,
+        "validator should not treat unrelated next-line bullets as readiness label values",
         "eyes-only Codex review request",
     );
     Ok(())

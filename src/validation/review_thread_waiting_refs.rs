@@ -28,6 +28,10 @@ pub(super) fn thread_referenced(text: &str, thread: &Value) -> bool {
         || comment_urls(thread).any(|url| has_exact_reference(text, &url.to_ascii_lowercase()))
 }
 
+pub(super) fn first_review_reference_start(text: &str) -> Option<usize> {
+    review_reference_starts(text).into_iter().next()
+}
+
 fn thread_reference_ranges(text: &str, thread: &Value) -> Vec<(usize, usize)> {
     let mut ranges: Vec<_> = thread
         .get("id")

@@ -3,7 +3,9 @@ use serde_json::Value;
 use super::review_thread_waiting_phrases::{
     has_unnegated_action_phrase, has_unnegated_phrase, has_unnegated_readiness_phrase,
 };
-use super::review_thread_waiting_refs::{thread_referenced, thread_waiting_clauses};
+use super::review_thread_waiting_refs::{
+    first_review_reference_start, thread_referenced, thread_waiting_clauses,
+};
 
 pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> bool {
     let text = handoff.to_ascii_lowercase();
@@ -28,11 +30,18 @@ fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
     let mut segments = Vec::new();
     let mut carry = String::new();
     for segment in waiting_segments(text) {
-        if !carry.is_empty()
-            && !thread_referenced(segment, thread)
-            && (segment.contains("prrt_") || segment.contains("#discussion_r"))
-        {
-            segments.push(std::mem::take(&mut carry));
+        if !carry.is_empty() && !thread_referenced(segment, thread) {
+            if let Some(reference_start) = first_review_reference_start(segment) {
+                let (prefix, suffix) = segment.split_at(reference_start);
+                if prefix.trim().is_empty() {
+                    segments.push(std::mem::take(&mut carry));
+                } else {
+                    segments.push(format!("{carry}{prefix}"));
+                    carry.clear();
+                }
+                segments.push(suffix.to_string());
+                continue;
+            }
         }
         let candidate = format!("{carry}{segment}");
         let continues_waiting_clause = segment.ends_with(';')
