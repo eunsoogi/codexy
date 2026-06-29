@@ -1,5 +1,4 @@
 use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
@@ -9,6 +8,9 @@ fn validator_allows_review_response_waiting_on_thread_not_fixed_or_accepted() ->
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not yet fixed or accepted; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it isn't yet fixed or accepted; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it has not been fixed or accepted; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it hasn't been fixed or accepted; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it has not yet been fixed or accepted; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting at src/lib.rs remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting: remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed. https://github.com/eunsoogi/codexy/pull/174#discussion_r2: remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
