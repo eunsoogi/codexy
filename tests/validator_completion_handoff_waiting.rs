@@ -55,6 +55,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Previous test failure was fixed. Blocked: async GitHub tool hasn't returned yet.\n",
         "Earlier failure is resolved. Blocked: asynchronous Codex tool hasn't returned yet.\n",
         "Blocked: @codex review has not returned yet, previous async tool returned a permission error earlier.\n",
+        "Previous blocker resolved: required status checks failed and were fixed. Blocked: pending @codex review.\n",
         "Previous blocker resolved: async GitHub tool returned a permission error and was fixed. Blocked: @codex review has not returned yet.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
@@ -91,6 +92,7 @@ fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
         "Blocked: required checks are failing. Waiting: pending Codex review is still processing.\n",
         "Blocked: required status checks are failing. Waiting: pending Codex review is still processing.\n",
         "Blocked: status checks are failing. No security review required. Waiting: pending Codex review is still processing.\n",
+        "Blocked: pending @codex review, required status checks are failing.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

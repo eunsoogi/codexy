@@ -12,14 +12,20 @@ const CHILD_WORK: &str = "child-lane|child lane|child-thread work|child thread w
 
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
-    let false_blocked_wait = |fragment: &str| {
+    let false_blocked_wait = |fragment: &str, context: &str| {
         claims_blocked_state(fragment)
             && mentions_non_blocking_wait(fragment)
             && !has_true_impasse_rationale(fragment)
             && !mentions_true_blocker(fragment)
+            && !mentions_true_blocker(context)
             && !mentions_returned_async_failure_context(fragment, &text)
     };
-    if text.split(['\n', '.', ';', ',']).any(false_blocked_wait) || false_blocked_wait(&text) {
+    if text.split(['\n', '.', ';']).any(|context| {
+        context
+            .split(',')
+            .any(|fragment| false_blocked_wait(fragment, context))
+    }) || false_blocked_wait(&text, &text)
+    {
         return Some(WAITING_STATE_ERROR.into());
     }
     None
@@ -31,13 +37,11 @@ fn mentions_true_blocker(text: &str) -> bool {
         || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
 }
-
 fn claims_blocked_state(text: &str) -> bool {
     has_unnegated_word(text, "blocked", 16)
         || has_unnegated_word(text, "blocker", 16)
         || has_unnegated_word(text, "blockers", 16)
 }
-
 fn mentions_non_blocking_wait(text: &str) -> bool {
     mentions_queued_setup(text)
         || mentions_async_completion(text)
@@ -53,7 +57,6 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
 fn mentions_codex_review(text: &str) -> bool {
     has_any(text, CODEX_REVIEW)
 }
-
 fn mentions_actionable_review_feedback(text: &str) -> bool {
     !has_any(text, NO_ACTIONABLE_REVIEW_FEEDBACK)
         && !mentions_pending_review_feedback_arrival(text)
@@ -72,16 +75,13 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
         )
         && has_any(text, PENDING_REVIEW_FEEDBACK)
 }
-
 fn mentions_external_gate_blocker(text: &str) -> bool {
     (has_any(text, SECURITY_REVIEW_BLOCKER) && !has_any(text, SECURITY_REVIEW_NON_BLOCKER))
         || has_any(text, EXTERNAL_CHECK_FAILURE)
 }
-
 fn mentions_child_work(text: &str) -> bool {
     has_any(text, CHILD_WORK)
 }
-
 fn mentions_queued_setup(text: &str) -> bool {
     has_any(text, "queued worktree|queued thread")
         || (has_any(text, "worktree setup|thread setup")
