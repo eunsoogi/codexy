@@ -67,31 +67,55 @@ fn has_compaction_context(line: &str) -> bool {
 }
 
 fn has_continuation_context(line: &str) -> bool {
-    has_any(
-        line,
-        &[
-            "ready to continue",
-            "continuation readiness",
-            "resume",
-            "resuming",
-            "continue",
-            "continuing",
-            "next action",
-            "before editing",
-        ],
-    )
+    !has_negated_continuation_or_edit_context(line)
+        && has_any(
+            line,
+            &[
+                "ready to continue",
+                "continuation readiness",
+                "resume",
+                "resuming",
+                "continue",
+                "continuing",
+                "next action",
+                "before editing",
+            ],
+        )
 }
 
 fn has_pending_edit_plan(line: &str) -> bool {
+    !has_negated_continuation_or_edit_context(line)
+        && has_any(
+            line,
+            &[
+                "will edit",
+                "will start editing",
+                "going to edit",
+                "start editing",
+                "edit the pr now",
+                "edit the pr branch",
+            ],
+        )
+}
+
+fn has_negated_continuation_or_edit_context(line: &str) -> bool {
     has_any(
         line,
         &[
-            "will edit",
-            "will start editing",
-            "going to edit",
-            "start editing",
-            "edit the pr now",
-            "edit the pr branch",
+            "cannot continue",
+            "do not continue",
+            "don't continue",
+            "not continue",
+            "not continuing",
+            "will not continue",
+            "won't continue",
+            "cannot edit",
+            "do not edit",
+            "don't edit",
+            "not edit",
+            "not editing",
+            "will not edit",
+            "won't edit",
         ],
     )
 }

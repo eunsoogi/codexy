@@ -23,12 +23,34 @@ pub(super) fn has_all_commands(text: &str) -> bool {
 }
 
 pub(super) fn has_executed_evidence(text: &str) -> bool {
-    if pre_log_output_lines(text).any(has_planned_execution_evidence) {
+    let lines: Vec<_> = pre_log_output_lines(text).collect();
+    if lines.iter().copied().any(has_planned_execution_evidence) {
         return false;
     }
-    let text = text.to_ascii_lowercase();
+    if lines.iter().any(|line| line.trim_start().starts_with("$ ")) {
+        return REQUIRED_PREFLIGHT_COMMANDS
+            .iter()
+            .all(|phrase| has_executed_command(&lines, phrase));
+    }
+    let text = lines.join("\n").to_ascii_lowercase();
     has_any(&text, &["captured", "were run", "checked", "recorded"])
-        || text.lines().any(|line| line.starts_with("$ "))
+}
+
+fn has_executed_command(lines: &[&str], phrase: &str) -> bool {
+    lines.iter().any(|line| {
+        let command = line
+            .trim_start()
+            .strip_prefix("$ ")
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        command_starts_with_phrase(&command, phrase)
+    })
+}
+
+fn command_starts_with_phrase(command: &str, phrase: &str) -> bool {
+    command
+        .strip_prefix(phrase)
+        .is_some_and(|rest| rest.chars().next().is_none_or(char::is_whitespace))
 }
 
 fn contains_command_target(text: &str, phrase: &str) -> bool {

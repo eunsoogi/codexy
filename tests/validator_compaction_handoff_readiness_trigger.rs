@@ -25,6 +25,19 @@ fn validator_cli_allows_compaction_topic_status_handoff_next_action() -> TestRes
 }
 
 #[test]
+fn validator_cli_allows_negated_compaction_continuation_deferral() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "After compaction I will not continue editing; wait for review.\n",
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should accept handoff\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> TestResult {
     for handoff in [
         "Compaction summary:\n\
