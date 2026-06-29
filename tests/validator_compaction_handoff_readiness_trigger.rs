@@ -26,21 +26,26 @@ fn validator_cli_allows_compaction_topic_status_handoff_next_action() -> TestRes
 
 #[test]
 fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> TestResult {
-    let output = validate_open_pr_handoff(
+    for handoff in [
         "Compaction summary:\n\
          Next action: edit the PR branch.\n",
-    )?;
-    assert!(
-        !output.status.success(),
-        "validator should reject handoff\nstdout: {}",
-        String::from_utf8_lossy(&output.stdout)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("compacted continuation evidence missing Codexy orchestration contract"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Compaction summary:\n\
+         - Goal: preserve Codexy compaction handoffs.\n\
+         - Next action: edit the PR branch.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject handoff\nstdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("compacted continuation evidence missing Codexy orchestration contract"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

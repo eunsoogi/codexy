@@ -195,6 +195,8 @@ fn is_block_local_preflight_negation(line: &str) -> bool {
     let line = line.trim().trim_end_matches([':', '.', ';']);
     [
         "not actually run",
+        "commands not run",
+        "commands not captured",
         "not captured",
         "not checked",
         "without running",

@@ -36,7 +36,7 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
         has_compaction_context(line)
             && (has_continuation_context(line)
                 || (is_compaction_context_heading(line)
-                    && next_nonempty_line(&lines, index).is_some_and(has_continuation_context)))
+                    && following_lines(&lines, index).any(has_continuation_context)))
     })
 }
 
@@ -110,10 +110,10 @@ fn handoff_line_metadata(line: &str) -> &str {
     line.trim_start_matches('#').trim_start()
 }
 
-fn next_nonempty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {
+fn following_lines<'a>(lines: &'a [&str], index: usize) -> impl Iterator<Item = &'a str> {
     lines
         .iter()
         .skip(index + 1)
-        .find(|line| !line.is_empty())
+        .filter(|line| !line.is_empty())
         .copied()
 }
