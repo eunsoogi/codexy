@@ -111,6 +111,23 @@ Restart Codex or start a fresh session after registration before expecting new
 - Worktree lanes must stay issue-sized and atomic. Do not bundle review
   response work from one lane into another lane.
 
+## Compaction And Continuation Guard
+
+Treat loss of the active `@Codexy` or Codexy plugin workflow contract after
+context compaction, goal continuation, or resume as a dogfooding defect. A
+compacted continuation summary must preserve the active `$codex-orchestration`
+contract, duplicate or no-active-work issue and PR state, parent/child
+ownership boundaries, and the authoritative stop condition before any edit or
+review request continues.
+
+Before editing after compaction or continuation, re-check current GitHub state
+for the issue and PR, especially docs or README lanes that may already be
+merged, closed, or duplicate work. Also capture a fresh git preflight with
+`pwd`, `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse
+origin/main`, and a small `git log --graph --oneline --decorate --all`
+window. If the summary omits those facts, stop and rebuild the evidence instead
+of treating the omission as a harmless fallback.
+
 ## Parent Stop Preflight
 
 Run this checkpoint before any implementation edit when a lane may need a
