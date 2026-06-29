@@ -37,7 +37,7 @@ fn validator_cli_rejects_git_preflight_block_with_generic_run_capture_negation()
          - git rev-parse origin/main\n\
          - git log --graph --oneline --decorate --all --max-count=50",
         "Git graph/log preflight captured before editing:\n\
-         Commands were not captured.\n\
+         Commands were not executed.\n\
          - pwd\n\
          - git status --short --branch\n\
          - git rev-parse HEAD\n\
@@ -51,7 +51,7 @@ fn validator_cli_rejects_git_preflight_block_with_generic_run_capture_negation()
          - git rev-parse origin/main\n\
          - git log --graph --oneline --decorate --all --max-count=50",
         "Git graph/log preflight captured before editing:\n\
-         Commands not run.\n\
+         Commands were not performed.\n\
          - pwd\n\
          - git status --short --branch\n\
          - git rev-parse HEAD\n\
