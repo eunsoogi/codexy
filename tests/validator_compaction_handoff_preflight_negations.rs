@@ -178,6 +178,27 @@ fn validator_cli_rejects_planned_git_preflight_execution_wording() -> TestResult
          - git rev-parse HEAD\n\
          - git rev-parse origin/main\n\
          - git log --graph --oneline --decorate --all --max-count=5",
+        "Git graph/log preflight captured before editing:\n\
+         Required commands to be run:\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=5",
+        "Git graph/log preflight captured before editing:\n\
+         Required commands should be run before editing.\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=5",
+        "Git graph/log preflight captured before editing:\n\
+         Required commands will be run:\n\
+         - pwd\n\
+         - git status --short --branch\n\
+         - git rev-parse HEAD\n\
+         - git rev-parse origin/main\n\
+         - git log --graph --oneline --decorate --all --max-count=5",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(git_preflight))?;
         assert!(

@@ -153,13 +153,16 @@ fn has_planned_execution_evidence(line: &str) -> bool {
             "to be checked",
             "to be captured",
             "to be recorded",
+            "to be run",
             "should be checked",
             "should be captured",
             "should be recorded",
+            "should be run",
             "will be checked",
             "will be captured",
             "will be recorded",
             "will be recorded/captured",
+            "will be run",
         ],
     )
 }
