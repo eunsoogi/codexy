@@ -54,6 +54,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: async operation result has not yet returned.\n",
         "Previous test failure was fixed. Blocked: async GitHub tool hasn't returned yet.\n",
         "Earlier failure is resolved. Blocked: asynchronous Codex tool hasn't returned yet.\n",
+        "Blocked: @codex review has not returned yet, previous async tool returned a permission error earlier.\n",
         "Previous blocker resolved: async GitHub tool returned a permission error and was fixed. Blocked: @codex review has not returned yet.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
@@ -177,6 +178,7 @@ fn validator_cli_allows_returned_async_tool_failures() -> TestResult {
         "Blocked: async GitHub merge tool returned. Permission error prevents merge.\n",
         "Blocked: async GitHub tool completion returned a permission error.\n",
         "Blocked: async GitHub tool completion returned. Permission error prevents merge.\n",
+        "Blocked: async GitHub tool completion returned, permission error prevents merge.\n",
         "Blocked: asynchronous Codex tool returned an authentication failure.\n",
         "Blocked: tool result returned with a fatal API error.\n",
     ] {

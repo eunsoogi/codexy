@@ -19,7 +19,7 @@ pub(super) fn check(handoff: &str) -> Option<String> {
             && !mentions_true_blocker(fragment)
             && !mentions_returned_async_failure_context(fragment, &text)
     };
-    if text.split(['\n', '.', ';']).any(false_blocked_wait) || false_blocked_wait(&text) {
+    if text.split(['\n', '.', ';', ',']).any(false_blocked_wait) || false_blocked_wait(&text) {
         return Some(WAITING_STATE_ERROR.into());
     }
     None
