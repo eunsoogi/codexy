@@ -26,6 +26,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: waiting for Codex review feedback from the connector.\n",
         "Blocked: missing Codex review response is pending.\n",
         "Blocked: @codex review has not returned yet.\n",
+        "Blocked state: pending Codex review is still processing.\n",
         "Blocked.\nWaiting: pending Codex review is still processing.\n",
         "Goal blocked because child-thread work is still pending.\n",
         "Goal blocked.\nPending child thread response.\n",
@@ -142,6 +143,8 @@ fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
         "No known blockers. Waiting: pending Codex review is still processing.\n",
         "Blockers - none. Waiting: pending Codex review is still processing.\n",
         "Blocked? no. Waiting: pending Codex review is still processing.\n",
+        "Goal blocked: no. Waiting: pending Codex review is still processing.\n",
+        "Blocked state: none. Waiting: pending Codex review is still processing.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

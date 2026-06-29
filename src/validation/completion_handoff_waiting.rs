@@ -36,8 +36,6 @@ fn claims_blocked_state(text: &str) -> bool {
     has_unnegated_word(text, "blocked", 16)
         || has_unnegated_word(text, "blocker", 16)
         || has_unnegated_word(text, "blockers", 16)
-        || has_unnegated_phrase(text, "blocked state", 16)
-        || has_unnegated_phrase(text, "goal blocked", 16)
 }
 
 fn mentions_non_blocking_wait(text: &str) -> bool {
@@ -203,6 +201,7 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
         return false;
     }
     let value = text[after_index..].trim_start();
+    let value = value.strip_prefix("state").unwrap_or(value).trim_start();
     if !matches!(value.chars().next(), Some(':' | '-' | '?')) {
         return false;
     }
