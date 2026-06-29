@@ -112,6 +112,8 @@ fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
         "Blocked: required status checks are failing. Waiting: pending Codex review is still processing.\n",
         "Blocked: status checks are failing. No security review required. Waiting: pending Codex review is still processing.\n",
         "Blocked: pending @codex review, required status checks are failing.\n",
+        "Blocked: pending @codex review; required status checks are failing.\n",
+        "Blocked: pending @codex review; required status checks are failing; previous blocker resolved: async GitHub tool returned a permission error and was fixed.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -120,7 +122,6 @@ fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
     for handoff in [
@@ -176,7 +177,6 @@ fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_allows_failed_setup_blockers() -> TestResult {
     for handoff in [

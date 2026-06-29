@@ -20,9 +20,9 @@ pub(super) fn check(handoff: &str) -> Option<String> {
             && !mentions_current_true_blocker_context(context)
             && !mentions_returned_async_failure_context(fragment, &text)
     };
-    if text.split(['\n', '.', ';']).any(|context| {
+    if text.split(['\n', '.']).any(|context| {
         context
-            .split(',')
+            .split([',', ';'])
             .any(|fragment| false_blocked_wait(fragment, context))
     }) || false_blocked_wait(&text, &text)
     {
@@ -37,7 +37,7 @@ fn mentions_true_blocker(text: &str) -> bool {
         || mentions_external_gate_blocker(text)
 }
 fn mentions_current_true_blocker_context(text: &str) -> bool {
-    text.split(',')
+    text.split([',', ';'])
         .any(|part| mentions_true_blocker(part) && !mentions_resolved_blocker(part))
 }
 fn mentions_resolved_blocker(text: &str) -> bool {
