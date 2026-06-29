@@ -1,5 +1,7 @@
 use serde_json::Value;
 
+use super::codex_review_handoff::has_negative_label_value;
+
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
     if !claims_label_guarded_handoff(handoff) {
         return Vec::new();
@@ -156,13 +158,14 @@ fn claims_pr_readiness(handoff: &str) -> bool {
         "pull request is ready",
     ]
     .into_iter()
-    .any(|phrase| has_unnegated_phrase(&text, phrase, 24))
+    .any(|phrase| has_unnegated_readiness_phrase(&text, phrase, 24))
 }
 
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
-    if has_unnegated_phrase(&text, "not complete until merge", 16) {
+    if has_not_complete_until_merge(&text) {
         text = text.replace("verification completed.", "verification evidence.");
+        text = text.replace("verification completed:", "verification evidence:");
         for phrase in [
             "successfully completed",
             "completed successfully",
@@ -179,6 +182,12 @@ fn claims_completion(handoff: &str) -> bool {
         || ["done", "complete", "completes", "finish", "finalize"]
             .iter()
             .any(|word| has_unnegated_phrase(&text, word, 16))
+}
+
+fn has_not_complete_until_merge(text: &str) -> bool {
+    "not complete until merge|not currently complete until merge|isn't complete until merge|isn't currently complete until merge|aren't complete until merge|aren't currently complete until merge"
+        .split('|')
+        .any(|phrase| has_unnegated_phrase(text, phrase, 16))
 }
 
 fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
@@ -201,9 +210,30 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
     false
 }
 
+fn has_unnegated_readiness_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(phrase) {
+        let absolute_index = offset + index;
+        let after_index = absolute_index + phrase.len();
+        if is_boundary(text[..absolute_index].chars().next_back())
+            && is_boundary(text[after_index..].chars().next())
+            && !has_nearby_negation(
+                &text[char_window_start(text, absolute_index, negation_window)..absolute_index],
+            )
+            && !has_negative_label_value(&text[after_index..])
+        {
+            return true;
+        }
+        offset = after_index;
+        rest = &text[offset..];
+    }
+    false
+}
+
 fn has_nearby_negation(prefix: &str) -> bool {
-    ["no", "not", "not yet", "without", "isn't", "is not"]
-        .into_iter()
+    "no|not|not yet|not currently|without|isn't|is not"
+        .split('|')
         .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
 

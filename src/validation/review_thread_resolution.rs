@@ -8,7 +8,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let Some(threads) = pr_state.get("reviewThreads") else {
         return vec![MISSING_REVIEW_THREADS.into()];
     };
-    let Some(nodes) = review_thread_nodes(threads) else {
+    let Some(nodes) = threads.get("nodes").and_then(Value::as_array) else {
         return vec![MISSING_REVIEW_THREADS.into()];
     };
     if let Some(error) = super::review_thread_evidence::check(threads) {
@@ -17,7 +17,10 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let Some(unresolved) = nodes
         .iter()
         .filter(|thread| thread.get("isResolved").and_then(Value::as_bool) == Some(false))
-        .find(|thread| !documents_accepted_no_change_rationale(handoff, thread))
+        .find(|thread| {
+            !documents_accepted_no_change_rationale(handoff, thread)
+                && !super::review_thread_waiting::documents_unfixed_or_unaccepted(handoff, thread)
+        })
     else {
         return Vec::new();
     };
@@ -25,9 +28,6 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         "unresolved review thread remains after addressed review feedback: {}; resolve fixed threads after current-head verification or document an accepted no-change rationale",
         thread_label(unresolved)
     )]
-}
-fn review_thread_nodes(threads: &Value) -> Option<&Vec<Value>> {
-    threads.get("nodes").and_then(Value::as_array)
 }
 pub(super) fn claims_review_response(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();

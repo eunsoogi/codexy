@@ -74,15 +74,58 @@ fn validator_cli_rejects_dash_label_before_merge_ready_claim() -> TestResult {
 
 #[test]
 fn validator_cli_allows_hyphenated_negated_ready_claim() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "PR is not-merge-ready because Codex review is pending.\n",
+        "PR ready: not currently ready for handoff because Codex review is pending.\n",
+        "PR ready: isn't ready because Codex review is pending.\n",
+        "PR ready: aren't ready because Codex review is pending.\n",
+        "PR readiness: isn't applicable while Codex review is pending.\n",
+        "PR readiness: aren't applicable while Codex review is pending.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should not treat negated readiness as an affirmed readiness claim\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_multiline_negative_ready_label() -> TestResult {
+    for handoff in [
+        "PR ready:\n- not currently ready for handoff because Codex review is pending.\n",
+        "PR ready?\n- not currently ready for handoff because Codex review is pending.\n",
+        "PR readiness:\n- isn't currently ready for handoff because Codex review is pending.\n",
+        "PR readiness:\n- aren't applicable while Codex review is pending.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should treat multiline negative readiness labels as negated readiness claims\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let output =
+        validate_handoff_with_pr_state("PR ready:\n- ready for handoff.\n", eyes_only_pr_state())?;
+    assert_rejected_with_stderr(
+        &output,
+        "validator should preserve affirmative multiline readiness labels",
+        "eyes-only Codex review request",
+    );
+
+    let output = validate_handoff_with_pr_state(
+        "Ready for merge\n- not applicable: labels still need syncing.\n",
         eyes_only_pr_state(),
     )?;
-    assert!(
-        output.status.success(),
-        "validator should not treat hyphenated negation as an affirmed readiness claim\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+    assert_rejected_with_stderr(
+        &output,
+        "validator should not treat unrelated next-line bullets as readiness label values",
+        "eyes-only Codex review request",
     );
     Ok(())
 }
