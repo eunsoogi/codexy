@@ -52,6 +52,10 @@ fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> Te
          Next action: edit the PR branch.\n",
         "## Compaction summary\n\
          Next action: edit the PR branch.\n",
+        "Compacted continuation summary:\n\
+         Next action: edit the PR branch.\n",
+        "Compaction continuation readiness:\n\
+         Next action: edit the PR branch.\n",
         "Compaction summary:\n\
          - Goal: preserve Codexy compaction handoffs.\n\
          - Next action: edit the PR branch.\n",

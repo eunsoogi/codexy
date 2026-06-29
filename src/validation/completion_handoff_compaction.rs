@@ -173,13 +173,26 @@ fn is_compaction_context_heading(line: &str) -> bool {
     ]
     .iter()
     .any(|phrase| {
-        line.starts_with(phrase)
-            && line[phrase.len()..]
-                .trim_start()
-                .chars()
-                .next()
-                .is_none_or(|character| matches!(character, ':' | '-'))
+        line.starts_with(phrase) && starts_heading_suffix_or_boundary(&line[phrase.len()..])
     })
+}
+
+fn starts_heading_suffix_or_boundary(remainder: &str) -> bool {
+    let remainder = remainder.trim_start();
+    if starts_heading_boundary(remainder) {
+        return true;
+    }
+    ["summary", "readiness"].iter().any(|suffix| {
+        remainder.starts_with(suffix) && starts_heading_boundary(&remainder[suffix.len()..])
+    })
+}
+
+fn starts_heading_boundary(remainder: &str) -> bool {
+    remainder
+        .trim_start()
+        .chars()
+        .next()
+        .is_none_or(|character| matches!(character, ':' | '-'))
 }
 
 fn handoff_line_metadata(line: &str) -> &str {
