@@ -73,10 +73,10 @@ fn has_defect_label(line: &str) -> bool {
 }
 
 fn has_negated_handler_missing_claim(line: &str, start: usize) -> bool {
-    let prefix_start = line[..start]
-        .rfind([';', '.'])
-        .map_or(0, |offset| offset + 1);
-    let prefix = &line[prefix_start..start];
+    let prefix = &line[..start];
+    let prefix_start = prefix.rfind([';', '.', ',']).map_or(0, |offset| offset + 1);
+    let prefix_start = prefix_start.max(prefix.rfind(" but ").map_or(0, |offset| offset + 5));
+    let prefix = &prefix[prefix_start..];
     [
         "did not fail with",
         "didn't fail with",

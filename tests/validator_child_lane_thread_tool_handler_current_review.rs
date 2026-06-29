@@ -181,6 +181,27 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_later_clause_handler_failure_after_prior_negation()
+-> Result<(), Box<dyn std::error::Error>> {
+    for invocation_line in [
+        "Invocation evidence: read_thread did not fail with `No handler registered for tool: read_thread`, but send_message_to_thread failed with `No handler registered for tool: send_message_to_thread`.",
+        "Invocation evidence: read_thread did not fail with `No handler registered for tool: read_thread` but send_message_to_thread failed with `No handler registered for tool: send_message_to_thread`.",
+    ] {
+        let output = run_ownership_validator(&format!(
+            "Owner decision: parent-owned for thread/worktree tool discovery only; child routing required\nTool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.\n{invocation_line}\nFallback: treated send_message_to_thread as an ordinary unavailable-tool fallback.\nMaintainer reassignment: none\n"
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject a later-clause handler failure that is not captured as a defect\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_tool_only_defect_capture_without_handler_marker()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
