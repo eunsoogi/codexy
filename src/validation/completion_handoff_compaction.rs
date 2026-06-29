@@ -37,9 +37,13 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
         has_compaction_context(line)
             && (has_continuation_context(line)
                 || has_pending_edit_plan(line)
+                || has_review_request_context(line)
                 || (is_compaction_context_heading(line)
-                    && following_lines(&lines, index)
-                        .any(|line| has_continuation_context(line) || has_pending_edit_plan(line))))
+                    && following_lines(&lines, index).any(|line| {
+                        has_continuation_context(line)
+                            || has_pending_edit_plan(line)
+                            || has_review_request_context(line)
+                    })))
     })
 }
 
@@ -96,6 +100,25 @@ fn has_pending_edit_plan(line: &str) -> bool {
                 "edit the pr branch",
             ],
         )
+}
+
+fn has_review_request_context(line: &str) -> bool {
+    !has_negated_review_request_context(line)
+        && has_any(
+            line,
+            &["review request", "ready for review", "@codex review"],
+        )
+}
+
+fn has_negated_review_request_context(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "not ready for review",
+            "no review request",
+            "without review request",
+        ],
+    )
 }
 
 fn has_negated_continuation_or_edit_context(line: &str) -> bool {

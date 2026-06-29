@@ -26,14 +26,18 @@ fn validator_cli_allows_compaction_topic_status_handoff_next_action() -> TestRes
 
 #[test]
 fn validator_cli_allows_negated_compaction_continuation_deferral() -> TestResult {
-    let output = validate_open_pr_handoff(
+    for handoff in [
         "After compaction I will not continue editing; wait for review.\n",
-    )?;
-    assert!(
-        output.status.success(),
-        "validator should accept handoff\nstderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Compaction summary: Not ready for review; do not continue.\n",
+        "Compaction summary: No review request will be made; do not continue.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            output.status.success(),
+            "validator should accept handoff\nstderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
@@ -47,6 +51,11 @@ fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> Te
         "Compaction summary:\n\
          - Goal: preserve Codexy compaction handoffs.\n\
          - Next action: edit the PR branch.\n",
+        "Compaction summary: Review request: @codex review current head.\n",
+        "Compaction summary:\n\
+         Ready for review on current head.\n",
+        "## Compaction summary\n\
+         @codex review current head.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
