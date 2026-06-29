@@ -6,9 +6,9 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
 fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
     for handoff in [
-        "Blocked: current-head @codex review request has an eyes reaction and is still pending.\n",
+        "Blocked on current-head @codex review request.\n",
         "Currently blocked: pending @codex review is still processing.\n",
-        "Blocked: current-head @codex review comment has an eyes reaction and is still pending.\n",
+        "Blocked on current-head Codex review request.\n",
         "Blocked: pending @codex review request has no actionable feedback yet.\n",
         "Blocked: pending Codex review feedback.\n",
         "Blocked: pending @codex review feedback.\n",
