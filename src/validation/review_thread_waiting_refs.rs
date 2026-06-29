@@ -1,19 +1,30 @@
 use serde_json::Value;
 
 pub(super) fn thread_waiting_clauses<'a>(segment: &'a str, thread: &Value) -> Vec<&'a str> {
-    let review_references = review_reference_starts(segment);
+    let review_references = review_reference_token_ranges(segment);
     thread_reference_ranges(segment, thread)
         .into_iter()
-        .map(|(start, _)| {
-            let clause_start = if review_references.iter().any(|&index| index < start) {
+        .map(|(start, end)| {
+            let clause_start = if review_references.iter().any(|&(index, _)| index < start) {
                 start
             } else {
                 0
             };
+            let mut grouped_reference_end = end;
             let clause_end = review_references
                 .iter()
                 .copied()
-                .find(|&index| index > start)
+                .find_map(|(index, reference_end)| {
+                    if index <= start {
+                        return None;
+                    }
+                    if grouped_reference_connector(&segment[grouped_reference_end..index]) {
+                        grouped_reference_end = reference_end;
+                        None
+                    } else {
+                        Some(index)
+                    }
+                })
                 .unwrap_or(segment.len());
             &segment[clause_start..clause_end]
         })
@@ -62,12 +73,35 @@ fn review_reference_starts(text: &str) -> Vec<usize> {
     starts
 }
 
+fn review_reference_token_ranges(text: &str) -> Vec<(usize, usize)> {
+    review_reference_starts(text)
+        .into_iter()
+        .map(|start| (start, reference_token_end(text, start)))
+        .collect()
+}
+
+fn reference_token_end(text: &str, start: usize) -> usize {
+    text[start..]
+        .char_indices()
+        .find(|&(_, character)| {
+            character.is_ascii_whitespace() || matches!(character, ',' | ';' | ')' | ']' | '>')
+        })
+        .map_or(text.len(), |(index, _)| start + index)
+}
+
 fn reference_token_start(text: &str, index: usize) -> usize {
     text[..index]
         .rfind(|character: char| {
             character.is_ascii_whitespace() || matches!(character, '<' | '(' | '[')
         })
         .map_or(0, |index| index + 1)
+}
+
+fn grouped_reference_connector(text: &str) -> bool {
+    text.split([',', '/', '&']).all(|part| {
+        let part = part.trim();
+        part.is_empty() || matches!(part, "and" | "or")
+    })
 }
 
 fn comment_urls(thread: &Value) -> impl Iterator<Item = &str> {

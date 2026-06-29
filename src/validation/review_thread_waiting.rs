@@ -127,7 +127,7 @@ fn claims_readiness(handoff: &str) -> bool {
 
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
-    if has_unnegated_phrase(&text, "not complete until merge") {
+    if has_not_complete_until_merge(&text) {
         text = text.replace("verification completed.", "verification evidence.");
         text = text.replace("verification completed:", "verification evidence:");
         for phrase in [
@@ -153,6 +153,12 @@ fn claims_completion(handoff: &str) -> bool {
     ]
     .iter()
     .any(|phrase| has_unnegated_phrase(&text, phrase))
+}
+
+fn has_not_complete_until_merge(text: &str) -> bool {
+    "not complete until merge|not currently complete until merge"
+        .split('|')
+        .any(|phrase| has_unnegated_phrase(text, phrase))
 }
 
 fn mentions_unresolved(segment: &str) -> bool {

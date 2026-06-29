@@ -163,7 +163,7 @@ fn claims_pr_readiness(handoff: &str) -> bool {
 
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
-    if has_unnegated_phrase(&text, "not complete until merge", 16) {
+    if has_not_complete_until_merge(&text) {
         text = text.replace("verification completed.", "verification evidence.");
         text = text.replace("verification completed:", "verification evidence:");
         for phrase in [
@@ -182,6 +182,12 @@ fn claims_completion(handoff: &str) -> bool {
         || ["done", "complete", "completes", "finish", "finalize"]
             .iter()
             .any(|word| has_unnegated_phrase(&text, word, 16))
+}
+
+fn has_not_complete_until_merge(text: &str) -> bool {
+    "not complete until merge|not currently complete until merge"
+        .split('|')
+        .any(|phrase| has_unnegated_phrase(text, phrase, 16))
 }
 
 fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
@@ -226,8 +232,8 @@ fn has_unnegated_readiness_phrase(text: &str, phrase: &str, negation_window: usi
 }
 
 fn has_nearby_negation(prefix: &str) -> bool {
-    ["no", "not", "not yet", "without", "isn't", "is not"]
-        .into_iter()
+    "no|not|not yet|not currently|without|isn't|is not"
+        .split('|')
         .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
 
