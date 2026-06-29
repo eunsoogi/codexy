@@ -147,6 +147,7 @@ fn validator_rejects_ready_handoff_synonyms_with_thread_not_fixed_or_accepted() 
         "PR is ready",
         "pull request is ready",
         "merge readiness",
+        "Merge-readiness handoff",
         "Codex review passed",
         "Codex review approved",
         "Codex review completed",

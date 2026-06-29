@@ -3,6 +3,7 @@ use serde_json::Value;
 use super::review_thread_waiting_phrases::{
     has_unnegated_action_phrase, has_unnegated_phrase, has_unnegated_readiness_phrase,
 };
+use super::review_thread_waiting_refs::{thread_referenced, thread_waiting_clauses};
 
 pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> bool {
     let text = handoff.to_ascii_lowercase();
@@ -13,10 +14,13 @@ pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> 
     waiting_evidence_segments(&text, thread)
         .iter()
         .any(|segment| {
-            thread_referenced(segment, thread)
-                && mentions_unresolved(segment)
-                && mentions_not_fixed(segment)
-                && mentions_not_accepted(segment)
+            thread_waiting_clauses(segment, thread)
+                .iter()
+                .any(|segment| {
+                    mentions_unresolved(segment)
+                        && mentions_not_fixed(segment)
+                        && mentions_not_accepted(segment)
+                })
         })
 }
 
@@ -107,7 +111,7 @@ fn dot_inside_path_token(text: &str, dot_index: usize) -> bool {
 
 fn claims_readiness(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    "pr ready|pr-ready|pr is ready|pull request ready|pull-request-ready|pull request is ready|pr readiness|pr-readiness|ready for parent handoff|ready for handoff|ready for merge|ready to merge|merge readiness|merge ready|merge-ready|codex review passed|codex review completed|codex review complete|codex review approved"
+    "pr ready|pr-ready|pr is ready|pull request ready|pull-request-ready|pull request is ready|pr readiness|pr-readiness|ready for parent handoff|ready for handoff|ready for merge|ready to merge|merge readiness|merge-readiness|merge ready|merge-ready|codex review passed|codex review completed|codex review complete|codex review approved"
         .split('|')
         .any(|phrase| has_unnegated_readiness_phrase(&text, phrase))
 }
@@ -201,35 +205,6 @@ fn action_claim_segments(segment: &str) -> impl Iterator<Item = &str> {
         .flat_map(|clause| clause.split(" and thread "))
         .map(str::trim)
         .filter(|clause| !clause.is_empty())
-}
-
-fn thread_referenced(text: &str, thread: &Value) -> bool {
-    thread
-        .get("id")
-        .and_then(Value::as_str)
-        .is_some_and(|id| has_exact_reference(text, &id.to_ascii_lowercase()))
-        || comment_urls(thread).any(|url| has_exact_reference(text, &url.to_ascii_lowercase()))
-}
-
-fn comment_urls(thread: &Value) -> impl Iterator<Item = &str> {
-    thread
-        .get("comments")
-        .and_then(|comments| comments.get("nodes"))
-        .and_then(Value::as_array)
-        .into_iter()
-        .flat_map(|nodes| nodes.iter())
-        .filter_map(|comment| comment.get("url").and_then(Value::as_str))
-}
-
-fn has_exact_reference(text: &str, reference: &str) -> bool {
-    !reference.is_empty()
-        && text.match_indices(reference).any(|(start, _)| {
-            let end = start + reference.len();
-            let before = text[..start].chars().next_back();
-            let after = text[end..].chars().next();
-            before.is_none_or(|ch| !is_reference_char(ch))
-                && after.is_none_or(|ch| ch == ':' || !is_reference_char(ch))
-        })
 }
 
 fn is_reference_char(ch: char) -> bool {

@@ -28,6 +28,7 @@ mod review_thread_evidence;
 mod review_thread_resolution;
 mod review_thread_waiting;
 mod review_thread_waiting_phrases;
+mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
 mod runtime;
