@@ -45,7 +45,8 @@ fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
         }
         let candidate = format!("{carry}{segment}");
         let continues_waiting_clause = (segment.ends_with(';')
-            || (segment.ends_with('\n') && segment.trim_end().ends_with(':')))
+            || (segment.ends_with('\n') && segment.trim_end().ends_with(':'))
+            || (!carry.is_empty() && is_markdown_list_item(segment)))
             && thread_referenced(&candidate, thread)
             && mentions_unresolved(&candidate);
         carry.push_str(segment);
@@ -58,6 +59,10 @@ fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
         segments.push(carry);
     }
     segments
+}
+
+fn is_markdown_list_item(segment: &str) -> bool {
+    segment.trim_start().starts_with("- ")
 }
 
 fn waiting_segments(text: &str) -> impl Iterator<Item = &str> {
