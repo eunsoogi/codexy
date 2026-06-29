@@ -75,6 +75,22 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
 }
 
 #[test]
+fn validator_cli_handles_resolved_comma_blocker_boundaries() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Previous blocker resolved: required status checks failed and were fixed, blocked: pending @codex review.\n",
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+    )?;
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("waiting state"));
+    let output = validate_handoff_with_pr_state(
+        "Blocked: pending @codex review, required status checks are failing after the formatter issue was fixed.\n",
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+    )?;
+    assert!(output.status.success());
+    Ok(())
+}
+
+#[test]
 fn validator_cli_allows_true_impasse_blocked_handoff() -> TestResult {
     accept_open_pr_handoff(
         "Blocked after repeated true impasse: cannot make meaningful progress without maintainer input.\n",

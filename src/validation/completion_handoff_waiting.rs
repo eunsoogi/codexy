@@ -17,7 +17,7 @@ pub(super) fn check(handoff: &str) -> Option<String> {
             && mentions_non_blocking_wait(fragment)
             && !has_true_impasse_rationale(fragment)
             && !mentions_true_blocker(fragment)
-            && !mentions_true_blocker(context)
+            && !mentions_current_true_blocker_context(context)
             && !mentions_returned_async_failure_context(fragment, &text)
     };
     if text.split(['\n', '.', ';']).any(|context| {
@@ -30,12 +30,22 @@ pub(super) fn check(handoff: &str) -> Option<String> {
     }
     None
 }
-
 fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
         || mentions_missing_child_evidence(text)
         || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
+}
+fn mentions_current_true_blocker_context(text: &str) -> bool {
+    text.split(',')
+        .any(|part| mentions_true_blocker(part) && !mentions_resolved_blocker(part))
+}
+fn mentions_resolved_blocker(text: &str) -> bool {
+    let failed_checks = "required checks failed|required status checks failed|status checks failed";
+    has_any(
+        text,
+        "blocker resolved|previous blocker resolved|resolved blocker",
+    ) || (has_any(text, failed_checks) && has_any(text, "fixed|resolved|cleared"))
 }
 fn claims_blocked_state(text: &str) -> bool {
     has_unnegated_word(text, "blocked", 16)
@@ -53,7 +63,6 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
             && mentions_waiting_context(text)
             && !mentions_missing_child_evidence(text))
 }
-
 fn mentions_codex_review(text: &str) -> bool {
     has_any(text, CODEX_REVIEW)
 }
@@ -66,7 +75,6 @@ fn mentions_actionable_review_feedback(text: &str) -> bool {
             || (has_any(text, "review comment|review comments")
                 && !(mentions_codex_review(text) && has_any(text, "eyes reaction|request"))))
 }
-
 fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
     mentions_codex_review(text)
         && !has_any(
@@ -88,7 +96,6 @@ fn mentions_queued_setup(text: &str) -> bool {
             && (mentions_waiting_context(text) || has_any(text, "queued"))
             && !has_any(text, SETUP_FAILURE))
 }
-
 fn mentions_async_completion(text: &str) -> bool {
     mentions_async_tool_result(text)
         && has_any(
@@ -103,14 +110,12 @@ fn mentions_returned_async_failure(text: &str) -> bool {
         && has_any(text, "returned")
         && has_any(text, "error|failure|failed|permission|authentication|fatal")
 }
-
 fn mentions_returned_async_failure_context(fragment: &str, text: &str) -> bool {
     mentions_returned_async_failure(fragment)
         || (mentions_async_tool_result(fragment)
             && has_any(fragment, "returned")
             && has_any(text, "error|failure|failed|permission|authentication|fatal"))
 }
-
 fn mentions_async_tool_result(text: &str) -> bool {
     (has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
         || has_any(text, "tool result|background operation")
@@ -149,7 +154,6 @@ fn has_true_impasse_rationale(text: &str) -> bool {
             "without user input|without maintainer input|without human input|external state change|requires user input|requires maintainer input|requires human input",
         )
 }
-
 fn has_any(text: &str, phrases: &str) -> bool {
     phrases
         .split('|')
@@ -173,7 +177,6 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
     }
     false
 }
-
 fn has_unnegated_word(text: &str, word: &str, negation_window: usize) -> bool {
     let mut rest = text;
     let mut offset = 0;
@@ -195,7 +198,6 @@ fn has_unnegated_word(text: &str, word: &str, negation_window: usize) -> bool {
     }
     false
 }
-
 fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
     if !matches!(word, "blocked" | "blocker" | "blockers") {
         return false;
@@ -214,7 +216,6 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
                 .is_some_and(|rest| is_boundary(rest.chars().next()))
         })
 }
-
 fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
