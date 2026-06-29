@@ -9,7 +9,10 @@ pub(super) const REQUIRED_PREFLIGHT_COMMANDS: &[&str] = &[
 ];
 
 pub(super) fn has_all_commands(text: &str) -> bool {
-    let text = text.to_ascii_lowercase();
+    let text = pre_log_output_lines(text)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .to_ascii_lowercase();
     REQUIRED_PREFLIGHT_COMMANDS.iter().all(|phrase| {
         if matches!(*phrase, "git rev-parse head" | "git rev-parse origin/main") {
             contains_command_target(&text, phrase)

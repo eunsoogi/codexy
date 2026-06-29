@@ -116,6 +116,29 @@ fn validator_cli_rejects_rev_parse_pathspec_targets() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_commands_mentioned_only_in_git_log_subjects() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Git graph/log preflight captured before editing:\n\
+         $ pwd\n\
+         /repo/codexy\n\
+         $ git log --graph --oneline --decorate --all --max-count=5\n\
+         * deadbee docs: capture git status --short --branch and git rev-parse HEAD against git rev-parse origin/main\n",
+    ))?;
+    assert!(
+        !output.status.success(),
+        "validator should reject handoff\nstdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("compacted continuation evidence missing git graph/log preflight"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn valid_handoff_with(git_preflight: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
