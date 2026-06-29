@@ -111,6 +111,23 @@ Restart Codex or start a fresh session after registration before expecting new
 - Worktree lanes must stay issue-sized and atomic. Do not bundle review
   response work from one lane into another lane.
 
+## Compaction And Continuation Guard
+
+Treat loss of the active `@Codexy` or Codexy plugin workflow contract after
+context compaction, goal continuation, or resume as a dogfooding defect. A
+compacted continuation summary must preserve the active `$codex-orchestration`
+contract, duplicate or no-active-work issue and PR state, parent/child
+ownership boundaries, and the authoritative stop condition before any edit or
+review request continues.
+
+Before editing after compaction or continuation, re-check current GitHub state
+for the issue and PR, especially docs or README lanes that may already be
+merged, closed, or duplicate work. Also capture a fresh git preflight with
+`pwd`, `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse
+origin/main`, and a small `git log --graph --oneline --decorate --all`
+window. If the summary omits those facts, stop and rebuild the evidence instead
+of treating the omission as a harmless fallback.
+
 ## Parent Stop Preflight
 
 Run this checkpoint before any implementation edit when a lane may need a
@@ -524,6 +541,12 @@ child-owned implementation lane through another surface.
    `thread/start` and `turn/start` events. Do not report the tools absent or
    block the lane only because `tool_search` missed them when those events
    exist.
+   If `tool_search` or the visible tool surface discovers a Codex app thread
+   tool such as `read_thread` or `set_thread_title`, but invocation fails with
+   `No handler registered for tool: ...`, record both surfaces as a
+   dogfooding/tool-exposure defect: the discovered or listed tool metadata and
+   the runtime missing-handler evidence. Do not treat handler-missing evidence
+   as an ordinary unavailable-tool fallback.
 3. Treat app-server-observed `thread/start` and `turn/start` evidence from a
    freshly created child lane as proof that a real Codex thread started. Record
    the observed event source, issue or lane, branch or worktree target when
