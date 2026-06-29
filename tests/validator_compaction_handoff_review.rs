@@ -3,7 +3,6 @@ use std::process::Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type Output = std::process::Output;
 type OutputResult = Result<Output, Box<dyn std::error::Error>>;
-
 const OPEN_PR_STATE: &str =
     r#"{"number":170,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN"}"#;
 const DUPLICATE_STATE: &str = "Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.";
@@ -100,6 +99,9 @@ fn validator_cli_rejects_negated_stop_condition_placeholders() -> TestResult {
         "Stop condition: missing.",
         "Stop condition: was not captured during compaction.",
         "Stop condition: current stop condition was not captured during compaction.",
+        "Stop condition: will be checked before editing.",
+        "Stop condition: to be captured after resume.",
+        "Stop condition: next action should stop after push/evidence.",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(
             "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.",
@@ -131,7 +133,6 @@ fn validator_cli_rejects_not_checked_git_preflight() -> TestResult {
     );
     Ok(())
 }
-
 #[test]
 fn validator_cli_rejects_heading_section_text_after_partial_git_preflight() -> TestResult {
     let output = validate_open_pr_handoff(
@@ -153,7 +154,6 @@ fn validator_cli_rejects_heading_section_text_after_partial_git_preflight() -> T
     );
     Ok(())
 }
-
 #[test]
 fn validator_cli_rejects_list_section_text_after_partial_git_preflight() -> TestResult {
     let output = validate_open_pr_handoff(

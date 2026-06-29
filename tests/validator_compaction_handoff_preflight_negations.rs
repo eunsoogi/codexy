@@ -82,6 +82,26 @@ fn validator_cli_rejects_git_preflight_block_with_generic_run_capture_negation()
 }
 
 #[test]
+fn validator_cli_rejects_local_commands_not_run_after_one_line_preflight() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
+         Commands not run: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, git log --graph.",
+    ))?;
+    assert!(
+        !output.status.success(),
+        "validator should reject handoff\nstdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("compacted continuation evidence missing git graph/log preflight"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_accepts_neutral_git_preflight_transcript_heading() -> TestResult {
     let output = validate_open_pr_handoff(&valid_handoff_with(
         "Git graph/log preflight:\n\

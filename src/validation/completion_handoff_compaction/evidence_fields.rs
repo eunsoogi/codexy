@@ -19,6 +19,8 @@ const NEGATED_DUPLICATE_STATE_PHRASES: &[&str] = &["not captured", "not checked"
 const PLANNED_DUPLICATE_STATE_PHRASES: &[&str] = &["should be checked", "should be re-checked", "to be checked", "to be re-checked", "will be checked", "will be re-checked", "needs to be checked", "needs to be re-checked"];
 #[rustfmt::skip]
 const NEGATED_OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["not captured", "not available", "not preserved", "was not preserved", "missing", "omitted", "without boundary", "without ownership"];
+#[rustfmt::skip]
+const PLANNED_STOP_CONDITION_PHRASES: &[&str] = &["should stop", "should be checked", "should be captured", "should be preserved", "to be checked", "to be captured", "to be preserved", "will be checked", "will be captured", "will be preserved"];
 
 pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
     text.lines().any(|line| {
@@ -59,7 +61,9 @@ pub(super) fn has_authoritative_stop_condition(text: &str) -> bool {
             .iter()
             .any(|label| {
                 field_value(line.trim(), label).is_some_and(|condition| {
-                    has_real_value(condition) && !has_negated_stop_condition_evidence(condition)
+                    has_real_value(condition)
+                        && !has_planned_stop_condition_evidence(condition)
+                        && !has_negated_stop_condition_evidence(condition)
                 })
             })
     })
@@ -161,6 +165,11 @@ fn has_negated_stop_condition_evidence(text: &str) -> bool {
             "evidence was missing",
         ],
     )
+}
+
+fn has_planned_stop_condition_evidence(text: &str) -> bool {
+    let text = text.to_ascii_lowercase();
+    has_any(&text, PLANNED_STOP_CONDITION_PHRASES)
 }
 
 fn has_real_value(value: &str) -> bool {

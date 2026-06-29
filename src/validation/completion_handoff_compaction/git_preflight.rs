@@ -98,6 +98,7 @@ fn starts_unbulleted_section_label(line: &str) -> bool {
         && !line.starts_with(['-', '*'])
         && !is_git_preflight_line(line)
         && !starts_with_preflight_command(line)
+        && !is_block_local_preflight_negation(label)
         && label
             .chars()
             .all(|character| character.is_ascii_alphabetic() || character.is_ascii_whitespace())
@@ -165,8 +166,9 @@ fn has_planned_execution_evidence(line: &str) -> bool {
 
 fn has_negated_evidence(text: &str) -> bool {
     text.lines().any(|line| {
-        has_negation_phrase(line)
-            && (refers_to_git_preflight(line) || is_block_local_preflight_negation(line))
+        let line = line.to_ascii_lowercase();
+        has_negation_phrase(&line)
+            && (refers_to_git_preflight(&line) || is_block_local_preflight_negation(&line))
     })
 }
 
@@ -192,7 +194,10 @@ fn has_negation_phrase(line: &str) -> bool {
 }
 
 fn is_block_local_preflight_negation(line: &str) -> bool {
-    let line = line.trim().trim_end_matches([':', '.', ';']);
+    let line = line
+        .trim()
+        .trim_end_matches([':', '.', ';'])
+        .to_ascii_lowercase();
     [
         "not actually run",
         "commands not run",
