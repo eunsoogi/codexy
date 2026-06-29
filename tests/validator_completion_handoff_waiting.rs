@@ -162,6 +162,7 @@ fn validator_cli_allows_returned_async_tool_failures() -> TestResult {
     for handoff in [
         "Blocked: async GitHub merge tool returned a permission error.\n",
         "Blocked: async GitHub tool completion returned a permission error.\n",
+        "Blocked: async GitHub tool completion returned. Permission error prevents merge.\n",
         "Blocked: asynchronous Codex tool returned an authentication failure.\n",
         "Blocked: tool result returned with a fatal API error.\n",
     ] {

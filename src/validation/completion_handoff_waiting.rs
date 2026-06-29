@@ -1,13 +1,17 @@
 const WAITING_STATE_ERROR: &str = "pending Codex review, child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
 const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
+const CODEX_REVIEW: &str = "codex review|codex connector review|chatgpt-codex-connector";
+const NO_ACTIONABLE_REVIEW_FEEDBACK: &str = "no actionable feedback|no feedback|no review feedback";
 
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
-    let false_blocked_wait = |text: &str| {
-        claims_blocked_state(text)
-            && mentions_non_blocking_wait(text)
-            && !has_true_impasse_rationale(text)
-            && !mentions_true_blocker(text)
+    let returned_async_failure = mentions_returned_async_failure(&text);
+    let false_blocked_wait = |fragment: &str| {
+        claims_blocked_state(fragment)
+            && mentions_non_blocking_wait(fragment)
+            && !has_true_impasse_rationale(fragment)
+            && !mentions_true_blocker(fragment)
+            && !(returned_async_failure && has_any(fragment, "returned"))
     };
     if text.split(['\n', '.', ';']).any(false_blocked_wait) || false_blocked_wait(&text) {
         return Some(WAITING_STATE_ERROR.into());
@@ -43,17 +47,12 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
 }
 
 fn mentions_codex_review(text: &str) -> bool {
-    has_any(
-        text,
-        "@codex review|codex connector review|codex review|chatgpt-codex-connector",
-    )
+    has_any(text, CODEX_REVIEW)
 }
 
 fn mentions_actionable_review_feedback(text: &str) -> bool {
-    !has_any(
-        text,
-        "no actionable feedback|no feedback|no review feedback",
-    ) && !mentions_pending_review_feedback_arrival(text)
+    !has_any(text, NO_ACTIONABLE_REVIEW_FEEDBACK)
+        && !mentions_pending_review_feedback_arrival(text)
         && (has_any(
             text,
             "feedback|requested changes|changes requested|suggestion|unresolved|actionable|resolution",
@@ -120,8 +119,14 @@ fn mentions_async_completion(text: &str) -> bool {
             text,
             "completion|pending|waiting|running|in progress|not returned|not yet returned|has not returned|hasn't returned|to return|until",
         )
-        && !(has_any(text, "returned")
-            && has_any(text, "error|failure|failed|permission|authentication|fatal"))
+        && !mentions_returned_async_failure(text)
+}
+
+fn mentions_returned_async_failure(text: &str) -> bool {
+    ((has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
+        || has_any(text, "tool result|background operation"))
+        && has_any(text, "returned")
+        && has_any(text, "error|failure|failed|permission|authentication|fatal")
 }
 
 fn mentions_return_wait(text: &str) -> bool {
