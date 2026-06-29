@@ -15,6 +15,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: @codex review is waiting for feedback.\n",
         "Blocked: @codex review is awaiting feedback.\n",
         "Blocked: awaiting Codex review feedback.\n",
+        "Blocked: @codex review feedback has not returned yet.\n",
+        "Blocked: Codex review feedback has not yet returned.\n",
         "Blocked: Codex review feedback is pending.\n",
         "Blocked: Codex review is pending feedback from the connector.\n",
         "Blocked: pending @codex review, security review passed.\n",
@@ -159,6 +161,7 @@ fn validator_cli_allows_failed_setup_blockers() -> TestResult {
 fn validator_cli_allows_returned_async_tool_failures() -> TestResult {
     for handoff in [
         "Blocked: async GitHub merge tool returned a permission error.\n",
+        "Blocked: async GitHub tool completion returned a permission error.\n",
         "Blocked: asynchronous Codex tool returned an authentication failure.\n",
         "Blocked: tool result returned with a fatal API error.\n",
     ] {

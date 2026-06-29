@@ -1,4 +1,5 @@
 const WAITING_STATE_ERROR: &str = "pending Codex review, child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
+const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
 
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
@@ -68,7 +69,7 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
         )
         && has_any(
             text,
-            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|waiting for feedback|awaiting codex review feedback|awaiting @codex review feedback|awaiting review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
+            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review feedback has not returned|@codex review feedback has not returned|review feedback has not returned|codex review feedback has not yet returned|@codex review feedback has not yet returned|review feedback has not yet returned|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|waiting for feedback|awaiting codex review feedback|awaiting @codex review feedback|awaiting review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
         )
 }
 
@@ -105,18 +106,11 @@ fn mentions_queued_setup(text: &str) -> bool {
     has_any(text, "queued worktree|queued thread")
         || (has_any(text, "worktree setup|thread setup")
             && (mentions_waiting_context(text) || has_any(text, "queued"))
-            && !mentions_setup_failure(text))
-}
-
-fn mentions_setup_failure(text: &str) -> bool {
-    has_any(
-        text,
-        "failed|failure|fatal|invalid reference|does not exist|missing",
-    )
+            && !has_any(text, SETUP_FAILURE))
 }
 
 fn mentions_setup_failure_blocker(text: &str) -> bool {
-    has_any(text, "worktree setup|thread setup") && mentions_setup_failure(text)
+    has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE)
 }
 
 fn mentions_async_completion(text: &str) -> bool {
@@ -126,6 +120,8 @@ fn mentions_async_completion(text: &str) -> bool {
             text,
             "completion|pending|waiting|running|in progress|not returned|not yet returned|has not returned|hasn't returned|to return|until",
         )
+        && !(has_any(text, "returned")
+            && has_any(text, "error|failure|failed|permission|authentication|fatal"))
 }
 
 fn mentions_return_wait(text: &str) -> bool {
@@ -216,12 +212,11 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
     if !matches!(value.chars().next(), Some(':' | '-' | '?')) {
         return false;
     }
-    let value = &value[1..];
-    ["none", "no", "false", "not applicable", "n/a", "na"]
-        .iter()
+    let value = value[1..].trim_start();
+    "none|no|false|not applicable|n/a|na"
+        .split('|')
         .any(|phrase| {
             value
-                .trim_start()
                 .strip_prefix(phrase)
                 .is_some_and(|rest| is_boundary(rest.chars().next()))
         })
