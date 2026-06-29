@@ -144,7 +144,7 @@ fn mentions_return_wait(text: &str) -> bool {
 fn mentions_waiting_context(text: &str) -> bool {
     has_any(
         text,
-        "pending|waiting|awaiting|in progress|processing|eyes reaction|working|no actionable feedback yet|not returned|not yet returned|has not returned|hasn't returned|blocked on codex review|blocked on @codex review|blocked on codex connector review|blocked on current-head codex review|blocked on current-head @codex review|blocked on current-head codex connector review|blocked on current head codex review|blocked on current head @codex review|blocked on current head codex connector review",
+        "pending|waiting|awaiting|in progress|processing|eyes reaction|working|no actionable feedback yet|not returned|not yet returned|has not returned|hasn't returned|current-head codex review request|current-head @codex review request|current-head codex connector review request|current head codex review request|current head @codex review request|current head codex connector review request|blocked on codex review|blocked on @codex review|blocked on codex connector review|blocked on current-head codex review|blocked on current-head @codex review|blocked on current-head codex connector review|blocked on current head codex review|blocked on current head @codex review|blocked on current head codex connector review",
     )
 }
 fn mentions_missing_child_evidence(text: &str) -> bool {
