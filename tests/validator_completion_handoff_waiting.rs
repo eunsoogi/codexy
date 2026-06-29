@@ -19,13 +19,11 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: Codex review feedback pending.\n",
         "Blocked: @codex review feedback pending.\n",
         "Blocked: @codex review feedback has not returned yet.\n",
-        "Blocked: Codex connector review feedback has not returned.\n",
         "Blocked: Codex connector review feedback is pending.\n",
         "Blocked: Codex review is pending feedback from the connector.\n",
         "Blocked: pending @codex review, security review passed.\n",
         "Blocked: waiting on Codex review feedback from the connector.\n",
         "Blocked on @codex review.\n",
-        "Blocked on Codex review.\n",
         "Blocked: @codex review.\n",
         "Blocked.\nWaiting: pending @codex review.\nRequired checks are failing: no.\n",
         "Goal blocked because child-thread work is still pending.\n",
@@ -37,8 +35,10 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: child lane is still pending.\n",
         "Blocked: child-owned review-response work is still pending.\n",
         "Blocked: missing child thread response is pending.\n",
-        "Goal blocked until Codex connector review returns.\n",
-        "Goal blocked until child thread returns.\n",
+        "Blocked: @codex review has not returned yet after previous permission error was fixed.\n",
+        "Blocked: @codex review is pending after previous quota failure was fixed.\n",
+        "Blocked: @codex review is pending after previous Codex review quota failure was fixed.\n",
+        "Blocked: @codex review is pending after previous code-review usage limits were reached and fixed.\n",
         "Blocker: queued worktree setup has not completed yet.\n",
         "Blocked: worktree setup is queued.\n",
         "Blocked: thread setup is queued.\n",
@@ -128,10 +128,10 @@ fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
         "Blocked: Codex review requested changes remain unresolved.\n",
         "Blocked: Codex review feedback is pending resolution.\n",
         "Blocked: Codex review feedback from the connector is pending resolution.\n",
-        "Blocked: current-head Codex review feedback is pending resolution.\n",
-        "Blocked: Codex review feedback pending resolution.\n",
+        "Blocked: Codex review failed after previous quota failure was fixed.\n",
+        "Blocked: Codex review failed because previous quota failure was fixed but code-review usage limits were reached.\n",
         "Blocked: current-head @codex review request has pending actionable feedback.\n",
-        "Blocked until Codex review feedback is pending resolution and the connector returns.\n",
+        "Blocked: Codex review failed because code-review usage limits were reached.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -245,6 +245,6 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult
 fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     validate_handoff_with_pr_state(
         handoff,
-        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )
 }

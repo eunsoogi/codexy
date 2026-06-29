@@ -12,6 +12,8 @@ const SECURITY_REVIEW_NON_BLOCKER: &str = "security review passed|security revie
 const CHILD_WORK: &str = "child-owned|review-response work|child-lane|child lane|child-thread work|child thread work|child-thread|child thread|child work";
 const ASYNC_FAILURE: &str = "error|failure|failed|permission|authentication|fatal";
 const ASYNC_WAIT: &str = "not returned|not yet returned|has not returned|hasn't returned|to return|until|previous permission error was fixed|previous error was fixed|previous failure was fixed|previous permission error was resolved|previous error was resolved|previous failure was resolved";
+const CODEX_REVIEW_FAILURE: &str = "codex review failed|@codex review failed|codex connector review failed|chatgpt-codex-connector failed|codex review failure|@codex review failure|codex connector review failure|chatgpt-codex-connector failure|codex review usage limit|@codex review usage limit|codex connector review usage limit|codex review quota|@codex review quota|codex connector review quota|code-review usage limits were reached";
+const CODEX_REVIEW_WAIT: &str = "pending codex review|pending @codex review|codex review is pending|@codex review is pending|codex connector review is pending|codex review has not returned|@codex review has not returned|codex review has not yet returned|@codex review has not yet returned|codex review hasn't returned|@codex review hasn't returned";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     let false_blocked_wait = |fragment: &str, context: &str| {
@@ -35,6 +37,7 @@ pub(super) fn check(handoff: &str) -> Option<String> {
 }
 fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
+        || (has_any(text, CODEX_REVIEW_FAILURE) && !has_any(text, CODEX_REVIEW_WAIT))
         || mentions_missing_child_evidence(text)
         || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
@@ -62,27 +65,24 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
     mentions_queued_setup(text)
         || mentions_async_completion(text)
         || mentions_return_wait(text)
-        || (mentions_codex_review(text)
+        || (has_any(text, CODEX_REVIEW)
             && mentions_waiting_context(text)
             && !mentions_actionable_review_feedback(text))
         || (mentions_child_work(text)
             && mentions_waiting_context(text)
             && !mentions_missing_child_evidence(text))
 }
-fn mentions_codex_review(text: &str) -> bool {
-    has_any(text, CODEX_REVIEW)
-}
 fn mentions_actionable_review_feedback(text: &str) -> bool {
     !has_any(text, NO_ACTIONABLE_REVIEW_FEEDBACK)
         && !mentions_pending_review_feedback_arrival(text)
-        && (mentions_codex_review(text)
+        && (has_any(text, CODEX_REVIEW)
             || has_any(text, "review|requested changes|changes requested"))
         && (has_any(text, ACTIONABLE_REVIEW_FEEDBACK)
             || (has_any(text, "review comment|review comments")
-                && !(mentions_codex_review(text) && has_any(text, "eyes reaction|request"))))
+                && !(has_any(text, CODEX_REVIEW) && has_any(text, "eyes reaction|request"))))
 }
 fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
-    mentions_codex_review(text)
+    has_any(text, CODEX_REVIEW)
         && !has_any(
             text,
             "resolution|requested changes|changes requested|suggestion|unresolved|actionable",
@@ -131,7 +131,7 @@ fn mentions_async_tool_result(text: &str) -> bool {
         || has_any(text, "tool result|background operation")
 }
 fn mentions_return_wait(text: &str) -> bool {
-    (mentions_codex_review(text) || mentions_child_work(text))
+    (has_any(text, CODEX_REVIEW) || mentions_child_work(text))
         && has_any(text, "until|waiting for")
         && has_any(
             text,
