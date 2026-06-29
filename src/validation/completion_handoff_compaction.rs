@@ -24,7 +24,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !evidence_fields::has_authoritative_stop_condition(&text) {
         errors.push("compacted continuation evidence missing authoritative stop condition: include the current stop condition before continuing".into());
     }
-    if !git_preflight::has_git_graph_log_preflight(&text) {
+    if !git_preflight::has_git_graph_log_preflight(handoff) {
         errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph before editing".into());
     }
     errors
@@ -35,8 +35,10 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
     lines.iter().enumerate().any(|(index, line)| {
         has_compaction_context(line)
             && (has_continuation_context(line)
+                || has_pending_edit_plan(line)
                 || (is_compaction_context_heading(line)
-                    && following_lines(&lines, index).any(has_continuation_context)))
+                    && following_lines(&lines, index)
+                        .any(|line| has_continuation_context(line) || has_pending_edit_plan(line))))
     })
 }
 
@@ -75,6 +77,20 @@ fn has_continuation_context(line: &str) -> bool {
             "continuing",
             "next action",
             "before editing",
+        ],
+    )
+}
+
+fn has_pending_edit_plan(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "will edit",
+            "will start editing",
+            "going to edit",
+            "start editing",
+            "edit the pr now",
+            "edit the pr branch",
         ],
     )
 }

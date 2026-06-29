@@ -36,7 +36,7 @@ fn git_preflight_evidence_block(lines: &[&str], start: usize) -> String {
         if is_unchecked_checklist_item(line) {
             continue;
         }
-        if line.contains("git log --graph") {
+        if line.to_ascii_lowercase().contains("git log --graph") {
             saw_git_log_command = true;
         }
         block.push_str(line);
@@ -63,7 +63,7 @@ fn starts_handoff_section(line: &str) -> bool {
         "next action",
     ]
     .iter()
-    .any(|section| line.starts_with(section));
+    .any(|section| line.to_ascii_lowercase().starts_with(section));
 
     starts_known_section || starts_unbulleted_section_label(line)
 }
@@ -114,7 +114,7 @@ fn is_unchecked_checklist_item(line: &str) -> bool {
 fn starts_with_preflight_command(line: &str) -> bool {
     REQUIRED_PREFLIGHT_COMMANDS
         .iter()
-        .any(|phrase| line.starts_with(phrase))
+        .any(|phrase| line.to_ascii_lowercase().starts_with(phrase))
 }
 
 fn metadata_line(line: &str) -> &str {
@@ -129,12 +129,14 @@ fn metadata_line(line: &str) -> &str {
 }
 
 fn has_all_commands(text: &str) -> bool {
+    let text = text.to_ascii_lowercase();
     REQUIRED_PREFLIGHT_COMMANDS
         .iter()
         .all(|phrase| text.contains(phrase))
 }
 
 fn is_git_preflight_line(line: &str) -> bool {
+    let line = line.to_ascii_lowercase();
     line.contains("git graph/log preflight") || line.contains("git preflight")
 }
 
@@ -142,13 +144,15 @@ fn has_executed_evidence(text: &str) -> bool {
     if text.lines().any(has_planned_execution_evidence) {
         return false;
     }
-    has_any(text, &["captured", "were run", "checked", "recorded"])
+    let text = text.to_ascii_lowercase();
+    has_any(&text, &["captured", "were run", "checked", "recorded"])
         || text.lines().any(|line| line.starts_with("$ "))
 }
 
 fn has_planned_execution_evidence(line: &str) -> bool {
+    let line = line.to_ascii_lowercase();
     has_any(
-        line,
+        &line,
         &[
             "to be checked",
             "to be captured",

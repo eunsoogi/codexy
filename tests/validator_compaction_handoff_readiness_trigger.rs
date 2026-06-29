@@ -51,6 +51,23 @@ fn validator_cli_rejects_compaction_summary_next_action_without_evidence() -> Te
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_after_compaction_edit_plan_without_evidence() -> TestResult {
+    let output = validate_open_pr_handoff("After compaction, I will edit the PR now.")?;
+    assert!(
+        !output.status.success(),
+        "validator should reject handoff\nstdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("compacted continuation evidence missing Codexy orchestration contract"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

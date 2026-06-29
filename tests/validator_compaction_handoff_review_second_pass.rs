@@ -40,7 +40,7 @@ fn validator_cli_accepts_git_status_branch_output_in_preflight_block() -> TestRe
          $ pwd\n\
          /repo/codexy\n\
          $ git status --short --branch\n\
-         ## codexy/171-preserve-codexy-compaction...origin/codexy/171-preserve-codexy-compaction\n\
+         ## work\n\
           M src/foo:bar.rs\n\
          $ git rev-parse HEAD\n\
          141283b684a5bf7db85ecd49d197ce81ffe28e95\n\
@@ -116,6 +116,33 @@ fn validator_cli_rejects_one_word_markdown_heading_after_git_status_command() ->
          /repo/codexy\n\
          $ git status --short --branch\n\
          ## Commands\n\
+         $ git rev-parse HEAD\n\
+         141283b684a5bf7db85ecd49d197ce81ffe28e95\n\
+         $ git rev-parse origin/main\n\
+         06a57800817c259a22d6a507650d22cf04bdded0\n\
+         $ git log --graph --oneline --decorate --all --max-count=5\n\
+         * 141283b fix(validation): bound git preflight evidence blocks\n",
+    )?;
+    assert_invalid(
+        &output,
+        "compacted continuation evidence missing git graph/log preflight",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_arbitrary_markdown_heading_after_git_status_command() -> TestResult {
+    let output = validate_open_pr_handoff(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Git graph/log preflight captured before editing:\n\
+         $ pwd\n\
+         /repo/codexy\n\
+         $ git status --short --branch\n\
+         ## Artifacts\n\
          $ git rev-parse HEAD\n\
          141283b684a5bf7db85ecd49d197ce81ffe28e95\n\
          $ git rev-parse origin/main\n\

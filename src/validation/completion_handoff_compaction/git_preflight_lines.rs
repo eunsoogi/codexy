@@ -27,9 +27,10 @@ fn is_git_status_short_branch_line(line: &str) -> bool {
     if status.is_empty() {
         return false;
     }
-    if status == "head (no branch)"
-        || status.starts_with("no commits yet on ")
-        || status.starts_with("initial commit on ")
+    let status_lower = status.to_ascii_lowercase();
+    if status_lower == "head (no branch)"
+        || status_lower.starts_with("no commits yet on ")
+        || status_lower.starts_with("initial commit on ")
     {
         return true;
     }
@@ -42,14 +43,25 @@ fn is_git_status_short_branch_line(line: &str) -> bool {
         .next()
         .unwrap_or(status)
         .trim();
-    if is_known_markdown_section_heading(branch) {
+    if is_likely_markdown_section_heading(status) || is_known_markdown_section_heading(status) {
         return false;
     }
     !branch.is_empty() && branch.chars().all(|character| !character.is_whitespace())
 }
 
+fn is_likely_markdown_section_heading(text: &str) -> bool {
+    let Some(first) = text.chars().next() else {
+        return false;
+    };
+    (first.is_ascii_uppercase() || text.chars().any(char::is_whitespace))
+        && text
+            .chars()
+            .all(|character| character.is_ascii_alphabetic() || character.is_ascii_whitespace())
+}
+
 fn is_known_markdown_section_heading(text: &str) -> bool {
-    "acceptance blockers checks commands evidence findings handoff notes results review summary tests verification"
+    let text = text.to_ascii_lowercase();
+    "acceptance artifacts blockers checks commands evidence findings handoff notes results review summary tests verification"
         .split_whitespace()
         .any(|heading| heading == text)
 }
