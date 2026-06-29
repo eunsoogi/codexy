@@ -1,5 +1,7 @@
 use serde_json::Value;
 
+use super::codex_review_handoff::has_negative_label_value;
+
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
     if !claims_label_guarded_handoff(handoff) {
         return Vec::new();
@@ -156,7 +158,7 @@ fn claims_pr_readiness(handoff: &str) -> bool {
         "pull request is ready",
     ]
     .into_iter()
-    .any(|phrase| has_unnegated_phrase(&text, phrase, 24))
+    .any(|phrase| has_unnegated_readiness_phrase(&text, phrase, 24))
 }
 
 fn claims_completion(handoff: &str) -> bool {
@@ -192,6 +194,27 @@ fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> boo
             && !has_nearby_negation(
                 &text[char_window_start(text, absolute_index, negation_window)..absolute_index],
             )
+        {
+            return true;
+        }
+        offset = after_index;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn has_unnegated_readiness_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(phrase) {
+        let absolute_index = offset + index;
+        let after_index = absolute_index + phrase.len();
+        if is_boundary(text[..absolute_index].chars().next_back())
+            && is_boundary(text[after_index..].chars().next())
+            && !has_nearby_negation(
+                &text[char_window_start(text, absolute_index, negation_window)..absolute_index],
+            )
+            && !has_negative_label_value(&text[after_index..])
         {
             return true;
         }

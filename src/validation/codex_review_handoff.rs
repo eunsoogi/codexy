@@ -129,7 +129,7 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     }
     false
 }
-fn has_negative_label_value(suffix: &str) -> bool {
+pub(super) fn has_negative_label_value(suffix: &str) -> bool {
     let Some(value) = label_value(suffix) else {
         return false;
     };
