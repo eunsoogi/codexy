@@ -186,7 +186,7 @@ fn validator_cli_accepts_negated_completion_claim_after_pr() -> TestResult {
     for handoff in [
         "This lane is not complete after PR #128.\n",
         "This lane is incomplete after PR #128.\n",
-        "Work isn't complete.\n",
+        "We aren't complete.\n",
         "This lane is not yet complete until merge.\n",
         "Verification completed successfully; this lane is not complete until merge.\n",
         "Verification completed. This lane is not complete until merge.\n",

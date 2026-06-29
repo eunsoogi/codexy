@@ -103,10 +103,11 @@ fn validator_rejects_partial_review_thread_evidence() -> TestResult {
     )
 }
 #[test]
-fn validator_allows_clean_codex_review_with_unrelated_fix_without_threads() -> TestResult {
-    assert_handoff_succeeds(
+fn validator_rejects_clean_codex_review_without_head_ref_oid() -> TestResult {
+    assert_handoff_fails(
         "Codex review passed. Fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
+        "headRefOid",
     )
 }
 #[test]
@@ -140,7 +141,8 @@ fn validator_limits_negation_to_matched_review_action() -> TestResult {
 fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestResult {
     assert_handoff_fails(
         "Review response: fixed the Codex review feedback on the current head.\n",
-        outdated_unresolved_review_thread_pr_state(),
+        unresolved_review_thread_with_id_pr_state("PRRT_kwDOOutdated")
+            .replace("\"isOutdated\": false", "\"isOutdated\": true"),
         "PRRT_kwDOOutdated",
     )
 }
@@ -195,10 +197,6 @@ fn assert_success(output: &std::process::Output) {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-}
-fn outdated_unresolved_review_thread_pr_state() -> String {
-    unresolved_review_thread_with_id_pr_state("PRRT_kwDOOutdated")
-        .replace("\"isOutdated\": false", "\"isOutdated\": true")
 }
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))

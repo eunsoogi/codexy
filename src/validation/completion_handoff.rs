@@ -15,6 +15,10 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
+    let codex_review_errors = super::codex_review_handoff::check(handoff, &pr_state);
+    if !codex_review_errors.is_empty() {
+        return codex_review_errors;
+    }
     if !is_open_pr(&pr_state) || !claims_completion(handoff) || states_explicit_deferral(handoff) {
         return Vec::new();
     }
@@ -28,8 +32,9 @@ fn is_open_pr(pr_state: &Value) -> bool {
 }
 fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
-    if has_unnegated_phrase(&text, "not complete until merge", 16) {
+    if has_not_complete_until_merge(&text) {
         text = text.replace("verification completed.", "verification evidence.");
+        text = text.replace("verification completed:", "verification evidence:");
         for phrase in
             "successfully completed|completed successfully|completed|finished|finalized".split('|')
         {
@@ -44,6 +49,12 @@ fn claims_completion(handoff: &str) -> bool {
         || has_unnegated_word(&text, "completes", 16)
         || has_unnegated_word(&text, "finish", 16)
         || has_unnegated_word(&text, "finalize", 16)
+}
+
+fn has_not_complete_until_merge(text: &str) -> bool {
+    "not complete until merge|not currently complete until merge|isn't complete until merge|isn't currently complete until merge|aren't complete until merge|aren't currently complete until merge"
+        .split('|')
+        .any(|phrase| has_unnegated_phrase(text, phrase, 16))
 }
 fn states_explicit_deferral(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
@@ -206,27 +217,9 @@ fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
 fn has_nearby_negation(prefix: &str) -> bool {
-    [
-        "no",
-        "no user or",
-        "no explicit",
-        "not",
-        "not yet",
-        "not explicit",
-        "isn't",
-        "is not",
-        "did not",
-        "did not explicitly",
-        "was not",
-        "was not explicitly",
-        "were not",
-        "were not explicitly",
-        "without",
-        "without explicit",
-        "neither",
-    ]
-    .iter()
-    .any(|phrase| prefix.trim_end().ends_with(phrase))
+    "no|no user or|no explicit|not|not yet|not currently|not explicit|isn't|isn't yet|isn't currently|aren't|aren't yet|aren't currently|is not|did not|did not explicitly|was not|was not explicitly|were not|were not explicitly|without|without explicit|neither"
+        .split('|')
+        .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {
     text[..end]

@@ -5,12 +5,22 @@ mod child_lane_ownership_phrases;
 mod child_lane_ownership_recovery;
 mod child_lane_ownership_setup;
 mod child_lane_ownership_setup_markers;
+mod child_lane_ownership_subagent_format;
+mod child_lane_ownership_subagents;
+mod child_lane_thread_tool_handler_capture;
+mod child_lane_thread_tool_handler_defect_capture;
+mod child_lane_thread_tool_handler_scope;
+mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
+mod codex_review_handoff;
+mod codex_review_handoff_actionable;
+mod codex_review_handoff_events;
 mod completion_handoff;
 mod completion_handoff_compaction;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;
+mod github_labels;
 mod hooks;
 mod lsp;
 mod manifest;
@@ -21,6 +31,9 @@ mod prompt_yaml;
 mod release_publish_contract;
 mod review_thread_evidence;
 mod review_thread_resolution;
+mod review_thread_waiting;
+mod review_thread_waiting_phrases;
+mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
 mod runtime;
@@ -34,8 +47,10 @@ use anyhow::{Result, bail};
 pub enum Mode {
     All,
     Lsp,
+    RustLspReadiness,
     MergeMessage {
-        expected_issue: u64,
+        expected_issue: Option<u64>,
+        expected_pr: Option<u64>,
         message: String,
     },
     CompletionHandoff {
@@ -72,12 +87,16 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all
         }
         Mode::Lsp => lsp::check(plugin_root),
+        Mode::RustLspReadiness => lsp::check_rust_readiness(plugin_root),
         Mode::MergeMessage {
             expected_issue,
+            expected_pr,
             message,
-        } => merge_message::check(expected_issue, &message),
+        } => merge_message::check(expected_issue, expected_pr, &message),
         Mode::CompletionHandoff { handoff, pr_state } => {
-            completion_handoff::check(&handoff, &pr_state)
+            let mut errors = completion_handoff::check(&handoff, &pr_state);
+            errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
+            errors
         }
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
