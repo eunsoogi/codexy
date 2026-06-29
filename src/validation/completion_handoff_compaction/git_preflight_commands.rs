@@ -36,7 +36,7 @@ pub(super) fn has_executed_evidence(text: &str) -> bool {
     if has_negated_execution_evidence(&text) {
         return false;
     }
-    has_any(&text, &["captured", "were run", "checked", "recorded"])
+    has_any_token(&text, &["captured", "checked", "recorded"]) || text.contains("were run")
 }
 
 fn has_executed_command(lines: &[&str], phrase: &str) -> bool {
@@ -156,4 +156,8 @@ fn has_ordered_pair(text: &str, before_phrases: &[&str], after_phrases: &[&str])
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {
     phrases.iter().any(|phrase| text.contains(phrase))
+}
+
+fn has_any_token(text: &str, tokens: &[&str]) -> bool {
+    tokens.iter().any(|token| contains_token(text, token))
 }

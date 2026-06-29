@@ -172,6 +172,7 @@ fn validator_cli_rejects_negated_prose_preflight_capture_claims() -> TestResult 
         "Git graph/log preflight: no git preflight evidence checked; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
         "Git graph/log preflight: no git preflight commands run; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
         "Git graph/log preflight: no git preflight evidence recorded; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
+        "Git graph/log preflight: unchecked; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
         "Git graph/log preflight: no git preflight commands executed; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing; git status recorded no changes.",
         "Git graph/log preflight: no git preflight commands performed; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing; git status recorded no changes.",
     ] {
