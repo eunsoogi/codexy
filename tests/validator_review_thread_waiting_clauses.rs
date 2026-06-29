@@ -35,6 +35,26 @@ fn validator_allows_url_waiting_thread_after_and_clause() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_rejects_waiting_thread_after_grouped_fixed_url_claim() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed https://github.com/eunsoogi/codexy/pull/174#discussion_r1 and https://github.com/eunsoogi/codexy/pull/174#discussion_r2. https://github.com/eunsoogi/codexy/pull/174#discussion_r2 remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject a waiting claim for a URL thread already grouped under a fixed action\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
