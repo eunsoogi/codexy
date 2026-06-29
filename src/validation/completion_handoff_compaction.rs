@@ -115,7 +115,9 @@ fn has_negated_review_request_context(line: &str) -> bool {
         line,
         &[
             "not ready for review",
+            "no @codex review",
             "no review request",
+            "without @codex review",
             "without review request",
         ],
     )

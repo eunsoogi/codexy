@@ -30,6 +30,7 @@ fn validator_cli_allows_negated_compaction_continuation_deferral() -> TestResult
         "After compaction I will not continue editing; wait for review.\n",
         "Compaction summary: Not ready for review; do not continue.\n",
         "Compaction summary: No review request will be made; do not continue.\n",
+        "Compaction summary: No @codex review request was sent; do not continue.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
