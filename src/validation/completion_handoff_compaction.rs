@@ -57,6 +57,7 @@ fn has_compaction_context(line: &str) -> bool {
         &[
             "compacted continuation",
             "after compaction",
+            "after-compaction",
             "compaction continuation",
             "compaction handoff",
             "compaction resume",
@@ -165,6 +166,8 @@ fn is_compaction_context_heading(line: &str) -> bool {
     let line = handoff_line_metadata(line);
     [
         "compacted continuation",
+        "after compaction",
+        "after-compaction",
         "compaction continuation",
         "compaction handoff",
         "compaction resume",

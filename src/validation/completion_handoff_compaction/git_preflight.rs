@@ -70,6 +70,12 @@ fn starts_unrelated_list_section(line: &str) -> bool {
     }
 
     let line = metadata_line(line);
+    let lower_line = line.to_ascii_lowercase();
+    if has_negation_phrase(&lower_line)
+        && (refers_to_git_preflight(&lower_line) || is_block_local_preflight_negation(&lower_line))
+    {
+        return false;
+    }
     if is_git_preflight_line(line) || starts_with_preflight_command(line) {
         return false;
     }
@@ -167,8 +173,14 @@ fn is_block_local_preflight_negation(line: &str) -> bool {
         "not actually run",
         "commands not run",
         "commands not captured",
+        "commands were not run",
+        "commands were not captured",
+        "commands were not executed",
+        "commands were not performed",
         "not captured",
         "not checked",
+        "not executed",
+        "not performed",
         "without running",
     ]
     .iter()
