@@ -41,11 +41,13 @@ fn mentions_current_true_blocker_context(text: &str) -> bool {
         .any(|part| mentions_true_blocker(part) && !mentions_resolved_blocker(part))
 }
 fn mentions_resolved_blocker(text: &str) -> bool {
-    let failed_checks = "required checks failed|required status checks failed|status checks failed";
     has_any(
         text,
         "blocker resolved|previous blocker resolved|resolved blocker",
-    ) || (has_any(text, failed_checks) && has_any(text, "fixed|resolved|cleared"))
+    ) || has_any(
+        text,
+        "required checks failed and were fixed|required checks failed and were resolved|required checks failed and were cleared|required status checks failed and were fixed|required status checks failed and were resolved|required status checks failed and were cleared|status checks failed and were fixed|status checks failed and were resolved|status checks failed and were cleared|required checks were fixed|required checks were resolved|required checks were cleared|required status checks were fixed|required status checks were resolved|required status checks were cleared|status checks were fixed|status checks were resolved|status checks were cleared",
+    )
 }
 fn claims_blocked_state(text: &str) -> bool {
     has_unnegated_word(text, "blocked", 16)
@@ -104,7 +106,6 @@ fn mentions_async_completion(text: &str) -> bool {
         )
         && !mentions_returned_async_failure(text)
 }
-
 fn mentions_returned_async_failure(text: &str) -> bool {
     mentions_async_tool_result(text)
         && has_any(text, "returned")
@@ -120,7 +121,6 @@ fn mentions_async_tool_result(text: &str) -> bool {
     (has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
         || has_any(text, "tool result|background operation")
 }
-
 fn mentions_return_wait(text: &str) -> bool {
     (mentions_codex_review(text) || mentions_child_work(text))
         && has_any(text, "until|waiting for")
