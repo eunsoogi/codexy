@@ -1,5 +1,4 @@
 use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
@@ -11,9 +10,11 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: @codex review request has no actionable feedback yet.\n",
         "Blocked: pending Codex review feedback.\n",
         "Blocked: pending @codex review feedback.\n",
+        "Blocked: pending @codex review after previous blocker resolved.\n",
         "Blocked: pending @codex review, awaiting feedback.\n",
         "Blocked: @codex review is waiting for feedback.\n",
         "Blocked: @codex review is awaiting feedback.\n",
+        "Blocked: waiting for feedback from Codex review.\n",
         "Blocked: waiting on Codex review feedback.\n",
         "Blocked: Codex review feedback pending.\n",
         "Blocked: @codex review feedback pending.\n",
@@ -210,7 +211,6 @@ fn validator_cli_allows_returned_async_tool_failures() -> TestResult {
     }
     Ok(())
 }
-
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
