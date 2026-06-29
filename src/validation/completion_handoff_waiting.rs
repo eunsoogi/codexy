@@ -2,16 +2,22 @@ const WAITING_STATE_ERROR: &str = "pending Codex review, child work, queued work
 const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
 const CODEX_REVIEW: &str = "codex review|codex connector review|chatgpt-codex-connector";
 const NO_ACTIONABLE_REVIEW_FEEDBACK: &str = "no actionable feedback|no feedback|no review feedback";
+const ACTIONABLE_REVIEW_FEEDBACK: &str =
+    "feedback|requested changes|changes requested|suggestion|unresolved|actionable|resolution";
+const PENDING_REVIEW_FEEDBACK: &str = "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review feedback has not returned|@codex review feedback has not returned|review feedback has not returned|codex review feedback has not yet returned|@codex review feedback has not yet returned|review feedback has not yet returned|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|waiting for feedback|awaiting codex review feedback|awaiting @codex review feedback|awaiting review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive";
+const EXTERNAL_CHECK_FAILURE: &str = "required checks are failing|required checks failed|required status checks are failing|status checks are failing|status checks failed";
+const SECURITY_REVIEW_BLOCKER: &str = "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure";
+const SECURITY_REVIEW_NON_BLOCKER: &str = "security review passed|security review complete|security review completed|security review not required|no security review";
+const CHILD_WORK: &str = "child-lane|child lane|child-thread work|child thread work|child-thread|child thread|child work";
 
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
-    let returned_async_failure = mentions_returned_async_failure(&text);
     let false_blocked_wait = |fragment: &str| {
         claims_blocked_state(fragment)
             && mentions_non_blocking_wait(fragment)
             && !has_true_impasse_rationale(fragment)
             && !mentions_true_blocker(fragment)
-            && !(returned_async_failure && has_any(fragment, "returned"))
+            && !mentions_returned_async_failure_context(fragment, &text)
     };
     if text.split(['\n', '.', ';']).any(false_blocked_wait) || false_blocked_wait(&text) {
         return Some(WAITING_STATE_ERROR.into());
@@ -22,7 +28,7 @@ pub(super) fn check(handoff: &str) -> Option<String> {
 fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
         || mentions_missing_child_evidence(text)
-        || mentions_setup_failure_blocker(text)
+        || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
 }
 
@@ -53,11 +59,11 @@ fn mentions_codex_review(text: &str) -> bool {
 fn mentions_actionable_review_feedback(text: &str) -> bool {
     !has_any(text, NO_ACTIONABLE_REVIEW_FEEDBACK)
         && !mentions_pending_review_feedback_arrival(text)
-        && (has_any(
-            text,
-            "feedback|requested changes|changes requested|suggestion|unresolved|actionable|resolution",
-        ) || (has_any(text, "review comment|review comments")
-            && !mentions_pending_request_context(text)))
+        && (mentions_codex_review(text)
+            || has_any(text, "review|requested changes|changes requested"))
+        && (has_any(text, ACTIONABLE_REVIEW_FEEDBACK)
+            || (has_any(text, "review comment|review comments")
+                && !(mentions_codex_review(text) && has_any(text, "eyes reaction|request"))))
 }
 
 fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
@@ -66,39 +72,16 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
             text,
             "resolution|requested changes|changes requested|suggestion|unresolved|actionable",
         )
-        && has_any(
-            text,
-            "pending codex review feedback|pending @codex review feedback|pending review feedback|codex review feedback is pending|@codex review feedback is pending|review feedback is pending|codex review feedback has not returned|@codex review feedback has not returned|review feedback has not returned|codex review feedback has not yet returned|@codex review feedback has not yet returned|review feedback has not yet returned|codex review is pending feedback from the connector|@codex review is pending feedback from the connector|waiting for codex review feedback|waiting for @codex review feedback|waiting for review feedback|waiting for feedback|awaiting codex review feedback|awaiting @codex review feedback|awaiting review feedback|awaiting feedback|codex review feedback from the connector|review feedback from the connector|feedback to arrive",
-        )
+        && has_any(text, PENDING_REVIEW_FEEDBACK)
 }
 
 fn mentions_external_gate_blocker(text: &str) -> bool {
-    mentions_security_review_blocker(text)
-        || has_any(
-            text,
-            "required checks are failing|required checks failed|required status checks are failing|status checks are failing|status checks failed",
-        )
-}
-
-fn mentions_security_review_blocker(text: &str) -> bool {
-    has_any(
-        text,
-        "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure",
-    ) && !has_any(
-        text,
-        "security review passed|security review complete|security review completed|security review not required|no security review",
-    )
-}
-
-fn mentions_pending_request_context(text: &str) -> bool {
-    mentions_codex_review(text) && has_any(text, "eyes reaction|request")
+    (has_any(text, SECURITY_REVIEW_BLOCKER) && !has_any(text, SECURITY_REVIEW_NON_BLOCKER))
+        || has_any(text, EXTERNAL_CHECK_FAILURE)
 }
 
 fn mentions_child_work(text: &str) -> bool {
-    has_any(
-        text,
-        "child-thread work|child thread work|child-thread|child thread|child work",
-    )
+    has_any(text, CHILD_WORK)
 }
 
 fn mentions_queued_setup(text: &str) -> bool {
@@ -108,13 +91,8 @@ fn mentions_queued_setup(text: &str) -> bool {
             && !has_any(text, SETUP_FAILURE))
 }
 
-fn mentions_setup_failure_blocker(text: &str) -> bool {
-    has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE)
-}
-
 fn mentions_async_completion(text: &str) -> bool {
-    ((has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
-        || has_any(text, "tool result|background operation"))
+    mentions_async_tool_result(text)
         && has_any(
             text,
             "completion|pending|waiting|running|in progress|not returned|not yet returned|has not returned|hasn't returned|to return|until",
@@ -123,10 +101,21 @@ fn mentions_async_completion(text: &str) -> bool {
 }
 
 fn mentions_returned_async_failure(text: &str) -> bool {
-    ((has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
-        || has_any(text, "tool result|background operation"))
+    mentions_async_tool_result(text)
         && has_any(text, "returned")
         && has_any(text, "error|failure|failed|permission|authentication|fatal")
+}
+
+fn mentions_returned_async_failure_context(fragment: &str, text: &str) -> bool {
+    mentions_returned_async_failure(fragment)
+        || (mentions_async_tool_result(fragment)
+            && has_any(fragment, "returned")
+            && has_any(text, "error|failure|failed|permission|authentication|fatal"))
+}
+
+fn mentions_async_tool_result(text: &str) -> bool {
+    (has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
+        || has_any(text, "tool result|background operation")
 }
 
 fn mentions_return_wait(text: &str) -> bool {

@@ -29,6 +29,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: child thread is still working on the required change.\n",
         "Blocked: child thread verification is still pending.\n",
         "Blocked: child thread has not returned yet.\n",
+        "Blocked: child thread is still pending feedback.\n",
+        "Blocked: child lane is still pending.\n",
         "Blocked: missing child thread response is pending.\n",
         "Goal blocked until Codex connector review returns.\n",
         "Goal blocked until child thread returns.\n",
@@ -46,6 +48,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: waiting for the tool result to return.\n",
         "Blocked: background operation has not yet returned.\n",
         "Blocked: async operation result has not yet returned.\n",
+        "Previous blocker resolved: async GitHub tool returned a permission error and was fixed. Blocked: @codex review has not returned yet.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -161,6 +164,7 @@ fn validator_cli_allows_failed_setup_blockers() -> TestResult {
 fn validator_cli_allows_returned_async_tool_failures() -> TestResult {
     for handoff in [
         "Blocked: async GitHub merge tool returned a permission error.\n",
+        "Blocked: async GitHub merge tool returned. Permission error prevents merge.\n",
         "Blocked: async GitHub tool completion returned a permission error.\n",
         "Blocked: async GitHub tool completion returned. Permission error prevents merge.\n",
         "Blocked: asynchronous Codex tool returned an authentication failure.\n",
