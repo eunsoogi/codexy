@@ -77,6 +77,10 @@ fn validator_cli_allows_hyphenated_negated_ready_claim() -> TestResult {
     for handoff in [
         "PR is not-merge-ready because Codex review is pending.\n",
         "PR ready: not currently ready for handoff because Codex review is pending.\n",
+        "PR ready: isn't ready because Codex review is pending.\n",
+        "PR ready: aren't ready because Codex review is pending.\n",
+        "PR readiness: isn't applicable while Codex review is pending.\n",
+        "PR readiness: aren't applicable while Codex review is pending.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
         assert!(
