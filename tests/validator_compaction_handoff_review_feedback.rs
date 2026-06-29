@@ -158,8 +158,9 @@ fn validator_cli_rejects_unrelated_list_section_after_partial_git_preflight() ->
          Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
          - Git graph/log preflight captured before editing:\n\
            - pwd\n\
-         - Verification: later prose mentions git status --short --branch, git rev-parse HEAD,\n\
-           git rev-parse origin/main, and git log --graph, but not as preflight evidence.\n",
+         - Phase 2 verification\n\
+           Later prose mentions git status --short --branch, git rev-parse HEAD,\n\
+           git rev-parse origin/main, and git log --graph were checked later.\n",
     )?;
     assert_invalid(
         &output,

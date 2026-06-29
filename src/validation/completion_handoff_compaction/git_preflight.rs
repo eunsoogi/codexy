@@ -77,10 +77,7 @@ fn starts_unrelated_list_section(line: &str) -> bool {
 }
 
 fn is_plain_list_section_heading(line: &str) -> bool {
-    !line.is_empty()
-        && line
-            .chars()
-            .all(|character| character.is_ascii_alphabetic() || character.is_ascii_whitespace())
+    !line.is_empty() && line.chars().all(is_section_label_character)
 }
 
 fn starts_unbulleted_section_label(line: &str) -> bool {

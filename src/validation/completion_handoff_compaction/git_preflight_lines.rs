@@ -50,10 +50,7 @@ fn is_git_status_short_branch_line(line: &str) -> bool {
 }
 
 fn is_likely_markdown_section_heading(text: &str) -> bool {
-    let Some(first) = text.chars().next() else {
-        return false;
-    };
-    (first.is_ascii_uppercase() || text.chars().any(char::is_whitespace))
+    text.chars().any(char::is_whitespace)
         && text
             .chars()
             .all(|character| character.is_ascii_alphabetic() || character.is_ascii_whitespace())
