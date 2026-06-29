@@ -230,10 +230,8 @@ fn has_nearby_negation(prefix: &str) -> bool {
     let prefix = prefix.trim_end();
     negation_phrase_matches(prefix)
         || prefix.rsplit_once(' ').is_some_and(|(before, word)| {
-            matches!(
-                word,
-                "actually" | "currently" | "presently" | "still" | "yet"
-            ) && negation_phrase_matches(before)
+            let m = "active|actually|current|currently|presently|remaining|still|unresolved|yet";
+            m.split('|').any(|m| word == m) && negation_phrase_matches(before)
         })
 }
 fn negation_phrase_matches(prefix: &str) -> bool {
