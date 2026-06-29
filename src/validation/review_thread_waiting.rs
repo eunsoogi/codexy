@@ -222,11 +222,23 @@ fn action_claim_segments(segment: &str) -> impl Iterator<Item = &str> {
         .split(',')
         .flat_map(|clause| clause.split(" but "))
         .flat_map(|clause| clause.split(" and thread "))
+        .flat_map(split_and_url_reference)
         .flat_map(|clause| clause.split(" and it "))
         .flat_map(|clause| clause.split(": remains unresolved"))
         .flat_map(|clause| clause.split(" and remains unresolved"))
         .map(str::trim)
         .filter(|clause| !clause.is_empty())
+}
+
+fn split_and_url_reference(clause: &str) -> Vec<&str> {
+    [" and https://", " and http://"]
+        .iter()
+        .filter_map(|marker| clause.find(marker).map(|index| (index, marker.len())))
+        .min_by_key(|&(index, _)| index)
+        .map_or_else(
+            || vec![clause],
+            |(index, _)| vec![&clause[..index], &clause[index + 5..]],
+        )
 }
 
 fn is_reference_char(ch: char) -> bool {

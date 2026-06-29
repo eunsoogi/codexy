@@ -20,6 +20,21 @@ fn validator_allows_waiting_thread_after_unrelated_fixed_thread_clause() -> Test
     Ok(())
 }
 
+#[test]
+fn validator_allows_url_waiting_thread_after_and_clause() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed and https://github.com/eunsoogi/codexy/pull/174#discussion_r2 remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should split URL-referenced waiting threads after `and`\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
