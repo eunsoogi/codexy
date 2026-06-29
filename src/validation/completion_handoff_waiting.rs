@@ -135,7 +135,7 @@ fn mentions_return_wait(text: &str) -> bool {
 fn mentions_waiting_context(text: &str) -> bool {
     has_any(
         text,
-        "pending|waiting|awaiting|in progress|processing|eyes reaction|working|not returned|not yet returned|has not returned|hasn't returned",
+        "pending|waiting|awaiting|in progress|processing|eyes reaction|working|not returned|not yet returned|has not returned|hasn't returned|blocked on codex review|blocked on @codex review|blocked on codex connector review",
     )
 }
 
