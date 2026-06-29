@@ -21,7 +21,7 @@ pub(super) fn check(handoff: &str) -> Option<String> {
         claims_blocked_state(fragment)
             && mentions_non_blocking_wait(fragment)
             && !has_true_impasse_rationale(fragment)
-            && (!mentions_resolved_blocker(fragment) || fragment.starts_with("blocked: pending"))
+            && (!mentions_resolved_blocker(fragment) || fragment.trim().starts_with("blocked"))
             && !mentions_true_blocker(fragment)
             && !mentions_current_true_blocker_context(context)
             && !mentions_returned_async_failure_context(fragment, &text)
