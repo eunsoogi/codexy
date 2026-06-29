@@ -16,6 +16,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: @codex review is waiting for feedback.\n",
         "Blocked: @codex review is awaiting feedback.\n",
         "Blocked: awaiting Codex review feedback.\n",
+        "Blocked: Codex review feedback pending.\n",
+        "Blocked: @codex review feedback pending.\n",
         "Blocked: @codex review feedback has not returned yet.\n",
         "Blocked: Codex review feedback has not yet returned.\n",
         "Blocked: Codex review feedback is pending.\n",
@@ -101,6 +103,7 @@ fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
         "Blocked: Codex review feedback is pending resolution.\n",
         "Blocked: Codex review feedback from the connector is pending resolution.\n",
         "Blocked: current-head Codex review feedback is pending resolution.\n",
+        "Blocked: Codex review feedback pending resolution.\n",
         "Blocked: current-head @codex review request has pending actionable feedback.\n",
         "Blocked until Codex review feedback is pending resolution and the connector returns.\n",
     ] {
