@@ -82,24 +82,33 @@ pub(super) fn pre_log_output_lines(text: &str) -> impl Iterator<Item = &str> {
 
 fn has_planned_execution_evidence(line: &str) -> bool {
     let line = line.to_ascii_lowercase();
-    has_any(
-        &line,
-        &[
-            "to be checked",
-            "to be captured",
-            "to be recorded",
-            "to be run",
-            "should be checked",
-            "should be captured",
-            "should be recorded",
-            "should be run",
-            "will be checked",
-            "will be captured",
-            "will be recorded",
-            "will be recorded/captured",
-            "will be run",
-        ],
-    )
+    refers_to_preflight_execution_plan(&line)
+        && has_any(
+            &line,
+            &[
+                "to be checked",
+                "to be captured",
+                "to be recorded",
+                "to be run",
+                "should be checked",
+                "should be captured",
+                "should be recorded",
+                "should be run",
+                "will be checked",
+                "will be captured",
+                "will be recorded",
+                "will be recorded/captured",
+                "will be run",
+            ],
+        )
+}
+
+fn refers_to_preflight_execution_plan(line: &str) -> bool {
+    refers_to_git_preflight_evidence(line)
+        || has_any(line, &["required command", "required commands"])
+        || REQUIRED_PREFLIGHT_COMMANDS
+            .iter()
+            .any(|phrase| line.contains(phrase))
 }
 
 fn has_negated_execution_evidence(text: &str) -> bool {

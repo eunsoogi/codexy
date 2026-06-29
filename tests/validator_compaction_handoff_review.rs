@@ -38,6 +38,7 @@ fn validator_cli_rejects_placeholder_codexy_contract() -> TestResult {
         "Codexy orchestration contract: not captured.",
         "Codexy workflow: codexy workflow.",
         "Codexy orchestration contract: orchestration workflow.",
+        "Codexy orchestration contract: @Codexy should be restored before continuing.",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(
             contract,

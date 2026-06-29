@@ -13,7 +13,7 @@ const STOP_CONDITION: &str =
     "Stop condition: no merge; leave PR open until current-head Codex review is clean.";
 
 #[test]
-fn validator_cli_accepts_planned_words_inside_git_log_subjects() -> TestResult {
+fn validator_cli_accepts_planned_words_outside_preflight_evidence() -> TestResult {
     let output = validate_open_pr_handoff(&valid_handoff_with(
         "Git graph/log preflight captured before editing:\n\
          $ pwd\n\
@@ -25,7 +25,8 @@ fn validator_cli_accepts_planned_words_inside_git_log_subjects() -> TestResult {
          $ git rev-parse origin/main\n\
          06a57800817c259a22d6a507650d22cf04bdded0\n\
          $ git log --graph --oneline --decorate --all --max-count=5\n\
-         * deadbee docs: commands to be run after resume\n",
+         * deadbee docs: commands to be run after resume\n\
+         Full cargo test should be run after the fix.\n",
     ))?;
     assert!(
         output.status.success(),

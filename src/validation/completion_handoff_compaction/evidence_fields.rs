@@ -14,6 +14,8 @@ const OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["child-owned", "child owned", "par
 #[rustfmt::skip]
 const NEGATED_CONTRACT_PHRASES: &[&str] = &["not captured", "not active", "not available", "not preserved", "was not preserved", "missing", "omitted", "without @codexy", "without codexy"];
 #[rustfmt::skip]
+const PLANNED_CODEXY_CONTRACT_PHRASES: &[&str] = &["should be restored", "should be preserved", "to be restored", "to be preserved", "will be restored", "will be preserved", "needs to be restored", "needs to be preserved"];
+#[rustfmt::skip]
 const NEGATED_DUPLICATE_STATE_PHRASES: &[&str] = &["not captured", "not checked", "not re-checked", "not preserved", "was not preserved", "did not check", "missing", "omitted", "without checking"];
 #[rustfmt::skip]
 const PLANNED_DUPLICATE_STATE_PHRASES: &[&str] = &["should be checked", "should be re-checked", "to be checked", "to be re-checked", "will be checked", "will be re-checked", "needs to be checked", "needs to be re-checked"];
@@ -27,6 +29,7 @@ pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
         codexy_contract_value(line.trim()).is_some_and(|contract| {
             has_real_value(contract)
                 && has_codexy_contract_phrase(contract)
+                && !has_planned_codexy_contract_evidence(contract)
                 && !has_negated_contract_evidence(contract)
         })
     })
@@ -131,6 +134,10 @@ fn has_ownership_boundary_phrase(text: &str) -> bool {
 
 fn has_negated_contract_evidence(text: &str) -> bool {
     has_any(text, NEGATED_CONTRACT_PHRASES)
+}
+
+fn has_planned_codexy_contract_evidence(text: &str) -> bool {
+    has_any(text, PLANNED_CODEXY_CONTRACT_PHRASES)
 }
 
 fn has_negated_duplicate_state_evidence(text: &str) -> bool {
