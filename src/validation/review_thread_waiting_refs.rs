@@ -8,7 +8,7 @@ pub(super) fn thread_waiting_clauses<'a>(segment: &'a str, thread: &Value) -> Ve
             let clause_start = if review_references.iter().any(|&(index, _)| index < start) {
                 start
             } else {
-                0
+                carried_clause_boundary(segment, start).unwrap_or(0)
             };
             let mut grouped_reference_end = end;
             let clause_end = review_references
@@ -102,6 +102,14 @@ fn grouped_reference_connector(text: &str) -> bool {
         let part = part.trim();
         part.is_empty() || matches!(part, "and" | "or")
     })
+}
+
+fn carried_clause_boundary(text: &str, start: usize) -> Option<usize> {
+    let prefix = &text[..start];
+    [" while ", " but "]
+        .iter()
+        .filter_map(|connector| prefix.rfind(connector).map(|index| index + connector.len()))
+        .max()
 }
 
 fn comment_urls(thread: &Value) -> impl Iterator<Item = &str> {
