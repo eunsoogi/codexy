@@ -33,6 +33,7 @@ const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
 const CAPTURE_MARKERS: &str = "captured|classified|recorded|reported|routed|tracked";
 const THREAD_TOOL_DISCOVERY_MARKERS: &str = "available|callable|discovered|expected|exposed|found|listed|registered|tool_search|tool search|visible";
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
+const NEGATED_HANDLER_MISSING_MARKERS: &str = "did not fail with|didn't fail with|does not fail with|do not fail with|not fail with|without failing with|did not produce|does not produce|no invocation produced|no thread tool invocation produced";
 
 fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
     let mut in_discovery_list = false;
@@ -77,20 +78,13 @@ fn has_negated_handler_missing_claim(line: &str, start: usize) -> bool {
     let prefix_start = prefix.rfind([';', '.', ',']).map_or(0, |offset| offset + 1);
     let prefix_start = prefix_start.max(prefix.rfind(" but ").map_or(0, |offset| offset + 5));
     let prefix = &prefix[prefix_start..];
-    [
-        "did not fail with",
-        "didn't fail with",
-        "does not fail with",
-        "do not fail with",
-        "not fail with",
-        "without failing with",
-        "did not produce",
-        "does not produce",
-        "no invocation produced",
-        "no thread tool invocation produced",
-    ]
-    .into_iter()
-    .any(|marker| prefix.contains(marker))
+    NEGATED_HANDLER_MISSING_MARKERS.split('|').any(|marker| {
+        prefix.match_indices(marker).any(|(offset, _)| {
+            prefix[offset + marker.len()..]
+                .trim_matches([' ', '`', '\'', '"'])
+                .is_empty()
+        })
+    })
 }
 
 fn handler_missing_tool(line: &str, start: usize) -> Option<&'static str> {

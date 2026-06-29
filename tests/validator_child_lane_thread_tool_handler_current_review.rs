@@ -202,6 +202,27 @@ fn validator_rejects_later_clause_handler_failure_after_prior_negation()
 }
 
 #[test]
+fn validator_rejects_handler_failure_after_unrelated_did_not_produce()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.send_message_to_thread as an available thread tool.
+Invocation evidence: send_message_to_thread did not produce a response and failed with `No handler registered for tool: send_message_to_thread`.
+Fallback: treated send_message_to_thread as an ordinary unavailable-tool fallback.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject a real handler failure when did-not-produce modifies a different object\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_tool_only_defect_capture_without_handler_marker()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
