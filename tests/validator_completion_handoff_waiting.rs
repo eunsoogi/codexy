@@ -35,6 +35,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: child thread has not returned yet.\n",
         "Blocked: child thread is still pending feedback.\n",
         "Blocked: child lane is still pending.\n",
+        "Blocked: child-owned review-response work is still pending.\n",
         "Blocked: missing child thread response is pending.\n",
         "Goal blocked until Codex connector review returns.\n",
         "Goal blocked until child thread returns.\n",
@@ -138,13 +139,13 @@ fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
     for handoff in [
         "Blocked: child thread omitted required goal tool evidence.\n",
         "Blocked until child thread returns required goal tool evidence.\n",
         "Blocked: child thread is still pending required goal tool evidence.\n",
+        "Blocked: child-owned review-response work is missing required verification evidence.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -153,7 +154,6 @@ fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     for handoff in [

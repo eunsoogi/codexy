@@ -8,7 +8,7 @@ const PENDING_REVIEW_FEEDBACK: &str = "pending codex review feedback|pending @co
 const EXTERNAL_CHECK_FAILURE: &str = "required checks are failing|required checks failed|required status checks are failing|status checks are failing|status checks failed";
 const SECURITY_REVIEW_BLOCKER: &str = "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review failed|security review failure";
 const SECURITY_REVIEW_NON_BLOCKER: &str = "security review passed|security review complete|security review completed|security review not required|no security review";
-const CHILD_WORK: &str = "child-lane|child lane|child-thread work|child thread work|child-thread|child thread|child work";
+const CHILD_WORK: &str = "child-owned|review-response work|child-lane|child lane|child-thread work|child thread work|child-thread|child thread|child work";
 
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
