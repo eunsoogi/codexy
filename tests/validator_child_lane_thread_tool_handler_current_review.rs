@@ -143,6 +143,44 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_negated_placeholder_fallback_capture() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: ...`.
+Dogfooding/tool-exposure defect: missing-handler evidence was not captured as an ordinary unavailable-tool fallback.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject placeholder fallback negation without affirmative defect capture"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_combined_defect_label_capture_negation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: runtime missing-handler evidence for codex_app.read_thread, not captured as a dogfooding/tool-exposure defect.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject capture wording negated against the combined dogfooding/tool-exposure label"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_tool_only_defect_capture_without_handler_marker()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

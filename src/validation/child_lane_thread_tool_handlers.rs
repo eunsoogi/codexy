@@ -61,7 +61,9 @@ fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
 }
 
 fn has_actionable_handler_placeholder_report(evidence: &str) -> bool {
-    has_handler_marker_in_defect_capture(evidence) && !has_absent_defect_capture(evidence)
+    has_handler_marker_in_defect_capture(evidence)
+        && has_affirmative_defect_capture(evidence)
+        && !has_absent_defect_capture(evidence)
 }
 
 fn has_defect_label(line: &str) -> bool {
@@ -97,9 +99,7 @@ fn handler_missing_tool(line: &str, start: usize) -> Option<&'static str> {
         .unwrap_or_else(|| handler_tool_fragment(line, start))
         .trim_end_matches('.');
 
-    thread_tool_names()
-        .into_iter()
-        .find(|thread_tool| *thread_tool == tool)
+    thread_tool_names().find(|thread_tool| *thread_tool == tool)
 }
 
 fn line_containing(text: &str, offset: usize) -> (&str, usize) {
