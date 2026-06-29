@@ -2,7 +2,6 @@ use std::{path::Path, process::Command};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
     for handoff in [
@@ -131,6 +130,7 @@ fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
         "Blocked: Codex review request failed.\n",
         "Blocked: @codex review request failed.\n",
         "Blocked: Codex connector review request failed.\n",
+        "Blocked on Codex review: the connector asked to create an environment for this repo.\n",
         "Blocked: Codex review failed because previous Codex review failure was fixed but code-review usage limits were reached.\n",
         "Blocked: Codex review failed because code-review usage limits were reached; pending @codex review retry.\n",
     ] {
@@ -168,6 +168,7 @@ fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
         "No known blockers. Waiting: pending Codex review is still processing.\n",
         "No longer blocked: pending Codex review is still processing.\n",
         "Blocked? no. Waiting: pending Codex review is still processing.\n",
+        "Blocked = false. Waiting: pending @codex review.\n",
         "Goal blocked: no. Waiting: pending Codex review is still processing.\n",
         "Blocked state: none. Waiting: pending Codex review is still processing.\n",
     ] {
@@ -241,7 +242,6 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult
     std::fs::write(&pr_state_path, pr_state)?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
-
 fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     validate_handoff_with_pr_state(
         handoff,

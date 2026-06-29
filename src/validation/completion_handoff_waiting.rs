@@ -39,6 +39,8 @@ pub(super) fn check(handoff: &str) -> Option<String> {
 fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
         || has_any(text, CURRENT_CODEX_REVIEW_FAILURE)
+        || (has_any(text, "connector|chatgpt-codex-connector|codex connector")
+            && has_any(text, "create an environment|environment for this repo"))
         || (has_any(text, CODEX_REVIEW_FAILURE) && !has_any(text, RESOLVED_CODEX_REVIEW_FAILURE))
         || mentions_missing_child_evidence(text)
         || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
@@ -208,7 +210,7 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
     }
     let value = text[after_index..].trim_start();
     let value = value.strip_prefix("state").unwrap_or(value).trim_start();
-    if !matches!(value.chars().next(), Some(':' | '-' | '?')) {
+    if !matches!(value.chars().next(), Some(':' | '-' | '?' | '=')) {
         return false;
     }
     let value = value[1..].trim_start();
