@@ -74,16 +74,18 @@ fn validator_cli_rejects_dash_label_before_merge_ready_claim() -> TestResult {
 
 #[test]
 fn validator_cli_allows_hyphenated_negated_ready_claim() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "PR is not-merge-ready because Codex review is pending.\n",
-        eyes_only_pr_state(),
-    )?;
-    assert!(
-        output.status.success(),
-        "validator should not treat hyphenated negation as an affirmed readiness claim\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "PR ready: not currently ready for handoff because Codex review is pending.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should not treat negated readiness as an affirmed readiness claim\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

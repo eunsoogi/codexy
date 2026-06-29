@@ -31,7 +31,7 @@ pub(super) fn has_unnegated_action_phrase(text: &str, phrase: &str) -> bool {
 
 fn has_negative_label_value(suffix: &str) -> bool {
     let value = suffix.trim_start_matches([' ', '\t', ':', '-', '?']);
-    "not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|aren't ready|aren't yet ready|false|not requested"
+    "not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|aren't ready|aren't yet ready|false|not requested|not applicable"
         .split('|')
         .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
         || value

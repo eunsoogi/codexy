@@ -134,6 +134,7 @@ fn has_negative_label_value(suffix: &str) -> bool {
     [
         "not ready",
         "not yet ready",
+        "not currently ready",
         "false",
         "not requested",
         "not applicable",
