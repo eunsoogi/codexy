@@ -109,7 +109,14 @@ fn has_negated_execution_evidence(text: &str) -> bool {
                 && has_ordered_pair(
                     clause,
                     &["no ", "not "],
-                    &["captured", "checked", "recorded", "run"],
+                    &[
+                        "captured",
+                        "checked",
+                        "executed",
+                        "performed",
+                        "recorded",
+                        "run",
+                    ],
                 )
         })
     })
