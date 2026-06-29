@@ -235,7 +235,7 @@ fn has_nearby_negation(prefix: &str) -> bool {
 }
 
 fn negation_phrase_matches(prefix: &str) -> bool {
-    "no|no known|non|non-|not|not a|not an|isn't|is not|without"
+    "no|no known|non|non-|not|not a|not an|isn't|is not|hasn't|without"
         .split('|')
         .any(|phrase| prefix.ends_with(phrase))
 }

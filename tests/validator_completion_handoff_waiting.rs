@@ -52,6 +52,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: waiting for the tool result to return.\n",
         "Blocked: background operation has not yet returned.\n",
         "Blocked: async operation result has not yet returned.\n",
+        "Previous test failure was fixed. Blocked: async GitHub tool hasn't returned yet.\n",
+        "Earlier failure is resolved. Blocked: asynchronous Codex tool hasn't returned yet.\n",
         "Previous blocker resolved: async GitHub tool returned a permission error and was fixed. Blocked: @codex review has not returned yet.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
