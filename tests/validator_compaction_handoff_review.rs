@@ -35,7 +35,7 @@ fn assert_invalid(output: &Output, expected_stderr: &str) {
 #[test]
 fn validator_cli_rejects_placeholder_codexy_contract() -> TestResult {
     for contract in [
-        "Codexy orchestration contract: not captured.",
+        "Codexy orchestration contract: no active @Codexy workflow was captured.",
         "Codexy workflow: codexy workflow.",
         "Codexy orchestration contract: orchestration workflow.",
         "Codexy orchestration contract: @Codexy should be restored before continuing.",

@@ -12,7 +12,7 @@ const CODEXY_CONTRACT_PHRASES: &[&str] = &["@codexy", "$codex-orchestration", "a
 #[rustfmt::skip]
 const OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["child-owned", "child owned", "parent orchestrator", "parent monitors", "parent monitor", "who may edit", "who may only orchestrate", "only orchestrate", "receive edits"];
 #[rustfmt::skip]
-const NEGATED_CONTRACT_PHRASES: &[&str] = &["not captured", "not active", "not available", "not preserved", "was not preserved", "missing", "omitted", "without @codexy", "without codexy"];
+const NEGATED_CONTRACT_PHRASES: &[&str] = &["not captured", "not active", "not available", "not preserved", "was not preserved", "no active @codexy", "no active codexy workflow", "missing", "omitted", "without @codexy", "without codexy"];
 #[rustfmt::skip]
 const PLANNED_CODEXY_CONTRACT_PHRASES: &[&str] = &["should be restored", "should be preserved", "to be restored", "to be preserved", "will be restored", "will be preserved", "needs to be restored", "needs to be preserved"];
 #[rustfmt::skip]
