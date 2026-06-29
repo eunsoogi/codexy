@@ -217,6 +217,8 @@ fn action_claim_segments(segment: &str) -> impl Iterator<Item = &str> {
         .flat_map(|clause| clause.split(" but "))
         .flat_map(|clause| clause.split(" and thread "))
         .flat_map(|clause| clause.split(" and it "))
+        .flat_map(|clause| clause.split(": remains unresolved"))
+        .flat_map(|clause| clause.split(" and remains unresolved"))
         .map(str::trim)
         .filter(|clause| !clause.is_empty())
 }

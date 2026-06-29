@@ -5,15 +5,18 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_accepted_claim_joined_to_waiting_rationale_with_and_it() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed PRRT_kwDOFixed. Accepted PRRT_kwDOWaiting and it remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
-        mixed_review_thread_pr_state(),
-    )?;
-    assert_failure_contains(
-        &output,
-        "validator should not let later waiting rationale erase an accepted same-thread claim",
-        "PRRT_kwDOWaiting",
-    );
+        "Review response: fixed PRRT_kwDOFixed. Accepted PRRT_kwDOWaiting: remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        "Review response: fixed PRRT_kwDOFixed. Accepted PRRT_kwDOWaiting and remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, mixed_review_thread_pr_state())?;
+        assert_failure_contains(
+            &output,
+            "validator should not let later waiting rationale erase an accepted same-thread claim",
+            "PRRT_kwDOWaiting",
+        );
+    }
     Ok(())
 }
 
