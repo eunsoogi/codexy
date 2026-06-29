@@ -124,7 +124,7 @@ fn mentions_async_completion(text: &str) -> bool {
         || has_any(text, "tool result|background operation"))
         && has_any(
             text,
-            "completion|pending|waiting|running|in progress|not returned|not yet returned|has not returned|hasn't returned|to return|returns|return|returned",
+            "completion|pending|waiting|running|in progress|not returned|not yet returned|has not returned|hasn't returned|to return|until",
         )
 }
 

@@ -1,11 +1,34 @@
-pub(super) fn check(expected_issue: u64, message: &str) -> Vec<String> {
-    if has_unique_final_closing_reference(expected_issue, message) {
-        Vec::new()
-    } else {
-        vec![format!(
-            "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
-        )]
+pub(super) fn check(
+    expected_issue: Option<u64>,
+    expected_pr: Option<u64>,
+    message: &str,
+) -> Vec<String> {
+    let mut errors = Vec::new();
+    if let Some(expected_pr) = expected_pr {
+        if !has_expected_pr_suffix(expected_pr, message) {
+            errors.push(format!(
+                "merge commit subject must end with the expected PR suffix: (#{expected_pr})"
+            ));
+        }
     }
+    if let Some(expected_issue) = expected_issue {
+        if !has_unique_final_closing_reference(expected_issue, message) {
+            errors.push(format!(
+                "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #{expected_issue}"
+            ));
+        }
+    } else if expected_pr.is_some() && has_closing_reference(message) {
+        errors.push("merge commit message must not contain closing references".to_string());
+    }
+    errors
+}
+
+fn has_expected_pr_suffix(expected_pr: u64, message: &str) -> bool {
+    let expected_suffix = format!("(#{expected_pr})");
+    message
+        .lines()
+        .next()
+        .is_some_and(|line| line.ends_with(&expected_suffix))
 }
 
 fn has_unique_final_closing_reference(expected_issue: u64, message: &str) -> bool {
@@ -14,11 +37,17 @@ fn has_unique_final_closing_reference(expected_issue: u64, message: &str) -> boo
         .lines()
         .filter(|line| !line.trim().is_empty())
         .collect::<Vec<_>>();
-    let closing_reference_count = non_empty_lines
-        .iter()
-        .map(|line| closing_reference_count(line))
-        .sum::<usize>();
+    let closing_reference_count =
+        closing_reference_count_for_lines(non_empty_lines.iter().copied());
     closing_reference_count == 1 && non_empty_lines.last() == Some(&expected_line.as_str())
+}
+
+fn has_closing_reference(message: &str) -> bool {
+    closing_reference_count_for_lines(message.lines()) > 0
+}
+
+fn closing_reference_count_for_lines<'a>(lines: impl Iterator<Item = &'a str>) -> usize {
+    lines.map(closing_reference_count).sum()
 }
 
 fn closing_reference_count(line: &str) -> usize {

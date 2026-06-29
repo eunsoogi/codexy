@@ -1,5 +1,10 @@
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let mut errors = Vec::new();
+    if super::child_lane_ownership_subagents::has_subagent_as_thread_owner(evidence) {
+        errors.push(
+            "child-owned lane claims a subagent as the Codex subthread/worktree owner".to_owned(),
+        );
+    }
     if has_false_thread_tool_blocker(evidence) {
         errors.push("thread-tool discovery evidence reports a blocker from tool_search absence even though thread/start and turn/start events prove a real thread surface exists".to_owned());
     }

@@ -36,6 +36,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked on asynchronous tool completion.\n",
         "Blocked on asynchronous GitHub tool completion.\n",
         "Blocked on asynchronous Codex tool completion.\n",
+        "Blocked: async GitHub merge tool is still pending.\n",
+        "Blocked: asynchronous Codex review tool has not returned yet.\n",
         "Blocked: asynchronous tool has not returned yet.\n",
         "Blocked: async tool has not returned yet.\n",
         "Blocked until the asynchronous tool returns.\n",
@@ -148,6 +150,21 @@ fn validator_cli_allows_failed_setup_blockers() -> TestResult {
         accept_open_pr_handoff(
             handoff,
             "validator should preserve real setup failure blockers",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_returned_async_tool_failures() -> TestResult {
+    for handoff in [
+        "Blocked: async GitHub merge tool returned a permission error.\n",
+        "Blocked: asynchronous Codex tool returned an authentication failure.\n",
+        "Blocked: tool result returned with a fatal API error.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should preserve async/tool failures after the tool has returned",
         )?;
     }
     Ok(())
