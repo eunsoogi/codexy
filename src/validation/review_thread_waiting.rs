@@ -191,9 +191,13 @@ fn claims_thread_fixed(text: &str, thread: &Value) -> bool {
     waiting_segments(text).any(|segment| {
         action_claim_segments(segment).any(|claim| {
             thread_referenced(claim, thread)
-                && "addressed addresses addressing applied fixed fixes handled implemented responded resolved resolve resolves updated"
+                && "accepted accepts addressed addresses addressing applied fixed fixes handled implemented responded resolved resolve resolves updated"
                     .split_whitespace()
-                    .any(|action| has_unnegated_action_phrase(claim, action))
+                    .any(|action| {
+                        has_unnegated_action_phrase(claim, action)
+                            && !(matches!(action, "accepted" | "accepts")
+                                && mentions_not_accepted(claim))
+                    })
         })
     })
 }

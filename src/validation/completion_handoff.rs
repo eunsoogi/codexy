@@ -207,7 +207,7 @@ fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
 fn has_nearby_negation(prefix: &str) -> bool {
-    "no|no user or|no explicit|not|not yet|not explicit|isn't|isn't yet|aren't|aren't yet|is not|did not|did not explicitly|was not|was not explicitly|were not|were not explicitly|without|without explicit|neither"
+    "no|no user or|no explicit|not|not yet|not currently|not explicit|isn't|isn't yet|isn't currently|aren't|aren't yet|aren't currently|is not|did not|did not explicitly|was not|was not explicitly|were not|were not explicitly|without|without explicit|neither"
         .split('|')
         .any(|phrase| prefix.trim_end().ends_with(phrase))
 }

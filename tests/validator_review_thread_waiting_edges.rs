@@ -34,6 +34,20 @@ fn validator_rejects_waiting_evidence_that_contradicts_same_thread_action() -> T
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    for action in ["accepted", "accepts"] {
+        let handoff = format!(
+            "Review response: fixed PRRT_kwDOFixed. {action} PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        );
+        let output = validate_handoff_with_pr_state(&handoff)?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject waiting evidence when the same thread is also claimed {action}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"));
+    }
     for handoff in [
         "Review response: fixed and verified PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
         "Review response: fixed PRRT_kwDOFixed and PRRT_kwDOWaiting. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
