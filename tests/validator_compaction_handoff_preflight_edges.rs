@@ -164,6 +164,41 @@ fn validator_cli_rejects_bulleted_commands_after_single_shell_prompt() -> TestRe
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_negated_prose_preflight_capture_claims() -> TestResult {
+    for git_preflight in [
+        "Git graph/log preflight: no git preflight evidence captured; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
+        "Git graph/log preflight: no git preflight evidence checked; pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph.",
+    ] {
+        let output = validate_open_pr_handoff(&valid_handoff_with(git_preflight))?;
+        assert!(
+            !output.status.success(),
+            "validator should reject handoff\nstdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("compacted continuation evidence missing git graph/log preflight"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_accepts_affirmative_prose_preflight_capture_claim() -> TestResult {
+    let output = validate_open_pr_handoff(&valid_handoff_with(
+        "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.",
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator should accept handoff\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn valid_handoff_with(git_preflight: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\

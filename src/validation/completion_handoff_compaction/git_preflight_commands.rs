@@ -33,6 +33,9 @@ pub(super) fn has_executed_evidence(text: &str) -> bool {
             .all(|phrase| has_executed_command(&lines, phrase));
     }
     let text = lines.join("\n").to_ascii_lowercase();
+    if has_negated_execution_evidence(&text) {
+        return false;
+    }
     has_any(&text, &["captured", "were run", "checked", "recorded"])
 }
 
@@ -97,6 +100,29 @@ fn has_planned_execution_evidence(line: &str) -> bool {
             "will be run",
         ],
     )
+}
+
+fn has_negated_execution_evidence(text: &str) -> bool {
+    text.lines().any(|line| {
+        line.split([';', ',', '.']).any(|clause| {
+            has_any(clause, &["no ", "not "])
+                && refers_to_git_preflight_evidence(clause)
+                && has_any(clause, &["captured", "checked", "recorded", "run"])
+        })
+    })
+}
+
+fn refers_to_git_preflight_evidence(clause: &str) -> bool {
+    contains_token(clause, "git") || contains_token(clause, "preflight")
+}
+
+fn contains_token(text: &str, token: &str) -> bool {
+    text.match_indices(token).any(|(index, _)| {
+        let before = text[..index].chars().next_back();
+        let after = text[index + token.len()..].chars().next();
+        before.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
+            && after.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
+    })
 }
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {

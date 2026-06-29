@@ -181,8 +181,8 @@ fn is_block_local_preflight_negation(line: &str) -> bool {
 
 fn refers_to_git_preflight(line: &str) -> bool {
     is_git_preflight_line(line)
+        || contains_token(line, "preflight")
         || [
-            "preflight",
             "preflight commands",
             "commands were not run",
             "commands were not captured",
@@ -196,6 +196,15 @@ fn refers_to_git_preflight(line: &str) -> bool {
         ]
         .iter()
         .any(|phrase| line.contains(phrase))
+}
+
+fn contains_token(text: &str, token: &str) -> bool {
+    text.match_indices(token).any(|(index, _)| {
+        let before = text[..index].chars().next_back();
+        let after = text[index + token.len()..].chars().next();
+        before.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
+            && after.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
+    })
 }
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {

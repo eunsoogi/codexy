@@ -44,6 +44,7 @@ fn validator_cli_accepts_git_preflight_when_later_prose_negates_other_checks() -
     for skipped_check in [
         "I did not run full cargo test because the review-response lane only needed focused validation.",
         "I did not run additional validation commands because the review-response lane only needed focused validation.",
+        "I did not run non-preflight checks because this review-response lane only needed focused validation.",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(
             DUPLICATE_STATE,
