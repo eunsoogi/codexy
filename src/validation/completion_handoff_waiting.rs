@@ -54,7 +54,7 @@ fn mentions_current_true_blocker_context(text: &str) -> bool {
 fn mentions_resolved_blocker(text: &str) -> bool {
     has_any(
         text,
-        "blocker resolved|previous blocker resolved|resolved blocker",
+        "blocker resolved|blocker was resolved|previous blocker resolved|previous blocker was resolved|resolved blocker",
     ) || has_any(
         text,
         "required checks failed and were fixed|required checks failed and were resolved|required checks failed and were cleared|required status checks failed and were fixed|required status checks failed and were resolved|required status checks failed and were cleared|status checks failed and were fixed|status checks failed and were resolved|status checks failed and were cleared|required checks were fixed|required checks were resolved|required checks were cleared|required status checks were fixed|required status checks were resolved|required status checks were cleared|status checks were fixed|status checks were resolved|status checks were cleared",
@@ -95,7 +95,9 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
 }
 fn mentions_external_gate_blocker(text: &str) -> bool {
     (has_any(text, SECURITY_REVIEW_BLOCKER) && !has_any(text, SECURITY_REVIEW_NON_BLOCKER))
-        || (has_any(text, EXTERNAL_CHECK_FAILURE) && !has_any(text, FALSE_CHECK_LABEL))
+        || (has_any(text, EXTERNAL_CHECK_FAILURE)
+            && !has_any(text, FALSE_CHECK_LABEL)
+            && !mentions_resolved_blocker(text))
 }
 fn mentions_queued_setup(text: &str) -> bool {
     has_any(text, "queued worktree|queued thread")

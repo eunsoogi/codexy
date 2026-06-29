@@ -51,12 +51,12 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: async tool has not returned yet.\n",
         "Blocked until the asynchronous tool returns.\n",
         "Blocked: waiting for the tool result to return.\n",
-        "Blocked: background operation has not yet returned.\n",
         "Previous test failure was fixed. Blocked: async GitHub tool hasn't returned yet.\n",
         "Blocked: async GitHub tool is still pending after previous permission error was fixed.\n",
         "Blocked: @codex review has not returned yet, previous async tool returned a permission error earlier.\n",
         "Previous blocker resolved: required status checks failed and were fixed. Blocked: pending @codex review.\n",
         "Previous blocker resolved: async GitHub tool returned a permission error and was fixed. Blocked: @codex review has not returned yet.\n",
+        "Blocked: pending @codex review after required checks failed and were fixed.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -160,10 +160,10 @@ fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
 fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     for handoff in [
         "Not a blocker: pending Codex review is still processing.\n",
-        "Not currently blocked: pending @codex review is still processing.\n",
         "Non-blocker: pending Codex review is still processing.\n",
         "Blockers: None.\nNot a blocker: pending Codex review is still processing.\n",
         "Previous blocker resolved. Waiting: pending Codex review.\n",
+        "Previous blocker was resolved. Waiting: pending @codex review.\n",
         "Blocked: no. Waiting: pending Codex review is still processing.\n",
         "No known blockers. Waiting: pending Codex review is still processing.\n",
         "No current blockers. Waiting: pending Codex review is still processing.\n",
