@@ -36,6 +36,21 @@ fn validator_allows_url_waiting_thread_after_and_clause() -> TestResult {
 }
 
 #[test]
+fn validator_allows_bullet_waiting_rationale_after_unresolved_label() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved:\n- not fixed or accepted yet\nThis lane is not complete.\n",
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should carry markdown bullet waiting rationale after an unresolved-thread label\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_waiting_thread_after_grouped_fixed_url_claim() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed https://github.com/eunsoogi/codexy/pull/174#discussion_r1 and https://github.com/eunsoogi/codexy/pull/174#discussion_r2. https://github.com/eunsoogi/codexy/pull/174#discussion_r2 remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
