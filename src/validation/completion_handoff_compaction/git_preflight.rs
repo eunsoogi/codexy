@@ -98,7 +98,7 @@ fn starts_unbulleted_section_label(line: &str) -> bool {
 }
 
 fn is_section_label_character(character: char) -> bool {
-    character.is_ascii_alphabetic() || character.is_ascii_whitespace() || character == '-'
+    character.is_ascii_alphanumeric() || character.is_ascii_whitespace() || character == '-'
 }
 
 fn is_unchecked_checklist_item(line: &str) -> bool {
