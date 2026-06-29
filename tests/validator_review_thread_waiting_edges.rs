@@ -91,6 +91,9 @@ fn validator_allows_negative_pr_readiness_label_before_waiting_evidence() -> Tes
         "PR ready: no",
         "PR ready: false",
         "PR ready: not requested",
+        "PR ready:\n- not currently ready for handoff",
+        "PR readiness:\n- isn't currently ready for handoff",
+        "PR readiness:\n- aren't applicable",
     ] {
         let output = validate_handoff_with_pr_state(&format!(
             "{label}. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
@@ -108,21 +111,24 @@ fn validator_allows_negative_pr_readiness_label_before_waiting_evidence() -> Tes
 
 #[test]
 fn validator_rejects_affirmative_no_blockers_readiness_label() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "PR ready: no blockers. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
-    )?;
+        "PR ready:\n- ready for handoff\nReview response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff)?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject affirmative no-blockers readiness while a thread is not fixed or accepted\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject affirmative readiness while a thread is not fixed or accepted\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOWaiting"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

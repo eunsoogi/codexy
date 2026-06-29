@@ -93,6 +93,32 @@ fn validator_cli_allows_hyphenated_negated_ready_claim() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_allows_multiline_negative_ready_label() -> TestResult {
+    for handoff in [
+        "PR ready:\n- not currently ready for handoff because Codex review is pending.\n",
+        "PR readiness:\n- isn't currently ready for handoff because Codex review is pending.\n",
+        "PR readiness:\n- aren't applicable while Codex review is pending.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, eyes_only_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should treat multiline negative readiness labels as negated readiness claims\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let output =
+        validate_handoff_with_pr_state("PR ready:\n- ready for handoff.\n", eyes_only_pr_state())?;
+    assert_rejected_with_stderr(
+        &output,
+        "validator should preserve affirmative multiline readiness labels",
+        "eyes-only Codex review request",
+    );
+    Ok(())
+}
+
 fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, expected: &str) {
     assert!(
         !output.status.success(),

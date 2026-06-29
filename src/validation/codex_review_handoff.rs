@@ -130,7 +130,7 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     false
 }
 fn has_negative_label_value(suffix: &str) -> bool {
-    let value = suffix.trim_start_matches([' ', '\t', ':', '-', '?']);
+    let value = suffix.trim_start_matches([' ', '\t', '\n', '\r', ':', '-', '*', '?']);
     [
         "not ready",
         "not yet ready",
