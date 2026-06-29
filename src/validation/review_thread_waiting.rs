@@ -168,31 +168,8 @@ fn mentions_unresolved(segment: &str) -> bool {
 }
 
 fn mentions_not_fixed(segment: &str) -> bool {
-    [
-        "not fixed",
-        "not yet fixed",
-        "isn't fixed",
-        "isn't yet fixed",
-        "wasn't fixed",
-        "has not been fixed",
-        "has not yet been fixed",
-        "hasn't been fixed",
-        "hasn't yet been fixed",
-        "unfixed",
-        "not addressed",
-        "not yet addressed",
-        "isn't addressed",
-        "wasn't addressed",
-        "has not been addressed",
-        "has not yet been addressed",
-        "hasn't been addressed",
-        "hasn't yet been addressed",
-        "not fixed/accepted",
-        "not fixed or accepted",
-        "isn't fixed/accepted",
-        "isn't fixed or accepted",
-    ]
-    .iter()
+    "not fixed|not yet fixed|isn't fixed|isn't yet fixed|wasn't fixed|has not been fixed|has not yet been fixed|hasn't been fixed|hasn't yet been fixed|unfixed|not addressed|not yet addressed|isn't addressed|wasn't addressed|has not been addressed|has not yet been addressed|hasn't been addressed|hasn't yet been addressed|not fixed/accepted|not fixed or accepted|isn't fixed/accepted|isn't fixed or accepted"
+        .split('|')
     .any(|term| segment.contains(term))
 }
 
@@ -234,7 +211,18 @@ fn split_and_url_reference(clause: &str) -> Vec<&str> {
     let split_at = [" and https://", " and http://"]
         .iter()
         .filter_map(|marker| clause.find(marker))
-        .filter(|&index| mentions_unresolved(&clause[index + 5..]))
+        .filter(|&index| {
+            let suffix = &clause[index + 5..];
+            let unresolved = ["unresolved", "still open", "remains open", "left open"]
+                .iter()
+                .filter_map(|term| suffix.find(term))
+                .min();
+            let next_url = [" and https://", " and http://"]
+                .iter()
+                .filter_map(|marker| suffix.find(marker))
+                .min();
+            unresolved.is_some_and(|unresolved| next_url.is_none_or(|next| unresolved < next))
+        })
         .min();
     split_at.map_or_else(
         || vec![clause],
