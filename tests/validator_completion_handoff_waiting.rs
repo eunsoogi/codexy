@@ -37,7 +37,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: missing child thread response is pending.\n",
         "Blocked: @codex review has not returned yet after previous permission error was fixed.\n",
         "Blocked: @codex review is pending after previous quota failure was fixed.\n",
-        "Blocked: @codex review is pending after previous Codex review quota failure was fixed.\n",
+        "Blocked: @codex review has not returned yet after previous Codex review request failed and was fixed.\n",
         "Blocked: @codex review is pending after previous code-review usage limits were reached and fixed.\n",
         "Blocker: queued worktree setup has not completed yet.\n",
         "Blocked: worktree setup is queued.\n",
@@ -127,11 +127,12 @@ fn validator_cli_allows_actionable_codex_review_blocker() -> TestResult {
     for handoff in [
         "Blocked: Codex review requested changes remain unresolved.\n",
         "Blocked: Codex review feedback is pending resolution.\n",
-        "Blocked: Codex review feedback from the connector is pending resolution.\n",
-        "Blocked: Codex review failed after previous quota failure was fixed.\n",
-        "Blocked: Codex review failed because previous quota failure was fixed but code-review usage limits were reached.\n",
-        "Blocked: current-head @codex review request has pending actionable feedback.\n",
         "Blocked: Codex review failed because code-review usage limits were reached.\n",
+        "Blocked: Codex review request failed.\n",
+        "Blocked: @codex review request failed.\n",
+        "Blocked: Codex connector review request failed.\n",
+        "Blocked: Codex review failed because previous Codex review failure was fixed but code-review usage limits were reached.\n",
+        "Blocked: Codex review failed because code-review usage limits were reached; pending @codex review retry.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -190,7 +191,6 @@ fn validator_cli_allows_failed_setup_blockers() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_allows_returned_async_tool_failures() -> TestResult {
     for handoff in [

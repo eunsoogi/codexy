@@ -12,8 +12,9 @@ const SECURITY_REVIEW_NON_BLOCKER: &str = "security review passed|security revie
 const CHILD_WORK: &str = "child-owned|review-response work|child-lane|child lane|child-thread work|child thread work|child-thread|child thread|child work";
 const ASYNC_FAILURE: &str = "error|failure|failed|permission|authentication|fatal";
 const ASYNC_WAIT: &str = "not returned|not yet returned|has not returned|hasn't returned|to return|until|previous permission error was fixed|previous error was fixed|previous failure was fixed|previous permission error was resolved|previous error was resolved|previous failure was resolved";
-const CODEX_REVIEW_FAILURE: &str = "codex review failed|@codex review failed|codex connector review failed|chatgpt-codex-connector failed|codex review failure|@codex review failure|codex connector review failure|chatgpt-codex-connector failure|codex review usage limit|@codex review usage limit|codex connector review usage limit|codex review quota|@codex review quota|codex connector review quota|code-review usage limits were reached";
-const CODEX_REVIEW_WAIT: &str = "pending codex review|pending @codex review|codex review is pending|@codex review is pending|codex connector review is pending|codex review has not returned|@codex review has not returned|codex review has not yet returned|@codex review has not yet returned|codex review hasn't returned|@codex review hasn't returned";
+const CODEX_REVIEW_FAILURE: &str = "codex review failed|@codex review failed|codex connector review failed|chatgpt-codex-connector failed|codex review request failed|@codex review request failed|codex connector review request failed|codex review failure|@codex review failure|codex connector review failure|chatgpt-codex-connector failure|codex review usage limit|@codex review usage limit|codex connector review usage limit|codex review quota|@codex review quota|codex connector review quota|code-review usage limits were reached";
+const CURRENT_CODEX_REVIEW_FAILURE: &str = "blocked: codex review failed|blocked: @codex review failed|blocked: codex connector review failed|blocked: chatgpt-codex-connector failed|blocked: codex review request failed|blocked: @codex review request failed|blocked: codex connector review request failed|blocked: codex review failure|blocked: @codex review failure|blocked: codex connector review failure|blocked: chatgpt-codex-connector failure|blocked: codex review usage limit|blocked: @codex review usage limit|blocked: codex connector review usage limit|blocked: codex review quota|blocked: @codex review quota|blocked: codex connector review quota|blocked: code-review usage limits were reached|codex review failed because|@codex review failed because|codex connector review failed because|chatgpt-codex-connector failed because|codex review request failed because|@codex review request failed because|codex connector review request failed because";
+const RESOLVED_CODEX_REVIEW_FAILURE: &str = "previous codex review failure was fixed|previous @codex review failure was fixed|previous codex connector review failure was fixed|previous codex review request failed and was fixed|previous @codex review request failed and was fixed|previous codex connector review request failed and was fixed|previous codex review quota failure was fixed|previous @codex review quota failure was fixed|previous codex connector review quota failure was fixed|previous code-review usage limits were reached and fixed|previous codex review failure was resolved|previous @codex review failure was resolved|previous codex connector review failure was resolved|previous codex review request failed and was resolved|previous @codex review request failed and was resolved|previous codex connector review request failed and was resolved|previous codex review quota failure was resolved|previous @codex review quota failure was resolved|previous codex connector review quota failure was resolved|previous code-review usage limits were reached and resolved";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     let false_blocked_wait = |fragment: &str, context: &str| {
@@ -37,7 +38,8 @@ pub(super) fn check(handoff: &str) -> Option<String> {
 }
 fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
-        || (has_any(text, CODEX_REVIEW_FAILURE) && !has_any(text, CODEX_REVIEW_WAIT))
+        || has_any(text, CURRENT_CODEX_REVIEW_FAILURE)
+        || (has_any(text, CODEX_REVIEW_FAILURE) && !has_any(text, RESOLVED_CODEX_REVIEW_FAILURE))
         || mentions_missing_child_evidence(text)
         || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
@@ -68,7 +70,7 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
         || (has_any(text, CODEX_REVIEW)
             && mentions_waiting_context(text)
             && !mentions_actionable_review_feedback(text))
-        || (mentions_child_work(text)
+        || (has_any(text, CHILD_WORK)
             && mentions_waiting_context(text)
             && !mentions_missing_child_evidence(text))
 }
@@ -92,9 +94,6 @@ fn mentions_pending_review_feedback_arrival(text: &str) -> bool {
 fn mentions_external_gate_blocker(text: &str) -> bool {
     (has_any(text, SECURITY_REVIEW_BLOCKER) && !has_any(text, SECURITY_REVIEW_NON_BLOCKER))
         || (has_any(text, EXTERNAL_CHECK_FAILURE) && !has_any(text, FALSE_CHECK_LABEL))
-}
-fn mentions_child_work(text: &str) -> bool {
-    has_any(text, CHILD_WORK)
 }
 fn mentions_queued_setup(text: &str) -> bool {
     has_any(text, "queued worktree|queued thread")
@@ -131,7 +130,7 @@ fn mentions_async_tool_result(text: &str) -> bool {
         || has_any(text, "tool result|background operation")
 }
 fn mentions_return_wait(text: &str) -> bool {
-    (has_any(text, CODEX_REVIEW) || mentions_child_work(text))
+    (has_any(text, CODEX_REVIEW) || has_any(text, CHILD_WORK))
         && has_any(text, "until|waiting for")
         && has_any(
             text,
@@ -147,7 +146,7 @@ fn mentions_waiting_context(text: &str) -> bool {
     )
 }
 fn mentions_missing_child_evidence(text: &str) -> bool {
-    mentions_child_work(text)
+    has_any(text, CHILD_WORK)
         && has_any(text, "omitted|missing|required|pending")
         && has_any(text, "evidence|goal tool|todo|plan|verification evidence")
 }
