@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use ignore::WalkBuilder;
 
 const CODE_EXTENSIONS: &[&str] = &[
-    "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "go", "rs", "rb", "java", "kt",
+    "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "go", "rs", "rb", "java", "kt", "html", "htm",
+    "css", "scss", "sass", "less", "svg", "vue", "svelte", "astro", "json", "jsonc", "yaml", "yml",
+    "toml", "md", "mdx",
 ];
 
 pub(super) fn result_limit(input: Option<usize>) -> usize {

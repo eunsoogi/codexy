@@ -5,6 +5,7 @@ use std::path::Path;
 use regex::Regex;
 
 use super::files::read_source;
+use super::markup::{parse_markup, parse_stylesheet};
 use super::mask::language_mask;
 use super::parse::{import_list, parse_simple, regex_values};
 use super::python::parse_python;
@@ -17,21 +18,38 @@ pub(super) fn parse_language(
     indexed_files: &BTreeSet<String>,
 ) -> (Vec<String>, Vec<String>) {
     let source = read_source(root, file);
-    let mask = language_mask(&source, extension);
     match extension {
-        ".py" => parse_python(root, file, &source, &mask, indexed_files),
-        ".go" => parse_go(root, file, &source, &mask),
-        ".rs" => parse_rust(file, &source, &mask),
+        ".html" | ".htm" | ".svg" => parse_markup(&source),
+        ".css" | ".scss" | ".sass" | ".less" => parse_stylesheet(&source),
+        _ => {
+            let mask = language_mask(&source, extension);
+            parse_masked_language(root, file, extension, indexed_files, &source, &mask)
+        }
+    }
+}
+
+fn parse_masked_language(
+    root: &Path,
+    file: &str,
+    extension: &str,
+    indexed_files: &BTreeSet<String>,
+    source: &str,
+    mask: &[bool],
+) -> (Vec<String>, Vec<String>) {
+    match extension {
+        ".py" => parse_python(root, file, source, mask, indexed_files),
+        ".go" => parse_go(root, file, source, mask),
+        ".rs" => parse_rust(file, source, mask),
         ".rb" => parse_simple(
-            &source,
-            &mask,
+            source,
+            mask,
             &[
                 r#"\brequire_relative\s+["']([^"']+)["']"#,
                 r#"\brequire\s+["'](\.[^"']+)["']"#,
             ],
             &[r"\b(?:class|module|def)\s+([A-Z]\w*|[a-z_]\w*[!?=]?)"],
         ),
-        ".java" | ".kt" => parse_package_language(file, extension, &source, &mask),
+        ".java" | ".kt" => parse_package_language(file, extension, source, mask),
         _ => (Vec::new(), Vec::new()),
     }
 }

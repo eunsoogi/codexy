@@ -61,6 +61,18 @@
         "clojure-lsp"
       ]
     },
+    "css-language-server": {
+      "extensions": [
+        ".css",
+        ".scss",
+        ".less"
+      ],
+      "priority": 80,
+      "command": [
+        "vscode-css-language-server",
+        "--stdio"
+      ]
+    },
     "docker-language-server": {
       "extensions": [
         ".dockerfile",
@@ -69,6 +81,25 @@
       "priority": 80,
       "command": [
         "docker-langserver",
+        "--stdio"
+      ]
+    },
+    "emmet-language-server": {
+      "extensions": [
+        ".html",
+        ".htm",
+        ".css",
+        ".scss",
+        ".less",
+        ".jsx",
+        ".tsx",
+        ".vue",
+        ".svelte",
+        ".astro"
+      ],
+      "priority": 40,
+      "command": [
+        "emmet-language-server",
         "--stdio"
       ]
     },
@@ -112,6 +143,19 @@
         "gopls"
       ]
     },
+    "graphql-language-service": {
+      "extensions": [
+        ".graphql",
+        ".gql"
+      ],
+      "priority": 80,
+      "command": [
+        "graphql-lsp",
+        "server",
+        "-m",
+        "stream"
+      ]
+    },
     "haskell-language-server": {
       "extensions": [
         ".hs",
@@ -121,6 +165,17 @@
       "command": [
         "haskell-language-server-wrapper",
         "--lsp"
+      ]
+    },
+    "html-language-server": {
+      "extensions": [
+        ".html",
+        ".htm"
+      ],
+      "priority": 80,
+      "command": [
+        "vscode-html-language-server",
+        "--stdio"
       ]
     },
     "jdtls": {
@@ -286,6 +341,27 @@
         "taplo",
         "lsp",
         "stdio"
+      ]
+    },
+    "tailwindcss-language-server": {
+      "extensions": [
+        ".html",
+        ".htm",
+        ".css",
+        ".scss",
+        ".less",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".vue",
+        ".svelte",
+        ".astro"
+      ],
+      "priority": 30,
+      "command": [
+        "tailwindcss-language-server",
+        "--stdio"
       ]
     },
     "terraform-ls": {

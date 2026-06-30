@@ -1,6 +1,7 @@
 mod candidates;
 mod files;
 mod language;
+mod markup;
 mod mask;
 mod parse;
 mod path_ops;
