@@ -29,6 +29,7 @@ fn codegraph_indexes_html_css_and_resolves_local_web_edges()
         root.join("styles.css"),
         r#"@import "./theme.css";
 .logo { background: url("./assets/logo.svg"); }
+.cdn { --asset: "https://cdn.example/image.png"; background: url("./assets/cdn-local.svg"); }
 /* .ghost { background: url("./assets/ghost.svg"); } */
 "#,
     )?;
@@ -53,6 +54,10 @@ fn codegraph_indexes_html_css_and_resolves_local_web_edges()
     )?;
     fs::write(
         root.join("assets/large.svg"),
+        "<svg viewBox=\"0 0 1 1\"/>\n",
+    )?;
+    fs::write(
+        root.join("assets/cdn-local.svg"),
         "<svg viewBox=\"0 0 1 1\"/>\n",
     )?;
 
@@ -93,6 +98,11 @@ fn codegraph_indexes_html_css_and_resolves_local_web_edges()
         ("index.html", "assets/logo.svg", "./assets/logo.svg"),
         ("index.html", "assets/small.svg", "./assets/small.svg"),
         ("index.html", "styles.css", "./styles.css"),
+        (
+            "styles.css",
+            "assets/cdn-local.svg",
+            "./assets/cdn-local.svg",
+        ),
         ("styles.css", "assets/logo.svg", "./assets/logo.svg"),
         ("styles.css", "theme.css", "./theme.css"),
     ] {
