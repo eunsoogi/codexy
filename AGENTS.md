@@ -80,6 +80,11 @@ codexy/
 - Treat failures to follow governing `AGENTS.md` files and selected skills as
   dogfooding defects. Capture the evidence and fix or explicitly track the
   defect before PR readiness.
+- Every discovered dogfooding defect MUST be tracked in its own separate
+  GitHub issue. Do not bundle dogfooding-defect tracking into the current
+  feature, fix, review-response, or merge lane; create the separate issue first,
+  then route any fix through that issue-sized lane unless a maintainer
+  explicitly re-scopes it.
 - If a repo or plugin surface is expected, registered, or enabled but is not
   available in the actual Codex callable tool surface or `tool_search`, treat
   the exposure mismatch as a dogfooding defect, not as a quiet fallback. For
