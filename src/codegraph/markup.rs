@@ -69,13 +69,50 @@ fn line_comment_mask(source: &str, mask: &[bool]) -> Vec<bool> {
         *offset += line.len();
         Some((start, line))
     }) {
-        if let Some(relative_start) = line.find("//") {
+        if let Some(relative_start) = line_comment_start(line, &output, line_start) {
             let start = line_start + relative_start;
-            if output.get(start).copied().unwrap_or(false) {
-                let end = line_start + line.len();
-                output[start..end].fill(false);
-            }
+            let end = line_start + line.len();
+            output[start..end].fill(false);
         }
     }
     output
+}
+
+fn line_comment_start(line: &str, mask: &[bool], line_start: usize) -> Option<usize> {
+    let bytes = line.as_bytes();
+    let mut quote = None;
+    let mut escaped = false;
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if !mask.get(line_start + index).copied().unwrap_or(false) {
+            index += 1;
+            continue;
+        }
+        let byte = bytes[index];
+        if let Some(active_quote) = quote {
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == active_quote {
+                quote = None;
+            }
+            index += 1;
+            continue;
+        }
+        if byte == b'\'' || byte == b'"' {
+            quote = Some(byte);
+            index += 1;
+            continue;
+        }
+        if byte == b'/' && bytes.get(index + 1) == Some(&b'/') {
+            if index > 0 && bytes[index - 1] == b':' {
+                index += 2;
+                continue;
+            }
+            return Some(index);
+        }
+        index += 1;
+    }
+    None
 }

@@ -99,6 +99,37 @@ fn lsp_status_matches_html_to_web_language_server() -> Result<(), Box<dyn std::e
 }
 
 #[test]
+fn lsp_status_preserves_scss_and_less_language_ids() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    std::fs::write(root.path().join("styles.scss"), "$color: #111;\n")?;
+    std::fs::write(root.path().join("styles.less"), "@color: #111;\n")?;
+
+    let mut client = McpClient::spawn()?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
+
+    for (id, path, extension, language) in [
+        ("scss", "styles.scss", ".scss", "scss"),
+        ("less", "styles.less", ".less", "less"),
+    ] {
+        let status = client.send(&json!({
+            "jsonrpc":"2.0","id":id,"method":"tools/call",
+            "params":{"name":"lsp_status","arguments":{"root":root.path(),"path":path}}
+        }))?;
+        let status_payload: Value = serde_json::from_str(
+            status["result"]["content"][0]["text"]
+                .as_str()
+                .ok_or("text")?,
+        )?;
+
+        assert_eq!(status_payload["server"]["id"], "css-language-server");
+        assert_eq!(status_payload["extension"], extension);
+        assert_eq!(status_payload["language"], language);
+    }
+    Ok(())
+}
+
+#[test]
 fn lsp_config_covers_core_web_and_content_extensions() -> Result<(), Box<dyn std::error::Error>> {
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .arg("--print-covered-extensions")

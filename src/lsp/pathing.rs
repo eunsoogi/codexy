@@ -83,6 +83,8 @@ pub(super) fn language_for_path(file_path: &str, server: &Server) -> String {
         ".tsx" => Some("typescriptreact"),
         ".json" => Some("json"),
         ".jsonc" => Some("jsonc"),
+        ".scss" => Some("scss"),
+        ".less" => Some("less"),
         ".py" | ".pyi" => Some("python"),
         ".rs" => Some("rust"),
         ".go" => Some("go"),
