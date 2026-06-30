@@ -53,7 +53,7 @@ fn mentions_resolved_blocker(text: &str) -> bool {
     !has_any(text, "are failing|resolved: blocked|now blocked")
         && (has_any(
             text,
-            "blocker resolved|blocker was resolved|previous blocker resolved|previous blocker was resolved|resolved blocker",
+            "blocker resolved|blocker was resolved|previous blocker resolved|previous blocker was resolved|resolved blocker|previously blocked|was blocked|were blocked|had been blocked",
         ) || has_any(
             text,
             "required checks failed and were fixed|required checks failed and were resolved|required checks failed and were cleared|required status checks failed and were fixed|required status checks failed and were resolved|required status checks failed and were cleared|status checks failed and were fixed|status checks failed and were resolved|status checks failed and were cleared|required checks were fixed|required checks were resolved|required checks were cleared|required status checks were fixed|required status checks were resolved|required status checks were cleared|status checks were fixed|status checks were resolved|status checks were cleared",

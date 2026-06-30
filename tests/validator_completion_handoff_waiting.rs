@@ -32,7 +32,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: child thread verification is still pending.\n",
         "Blocked: child thread has not returned yet.\n",
         "Blocked: child thread is still pending feedback.\n",
-        "Blocked: child lane is still pending.\n",
+        "Previously blocked on @codex review; now blocked on pending @codex review.\n",
         "Blocked: child-owned review-response work is still pending.\n",
         "Blocked: missing child thread response is pending.\n",
         "Previous blocker resolved: now blocked on pending @codex review.\n",
@@ -160,14 +160,14 @@ fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
 fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     for handoff in [
         "Not a blocker: pending Codex review is still processing.\n",
-        "Non-blocker: pending Codex review is still processing.\n",
+        "Previously blocked on @codex review; now Codex review passed and PR is merge-ready.\n",
         "Blockers: None.\nNot a blocker: pending Codex review is still processing.\n",
         "Previous blocker resolved. Waiting: pending Codex review.\n",
         "Previous blocker was resolved. Waiting: pending @codex review.\n",
         "Blocked: no. Waiting: pending Codex review is still processing.\n",
         "No known blockers. Waiting: pending Codex review is still processing.\n",
         "No current blockers. Waiting: pending Codex review is still processing.\n",
-        "No longer blocked: pending Codex review is still processing.\n",
+        "Was blocked on @codex review; now Codex review passed and PR is merge-ready.\n",
         "Blocked? no. Waiting: pending Codex review is still processing.\n",
         "Blocked = false. Waiting: pending @codex review.\n",
         "Goal blocked: no. Waiting: pending Codex review is still processing.\n",
@@ -245,6 +245,6 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult
 fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     validate_handoff_with_pr_state(
         handoff,
-        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )
 }
