@@ -15,13 +15,16 @@ const ASYNC_WAIT: &str = "not returned|not yet returned|has not returned|hasn't 
 const CODEX_REVIEW_FAILURE: &str = "codex review failed|@codex review failed|codex connector review failed|chatgpt-codex-connector failed|codex review request failed|@codex review request failed|codex connector review request failed|codex review failure|@codex review failure|codex connector review failure|chatgpt-codex-connector failure|codex review usage limit|@codex review usage limit|codex connector review usage limit|codex review usage limits|@codex review usage limits|codex connector review usage limits|codex review quota|@codex review quota|codex connector review quota|code-review usage limits were reached";
 const CURRENT_CODEX_REVIEW_FAILURE: &str = "blocked: codex review failed|blocked: @codex review failed|blocked: codex connector review failed|blocked: chatgpt-codex-connector failed|blocked: codex review request failed|blocked: @codex review request failed|blocked: codex connector review request failed|blocked: codex review failure|blocked: @codex review failure|blocked: codex connector review failure|blocked: chatgpt-codex-connector failure|blocked: codex review usage limit|blocked: @codex review usage limit|blocked: codex connector review usage limit|blocked: codex review usage limits|blocked: @codex review usage limits|blocked: codex connector review usage limits|blocked: codex review quota|blocked: @codex review quota|blocked: codex connector review quota|blocked: code-review usage limits were reached|codex review failed because|@codex review failed because|codex connector review failed because|chatgpt-codex-connector failed because|codex review request failed because|@codex review request failed because|codex connector review request failed because";
 const RESOLVED_CODEX_REVIEW_FAILURE: &str = "previous codex review failure was fixed|previous @codex review failure was fixed|previous codex connector review failure was fixed|previous codex review request failed and was fixed|previous @codex review request failed and was fixed|previous codex connector review request failed and was fixed|previous codex review quota failure was fixed|previous @codex review quota failure was fixed|previous codex connector review quota failure was fixed|previous codex review usage limits were reached and fixed|previous @codex review usage limits were reached and fixed|previous codex connector review usage limits were reached and fixed|previous code-review usage limits were reached and fixed|previous codex review failure was resolved|previous @codex review failure was resolved|previous codex connector review failure was resolved|previous codex review request failed and was resolved|previous @codex review request failed and was resolved|previous codex connector review request failed and was resolved|previous codex review quota failure was resolved|previous @codex review quota failure was resolved|previous codex connector review quota failure was resolved|previous codex review usage limits were reached and resolved|previous @codex review usage limits were reached and resolved|previous codex connector review usage limits were reached and resolved|previous code-review usage limits were reached and resolved";
+const CURRENT_BLOCKED_CLAIM: &str = "now blocked|currently blocked|still blocked|remains blocked|is blocked|goal blocked|work blocked|lane blocked";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     let false_blocked_wait = |fragment: &str, context: &str| {
         claims_blocked_state(fragment)
             && mentions_non_blocking_wait(fragment)
             && !has_true_impasse_rationale(fragment)
-            && (!mentions_resolved_blocker(fragment) || fragment.trim().starts_with("blocked"))
+            && (!mentions_resolved_blocker(fragment)
+                || fragment.trim().starts_with("blocked")
+                || has_any(fragment, CURRENT_BLOCKED_CLAIM))
             && !mentions_true_blocker(fragment)
             && !context
                 .split([',', ';'])
@@ -223,8 +226,8 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
 fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
-fn is_boundary(character: Option<char>) -> bool {
-    character.is_none_or(|character| !character.is_ascii_alphanumeric())
+fn is_boundary(c: Option<char>) -> bool {
+    c.is_none_or(|c| !c.is_ascii_alphanumeric())
 }
 fn has_nearby_negation(prefix: &str) -> bool {
     let prefix = prefix.trim_end();
@@ -240,9 +243,8 @@ fn negation_phrase_matches(prefix: &str) -> bool {
         .any(|phrase| prefix.ends_with(phrase))
 }
 fn char_window_start(text: &str, end: usize, window: usize) -> usize {
-    text[..end]
-        .char_indices()
-        .rev()
-        .nth(window)
-        .map_or(0, |(index, _)| index)
+    match text[..end].char_indices().rev().nth(window) {
+        Some((index, _)) => index,
+        None => 0,
+    }
 }

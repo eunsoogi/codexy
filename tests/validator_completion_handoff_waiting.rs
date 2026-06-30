@@ -27,11 +27,11 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: @codex review.\n",
         "Blocked.\nWaiting: pending @codex review.\nRequired checks are failing: no.\n",
         "Goal blocked because child-thread work is still pending.\n",
-        "Goal blocked.\nPending child thread response.\n",
+        "Goal blocked after previous blocker resolved: pending @codex review.\n",
         "Blocked: child thread is still working on the required change.\n",
         "Blocked: child thread verification is still pending.\n",
         "Blocked: child thread has not returned yet.\n",
-        "Blocked: child thread is still pending feedback.\n",
+        "Work is blocked after previous blocker resolved: pending @codex review.\n",
         "Previously blocked on @codex review; now blocked on pending @codex review.\n",
         "Blocked: child-owned review-response work is still pending.\n",
         "Blocked: missing child thread response is pending.\n",
@@ -61,7 +61,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
             !output.status.success(),
-            "validator should reject non-blocking wait classified as blocked\nstdout:\n{}\nstderr:\n{}",
+            "validator should reject non-blocking wait classified as blocked\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
@@ -227,7 +227,7 @@ fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     let output = validate_open_pr_handoff(handoff)?;
     assert!(
         output.status.success(),
-        "{failure_message}\nstdout:\n{}\nstderr:\n{}",
+        "{failure_message}\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
