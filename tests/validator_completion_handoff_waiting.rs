@@ -163,10 +163,10 @@ fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     for handoff in [
         "Not a blocker: pending Codex review is still processing.\n",
         "Previously blocked on @codex review; now Codex review passed and PR is merge-ready.\n",
-        "Blockers: None.\nNot a blocker: pending Codex review is still processing.\n",
+        "Blockers: none\nWaiting: pending Codex review.\n",
         "Previous blocker resolved. Waiting: pending Codex review.\n",
         "Previous blocker was resolved. Waiting: pending @codex review.\n",
-        "Blocked: no. Waiting: pending Codex review is still processing.\n",
+        "Blocked: no\nWaiting: pending Codex review.\n",
         "No known blockers. Waiting: pending Codex review is still processing.\n",
         "No current blockers. Waiting: pending Codex review is still processing.\n",
         "Was blocked on @codex review; now Codex review passed and PR is merge-ready.\n",

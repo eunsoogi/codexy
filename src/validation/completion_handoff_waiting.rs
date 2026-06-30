@@ -222,9 +222,9 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
     let first = value
         .split(|character: char| !character.is_ascii_alphanumeric() && character != '/')
         .next();
-    let rest = first.map_or("", |first| value[first.len()..].trim_start());
-    matches!(first, Some("none" | "no" | "false" | "n/a" | "na"))
-        && matches!(rest.chars().next(), None | Some('.' | ';' | ','))
+    let rest = first.map_or("", |f| value[f.len()..].trim_start_matches([' ', '\t']));
+    let terminal = rest.chars().next().is_none_or(|c| ".;,\n\r".contains(c));
+    matches!(first, Some("none" | "no" | "false" | "n/a" | "na")) && terminal
         || value.starts_with("not applicable")
 }
 fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
