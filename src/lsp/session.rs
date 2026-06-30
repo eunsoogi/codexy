@@ -87,7 +87,7 @@ impl LspSession {
                     },
                     "workspace": {}
                 },
-                "clientInfo": { "name": "codexy-lsp-mcp", "version": "0.1.0" }
+                "clientInfo": { "name": "codexy-lsp-mcp", "version": env!("CARGO_PKG_VERSION") }
             }),
             request.timeout_ms,
         )?;

@@ -1,7 +1,7 @@
 {
   "schema": "codexy.internal.release-publish-contract.v1",
   "name": "codexy",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "currentMarketplace": {
     "repository": "https://github.com/eunsoogi/codexy",
     "ref": "main",
