@@ -50,6 +50,8 @@ fn mentions_true_blocker(text: &str) -> bool {
         || mentions_missing_child_evidence(text)
         || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
+        || has_any(text, "feedback from the maintainer")
+        || has_any(text, "feedback from maintainer|maintainer feedback")
         || mentions_async_tool_failure(text)
 }
 fn mentions_resolved_blocker(text: &str) -> bool {
@@ -147,7 +149,7 @@ fn mentions_return_wait(text: &str) -> bool {
 fn mentions_waiting_context(text: &str) -> bool {
     has_any(
         text,
-        "pending|waiting|awaiting|in progress|processing|eyes reaction|eyes only|eyes-only|working|no actionable feedback yet|no feedback yet|no codex review feedback has returned yet|no @codex review feedback has returned yet|no codex connector review feedback has returned yet|not returned|not yet returned|has not returned|hasn't returned|current-head codex review request|current-head @codex review request|current-head codex connector review request|current head codex review request|current head @codex review request|current head codex connector review request|blocked: codex review|blocked: @codex review|blocked: codex connector review|blocked on codex review|blocked on @codex review|blocked on codex connector review|blocked on current-head codex review|blocked on current-head @codex review|blocked on current-head codex connector review|blocked on current head codex review|blocked on current head @codex review|blocked on current head codex connector review",
+        "pending|waiting|awaiting|in progress|processing|eyes reaction|eyes only|eyes-only|working|no actionable feedback yet|no feedback yet|no codex review feedback has returned yet|no @codex review feedback has returned yet|no codex connector review feedback has returned yet|not returned|not yet returned|has not returned|hasn't returned|current-head codex review request|current-head @codex review request|current-head codex connector review request|current head codex review request|current head @codex review request|current head codex connector review request|blocked: codex review|blocked: @codex review|blocked: codex connector review|blocked on codex review|blocked on @codex review|blocked on codex connector review|blocked by codex review|blocked by @codex review|blocked by codex connector review|blocked due to codex review|blocked due to @codex review|blocked due to codex connector review|blocked on current-head codex review|blocked on current-head @codex review|blocked on current-head codex connector review|blocked on current head codex review|blocked on current head @codex review|blocked on current head codex connector review",
     )
 }
 fn mentions_missing_child_evidence(text: &str) -> bool {

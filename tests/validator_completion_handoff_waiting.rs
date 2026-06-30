@@ -23,8 +23,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked because Codex review has no feedback yet.\n",
         "Blocked: pending @codex review, security review passed.\n",
         "Blocked: waiting on Codex review feedback from the connector.\n",
-        "Blocked on @codex review.\n",
-        "Blocked: @codex review.\n",
+        "Blocked by @codex review request.\n",
+        "Blocked due to @codex review request.\n",
         "Blocked: @codex review has eyes only.\n",
         "Blocked because Codex review has eyes only.\n",
         "Blocked.\nWaiting: pending @codex review.\nRequired checks are failing: no.\n",
@@ -107,7 +107,7 @@ fn validator_cli_allows_true_impasse_blocked_handoff() -> TestResult {
 fn validator_cli_allows_unrelated_pending_review_blocker() -> TestResult {
     for handoff in [
         "Blocked: security review is waiting for approval. Codex review context noted.\n",
-        "Blocked: waiting for feedback from the maintainer to choose the release path. Codex review context noted.\n",
+        "Blocked: pending @codex review; waiting for feedback from the maintainer to choose the release path.\n",
         "Blocked: security review is pending with no security review output yet. Waiting: pending Codex review.\n",
         "Blocked: waiting on feedback from the maintainer to choose the release path. Codex review context noted.\n",
         "Blocked: security review feedback is pending. Codex review context noted.\n",
