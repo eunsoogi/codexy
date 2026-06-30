@@ -123,6 +123,11 @@ fn is_implementation_path(path: &Path) -> bool {
     if path_text.starts_with("target/") || path_text.starts_with(".git/") {
         return false;
     }
+    if path_text.starts_with("plugins/codexy/skills/")
+        && path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md")
+    {
+        return true;
+    }
     matches!(
         path.extension().and_then(|extension| extension.to_str()),
         Some("rs" | "sh" | "py" | "js" | "ts" | "tsx" | "jsx")
