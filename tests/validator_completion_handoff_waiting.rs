@@ -35,7 +35,7 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: child lane is still pending.\n",
         "Blocked: child-owned review-response work is still pending.\n",
         "Blocked: missing child thread response is pending.\n",
-        "Blocked: @codex review has not returned yet after previous blocker resolved.\n",
+        "Previous blocker resolved: now blocked on pending @codex review.\n",
         "Blocked: @codex review has not returned yet after previous permission error was fixed.\n",
         "Blocked: @codex review is pending after previous Codex review usage limits were reached and fixed.\n",
         "Blocked: @codex review has not returned yet after previous Codex review request failed and was fixed.\n",
