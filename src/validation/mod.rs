@@ -23,6 +23,9 @@ mod custom_agent_mcp_tools;
 mod custom_agent_schema;
 mod github_labels;
 mod hooks;
+mod instruction_policy;
+mod instruction_policy_match;
+mod instruction_policy_text;
 mod lsp;
 mod manifest;
 mod mcp;
@@ -85,6 +88,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all.extend(lsp::check(plugin_root));
             all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
+            all.extend(instruction_policy::check(plugin_root));
             all
         }
         Mode::Lsp => lsp::check(plugin_root),

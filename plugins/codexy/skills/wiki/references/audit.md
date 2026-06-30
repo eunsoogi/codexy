@@ -20,7 +20,7 @@ claim is supported, weakened, contradicted, or still unresolved.
    and may reuse `.librarian/`, but it does not rewrite wiki or output content
    during a scan.
 4. **Adversarial verification.** For material findings, look for both
-   corroborating evidence and counter-evidence. Never search only for support.
+   corroborating evidence and counter-evidence. MUST NOT search only for support.
 5. **Explicit unresolved states.** If the evidence does not converge, say so.
    "Unresolved" is better than false confidence.
 
@@ -50,7 +50,7 @@ The wiki-content pass is owned by the librarian logic.
    - low-confidence source chains
    - unsupported or contradictory findings surfaced by deeper passes
 
-The audit should treat librarian as a subsystem, not a competing command.
+The audit MUST treat librarian as a subsystem, not a competing command.
 
 ## Pass 2: Output Dependency and Drift Pass
 
@@ -59,7 +59,7 @@ Audit output artifacts across the full dependency graph, not just
 
 ### Target artifacts
 
-By default, inspect markdown outputs under `output/` and `output/projects/`,
+By default, MUST inspect markdown outputs under `output/` and `output/projects/`,
 excluding:
 
 - `_index.md`
@@ -73,12 +73,12 @@ deliverables.
 
 For each output artifact:
 
-1. Read frontmatter and capture `sources:`, `generated:`, `project:`, and
+1. MUST read frontmatter and capture `sources:`, `generated:`, `project:`, and
    related metadata if present.
 2. If `sources:` is missing or empty, flag `missing-provenance`.
-3. Resolve each dependency with the Source Reference Resolution protocol in
-   `wiki-structure.md`. Preserve the whole YAML scalar/path, including spaces;
-   never split dependency entries on whitespace.
+3. MUST resolve each dependency with the Source Reference Resolution protocol in
+   `wiki-structure.md`. MUST preserve the whole YAML scalar/path, including spaces;
+   MUST NOT split dependency entries on whitespace.
 4. Flag `broken-source-ref` for any dependency that does not resolve.
 5. Compare dependency freshness against the output's `generated:` date:
    - if dependency `updated:` / `ingested:` / `generated:` is newer than the
@@ -91,7 +91,7 @@ For each output artifact:
 
 ### Output verdicts
 
-Classify each artifact as one of:
+MUST classify each artifact as one of:
 
 - `clean` — provenance resolves and no important upstream drift is found
 - `drifted` — upstream evidence changed after the artifact was generated
@@ -124,7 +124,7 @@ For each escalated item:
 1. Re-read the local artifact and note the specific claims at issue.
 2. Re-read or fetch its cited raw sources and wiki dependencies.
 3. If a raw source points to a live primary URL, fetch it again when possible.
-4. Run targeted research with both supportive and adversarial queries:
+4. MUST run targeted research with both supportive and adversarial queries:
    - one query that tries to confirm the current claim
    - one query that tries to break or disprove it
 5. Prefer primary sources, official docs, papers, or direct evidence over
@@ -133,23 +133,23 @@ For each escalated item:
    - support branch
    - attack branch
    - optional primary-source branch
-7. Stop only when the claim lands in one of the verdict buckets below, or when
+7. MUST stop only when the claim lands in one of the verdict buckets below, or when
    the audit can defend why it remains unresolved.
 
 ### Truth verdicts
 
-Each escalated finding should end with one of:
+Each escalated finding MUST end with one of:
 
 - `supported`
 - `weakened`
 - `contradicted`
 - `unresolved`
 
-The audit should never hide mixed evidence behind a binary label.
+The audit MUST NOT hide mixed evidence behind a binary label.
 
 ## Pass 4: Session Provenance Pass
 
-Check whether the wiki has enough execution history to replay how artifacts were
+MUST check whether the wiki has enough execution history to replay how artifacts were
 produced.
 
 ### Files to look for
@@ -166,10 +166,10 @@ produced.
 - `missing` — no durable session artifacts exist; provenance is limited to file
   timestamps and frontmatter
 
-This pass is diagnostic, not punitive. Missing event logs should usually be
+This pass is diagnostic, not punitive. Missing event logs usually are
 reported as a limitation, not as a content failure.
 
-Audits should also maintain their own durable provenance:
+Audits MUST also maintain their own durable provenance:
 
 - append `audit_started`, `audit_output_scan_completed`,
   `audit_truth_escalation_completed`, and `audit_completed` events to
@@ -218,4 +218,4 @@ The topic wiki's main `log.md` also gets an `audit` entry.
 
 If audit finds a stale wiki article, it can recommend or invoke refresh work as
 part of the investigation. If it only needs to keep the `wiki/` layer tidy, it
-should stay within librarian territory.
+MUST stay within librarian territory.

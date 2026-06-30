@@ -1,4 +1,4 @@
-<!-- Token-efficient orchestration delta poll. Keep one block per active lane. -->
+<!-- Token-efficient orchestration delta poll. MUST keep one block per active lane. -->
 
 ## Lane
 

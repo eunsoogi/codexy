@@ -4,15 +4,23 @@ mod support;
 
 use support::copy_dir;
 
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
 #[test]
-fn validator_cli_rejects_manifest_prompt_without_orchestration_route()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_manifest_prompt_without_orchestration_route() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
     let manifest_path = plugin_root.join(".codex-plugin/plugin.json");
-    let mut manifest: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&manifest_path)?)?;
+    let text = std::fs::read_to_string(&manifest_path)?;
+    let mut manifest: serde_json::Value = serde_json::from_str(&text)?;
+    assert!(
+        manifest["interface"]["defaultPrompt"]
+            .as_array()
+            .ok_or("defaultPrompt")?
+            .iter()
+            .all(|line| line.as_str().is_some_and(|line| line.contains("MUST")))
+    );
     manifest["interface"]["defaultPrompt"] = serde_json::json!(["Use Codexy as orchestrator."]);
     std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
 
@@ -23,8 +31,7 @@ fn validator_cli_rejects_manifest_prompt_without_orchestration_route()
 }
 
 #[test]
-fn validator_cli_rejects_top_level_prompt_without_orchestration_route()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_top_level_prompt_without_orchestration_route() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -42,8 +49,7 @@ fn validator_cli_rejects_top_level_prompt_without_orchestration_route()
 }
 
 #[test]
-fn validator_cli_rejects_missing_top_level_prompt_metadata()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_missing_top_level_prompt_metadata() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -56,8 +62,7 @@ fn validator_cli_rejects_missing_top_level_prompt_metadata()
 }
 
 #[test]
-fn validator_cli_allows_skill_prompt_without_orchestration_route()
--> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_allows_skill_prompt_without_orchestration_route() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -70,8 +75,7 @@ fn validator_cli_allows_skill_prompt_without_orchestration_route()
 }
 
 #[test]
-fn codex_orchestration_spawn_agent_examples_use_message_argument()
--> Result<(), Box<dyn std::error::Error>> {
+fn codex_orchestration_spawn_agent_examples_use_message_argument() -> TestResult {
     let skill = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
@@ -84,8 +88,7 @@ fn codex_orchestration_spawn_agent_examples_use_message_argument()
 }
 
 #[test]
-fn repo_instructions_own_dogfood_policy_with_orchestration_details()
--> Result<(), Box<dyn std::error::Error>> {
+fn repo_instructions_own_dogfood_policy_with_orchestration_details() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let agents = std::fs::read_to_string(root.join("AGENTS.md"))?;
     let skill =
@@ -97,8 +100,8 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details()
     assert!(agents.contains("`codex mcp list` shows Codexy `codegraph` or `lsp` enabled"));
     assert!(agents.contains("preflight branch refs"));
     assert!(agents.contains("non-existent new branch as an existing branch selector"));
-    assert!(agents.contains("keep exactly one active"));
-    assert!(agents.contains("must not stop at an open PR"));
+    assert!(agents.contains("MUST keep exactly one"));
+    assert!(agents.contains("MUST NOT stop at an open PR"));
     assert!(
         agents.contains("Child-owned lanes receive implementation and review-feedback patches")
     );
@@ -129,19 +132,18 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details()
 }
 
 #[test]
-fn git_workflow_requires_child_lane_ownership_evidence_check()
--> Result<(), Box<dyn std::error::Error>> {
+fn git_workflow_requires_child_lane_ownership_evidence_check() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
 
     assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
-    assert!(skill.contains("parent MUST NOT patch the child-owned branch as recovery"));
+    assert!(skill.contains("parent MUST NOT patch the child-owned"));
     assert!(skill.contains("explicit maintainer reassignment"));
     Ok(())
 }
 
 #[test]
-fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn std::error::Error>> {
+fn codexy_workflows_require_task_classification_first() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let classification =
         std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
@@ -156,7 +158,7 @@ fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn st
     )?;
 
     assert!(classification.contains("name: task-classification"));
-    assert!(classification.contains("Run this skill first for any Codexy work"));
+    assert!(classification.contains("MUST run this skill first for any Codexy work"));
     assert!(classification.contains("Classification Output"));
     assert!(classification.contains("Lane type:"));
     assert!(classification.contains("Owner decision:"));
@@ -183,7 +185,7 @@ fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn st
     ));
     assert!(
         classification
-            .contains("Classification must happen before acting on or using the owner decision")
+            .contains("Classification MUST happen before acting on or using the owner decision")
     );
     assert!(orchestration.contains("$task-classification"));
     assert!(orchestration.contains(
@@ -197,19 +199,16 @@ fn codexy_workflows_require_task_classification_first() -> Result<(), Box<dyn st
 }
 
 #[test]
-fn validator_cli_rejects_tab_indented_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_tab_indented_prompt_yaml() -> TestResult {
     assert_prompt_indent_rejected("  display_name:", "\tdisplay_name:")
 }
 
 #[test]
-fn validator_cli_rejects_mixed_space_tab_prompt_yaml() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_mixed_space_tab_prompt_yaml() -> TestResult {
     assert_prompt_indent_rejected("  display_name:", " \tdisplay_name:")
 }
 
-fn assert_prompt_indent_rejected(
-    needle: &str,
-    replacement: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn assert_prompt_indent_rejected(needle: &str, replacement: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;

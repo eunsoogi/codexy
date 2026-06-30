@@ -3,18 +3,18 @@
 ## Merge Rules
 
 MUST NOT merge a PR until every review surface has been inspected and resolved.
-Codex connector reviews are merge-blocking reviews. Treat requested changes,
+Codex connector reviews are merge-blocking reviews. MUST treat requested changes,
 actionable suggestions, unresolved review threads, stale concerns after new
 commits, and PR comments that identify defects as blockers until addressed or
 covered by an accepted no-change rationale.
 
 PR #18 was squash merged as `docs(license): correct copyright owner (#)` because
-the merge command did not carry the numeric PR identifier into the subject. Do
-not rewrite protected `main` history to repair that old commit. Prevent repeats
+the merge command did not carry the numeric PR identifier into the subject. MUST
+NOT rewrite protected `main` history to repair that old commit. Prevent repeats
 by deriving the PR number from an explicit `gh pr view <number>` call before
 every merge.
 
-Before merging, inspect latest PR state, checks, reviews, comments, and review
+Before merging, MUST inspect latest PR state, checks, reviews, comments, and review
 threads:
 
 ```sh
@@ -132,12 +132,13 @@ fi
 ```
 
 `gh pr merge` has no flag that means "Codex review passed." `--auto` only waits
-for configured GitHub requirements, and `--admin` bypasses requirements. MUST NOT
-use `--admin` to skip Codex review, required checks, or review-thread cleanup.
+for configured GitHub requirements, and `--admin` bypasses requirements. MUST
+NOT use `--admin` to skip Codex review, required checks, or review-thread
+cleanup.
 
 ## Post-Merge Main Sync
 
-After merge, update the main worktree and verify the merge body:
+After merge, MUST update the main worktree and verify the merge body:
 
 ```bash
 set -euo pipefail
@@ -188,7 +189,7 @@ rm -f "$expected_body_file"
 
 The refreshed `main` commit subject MUST end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body MUST match the PR body captured before merge.
-If GitHub did not delete the remote topic branch, delete it only after
+If GitHub did not delete the remote topic branch, MUST delete it only after
 confirming the PR was merged and no dependent work needs the branch:
 
 ```sh

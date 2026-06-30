@@ -1,6 +1,6 @@
 interface:
   display_name: "Refactoring"
   short_description: "Keep refactors small, safe, and under 250 LOC."
-  default_prompt: "Use $refactoring to split large code safely while preserving behavior and keeping files under 250 LOC."
+  default_prompt: "You MUST use $refactoring to split large code safely while preserving behavior and keeping files under 250 LOC."
 policy:
   allow_implicit_invocation: true

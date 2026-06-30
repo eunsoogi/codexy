@@ -7,13 +7,13 @@ description: Use when preparing plugin versions, version sync, changelogs, relea
 
 ## Purpose
 
-Turn a verified change set into a reproducible release candidate. Keep
+Turn a verified change set into a reproducible release candidate. MUST keep
 versions, manifests, release notes, artifacts, automation, and rollback evidence
 aligned before publishing or tagging.
 
 ## Workflow
 
-1. Identify release unit:
+1. MUST identify release unit:
    - plugin manifest,
    - marketplace entry,
    - skill bundle,
@@ -25,13 +25,13 @@ aligned before publishing or tagging.
    - GitHub Action,
    - documentation bundle,
    - tag or GitHub release.
-2. Find version sources of truth:
+2. MUST find version sources of truth:
    - `plugins/<plugin>/.codex-plugin/plugin.json`,
    - `.agents/plugins/marketplace.json` when it carries install availability,
    - package metadata only when a package manager is intentionally present,
    - release workflow inputs,
    - changelog or release notes.
-3. Choose version policy:
+3. MUST choose version policy:
    - patch for compatible fixes,
    - minor for new skills or capabilities,
    - major for breaking invocation, manifest, or compatibility changes.
@@ -57,7 +57,7 @@ aligned before publishing or tagging.
    - release notes or changelog when a user-facing version changes.
 6. Validate artifact or package shape from the release unit, not only source
    files.
-7. Inspect artifacts for secrets, local paths, debug files, oversized files,
+7. MUST inspect artifacts for secrets, local paths, debug files, oversized files,
    and unintended dependencies.
 8. Publish, tag, or create GitHub releases only when explicitly requested by
    the active workflow.
@@ -80,36 +80,36 @@ Not publishing because:
 
 ## Gates
 
-- Do not bump one version source without syncing the rest.
-- Do not publish from a dirty tree.
-- Do not tag before the release PR is merged unless the workflow explicitly
+- MUST NOT bump one version source without syncing the rest.
+- MUST NOT publish from a dirty tree.
+- MUST NOT tag before the release PR is merged unless the workflow explicitly
   requires pre-merge tags.
-- Do not treat source-tree validation as artifact validation when a package,
+- MUST NOT treat source-tree validation as artifact validation when a package,
   archive, or marketplace bundle is produced.
-- Do not release plugin architecture changes while LSP, MCP, role metadata,
+- MUST NOT release plugin architecture changes while LSP, MCP, role metadata,
   custom agent TOML, or thread/worktree orchestration checks are missing.
-- Do not release code-exploration behavior without packaged codegraph MCP
+- MUST NOT release code-exploration behavior without packaged codegraph MCP
   registration evidence.
-- Do not merge child-owned release or architecture feedback from the parent
-  thread alone. The owning child thread must address or explicitly reject the
+- MUST NOT merge child-owned release or architecture feedback from the parent
+  thread alone. The owning child thread MUST address or explicitly reject the
   feedback and return current verification.
 
 ## Evidence Rules
 
-- Version sync requires direct file inspection or parser output.
-- Architecture validation requires parser output for structured config and
+- Version sync MUST include direct file inspection or parser output.
+- Architecture validation MUST include parser output for structured config and
   surface-specific checks for only the plugin surfaces that exist. For Codexy
-  plugin releases, run `scripts/validate-plugin-config --check`
+  plugin releases, MUST run `scripts/validate-plugin-config --check`
   when present.
-- GitHub Actions changes require syntax or command-level validation where
+- GitHub Actions changes MUST require syntax or command-level validation where
   possible.
-- Release notes must match the actual diff and merged PRs.
-- Rollback plans must name the prior version, prior tag or commit, and how to
+- Release notes MUST match the actual diff and merged PRs.
+- Rollback plans MUST name the prior version, prior tag or commit, and how to
   restore installability.
 
 ## Failure Modes
 
 - Bumping versions without updating release notes.
 - Publishing from an unreviewed PR head.
-- Adding release automation that cannot be run manually or audited.
+- Adding release automation without a manual run and audit path.
 - Mixing release prep with unrelated feature work.

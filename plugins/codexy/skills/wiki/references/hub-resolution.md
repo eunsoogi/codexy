@@ -1,6 +1,6 @@
 # Hub Path Resolution
 
-Every wiki operation must resolve the hub path before doing anything else. Follow this protocol exactly.
+Every wiki operation MUST resolve the hub path before doing anything else. MUST follow this protocol exactly.
 
 ## Why this protocol exists
 
@@ -15,9 +15,9 @@ When a wiki folder is shared through iCloud, the same logical folder appears at 
 
 ## Resolution Steps
 
-**This is a sequential file-read protocol. Do NOT use Explore agents, `find`, `ls -R`, or any filesystem search. Each step is a single Read tool call. Most configured sessions resolve by step 3.**
+**This is a sequential file-read protocol. MUST NOT use Explore agents, `find`, `ls -R`, or any filesystem search. Each step is a single Read tool call. Most configured sessions resolve by step 3.**
 
-1. **Read `~/.config/llm-wiki/config.json`** (expand `~` to `$HOME`).
+1. **MUST read `~/.config/llm-wiki/config.json`** (expand `~` to `$HOME`).
 
 2. **If config has `hub_path`** → expand the leading `~` ONLY (see Tilde Expansion below), set that expanded path as the preferred **HUB** candidate.
 
@@ -25,7 +25,7 @@ When a wiki folder is shared through iCloud, the same logical folder appears at 
 
 4. **If the expanded `hub_path` is unavailable and config has `resolved_path` with `_index.md`** → **HUB** = `resolved_path` as a backward-compatible fallback. Done.
 
-5. **If config has `hub_path` but neither path is initialized yet** → **HUB** = expanded `hub_path`. Use this for initialization. Done.
+5. **If config has `hub_path` but neither path is initialized yet** → **HUB** = expanded `hub_path`. MUST use this for initialization. Done.
 
 6. **If config has only `resolved_path`** → **HUB** = `resolved_path`. Done.
 
@@ -42,16 +42,16 @@ Preferred config:
 
 Most sessions hit steps 1-3 and resolve from config. The `~/wiki/` fallback is only for users with no config file.
 
-> **CRITICAL — Do NOT confuse directory existence with hub existence.**
+> **CRITICAL — MUST NOT confuse directory existence with hub existence.**
 > A directory may exist (e.g., leftover `.DS_Store`, empty folder, or a symlink to an uninitialized path) without being an initialized hub. Only `_index.md` existing at the hub root counts as an initialized hub.
 
-> **Config is authoritative.** If `~/.config/llm-wiki/config.json` exists with a `hub_path` or `resolved_path`, ALL initialization MUST happen at the config path. Prefer `hub_path` for initialization when present. Never create a hub at `~/wiki/` when config points elsewhere.
+> **Config is authoritative.** If `~/.config/llm-wiki/config.json` exists with a `hub_path` or `resolved_path`, ALL initialization MUST happen at the config path. Prefer `hub_path` for initialization when present. MUST NOT create a hub at `~/wiki/` when config points elsewhere.
 
-> **Never access `~/wiki/` when config exists.** In sandboxed environments, `~/wiki/` may not be an allowed path. The config path is the only path the agent should touch.
+> **MUST NOT access `~/wiki/` when config exists.** In sandboxed environments, `~/wiki/` may not be an allowed path. The config path is the only path the agent may touch.
 
-> **Do not write `resolved_path` into shared configs.** Older configs may contain it, but new config writes should keep only `hub_path` unless the user explicitly wants a machine-local absolute config. This prevents one Mac's `/Users/<name>/...` path from breaking another Mac.
+> **MUST NOT write `resolved_path` into shared configs.** Older configs may contain it, but new config writes MUST keep only `hub_path` unless the user explicitly wants a machine-local absolute config. This prevents one Mac's `/Users/<name>/...` path from breaking another Mac.
 
-> **Permission-denied is not path-missing.** On macOS/iCloud, `stat` can succeed for `HUB`, `HUB/wikis.json`, and `HUB/topics`, while actual reads or directory listings fail with `Operation not permitted` (`errno=1`). In that case the configured `hub_path` is correct. Stop and tell the user to grant Full Disk Access or iCloud Drive access to the exact app launching the agent, then restart the agent. Do not fall back to `~/wiki`, do not use `resolved_path`, and do not suggest moving the wiki just because reads are denied.
+> **Permission-denied is not path-missing.** On macOS/iCloud, `stat` can succeed for `HUB`, `HUB/wikis.json`, and `HUB/topics`, while actual reads or directory listings fail with `Operation not permitted` (`errno=1`). In that case the configured `hub_path` is correct. MUST stop and tell the user to grant Full Disk Access or iCloud Drive access to the exact app launching the agent, then restart the agent. MUST NOT fall back to `~/wiki`, MUST NOT use `resolved_path`, and MUST NOT suggest moving the wiki just because reads are denied.
 
 ## Optional setup: symlink
 
@@ -65,7 +65,7 @@ This is optional — config-based resolution (steps 1-2) works without it. The s
 
 ## Tilde Expansion — Correct Method
 
-Replace ONLY the leading `~` with the current user's home directory. **Do NOT expand tildes anywhere else** — characters like `~` in `com~apple~CloudDocs` are literal directory names.
+Replace ONLY the leading `~` with the current user's home directory. **MUST NOT expand tildes anywhere else** — characters like `~` in `com~apple~CloudDocs` are literal directory names.
 
 ```bash
 hub_path="~/Library/Mobile Documents/com~apple~CloudDocs/wiki"  # from config
@@ -74,7 +74,7 @@ expanded="${hub_path/#\~/$HOME}"
 #                                  ↑ these tildes are UNTOUCHED
 ```
 
-**Never** use `eval` or unquoted expansion — these break on paths with spaces.
+**MUST NOT** use `eval` or unquoted expansion — these break on paths with spaces.
 
 ## Paths with Spaces
 
@@ -99,7 +99,7 @@ Once HUB is resolved, determine which wiki to target:
 ## Registry Path Resolution
 
 `HUB/wikis.json` is commonly stored inside the shared wiki folder, so its paths
-must be portable across machines. For topic wikis under the hub, prefer relative
+MUST be portable across machines. For topic wikis under the hub, prefer relative
 paths:
 
 ```json
@@ -122,12 +122,12 @@ When reading an entry path, resolve in this order:
 5. Any other path → resolve relative to HUB
 
 If a registry entry's path is missing but `HUB/topics/<entry-name>/_index.md`
-exists, use `HUB/topics/<entry-name>` and repair the registry on the next
+exists, MUST use `HUB/topics/<entry-name>` and repair the registry on the next
 wikis.json sync. If a command explicitly includes archived content and the
 active fallback is missing but `HUB/topics/.archive/<entry-name>/_index.md`
-exists, use `HUB/topics/.archive/<entry-name>` and ensure the registry entry
-has `status: archived`. Normal semantic commands should reject archived entries
+exists, MUST use `HUB/topics/.archive/<entry-name>` and ensure the registry entry
+has `status: archived`. Normal semantic commands MUST reject archived entries
 unless they explicitly support archived inclusion. If `wikis.json` is unreadable
 but `HUB/topics/` is populated, list active topic directories by reading each
-topic's `config.md` and `_index.md`; read `topics/.archive/` only for archive
+topic's `config.md` and `_index.md`; MUST read `topics/.archive/` only for archive
 or explicit archived maintenance workflows.

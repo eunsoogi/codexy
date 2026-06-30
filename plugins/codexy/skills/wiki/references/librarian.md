@@ -4,9 +4,9 @@ Content-level wiki maintenance: staleness detection, quality scoring, factual ve
 
 ## Design Principles
 
-1. **Score then act.** The librarian produces scores and reports. It never modifies wiki content during a scan. Write operations (fix, auto-fix) are separate commands requiring explicit confirmation.
+1. **Score then act.** The librarian produces scores and reports. It MUST NOT modify wiki content during a scan. MUST keep write operations (fix, auto-fix) as separate commands requiring explicit confirmation.
 2. **Conservative by default.** When uncertain, flag for human review rather than auto-classifying as clean. Lean toward false positives over false negatives.
-3. **Checkpoint everything.** After scoring each article, write the result to `.librarian/checkpoint.json`. If the session drops, the next invocation resumes from where it left off.
+3. **Checkpoint everything.** After scoring each article, MUST write the result to `.librarian/checkpoint.json`. If the session drops, the next invocation resumes from where it left off.
 4. **Two-tier escalation.** Quick metadata-only scan first (cheap). Deep content read only for articles that score below threshold or have `volatility: hot`. Token cost scales with problem density, not wiki size.
 5. **Machine-readable first.** `.librarian/scan-results.json` is the source of truth. `REPORT.md` is rendered from it. Other skills read the JSON.
 
@@ -23,11 +23,11 @@ Composite score 0-100 across four dimensions, each contributing 0-25 points. Use
 | Compilation recency | Article currency | `updated:` date | Days since updated |
 | Source chain integrity | Referenced sources exist | `sources:` entries | Percentage of sources that resolve to actual files |
 
-Resolve `sources:` entries with the Source Reference Resolution protocol in
+MUST resolve `sources:` entries with the Source Reference Resolution protocol in
 `wiki-structure.md`. A source entry is a complete YAML scalar/path and may
-contain spaces. Do not split on whitespace, and do not classify a source as
+contain spaces. MUST NOT split on whitespace, and MUST NOT classify a source as
 missing until exact path resolution and the slug fallback have both failed.
-Ambiguous slug fallback matches count as unresolved for scoring and should be
+Ambiguous slug fallback matches count as unresolved for scoring and MUST be
 listed separately in the report factors.
 
 ### Decay Curves by Volatility
@@ -62,8 +62,8 @@ Range: 0 (completely stale) to 100 (perfectly fresh).
 
 ### Missing Fields
 
-- Missing `volatility`: treat as `warm` (safe default, matches C15 auto-fix)
-- Missing `verified`: treat as never verified — verification_recency = 0
+- Missing `volatility`: MUST treat as `warm` (safe default, matches C15 auto-fix)
+- Missing `verified`: MUST treat as unverified — verification_recency = 0
 - Missing `updated`: fall back to `created` date
 - Missing `sources`: integrity = 0 (no sources to verify)
 
@@ -82,7 +82,7 @@ Articles with `compiled-from: mixed` are scored using the standard four-dimensio
 
 ### Staleness Threshold
 
-Read `freshness_threshold` from the wiki's `config.md` (default: 70). Articles scoring below this threshold are flagged.
+MUST read `freshness_threshold` from the wiki's `config.md` (default: 70). Articles scoring below this threshold are flagged.
 
 ## Quality Scoring (Pass 5)
 
@@ -100,11 +100,11 @@ Four dimensions, each scored 1-5. Composite quality score is the average, mapped
 ### Scoring Protocol
 
 **Tier 1 (metadata-only, all articles)**:
-- Source quality: count sources, read their `confidence:` fields. Score derivable without reading article body.
+- Source quality: MUST count sources and read their `confidence:` fields. Score derivable without reading article body.
 - Depth (proxy): word count + heading count from file stats. <200 words or 0 headings = stub (1-2). >1000 words + 3+ headings = likely good (4-5).
 
 **Tier 2 (deep read, escalated articles only)**:
-- Read the full article body.
+- MUST read the full article body.
 - Score coherence and utility by analyzing the content.
 - Refine the depth and source quality scores from Tier 1.
 - Escalation triggers: staleness score < 70, volatility = hot, or Tier 1 depth proxy = 1-2.
@@ -158,7 +158,7 @@ Written after each article is scored. If the session drops, the next `scan` or `
 }
 ```
 
-**Atomic writes**: Write to `.librarian/.checkpoint.tmp`, then rename to `checkpoint.json`. Incomplete writes from crashes are detected (missing or unparseable tmp file) and the last article is rescanned.
+**Atomic writes**: MUST write to `.librarian/.checkpoint.tmp`, then MUST rename to `checkpoint.json`. Incomplete writes from crashes are detected (missing or unparseable tmp file) and the last article is rescanned.
 
 **Clearing**: Checkpoint is deleted when a scan completes successfully and `scan-results.json` is written.
 
@@ -247,6 +247,6 @@ Append-only librarian activity log at `.librarian/log.md`:
 | `lint` | Structure: broken links, missing indexes, frontmatter schema, file placement | Lint's territory — librarian skips |
 | `lint --deep` (C7) | Quick spot-check: a few web searches for obvious staleness | Lightweight — librarian goes deeper |
 | `refresh` | Re-fetch sources, compare changes, offer recompilation | Librarian flags, then delegates to refresh |
-| `compile` | Transform raw sources into wiki articles | Librarian reviews compiled output, never compiles |
+| `compile` | Transform raw sources into wiki articles | Librarian reviews compiled output, MUST NOT compile |
 
 When the librarian flags an article as stale and the user confirms, it delegates to the refresh protocol in `commands/refresh.md` for that article.

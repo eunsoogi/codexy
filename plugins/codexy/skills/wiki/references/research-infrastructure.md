@@ -18,7 +18,7 @@ You are a research agent. Your task:
 **Search strategy**: {Strategy from role table}
 **Current wiki state**: {Brief summary from Phase 1 — what's already covered}
 **Constraints**:
-- Run 2-3 WebSearch queries (vary terms)
+- MUST run 2-3 WebSearch queries (vary terms)
 - WebFetch full content for promising results
 - Skip: paywalled, SEO spam, thin, duplicate
 - Target 3-5 high-quality sources
@@ -63,10 +63,10 @@ Return ranked by (relevance × evidence strength), strongest first.
 
 ### Retardmax Variants
 
-- All templates: increase to 4-5 searches
-- Lower quality threshold: accept 2+ (not 3+)
-- Add: "Follow interesting citations and references from pages you find"
-- Rabbit Hole agents: "Start with '{topic}', follow the most compelling result, then search for what THAT references. Go deep."
+- All templates: MUST increase to 4-5 searches
+- MUST lower quality threshold: accept 2+ (not 3+)
+- MUST add: "MUST follow interesting citations and references from pages you find"
+- Rabbit Hole agents: "MUST start with '{topic}', MUST follow the most compelling result, then MUST search for what THAT references. Go deep."
 
 ---
 
@@ -90,7 +90,7 @@ Independent assessment of source credibility before ingestion. Prevents the "fox
 | Vendor primary source | -1 | First-party vendor docs or blog about own product (authoritative for facts, but inherent promotional framing) |
 | Corroborated by other agents | +1 per agent (max +2) | Multiple agents found similar claims from independent sources |
 
-**Non-stacking rule**: Bias signals do not stack. If a source triggers both "potential bias" and "vendor primary source," apply only the more specific one (-1 total, not -2). These are refinements of the same concern (promotional framing), not independent dimensions.
+**Non-stacking rule**: Bias signals MUST NOT stack. If a source triggers both "potential bias" and "vendor primary source," apply only the more specific one (-1 total, not -2). These are refinements of the same concern (promotional framing), not independent dimensions.
 
 ### Credibility Tiers
 
@@ -161,7 +161,7 @@ When progress_score < 40 for two consecutive rounds:
 1. Switch to `--deep` mode if not already
 2. Try different search angle framing
 3. Narrow the topic to a more specific subtopic
-4. Report early completion: "Research appears exhausted for this topic"
+4. MUST report early completion: "Research appears exhausted for this topic"
 
 ### Trajectory-Based Triggers
 
@@ -173,7 +173,7 @@ In addition to per-round thresholds, monitor the round-over-round trend:
 **Plateau detection**: If 2 consecutive rounds score within 5 points of each other AND no new high-impact gaps are identified, recommend early completion:
 > "Research has plateaued at {score}. No new high-impact gaps found. Early completion recommended."
 
-**Stalled detection**: If any single round scores <20, immediately flag:
+**Stalled detection**: If any single round scores <20, MUST immediately flag:
 > "Round yielded near-zero value. Stop and reassess: is the topic too narrow, the search terms wrong, or the knowledge base already comprehensive?"
 
 ---
@@ -182,7 +182,7 @@ In addition to per-round thresholds, monitor the round-over-round trend:
 
 ### Why
 
-Between multi-round research rounds, reflect holistically on accumulated knowledge and score gaps for the next round. **Key insight from testing**: plan reflection's primary value is discovering cross-topic connections between rounds — NOT changing the research direction. Testing against a real 4-round research wiki showed the research path was already well-chosen (reflection confirmed every round's direction). But it found 5 undrawn cross-references that exist in the content but were never linked. This is the 34% improvement the literature predicts.
+Between multi-round research rounds, reflect holistically on accumulated knowledge and score gaps for the next round. **Key insight from testing**: plan reflection's primary value is discovering cross-topic connections between rounds — NOT changing the research direction. Testing against a real 4-round research wiki showed the research path was already well-chosen (reflection confirmed every round's direction). But it found 5 undrawn cross-references that exist in the content but were not linked. This is the 34% improvement the literature predicts.
 
 ### Gap Scoring Formula
 
@@ -200,7 +200,7 @@ Each gap is scored on three dimensions (1-5 each):
 
 ### Reflection Protocol
 
-Between rounds, the orchestrating agent should (in priority order):
+Between rounds, the orchestrating agent MUST, in priority order:
 
 1. **Draw connections** between this round's findings and ALL prior rounds (not just the previous one) — this is the highest-value activity
 2. **Update cross-references** — add See Also links between articles that share concepts across rounds
@@ -229,7 +229,7 @@ Between rounds, the orchestrating agent should (in priority order):
 3. Gap D: Impact 3 x Feasibility 3 x Specificity 4 = 36
 
 ### Direction Shift
-Research initially focused on X but findings consistently point to Y as the more important subtopic. Round 3 should emphasize Y.
+Research initially focused on X but findings consistently point to Y as the more important subtopic. Round 3 MUST emphasize Y.
 ```
 
 ---
@@ -238,7 +238,7 @@ Research initially focused on X but findings consistently point to Y as the more
 
 ### Why
 
-Persistent state for multi-round research and thesis sessions, enabling crash recovery and round-to-round continuity. Without this, a crashed `--min-time` session loses all round state and the user has to start over. The file is ephemeral (never committed to git, never indexed), cheap to lose (worst case: user is asked "continue or start fresh?"), but valuable to have.
+Persistent state for multi-round research and thesis sessions, enabling crash recovery and round-to-round continuity. Without this, a crashed `--min-time` session loses all round state and the user has to start over. The file is ephemeral (not committed to git, not indexed), cheap to lose (worst case: user is asked "continue or start fresh?"), but valuable to have.
 
 ### Research Session Schema (.research-session.json)
 
@@ -293,8 +293,8 @@ The session registry files above are for **live recovery**. They are not the
 best long-term provenance format because they are overwritten in place and
 deleted on normal completion.
 
-Research, thesis, audit, and related long-running wiki workflows should also
-maintain two durable provenance artifacts in the wiki root:
+Research, thesis, audit, and related long-running wiki workflows MUST maintain
+two durable provenance artifacts in the wiki root in addition to session registry files:
 
 - `.session-events.jsonl` — append-only event log
 - `.session-checkpoint.json` — latest replayable summary
@@ -304,7 +304,7 @@ to classify provenance as `replayable` instead of merely `partial`.
 
 ### Event Log Schema (.session-events.jsonl)
 
-Each line is one JSON object. Append only; never rewrite prior entries.
+Each line is one JSON object. Append only; MUST NOT rewrite prior entries.
 
 ```json
 {"ts":"2026-04-29T12:00:00Z","command":"research","phase":"start","event":"research_started","session_id":"2026-04-29-120000","topic":"cerebral amyloid angiopathy","mode":"single","min_time_budget":"2h"}
@@ -375,28 +375,29 @@ Recommended fields:
 
 | Event | Action |
 |-------|--------|
-| --min-time research starts | Create `.research-session.json`; append `research_started`; write `.session-checkpoint.json` |
-| Round N completes | Update `.research-session.json`; append round event(s); refresh checkpoint |
-| Research completes normally | Append completion event; refresh checkpoint; delete `.research-session.json` |
+| --min-time research starts | MUST create `.research-session.json`; append `research_started`; MUST write `.session-checkpoint.json` |
+| Round N completes | MUST update `.research-session.json`; append round event(s); refresh checkpoint |
+| Research completes normally | MUST append completion event; refresh checkpoint; delete `.research-session.json` |
 | Session interrupted | `.research-session.json` persists with `status: "in_progress"`; durable files remain |
-| Next invocation detects file | Ask: continue or start fresh? |
+| Next invocation detects file | MUST ask whether to continue or start fresh |
 | File > 7 days old | Structural Guardian warns about stale session |
 
 ### Resume Protocol
 
-1. Detect `.research-session.json` or `.thesis-session.json` in wiki root
-2. If found, read it first and extract the last completed round
-3. If no active session exists, read `.session-checkpoint.json` and the tail of `.session-events.jsonl` for the latest durable context
-4. Ask user: "Found interrupted session (Round N, M sources). Continue or start fresh?"
-5. If continue: use round N's gaps/reflection as starting point for round N+1
-6. If fresh: delete only the ephemeral session file, preserve durable provenance
+1. MUST detect `.research-session.json` or `.thesis-session.json` in wiki root
+2. If found, MUST read it first and extract the last completed round
+3. If no active session exists, MUST read `.session-checkpoint.json` and the tail of `.session-events.jsonl` for the latest durable context
+4. MUST ask the user whether to continue or start fresh, for example:
+   "Found interrupted session (Round N, M sources). MUST choose continue or start fresh."
+5. If continue: MUST use round N's gaps/reflection as starting point for round N+1
+6. If fresh: MUST delete only the ephemeral session file and preserve durable provenance
 
 ### Notes
 
 - Session files are ephemeral — they are for crash recovery only
 - `.session-events.jsonl` and `.session-checkpoint.json` are durable provenance
-  artifacts and should normally persist after completion
-- Never include in index counts or structural health checks
+  artifacts and normally persist after completion
+- MUST NOT include in index counts or structural health checks
 - One session per wiki at a time (new session overwrites old)
 
 ---
@@ -468,7 +469,7 @@ When `mode: "plan"` is set in `.research-session.json`, the following fields are
 
 ### Resume Protocol (plan mode)
 
-On resume, check `paths[].status`:
+On resume, MUST check `paths[].status`:
 
 - **All `completed`** → skip to compilation (all sources are ingested, just need to compile)
 - **Some `pending`** → re-launch only pending paths (completed paths are not repeated)

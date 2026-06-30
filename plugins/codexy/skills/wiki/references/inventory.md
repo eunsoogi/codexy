@@ -7,10 +7,10 @@ questions, recurring tasks, watch items, and other records the user wants the
 wiki to remember and revisit.
 
 Inventory records are markdown files with frontmatter. They can cite `raw/`,
-`wiki/`, `datasets/`, `output/`, URLs, or external paths, but they do not move
+`wiki/`, `datasets/`, `output/`, URLs, or external paths, but they MUST NOT move
 or copy those artifacts.
 
-Local `sources:` paths and body links in inventory records should resolve.
+Local `sources:` paths and body links in inventory records MUST resolve.
 Lint checks them as provenance for tracking state, not as evidence for factual
 claims.
 
@@ -24,7 +24,7 @@ Good fits:
 - The user wants the wiki to remember something across sessions.
 - The item has state, priority, owner, next action, or a follow-up date.
 - The item is a real object, SKU, part, host, tool, asset, or component whose
-  owned/wanted/selected/rejected state should be listed and revisited.
+  owned/wanted/selected/rejected state MUST be listed and revisited.
 - The item is a candidate source/corpus/entity/question that may be acted on
   later, but is not ready to ingest, compile, or turn into an output.
 - The item needs to be listed, filtered, revisited, or linked from datasets,
@@ -32,21 +32,21 @@ Good fits:
 
 Too small for inventory:
 
-- A one-off URL/file/text the user wants ingested now. Use `raw/` via ingest.
+- A one-off URL/file/text the user wants ingested now. MUST use `raw/` via ingest.
 - A factual question with no durable follow-up. Answer with query/research.
-- A single note with no status or future action. Keep it as a raw note or reply
+- A single note with no status or future action. MUST keep it as a raw note or reply
   in chat.
 - A tiny ad hoc to-do that does not belong to the wiki's topic scope.
 
 Too big for inventory:
 
-- Hundreds or thousands of row-like items. Use `datasets/` for large/external
+- Hundreds or thousands of row-like items. MUST use `datasets/` for large/external
   data or `ingest-collection` for bounded source collections.
 - A queue whose rows are really dataset records, messages, transactions,
-  captures, or pages. Track one corpus inventory record and point it at the
+  captures, or pages. MUST track one corpus inventory record and point it at the
   dataset manifest or collection manifest.
-- Anything that would require opening every record body just to list it. Promote
-  the underlying collection to a dataset or collection ingest and keep inventory
+- Anything that would need opening every record body just to list it. Promote
+  the underlying collection to a dataset or collection ingest and MUST keep inventory
   as a small tracking layer.
 
 Out of scope:
@@ -55,12 +55,12 @@ Out of scope:
 - Synthesized knowledge. That belongs in `wiki/`.
 - Generated deliverables. Those belong in `output/`.
 - Project rationale and membership. Those belong under `output/projects/`.
-- Secrets, credentials, private personal data, or operational state that should
-  not be copied into the wiki.
+- Secrets, credentials, private personal data, or operational state that MUST NOT be
+  copied into the wiki.
 
 When the fit is marginal, be direct: "This is probably too small for inventory;
 I would ingest it as a raw note instead." or "This is too large for inventory;
-I would create one corpus record plus a dataset manifest." Do not make the user
+I would create one corpus record plus a dataset manifest." MUST NOT make the user
 infer the boundary.
 
 ## Preview Before Pivots
@@ -88,10 +88,10 @@ with clear fields.
 
 ## Directory Layout
 
-Inventory lives at the wiki root and is created lazily. A wiki with no
-`inventory/` directory has no inventory records yet; read-only commands should
-report that state without creating files. Write commands create the root and
-only the category directory they need.
+Inventory lives at the wiki root and is created lazily. When a wiki has no
+`inventory/` directory, read-only commands MUST report that no inventory records
+exist yet without creating files. MUST create the root and only
+the category directory they need.
 
 ```text
 inventory/
@@ -135,22 +135,22 @@ records.
 
 ### Chat View Rules
 
-- Read `inventory/_index.md` and subdirectory indexes first.
-- Use record frontmatter for filtering and sorting. Do not open every record
+- MUST read `inventory/_index.md` and subdirectory indexes first.
+- MUST use record frontmatter for filtering and sorting. MUST NOT open every record
   body just to answer "list inventory."
-- Default chat output is a compact Markdown table. Keep columns narrow and
+- Default chat output is a compact Markdown table. MUST keep columns narrow and
   action-oriented.
 - If there are more than about 12 rows, show the highest-priority or most
-  recently updated rows first, then report how many rows were omitted and where
+  recently updated rows first, then MUST report how many rows were omitted and where
   the full index lives.
-- Use bullets instead of a table when long URLs, paths, or prose next actions
+- MUST use bullets instead of a table when long URLs, paths, or prose next actions
   would make a table unreadable.
 - Open full records only when the user asks for detail or when requested columns
   are not present in the indexes/frontmatter.
 
 Recommended chat views:
 
-| View | Columns | Use |
+| View | Columns | Purpose |
 |------|---------|-----|
 | `summary` | counts by kind/status, top priorities | quick status checks |
 | `actions` | title, priority, status, next action, updated | planning the next work |
@@ -162,7 +162,7 @@ Recommended chat views:
 
 When the user wants a reusable view, save it under `inventory/views/`. View files
 are derived markdown views, not inventory records. They may be regenerated from
-record frontmatter and should not be treated as authoritative state.
+inventory record frontmatter and MUST NOT be treated as authoritative state.
 
 Suggested view frontmatter:
 
@@ -188,9 +188,9 @@ Generated from inventory record frontmatter on YYYY-MM-DD.
 |--------|------|----------|-------------|---------|
 ```
 
-Saved views should link to records rather than duplicate long record bodies.
+Saved views MUST link to records rather than duplicate long record bodies.
 If a view starts needing hundreds or thousands of rows, promote the underlying
-collection to a dataset manifest and keep the view as a small summary.
+collection to a dataset manifest and MUST keep the view as a small summary.
 
 ## Record Format
 
@@ -278,7 +278,7 @@ Statuses:
 
 - `proposed`: discovered, not accepted yet
 - `active`: accepted and being tracked
-- `blocked`: cannot proceed until a dependency is resolved
+- `blocked`: waiting until a dependency is resolved
 - `ingested`: completed as a raw/wiki ingest or equivalent action
 - `superseded`: replaced by a better record/source
 - `archived`: no longer active but retained for history
@@ -289,11 +289,11 @@ Priorities:
 - `p1`: important
 - `p2`: useful
 - `p3`: low priority
-- `p4`: keep for completeness
+- `p4`: retained for completeness
 
 ## Index Format
 
-`inventory/_index.md` should summarize counts and link to category indexes:
+`inventory/_index.md` MUST summarize counts and link to category indexes:
 
 ```markdown
 # Inventory Index
@@ -335,7 +335,7 @@ required to have `kind`, `status`, or `priority`.
 
 ## Migration Paths
 
-Inventory migration is explicit and additive. Do not move or delete existing
+Inventory migration is explicit and additive. MUST NOT move or delete existing
 outputs during migration.
 
 ### Discovery
@@ -349,8 +349,8 @@ records:
 - tables with URL/source/status/priority/next-action columns, or part/SKU/
   quantity/default/alternative columns
 
-It reports suggested `inventory migrate-output ... --apply` commands. It must
-not write inventory files.
+It reports suggested `inventory migrate-output ... --apply` commands. It
+MUST NOT write inventory files.
 
 ### Output Migration
 
@@ -367,15 +367,15 @@ place. Cleanup of legacy outputs is a later human decision.
 
 ## Lint Behavior
 
-Lint should treat missing `inventory/` as a migration opportunity for older
+Lint MUST treat missing `inventory/` as a migration opportunity for older
 wikis, not as corruption:
 
 - Missing `inventory/` on an existing wiki: suggestion, not critical.
 - `lint --fix`: may repair indexes for an inventory layer that already exists,
-  but should not create a completely absent `inventory/` tree just to populate
+  but MUST NOT create a completely absent `inventory/` tree just to populate
   empty placeholders.
 - Output files that look like inventory: suggestion with migration commands.
-- Lint must never auto-convert output artifacts into inventory records.
+- Lint MUST NOT auto-convert output artifacts into inventory records.
 
 ## Relationship To Other Layers
 
@@ -384,16 +384,16 @@ wikis, not as corruption:
   `ingested` only after the user accepts that the tracking item is complete.
 - `wiki/`: synthesized knowledge articles. Inventory records are not evidence
   for factual claims; they are operational state. Query and compile may mention
-  them as gaps, candidates, or next actions, but should not cite them as sources
+  them as gaps, candidates, or next actions, but MUST NOT cite them as sources
   for article facts.
 - `datasets/`: manifests and query interfaces for large/external data. Large
-  corpora should usually have one inventory record explaining why they matter
+  corpora usually have one inventory record explaining why they matter
   plus one dataset manifest explaining where and how the data is accessed.
 - `output/`: generated deliverables. Outputs that become durable queues,
-  backlogs, watch lists, or source-candidate tables should be migrated
+  backlogs, watch lists, or source-candidate tables MUST be migrated
   additively through an inventory dry run, not edited in place.
 - `research`: may seed searches from active inventory records and may propose
-  new records for important unresolved gaps, but should not create a backlog for
+  new records for important unresolved gaps, but MUST NOT create a backlog for
   every minor curiosity.
 - `audit`, `librarian`, and `refresh`: may surface stale, blocked, or
   high-priority follow-ups as inventory candidates when the issue needs to
@@ -401,8 +401,9 @@ wikis, not as corruption:
 - `plan` and `project`: may link to inventory records for work queues and
   dependencies, but project goals stay in `WHY.md`.
 - `lint`: repairs indexes for an inventory layer that already exists and
-  reports migration candidates; it never creates a blank optional layer, decides
-  a pivot, or writes records without the explicit inventory migration workflow.
+  reports migration candidates; it MUST NOT create a blank optional layer,
+  decide a pivot, or write records without the explicit inventory migration
+  workflow.
 - `inventory/`: durable tracking records and next-action state.
 
-Inventory records can point at the other layers, but they do not replace them.
+Inventory records can point at the other layers, but they MUST NOT replace them.

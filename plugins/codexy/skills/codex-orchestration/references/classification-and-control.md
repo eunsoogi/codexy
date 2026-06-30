@@ -16,13 +16,13 @@
 - The orchestrator MUST NOT directly fix child-owned review feedback unless a
   maintainer explicitly reassigns the lane to the orchestrator or the feedback
   belongs to the orchestrator's own scoped lane.
-- If a child lane is bundled after dispatch or edits begin, stop that lane,
-  preserve draft state, report the overlap, and split independent outcomes
+- If a child lane is bundled after dispatch or edits begin, MUST stop that lane,
+  MUST preserve draft state, report the overlap, and MUST split independent outcomes
   into atomic issues, threads, worktrees, branches, and PRs before resuming.
 
 ## Compaction And Continuation
 
-Treat loss of the active `@Codexy` or Codexy plugin workflow contract after
+MUST treat loss of the active `@Codexy` or Codexy plugin workflow contract after
 context compaction, goal continuation, or resume as a dogfooding defect.
 
 Before editing after compaction or continuation, re-check GitHub state for the
@@ -46,17 +46,17 @@ Child implementation threads assigned a non-trivial lane MUST run their own
 execution loop instead of treating the parent handoff as permission for ad hoc
 edits.
 
-- Use real goal tools when available. Use `create_goal`, `get_goal`, and
+- MUST use real goal tools when available. MUST use `create_goal`, `get_goal`, and
   `update_goal` for lane state; prose-only `Goal:` text is fallback
   documentation, not proof of goal-tool use. If goal tooling is unavailable,
-  keep a visible textual goal with success criteria, update it as evidence
+  MUST keep a visible textual goal with success criteria, update it as evidence
   changes, and report the unavailable-tool fallback in handoff evidence.
-- Keep real todo/plan state current with `update_plan` or the active todo
+- MUST keep real todo/plan state current with `update_plan` or the active todo
   surface when available, updating statuses from discovery through handoff.
   Prose-only `Todo:` text is not proof of todo/plan tooling. Using only goal
   or only todo/plan is insufficient for non-trivial child lanes unless the
   missing tool is unavailable and reported with its fallback.
-- Use multi-agent execution when the lane has independent research questions,
+- MUST use multi-agent execution when the lane has independent research questions,
   disjoint implementation slices, parallel QA or verification, review gates,
   review-feedback validation, or separable non-trivial subtasks.
 - If multi-agent tooling is available, "not useful" is acceptable only with a
@@ -82,7 +82,7 @@ scripts/validate-plugin-config --check-completion-handoff \
   --pr-state-file <gh-pr-view-json>
 ```
 
-If the handoff discusses addressed review feedback, the PR state evidence MUST
-include GraphQL `reviewThreads.nodes`. Addressed unresolved threads, including
+If the handoff discusses addressed review feedback, MUST include GraphQL
+`reviewThreads.nodes` in the PR state evidence. Addressed unresolved threads, including
 outdated-but-fixed threads, remain invalid unless the report documents an
 accepted no-change rationale.

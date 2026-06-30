@@ -1,6 +1,6 @@
 interface:
   display_name: "Proof-Driven Completion"
   short_description: "Finish only when evidence matches the request."
-  default_prompt: "Use $proof-driven-completion to audit this task against current evidence before reporting success."
+  default_prompt: "You MUST use $proof-driven-completion to audit this task against current evidence before reporting success."
 policy:
   allow_implicit_invocation: true

@@ -7,64 +7,67 @@ description: Use when creating, updating, reviewing, or relocating AGENTS.md ins
 
 ## Purpose
 
-Write AGENTS.md files as scoped operating instructions for agents working in a
-directory tree. Keep them current, actionable, and easy to reconcile with
+MUST write AGENTS.md files as scoped operating instructions for agents working in a
+directory tree. MUST keep them current, actionable, and easy to reconcile with
 deeper instructions and higher-priority user or system directions.
 
 ## Workflow
 
-1. Locate the target directory and read every governing `AGENTS.md` from the
+1. MUST locate the target directory and read every governing `AGENTS.md` from the
    filesystem root down through each ancestor directory to the target.
-2. Identify the intended scope:
+2. MUST identify the intended scope:
    - root guidance for repository-wide project structure and durable policies,
-   - nested guidance only for stable local rules that should not apply
+   - nested guidance only for stable local rules that MUST NOT apply
      elsewhere,
    - no new file when a short edit to an existing governing file is enough.
-3. Check priority before writing:
+3. MUST check priority before writing:
    - system, developer, and direct user instructions outrank AGENTS.md,
    - deeper AGENTS.md files override higher ones inside their subtree,
    - AGENTS.md instructions apply only to files under the directory that
      contains them.
-4. Draft instructions that are concrete and durable:
+4. MUST draft instructions that are concrete and durable:
    - describe project purpose, structure, and where to look,
    - name hard requirements with `MUST` or `MUST NOT`,
+   - when creating or updating agent-facing instruction artifacts in this or
+     another project, mandatory agent instructions MUST use `MUST` and
+     prohibitions MUST use `MUST NOT`,
    - prefer actionable guidance over generic agent advice,
-   - avoid secrets, local-only paths, temporary notes, or duplicated workflow
+   - MUST NOT include secrets, local-only paths, temporary notes, or duplicated workflow
      rules that already live in a canonical skill or doc.
-5. Preserve ownership boundaries. Do not rewrite unrelated instructions,
-   remove user-authored policy, or add broad repo rules while editing a narrow
-   subtree file.
-6. Verify and read back the final result:
-   - inspect the edited file directly,
-   - confirm the directory scope is correct,
-   - check for conflicts with parent or child AGENTS.md files,
-   - run the repository's documentation or formatting checks when available.
+5. MUST preserve ownership boundaries. MUST NOT rewrite unrelated instructions,
+   MUST NOT remove user-authored policy, and MUST NOT add broad repo rules while
+   editing a narrow subtree file.
+6. MUST verify and read back the final result:
+   - MUST inspect the edited file directly,
+   - MUST confirm the directory scope is correct,
+   - MUST check for conflicts with parent or child AGENTS.md files,
+   - MUST run the repository's documentation or formatting checks when available.
 
 ## Content Checklist
 
-Include only sections that help agents act correctly:
+MUST include only sections that help agents act correctly:
 
 - project or subtree purpose,
 - scope and precedence notes,
 - directory map or task routing table,
 - coding, documentation, testing, or verification expectations,
-- files or surfaces that must not be touched,
-- handoff or evidence expectations when the repository requires them.
+- files or surfaces that MUST NOT be touched,
+- handoff or evidence expectations when repository policy uses them.
 
 ## Gates
 
-- Do not add a nested AGENTS.md just to restate root guidance.
-- Do not put credentials, private logs, machine-local state, or one-off task
+- MUST NOT add a nested AGENTS.md just to restate root guidance.
+- MUST NOT put credentials, private logs, machine-local state, or one-off task
   notes in AGENTS.md.
-- Do not move executable workflow rules into AGENTS.md when the repository has
+- MUST NOT move executable workflow rules into AGENTS.md when the repository has
   a more specific skill, script, or policy file as the source of truth.
-- Do not claim the instruction update is complete until the final file has been
+- MUST NOT claim the instruction update is complete until the final file has been
   reread and its scope, precedence, and verification expectations are clear.
 
 ## Verification
 
-For documentation-only AGENTS.md edits, run the repository's expected doc checks.
-When no project-specific check exists, at minimum run:
+For documentation-only AGENTS.md edits, MUST run the repository's expected doc checks.
+When no project-specific check exists, at minimum MUST run:
 
 ```sh
 git diff --check

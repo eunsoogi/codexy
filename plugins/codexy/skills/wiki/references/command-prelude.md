@@ -5,7 +5,7 @@
 > file remains as canonical developer documentation for the protocol, but is not
 > load-bearing for command execution.
 
-Every `/wiki:*` command starts with the same handful of steps: resolve the hub path, figure out which wiki to use, and decide what to do if no wiki exists. This file is the canonical version of those steps so each command can reference it instead of restating it.
+Every `/wiki:*` command starts with the same handful of steps: MUST resolve the hub path, MUST figure out which wiki to use, and MUST decide what to do if no wiki exists. This file is the canonical version of those steps so each command can reference it instead of restating it.
 
 ## Why this file exists
 
@@ -13,19 +13,19 @@ The prelude appeared verbatim in 14 command files. Every time the hub resolution
 
 ## Standard prelude
 
-**IMPORTANT: Hub resolution is 1-2 file reads, not an exploration task. Do NOT launch Explore agents, run `find` commands, or search the filesystem. Just read the files below in order.**
+**IMPORTANT: Hub resolution is 1-2 file reads, not an exploration task. MUST NOT launch Explore agents, run `find` commands, or search the filesystem. MUST read the files below in order.**
 
 Every command that needs a wiki follows these steps in order:
 
-1. **Resolve HUB.** Follow the protocol in [`hub-resolution.md`](hub-resolution.md). Short version: read `~/.config/llm-wiki/config.json` (expand `~` to `$HOME`). Prefer `hub_path`, expanding only the leading `~` on the current machine. Treat `resolved_path` as a legacy fallback cache, not the source of truth; use it only when no `hub_path` exists or when the expanded `hub_path` is unavailable and `resolved_path` is initialized. If no config exists, try `$HOME/wiki/_index.md` as fallback. If the configured path can be statted but reading `wikis.json` or listing `topics/` fails with `Operation not permitted`, stop: this is a macOS/iCloud privacy denial, not a missing path. Tell the user to grant access to the exact launcher and restart; do not fall back to `~/wiki` or `resolved_path`.
+1. **MUST resolve HUB.** Follow the protocol in [`hub-resolution.md`](hub-resolution.md). Short version: MUST read `~/.config/llm-wiki/config.json` (expand `~` to `$HOME`). Prefer `hub_path`, expanding only the leading `~` on the current machine. MUST treat `resolved_path` as a legacy fallback cache, not the source of truth; MUST use it only when no `hub_path` exists or when the expanded `hub_path` is unavailable and `resolved_path` is initialized. If no config exists, try `$HOME/wiki/_index.md` as fallback. If the configured path can be statted but reading `wikis.json` or listing `topics/` fails with `Operation not permitted`, stop: this is a macOS/iCloud privacy denial, not a missing path. Tell the user to grant access to the exact launcher and restart; MUST NOT fall back to `~/wiki` or `resolved_path`.
 
-2. **Resolve wiki location.** The target wiki is determined by this order (first match wins):
+2. **MUST resolve wiki location.** The target wiki is determined by this order (first match wins):
    1. `--local` flag → `.wiki/` in the current directory
-   2. `--wiki <name>` flag → look up in `HUB/wikis.json`, resolving `<HUB>`, `~`, absolute, and HUB-relative paths; if a registry path is stale, fall back to `HUB/topics/<name>`. If the registry entry has `status: archived` or resolves under `topics/.archive/`, commands that read/write semantic content should reject it unless they explicitly support archived inclusion.
+   2. `--wiki <name>` flag -> look up in `HUB/wikis.json`, resolving `<HUB>`, `~`, absolute, and HUB-relative paths; if a registry path is stale, fall back to `HUB/topics/<name>`. If the registry entry has `status: archived` or resolves under `topics/.archive/`, commands that read/write semantic content MUST reject it unless they explicitly support archived inclusion.
    3. Current directory contains a `.wiki/` → use it
    4. Otherwise → HUB (use the hub's active topic wiki, or fail per the command's wiki-requirement variant below)
 
-3. **Verify existence.** Try to read `<wiki-root>/_index.md`. If missing, follow the command's wiki-requirement variant below.
+3. **MUST verify existence.** MUST try to read `<wiki-root>/_index.md`. If missing, MUST follow the command's wiki-requirement variant below.
 
 4. **Parse `$ARGUMENTS`.** Each command defines its own flags; parse them after the wiki is resolved so flag validation can use wiki state (for example, `--project <slug>` checking whether the project exists).
 
@@ -51,7 +51,7 @@ The rationale is ergonomics — research and ingestion are often the first opera
 
 ### Variant C: wiki-neutral (project, output without articles, status)
 
-These commands either don't require wiki content (project manifest operations, wiki status) or have their own "no articles yet" message. They resolve HUB and wiki location, then handle missing state inline with command-specific messaging.
+These commands either need no wiki content (project manifest operations, wiki status) or have their own "no articles yet" message. They resolve HUB and wiki location, then handle missing state inline with command-specific messaging.
 
 ### Variant D: hub lifecycle (archive)
 
@@ -66,7 +66,7 @@ Archived topic wikis are quiet by default. Normal query, compile, ingest,
 research, output, plan, assess, librarian, refresh, and broad audit workflows
 skip registry entries with `status: archived` or paths under `topics/.archive/`.
 Deep query may report archived index matches separately, but full archived reads
-require explicit user intent such as `--include-archived`.
+MUST require explicit user intent such as `--include-archived`.
 
 ## Project scoping
 
@@ -90,4 +90,4 @@ Edit `command-prelude.md` when:
 - A new wiki-requirement variant is introduced (e.g., a command that wants to lazy-create a wiki on write)
 - The explicit project-scoping rules change
 
-Do **not** edit this file for command-specific changes. Those stay in the command.
+MUST NOT edit this file for command-specific changes. Those stay in the command.

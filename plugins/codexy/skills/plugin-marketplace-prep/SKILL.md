@@ -7,13 +7,13 @@ description: Use when preparing Codex plugin manifests, marketplace listings, sk
 
 ## Purpose
 
-Treat plugin and marketplace metadata as a product surface. A plugin is ready
+MUST treat plugin and marketplace metadata as a product surface. A plugin is ready
 only when Codex can discover it, users can understand it, assets resolve, and
 validation proves the packaged paths match the repository layout.
 
 ## Workflow
 
-1. Inspect canonical layout:
+1. MUST inspect canonical layout:
    - `.agents/plugins/marketplace.json`,
    - `plugins/<plugin>/.codex-plugin/plugin.json`,
    - `plugins/<plugin>/skills/*/SKILL.md`,
@@ -56,13 +56,13 @@ validation proves the packaged paths match the repository layout.
    - LSP config and its catalog agree on server ids and covered extensions,
    - MCP config contains only verified packaged or official endpoints,
    - lifecycle hooks use plugin-root-relative commands, stay read-only unless
-     explicitly scoped otherwise, and avoid user-state mutation paths,
+     explicitly scoped otherwise, and MUST NOT use user-state mutation paths,
    - `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`
      passes for touched implementation and test-harness files unless the
      tracked Codexy LOC exception mechanism names the file and rationale,
    - Codexy MCP config includes packaged `lsp` and `codegraph` servers when
      the plugin advertises LSP or code exploration behavior,
-   - specialist agent or custom agent TOMLs parse and do not define a child
+   - specialist agent or custom agent TOMLs parse and MUST NOT define a child
      orchestrator when the invoking thread is the orchestrator,
    - Codexy specialist agent TOMLs use Codex custom-agent compatible fields so
      they can be registered with `[agents.<name>] config_file` from an
@@ -86,7 +86,7 @@ validation proves the packaged paths match the repository layout.
    - workflow version inputs match plugin manifest expectations,
    - marketplace validation can run without package-manager scaffolding unless
      that scaffolding is part of the release issue.
-8. Record install/readiness evidence and unresolved risks.
+8. MUST record install/readiness evidence and unresolved risks.
 
 ## Required Output
 
@@ -106,36 +106,36 @@ Risks:
 
 ## Gates
 
-- Do not claim marketplace readiness while any referenced path is missing.
-- Do not advertise tools, MCP servers, apps, hooks, or assets that are not
+- MUST NOT claim marketplace readiness while any referenced path is missing.
+- MUST NOT advertise tools, MCP servers, apps, hooks, or assets that are not
   actually packaged.
-- Do not claim LSP, MCP, specialist agent TOML, custom agent TOML, or thread/worktree
+- MUST NOT claim LSP, MCP, specialist agent TOML, custom agent TOML, or thread/worktree
   readiness without parser evidence and the plugin config validator when it is
   available.
-- Do not let the parent thread silently patch child-owned plugin architecture
-  feedback. Route review feedback to the owning child thread and require that
+- MUST NOT let the parent thread silently patch child-owned plugin architecture
+  feedback. MUST route review feedback to the owning child thread and MUST require that
   thread's verification evidence before marketplace readiness.
-- Do not add root-level plugin manifests when the canonical layout is
+- MUST NOT add root-level plugin manifests when the canonical layout is
   `plugins/<plugin>/.codex-plugin/plugin.json`.
-- Do not present plugin-internal `.codex/agents/*.toml` files as canonical or
+- MUST NOT present plugin-internal `.codex/agents/*.toml` files as canonical or
   supported. Codexy uses `plugins/<plugin>/agents/catalog.toml` and
   `plugins/<plugin>/agents/<name>.toml` for packaged specialist agent
   definitions, and registers those installed plugin files through Codex
   `[agents.<name>] config_file` entries when native `spawn_agent` roles are
   needed.
-- Do not create package manager files solely to validate a static plugin unless
+- MUST NOT create package manager files solely to validate a static plugin unless
   the release or automation scope requires them.
 
 ## Evidence Rules
 
-- JSON manifests require parser validation.
-- LSP and MCP config require parser validation and, when the plugin being
+- JSON manifests MUST require parser validation.
+- LSP and MCP config MUST require parser validation and, when the plugin being
   prepared is Codexy, `scripts/validate-plugin-config --check`.
-- Custom agent TOMLs and specialist agent definitions require parser validation and evidence
+- Custom agent TOMLs and specialist agent definitions MUST require parser validation and evidence
   that no separate orchestrator agent competes with the invoking thread.
-- Skill bundles require frontmatter and metadata validation.
-- Asset references require file-existence checks from the plugin root.
-- Marketplace installability requires checking both the repo-root-relative
+- Skill bundles MUST require frontmatter and metadata validation.
+- Asset references MUST require file-existence checks from the plugin root.
+- Marketplace installability MUST require checking both the repo-root-relative
   marketplace entry and plugin manifest paths.
 
 ## Failure Modes

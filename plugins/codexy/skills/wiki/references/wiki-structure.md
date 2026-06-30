@@ -4,7 +4,7 @@
 
 ## Hub (HUB/)
 
-The hub is lightweight — it has NO content directories. It only tracks topic wikis.
+The hub is lightweight and MUST NOT contain content directories. It only tracks topic wikis.
 
 ```
 HUB/                               # resolved from ~/.config/llm-wiki/config.json
@@ -24,7 +24,7 @@ HUB/                               # resolved from ~/.config/llm-wiki/config.jso
 All content lives here. Init creates a core structure first; optional layers are
 created lazily when a command needs them. This keeps new wikis fast to create
 and avoids blank scaffolding for inventory, datasets, and generated sidecars
-that may never be used.
+that may remain unused.
 
 ```
 HUB/topics/<name>/
@@ -115,7 +115,7 @@ See [inventory.md](inventory.md) for inventory records, [datasets.md](datasets.m
 for dataset manifests, and [projects.md](projects.md) for the full projects
 architecture (lifecycle, multi-membership, explicit `--project <slug>` scoping).
 Files under `inventory/views/` are derived list/table views. They are not
-inventory records and should not be treated as authoritative tracking state.
+inventory records and MUST NOT be treated as authoritative tracking state.
 Missing optional roots (`inventory/`, `datasets/`, `.obsidian/`, `.librarian/`,
 or `.audit/`) mean the layer has not been used yet.
 
@@ -128,7 +128,7 @@ Same structure as above but rooted at `<project>/.wiki/` without `wikis.json` or
 When a command runs, first resolve the hub path (HUB) from `~/.config/llm-wiki/config.json` (see `hub-resolution.md`). Then resolve which wiki to use:
 
 1. `--local` flag present → `<cwd>/.wiki/`
-2. `--wiki <name>` flag present → look up name in `HUB/wikis.json`; resolve `<HUB>`, leading `~`, absolute, and HUB-relative paths, and fall back to `HUB/topics/<name>` when a registry path is stale
+2. `--wiki <name>` flag present → look up name in `HUB/wikis.json`; MUST resolve `<HUB>`, leading `~`, absolute, and HUB-relative paths, and fall back to `HUB/topics/<name>` when a registry path is stale
 3. Current directory has `.wiki/` → use it
 4. Otherwise → HUB
 
@@ -154,12 +154,12 @@ When a command runs, first resolve the hub path (HUB) from `~/.config/llm-wiki/c
 }
 ```
 
-Topic paths inside the shared hub should be relative (`topics/<topic>`) or use
-the `<HUB>` token. Avoid storing `/Users/<name>/...` absolute paths for
+Topic paths inside the shared hub MUST be relative (`topics/<topic>`) or use
+the `<HUB>` token. MUST NOT store `/Users/<name>/...` absolute paths for
 hub-owned topic wikis; those break when an iCloud wiki is opened from another
 Mac with a different home directory.
 
-Archived topic wikis live under `topics/.archive/<slug>` and should keep their
+Archived topic wikis live under `topics/.archive/<slug>` and MUST keep their
 registry entries with `status: archived`. Normal wiki resolution, status,
 query, compile, research, output, librarian, refresh, and audit workflows skip
 archived entries unless the user explicitly includes archived content. See
@@ -168,8 +168,8 @@ archived entries unless the user explicitly includes archived content. See
 ## _index.md Format
 
 Every existing wiki-managed directory has an `_index.md`. This is the agent's
-primary navigation aid. Optional directories do not need placeholder indexes
-before they exist.
+primary navigation aid. Placeholder indexes are unnecessary for optional
+directories before they exist.
 
 ```markdown
 # [Directory Name] Index
@@ -222,7 +222,7 @@ Additionally includes:
 
 ## log.md Format
 
-Append-only chronological activity log. Every wiki operation appends an entry. Never edit or delete existing entries. **Always open for append, never read-modify-write** — this makes concurrent writes safe (lines from multiple sessions interleave without corruption). Format is grep-friendly:
+Append-only chronological activity log. Every wiki operation appends an entry. MUST NOT edit or delete existing entries. **MUST always open for append, MUST NOT read-modify-write** — this makes concurrent writes safe (lines from multiple sessions interleave without corruption). Format is grep-friendly:
 
 ```markdown
 # Wiki Activity Log
@@ -285,7 +285,7 @@ summary: "2-3 sentence summary"
 ### Optional Collection Provenance
 
 Raw files created by `/wiki:ingest-collection` may include additional
-frontmatter. These keys are canonical and should not be linted as unknown:
+frontmatter. These keys are canonical and MUST NOT be linted as unknown:
 
 ```yaml
 collection: "<stable collection slug>"
@@ -335,7 +335,7 @@ summary: "2-3 sentence summary for index"
 
 [Synthesized content — explain, contextualize, connect. NOT copy-paste.]
 
-When referencing another wiki article inline, use dual-link format:
+When referencing another wiki article inline, MUST use dual-link format:
 [[article-slug|Display Name]] ([Display Name](../category/article-slug.md))
 
 This ensures both Obsidian (reads [[wikilink]]) and the agent (follows relative path) can navigate.
@@ -353,33 +353,33 @@ This ensures both Obsidian (reads [[wikilink]]) and the agent (follows relative 
 
 The `sources:` field is a path list, not a bag of slugs. Maintenance workflows
 that follow provenance (`librarian`, `lint`, `audit`, `refresh`, and project
-staleness checks) must resolve source references with this protocol:
+staleness checks) MUST resolve source references with this protocol:
 
 1. Parse `sources:` as structured YAML when possible. If using a line-based
-   fallback, preserve the complete scalar after `- ` through the end of the line
-   and strip only matching wrapping quotes. Never split source entries on
+   fallback, MUST preserve the complete scalar after `- ` through the end of the line
+   and strip only matching wrapping quotes. MUST NOT split source entries on
    whitespace.
-2. Resolve exact paths first:
+2. MUST resolve exact paths first:
    - `raw/...`, `wiki/...`, and `output/...` are relative to the wiki root.
    - `../...` and `./...` are relative to the file that owns the `sources:`
      field.
    - Absolute paths are allowed only when they point inside the resolved wiki
-     root; report outside paths as external/unmanaged.
-3. If exact path resolution fails, use slug fallback for legacy or human-entered
+     root; MUST report outside paths as external/unmanaged.
+3. If exact path resolution fails, MUST use slug fallback for legacy or human-entered
    references. Normalize both the requested value and every candidate raw file
    stem by lowercasing, replacing whitespace/underscores with hyphens, removing
    non-alphanumeric characters except hyphens, collapsing repeated hyphens, and
    trimming leading/trailing hyphens. Also compare candidate stems after removing
    a leading `YYYY-MM-DD-` date prefix. A single match resolves; zero or
-   multiple matches must be reported as unresolved or ambiguous.
-4. Do not rename raw files during resolution. Raw immutability means old or
+   multiple matches MUST be reported as unresolved or ambiguous.
+4. MUST NOT rename raw files during resolution. Raw immutability means old or
    imported filenames may contain spaces, title case, or upstream identifiers.
    Canonicalize future ingests, but preserve existing raw file paths.
 5. When writing new `sources:` entries for filenames with spaces or punctuation,
-   prefer block-list YAML and quote the path:
+   MUST prefer block-list YAML and quote the path:
    `- "raw/articles/2026-01-03-Title Cased Source.md"`.
 6. When linking to a raw file whose path contains spaces in article body
-   markdown, use angle-bracket link destinations:
+   markdown, MUST use angle-bracket link destinations:
    `[Source Title](<../../raw/articles/2026-01-03-Title Cased Source.md>)`.
 
 ## Volatility Classification
@@ -423,7 +423,7 @@ All cross-references between wiki articles use BOTH link formats on the same lin
 - **The agent** follows the standard markdown `(relative/path.md)` link
 - Both coexist on one line so neither system misses the connection
 
-For inline mentions in article body text, use the same pattern:
+For inline mentions in article body text, MUST use the same pattern:
 ```
 The [[transformer-architecture|Transformer]] ([Transformer](../concepts/transformer-architecture.md)) uses self-attention...
 ```
