@@ -17,6 +17,7 @@ mod codex_review_handoff_actionable;
 mod codex_review_handoff_events;
 mod completion_handoff;
 mod completion_handoff_compaction;
+mod completion_handoff_waiting;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;

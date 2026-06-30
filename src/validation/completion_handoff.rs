@@ -15,6 +15,9 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
+    if let Some(error) = super::completion_handoff_waiting::check(handoff) {
+        return vec![error];
+    }
     let codex_review_errors = super::codex_review_handoff::check(handoff, &pr_state);
     if !codex_review_errors.is_empty() {
         return codex_review_errors;
@@ -157,19 +160,9 @@ fn has_false_deferral_label(text: &str, phrase: &str, start: usize, after_index:
     has_false_label_value(value)
 }
 fn has_false_label_value(value: &str) -> bool {
-    [
-        "none",
-        "false",
-        "not requested",
-        "not required",
-        "not applicable",
-        "not-applicable",
-        "n/a",
-        "na",
-        "no",
-    ]
-    .iter()
-    .any(|word| value.strip_prefix(word).is_some_and(starts_with_boundary))
+    "none|false|not requested|not required|not applicable|not-applicable|n/a|na|no"
+        .split('|')
+        .any(|word| value.strip_prefix(word).is_some_and(starts_with_boundary))
 }
 fn starts_with_boundary(rest: &str) -> bool {
     is_boundary(rest.chars().next())
