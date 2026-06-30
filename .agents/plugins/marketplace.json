@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "codexy",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "supportedPlatforms": [
         "darwin-arm64",
         "linux-x86_64"
