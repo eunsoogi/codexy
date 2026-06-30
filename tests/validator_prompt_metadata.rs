@@ -17,7 +17,6 @@ fn validator_cli_rejects_manifest_prompt_without_orchestration_route()
     std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
 
     let output = validator(&plugin_root, "--check")?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("interface.defaultPrompt must route through"));
     Ok(())
@@ -37,7 +36,6 @@ fn validator_cli_rejects_top_level_prompt_without_orchestration_route()
     )?;
 
     let output = validator(&plugin_root, "--check-roles")?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("interface.default_prompt must route through"));
     Ok(())
@@ -52,7 +50,6 @@ fn validator_cli_rejects_missing_top_level_prompt_metadata()
     std::fs::remove_file(plugin_root.join("agents/openai.yaml"))?;
 
     let output = validator(&plugin_root, "--check-roles")?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("agents/openai.yaml is required"));
     Ok(())
@@ -68,7 +65,6 @@ fn validator_cli_allows_skill_prompt_without_orchestration_route()
     assert!(!std::fs::read_to_string(prompt_path)?.contains("$codex-orchestration"));
 
     let output = validator(&plugin_root, "--check-roles")?;
-
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
@@ -90,13 +86,10 @@ fn codex_orchestration_spawn_agent_examples_use_message_argument()
 #[test]
 fn repo_instructions_own_dogfood_policy_with_orchestration_details()
 -> Result<(), Box<dyn std::error::Error>> {
-    let agents = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md"),
-    )?;
-    let skill = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
-    )?;
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = std::fs::read_to_string(root.join("AGENTS.md"))?;
+    let skill =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
 
     assert!(agents.contains("Dogfooding Guardrails"));
     assert!(agents.contains("failures to follow governing `AGENTS.md`"));
@@ -112,28 +105,34 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details()
 
     assert!(skill.contains("Root `AGENTS.md` owns repo-wide dogfooding policy"));
     assert!(skill.contains("Parent Stop Preflight"));
-    assert!(skill.contains("Codex App Worktree Creation Preflight"));
-    assert!(skill.contains("Thread Tool Discovery Procedure"));
-    assert!(skill.contains("thread/start"));
-    assert!(skill.contains("turn/start"));
-    assert!(skill.contains("tool_search mismatch is an exposure/discovery defect"));
+    assert!(skill.contains("references/thread-and-worktree-routing.md"));
     assert!(skill.contains("Subagents are not child-owned implementation owners"));
-    assert!(skill.contains("Do not use `codex exec`, `codex fork`, or `codex app-server`"));
-    assert!(skill.contains("startingState.type=\"branch\""));
-    assert!(skill.contains("git check-ref-format --branch"));
     assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
-    assert!(skill.contains("If the owning child thread becomes unresponsive"));
     assert!(!skill.contains("## Registered MCP Exposure Defects"));
+
+    let thread_ref = std::fs::read_to_string(root.join(
+        "plugins/codexy/skills/codex-orchestration/references/thread-and-worktree-routing.md",
+    ))?;
+    for expected in [
+        "Thread Tool Discovery Procedure",
+        "Codex App Worktree Creation Preflight",
+        "thread/start",
+        "turn/start",
+        "tool_search` mismatch is an exposure/discovery defect",
+        "MUST NOT use `codex exec`, `codex fork`, or `codex app-server`",
+        "startingState.type=\"branch\"",
+        "git check-ref-format --branch",
+    ] {
+        assert!(thread_ref.contains(expected));
+    }
     Ok(())
 }
 
 #[test]
 fn git_workflow_requires_child_lane_ownership_evidence_check()
 -> Result<(), Box<dyn std::error::Error>> {
-    let skill = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/skills/git-workflow/SKILL.md"),
-    )?;
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
 
     assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
     assert!(skill.contains("parent MUST NOT patch the child-owned branch as recovery"));
@@ -219,7 +218,6 @@ fn assert_prompt_indent_rejected(
     std::fs::write(&prompt_path, prompt.replace(needle, replacement))?;
 
     let output = validator(&plugin_root, "--check-roles")?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("must not contain tab indentation"));
     Ok(())

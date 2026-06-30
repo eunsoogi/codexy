@@ -10,10 +10,10 @@ fn codexy_workflows_distinguish_subthreads_from_subagents() -> Result<(), Box<dy
         std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
 
     assert!(orchestration.contains("it is not a Codex subthread/worktree owner"));
-    assert!(orchestration.contains("do not substitute a subagent as the implementation"));
+    assert!(orchestration.contains("Subagents are not child-owned implementation owners"));
     assert!(classification.contains("Treat\n     them as different surfaces"));
     assert!(classification.contains("not child-owned Codex\n     subthread/worktree owners"));
-    assert!(git_workflow.contains("Multi-agent subagents are not Codex subthread/worktree owners"));
-    assert!(git_workflow.contains("must not be recorded as the child-owned implementation owner"));
+    assert!(git_workflow.contains("Subagents are not child-owned implementation owners"));
+    assert!(git_workflow.contains("commands MUST NOT be claimed as"));
     Ok(())
 }
