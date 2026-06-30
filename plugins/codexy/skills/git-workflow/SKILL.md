@@ -64,12 +64,13 @@ Do not force-push task branches. If push is rejected because the remote branch c
 
 ## Child Worktree Thread Titles
 
-When a task lane is delegated to a forked Codex worktree child thread, rename
-the child thread after setup completes and a thread id exists. Use
-`set_thread_title` when that tool is available.
+When a task lane is delegated to a forked Codex worktree child thread, the
+orchestrator MUST rename the child thread after setup completes and a thread id
+exists. Use `set_thread_title` when that tool is available.
 
-Thread titles should include the project, issue number, and lane purpose, for
-example `Codexy #52 refactoring skill agent lane`.
+Thread titles MUST clearly include the project, issue number, and lane purpose
+so users can distinguish concurrent child threads, for example `Codexy #52
+refactoring skill agent lane`.
 
 If thread title renaming is unavailable, mention that limitation in the parent
 status or child handoff and continue the lane. A missing title rename is a
