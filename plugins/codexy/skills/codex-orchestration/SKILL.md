@@ -177,10 +177,11 @@ parent.
 ## Child Thread Titles
 
 - After a forked Codex worktree child thread finishes setup and a thread id is
-  available, the orchestrator should rename it with `set_thread_title` when the
+  available, the orchestrator MUST rename it with `set_thread_title` when the
   tool is available.
-- Use a title that includes the project, issue number, and lane purpose, such
-  as `Codexy #52 refactoring skill agent lane`.
+- The child thread title MUST clearly include the project, issue number, and
+  lane purpose so users can distinguish concurrent child threads, such as
+  `Codexy #52 refactoring skill agent lane`.
 - If thread title renaming is unavailable, mention that limitation in the
   orchestration status or child handoff and continue with the lane.
 - Child thread title renaming is a clarity policy, not a merge blocker for
@@ -386,9 +387,9 @@ edits.
    - Give each lane an assignment, issue, branch, worktree path, allowed paths,
      read-first files, deliverable, required evidence, verification command or
      surface, stop condition, and return format.
-   - For forked Codex worktree child lanes, rename the child thread after
-     setup with `set_thread_title` when available, using a project, issue
-     number, and lane purpose title.
+   - For forked Codex worktree child lanes, the orchestrator MUST rename the
+     child thread after setup with `set_thread_title` when available, using a
+     title that clearly includes the project, issue number, and lane purpose.
    - Tell child implementation threads to create or maintain their own real
      goal state with `create_goal`, `get_goal`, and `update_goal` when
      available; keep real todo/plan state current with `update_plan` or the
