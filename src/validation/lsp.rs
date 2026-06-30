@@ -6,7 +6,10 @@ use serde_json::Value;
 use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json, load_toml, toml_array_strings};
 
-const REQUIRED_LSP_EXTENSIONS: &[&str] = &[".py", ".pyi", ".yaml", ".yml", ".json", ".toml", ".md"];
+const REQUIRED_LSP_EXTENSIONS: &[&str] = &[
+    ".py", ".pyi", ".yaml", ".yml", ".json", ".toml", ".md", ".html", ".css", ".scss", ".less",
+    ".graphql", ".gql",
+];
 const RUST_ANALYZER_ID: &str = "rust-analyzer";
 
 #[derive(Debug, Clone)]
