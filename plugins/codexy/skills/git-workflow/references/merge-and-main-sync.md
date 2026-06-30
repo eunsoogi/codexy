@@ -93,7 +93,7 @@ fi
 
 printf '%s\n' "Inspect the captured PR body before merge: $pr_body_file"
 printf '%s\n' "It MUST NOT contain secrets, credentials, private logs, throwaway notes, or local-only scratch paths unless intentional evidence references."
-if command -v less >/dev/null 2>&1; then
+if [ -t 1 ] && command -v less >/dev/null 2>&1; then
   if ! less "$pr_body_file"; then
     printf '%s\n' "failed to display captured PR body with less" >&2
     exit 1
