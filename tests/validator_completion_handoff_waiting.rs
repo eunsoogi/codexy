@@ -25,6 +25,8 @@ fn validator_cli_rejects_blocked_pending_codex_review_handoff() -> TestResult {
         "Blocked: waiting on Codex review feedback from the connector.\n",
         "Blocked on @codex review.\n",
         "Blocked: @codex review.\n",
+        "Blocked: @codex review has eyes only.\n",
+        "Blocked because Codex review has eyes only.\n",
         "Blocked.\nWaiting: pending @codex review.\nRequired checks are failing: no.\n",
         "Goal blocked because child-thread work is still pending.\n",
         "Goal blocked after previous blocker resolved: pending @codex review.\n",
@@ -222,7 +224,6 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
         ])
         .output()?)
 }
-
 fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     let output = validate_open_pr_handoff(handoff)?;
     assert!(
@@ -233,7 +234,6 @@ fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     );
     Ok(())
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
