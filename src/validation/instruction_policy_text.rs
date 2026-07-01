@@ -69,7 +69,7 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
             continue;
         }
         if previous_dangling_modal {
-            if let Some(check_line) = checkable_wrapped_continuation(normalized) {
+            for check_line in checkable_wrapped_continuations(normalized) {
                 let continuation_segments = checkable_line_segments(check_line);
                 if continuation_segments.iter().any(|segment| {
                     instruction_policy_match::has_bare_mandatory_without_must(
@@ -85,7 +85,6 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
                         display_relative(path),
                         index + 1
                     ));
-                    previous_dangling_modal = false;
                     continue;
                 }
             }
@@ -126,16 +125,23 @@ fn checkable_line_segments(line: &str) -> Vec<&str> {
         .collect()
 }
 
-fn checkable_wrapped_continuation(line: &str) -> Option<&str> {
+fn checkable_wrapped_continuations(line: &str) -> Vec<&str> {
     let line = line.trim_start();
     if line
         .chars()
         .next()
         .is_some_and(|ch| ch.is_ascii_uppercase())
     {
-        return Some(line);
+        return vec![line];
     }
-    line.split_once(". ").map(|(_, rest)| rest)
+    [". ", "; ", " then "]
+        .iter()
+        .filter_map(|separator| {
+            line.split_once(separator)
+                .map(|(_, rest)| rest.trim_start())
+        })
+        .filter(|rest| !rest.is_empty())
+        .collect()
 }
 
 fn instruction_line(line: &str) -> &str {

@@ -116,6 +116,18 @@ fn validator_cli_rejects_extra_instruction_after_wrapped_modal_continuation() ->
             "mandatory instructions must use MUST",
         ),
         (
+            "The agent MUST use codegraph output to\nidentify nearby files; Run the validator.",
+            "mandatory instructions must use MUST",
+        ),
+        (
+            "The agent MUST use codegraph output to\nidentify nearby files; run the validator.",
+            "mandatory instructions must use MUST",
+        ),
+        (
+            "The agent MUST use codegraph output to\nidentify nearby files then Run the validator.",
+            "mandatory instructions must use MUST",
+        ),
+        (
             "The agent MUST use codegraph output to\nidentify nearby files. Do not edit files.",
             "prohibitions must use MUST NOT",
         ),
