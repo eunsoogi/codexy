@@ -1,7 +1,7 @@
 #[rustfmt::skip]
 const PROHIBITION_MARKERS: &[&str] = &["do not", "don't", "avoid", "never", "shall not", "must not", "not allowed", "cannot"];
 #[rustfmt::skip]
-const MANDATORY_LINE_PREFIXES: &[&str] = &["act", "apply", "assign", "build", "capture", "check", "choose", "classify", "clone", "confirm", "continue", "create", "download", "drive", "establish", "extract", "fetch", "follow", "generate", "identify", "include", "inspect", "keep", "list", "locate", "maintain", "mark", "move", "preflight", "preserve", "read", "recalculate", "record", "regenerate", "remove", "report", "reproduce", "resolve", "route", "run", "re-run", "search", "separate", "separately", "stage", "stop", "suggest", "test", "track", "treat", "use", "verify", "write"];
+const MANDATORY_LINE_PREFIXES: &[&str] = &["act", "apply", "assign", "build", "capture", "check", "choose", "classify", "clone", "confirm", "continue", "create", "delete", "download", "drive", "establish", "extract", "fetch", "follow", "generate", "identify", "include", "inspect", "keep", "list", "locate", "maintain", "mark", "move", "preflight", "preserve", "read", "recalculate", "record", "regenerate", "remove", "report", "reproduce", "resolve", "route", "run", "re-run", "search", "separate", "separately", "stage", "stop", "suggest", "test", "track", "treat", "use", "verify", "write"];
 #[rustfmt::skip]
 const ROOT_AGENTS_PREFIXES: &[&str] = &["add", "capture", "keep", "mention", "preflight", "put", "treat", "wait"];
 #[rustfmt::skip]

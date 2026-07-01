@@ -377,7 +377,7 @@ Recommended fields:
 |-------|--------|
 | --min-time research starts | MUST create `.research-session.json`; append `research_started`; MUST write `.session-checkpoint.json` |
 | Round N completes | MUST update `.research-session.json`; append round event(s); refresh checkpoint |
-| Research completes normally | MUST append completion event; refresh checkpoint; delete `.research-session.json` |
+| Research completes normally | MUST append completion event; MUST refresh checkpoint; MUST delete `.research-session.json` |
 | Session interrupted | `.research-session.json` persists with `status: "in_progress"`; durable files remain |
 | Next invocation detects file | MUST ask whether to continue or start fresh |
 | File > 7 days old | Structural Guardian warns about stale session |

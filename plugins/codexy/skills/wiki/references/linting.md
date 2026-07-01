@@ -142,9 +142,9 @@ Pre-v0.2 wikis have `_project.md` manifests with YAML frontmatter and derived Me
 2. MUST read the body and split into sections by `## ` headings.
 3. MUST identify **derived sections** to drop: any section whose body is (a) entirely between `<!-- DERIVED -->` and `<!-- /DERIVED -->` delimiter comments, or (b) matches the header text `## Members` or `## External Members` even if delimiters are missing. These are regeneratable and not precious.
 4. MUST identify **human sections** to preserve: everything else. This includes `## Goal`, `## Context`, `## Current State`, `## Research Sessions`, and any custom sections the user added (decision logs, open questions, retrospectives, etc.). **The default is preserve — when in doubt, MUST preserve it.** LLMs rebuild wrong without rationale, and custom sections are almost always rationale.
-5. Determine how to surface the goal. Two cases:
-  - **If the body has a `## Goal` section**: MUST preserve it as-is. MUST NOT also prepend the frontmatter `goal:` text — that would duplicate. The body version usually has more detail and the same or better phrasing.
-   - **If the body has no `## Goal` section**: prepend the frontmatter `goal:` text as the first body paragraph of `WHY.md`, so the rationale is visible without reading the whole file.
+5. MUST determine how to surface the goal. Two cases:
+   - **If the body has a `## Goal` section**: MUST preserve it as-is. MUST NOT also prepend the frontmatter `goal:` text — that would duplicate. The body version usually has more detail and the same or better phrasing.
+   - **If the body has no `## Goal` section**: MUST prepend the frontmatter `goal:` text as the first body paragraph of `WHY.md`, so the rationale is visible without reading the whole file.
 6. MUST write `WHY.md` in the same folder, structured as:
    ```markdown
    # <title>
@@ -153,7 +153,7 @@ Pre-v0.2 wikis have `_project.md` manifests with YAML frontmatter and derived Me
 
    <every preserved human section from step 4, in original order, with original `## ` headings>
    ```
-7. Delete `_project.md`.
+7. MUST delete `_project.md`.
 8. MUST report: `Migrated <slug>/_project.md → <slug>/WHY.md (preserved N sections: <list>).`
 
 **Lossless guarantee**: every human-written section that existed in `_project.md` appears verbatim in `WHY.md`. The only things dropped are frontmatter metadata (dates live in git log, status in filesystem state, tags are optional, type is structural) and derived Members/External Members lists (recomputable by scanning the folder, not precious).

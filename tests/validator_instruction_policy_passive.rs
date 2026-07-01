@@ -95,6 +95,7 @@ fn validator_cli_rejects_markdown_workflow_bare_imperatives() -> TestResult {
         "- Resolve the conflict before handoff.",
         "- List all `.md` files.",
         "- Clone shallowly or use the local repo path.",
+        "- Delete `_project.md` after migration.",
         "- Inspect the current implementation.",
         "- Build the usable experience first.",
         "- Choose controls by task.",
