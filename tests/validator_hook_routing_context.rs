@@ -33,6 +33,8 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
         "unavailable/not applicable evidence",
         "$dreaming",
         "compacted or resumed context hygiene",
+        "--check-completion-handoff",
+        "repositoryLabels",
     ] {
         assert!(
             context.contains(required),
@@ -147,6 +149,14 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
             "compacted or resumed context hygiene",
             "must require dreaming hygiene",
         ),
+        (
+            "--check-completion-handoff",
+            "must require PR label readiness validation",
+        ),
+        (
+            "repositoryLabels",
+            "must require PR label readiness validation",
+        ),
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
@@ -176,7 +186,7 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
     Ok(())
 }
 
-fn required_context_fragments() -> [&'static str; 9] {
+fn required_context_fragments() -> [&'static str; 11] {
     [
         "codegraph MCP before direct file reads",
         "include codegraph findings",
@@ -187,6 +197,8 @@ fn required_context_fragments() -> [&'static str; 9] {
         "unavailable/not applicable evidence",
         "$dreaming",
         "compacted or resumed context hygiene",
+        "--check-completion-handoff",
+        "repositoryLabels",
     ]
 }
 

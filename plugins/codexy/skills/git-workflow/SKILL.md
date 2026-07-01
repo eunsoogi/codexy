@@ -171,8 +171,10 @@ Fixes #<issue-number>
 ```
 
 When labels are available, inspect the current taxonomy before opening or
-updating a PR. Apply repository-appropriate labels without hard-coding a fixed
-list.
+updating a PR. Apply repository-appropriate labels before or immediately after
+PR creation without hard-coding a fixed list. A PR-readiness handoff for a
+repository with labels is valid only when captured PR state shows PR labels, or
+captured repository label taxonomy proves no labels exist.
 
 ## Child-Owned Review Feedback
 
@@ -245,5 +247,4 @@ stage only resolved files and run relevant verification.
   `Fixes #<issue-number>` line when a matching issue exists.
 - Expected Codex review completed on the latest PR head, with no unresolved
   actionable Codex feedback.
-- Squash merge bodies preserve the PR body exactly; branch deletion and main
-  sync are verified after merge.
+- Squash merge bodies preserve the PR body exactly; branch deletion and main sync are verified after merge.

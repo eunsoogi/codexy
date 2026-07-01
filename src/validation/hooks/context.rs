@@ -21,6 +21,14 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "unavailable/not applicable evidence",
     "$dreaming",
     "compacted or resumed context hygiene",
+    "--check-completion-handoff",
+    "repositoryLabels",
+];
+
+const REQUIRED_READINESS_CONTEXT: &[&str] = &[
+    "PR label readiness enforcement (#210)",
+    "--check-completion-handoff",
+    "repositoryLabels",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {
@@ -39,6 +47,10 @@ pub(super) fn requirement_message(fragment: &str) -> &str {
         "Use Codexy LSP" | "lsp_status" => "must require LSP evidence",
         "unavailable/not applicable evidence" => "must require LSP fallback evidence",
         "$dreaming" | "compacted or resumed context hygiene" => "must require dreaming hygiene",
+        "--check-completion-handoff" | "repositoryLabels" => {
+            "must require PR label readiness validation"
+        }
+        "PR label readiness enforcement (#210)" => "must require PR label readiness enforcement",
         _ => "must include required context",
     }
 }
@@ -160,7 +172,17 @@ pub(super) fn check_readiness_context(
         );
     }
     let script_path = plugin_root.join(&hook_path);
-    let _ = emitted_session_start_context(&script_path, readiness_event, timeout_secs)?;
+    let context = emitted_session_start_context(&script_path, readiness_event, timeout_secs)?;
+    for fragment in REQUIRED_READINESS_CONTEXT {
+        if !context.contains(fragment) {
+            bail!(
+                "{} {readiness_event} emitted additionalContext {}: {}",
+                display_relative(path),
+                requirement_message(fragment),
+                display_relative(&script_path)
+            );
+        }
+    }
     Ok(())
 }
 
