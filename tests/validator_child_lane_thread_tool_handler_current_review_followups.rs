@@ -30,7 +30,11 @@ fn validator_rejects_negated_follow_up_issue_claim() -> Result<(), Box<dyn std::
         "No separate follow-up issue #205",
         "Not a follow-up issue #205",
         "Follow-up issue: no issue was created for #205",
+        "Follow-up issue: no issue filed for #205",
+        "Follow-up issue: no issue was filed for #205",
+        "Follow-up issue: no issue has been filed for #205",
         "Follow-up issue: not filed for #205",
+        "Follow-up issue: issue wasn't filed for #205",
     ] {
         let output = run_ownership_validator(&base_evidence(
             "Fallback route: no fallback route was available",
