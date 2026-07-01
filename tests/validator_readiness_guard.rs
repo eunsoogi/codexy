@@ -19,6 +19,14 @@ fn readiness_guard_context_includes_expected_pr_flag() -> Result<(), Box<dyn std
         context.contains("--check-merge-message --expected-pr PR_NUMBER"),
         "merge guidance must include the required expected PR flag: {context}"
     );
+    assert!(
+        context.contains("--expected-issue ISSUE_NUMBER"),
+        "issue-backed merge guidance must include the conditional expected issue flag: {context}"
+    );
+    assert!(
+        context.contains("issue-backed"),
+        "merge guidance must tell agents when the expected issue flag applies: {context}"
+    );
     Ok(())
 }
 
