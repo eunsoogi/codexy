@@ -167,9 +167,9 @@ fn has_negated_route_usage(padded_value: &str) -> bool {
 
         let is_route_usage = matches!(token, "use" | "used" | "using" | "routed" | "routing")
             || (token == "route"
-                && words
-                    .get(index + 1)
-                    .is_some_and(|next| route_word_token(next) == "through"));
+                && words.get(index + 1).is_some_and(|next| {
+                    matches!(route_word_token(next), "through" | "to" | "via")
+                }));
         is_route_usage
             && words[index.saturating_sub(8)..index].iter().any(|prior| {
                 let prior = route_word_token(prior);
