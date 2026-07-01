@@ -154,7 +154,6 @@ fn has_placeholder_field_value(value: &str) -> bool {
     .into_iter()
     .any(|placeholder| trimmed == placeholder)
 }
-
 fn has_substantive_route_value(value: &str) -> bool {
     let trimmed = value.trim();
     !trimmed.is_empty()
