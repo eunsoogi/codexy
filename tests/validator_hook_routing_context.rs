@@ -33,6 +33,9 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
         "unavailable/not applicable evidence",
         "$dreaming",
         "compacted or resumed context hygiene",
+        "codexy-readiness-guard.sh",
+        "--check-pr-title",
+        "--check-merge-message",
     ] {
         assert!(
             context.contains(required),
@@ -176,7 +179,7 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
     Ok(())
 }
 
-fn required_context_fragments() -> [&'static str; 9] {
+fn required_context_fragments() -> [&'static str; 12] {
     [
         "codegraph MCP before direct file reads",
         "include codegraph findings",
@@ -187,6 +190,9 @@ fn required_context_fragments() -> [&'static str; 9] {
         "unavailable/not applicable evidence",
         "$dreaming",
         "compacted or resumed context hygiene",
+        "codexy-readiness-guard.sh",
+        "--check-pr-title",
+        "--check-merge-message",
     ]
 }
 

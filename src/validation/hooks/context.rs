@@ -18,6 +18,9 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "unavailable/not applicable evidence",
     "$dreaming",
     "compacted or resumed context hygiene",
+    "codexy-readiness-guard.sh",
+    "--check-pr-title",
+    "--check-merge-message",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {
