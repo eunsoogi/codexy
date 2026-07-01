@@ -76,8 +76,7 @@ fn readiness_guard_checks_squash_subject_suffix_spacing() -> Result<(), Box<dyn 
         "guard should reject unseparated PR suffixes"
     );
     assert!(
-        output_text(&bad)
-            .contains("merge commit subject must end with the expected PR suffix"),
+        output_text(&bad).contains("merge commit subject must end with the expected PR suffix"),
         "unexpected output: {}",
         output_text(&bad)
     );

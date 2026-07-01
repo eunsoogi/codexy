@@ -63,12 +63,7 @@ find_validator() {
     return 0
   fi
 
-  if command -v codexy-validate >/dev/null 2>&1; then
-    command -v codexy-validate
-    return 0
-  fi
-
-  return 1
+  command -v codexy-validate
 }
 
 event="${1:-}"
