@@ -52,6 +52,30 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
         output_text(&string_bad)
     );
 
+    let graphql_string_unlabeled = write_pr_state(
+        temp.path(),
+        "graphql-string-unlabeled.json",
+        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":{"nodes":["type/fix","status/review"]}}"#,
+    )?;
+    let graphql_string_bad = Command::new(&script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            graphql_string_unlabeled
+                .to_str()
+                .ok_or("graphql string unlabeled state path")?,
+        ])
+        .output()?;
+    assert!(
+        !graphql_string_bad.status.success(),
+        "guard should reject unlabeled PRs when repository label nodes are strings"
+    );
+    assert!(
+        output_text(&graphql_string_bad).contains("PR labels missing label application evidence"),
+        "unexpected output: {}",
+        output_text(&graphql_string_bad)
+    );
+
     let labeled = write_pr_state(
         temp.path(),
         "labeled.json",
@@ -88,6 +112,27 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
         "guard should accept PR labels captured as strings\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&string_good.stdout),
         String::from_utf8_lossy(&string_good.stderr)
+    );
+
+    let graphql_string_labeled = write_pr_state(
+        temp.path(),
+        "graphql-string-labeled.json",
+        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":["type/fix"]},"repositoryLabels":{"nodes":["type/fix","status/review"]}}"#,
+    )?;
+    let graphql_string_good = Command::new(&script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            graphql_string_labeled
+                .to_str()
+                .ok_or("graphql string labeled state path")?,
+        ])
+        .output()?;
+    assert!(
+        graphql_string_good.status.success(),
+        "guard should accept PR label nodes captured as strings\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&graphql_string_good.stdout),
+        String::from_utf8_lossy(&graphql_string_good.stderr)
     );
     Ok(())
 }

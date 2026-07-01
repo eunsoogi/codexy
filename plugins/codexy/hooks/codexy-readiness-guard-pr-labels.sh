@@ -110,7 +110,11 @@ json_value_has_label_name() {
       ;;
     \{*)
       field_items=$(printf '%s\n' "$field_value" |
-        sed "s/^\\(.*\"$graph_key\"[[:space:]]*:[[:space:]]*\\[[^]]*\\]\\).*/\\1/")
+        sed "s/^.*\"$graph_key\"[[:space:]]*:[[:space:]]*\\[\\([^]]*\\)\\].*/\\1/")
+      if [ "$field_items" = "$field_value" ]; then
+        return 1
+      fi
+      value_is_array=1
       ;;
     *)
       return 1
