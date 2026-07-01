@@ -37,11 +37,8 @@ fn has_handler_handoff_fields(evidence: &str) -> bool {
 }
 
 fn has_fallback_route_or_none(evidence: &str) -> bool {
-    handoff_clauses(evidence).any(|clause| {
-        clause.contains("no fallback route")
-            || clause.contains("no alternate route")
-            || has_concrete_fallback_route(clause)
-    })
+    handoff_clauses(evidence)
+        .any(|clause| has_explicit_no_route(clause) || has_concrete_fallback_route(clause))
 }
 
 fn has_tracking_issue(evidence: &str) -> bool {
@@ -69,10 +66,35 @@ fn has_concrete_fallback_route(clause: &str) -> bool {
     ["fallback route", "fallback path", "fallback routed"]
         .into_iter()
         .any(|marker| clause.contains(marker))
+        && !has_negated_fallback_route(clause)
         && !has_placeholder_or_pending_value(clause)
         && clause
             .split_once(':')
             .is_none_or(|(_, value)| !value.trim().is_empty())
+}
+
+fn has_explicit_no_route(clause: &str) -> bool {
+    [
+        "no fallback route was available",
+        "no fallback route available",
+        "no alternate route was available",
+        "no alternate route available",
+    ]
+    .into_iter()
+    .any(|marker| clause.contains(marker))
+}
+
+fn has_negated_fallback_route(clause: &str) -> bool {
+    [
+        "no fallback route evidence",
+        "no fallback path evidence",
+        "without fallback route evidence",
+        "without a fallback route",
+        "without fallback path evidence",
+        "without a fallback path",
+    ]
+    .into_iter()
+    .any(|marker| clause.contains(marker))
 }
 
 fn has_issue_reference(clause: &str) -> bool {
@@ -112,6 +134,7 @@ fn has_placeholder_or_pending_value(clause: &str) -> bool {
         "pending",
         "not created",
         "not available",
+        "not provided",
         "not yet",
         "missing",
         "absent",
