@@ -6,172 +6,10 @@ fail() {
   exit 1
 }
 
-top_level_json_field_value() {
-  json_text="$1"
-  field_name="$2"
-  printf '%s\n' "$json_text" | awk -v key="$field_name" '
-function skip_spaces(pos) {
-  while (substr($0, pos, 1) ~ /[[:space:]]/) {
-    pos++
-  }
-  return pos
-}
-function emit_value(start,    i, c, depth, in_string, escape, seen) {
-  depth = 0
-  in_string = 0
-  escape = 0
-  seen = 0
-  for (i = start; i <= length($0); i++) {
-    c = substr($0, i, 1)
-    if (in_string) {
-      if (escape) {
-        escape = 0
-      } else if (c == "\\") {
-        escape = 1
-      } else if (c == "\"") {
-        in_string = 0
-      }
-    } else if (c == "\"") {
-      in_string = 1
-      seen = 1
-    } else if (c == "{" || c == "[") {
-      depth++
-      seen = 1
-    } else if (c == "}" || c == "]") {
-      if (depth == 0) {
-        print substr($0, start, i - start)
-        exit
-      }
-      depth--
-      if (depth == 0) {
-        print substr($0, start, i - start + 1)
-        exit
-      }
-    } else if (c == "," && depth == 0 && seen) {
-      print substr($0, start, i - start)
-      exit
-    } else if (c !~ /[[:space:]]/) {
-      seen = 1
-    }
-  }
-  print substr($0, start)
-}
-{
-  pattern = "\"" key "\""
-  depth = 0
-  in_string = 0
-  escape = 0
-  for (i = 1; i <= length($0); i++) {
-    c = substr($0, i, 1)
-    if (in_string) {
-      if (escape) {
-        escape = 0
-      } else if (c == "\\") {
-        escape = 1
-      } else if (c == "\"") {
-        in_string = 0
-      }
-    } else if (depth == 1 && substr($0, i, length(pattern)) == pattern) {
-      after_key = skip_spaces(i + length(pattern))
-      if (substr($0, after_key, 1) == ":") {
-        emit_value(skip_spaces(after_key + 1))
-      }
-    } else if (c == "\"") {
-      in_string = 1
-    } else if (c == "{" || c == "[") {
-      depth++
-    } else if (c == "}" || c == "]") {
-      depth--
-    }
-  }
-}
-'
-}
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$script_dir/codexy-readiness-guard-json.sh"
 
-top_level_json_object_field_value() {
-  json_text="$1"
-  field_name="$2"
-  printf '%s\n' "$json_text" | awk -v key="$field_name" '
-function skip_spaces(pos) {
-  while (substr($0, pos, 1) ~ /[[:space:]]/) {
-    pos++
-  }
-  return pos
-}
-function emit_object(start,    i, c, depth, in_string, escape) {
-  depth = 0
-  in_string = 0
-  escape = 0
-  for (i = start; i <= length($0); i++) {
-    c = substr($0, i, 1)
-    if (in_string) {
-      if (escape) {
-        escape = 0
-      } else if (c == "\\") {
-        escape = 1
-      } else if (c == "\"") {
-        in_string = 0
-      }
-    } else if (c == "\"") {
-      in_string = 1
-    } else if (c == "{") {
-      depth++
-    } else if (c == "}") {
-      depth--
-      if (depth == 0) {
-        print substr($0, start, i - start + 1)
-        exit
-      }
-    }
-  }
-}
-{
-  pattern = "\"" key "\""
-  depth = 0
-  in_string = 0
-  escape = 0
-  for (i = 1; i <= length($0); i++) {
-    c = substr($0, i, 1)
-    if (in_string) {
-      if (escape) {
-        escape = 0
-      } else if (c == "\\") {
-        escape = 1
-      } else if (c == "\"") {
-        in_string = 0
-      }
-    } else if (depth == 1 && substr($0, i, length(pattern)) == pattern) {
-      after_key = skip_spaces(i + length(pattern))
-      if (substr($0, after_key, 1) == ":") {
-        value_start = skip_spaces(after_key + 1)
-        if (substr($0, value_start, 1) == "{") {
-          emit_object(value_start)
-        }
-        i = after_key
-      }
-    } else if (c == "\"") {
-      in_string = 1
-    } else if (c == "{" || c == "[") {
-      depth++
-    } else if (c == "}" || c == "]") {
-      depth--
-    }
-  }
-}
-'
-}
-
-json_string_field_value() {
-  value=$(top_level_json_field_value "$1" "$2")
-  case "$value" in
-    \"*) printf '%s\n' "$value" | sed 's/^[[:space:]]*"\([^"]*\)".*/\1/' | tr '[:upper:]' '[:lower:]' ;;
-    *) printf '\n' ;;
-  esac
-}
-
-json_is_open_pr() {
-  [ "$(json_string_field_value "$1" "state")" = "open" ]
-}
+json_is_open_pr() { [ "$(json_string_field_value "$1" "state")" = "open" ]; }
 
 json_is_codexy_lane() {
   json_text="$1"
@@ -182,6 +20,14 @@ json_is_codexy_lane() {
   case "$url" in
     *github.com/eunsoogi/codexy/* | *github.com/eunsoogi/codexy) return 0 ;;
   esac
+  return 1
+}
+
+json_has_pr_identity() {
+  json_text="$1"
+  for field_name in repository nameWithOwner headRepository url; do
+    [ -n "$(json_string_field_value "$json_text" "$field_name")" ] && return 0
+  done
   return 1
 }
 
@@ -216,15 +62,40 @@ json_value_has_label_name() {
   return 1
 }
 
+json_value_is_label_taxonomy_capture() {
+  case "$1" in
+    \[*)
+      return 0
+      ;;
+    \{*)
+      printf '%s\n' "$1" | grep -Eq '"nodes"[[:space:]]*:[[:space:]]*\['
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 json_has_repository_label_taxonomy() {
   json_text="$1"
+  found_empty_taxonomy=0
   repository_labels=$(top_level_json_field_value "$json_text" "repositoryLabels")
   if json_value_has_label_name "$repository_labels"; then
     return 0
   fi
+  if json_value_is_label_taxonomy_capture "$repository_labels"; then
+    found_empty_taxonomy=1
+  fi
   repository=$(top_level_json_object_field_value "$json_text" "repository")
   repository_labels=$(top_level_json_field_value "$repository" "labels")
-  json_value_has_label_name "$repository_labels"
+  if json_value_has_label_name "$repository_labels"; then
+    return 0
+  fi
+  if json_value_is_label_taxonomy_capture "$repository_labels"; then
+    found_empty_taxonomy=1
+  fi
+  [ "$found_empty_taxonomy" -eq 1 ] && return 2
+  return 1
 }
 
 json_has_pr_label_evidence() {
@@ -237,11 +108,18 @@ pr_state_file="${1:-}"
 [ -n "$pr_state_file" ] || fail "--pr-state-file is required"
 [ -f "$pr_state_file" ] || fail "--pr-state-file must point to a readable file"
 pr_state_json=$(tr -d '\n\r' < "$pr_state_file") || fail "could not read --pr-state-file"
+pr_state_state=$(json_string_field_value "$pr_state_json" "state")
+[ -n "$pr_state_state" ] || fail "PR state missing state evidence"
+json_has_pr_identity "$pr_state_json" || fail "PR state missing repository identity evidence"
 if ! json_is_open_pr "$pr_state_json" || ! json_is_codexy_lane "$pr_state_json"; then
   exit 0
 fi
-if ! json_has_repository_label_taxonomy "$pr_state_json"; then
-  exit 0
+if json_has_repository_label_taxonomy "$pr_state_json"; then
+  :
+else
+  taxonomy_status=$?
+  [ "$taxonomy_status" -eq 2 ] && exit 0
+  fail "GitHub label evidence missing repositoryLabels taxonomy"
 fi
 json_has_pr_label_evidence "$pr_state_json" ||
   fail "PR labels missing label application evidence"

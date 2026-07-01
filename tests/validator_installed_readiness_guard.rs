@@ -115,10 +115,13 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
         ])
         .output()?;
     assert!(
-        no_taxonomy_output.status.success(),
-        "installed guard should allow missing repository label taxonomy\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&no_taxonomy_output.stdout),
-        String::from_utf8_lossy(&no_taxonomy_output.stderr)
+        !no_taxonomy_output.status.success(),
+        "installed guard should reject missing repository label taxonomy"
+    );
+    assert!(
+        output_text(&no_taxonomy_output).contains("repositoryLabels taxonomy"),
+        "unexpected output: {}",
+        output_text(&no_taxonomy_output)
     );
     Ok(())
 }

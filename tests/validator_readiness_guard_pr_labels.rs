@@ -135,24 +135,12 @@ fn readiness_guard_allows_missing_or_empty_repository_label_taxonomy()
 
     for (name, json) in [
         (
-            "missing-taxonomy.json",
-            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[]}"#,
-        ),
-        (
             "empty-taxonomy.json",
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[]}"#,
         ),
         (
             "empty-graphql-taxonomy.json",
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":{"nodes":[]},"repository":{"labels":{"nodes":[]}}}"#,
-        ),
-        (
-            "closing-issue-graphql-labels-only.json",
-            r#"{"number":209,"state":"OPEN","labels":[],"closingIssuesReferences":{"nodes":[{"number":216,"labels":{"nodes":[{"name":"type/fix"}]}}]}}"#,
-        ),
-        (
-            "nested-repository-labels-only.json",
-            r#"{"number":209,"state":"OPEN","repository":{"metadata":{"labels":{"nodes":[{"name":"type/fix"}]}}},"labels":[]}"#,
         ),
     ] {
         let pr_state = write_pr_state(temp.path(), name, json)?;
