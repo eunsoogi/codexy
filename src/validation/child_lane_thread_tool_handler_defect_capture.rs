@@ -102,24 +102,10 @@ fn has_negated_fallback_route(clause: &str) -> bool {
 }
 
 fn has_negated_tracking_issue(clause: &str) -> bool {
-    [
-        "no separate dogfood issue",
-        "no separate dogfooding issue",
-        "no separate tracking issue",
-        "no tracking issue",
-        "no follow-up issue",
-        "no separate follow-up issue",
-        "not a follow-up issue",
-        "not a separate follow-up issue",
-        "without a separate dogfood issue",
-        "without a separate dogfooding issue",
-        "without a separate tracking issue",
-        "without tracking issue",
-        "without a follow-up issue",
-        "without follow-up issue",
-    ]
-    .into_iter()
-    .any(|marker| clause.contains(marker))
+    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue was created|no issue created|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
+    NEGATED_TRACKING_ISSUE_MARKERS
+        .split('|')
+        .any(|marker| clause.contains(marker))
 }
 
 fn has_placeholder_or_pending_value(clause: &str) -> bool {
@@ -158,21 +144,33 @@ fn has_substantive_route_value(value: &str) -> bool {
     let trimmed = value.trim();
     let padded = format!(" {trimmed} ");
     !trimmed.is_empty()
-        && !["used", "routed", "available", "not used", "not routed"]
-            .into_iter()
-            .any(|weak_value| trimmed == weak_value)
-        && !([" used", " routed"]
-            .into_iter()
-            .any(|word| padded.contains(word))
-            && [" no ", " not ", "n't ", " without ", " never "]
-                .into_iter()
-                .any(|negation| padded.contains(negation)))
+        && !matches!(
+            trimmed,
+            "used" | "routed" | "available" | "unused" | "not used" | "not routed"
+        )
+        && !has_negated_route_usage(&padded)
         && trimmed
             .chars()
             .any(|character| character.is_ascii_alphabetic())
         && (trimmed.split_whitespace().nth(1).is_some()
             || trimmed.contains("->")
             || trimmed.contains('/'))
+}
+
+fn has_negated_route_usage(padded_value: &str) -> bool {
+    let words = padded_value.split_whitespace().collect::<Vec<_>>();
+    words.iter().enumerate().any(|(index, word)| {
+        if *word == "unused" {
+            return true;
+        }
+
+        let is_route_usage = matches!(*word, "use" | "used" | "using" | "routed" | "routing")
+            || (*word == "route" && words.get(index + 1).is_some_and(|next| *next == "through"));
+        is_route_usage
+            && words[index.saturating_sub(8)..index].iter().any(|prior| {
+                matches!(*prior, "no" | "not" | "never" | "without") || prior.ends_with("n't")
+            })
+    })
 }
 
 fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {

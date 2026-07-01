@@ -29,6 +29,8 @@ fn validator_rejects_negated_follow_up_issue_claim() -> Result<(), Box<dyn std::
         "No follow-up issue #205",
         "No separate follow-up issue #205",
         "Not a follow-up issue #205",
+        "Follow-up issue: no issue was created for #205",
+        "Follow-up issue: not filed for #205",
     ] {
         let output = run_ownership_validator(&base_evidence(
             "Fallback route: no fallback route was available",
@@ -59,6 +61,9 @@ fn validator_rejects_long_negated_fallback_value() -> Result<(), Box<dyn std::er
         "Fallback route: no fallback was used because the child thread was unreachable",
         "Fallback route: no alternate route was used because the child thread was unreachable",
         "Fallback route: no alternate path actually used because the child thread was unreachable",
+        "Fallback route: did not use the child thread because it was unreachable",
+        "Fallback route: did not route through the child thread because it was unreachable",
+        "Fallback route: unused because the child thread was unreachable",
     ] {
         let output = run_ownership_validator(&base_evidence(route, "Tracking issue: #205"))?;
 
