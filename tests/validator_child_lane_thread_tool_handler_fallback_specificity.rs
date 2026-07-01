@@ -71,7 +71,6 @@ Maintainer reassignment: none
 #[test]
 fn validator_rejects_bare_fallback_route_used() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route used"))?;
-
     assert!(
         !output.status.success(),
         "validator should reject fallback evidence that does not name the route used"
@@ -82,7 +81,6 @@ fn validator_rejects_bare_fallback_route_used() -> Result<(), Box<dyn std::error
 #[test]
 fn validator_rejects_bare_fallback_routed() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback routed"))?;
-
     assert!(
         !output.status.success(),
         "validator should reject routed evidence that does not name the route"
@@ -93,7 +91,6 @@ fn validator_rejects_bare_fallback_routed() -> Result<(), Box<dyn std::error::Er
 #[test]
 fn validator_rejects_weak_fallback_route_value() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route: used"))?;
-
     assert!(
         !output.status.success(),
         "validator should reject weak fallback route values"
@@ -104,7 +101,6 @@ fn validator_rejects_weak_fallback_route_value() -> Result<(), Box<dyn std::erro
 #[test]
 fn validator_rejects_negated_fallback_route_not_used() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route: not used"))?;
-
     assert!(
         !output.status.success(),
         "validator should reject negated fallback route values"
@@ -115,7 +111,6 @@ fn validator_rejects_negated_fallback_route_not_used() -> Result<(), Box<dyn std
 #[test]
 fn validator_rejects_negated_fallback_route_not_routed() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route: not routed"))?;
-
     assert!(
         !output.status.success(),
         "validator should reject negated fallback route values"
@@ -128,7 +123,6 @@ fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::erro
     let output = run_ownership_validator(&vague_fallback_evidence(
         "no fallback route available evidence was not provided",
     ))?;
-
     assert!(
         !output.status.success(),
         "validator should reject negated explicit no-route evidence"
@@ -142,7 +136,6 @@ fn validator_allows_tracking_issue_for_missing_handler_exposure()
     let output = run_ownership_validator(&tracking_issue_evidence(
         "separate dogfood issue: #205 tracks the missing-handler exposure",
     ))?;
-
     assert!(
         output.status.success(),
         "validator should allow issue references that describe missing-handler exposure\nstdout:\n{}\nstderr:\n{}",
@@ -156,7 +149,6 @@ fn validator_allows_tracking_issue_for_missing_handler_exposure()
 fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(&tracking_issue_evidence("tracking issue: missing"))?;
-
     assert!(
         !output.status.success(),
         "validator should reject placeholder tracking issue field values"
@@ -168,7 +160,6 @@ fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn 
 fn validator_allows_handoff_fields_on_separate_metadata_lines()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&separate_metadata_evidence("#205"))?;
-
     assert!(
         output.status.success(),
         "validator should accept fallback route and tracking issue metadata lines\nstdout:\n{}\nstderr:\n{}",
@@ -202,7 +193,6 @@ Maintainer reassignment: none
 fn validator_allows_handoff_fields_before_raw_handler_line()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&preceding_metadata_evidence())?;
-
     assert!(
         output.status.success(),
         "validator should include preceding fallback and tracking metadata in handler capture\nstdout:\n{}\nstderr:\n{}",
@@ -216,7 +206,6 @@ fn validator_allows_handoff_fields_before_raw_handler_line()
 fn validator_rejects_preceding_metadata_without_defect_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&preceding_metadata_without_defect_evidence())?;
-
     assert!(
         !output.status.success(),
         "validator should not treat handoff metadata alone as a handler defect capture"
@@ -229,7 +218,6 @@ fn validator_allows_github_issue_url_tracking_evidence() -> Result<(), Box<dyn s
     let output = run_ownership_validator(&tracking_issue_evidence(
         "tracking issue: https://github.com/eunsoogi/codexy/issues/205",
     ))?;
-
     assert!(
         output.status.success(),
         "validator should accept GitHub issue URLs as concrete tracking issue evidence\nstdout:\n{}\nstderr:\n{}",
@@ -244,7 +232,6 @@ fn validator_rejects_malformed_github_issue_url_suffix() -> Result<(), Box<dyn s
     let output = run_ownership_validator(&tracking_issue_evidence(
         "tracking issue: https://github.com/eunsoogi/codexy/issues/205abc",
     ))?;
-
     assert!(
         !output.status.success(),
         "validator should reject malformed GitHub issue URL suffixes"
