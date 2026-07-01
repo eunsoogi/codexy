@@ -22,7 +22,7 @@ pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> boo
     .iter()
     .filter_map(|connector| context.rfind(connector))
     .max();
-    let boundary_index = [" and ", " but ", ", but ", "; "]
+    let boundary_index = [". ", ", ", " and ", " but ", "; ", " then "]
         .iter()
         .filter_map(|boundary| context.rfind(boundary))
         .max();
