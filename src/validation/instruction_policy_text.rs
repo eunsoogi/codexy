@@ -39,6 +39,7 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
         let normalized = instruction_line(trimmed);
         let custom_agent_toml = path.extension().and_then(|ext| ext.to_str()) == Some("toml");
         let passive_mandatory = custom_agent_toml || is_markdown_instruction_list(trimmed);
+        let root_agents = path.file_name().and_then(|name| name.to_str()) == Some("AGENTS.md");
         let line_segments = checkable_line_segments(normalized);
         if line_segments.iter().any(|segment| {
             instruction_policy_match::has_prohibition_without_must_not(segment)
@@ -68,6 +69,26 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
             continue;
         }
         if previous_dangling_modal {
+            if let Some(check_line) = checkable_wrapped_continuation(normalized) {
+                let continuation_segments = checkable_line_segments(check_line);
+                if continuation_segments.iter().any(|segment| {
+                    instruction_policy_match::has_bare_mandatory_without_must(
+                        segment,
+                        strict_clauses,
+                        root_agents,
+                        custom_agent_toml,
+                        passive_mandatory,
+                    )
+                }) {
+                    errors.push(format!(
+                        "{}:{} mandatory instructions must use MUST",
+                        display_relative(path),
+                        index + 1
+                    ));
+                    previous_dangling_modal = false;
+                    continue;
+                }
+            }
             previous_prohibition_list = false;
             previous_dangling_modal =
                 instruction_policy_match::ends_with_dangling_modal(normalized);
@@ -75,7 +96,6 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
         }
         previous_prohibition_list = normalized.contains("MUST NOT") && normalized.ends_with(',');
         previous_dangling_modal = instruction_policy_match::ends_with_dangling_modal(normalized);
-        let root_agents = path.file_name().and_then(|name| name.to_str()) == Some("AGENTS.md");
         if line_segments.iter().any(|segment| {
             instruction_policy_match::has_bare_mandatory_without_must(
                 segment,
@@ -104,6 +124,18 @@ fn checkable_line_segments(line: &str) -> Vec<&str> {
         .filter(|cell| !cell.is_empty() && !cell.chars().all(|ch| matches!(ch, '-' | ':' | ' ')))
         .filter(|cell| cell.contains(char::is_whitespace) || cell.contains(':'))
         .collect()
+}
+
+fn checkable_wrapped_continuation(line: &str) -> Option<&str> {
+    let line = line.trim_start();
+    if line
+        .chars()
+        .next()
+        .is_some_and(|ch| ch.is_ascii_uppercase())
+    {
+        return Some(line);
+    }
+    line.split_once(". ").map(|(_, rest)| rest)
 }
 
 fn instruction_line(line: &str) -> &str {

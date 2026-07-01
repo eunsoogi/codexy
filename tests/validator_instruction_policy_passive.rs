@@ -106,6 +106,32 @@ fn validator_cli_allows_real_wrapped_modal_instruction() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_extra_instruction_after_wrapped_modal_continuation() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    for (addition, expected) in [
+        (
+            "The agent MUST use codegraph output to\nidentify nearby files. Run the validator.",
+            "mandatory instructions must use MUST",
+        ),
+        (
+            "The agent MUST use codegraph output to\nidentify nearby files. Do not edit files.",
+            "prohibitions must use MUST NOT",
+        ),
+    ] {
+        std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
+        let output = validator(&plugin_root, "--check")?;
+        assert!(
+            !output.status.success(),
+            "addition {addition:?} unexpectedly passed"
+        );
+        assert!(stderr(&output).contains(expected));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_bare_imperative_after_non_modal_to_from() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
