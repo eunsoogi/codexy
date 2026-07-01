@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eu
+set -efu
 
 fail() {
   printf '%s\n' "error: $1"
