@@ -11,7 +11,7 @@ pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> boo
         return false;
     };
     let context = &lower[modal_index + "must".len()..marker_index];
-    [
+    let connector_index = [
         " if ",
         " so ",
         " so that ",
@@ -20,7 +20,14 @@ pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> boo
         " when ",
     ]
     .iter()
-    .any(|connector| context.contains(connector))
+    .filter_map(|connector| context.rfind(connector))
+    .max();
+    let boundary_index = [" and ", " but ", ", but ", "; "]
+        .iter()
+        .filter_map(|boundary| context.rfind(boundary))
+        .max();
+    connector_index
+        .is_some_and(|connector| boundary_index.is_none_or(|boundary| connector > boundary))
 }
 
 fn last_modal_before(lower: &str, marker_index: usize) -> Option<usize> {

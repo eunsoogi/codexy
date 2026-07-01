@@ -32,6 +32,8 @@ fn validator_rejects_true_prohibitions_without_must_not() -> TestResult {
         "- Avoid stale handoff claims.\n",
         "- Review summaries MUST include exact scope, but cannot omit current proof.\n",
         "- Review summaries MUST include exact scope and avoid stale handoff claims.\n",
+        "- Review summaries MUST include exact scope when available, but cannot omit current proof.\n",
+        "- Review summaries MUST name exact scope to help reviewers and avoid stale handoff claims.\n",
     ] {
         std::fs::write(&skill_path, format!("{skill}\n{addition}"))?;
         let output = validator(&plugin_root, "--check")?;
