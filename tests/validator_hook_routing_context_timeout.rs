@@ -74,7 +74,7 @@ fn validator_cli_bounds_continuous_hook_output() -> Result<(), Box<dyn std::erro
 }
 
 fn session_start_context_json() -> &'static str {
-    r#"{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"For compacted or resumed context hygiene, use $dreaming before continuing. Use Codexy codegraph MCP before direct file reads; include codegraph findings; record codegraph unavailable/uncallable fallback evidence; record registered-but-uncallable/unavailable-tool evidence. Use Codexy LSP; run lsp_status; record unavailable/not applicable evidence."}}"#
+    r#"{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"For compacted or resumed context hygiene, use $dreaming before continuing. Use Codexy codegraph MCP before direct file reads; include codegraph findings; record codegraph unavailable/uncallable fallback evidence; record registered-but-uncallable/unavailable-tool evidence. Use Codexy LSP; run lsp_status; record unavailable/not applicable evidence. Use hooks/codexy-readiness-guard.sh --check-pr-title and hooks/codexy-readiness-guard.sh --check-merge-message before readiness."}}"#
 }
 
 fn set_session_start_timeout(
