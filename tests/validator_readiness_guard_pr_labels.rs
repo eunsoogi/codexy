@@ -6,179 +6,55 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
     let script = readiness_guard();
     let temp = tempfile::tempdir()?;
 
-    let unlabeled = write_pr_state(
-        temp.path(),
-        "unlabeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[{"name":"type/fix"},{"name":"status/review"},{"name":"area/workflow"}]}"#,
-    )?;
-    let bad = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            unlabeled.to_str().ok_or("unlabeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        !bad.status.success(),
-        "guard should reject unlabeled PRs when repository labels are captured"
-    );
-    assert!(
-        output_text(&bad).contains("PR labels missing label application evidence"),
-        "unexpected output: {}",
-        output_text(&bad)
-    );
+    for (name, json, reason) in [
+        (
+            "unlabeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[{"name":"type/fix"},{"name":"status/review"},{"name":"area/workflow"}]}"#,
+            "repository labels are captured",
+        ),
+        (
+            "string-unlabeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix","status/review"]}"#,
+            "repository labels are captured as strings",
+        ),
+        (
+            "graphql-string-unlabeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":{"nodes":["type/fix","status/review"]}}"#,
+            "repository label nodes are strings",
+        ),
+        (
+            "fallback-unlabeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","repositoryLabels":[],"labels":[],"repository":{"labels":{"nodes":[{"name":"type/fix"}]}}}"#,
+            "fallback repository labels exist",
+        ),
+    ] {
+        assert_rejects(&script, temp.path(), name, json, reason)?;
+    }
 
-    let string_unlabeled = write_pr_state(
-        temp.path(),
-        "string-unlabeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix","status/review"]}"#,
-    )?;
-    let string_bad = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            string_unlabeled
-                .to_str()
-                .ok_or("string unlabeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        !string_bad.status.success(),
-        "guard should reject unlabeled PRs when repository labels are captured as strings"
-    );
-    assert!(
-        output_text(&string_bad).contains("PR labels missing label application evidence"),
-        "unexpected output: {}",
-        output_text(&string_bad)
-    );
-
-    let graphql_string_unlabeled = write_pr_state(
-        temp.path(),
-        "graphql-string-unlabeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":{"nodes":["type/fix","status/review"]}}"#,
-    )?;
-    let graphql_string_bad = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            graphql_string_unlabeled
-                .to_str()
-                .ok_or("graphql string unlabeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        !graphql_string_bad.status.success(),
-        "guard should reject unlabeled PRs when repository label nodes are strings"
-    );
-    assert!(
-        output_text(&graphql_string_bad).contains("PR labels missing label application evidence"),
-        "unexpected output: {}",
-        output_text(&graphql_string_bad)
-    );
-
-    let fallback_unlabeled = write_pr_state(
-        temp.path(),
-        "fallback-unlabeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","repositoryLabels":[],"labels":[],"repository":{"labels":{"nodes":[{"name":"type/fix"}]}}}"#,
-    )?;
-    let fallback_bad = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            fallback_unlabeled
-                .to_str()
-                .ok_or("fallback unlabeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        !fallback_bad.status.success(),
-        "guard should reject unlabeled PRs when fallback repository labels exist"
-    );
-    assert!(
-        output_text(&fallback_bad).contains("PR labels missing label application evidence"),
-        "unexpected output: {}",
-        output_text(&fallback_bad)
-    );
-
-    let labeled = write_pr_state(
-        temp.path(),
-        "labeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"},{"name":"area/workflow"}],"repositoryLabels":[{"name":"type/fix"},{"name":"status/review"},{"name":"area/workflow"}]}"#,
-    )?;
-    let good = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            labeled.to_str().ok_or("labeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        good.status.success(),
-        "guard should accept labeled PRs without hard-coding taxonomy labels\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&good.stdout),
-        String::from_utf8_lossy(&good.stderr)
-    );
-
-    let string_labeled = write_pr_state(
-        temp.path(),
-        "string-labeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix","status/review"]}"#,
-    )?;
-    let string_good = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            string_labeled.to_str().ok_or("string labeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        string_good.status.success(),
-        "guard should accept PR labels captured as strings\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&string_good.stdout),
-        String::from_utf8_lossy(&string_good.stderr)
-    );
-
-    let graphql_string_labeled = write_pr_state(
-        temp.path(),
-        "graphql-string-labeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":["type/fix"]},"repositoryLabels":{"nodes":["type/fix","status/review"]}}"#,
-    )?;
-    let graphql_string_good = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            graphql_string_labeled
-                .to_str()
-                .ok_or("graphql string labeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        graphql_string_good.status.success(),
-        "guard should accept PR label nodes captured as strings\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&graphql_string_good.stdout),
-        String::from_utf8_lossy(&graphql_string_good.stderr)
-    );
-
-    let fallback_labeled = write_pr_state(
-        temp.path(),
-        "fallback-labeled.json",
-        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","repositoryLabels":null,"labels":{"nodes":[{"name":"type/fix"}]},"repository":{"labels":{"nodes":[{"name":"type/fix"}]}}}"#,
-    )?;
-    let fallback_good = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            fallback_labeled
-                .to_str()
-                .ok_or("fallback labeled state path")?,
-        ])
-        .output()?;
-    assert!(
-        fallback_good.status.success(),
-        "guard should accept labeled PRs when fallback repository labels exist\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&fallback_good.stdout),
-        String::from_utf8_lossy(&fallback_good.stderr)
-    );
+    for (name, json, reason) in [
+        (
+            "labeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"},{"name":"area/workflow"}],"repositoryLabels":[{"name":"type/fix"},{"name":"status/review"},{"name":"area/workflow"}]}"#,
+            "labeled PRs without hard-coding taxonomy labels",
+        ),
+        (
+            "string-labeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix","status/review"]}"#,
+            "PR labels captured as strings",
+        ),
+        (
+            "graphql-string-labeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":["type/fix"]},"repositoryLabels":{"nodes":["type/fix","status/review"]}}"#,
+            "PR label nodes captured as strings",
+        ),
+        (
+            "fallback-labeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","repositoryLabels":null,"labels":{"nodes":[{"name":"type/fix"}]},"repository":{"labels":{"nodes":[{"name":"type/fix"}]}}}"#,
+            "labeled PRs when fallback repository labels exist",
+        ),
+    ] {
+        assert_accepts(&script, temp.path(), name, json, reason)?;
+    }
     Ok(())
 }
 
@@ -263,6 +139,59 @@ fn readiness_guard_allows_missing_or_empty_repository_label_taxonomy()
         );
     }
     Ok(())
+}
+
+fn assert_rejects(
+    script: &std::path::Path,
+    dir: &std::path::Path,
+    name: &str,
+    json: &str,
+    reason: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = guard_output(script, dir, name, json)?;
+    assert!(
+        !output.status.success(),
+        "guard should reject unlabeled PRs when {reason}"
+    );
+    assert!(
+        output_text(&output).contains("PR labels missing label application evidence"),
+        "unexpected output: {}",
+        output_text(&output)
+    );
+    Ok(())
+}
+
+fn assert_accepts(
+    script: &std::path::Path,
+    dir: &std::path::Path,
+    name: &str,
+    json: &str,
+    reason: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = guard_output(script, dir, name, json)?;
+    assert!(
+        output.status.success(),
+        "guard should accept {reason}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn guard_output(
+    script: &std::path::Path,
+    dir: &std::path::Path,
+    name: &str,
+    json: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    let pr_state = write_pr_state(dir, name, json)?;
+    Ok(Command::new(script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            pr_state.to_str().ok_or("pr state path")?,
+        ])
+        .output()?)
 }
 
 fn output_text(output: &std::process::Output) -> String {
