@@ -1,3 +1,5 @@
+use super::child_lane_thread_tool_handler_issue_reference::has_issue_reference;
+
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     evidence: &str,
     tool: &str,
@@ -99,20 +101,6 @@ fn has_negated_fallback_route(clause: &str) -> bool {
     .any(|marker| clause.contains(marker))
 }
 
-fn has_issue_reference(clause: &str) -> bool {
-    clause
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '#')
-        .any(|word| {
-            let Some(issue_number) = word.strip_prefix('#') else {
-                return false;
-            };
-            !issue_number.is_empty()
-                && issue_number
-                    .chars()
-                    .all(|character| character.is_ascii_digit())
-        })
-}
-
 fn has_negated_tracking_issue(clause: &str) -> bool {
     [
         "no separate dogfood issue",
@@ -176,7 +164,10 @@ fn has_substantive_route_value(value: &str) -> bool {
 }
 
 fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
-    evidence.split(['\n', '.', ';']).map(str::trim)
+    evidence
+        .split(['\n', ';'])
+        .flat_map(|clause| clause.split(". "))
+        .map(str::trim)
 }
 
 fn is_defect_capture_line(line: &str) -> bool {

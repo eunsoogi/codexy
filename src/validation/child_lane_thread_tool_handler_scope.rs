@@ -44,8 +44,12 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line_end = line_end(evidence, line_start);
         let line = &evidence[line_start..line_end];
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
-        let line_extends_capture = is_capture_related(line)
-            && (!line_is_unrelated_metadata || is_handler_capture_line(line));
+        let line_extends_capture = if is_handoff_metadata_line(line) {
+            true
+        } else {
+            is_capture_related(line)
+                && (!line_is_unrelated_metadata || is_handler_capture_line(line))
+        };
         if line.trim().is_empty()
             || saw_capture && !line_extends_capture && line_is_unrelated_metadata
         {
@@ -81,6 +85,22 @@ fn is_unrelated_metadata_line(line: &str) -> bool {
         return false;
     };
     !is_capture_related(&key.to_ascii_lowercase())
+}
+
+fn is_handoff_metadata_line(line: &str) -> bool {
+    let Some((key, _)) = line.trim_start().split_once(':') else {
+        return false;
+    };
+    matches!(
+        key.to_ascii_lowercase().trim(),
+        "fallback route"
+            | "fallback path"
+            | "tracking issue"
+            | "separate tracking issue"
+            | "separate dogfood issue"
+            | "separate dogfooding issue"
+            | "follow-up issue"
+    )
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
