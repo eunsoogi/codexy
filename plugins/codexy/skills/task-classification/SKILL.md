@@ -44,6 +44,11 @@ plugin repair until classification evidence exists in the thread.
      another real surface has produced `thread/start` or `turn/start` events;
      MUST record that as a discovery/exposure mismatch and keep routing through the
      real thread surface.
+   - When packaged Codexy specialist subagents are available, required
+     tools/evidence MUST name the specialist roles whose stated scope clearly
+     matches the task or the concrete rationale for skipping them. It MUST NOT
+     treat specialist subagent use as the child thread/worktree owner for an
+     issue-sized lane.
 4. Gate:
    - State the first allowed action after classification.
    - If classification exposes missing scope, missing issue/PR identity,

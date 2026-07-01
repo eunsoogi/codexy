@@ -91,7 +91,41 @@ MUST use multi-agent dispatch for bounded specialist help inside the current thr
 when the lane does not need its own branch or PR and has separable research,
 implementation, QA, verification, review, or review-feedback work. A
 `spawn_agent` subagent is a helper, reviewer, explorer, or worker inside the
-current orchestration context; it is not a Codex subthread/worktree owner.
+current orchestration context. A `spawn_agent` subagent MUST NOT be treated as a
+Codex subthread/worktree owner.
+
+When a packaged Codexy specialist role is available and the task clearly falls
+within that specialist's stated scope, the owning thread MUST use that
+specialist or record a concrete skip rationale tied to scope, atomicity,
+unavailable tooling, or lack of a matching task. A generic "not needed" note is
+insufficient. Situational routing is:
+
+- MUST use `codexy-cartographer` for repository, file, dependency, or ownership
+  mapping before broad exploration.
+- MUST use `codexy-pathfinder` for ambiguous, multi-step, cross-surface, or
+  approach-selection work before implementation.
+- MUST use `codexy-architect` for boundary, schema, MCP, LSP, plugin
+  architecture, or long-lived extension-point changes.
+- MUST use `codexy-tracer` for failing behavior, broken automation, root-cause
+  investigation, or reproduction-heavy defects.
+- MUST use `codexy-warden` for workflows, shell commands, credentials, remote
+  MCP endpoints, untrusted input, repository permissions, install scripts, local
+  state mutation, or generated evidence with security implications.
+- MUST use `codexy-auditor` after implementation for acceptance-criteria,
+  readiness, and observable verification passes across CLI, config, GitHub,
+  browser, app, plugin, documentation, or workflow surfaces.
+- MUST use `codexy-scribe` for docs, handoff, PR, release note, or
+  user-facing workflow drafting after behavior is known.
+- MUST use `codexy-forge` for scoped implementation edits after issue, branch,
+  worktree, plan, and acceptance criteria are clear.
+- MUST use `codexy-weaver` for reconciling parallel lanes, conflict checks,
+  main updates, or merge sequencing.
+- MUST use `codexy-sculptor` for refactor-heavy changes, large-file splits,
+  helper extraction, or LOC-boundary cleanup.
+- MUST use `codexy-shipwright` for release, packaging, version, marketplace,
+  manifest, tag, or rollback work.
+- MUST use `codexy-sentinel` as the final reviewer gate for every non-trivial
+  atomic unit before handoff, PR readiness, completion, or parent acceptance.
 
 If `spawn_agent` supports the Codexy role, invoke specialists by exact agent
 type, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.")`,
