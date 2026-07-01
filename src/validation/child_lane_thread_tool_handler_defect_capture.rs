@@ -49,7 +49,23 @@ fn has_fallback_route_or_none(evidence: &str) -> bool {
 }
 
 fn has_tracking_issue(evidence: &str) -> bool {
-    [
+    let negated_markers = [
+        "no separate dogfood issue",
+        "no separate dogfooding issue",
+        "no separate tracking issue",
+        "no tracking issue",
+        "tracking issue: none",
+        "tracking issue: n/a",
+        "tracking issue was not",
+        "tracking issue not",
+        "tracking issue has not",
+        "tracking issue wasn't",
+        "tracking issue hasn't",
+        "tracking issue unavailable",
+        "tracking issue absent",
+        "tracking issue missing",
+    ];
+    let affirmative_markers = [
         "separate dogfood issue",
         "separate dogfooding issue",
         "separate tracking issue",
@@ -57,9 +73,19 @@ fn has_tracking_issue(evidence: &str) -> bool {
         "tracked in issue",
         "tracked by issue",
         "follow-up issue",
-    ]
-    .into_iter()
-    .any(|marker| evidence.contains(marker))
+    ];
+
+    evidence
+        .split(['\n', '.', ';'])
+        .map(str::trim)
+        .any(|clause| {
+            affirmative_markers
+                .into_iter()
+                .any(|marker| clause.contains(marker))
+                && !negated_markers
+                    .into_iter()
+                    .any(|marker| clause.contains(marker))
+        })
 }
 
 fn is_defect_capture_line(line: &str) -> bool {
