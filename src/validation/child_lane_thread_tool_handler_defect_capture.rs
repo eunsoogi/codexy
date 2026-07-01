@@ -102,7 +102,7 @@ fn has_negated_fallback_route(clause: &str) -> bool {
 }
 
 fn has_negated_tracking_issue(clause: &str) -> bool {
-    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue was created|no issue created|no issue filed|no issue was filed|no issue has been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|wasn't filed|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
+    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|has not been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|wasn't filed|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
     NEGATED_TRACKING_ISSUE_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
@@ -173,7 +173,8 @@ fn has_negated_route_usage(padded_value: &str) -> bool {
         is_route_usage
             && words[index.saturating_sub(8)..index].iter().any(|prior| {
                 let prior = route_word_token(prior);
-                matches!(prior, "no" | "not" | "never" | "without") || prior.ends_with("n't")
+                matches!(prior, "no" | "not" | "never" | "without" | "cannot")
+                    || prior.ends_with("n't")
             })
     })
 }
@@ -237,14 +238,7 @@ fn has_handler_marker(line: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| normalized.contains(marker))
-        && [
-            "captured",
-            "classified",
-            "recorded",
-            "reported",
-            "routed",
-            "tracked",
-        ]
-        .into_iter()
-        .any(|marker| normalized.contains(marker))
+        && "captured|classified|recorded|reported|routed|tracked"
+            .split('|')
+            .any(|marker| normalized.contains(marker))
 }
