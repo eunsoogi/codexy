@@ -105,7 +105,7 @@ There is no `/wiki:migrate` command, and migration MUST stay inside lint rules. 
 
 - [ ] No near-duplicate tags (e.g., `ml` and `machine-learning`, `nlp` and `natural-language-processing`)
 - [ ] Tags in article frontmatter match tags listed in `_index.md` entries
-- [ ] Suggest canonical tag when duplicates found
+- [ ] MUST suggest canonical tag when duplicates are found
 
 ### C6: Coverage (Suggestion)
 
@@ -118,10 +118,10 @@ There is no `/wiki:migrate` command, and migration MUST stay inside lint rules. 
 
 ### C7: Deep Checks (Suggestion, --deep only)
 
-- [ ] Use WebSearch to verify key factual claims in wiki articles
-- [ ] Identify articles that could be enhanced with newer information
-- [ ] Suggest new articles that would connect existing ones
-- [ ] Check for stale sources (ingested > 6 months ago with no recent compilation)
+- [ ] MUST use WebSearch to verify key factual claims in wiki articles
+- [ ] MUST identify articles that could be enhanced with newer information
+- [ ] MUST suggest new articles that would connect existing ones
+- [ ] MUST check for stale sources (ingested > 6 months ago with no recent compilation)
 
 ### C8: Project Hygiene (Critical/Warning/Suggestion)
 
@@ -293,7 +293,7 @@ Note: thesis files use `type: thesis`, not `category`. MUST NOT alias `theses` t
 Computes a composite freshness score (0-100) for each compiled wiki article based on source freshness, verification recency, compilation recency, and source chain integrity. Standard source-backed articles use all four dimensions at 0-25 points each. Articles with `compiled-from: conversation` have no fetchable raw source chain, so they skip source freshness and source chain integrity, compute verification recency and compilation recency at 0-25 points each, then multiply the 50-point subtotal by 2. Decay curves are scaled by the article's `volatility` tier. See `wiki-structure.md` § Freshness Score for the full formula.
 
 - [ ] For each wiki article with `volatility` and `verified` fields, compute the standard four-dimension composite score, or the rebased two-dimension score when `compiled-from: conversation`
-- [ ] Read `freshness_threshold` from `config.md` (default: 70 if not set)
+- [ ] MUST read `freshness_threshold` from `config.md` (default: 70 if not set)
 - [ ] Flag articles scoring below the threshold
 
 **Severity**: Warning for `hot` and `warm` articles below threshold. Info for `cold` articles below threshold (Lindy Effect — cold content scoring low is unusual and worth noting, but rarely urgent).

@@ -110,9 +110,18 @@ fn instruction_line(line: &str) -> &str {
         .strip_prefix("- ")
         .or_else(|| line.strip_prefix("* "))
         .unwrap_or(line);
-    line.split_once(". ")
+    let line = line
+        .split_once(". ")
         .filter(|(prefix, _)| prefix.chars().all(|ch| ch.is_ascii_digit()))
-        .map_or(line, |(_, rest)| rest)
+        .map_or(line, |(_, rest)| rest);
+    strip_task_list_marker(line)
+}
+
+fn strip_task_list_marker(line: &str) -> &str {
+    line.strip_prefix("[ ] ")
+        .or_else(|| line.strip_prefix("[x] "))
+        .or_else(|| line.strip_prefix("[X] "))
+        .unwrap_or(line)
 }
 
 fn is_markdown_instruction_list(line: &str) -> bool {
