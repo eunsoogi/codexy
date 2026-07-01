@@ -18,20 +18,27 @@ function str(    c) {
   return 0
 }
 function lit(t) { if (substr(s, i, length(t)) != t) return 0; i += length(t); return 1 }
-function num(    start) {
-  start = i
+function num(    c) {
   if (substr(s, i, 1) == "-") i++
-  while (i <= n && substr(s, i, 1) ~ /[0-9]/) i++
+  c = substr(s, i, 1)
+  if (c == "0") {
+    i++
+    if (substr(s, i, 1) ~ /[0-9]/) return 0
+  } else if (c ~ /[1-9]/) {
+    while (i <= n && substr(s, i, 1) ~ /[0-9]/) i++
+  } else return 0
   if (substr(s, i, 1) == ".") {
     i++
+    if (!(substr(s, i, 1) ~ /[0-9]/)) return 0
     while (i <= n && substr(s, i, 1) ~ /[0-9]/) i++
   }
   if (substr(s, i, 1) ~ /[eE]/) {
     i++
     if (substr(s, i, 1) ~ /[+-]/) i++
+    if (!(substr(s, i, 1) ~ /[0-9]/)) return 0
     while (i <= n && substr(s, i, 1) ~ /[0-9]/) i++
   }
-  return i > start
+  return 1
 }
 function val(    c) {
   ws()
@@ -84,8 +91,7 @@ END {
 '
 }
 top_level_json_field_value() {
-  json_text="$1"
-  field_name="$2"
+  json_text="$1"; field_name="$2"
   printf '%s\n' "$json_text" | awk -v key="$field_name" '
 function skip_spaces(pos) {
   while (substr($0, pos, 1) ~ /[[:space:]]/) {
@@ -164,10 +170,8 @@ function emit_value(start,    i, c, depth, in_string, escape, seen) {
 }
 '
 }
-
 top_level_json_object_field_value() {
-  json_text="$1"
-  field_name="$2"
+  json_text="$1"; field_name="$2"
   printf '%s\n' "$json_text" | awk -v key="$field_name" '
 function skip_spaces(pos) {
   while (substr($0, pos, 1) ~ /[[:space:]]/) {
@@ -237,7 +241,6 @@ function emit_object(start,    i, c, depth, in_string, escape) {
 }
 '
 }
-
 json_string_field_value() {
   value=$(top_level_json_field_value "$1" "$2")
   case "$value" in

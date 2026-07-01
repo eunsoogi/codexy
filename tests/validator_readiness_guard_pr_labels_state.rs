@@ -43,6 +43,26 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
             "malformed JSON evidence",
         ),
         (
+            "invalid-number-lone-minus.json",
+            r#"{"number":-,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-number-trailing-dot.json",
+            r#"{"number":1.,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-number-missing-exponent.json",
+            r#"{"number":1e,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-number-leading-zero.json",
+            r#"{"number":01,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
             "missing-repository-identity.json",
             r#"{"number":209,"state":"OPEN","labels":[],"repositoryLabels":["type/fix"]}"#,
             "repository identity evidence",
