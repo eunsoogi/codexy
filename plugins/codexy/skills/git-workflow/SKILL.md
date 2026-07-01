@@ -156,9 +156,10 @@ MUST open PRs with GitHub or `gh`. MUST keep PRs draft only while local verifica
 missing or risk is intentionally unresolved. MUST create or confirm a GitHub issue
 before opening a PR unless a maintainer explicitly scopes an exception.
 
-PR titles MUST use Conventional Commit style, such as
-`chore(repo): establish repository governance`. Validate the exact PR title
-before PR readiness or merge readiness:
+PR titles MUST use Conventional Commit style. Example:
+`chore(repo): repository governance`.
+
+Before PR readiness or merge readiness, MUST validate the exact PR title:
 
 ```sh
 scripts/validate-plugin-config --check-pr-title --pr-title "$(gh pr view <pr> --json title --jq .title)"
