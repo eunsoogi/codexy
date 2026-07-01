@@ -27,7 +27,7 @@ Every command that needs a wiki follows these steps in order:
 
 3. **MUST verify existence.** MUST try to read `<wiki-root>/_index.md`. If missing, MUST follow the command's wiki-requirement variant below.
 
-4. **Parse `$ARGUMENTS`.** Each command defines its own flags; parse them after the wiki is resolved so flag validation can use wiki state (for example, `--project <slug>` checking whether the project exists).
+4. **MUST parse `$ARGUMENTS`.** Each command defines its own flags; MUST parse them after the wiki is resolved so flag validation can use wiki state (for example, `--project <slug>` checking whether the project exists).
 
 ## Wiki-requirement variants
 

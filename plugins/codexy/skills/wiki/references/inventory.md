@@ -402,7 +402,7 @@ wikis, not as corruption:
   dependencies, but project goals stay in `WHY.md`.
 - `lint`: repairs indexes for an inventory layer that already exists and
   reports migration candidates; it MUST NOT create a blank optional layer,
-  decide a pivot, or write records without the explicit inventory migration
+  MUST NOT decide a pivot, and MUST NOT write records without the explicit inventory migration
   workflow.
 - `inventory/`: durable tracking records and next-action state.
 

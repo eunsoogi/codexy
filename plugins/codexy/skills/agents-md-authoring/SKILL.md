@@ -27,7 +27,7 @@ deeper instructions and higher-priority user or system directions.
      contains them.
 4. MUST draft instructions that are concrete and durable:
    - describe project purpose, structure, and where to look,
-   - name hard requirements with `MUST` or `MUST NOT`,
+   - MUST name hard requirements with `MUST` or `MUST NOT`,
    - when creating or updating agent-facing instruction artifacts in this or
      another project, mandatory agent instructions MUST use `MUST` and
      prohibitions MUST use `MUST NOT`,

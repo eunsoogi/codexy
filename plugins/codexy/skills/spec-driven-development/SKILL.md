@@ -27,7 +27,7 @@ one issue-sized outcome.
    - user-visible success criteria.
 3. Reduce to an atomic outcome:
    - split unrelated behavior into follow-up issues,
-   - name the owning branch or worktree,
+   - MUST name the owning branch or worktree,
    - MUST NOT bundle cleanup unless it is required to prove the spec.
 4. Define proofs before implementation:
    - one proof for the happy path,

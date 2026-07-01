@@ -1,7 +1,7 @@
 #[rustfmt::skip]
 const PROHIBITION_MARKERS: &[&str] = &["do not", "don't", "avoid", "never", "shall not", "must not", "not allowed", "cannot"];
 #[rustfmt::skip]
-const MANDATORY_LINE_PREFIXES: &[&str] = &["act", "add", "append", "apply", "assign", "build", "capture", "check", "choose", "classify", "clone", "complete", "confirm", "continue", "create", "delete", "download", "drive", "establish", "extract", "fetch", "flag", "follow", "generate", "give", "identify", "include", "inspect", "keep", "list", "locate", "maintain", "mark", "move", "preflight", "preserve", "read", "re-read", "recalculate", "record", "regenerate", "remove", "report", "reproduce", "resolve", "route", "run", "re-run", "search", "separate", "separately", "skip", "stage", "start", "stop", "suggest", "test", "track", "treat", "update", "use", "verify", "walk", "write"];
+const MANDATORY_LINE_PREFIXES: &[&str] = &["act", "add", "append", "apply", "assign", "build", "capture", "check", "choose", "classify", "clone", "complete", "confirm", "continue", "create", "decide", "delete", "download", "drive", "establish", "extract", "fetch", "flag", "follow", "generate", "give", "identify", "include", "inspect", "keep", "list", "locate", "maintain", "mark", "move", "name", "parse", "preflight", "preserve", "read", "re-read", "recalculate", "record", "regenerate", "remove", "report", "reproduce", "resolve", "route", "run", "re-run", "search", "separate", "separately", "skip", "stage", "start", "stop", "suggest", "test", "track", "treat", "update", "use", "verify", "walk", "write"];
 #[rustfmt::skip]
 const ROOT_AGENTS_PREFIXES: &[&str] = &["add", "capture", "keep", "mention", "preflight", "put", "treat", "wait"];
 #[rustfmt::skip]
@@ -174,6 +174,9 @@ fn starts_with_bare_imperative(segment: &str, strict_clauses: bool) -> bool {
     let lower = lower.strip_prefix("the orchestrator ").unwrap_or(lower);
     let lower = lower.strip_prefix("orchestrator ").unwrap_or(lower);
     let lower = lower.split_once("?** ").map_or(lower, |(_, rest)| rest);
+    if lower.starts_with("name:") || lower.starts_with("name =") {
+        return false;
+    }
     if lower.starts_with("stop condition") || lower.starts_with("stop/blocker") {
         return false;
     }

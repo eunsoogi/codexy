@@ -168,7 +168,7 @@ presenting a quiet fallback as normal.
 MUST run this checkpoint before any implementation edit when a lane may need a
 branch, worktree, PR, durable child context, or review-response ownership:
 
-1. Name the atomic lane and decide ownership as `parent-owned` or
+1. MUST name the atomic lane and decide ownership as `parent-owned` or
    `child-owned`.
 2. If the lane is `child-owned`, the parent may prepare issue text, branch
    names, worktree requests, handoff text, and acceptance criteria, but it

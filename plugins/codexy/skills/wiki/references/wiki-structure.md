@@ -355,7 +355,7 @@ The `sources:` field is a path list, not a bag of slugs. Maintenance workflows
 that follow provenance (`librarian`, `lint`, `audit`, `refresh`, and project
 staleness checks) MUST resolve source references with this protocol:
 
-1. Parse `sources:` as structured YAML when possible. If using a line-based
+1. MUST parse `sources:` as structured YAML when possible. If using a line-based
    fallback, MUST preserve the complete scalar after `- ` through the end of the line
    and strip only matching wrapping quotes. MUST NOT split source entries on
    whitespace.

@@ -31,10 +31,10 @@ plugin repair until classification evidence exists in the thread.
    - MUST decide owner as `parent-owned`, `child-owned`, `current-thread-owned`, or
      `external/human-owned`.
 3. MUST route:
-   - Name the required Codexy skills and any explicit user-named skills.
-   - Name required tool surfaces, including goal, plan/todo, codegraph, LSP,
+   - MUST name the required Codexy skills and any explicit user-named skills.
+   - MUST name required tool surfaces, including goal, plan/todo, codegraph, LSP,
      GitHub, validators, local tests, and packaged `codexy-sentinel`.
-   - Decide whether multi-agent helper work or separate Codex
+   - MUST decide whether multi-agent helper work or separate Codex
      thread/worktree ownership is required, not useful, or unavailable. MUST treat
      them as different surfaces: subagents may assist with bounded research,
      review, or worker tasks, but they are not child-owned Codex

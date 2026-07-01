@@ -172,8 +172,8 @@ across subjects. MUST NOT present "all" as exhaustive beyond the stated strategy
 and limit.
 
 Inventory is first-class operational state, not a silo. Ingest, collection, and
-collect workflows MUST suggest inventory when the user wants to track or
-decide later.
+collect workflows MUST suggest inventory when the user wants to track work or
+make a later decision.
 Dataset manifests MUST link to inventory records when next actions or
 acceptance state matter. Compile and query may surface inventory gaps, but
 factual claims still need raw/wiki sources. Collect, research, audit,

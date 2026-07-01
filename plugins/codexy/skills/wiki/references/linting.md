@@ -92,7 +92,7 @@ There is no `/wiki:migrate` command, and migration MUST stay inside lint rules. 
 
 ### C4b: Source Provenance (Warning)
 
-- [ ] All `sources:` entries in wiki article frontmatter point to existing raw files (no dangling references to deleted/retracted sources). MUST resolve entries with the Source Reference Resolution protocol in `wiki-structure.md`: parse the full YAML scalar/path, preserve whitespace, exact path first, then slug fallback. MUST NOT split on whitespace.
+- [ ] All `sources:` entries in wiki article frontmatter point to existing raw files (no dangling references to deleted/retracted sources). MUST resolve entries with the Source Reference Resolution protocol in `wiki-structure.md`: MUST parse the full YAML scalar/path, preserve whitespace, exact path first, then slug fallback. MUST NOT split on whitespace.
 - [ ] All local `sources:` entries in inventory record frontmatter point to
   existing files under `raw/`, `wiki/`, `output/`, `datasets/`, or `inventory/`.
   External URLs are allowed. Inventory provenance is operational state and

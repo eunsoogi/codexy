@@ -113,8 +113,8 @@ MUST use Git for repositories such as `bitcoin/bips`; MUST NOT scrape GitHub HTM
    `.adoc`).
 4. Exclude `.git/`, `.github/`, generated assets, binaries, images, archives,
    vendored dependencies, scripts, and test vectors unless explicitly included.
-5. For BIP-style repos, prioritize root `bip-####.mediawiki` and `bip-####.md`
-   files. Parse proposal headers such as `BIP`, `Layer`, `Title`, `Authors`,
+5. For BIP-style repos, MUST prioritize root `bip-####.mediawiki` and `bip-####.md`
+   files. MUST parse proposal headers such as `BIP`, `Layer`, `Title`, `Authors`,
    `Status`, `Type`, `Requires`, `License`, and `Discussion`.
 
 For BIPs, publication in the repo is provenance for the proposal text, not proof
@@ -127,7 +127,7 @@ and carry revision metadata.
 
 1. MUST download or read the dump file.
 2. Decompress `.bz2` with `bunzip2 -c` or `.gz` with `gunzip -c`.
-3. Parse streaming XML; MUST NOT load a large dump entirely into memory.
+3. MUST parse streaming XML; MUST NOT load a large dump entirely into memory.
 4. Default to namespace `0`. MUST skip redirects and titles with `:` unless the user
    explicitly includes them.
 5. Store page id/title, latest revision id, timestamp, contributor when

@@ -38,7 +38,7 @@ complete.
 
 - MUST run `git diff --check` before pushing or opening a PR.
 - MUST inspect `git status --short` and MUST NOT stage unrelated files.
-- Parse structured files with an appropriate parser when possible.
+- MUST parse structured files with an appropriate parser when possible.
 - For Codexy plugin architecture changes, validate LSP config, MCP config,
   role metadata or custom agent TOMLs, and thread/worktree orchestration
   wording. MUST run `scripts/validate-plugin-config --check` when that
