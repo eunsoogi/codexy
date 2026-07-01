@@ -74,6 +74,22 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
             for check_line in checkable_wrapped_continuations(normalized) {
                 let continuation_segments = checkable_line_segments(check_line);
                 if continuation_segments.iter().any(|segment| {
+                    instruction_policy_match::has_prohibition_without_must_not(segment)
+                        || custom_agent_toml
+                            && instruction_policy_match::has_forbidden_actions_without_must_not(
+                                segment,
+                            )
+                        || previous_prohibition_list
+                            && instruction_policy_match::starts_with_inverted_prohibition(segment)
+                }) {
+                    errors.push(format!(
+                        "{}:{} prohibitions must use MUST NOT",
+                        display_relative(path),
+                        index + 1
+                    ));
+                    continue;
+                }
+                if continuation_segments.iter().any(|segment| {
                     instruction_policy_match::has_bare_mandatory_without_must(
                         segment,
                         strict_clauses,

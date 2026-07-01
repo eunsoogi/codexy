@@ -44,7 +44,7 @@ The wiki-content pass is owned by the librarian logic.
 1. If a fresh `.librarian/scan-results.json` exists and the user did not ask
    for `--fresh`, reuse it.
 2. Otherwise run a fresh librarian scan before continuing.
-3. Pull forward the wiki-level findings that matter for trust:
+3. MUST pull forward the wiki-level findings that matter for trust:
    - stale articles
    - low-quality articles
    - low-confidence source chains

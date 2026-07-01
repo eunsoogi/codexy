@@ -77,8 +77,8 @@ complete.
   exist, MUST require recovery evidence showing the parent stopped editing,
   disclosed the mistake, protected user and other-agent work, and handed the
   draft diff to the owning child thread.
-- For completion, merge, or default Codexy merge-flow requests, MUST NOT treat an
-  open PR as completion unless the maintainer explicitly requested stop, wait,
+- For completion, merge, or default Codexy merge-flow requests, MUST NOT treat a
+  PR that remains open as completion unless the maintainer explicitly requested stop, wait,
   draft-only, no-merge, or leave-open behavior. When a final answer or handoff
   artifact may claim completion while the matching PR is open, MUST run
   `scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`

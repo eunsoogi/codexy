@@ -6,7 +6,7 @@ description: Codexy plugin GitHub issue, branch, worktree, push, pull request, v
 # Git Workflow
 
 MUST use this skill before Codexy Git, GitHub issue, branch, worktree, commit, push,
-pull request, review, repository-settings, branch-protection, merge, or
+PR, review, repository-settings, branch-protection, merge, or
 post-merge sync work.
 
 ## Read Next

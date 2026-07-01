@@ -15,6 +15,8 @@ fn validator_cli_rejects_remaining_bare_imperative_verbs() -> TestResult {
         "- Parse structured files before handoff.",
         "- Name the required Codexy skills.",
         "- Decide whether multi-agent helper work is useful.",
+        "- Pull forward the wiki-level findings.",
+        "- Open full records only when the user asks for detail.",
     ] {
         std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
         let output = validator(&plugin_root, "--check")?;
@@ -35,7 +37,9 @@ fn validator_cli_accepts_modal_wrapped_remaining_imperative_verbs() -> TestResul
     skill.push_str(
         "\n- MUST parse structured files before handoff.\n\
          - MUST name the required Codexy skills.\n\
-         - MUST decide whether multi-agent helper work is useful.\n",
+         - MUST decide whether multi-agent helper work is useful.\n\
+         - MUST pull forward the wiki-level findings.\n\
+         - MUST open full records only when the user asks for detail.\n",
     );
     std::fs::write(&skill_path, skill)?;
 

@@ -145,7 +145,7 @@ records.
   the full index lives.
 - MUST use bullets instead of a table when long URLs, paths, or prose next actions
   would make a table unreadable.
-- Open full records only when the user asks for detail or when requested columns
+- MUST open full records only when the user asks for detail or when requested columns
   are not present in the indexes/frontmatter.
 
 Recommended chat views:
