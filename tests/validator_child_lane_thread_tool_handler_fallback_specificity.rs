@@ -103,6 +103,28 @@ fn validator_rejects_weak_fallback_route_value() -> Result<(), Box<dyn std::erro
 }
 
 #[test]
+fn validator_rejects_negated_fallback_route_not_used() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&vague_fallback_evidence("fallback route: not used"))?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject negated fallback route values"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_negated_fallback_route_not_routed() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&vague_fallback_evidence("fallback route: not routed"))?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject negated fallback route values"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence(
         "no fallback route available evidence was not provided",

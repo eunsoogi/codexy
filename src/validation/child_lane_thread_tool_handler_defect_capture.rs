@@ -152,7 +152,7 @@ fn has_placeholder_field_value(value: &str) -> bool {
 fn has_substantive_route_value(value: &str) -> bool {
     let trimmed = value.trim();
     !trimmed.is_empty()
-        && !["used", "routed", "available"]
+        && !["used", "routed", "available", "not used", "not routed"]
             .into_iter()
             .any(|weak_value| trimmed == weak_value)
         && trimmed
