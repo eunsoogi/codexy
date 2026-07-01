@@ -105,7 +105,11 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         }
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
-        Mode::Roles => roles::check(plugin_root),
+        Mode::Roles => {
+            let mut errors = roles::check(plugin_root);
+            errors.extend(instruction_policy::check_roles(plugin_root));
+            errors
+        }
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
         Mode::ChildLaneOwnership { evidence } => child_lane_ownership::check(&evidence),
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),

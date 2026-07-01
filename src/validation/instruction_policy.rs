@@ -15,13 +15,30 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(plugin_root)
         )];
     };
+    check_surfaces(surfaces, &mut errors);
+    errors
+}
+
+pub(super) fn check_roles(plugin_root: &Path) -> Vec<String> {
+    let mut errors = Vec::new();
+    let Ok(surfaces) = role_instruction_surfaces(plugin_root) else {
+        return vec![format!(
+            "{} role instruction surfaces could not be read",
+            display_relative(&plugin_root.join("agents"))
+        )];
+    };
+    check_surfaces(surfaces, &mut errors);
+    errors
+}
+
+fn check_surfaces(surfaces: Vec<PathBuf>, errors: &mut Vec<String>) {
     for path in surfaces {
         match fs::read_to_string(&path) {
             Ok(text) => {
                 if !path.ends_with(".codex-plugin/plugin.json") {
-                    instruction_policy_text::check_text(&path, &text, &mut errors, false);
+                    instruction_policy_text::check_text(&path, &text, errors, false);
                 }
-                check_structured_prompts(&path, &text, &mut errors);
+                check_structured_prompts(&path, &text, errors);
             }
             Err(error) => errors.push(format!(
                 "{} could not be read: {error}",
@@ -29,7 +46,6 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             )),
         }
     }
-    errors
 }
 
 fn check_structured_prompts(path: &Path, text: &str, errors: &mut Vec<String>) {
@@ -130,6 +146,28 @@ fn instruction_surfaces(plugin_root: &Path) -> std::io::Result<Vec<PathBuf>> {
     }
     collect_skill_surfaces(&plugin_root.join("skills"), &mut paths)?;
     Ok(paths.into_iter().collect())
+}
+
+fn role_instruction_surfaces(plugin_root: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let mut paths = BTreeSet::new();
+    paths.insert(plugin_root.join("agents/openai.yaml"));
+    collect_agent_toml_surfaces(plugin_root, &mut paths)?;
+    Ok(paths.into_iter().collect())
+}
+
+fn collect_agent_toml_surfaces(
+    plugin_root: &Path,
+    paths: &mut BTreeSet<PathBuf>,
+) -> std::io::Result<()> {
+    for entry in fs::read_dir(plugin_root.join("agents"))? {
+        let path = entry?.path();
+        if path.extension().and_then(|ext| ext.to_str()) == Some("toml")
+            && path.file_name().and_then(|name| name.to_str()) != Some("catalog.toml")
+        {
+            paths.insert(path);
+        }
+    }
+    Ok(())
 }
 
 fn collect_skill_surfaces(root: &Path, paths: &mut BTreeSet<PathBuf>) -> std::io::Result<()> {
