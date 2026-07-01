@@ -76,10 +76,10 @@ fn readiness_guard_checks_squash_subject_suffix_spacing() -> Result<(), Box<dyn 
         "guard should reject unseparated PR suffixes"
     );
     assert!(
-        String::from_utf8_lossy(&bad.stdout)
+        output_text(&bad)
             .contains("merge commit subject must end with the expected PR suffix"),
-        "unexpected stdout: {}",
-        String::from_utf8_lossy(&bad.stdout)
+        "unexpected output: {}",
+        output_text(&bad)
     );
 
     let good = Command::new(&script)
@@ -87,6 +87,8 @@ fn readiness_guard_checks_squash_subject_suffix_spacing() -> Result<(), Box<dyn 
             "--check-merge-message",
             "--expected-pr",
             "204",
+            "--expected-issue",
+            "206",
             "--merge-message",
             "fix(workflow): enforce gate (#204)\n\nFixes #206\n",
         ])
@@ -94,6 +96,49 @@ fn readiness_guard_checks_squash_subject_suffix_spacing() -> Result<(), Box<dyn 
     assert!(
         good.status.success(),
         "guard should accept separated PR suffixes\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&good.stdout),
+        String::from_utf8_lossy(&good.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn readiness_guard_delegates_merge_body_validation() -> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+
+    let bad = Command::new(&script)
+        .args([
+            "--check-merge-message",
+            "--expected-pr",
+            "204",
+            "--merge-message",
+            "fix(workflow): x (#204)\n\nCloses #999\n",
+        ])
+        .output()?;
+    assert!(
+        !bad.status.success(),
+        "guard should reject closing references when no issue is expected"
+    );
+    assert!(
+        output_text(&bad).contains("merge commit message must not contain closing references"),
+        "unexpected output: {}",
+        output_text(&bad)
+    );
+
+    let good = Command::new(&script)
+        .args([
+            "--check-merge-message",
+            "--expected-pr",
+            "204",
+            "--expected-issue",
+            "206",
+            "--merge-message",
+            "fix(workflow): x (#204)\n\nFixes #206\n",
+        ])
+        .output()?;
+    assert!(
+        good.status.success(),
+        "guard should accept validator-valid merge bodies\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&good.stdout),
         String::from_utf8_lossy(&good.stderr)
     );
@@ -146,10 +191,10 @@ fn readiness_guard_rejects_whitespace_only_summaries() -> Result<(), Box<dyn std
         "guard should reject whitespace-only merge subject summaries"
     );
     assert!(
-        String::from_utf8_lossy(&bad_merge_message.stdout)
+        output_text(&bad_merge_message)
             .contains("merge commit subject must use Conventional Commit style"),
-        "unexpected stdout: {}",
-        String::from_utf8_lossy(&bad_merge_message.stdout)
+        "unexpected output: {}",
+        output_text(&bad_merge_message)
     );
 
     let empty_merge_message = Command::new(&script)
@@ -166,12 +211,20 @@ fn readiness_guard_rejects_whitespace_only_summaries() -> Result<(), Box<dyn std
         "guard should reject empty merge subject summaries"
     );
     assert!(
-        String::from_utf8_lossy(&empty_merge_message.stdout)
+        output_text(&empty_merge_message)
             .contains("merge commit subject must use Conventional Commit style"),
-        "unexpected stdout: {}",
-        String::from_utf8_lossy(&empty_merge_message.stdout)
+        "unexpected output: {}",
+        output_text(&empty_merge_message)
     );
     Ok(())
+}
+
+fn output_text(output: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    )
 }
 
 fn readiness_guard() -> std::path::PathBuf {
