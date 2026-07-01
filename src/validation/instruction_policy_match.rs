@@ -54,7 +54,7 @@ pub(super) fn ends_with_dangling_modal(line: &str) -> bool {
     let line = line.trim_end();
     line.ends_with("MUST")
         || line.ends_with("MUST NOT")
-        || line.contains("MUST") && (line.ends_with(" to") || line.ends_with(" from"))
+        || has_modal_instruction(line) && (line.ends_with(" to") || line.ends_with(" from"))
 }
 
 pub(super) fn has_bare_mandatory_without_must(
@@ -193,6 +193,26 @@ fn starts_with_bare_require(segment: &str) -> bool {
     let lower = lower.strip_prefix("and ").unwrap_or(lower);
     let lower = lower.strip_prefix("you ").unwrap_or(lower);
     matches_prefix(lower, &["require"]) && !segment.starts_with("MUST")
+}
+
+fn has_modal_instruction(line: &str) -> bool {
+    for (index, _) in line.match_indices("MUST") {
+        if line[..index].matches('`').count() % 2 == 1 {
+            continue;
+        }
+        let before = line[..index].trim_end();
+        if !before.is_empty()
+            && !before.ends_with(|ch: char| ch.is_whitespace() || matches!(ch, ':' | ';'))
+        {
+            continue;
+        }
+        let after = line[index + "MUST".len()..].trim_start();
+        let after = after.strip_prefix("NOT ").unwrap_or(after);
+        if matches_prefix(&after.to_ascii_lowercase(), MANDATORY_LINE_PREFIXES) {
+            return true;
+        }
+    }
+    false
 }
 
 fn has_modal_label_prefix(segment: &str) -> bool {
