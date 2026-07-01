@@ -97,6 +97,8 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
             | "fallback route used"
             | "fallback path"
             | "tracking issue"
+            | "tracked in issue"
+            | "tracked by issue"
             | "separate tracking issue"
             | "separate dogfood issue"
             | "separate dogfooding issue"

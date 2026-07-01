@@ -32,14 +32,14 @@ Maintainer reassignment: none
     )
 }
 
-fn separate_metadata_evidence(fallback_field: &str, tracking_issue: &str) -> String {
+fn separate_metadata_evidence(fallback_field: &str, tracking_field: &str) -> String {
     format!(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
 {fallback_field}
-Tracking issue: {tracking_issue}
+{tracking_field}
 Maintainer reassignment: none
 "#
     )
@@ -138,7 +138,6 @@ fn validator_allows_tracking_issue_for_missing_handler_exposure()
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn std::error::Error>>
 {
@@ -149,28 +148,30 @@ fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn 
     );
     Ok(())
 }
-
 #[test]
 fn validator_allows_handoff_fields_on_separate_metadata_lines()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(&separate_metadata_evidence(
-        "Fallback route: no fallback route was available",
-        "#205",
-    ))?;
-    assert!(
-        output.status.success(),
-        "validator should accept fallback route and tracking issue metadata lines\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    for tracking_field in
+        "Tracking issue: #205\nTracked in issue: #205\nTracked by issue: #205".lines()
+    {
+        let output = run_ownership_validator(&separate_metadata_evidence(
+            "Fallback route: no fallback route was available",
+            tracking_field,
+        ))?;
+        assert!(
+            output.status.success(),
+            "validator should accept separate metadata line `{tracking_field}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
-
 #[test]
 fn validator_allows_fallback_route_used_metadata_line() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&separate_metadata_evidence(
         "Fallback route used: parent posted the handoff in the child thread",
-        "#205",
+        "Tracking issue: #205",
     ))?;
     assert!(
         output.status.success(),
@@ -178,7 +179,6 @@ fn validator_allows_fallback_route_used_metadata_line() -> Result<(), Box<dyn st
     );
     Ok(())
 }
-
 #[test]
 fn validator_allows_bulleted_handoff_fields_after_multiline_defect()
 -> Result<(), Box<dyn std::error::Error>> {
