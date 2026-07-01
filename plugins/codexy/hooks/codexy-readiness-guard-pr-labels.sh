@@ -6,17 +6,6 @@ fail() {
   exit 1
 }
 
-json_field_value() {
-  json_text="$1"
-  field_name="$2"
-  field_rest=${json_text#*"\"$field_name\""}
-  if [ "$field_rest" = "$json_text" ]; then
-    printf '\n'
-    return
-  fi
-  printf '%s\n' "${field_rest#*:}"
-}
-
 top_level_json_field_value() {
   json_text="$1"
   field_name="$2"
@@ -172,6 +161,30 @@ function emit_object(start,    i, c, depth, in_string, escape) {
 '
 }
 
+json_string_field_value() {
+  value=$(top_level_json_field_value "$1" "$2")
+  case "$value" in
+    \"*) printf '%s\n' "$value" | sed 's/^[[:space:]]*"\([^"]*\)".*/\1/' | tr '[:upper:]' '[:lower:]' ;;
+    *) printf '\n' ;;
+  esac
+}
+
+json_is_open_pr() {
+  [ "$(json_string_field_value "$1" "state")" = "open" ]
+}
+
+json_is_codexy_lane() {
+  json_text="$1"
+  for field_name in repository nameWithOwner headRepository; do
+    [ "$(json_string_field_value "$json_text" "$field_name")" = "eunsoogi/codexy" ] && return 0
+  done
+  url=$(json_string_field_value "$json_text" "url")
+  case "$url" in
+    *github.com/eunsoogi/codexy/* | *github.com/eunsoogi/codexy) return 0 ;;
+  esac
+  return 1
+}
+
 json_value_has_label_name() {
   field_value="$1"
   graph_key=$(printf '%s%s\n' "no" "des")
@@ -205,7 +218,6 @@ json_value_has_label_name() {
 
 json_has_repository_label_taxonomy() {
   json_text="$1"
-  graph_key=$(printf '%s%s\n' "no" "des")
   repository_labels=$(top_level_json_field_value "$json_text" "repositoryLabels")
   if json_value_has_label_name "$repository_labels"; then
     return 0
@@ -225,6 +237,9 @@ pr_state_file="${1:-}"
 [ -n "$pr_state_file" ] || fail "--pr-state-file is required"
 [ -f "$pr_state_file" ] || fail "--pr-state-file must point to a readable file"
 pr_state_json=$(tr -d '\n\r' < "$pr_state_file") || fail "could not read --pr-state-file"
+if ! json_is_open_pr "$pr_state_json" || ! json_is_codexy_lane "$pr_state_json"; then
+  exit 0
+fi
 if ! json_has_repository_label_taxonomy "$pr_state_json"; then
   exit 0
 fi

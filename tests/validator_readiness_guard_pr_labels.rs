@@ -67,11 +67,11 @@ fn readiness_guard_ignores_nested_labels_before_top_level_pr_labels()
     for (name, json) in [
         (
             "repository-before-pr-labels.json",
-            r#"{"number":209,"state":"OPEN","repository":{"labels":{"nodes":[{"name":"type/fix"}]}},"labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            r#"{"number":209,"state":"OPEN","url":"https://github.com/eunsoogi/codexy/pull/209","repository":{"labels":{"nodes":[{"name":"type/fix"}]}},"labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
         ),
         (
             "closing-issue-before-pr-labels.json",
-            r#"{"number":209,"state":"OPEN","closingIssuesReferences":[{"number":216,"labels":[{"name":"type/fix"}]}],"labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","closingIssuesReferences":[{"number":216,"labels":[{"name":"type/fix"}]}],"labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
         ),
     ] {
         let pr_state = write_pr_state(temp.path(), name, json)?;
@@ -92,6 +92,34 @@ fn readiness_guard_ignores_nested_labels_before_top_level_pr_labels()
             output_text(&output)
         );
     }
+    Ok(())
+}
+
+#[test]
+fn readiness_guard_scopes_pr_label_policy_to_codexy_prs() -> Result<(), Box<dyn std::error::Error>>
+{
+    let script = readiness_guard();
+    let temp = tempfile::tempdir()?;
+
+    for (name, json) in [
+        (
+            "user-repo-with-taxonomy.json",
+            r#"{"number":7,"state":"OPEN","repository":"example/user-app","labels":[],"repositoryLabels":["type/fix"]}"#,
+        ),
+        (
+            "codexy-name-fragment.json",
+            r#"{"number":7,"state":"OPEN","headRefName":"codexy/local-helper","repository":"example/codexy-helper","labels":[],"repositoryLabels":["type/fix"]}"#,
+        ),
+    ] {
+        assert_accepts(
+            &script,
+            temp.path(),
+            name,
+            json,
+            "non-Codexy PR label state",
+        )?;
+    }
+
     Ok(())
 }
 
