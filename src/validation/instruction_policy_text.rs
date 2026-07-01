@@ -102,6 +102,7 @@ fn checkable_line_segments(line: &str) -> Vec<&str> {
         .split('|')
         .map(str::trim)
         .filter(|cell| !cell.is_empty() && !cell.chars().all(|ch| matches!(ch, '-' | ':' | ' ')))
+        .filter(|cell| cell.contains(char::is_whitespace) || cell.contains(':'))
         .collect()
 }
 

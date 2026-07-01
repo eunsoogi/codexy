@@ -236,9 +236,9 @@ fn has_bare_passive_mandatory(segment: &str) -> bool {
 
 fn matches_prefix(lower: &str, prefixes: &[&str]) -> bool {
     prefixes.iter().any(|prefix| {
-        lower
-            .strip_prefix(prefix)
-            .is_some_and(|rest| rest.starts_with(char::is_whitespace) || rest.starts_with(':'))
+        lower.strip_prefix(prefix).is_some_and(|rest| {
+            rest.is_empty() || rest.starts_with(char::is_whitespace) || rest.starts_with(':')
+        })
     })
 }
 
