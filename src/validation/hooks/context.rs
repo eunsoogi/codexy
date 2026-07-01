@@ -139,10 +139,12 @@ pub(super) fn check_session_start_context(
 
 pub(super) fn check_readiness_context(
     path: &Path,
+    plugin_root: &Path,
     command_text: &str,
+    timeout_secs: u64,
     readiness_event: &str,
 ) -> Result<()> {
-    let (_, arguments) = command::plugin_root_entrypoint_path(command_text).with_context(|| {
+    let (hook_path, arguments) = command::plugin_root_entrypoint_path(command_text).with_context(|| {
         format!(
             "{} {readiness_event} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
             display_relative(path)
@@ -157,6 +159,8 @@ pub(super) fn check_readiness_context(
             display_relative(path)
         );
     }
+    let script_path = plugin_root.join(&hook_path);
+    let _ = emitted_session_start_context(&script_path, readiness_event, timeout_secs)?;
     Ok(())
 }
 

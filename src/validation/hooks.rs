@@ -181,7 +181,7 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
         hook_purpose |= PURPOSE_ROUTING_CONTEXT;
     }
     if event == READINESS_EVENT && command_uses_script(command, READINESS_SCRIPT) {
-        context::check_readiness_context(path, command, READINESS_EVENT)?;
+        context::check_readiness_context(path, plugin_root, command, timeout, READINESS_EVENT)?;
         hook_purpose |= PURPOSE_READINESS_CONTEXT;
     }
     if let Some(status) = object.get("statusMessage") {
