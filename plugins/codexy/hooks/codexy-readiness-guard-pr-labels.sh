@@ -38,14 +38,13 @@ json_value_has_label_name() {
   case "$field_value" in
     \[*)
       value_is_array=1
-      field_items=$(printf '%s\n' "$field_value" | sed 's/^\[\([^]]*\)\].*/\1/')
+      field_items="$field_value"
       ;;
     \{*)
-      field_items=$(printf '%s\n' "$field_value" |
-        sed "s/^.*\"$graph_key\"[[:space:]]*:[[:space:]]*\\[\\([^]]*\\)\\].*/\\1/")
-      if [ "$field_items" = "$field_value" ]; then
+      if ! printf '%s\n' "$field_value" | grep -Eq "\"$graph_key\"[[:space:]]*:[[:space:]]*\\["; then
         return 1
       fi
+      field_items="$field_value"
       value_is_array=1
       ;;
     *)
@@ -56,7 +55,7 @@ json_value_has_label_name() {
     return 0
   fi
   if [ "$value_is_array" -eq 1 ] &&
-    printf '%s\n' "$field_items" | grep -Eq '(^|,)[[:space:]]*"[^"]+"'; then
+    printf '%s\n' "$field_items" | grep -Eq '(^|[\[,])[[:space:]]*"[^"]+"'; then
     return 0
   fi
   return 1

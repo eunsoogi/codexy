@@ -98,6 +98,11 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
             "repositoryLabels taxonomy",
         ),
         (
+            "bracketed-repository-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type]fix"]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
             "missing-repository-identity.json",
             r#"{"number":209,"state":"OPEN","labels":[],"repositoryLabels":["type/fix"]}"#,
             "repository identity evidence",
@@ -129,6 +134,40 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
         assert!(
             output_text(&output).contains(expected),
             "expected {expected} in output: {}",
+            output_text(&output)
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
+fn readiness_guard_accepts_bracketed_label_names() -> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+    let temp = tempfile::tempdir()?;
+
+    for (name, json) in [
+        (
+            "bracketed-string-label.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type]fix"],"repositoryLabels":["type]fix"]}"#,
+        ),
+        (
+            "bracketed-graphql-label.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":["type]fix"]},"repositoryLabels":{"nodes":["type]fix"]}}"#,
+        ),
+    ] {
+        let pr_state = temp.path().join(name);
+        std::fs::write(&pr_state, json)?;
+        let output = Command::new(&script)
+            .args([
+                "--check-pr-labels",
+                "--pr-state-file",
+                pr_state.to_str().ok_or("pr state path")?,
+            ])
+            .output()?;
+        assert!(
+            output.status.success(),
+            "guard should accept bracketed label evidence for {name}: {}",
             output_text(&output)
         );
     }
