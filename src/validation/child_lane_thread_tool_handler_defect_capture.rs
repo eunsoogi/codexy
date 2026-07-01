@@ -165,15 +165,12 @@ fn has_substantive_route_value(value: &str) -> bool {
             "not routed",
             "not actually used",
             "not actually routed",
-            "no route was used",
-            "no route was actually used",
-            "no fallback route was used",
-            "no fallback route was actually used",
-            "no fallback path was used",
-            "no fallback path was actually used",
         ]
         .into_iter()
         .any(|weak_phrase| trimmed.contains(weak_phrase))
+        && !["no route", "no fallback route", "no fallback path"]
+            .into_iter()
+            .any(|weak_prefix| trimmed.contains(weak_prefix) && trimmed.contains("used"))
         && trimmed
             .chars()
             .any(|character| character.is_ascii_alphabetic())
