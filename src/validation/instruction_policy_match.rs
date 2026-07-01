@@ -1,7 +1,7 @@
 #[rustfmt::skip]
 const PROHIBITION_MARKERS: &[&str] = &["do not", "don't", "avoid", "never", "shall not", "must not", "not allowed", "cannot"];
 #[rustfmt::skip]
-const MANDATORY_LINE_PREFIXES: &[&str] = &["act", "apply", "assign", "build", "capture", "check", "choose", "classify", "clone", "complete", "confirm", "continue", "create", "delete", "download", "drive", "establish", "extract", "fetch", "follow", "generate", "give", "identify", "include", "inspect", "keep", "list", "locate", "maintain", "mark", "move", "preflight", "preserve", "read", "re-read", "recalculate", "record", "regenerate", "remove", "report", "reproduce", "resolve", "route", "run", "re-run", "search", "separate", "separately", "stage", "start", "stop", "suggest", "test", "track", "treat", "use", "verify", "write"];
+const MANDATORY_LINE_PREFIXES: &[&str] = &["act", "apply", "assign", "build", "capture", "check", "choose", "classify", "clone", "complete", "confirm", "continue", "create", "delete", "download", "drive", "establish", "extract", "fetch", "flag", "follow", "generate", "give", "identify", "include", "inspect", "keep", "list", "locate", "maintain", "mark", "move", "preflight", "preserve", "read", "re-read", "recalculate", "record", "regenerate", "remove", "report", "reproduce", "resolve", "route", "run", "re-run", "search", "separate", "separately", "skip", "stage", "start", "stop", "suggest", "test", "track", "treat", "use", "verify", "walk", "write"];
 #[rustfmt::skip]
 const ROOT_AGENTS_PREFIXES: &[&str] = &["add", "capture", "keep", "mention", "preflight", "put", "treat", "wait"];
 #[rustfmt::skip]
@@ -236,9 +236,9 @@ fn has_bare_passive_mandatory(segment: &str) -> bool {
 
 fn matches_prefix(lower: &str, prefixes: &[&str]) -> bool {
     prefixes.iter().any(|prefix| {
-        lower.strip_prefix(prefix).is_some_and(|rest| {
-            rest.is_empty() || rest.starts_with(char::is_whitespace) || rest.starts_with(':')
-        })
+        lower
+            .strip_prefix(prefix)
+            .is_some_and(|rest| rest.starts_with(char::is_whitespace) || rest.starts_with(':'))
     })
 }
 

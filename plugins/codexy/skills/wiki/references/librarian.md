@@ -71,8 +71,8 @@ Range: 0 (completely stale) to 100 (perfectly fresh).
 
 Articles whose evidence is the conversation that authored them — not fetchable raw files — set `compiled-from: conversation` in frontmatter (see `wiki-structure.md` schema and `linting.md` C18). For these articles:
 
-- Skip the **source freshness** dimension (no `sources:` to age) — set its contribution to 0 of 0 (excluded, not zero-of-25).
-- Skip the **source chain integrity** dimension (no `sources:` to resolve) — set its contribution to 0 of 0.
+- MUST skip the **source freshness** dimension (no `sources:` to age) — set its contribution to 0 of 0 (excluded, not zero-of-25).
+- MUST skip the **source chain integrity** dimension (no `sources:` to resolve) — set its contribution to 0 of 0.
 - Compute the **verification recency** and **compilation recency** dimensions as usual.
 - Re-base the composite to a 50-point scale (verification + compilation, each 0-25), then multiply by 2 to land on the same 0-100 score range as standard articles.
 

@@ -43,9 +43,9 @@ thread MUST be resolved before merge or have a documented accepted no-change
 rationale.
 
 Default merge continuation is not permission to use `--admin`, merge stale or
-unreviewed heads, ignore child-owned feedback, leave actionable threads open,
-skip PR-body preservation, or merge before rerunning verification after review
-responses.
+unreviewed heads, ignore child-owned feedback, or leave actionable threads open.
+MUST NOT skip PR-body preservation or merge before rerunning verification after
+review responses.
 
 ## Squash Merge Body Preservation
 

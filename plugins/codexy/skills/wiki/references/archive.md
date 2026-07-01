@@ -86,8 +86,8 @@ Archive is a context filter, not a deletion mechanism.
 | `inventory`, `dataset`, `project`, `lessons-learned` | Reject archived targets unless explicitly included; distinguish topic archive from record/dataset/project archive states |
 | `output`, `plan`, `assess` | Ignore archived unless `--include-archived`; label archived-derived context clearly |
 | `init` / `--new-topic` | MUST treat archived slugs as collisions; restore or choose a new slug instead of creating an active duplicate |
-| `librarian` / `refresh` | Skip archived by default; archived material MUST NOT create freshness chores |
-| `audit` | Skip archived by default, except when the targeted artifact depends on archived material |
+| `librarian` / `refresh` | MUST skip archived by default; archived material MUST NOT create freshness chores |
+| `audit` | MUST skip archived by default, except when the targeted artifact depends on archived material |
 | `retract` | May operate on archived sources when explicitly targeted; bad preserved evidence still needs retraction |
 | `lint` | Active structural checks by default; `--include-archived` and `--archived-only` maintain archived structure explicitly |
 

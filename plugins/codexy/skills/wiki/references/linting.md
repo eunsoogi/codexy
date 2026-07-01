@@ -238,9 +238,9 @@ Any file that is not in the canonical allowlist for its location is either a use
 
 **Checks**:
 
-- [ ] Walk `raw/`, `wiki/`, `inventory/`, `datasets/`, and the wiki root. For each entry, MUST check against the allowlist for that location.
-- [ ] Flag unknown files and directories.
-- [ ] Skip `output/` — C8 and C9 own that subtree.
+- [ ] MUST walk `raw/`, `wiki/`, `inventory/`, `datasets/`, and the wiki root. For each entry, MUST check against the allowlist for that location.
+- [ ] MUST flag unknown files and directories.
+- [ ] MUST skip `output/` — C8 and C9 own that subtree.
 
 **Auto-fix**:
 
@@ -294,7 +294,7 @@ Computes a composite freshness score (0-100) for each compiled wiki article base
 
 - [ ] For each wiki article with `volatility` and `verified` fields, compute the standard four-dimension composite score, or the rebased two-dimension score when `compiled-from: conversation`
 - [ ] MUST read `freshness_threshold` from `config.md` (default: 70 if not set)
-- [ ] Flag articles scoring below the threshold
+- [ ] MUST flag articles scoring below the threshold
 
 **Severity**: Warning for `hot` and `warm` articles below threshold. Info for `cold` articles below threshold (Lindy Effect — cold content scoring low is unusual and worth noting, but rarely urgent).
 
@@ -309,7 +309,7 @@ For `compiled-from: conversation` articles, MUST use: `Freshness score [score]/1
 Flags wiki articles that lack the `volatility` field. New articles MUST always have volatility set during compilation.
 
 - [ ] For each `.md` file in `wiki/` (excluding `_index.md`), MUST check for `volatility` field in frontmatter
-- [ ] Flag files missing the field
+- [ ] MUST flag files missing the field
 
 **Severity**: Info (not blocking — existing wikis predate this field).
 
@@ -404,7 +404,7 @@ The exemption is `compiled-from: conversation` — articles whose evidence is th
 - [ ] For each `.md` file in `wiki/` (excluding `_index.md`), MUST check that frontmatter has either:
   - A non-empty `sources:` list with at least one entry that resolves under the Source Reference Resolution protocol in `wiki-structure.md`, OR
   - `compiled-from: conversation` set explicitly
-- [ ] Flag any file that has neither.
+- [ ] MUST flag any file that has neither.
 
 **Severity**: Warning (not Critical — the article is still readable and may be substantively correct; but it will silently fail the freshness composite until fixed).
 
@@ -473,7 +473,7 @@ Validates the hub-level archive lifecycle described in `archive.md`.
 | **C9a/C9b** architecture violations | **Warn** — surface the problem, suggest the fix, MUST NOT auto-move. User decides. |
 | **C9c** Project folder without `WHY.md` | **Warn only** — same as C8a but surfaced in the candidates section. MUST suggest running `/wiki:project new <slug> "goal"` with the existing slug. |
 | **C9d** Loose markdown cluster | **MUST NOT auto-fix** — grouping is human-authored via `/wiki:project new` + `/wiki:project add`. |
-| **C11** Misplaced file in `raw/` or `wiki/` | `mv` to canonical path derived from frontmatter; MUST create destination dir if missing; invalidate containing indexes. Skip and warn on slug collision |
+| **C11** Misplaced file in `raw/` or `wiki/` | `mv` to canonical path derived from frontmatter; MUST create destination dir if missing; invalidate containing indexes. MUST skip and warn on slug collision |
 | **C11** Content dir at hub level | MUST move contents into appropriate topic wiki or quarantine to `inbox/.unknown/`. MUST NOT delete user data |
 | **C12** Unknown file in known location | MUST route through C11 if it has frontmatter, else move to `inbox/.unknown/` |
 | **C12** Unknown directory | **Warn only** — MUST NOT auto-delete |

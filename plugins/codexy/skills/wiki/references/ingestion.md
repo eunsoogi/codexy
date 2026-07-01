@@ -128,7 +128,7 @@ and carry revision metadata.
 1. MUST download or read the dump file.
 2. Decompress `.bz2` with `bunzip2 -c` or `.gz` with `gunzip -c`.
 3. Parse streaming XML; MUST NOT load a large dump entirely into memory.
-4. Default to namespace `0`. Skip redirects and titles with `:` unless the user
+4. Default to namespace `0`. MUST skip redirects and titles with `:` unless the user
    explicitly includes them.
 5. Store page id/title, latest revision id, timestamp, contributor when
    available, and raw wikitext.
@@ -197,7 +197,7 @@ set.
    `raw/articles/`. MUST preserve snapshot provenance in frontmatter:
    `wayback_timestamp`, `wayback_original`, `wayback_digest`, `statuscode`,
    `mimetype`, `length`, `canonical_url`, and `extraction_tool`.
-6. Skip captures whose body is empty, binary, or mostly navigation after
+6. MUST skip captures whose body is empty, binary, or mostly navigation after
    readability extraction. Count and report skips by reason.
 
 For volatile pages, later compilation MUST treat Wayback captures as evidence

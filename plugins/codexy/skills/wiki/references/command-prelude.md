@@ -64,7 +64,7 @@ on project-local `.wiki/` directories in v1.
 
 Archived topic wikis are quiet by default. Normal query, compile, ingest,
 research, output, plan, assess, librarian, refresh, and broad audit workflows
-skip registry entries with `status: archived` or paths under `topics/.archive/`.
+MUST skip registry entries with `status: archived` or paths under `topics/.archive/`.
 Deep query may report archived index matches separately, but full archived reads
 MUST require explicit user intent such as `--include-archived`.
 

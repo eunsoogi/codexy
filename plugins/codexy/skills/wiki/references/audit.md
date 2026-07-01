@@ -79,7 +79,7 @@ For each output artifact:
 3. MUST resolve each dependency with the Source Reference Resolution protocol in
    `wiki-structure.md`. MUST preserve the whole YAML scalar/path, including spaces;
    MUST NOT split dependency entries on whitespace.
-4. Flag `broken-source-ref` for any dependency that does not resolve.
+4. MUST flag `broken-source-ref` for any dependency that does not resolve.
 5. Compare dependency freshness against the output's `generated:` date:
    - if dependency `updated:` / `ingested:` / `generated:` is newer than the
      output, flag `drifted-dependency`

@@ -121,7 +121,7 @@ When this skill activates outside of an explicit `@wiki` invocation or `/wiki`-s
 2. MUST read the master `_index.md` to assess if the wiki might cover the user's question
 3. If relevant content exists → read the relevant articles and answer with citations
 4. If no relevant content → answer normally, optionally suggest: "This could be added to your wiki; ask `@wiki` to ingest it."
-5. When peeking at sibling wikis, only read their `_index.md` — MUST NOT read full articles unless the user asks. Skip archived sibling wikis by default; in deep mode, archived index matches may be reported separately.
+5. When peeking at sibling wikis, only read their `_index.md` — MUST NOT read full articles unless the user asks. MUST skip archived sibling wikis by default; in deep mode, archived index matches may be reported separately.
 
 When giving any boot, resume, or "where you left off" briefing, start with the
 active wiki identity: `<wiki-name> booted from <wiki-root-path>`. Prefer the

@@ -20,7 +20,7 @@ You are a research agent. Your task:
 **Constraints**:
 - MUST run 2-3 WebSearch queries (vary terms)
 - WebFetch full content for promising results
-- Skip: paywalled, SEO spam, thin, duplicate
+- MUST skip paywalled, SEO spam, thin, and duplicate sources
 - Target 3-5 high-quality sources
 
 **Return format**: For each source:
