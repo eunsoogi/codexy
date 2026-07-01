@@ -4,6 +4,11 @@ pub(super) fn check(
     message: &str,
 ) -> Vec<String> {
     let mut errors = Vec::new();
+    let subject = message.lines().next().unwrap_or_default();
+    errors.extend(super::conventional_commit::check_merge_subject(
+        subject,
+        expected_pr,
+    ));
     if let Some(expected_pr) = expected_pr {
         if !has_expected_pr_suffix(expected_pr, message) {
             errors.push(format!(
