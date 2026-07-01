@@ -26,6 +26,7 @@ mod github_labels;
 mod hooks;
 mod instruction_policy;
 mod instruction_policy_match;
+mod instruction_policy_purpose;
 mod instruction_policy_text;
 mod lsp;
 mod manifest;

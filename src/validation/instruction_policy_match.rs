@@ -30,11 +30,8 @@ pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
         return true;
     }
     PROHIBITION_MARKERS.iter().any(|marker| {
-        contains_wordish(&lower, marker)
-            && *marker != "must not"
-            && lower
-                .match_indices(marker)
-                .any(|(index, _)| !lower[..index].trim_end().ends_with("must not"))
+        *marker != "must not"
+            && crate::validation::instruction_policy_purpose::has_prohibition_marker(&lower, marker)
     })
 }
 pub(super) fn starts_with_inverted_prohibition(line: &str) -> bool {
@@ -240,11 +237,4 @@ fn matches_prefix(lower: &str, prefixes: &[&str]) -> bool {
             rest.is_empty() || rest.starts_with(char::is_whitespace) || rest.starts_with([':', '/'])
         })
     })
-}
-
-fn contains_wordish(text: &str, marker: &str) -> bool {
-    text.split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '\''))
-        .collect::<Vec<_>>()
-        .windows(marker.split_whitespace().count())
-        .any(|window| window.join(" ") == marker)
 }
