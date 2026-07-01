@@ -1,13 +1,19 @@
 json_is_structurally_complete_object() {
   printf '%s\n' "$1" | awk '
 function ws() { while (i <= n && substr(s, i, 1) ~ /[[:space:]]/) i++ }
-function str(    c) {
+function str(    c, e, h) {
   if (substr(s, i, 1) != "\"") return 0
   i++
   while (i <= n) {
     c = substr(s, i, 1)
     if (c == "\\") {
-      i += 2
+      e = substr(s, i + 1, 1)
+      if (e ~ /["\\\/bfnrt]/) i += 2
+      else if (e == "u") {
+        h = substr(s, i + 2, 4)
+        if (length(h) != 4 || h !~ /^[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]$/) return 0
+        i += 6
+      } else return 0
     } else if (c == "\"") {
       i++
       return 1
@@ -93,12 +99,7 @@ END {
 top_level_json_field_value() {
   json_text="$1"; field_name="$2"
   printf '%s\n' "$json_text" | awk -v key="$field_name" '
-function skip_spaces(pos) {
-  while (substr($0, pos, 1) ~ /[[:space:]]/) {
-    pos++
-  }
-  return pos
-}
+function skip_spaces(pos) { while (substr($0, pos, 1) ~ /[[:space:]]/) pos++; return pos }
 function emit_value(start,    i, c, depth, in_string, escape, seen) {
   depth = 0
   in_string = 0
@@ -173,12 +174,7 @@ function emit_value(start,    i, c, depth, in_string, escape, seen) {
 top_level_json_object_field_value() {
   json_text="$1"; field_name="$2"
   printf '%s\n' "$json_text" | awk -v key="$field_name" '
-function skip_spaces(pos) {
-  while (substr($0, pos, 1) ~ /[[:space:]]/) {
-    pos++
-  }
-  return pos
-}
+function skip_spaces(pos) { while (substr($0, pos, 1) ~ /[[:space:]]/) pos++; return pos }
 function emit_object(start,    i, c, depth, in_string, escape) {
   depth = 0
   in_string = 0

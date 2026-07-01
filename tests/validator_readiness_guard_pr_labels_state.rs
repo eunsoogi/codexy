@@ -63,6 +63,11 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
             "malformed JSON evidence",
         ),
         (
+            "invalid-string-escape.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type\qfix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
             "missing-repository-identity.json",
             r#"{"number":209,"state":"OPEN","labels":[],"repositoryLabels":["type/fix"]}"#,
             "repository identity evidence",
