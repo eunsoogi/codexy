@@ -43,7 +43,7 @@ When an index is stale:
 ### Write Operations (ingest, compile, research, inventory, dataset)
 
 - MUST write the article/source file with correct frontmatter — this is the source of truth
-- Index updates are **best-effort** — update if convenient, but if skipped or if a concurrent session overwrites, no data is lost
+- Index updates are **best-effort** — refresh when convenient, but if skipped or if a concurrent session overwrites, no data is lost
 - The next read will detect staleness and rebuild
 
 ### Read Operations (query, status, lint)

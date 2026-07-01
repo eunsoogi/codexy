@@ -49,7 +49,7 @@ MUST read `wiki/_index.md` and category indexes. For each key concept:
 - **topic**: A broader theme tying concepts together. Examples: "Deep Learning", "DevOps", "Functional Programming"
 - **reference**: A curated list of resources, tools, or links. Examples: "Python ML Libraries", "Transformer Paper Timeline"
 
-### Step 5: Write/Update Articles
+### Step 5: Article Writing And Updates
 
 **For new outputs with binary artifacts:** If a new output will produce binary siblings (images, diagrams, CSVs, rendered screenshots, code files), MUST create it inside `output/projects/<slug>/` from the start rather than scattering into `output/` root. The reason is colocation — relative asset paths only work when the markdown and its assets live in the same folder. See `references/projects.md` for the full rationale. If the user passed `--project <slug>` explicitly, MUST write into that project folder. Otherwise MUST prompt for a slug and goal and invoke `/wiki:project new` before writing the artifacts. Loose markdown outputs (no binary siblings) can still land flat in `output/` for backward compatibility.
 

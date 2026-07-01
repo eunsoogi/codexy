@@ -203,11 +203,11 @@ Each gap is scored on three dimensions (1-5 each):
 Between rounds, the orchestrating agent MUST, in priority order:
 
 1. **Draw connections** between this round's findings and ALL prior rounds (not just the previous one) — this is the highest-value activity
-2. **MUST update cross-references** — add See Also links between articles that share concepts across rounds
+2. **MUST update cross-references** — MUST add See Also links between articles that share concepts across rounds
 3. **Re-evaluate earlier gaps** — some gaps from round 1 may now be filled or irrelevant
 4. **Score remaining gaps** using the formula above
 5. **Adjust research direction** — only if findings clearly indicate a shift (rare in practice)
-6. **Note reflection in session registry** — add `reflection_notes` to the round entry
+6. **Note reflection in session registry** — MUST add `reflection_notes` to the round entry
 
 ### Example Reflection Output
 

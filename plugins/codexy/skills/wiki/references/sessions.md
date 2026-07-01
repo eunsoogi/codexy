@@ -103,7 +103,7 @@ Hooks MUST write deterministic checkpoints for:
 
 1. every configured number of observed tool events, default 50;
 2. pre-compaction and post-compaction;
-3. stop/session-end events;
+3. session stop/end events;
 4. manual `session capture` requests.
 
 "Observed tool events" means events the current harness adapter exposes. Codex,

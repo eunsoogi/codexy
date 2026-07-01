@@ -77,7 +77,7 @@ pub(super) fn has_bare_mandatory_without_must(
     if mandatory_segments(line, strict_clauses)
         .iter()
         .any(|segment| starts_with_bare_imperative(segment, strict_clauses))
-        || passive_mandatory && !custom_agent_toml && line.split(", ").skip(1).any(|segment| { let segment = segment.trim_start(); matches_prefix(&segment.to_ascii_lowercase(), &["add", "append", "update"]) && !segment.starts_with("MUST") })
+        || passive_mandatory && !custom_agent_toml && line.split(", ").skip(1).chain(line.split(" — ").skip(1)).any(|segment| { let segment = segment.trim_start(); matches_prefix(&segment.to_ascii_lowercase(), &["add", "append", "update"]) && !segment.starts_with("MUST") })
     {
         return true;
     }
@@ -185,7 +185,6 @@ fn starts_with_bare_imperative(segment: &str, strict_clauses: bool) -> bool {
     matches_prefix(&lower, MANDATORY_LINE_PREFIXES) && !segment.starts_with("MUST")
         || strict_clauses && matches_prefix(&lower, &["split"])
 }
-
 fn starts_with_bare_require(segment: &str) -> bool {
     let segment = segment.trim_start().trim_start_matches(['"', '\'']);
     let lower_owned = segment.to_ascii_lowercase();
@@ -237,7 +236,7 @@ fn has_bare_passive_mandatory(segment: &str) -> bool {
 fn matches_prefix(lower: &str, prefixes: &[&str]) -> bool {
     prefixes.iter().any(|prefix| {
         lower.strip_prefix(prefix).is_some_and(|rest| {
-            rest.is_empty() || rest.starts_with(char::is_whitespace) || rest.starts_with(':')
+            rest.is_empty() || rest.starts_with(char::is_whitespace) || rest.starts_with([':', '/'])
         })
     })
 }
