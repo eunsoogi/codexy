@@ -1,3 +1,5 @@
+use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
+
 pub(super) fn scope_start_until_blank(evidence: &str, line_start: usize) -> (usize, Option<usize>) {
     let mut previous_start = line_start;
     let mut cursor = line_start;
@@ -104,6 +106,24 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
             | "separate dogfooding issue"
             | "follow-up issue"
     )
+}
+
+pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize) -> usize {
+    let mut capture_start = line_start;
+    let mut cursor = line_start;
+    while cursor > 0 {
+        let previous_end = cursor - 1;
+        let previous_start = evidence[..previous_end]
+            .rfind('\n')
+            .map_or(0, |index| index + 1);
+        let previous_line = &evidence[previous_start..previous_end];
+        if !is_handoff_metadata_line(previous_line) || has_absent_defect_capture(previous_line) {
+            break;
+        }
+        capture_start = previous_start;
+        cursor = previous_start;
+    }
+    capture_start
 }
 
 fn line_key_value(line: &str) -> Option<(&str, &str)> {

@@ -3,8 +3,8 @@ use super::child_lane_thread_tool_handler_defect_capture::{
     has_handler_marker_and_tool_name_in_defect_capture, has_handler_marker_in_defect_capture,
 };
 use super::child_lane_thread_tool_handler_scope::{
-    capture_end_before_unrelated_evidence, is_handoff_metadata_line, previous_nonempty_block_start,
-    scope_start_until_blank,
+    capture_end_before_unrelated_evidence, is_handoff_metadata_line,
+    preceding_handoff_metadata_start, previous_nonempty_block_start, scope_start_until_blank,
 };
 
 pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
@@ -165,7 +165,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
                 .map_or(0, |index| index + 1);
             let previous_line = &evidence[previous_start..previous_end];
             if has_defect_label(previous_line) && !has_absent_defect_capture(previous_line) {
-                return previous_start;
+                return preceding_handoff_metadata_start(evidence, previous_start);
             }
             if has_absent_defect_capture(previous_line) || !is_handoff_metadata_line(previous_line)
             {

@@ -107,10 +107,13 @@ fn has_negated_tracking_issue(clause: &str) -> bool {
         "no separate dogfooding issue",
         "no separate tracking issue",
         "no tracking issue",
+        "no follow-up issue",
         "without a separate dogfood issue",
         "without a separate dogfooding issue",
         "without a separate tracking issue",
         "without tracking issue",
+        "without a follow-up issue",
+        "without follow-up issue",
     ]
     .into_iter()
     .any(|marker| clause.contains(marker))
@@ -155,6 +158,9 @@ fn has_substantive_route_value(value: &str) -> bool {
         && !["used", "routed", "available", "not used", "not routed"]
             .into_iter()
             .any(|weak_value| trimmed == weak_value)
+        && !["not used", "not routed"]
+            .into_iter()
+            .any(|weak_prefix| trimmed.starts_with(weak_prefix))
         && trimmed
             .chars()
             .any(|character| character.is_ascii_alphabetic())
