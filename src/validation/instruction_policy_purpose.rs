@@ -11,9 +11,16 @@ pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> boo
         return false;
     };
     let context = &lower[modal_index + "must".len()..marker_index];
-    [" so ", " so that ", " to ", " in order to "]
-        .iter()
-        .any(|connector| context.contains(connector))
+    [
+        " if ",
+        " so ",
+        " so that ",
+        " to ",
+        " in order to ",
+        " when ",
+    ]
+    .iter()
+    .any(|connector| context.contains(connector))
 }
 
 fn last_modal_before(lower: &str, marker_index: usize) -> Option<usize> {
