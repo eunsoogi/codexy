@@ -8,17 +8,18 @@ const ROOT_AGENTS_PREFIXES: &[&str] = &["add", "capture", "keep", "mention", "pr
 const PASSIVE_MANDATORY: &[&str] = &[" is required", " are required", " requires"];
 pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
     let lower = line.to_ascii_lowercase();
-    let inverted_list = line.contains("MUST NOT")
-        && [
-            ", MUST remove",
-            ", MUST rewrite",
-            ", MUST add",
-            " and MUST remove",
-            " and MUST rewrite",
-            " and MUST add",
-        ]
-        .iter()
-        .any(|needle| line.contains(needle));
+    let inverted_list = has_forbidden_actions_without_must_not(line)
+        || line.contains("MUST NOT")
+            && [
+                ", MUST remove",
+                ", MUST rewrite",
+                ", MUST add",
+                " and MUST remove",
+                " and MUST rewrite",
+                " and MUST add",
+            ]
+            .iter()
+            .any(|needle| line.contains(needle));
     if inverted_list {
         return true;
     }
@@ -46,10 +47,6 @@ pub(super) fn starts_with_inverted_prohibition(line: &str) -> bool {
     ["MUST remove", "MUST rewrite", "MUST add"]
         .iter()
         .any(|prefix| line.starts_with(prefix))
-}
-
-pub(super) fn starts_with_modal(line: &str) -> bool {
-    line.trim_start().starts_with("MUST")
 }
 
 pub(super) fn ends_with_dangling_modal(line: &str) -> bool {

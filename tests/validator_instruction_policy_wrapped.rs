@@ -12,6 +12,7 @@ fn validator_cli_rejects_wrapped_modal_continuation_prohibition() -> TestResult 
     let skill = std::fs::read_to_string(&skill_path)?;
     for addition in [
         "The agent MUST use codegraph output to\navoid direct edits.",
+        "The agent MUST use codegraph output to\nDo not edit files.",
         "The agent MUST use codegraph output to\nidentify nearby files. Do not edit files.",
     ] {
         std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;

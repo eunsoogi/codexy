@@ -46,6 +46,11 @@ fn validator_cli_check_roles_rejects_forbidden_actions_without_must_not() -> Tes
             sentinel.replace("Forbidden actions: MUST NOT edit files", replacement),
         )?;
 
+        let output = validator(&plugin_root, "--check")?;
+
+        assert!(!output.status.success());
+        assert!(stderr(&output).contains("prohibitions must use MUST NOT"));
+
         let output = validator(&plugin_root, "--check-roles")?;
 
         assert!(!output.status.success());

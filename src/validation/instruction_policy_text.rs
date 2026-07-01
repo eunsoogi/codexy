@@ -60,7 +60,7 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
         if previous_dangling_modal
             && line_segments
                 .iter()
-                .any(|segment| instruction_policy_match::starts_with_modal(segment))
+                .any(|segment| segment.trim_start().starts_with("MUST"))
         {
             errors.push(format!(
                 "{}:{} mandatory instructions must use MUST without duplicated modal wrapping",
