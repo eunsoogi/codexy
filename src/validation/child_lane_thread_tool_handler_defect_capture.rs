@@ -3,30 +3,63 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     tool: &str,
 ) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
-    lines.iter().enumerate().any(|(index, line)| {
-        is_defect_capture_line(line)
-            && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
-                || opens_defect_list(line)
-                    && lines[index + 1..]
-                        .iter()
-                        .take_while(|following| is_list_item(following))
-                        .any(|following| {
-                            has_handler_marker(following) && has_tool_name(following, tool)
-                        }))
-    })
+    has_handler_handoff_fields(evidence)
+        && lines.iter().enumerate().any(|(index, line)| {
+            is_defect_capture_line(line)
+                && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
+                    || opens_defect_list(line)
+                        && lines[index + 1..]
+                            .iter()
+                            .take_while(|following| is_list_item(following))
+                            .any(|following| {
+                                has_handler_marker(following) && has_tool_name(following, tool)
+                            }))
+        })
 }
 
 pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
-    lines.iter().enumerate().any(|(index, line)| {
-        is_defect_capture_line(line)
-            && (has_handler_marker_in_defect_clause(line)
-                || opens_defect_list(line)
-                    && lines[index + 1..]
-                        .iter()
-                        .take_while(|following| is_list_item(following))
-                        .any(|following| has_handler_marker(following)))
-    })
+    has_handler_handoff_fields(evidence)
+        && lines.iter().enumerate().any(|(index, line)| {
+            is_defect_capture_line(line)
+                && (has_handler_marker_in_defect_clause(line)
+                    || opens_defect_list(line)
+                        && lines[index + 1..]
+                            .iter()
+                            .take_while(|following| is_list_item(following))
+                            .any(|following| has_handler_marker(following)))
+        })
+}
+
+fn has_handler_handoff_fields(evidence: &str) -> bool {
+    let normalized = evidence.to_ascii_lowercase();
+    has_fallback_route_or_none(&normalized) && has_tracking_issue(&normalized)
+}
+
+fn has_fallback_route_or_none(evidence: &str) -> bool {
+    [
+        "fallback route",
+        "fallback path",
+        "fallback routed",
+        "no fallback route",
+        "no alternate route",
+    ]
+    .into_iter()
+    .any(|marker| evidence.contains(marker))
+}
+
+fn has_tracking_issue(evidence: &str) -> bool {
+    [
+        "separate dogfood issue",
+        "separate dogfooding issue",
+        "separate tracking issue",
+        "tracking issue",
+        "tracked in issue",
+        "tracked by issue",
+        "follow-up issue",
+    ]
+    .into_iter()
+    .any(|marker| evidence.contains(marker))
 }
 
 fn is_defect_capture_line(line: &str) -> bool {

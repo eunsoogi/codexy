@@ -18,7 +18,7 @@ fn validator_allows_one_defect_capture_for_same_line_handler_failures()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.list_threads and codex_app.list_projects as available thread tools.
 Invocation evidence: codex_app.list_threads failed with `No handler registered for tool: list_threads`; codex_app.list_projects failed with `No handler registered for tool: list_projects`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -65,7 +65,7 @@ Tool search: discovered codex_app.list_threads and codex_app.list_projects as av
 Invocation evidence:
 - codex_app.list_threads failed with `No handler registered for tool: list_threads`.
 - codex_app.list_projects failed with `No handler registered for tool: list_projects`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -86,7 +86,7 @@ fn validator_allows_capture_that_negates_fallback_classification_and_reporting()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not classified as an ordinary unavailable-tool fallback and without reporting it as a fallback.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not classified as an ordinary unavailable-tool fallback and without reporting it as a fallback; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;

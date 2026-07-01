@@ -18,7 +18,7 @@ fn validator_allows_documented_capture_before_unrelated_no_defect_evidence()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; separate dogfood issue: #205.
 LSP evidence: no dogfooding defect; rust-analyzer was unavailable on PATH.
 Maintainer reassignment: none
 "#,
@@ -40,7 +40,7 @@ fn validator_allows_documented_capture_before_unrelated_recorded_no_defect_metad
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; separate dogfood issue: #205.
 LSP evidence: recorded no dogfooding defect; rust-analyzer was unavailable on PATH.
 Maintainer reassignment: none
 "#,
