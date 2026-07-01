@@ -52,9 +52,9 @@ json_value_has_label_name() {
       return 1
       ;;
   esac
-  case "$field_items" in
-    *'"name"'*) return 0 ;;
-  esac
+  if printf '%s\n' "$field_items" | grep -Eq '"name"[[:space:]]*:[[:space:]]*"[^"]+"'; then
+    return 0
+  fi
   if [ "$value_is_array" -eq 1 ] &&
     printf '%s\n' "$field_items" | grep -Eq '(^|,)[[:space:]]*"[^"]+"'; then
     return 0
@@ -65,10 +65,10 @@ json_value_has_label_name() {
 json_value_is_label_taxonomy_capture() {
   case "$1" in
     \[*)
-      return 0
+      printf '%s\n' "$1" | grep -Eq '^\[[[:space:]]*\]$'
       ;;
     \{*)
-      printf '%s\n' "$1" | grep -Eq '"nodes"[[:space:]]*:[[:space:]]*\['
+      printf '%s\n' "$1" | grep -Eq '"nodes"[[:space:]]*:[[:space:]]*\[[[:space:]]*\]'
       ;;
     *)
       return 1

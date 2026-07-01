@@ -78,6 +78,26 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
             "malformed JSON evidence",
         ),
         (
+            "null-pr-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":null}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "empty-pr-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":""}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "null-repository-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":null}]}"#,
+            "repositoryLabels taxonomy",
+        ),
+        (
+            "empty-repository-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":""}]}"#,
+            "repositoryLabels taxonomy",
+        ),
+        (
             "missing-repository-identity.json",
             r#"{"number":209,"state":"OPEN","labels":[],"repositoryLabels":["type/fix"]}"#,
             "repository identity evidence",
