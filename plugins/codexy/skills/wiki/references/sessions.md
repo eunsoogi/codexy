@@ -1,6 +1,6 @@
 # Session Context Capture
 
-Use this reference for `session`, `session capture`, `rehydrate`, "look at the
+MUST use this reference for `session`, `session capture`, `rehydrate`, "look at the
 last session", automated hook capture, and promotion of session learnings into a
 topic wiki.
 
@@ -38,12 +38,12 @@ HUB/.sessions/
     └── sessions.json
 ```
 
-Use the same layout under `.wiki/.sessions/` for local project wikis.
+MUST use the same layout under `.wiki/.sessions/` for local project wikis.
 
 - `config.json` controls automation and rehydration. If it is absent, capture defaults to `balanced`; `enabled: false` is the opt-out switch.
 - `registry.jsonl` is append-only lifecycle metadata such as `session_seen` and
   `digest_written`.
-- `queue/*.jsonl` stores small redacted hook events. Do not store full prompts,
+- `queue/*.jsonl` stores small redacted hook events. MUST NOT store full prompts,
   tool outputs, or transcript bodies by default.
 - `state/` is the latest per-session machine state.
 - `digests/` contains human/LLM-readable markdown checkpoints with YAML
@@ -53,7 +53,7 @@ Use the same layout under `.wiki/.sessions/` for local project wikis.
 - `indexes/` are derived caches rebuilt from `state/` and feedback candidates.
 
 `.sessions/` is hidden because it is operational, cross-topic, and potentially
-private. It should not be compiled as ordinary topic content. A future generated
+private. It MUST NOT be compiled as ordinary topic content. A future generated
 `HUB/_sessions.md` can expose a human-friendly index, but the canonical store is
 `.sessions/`.
 
@@ -90,7 +90,7 @@ Default mode is `balanced`, even before a config file exists:
 
 Modes:
 
-| Mode | Capture | Rehydrate | Use when |
+| Mode | MUST capture | Rehydrate | Scenario |
 |---|---|---|---|
 | `off` | none | none | Disabled / user opt-out |
 | `capture-only` | automatic checkpoints | no injected context | Maximum privacy/least surprise |
@@ -99,15 +99,15 @@ Modes:
 
 ## Capture Triggers
 
-Hooks should write deterministic checkpoints for:
+Hooks MUST write deterministic checkpoints for:
 
 1. every configured number of observed tool events, default 50;
 2. pre-compaction and post-compaction;
-3. stop/session-end events;
+3. session stop/end events;
 4. manual `session capture` requests.
 
 "Observed tool events" means events the current harness adapter exposes. Codex,
-Claude, OpenCode, and Gemini have different hook coverage, so do not promise an
+Claude, OpenCode, and Gemini have different hook coverage, so MUST NOT promise an
 exact total count across all tool classes.
 
 ## Digest Schema
@@ -138,39 +138,39 @@ promoted_to: []
 summary: "Automated checkpoint for codex:abc123."
 ```
 
-The body should include session identity, summary, manual notes if any, recent
-observed events, distillation notes, and open loops. It should not include full
+The body MUST include session identity, summary, manual notes if any, recent
+observed events, distillation notes, and open loops. It MUST NOT include full
 transcript text by default.
 
 ## Hook Adapter Contract
 
-Each runtime adapter should call the same deterministic helper shape:
+Each runtime adapter MUST call the same deterministic helper shape:
 
 ```bash
 llm-wiki-session hook --harness <codex|claude|opencode|gemini> --if-enabled
 ```
 
-The command reads the harness hook JSON object from stdin and should:
+The command reads the harness hook JSON object from stdin and MUST:
 
-1. resolve HUB from `~/.config/llm-wiki/config.json` unless `--hub` or `--local`
+1. MUST resolve HUB from `~/.config/llm-wiki/config.json` unless `--hub` or `--local`
    is supplied;
 2. exit 0 without writing if `--if-enabled` is set and `.sessions/config.json`
    has `enabled: false`; missing config means default-on balanced capture;
-3. append a redacted event to `queue/YYYY-MM-DD.jsonl`;
-4. update `state/<harness>/<session_id>.json`;
-5. write a digest if a capture trigger fired;
+3. MUST append a redacted event to `queue/YYYY-MM-DD.jsonl`;
+4. MUST update `state/<harness>/<session_id>.json`;
+5. MUST write a digest if a capture trigger fired;
 6. optionally append a redacted feedback candidate for high-signal user turns;
 7. optionally emit a short `additionalContext` block only for rehydration hooks
    when config enables it.
 
-Hooks must be fast. If future versions do LLM distillation, enqueue work for a
+Hooks MUST be fast. If future versions do LLM distillation, enqueue work for a
 background worker instead of doing it inline inside every tool hook.
 
 ## Codex Hook Packaging
 
 Codex plugins can bundle hooks in `hooks/hooks.json`. Plugin-bundled hooks still
-require the user to review/trust them. The bundled llm-wiki Codex hook should
-call the copied helper in the plugin root and use `--if-enabled`, so users can
+MUST require the user to review/trust them. The bundled llm-wiki Codex hook MUST
+call the copied helper in the plugin root and MUST use `--if-enabled`, so users can
 turn capture off with `session disable` without editing hook manifests.
 
 Useful Codex events:
@@ -182,12 +182,12 @@ Useful Codex events:
 
 ## Claude/OpenCode/Gemini Adapters
 
-For Claude Code, use command hooks on `SessionStart`, `UserPromptSubmit`,
+For Claude Code, MUST use command hooks on `SessionStart`, `UserPromptSubmit`,
 `PostToolUse`, `PostToolBatch`, `PreCompact`, `PostCompact`, `Stop`, and
-`SessionEnd` where available. Keep `SessionEnd` especially short or detached.
+`SessionEnd` where available. MUST keep `SessionEnd` especially short or detached.
 
-For OpenCode, use plugin events such as session/message/tool execution and the
-compaction hook surface. For Gemini CLI, use `AfterTool`, `PreCompress`,
+For OpenCode, MUST use plugin events such as session/message/tool execution and the
+compaction hook surface. For Gemini CLI, MUST use `AfterTool`, `PreCompress`,
 `AfterAgent`, `SessionStart`, and related hook events. All adapters normalize to
 the same `.sessions/` files.
 
@@ -198,11 +198,11 @@ Rehydration is a compact context block, not a bulk transcript paste:
 ```text
 llm-wiki session context: review these distilled session digests before continuing.
 - codex:abc123 — Automated checkpoint summary. Digest: /abs/path/HUB/.sessions/digests/2026/06/codex-abc123.md
-Do not treat session digests as canonical topic knowledge until promoted into a topic wiki.
+MUST NOT treat session digests as canonical topic knowledge until promoted into a topic wiki.
 ```
 
 Soft rehydration can be injected on `SessionStart` or `UserPromptSubmit` in
-balanced/aggressive modes. Manual rehydration should be available with:
+balanced/aggressive modes. Manual rehydration MUST be available with:
 
 ```bash
 llm-wiki-session rehydrate --cwd "$PWD"
@@ -210,7 +210,7 @@ llm-wiki-session rehydrate --session-id codex:abc123
 llm-wiki-session rehydrate --topic meta-llm-wiki
 ```
 
-Strict forced continuation is not the default. If implemented later, it must be
+Strict forced continuation is not the default. If implemented later, it MUST be
 opt-in and guard against loops with per-turn counters and stop-hook-active flags.
 
 ## Feedback Candidates
@@ -249,15 +249,15 @@ HUB/topics/<topic>/raw/notes/YYYY-MM-DD-session-<harness>-<session>.md
 ```
 
 The raw note links back to the digest and copies only the distilled digest body,
-not the raw transcript. Append the topic `log.md` entry. Compilation into
+not the raw transcript. MUST append the topic `log.md` entry. Compilation into
 `wiki/` articles remains a separate, explicit wiki compile/update step.
 
 ## Privacy Defaults
 
 - Redact obvious token/password/authorization fields in event previews.
 - Store transcript pointers and hashes, not transcript bodies.
-- Keep raw transcript archiving disabled unless the user explicitly opts in.
-- Do not auto-promote session material or feedback candidates into topic wikis.
-- Do not let hook failures block normal agent work; fail closed to no capture,
+- MUST keep raw transcript archiving disabled unless the user explicitly opts in.
+- MUST NOT auto-promote session material or feedback candidates into topic wikis.
+- MUST NOT let hook failures block normal agent work; fail closed to no capture,
   not to broken tool execution.
-- To opt out, run `llm-wiki-session disable` or ask `@wiki session disable`; this writes `enabled: false`.
+- To opt out, MUST run `llm-wiki-session disable` or ask `@wiki session disable`; this writes `enabled: false`.

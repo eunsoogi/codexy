@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Use when verifying completed work, designing manual QA, checking real user surfaces, validating release candidates, acceptance criteria, repository settings, plugin behavior, or PR readiness.
+description: MUST use when verifying completed work, designing manual QA, checking real user surfaces, validating release candidates, acceptance criteria, repository settings, plugin behavior, or PR readiness.
 ---
 
 # QA
@@ -13,7 +13,7 @@ been driven and inspected.
 
 ## Workflow
 
-1. List claims that need proof:
+1. MUST list claims that need proof:
    - happy path,
    - riskiest edge,
    - regression path,
@@ -27,7 +27,7 @@ been driven and inspected.
    - Completion handoff: final-answer or handoff artifact plus current
      `gh pr view` JSON through
      `scripts/validate-plugin-config --check-completion-handoff` when a
-     completion claim could otherwise stop at an open PR; include GraphQL
+     completion claim could otherwise stop at an open PR; MUST include GraphQL
      `reviewThreads.nodes` when the artifact reports review feedback was
      addressed.
    - Plugin/config/docs: parser, schema, frontmatter, rendered preview, or
@@ -39,12 +39,12 @@ been driven and inspected.
      followed by direct file-read confirmation for edited files.
    - Child-owned PR review: owning child thread response, new head SHA, rerun
      verification, and parent-thread review-gate inspection.
-3. Run automated checks first when available.
-4. Drive the real surface for every user-visible or externally observable
+3. MUST run automated checks first when available.
+4. MUST drive the real surface for every user-visible or externally observable
    claim.
-5. Record cleanup receipts for ports, sessions, temp directories, browser
+5. MUST record cleanup receipts for ports, sessions, temp directories, browser
    contexts, generated evidence, and worktrees.
-6. Mark PASS only when the observable matches exactly enough to support the
+6. MUST mark PASS only when the observable matches exactly enough to support the
    claim. Ambiguous evidence is inconclusive.
 
 ## Required Output
@@ -61,20 +61,20 @@ Cleanup:
 
 ## Gates
 
-- Do not call a scenario PASS without direct evidence.
-- Do not use a unit test as proof for a CLI, GitHub, browser, desktop, plugin,
+- MUST NOT call a scenario PASS without direct evidence.
+- MUST NOT use a unit test as proof for a CLI, GitHub, browser, desktop, plugin,
   or marketplace behavior.
-- Do not ignore skipped checks; list why they were skipped.
-- Do not leave QA-only servers, sessions, screenshots, traces, or temp files
+- MUST NOT ignore skipped checks; MUST list why they were skipped.
+- MUST NOT leave QA-only servers, sessions, screenshots, traces, or temp files
   unaccounted for.
-- Do not pass Codexy plugin architecture QA without evidence for LSP, MCP,
+- MUST NOT pass Codexy plugin architecture QA without evidence for LSP, MCP,
   role metadata, custom agent TOMLs, thread, and worktree surfaces that changed.
-- Do not pass code-touching lane QA without Codexy `codegraph` MCP exploration
+- MUST NOT pass code-touching lane QA without Codexy `codegraph` MCP exploration
   evidence when the MCP is available, or an explicit unavailable-tool fallback.
-- Do not pass a child-owned lane when review feedback was fixed only in the
-  parent thread. The owning child thread must validate the response or provide
+- MUST NOT pass a child-owned lane when review feedback was fixed only in the
+  parent thread. The owning child thread MUST validate the response or provide
   a documented non-change rationale.
-- Do not pass a completion handoff that claims done while a matching clean PR
+- MUST NOT pass a completion handoff that claims done while a matching clean PR
   remains open unless the artifact states the explicit stop, wait, draft-only,
   no-merge, or leave-open instruction.
 

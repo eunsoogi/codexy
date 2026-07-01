@@ -3,18 +3,31 @@
 ## Merge Rules
 
 MUST NOT merge a PR until every review surface has been inspected and resolved.
-Codex connector reviews are merge-blocking reviews. Treat requested changes,
+Codex connector reviews are merge-blocking reviews. MUST treat requested changes,
 actionable suggestions, unresolved review threads, stale concerns after new
 commits, and PR comments that identify defects as blockers until addressed or
 covered by an accepted no-change rationale.
 
-PR #18 was squash merged as `docs(license): correct copyright owner (#)` because
-the merge command did not carry the numeric PR identifier into the subject. Do
-not rewrite protected `main` history to repair that old commit. Prevent repeats
-by deriving the PR number from an explicit `gh pr view <number>` call before
-every merge.
+Known process deviations are recorded here and MUST NOT be repaired by rewriting
+protected `main` history:
 
-Before merging, inspect latest PR state, checks, reviews, comments, and review
+- PR #18 was squash merged as `docs(license): correct copyright owner (#)`
+  because the merge command did not carry the numeric PR identifier into the
+  subject.
+- PR #200 used PR title and squash subject
+  `Require separate issues for dogfooding defects`.
+- PR #201 used PR title and squash subject
+  `Address LSP and codegraph Codex review follow-up`.
+- PR #202 used PR title and squash subject
+  `Require descriptive child thread titles`.
+- PR #203 used PR title `Refactor oversized Codexy skill instructions` and
+  squash subject `Refactor oversized Codexy skill instructions (#203)`.
+
+To prevent repeats, every merge MUST derive the PR number and title from an
+explicit `gh pr view <number>` call and MUST validate the PR title, explicit
+squash subject, and full merge message before merge.
+
+Before merging, MUST inspect latest PR state, checks, reviews, comments, and review
 threads:
 
 ```sh
@@ -43,9 +56,9 @@ thread MUST be resolved before merge or have a documented accepted no-change
 rationale.
 
 Default merge continuation is not permission to use `--admin`, merge stale or
-unreviewed heads, ignore child-owned feedback, leave actionable threads open,
-skip PR-body preservation, or merge before rerunning verification after review
-responses.
+unreviewed heads, ignore child-owned feedback, or leave actionable threads open.
+MUST NOT skip PR-body preservation or merge before rerunning verification after
+review responses.
 
 ## Squash Merge Body Preservation
 
@@ -67,6 +80,14 @@ git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
 trap 'rm -f "$pr_json_file" "$pr_body_file" "$merge_message_file"' EXIT
 
+if ! pr_title=$(gh pr view "$pr_number" --repo "$repo" --json title --jq .title); then
+  printf '%s\n' "failed to capture PR title" >&2
+  exit 1
+fi
+if ! scripts/validate-plugin-config --check-pr-title --pr-title "$pr_title"; then
+  printf '%s\n' "PR title validation failed" >&2
+  exit 1
+fi
 if ! head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid); then
   printf '%s\n' "failed to capture PR headRefOid" >&2
   exit 1
@@ -132,12 +153,13 @@ fi
 ```
 
 `gh pr merge` has no flag that means "Codex review passed." `--auto` only waits
-for configured GitHub requirements, and `--admin` bypasses requirements. MUST NOT
-use `--admin` to skip Codex review, required checks, or review-thread cleanup.
+for configured GitHub requirements, and `--admin` bypasses requirements. MUST
+NOT use `--admin` to skip Codex review, required checks, or review-thread
+cleanup.
 
 ## Post-Merge Main Sync
 
-After merge, update the main worktree and verify the merge body:
+After merge, MUST update the main worktree and verify the merge body:
 
 ```bash
 set -euo pipefail
@@ -188,7 +210,7 @@ rm -f "$expected_body_file"
 
 The refreshed `main` commit subject MUST end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body MUST match the PR body captured before merge.
-If GitHub did not delete the remote topic branch, delete it only after
+If GitHub did not delete the remote topic branch, MUST delete it only after
 confirming the PR was merged and no dependent work needs the branch:
 
 ```sh

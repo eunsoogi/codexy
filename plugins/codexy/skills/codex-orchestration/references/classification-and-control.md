@@ -16,13 +16,13 @@
 - The orchestrator MUST NOT directly fix child-owned review feedback unless a
   maintainer explicitly reassigns the lane to the orchestrator or the feedback
   belongs to the orchestrator's own scoped lane.
-- If a child lane is bundled after dispatch or edits begin, stop that lane,
-  preserve draft state, report the overlap, and split independent outcomes
+- If a child lane is bundled after dispatch or edits begin, MUST stop that lane,
+  MUST preserve draft state, report the overlap, and MUST split independent outcomes
   into atomic issues, threads, worktrees, branches, and PRs before resuming.
 
 ## Compaction And Continuation
 
-Treat loss of the active `@Codexy` or Codexy plugin workflow contract after
+MUST treat loss of the active `@Codexy` or Codexy plugin workflow contract after
 context compaction, goal continuation, or resume as a dogfooding defect.
 
 Before editing after compaction or continuation, re-check GitHub state for the
@@ -46,19 +46,42 @@ Child implementation threads assigned a non-trivial lane MUST run their own
 execution loop instead of treating the parent handoff as permission for ad hoc
 edits.
 
-- Use real goal tools when available. Use `create_goal`, `get_goal`, and
+- MUST use real goal tools when available. MUST use `create_goal`, `get_goal`, and
   `update_goal` for lane state; prose-only `Goal:` text is fallback
   documentation, not proof of goal-tool use. If goal tooling is unavailable,
-  keep a visible textual goal with success criteria, update it as evidence
+  MUST keep a visible textual goal with success criteria, update it as evidence
   changes, and report the unavailable-tool fallback in handoff evidence.
-- Keep real todo/plan state current with `update_plan` or the active todo
+- MUST keep real todo/plan state current with `update_plan` or the active todo
   surface when available, updating statuses from discovery through handoff.
   Prose-only `Todo:` text is not proof of todo/plan tooling. Using only goal
   or only todo/plan is insufficient for non-trivial child lanes unless the
   missing tool is unavailable and reported with its fallback.
-- Use multi-agent execution when the lane has independent research questions,
+- MUST use multi-agent execution when the lane has independent research questions,
   disjoint implementation slices, parallel QA or verification, review gates,
   review-feedback validation, or separable non-trivial subtasks.
+- When a packaged Codexy specialist role is available and the task clearly
+  falls within that specialist's stated scope, the child MUST use the matching
+  specialist or record a concrete skip rationale tied to scope, atomicity,
+  unavailable tooling, or lack of a matching task. It MUST NOT replace a
+  required Codex child thread/worktree owner with a subagent helper.
+- Specialist routing MUST include `codexy-cartographer` for repository, file,
+  dependency, or ownership mapping; `codexy-pathfinder` for planning or
+  approach selection; `codexy-architect` for boundary, schema, MCP, LSP,
+  plugin architecture, or long-lived extension-point changes; `codexy-tracer`
+  for root-cause or failing behavior; `codexy-warden` for workflows, shell
+  commands, credentials, remote MCP endpoints, untrusted input, repository
+  permissions, install scripts, local state mutation, or generated evidence
+  with security implications; `codexy-auditor` after implementation for
+  acceptance-criteria, readiness, and observable verification passes across
+  CLI, config, GitHub, browser, app, plugin, documentation, or workflow
+  surfaces;
+  `codexy-scribe` for docs, handoff, PR, release note, or workflow drafting;
+  `codexy-forge` for scoped implementation edits after issue, branch, worktree,
+  plan, and acceptance criteria are clear; `codexy-weaver` for reconciling
+  parallel lanes, conflict checks, main updates, or merge sequencing;
+  `codexy-sculptor` for refactor-heavy or LOC-boundary work;
+  `codexy-shipwright` for release, packaging, version, marketplace, manifest,
+  tag, or rollback work; and `codexy-sentinel` for the final reviewer gate.
 - If multi-agent tooling is available, "not useful" is acceptable only with a
   concrete rationale tied to atomicity, tiny scope, or the absence of separable
   work.
@@ -82,7 +105,7 @@ scripts/validate-plugin-config --check-completion-handoff \
   --pr-state-file <gh-pr-view-json>
 ```
 
-If the handoff discusses addressed review feedback, the PR state evidence MUST
-include GraphQL `reviewThreads.nodes`. Addressed unresolved threads, including
+If the handoff discusses addressed review feedback, MUST include GraphQL
+`reviewThreads.nodes` in the PR state evidence. Addressed unresolved threads, including
 outdated-but-fixed threads, remain invalid unless the report documents an
 accepted no-change rationale.

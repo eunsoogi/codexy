@@ -3,57 +3,61 @@
 ## Loop
 
 1. Intake:
-   - Run `$task-classification` before setup, delegation, implementation,
+   - MUST run `$task-classification` before setup, delegation, implementation,
      validation, PR handling, review-response routing, or merge coordination.
-   - Read the latest request, repository instructions, active issue, and
+   - MUST read the latest request, repository instructions, active issue, and
      relevant local skills.
-   - Separate hard requirements, preferences, assumptions, and non-goals.
-   - Identify the observable surface that proves the request worked.
-   - Use Codexy `codegraph` MCP to map relevant files and neighbors when
+   - MUST separate hard requirements, preferences, assumptions, and non-goals.
+   - MUST identify the observable surface that proves the request worked.
+   - MUST use Codexy `codegraph` MCP to map relevant files and neighbors when
      available.
 2. Plan:
-   - Create a short `update_plan` with atomic outcomes.
-   - Mark exactly one step `in_progress`.
-   - Carry classification evidence into the plan before branch, worktree,
+   - MUST create a short `update_plan` with atomic outcomes.
+   - MUST mark exactly one step `in_progress`.
+   - MUST carry classification evidence into the plan before branch, worktree,
      child-thread, implementation, PR, or review-response actions.
-   - Split independent outcomes into separate issues and lanes unless a
+   - MUST split independent outcomes into separate issues and lanes unless a
      maintainer explicitly scopes them as one atomic lane.
-   - Mark each lane as parent-owned or child-owned before any implementation
+   - MUST mark each lane as parent-owned or child-owned before any implementation
      patch is made.
 3. Dispatch:
    - MUST NOT dispatch until classification proves lane type, owner, atomicity,
      required skills, required tools, and first allowed action.
-   - Start specialist subagents only for bounded lanes that do not need their
-     own branch or PR.
-   - For issue-sized implementation lanes, start or fork a separate Codex
+   - MUST start specialist subagents only for bounded lanes without their own
+     branch or PR.
+   - For bounded helper work, the owning thread MUST route to the packaged
+     Codexy specialist whose stated scope clearly matches the task, or record a
+     concrete skip rationale. It MUST NOT count that specialist as the Codex
+     child-thread/worktree owner for an issue-sized implementation lane.
+   - For issue-sized implementation lanes, MUST start or fork a separate Codex
      thread in a worktree when the tool is available.
-   - Complete lane assignment before implementation edits begin. A parent may
+   - MUST complete lane assignment before implementation edits begin. A parent may
      prepare issue text, branch name, worktree path, and handoff text, but MUST
      NOT patch implementation files for the child-owned lane.
-   - Give each lane an assignment, issue, branch, worktree path, allowed paths,
+   - MUST give each lane an assignment, issue, branch, worktree path, allowed paths,
      read-first files, deliverable, required evidence, verification command or
      surface, stop condition, and return format.
 4. Integrate:
-   - Re-read files and outputs before trusting child results.
-   - Preserve user changes and unrelated work.
-   - Resolve cross-lane conflicts in the orchestrator thread.
-   - Route child-owned review feedback back to the owning child thread.
-   - If the child owner stops responding, stop and report the PR head, owner,
+   - MUST re-read files and outputs before trusting child results.
+   - MUST preserve user changes and unrelated work.
+   - MUST resolve cross-lane conflicts in the orchestrator thread.
+   - MUST route child-owned review feedback back to the owning child thread.
+   - If the child owner stops responding, MUST stop and report the PR head, owner,
      last contact, and required evidence. MUST NOT recover by patching the branch
      unless a maintainer explicitly reassigns implementation ownership.
-5. Verify:
-   - Run local checks in the owning worktree.
-   - Drive external surfaces directly when the task changes GitHub, browser,
+5. MUST verify:
+   - MUST run local checks in the owning worktree.
+   - MUST drive external surfaces directly when the task changes GitHub, browser,
      CLI, desktop, plugin, marketplace, or repository settings behavior.
-   - Keep evidence tied to the exact commit, PR head, file state, or runtime
+   - MUST keep evidence tied to the exact commit, PR head, file state, or runtime
      surface being claimed.
 6. Finish:
-   - Confirm no running sessions, open child lanes, untracked required files,
+   - MUST confirm no running sessions, open child lanes, untracked required files,
      or unverified claims remain.
-   - Confirm no final-answer or handoff artifact claims completion while a
+   - MUST confirm no final-answer or handoff artifact claims completion while a
      matching clean PR remains open unless the maintainer explicitly requested
      stop, wait, draft-only, or leave-open behavior.
-   - Report what changed, what proved it, what was not run, and remaining risk.
+   - MUST report what changed, what proved it, what was not run, and remaining risk.
 
 ## Multi-Agent Dispatch Template
 
@@ -87,7 +91,7 @@ Stop if:
 
 ## Codex Thread And Worktree Handoff
 
-Use this for any lane that needs its own branch, PR, or long-running
+MUST use this for any lane that needs its own branch, PR, or long-running
 implementation context:
 
 ```text
@@ -103,15 +107,15 @@ Required evidence:
 Stop condition:
 Parent verification:
 Return format:
-  - Include goal tool usage or unavailable-goal-tool fallback.
-  - Include todo/plan tool usage or unavailable-todo-tool fallback.
-  - Include multi-agent usage or a concrete not-useful/unavailable-tool
+  - MUST include goal tool usage or unavailable-goal-tool fallback.
+  - MUST include todo/plan tool usage or unavailable-todo-tool fallback.
+  - MUST include multi-agent usage or a concrete not-useful/unavailable-tool
     rationale.
-  - Include codegraph findings and LSP status or unavailable/not applicable
+  - MUST include codegraph findings and LSP status or unavailable/not applicable
     evidence for code-touching lanes.
-  - Include touched implementation-file LOC gate output for non-trivial code,
+  - MUST include touched implementation-file LOC gate output for non-trivial code,
     validator, harness, or workflow-rule lanes.
-  - Include packaged Codexy reviewer gate findings or approval for the current
+  - MUST include packaged Codexy reviewer gate findings or approval for the current
     diff, exact head or file state, scope, verification outputs, and evidence.
 ```
 

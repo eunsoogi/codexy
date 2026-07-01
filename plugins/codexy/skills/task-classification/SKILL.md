@@ -1,54 +1,59 @@
 ---
 name: task-classification
-description: Use first for incoming Codexy work to classify the lane type, owner, required skills, evidence, and first allowed action before setup, delegation, implementation, PR handling, review response, or merge work begins.
+description: MUST use first for incoming Codexy work to classify the lane type, owner, required skills, evidence, and first allowed action before setup, delegation, implementation, PR handling, review response, or merge work begins.
 ---
 
 # Task Classification
 
 ## Purpose
 
-Run this skill first for any Codexy work. Classification is the gate that
+MUST run this skill first for any Codexy work. Classification is the gate that
 decides which workflow may start, who owns the lane, which skills and tools are
 required, what evidence will prove readiness, and the first allowed action.
 
-Do not start branch or worktree setup, implementation edits, delegation, PR
+MUST NOT start branch or worktree setup, implementation edits, delegation, PR
 handling, merge work, review-response routing, validation, release work, or
 plugin repair until classification evidence exists in the thread.
 
 ## Classification Workflow
 
 1. Intake:
-   - Read the latest user request, explicit issue or PR, repository
+   - MUST read the latest user request, explicit issue or PR, repository
      instructions, and named skills.
-   - Separate hard requirements, stop conditions, non-goals, and requested
+   - MUST separate hard requirements, stop conditions, non-goals, and requested
      completion state.
-   - Identify whether the request is already scoped to an issue, PR, branch,
+   - MUST identify whether the request is already scoped to an issue, PR, branch,
      child thread, or worktree.
-2. Classify:
-   - Pick one primary lane type from the taxonomy below.
-   - Pick any secondary surface that affects verification, such as plugin
+2. MUST classify:
+   - MUST pick one primary lane type from the taxonomy below.
+   - MUST pick any secondary surface that affects verification, such as plugin
      packaging, GitHub state, docs, validators, MCP, LSP, release, or browser.
-   - Decide owner as `parent-owned`, `child-owned`, `current-thread-owned`, or
+   - MUST decide owner as `parent-owned`, `child-owned`, `current-thread-owned`, or
      `external/human-owned`.
-3. Route:
-   - Name the required Codexy skills and any explicit user-named skills.
-   - Name required tool surfaces, including goal, plan/todo, codegraph, LSP,
+3. MUST route:
+   - MUST name the required Codexy skills and any explicit user-named skills.
+   - MUST name required tool surfaces, including goal, plan/todo, codegraph, LSP,
      GitHub, validators, local tests, and packaged `codexy-sentinel`.
-   - Decide whether multi-agent helper work or separate Codex
-     thread/worktree ownership is required, not useful, or unavailable. Treat
+   - MUST decide whether multi-agent helper work or separate Codex
+     thread/worktree ownership is required, not useful, or unavailable. MUST treat
      them as different surfaces: subagents may assist with bounded research,
      review, or worker tasks, but they are not child-owned Codex
      subthread/worktree owners for issue-sized lanes that need a branch,
      durable worktree, PR, or review-response ownership. A `tool_search` miss
      alone is not proof that Codex thread/worktree tooling is unavailable when
      another real surface has produced `thread/start` or `turn/start` events;
-     record that as a discovery/exposure mismatch and keep routing through the
+     MUST record that as a discovery/exposure mismatch and keep routing through the
      real thread surface.
+   - When packaged Codexy specialist subagents are available, required
+     tools/evidence MUST name the specialist roles whose stated scope clearly
+     matches the task or the concrete rationale for skipping them. It MUST NOT
+     treat specialist subagent use as the child thread/worktree owner for an
+     issue-sized lane.
 4. Gate:
    - State the first allowed action after classification.
    - If classification exposes missing scope, missing issue/PR identity,
-     conflicting owner, bundled lanes, or unavailable required tools, stop and
-     report the blocker before setup or edits.
+     conflicting owner, bundled lanes, or unavailable required tools, MUST stop and
+     MUST report the blocker before setup or edits.
 
 ## Lane Taxonomy
 
@@ -77,28 +82,28 @@ plugin repair until classification evidence exists in the thread.
 
 ## Owner Decision Rules
 
-- Choose `child-owned` when the request needs its own branch, worktree, PR,
+- MUST choose `child-owned` when the request needs its own branch, worktree, PR,
   long-running implementation context, or review-response patches for a
   delegated lane.
-- Choose `parent-owned` for orchestration, issue setup, delegation packets,
+- MUST choose `parent-owned` for orchestration, issue setup, delegation packets,
   PR/review/merge coordination, or parent verification of child evidence.
-- Choose `current-thread-owned` only when the active thread is explicitly the
+- MUST choose `current-thread-owned` only when the active thread is explicitly the
   owning implementation lane for the issue-sized work.
-- Choose `external/human-owned` when the next action depends on a maintainer,
+- MUST choose `external/human-owned` when the next action depends on a maintainer,
   GitHub permission, external service, secret, or manual decision.
-- If owner choice is ambiguous, ask or stop with a classification blocker
+- If owner choice is ambiguous, MUST ask or stop with a classification blocker
   before branch/worktree setup or edits.
 - Subagents are not child-owned implementation owners. They can assist bounded
-  research, review, or QA, but they do not satisfy a required Codex
+  research, review, or QA, but they MUST NOT satisfy a required Codex
   thread/worktree owner for an issue-sized implementation lane.
-- Do not classify `spawn_agent`, `multi_agent`, specialist, reviewer, or
+- MUST NOT classify `spawn_agent`, `multi_agent`, specialist, reviewer, or
   worker delegation as a Codex subthread/worktree owner. If true
   thread/worktree tooling is required but unavailable, record the exposure
   blocker instead of satisfying ownership with a subagent.
 
 ## Required Output
 
-Use this shape before taking the first workflow action:
+MUST use this shape before taking the first workflow action:
 
 ```text
 Task classification:
@@ -132,19 +137,19 @@ Stop/blocker:
 - Missing classification evidence blocks branch/worktree setup, delegation,
   validation/QA, implementation, PR handling, review-response routing, merge
   work, release work, and PR-readiness claims.
-- Classification must happen before acting on or using the owner decision to
+- Classification MUST happen before acting on or using the owner decision to
   edit files, set up branches or worktrees, delegate lanes, or route review
   feedback.
-- Classification cannot waive root `AGENTS.md`, user stop conditions,
+- Classification MUST NOT waive root `AGENTS.md`, user stop conditions,
   selected skills, current-head review gates, or packaged `codexy-sentinel`.
-- A broad or bundled request must be split into atomic lanes before any
+- A broad or bundled request MUST be split into atomic lanes before any
   implementation lane begins unless a maintainer explicitly scopes it as one
   atomic lane before edits.
 - If the classified lane touches plugin packaging, skills, validators, MCP,
   LSP, release, or GitHub surfaces, include the matching validation or external
   observation in required evidence.
 - If thread/worktree tool discovery is part of the classification, required
-  evidence must distinguish true Codex thread evidence such as
+  evidence MUST distinguish true Codex thread evidence such as
   `thread/start`/`turn/start` or `codex_app` thread tools from subagents,
   GitHub review-thread tools, and `codex` CLI commands. `codex exec`,
   `codex fork`, and generic `codex app-server` commands are not fallback

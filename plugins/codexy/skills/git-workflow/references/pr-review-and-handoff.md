@@ -4,7 +4,7 @@
 
 Before a PR-readiness handoff or final answer claims completion, validate that
 the claim does not stop at an open PR when the requested outcome includes
-completion or the default Codexy merge flow. Capture current PR state first:
+completion or the default Codexy merge flow. MUST capture current PR state first:
 
 ```sh
 pr=<pr>
@@ -15,6 +15,7 @@ gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
+    labels(first:100) { nodes { name } }
     pullRequest(number:$number) {
       labels(first:50) { nodes { name } }
       closingIssuesReferences(first:20) { nodes { number labels(first:50) { nodes { name } } } }
@@ -62,7 +63,7 @@ jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
   pr-state.comments.pages.json > pr-state.comments.json
 jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
   pr-state.reviews.pages.json > pr-state.reviews.json
-jq '.[0].data.repository.pullRequest | {labels, closingIssuesReferences}' \
+jq '.[0].data.repository | {repositoryLabels: .labels} + (.pullRequest | {labels, closingIssuesReferences})' \
   pr-state.reviewThreads.pages.json > pr-state.labels.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
   --slurpfile labels pr-state.labels.json \
@@ -83,12 +84,21 @@ For review-response handoffs, the PR state file MUST include GraphQL
 `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and
 comment URLs. For PR-readiness or merge-readiness handoffs, the PR state file
 MUST include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with
-issue labels.
+issue labels. When repository labels exist, the PR state file MUST also include
+the repository label taxonomy as `repositoryLabels`; an unlabeled PR is not
+ready merely because handoff prose says no labels apply.
+
+The packaged hook surface currently emits SessionStart routing context, not a
+GitHub PR lifecycle hook. Until a PR lifecycle hook is available, the supported
+hook/readiness enforcement path is the SessionStart-required
+`scripts/validate-plugin-config --check-completion-handoff --handoff-file
+<report> --pr-state-file pr-state.json` command with `repositoryLabels`
+captured in `pr-state.json`.
 
 ## Codex Review Gate
 
 Codex connector review is a real merge gate when expected for the repository or
-when the maintainer asks for it. Inspect Codex review state on the latest head:
+when the maintainer asks for it. MUST inspect Codex review state on the latest head:
 
 ```sh
 gh pr view <pr> --json number,headRefOid,reviews,latestReviews,comments,reviewDecision,statusCheckRollup
@@ -96,7 +106,7 @@ gh api repos/<owner>/<repo>/pulls/<pr>/comments --paginate
 gh api repos/<owner>/<repo>/issues/<pr>/comments --paginate
 ```
 
-Identify Codex connector output by `performed_via_github_app.slug ==
+MUST identify Codex connector output by `performed_via_github_app.slug ==
 "chatgpt-codex-connector"`, `user.login ==
 "chatgpt-codex-connector[bot]"`, compact PR author text that appears as
 `chatgpt-codex-connector`, or the GitHub App avatar/icon URL for that app.
@@ -126,14 +136,14 @@ existing request already has `eyes` for the same PR head.
 
 The parent handoff MUST include PR number, latest head SHA, relevant comments
 or review thread URLs, allowed files, expected return evidence, and stop
-condition. For non-trivial lanes it MUST also require goal tool usage,
+condition. For non-trivial lanes it MUST require goal tool usage,
 todo/plan tool usage, multi-agent usage or concrete not-useful rationale,
 unavailable-tool fallbacks, current-diff sentinel review findings, codegraph
 evidence, and LSP status.
 
 After the owning child pushes a review-response commit, the parent MUST inspect
 unresolved review threads after child fixes and fresh current-head review, then
-verify that the current head addresses each completed review thread before
+MUST verify that the current head addresses each completed review thread before
 resolving it in GitHub.
 
 Fixed or accepted review threads MUST be resolved in GitHub before the PR is
