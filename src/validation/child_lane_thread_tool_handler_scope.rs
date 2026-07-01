@@ -81,14 +81,14 @@ fn is_capture_related(line: &str) -> bool {
 }
 
 fn is_unrelated_metadata_line(line: &str) -> bool {
-    let Some((key, _)) = line.trim_start().split_once(':') else {
+    let Some((key, _)) = line_key_value(line) else {
         return false;
     };
     !is_capture_related(&key.to_ascii_lowercase())
 }
 
 pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
-    let Some((key, _)) = line.trim_start().split_once(':') else {
+    let Some((key, _)) = line_key_value(line) else {
         return false;
     };
     matches!(
@@ -101,6 +101,15 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
             | "separate dogfooding issue"
             | "follow-up issue"
     )
+}
+
+fn line_key_value(line: &str) -> Option<(&str, &str)> {
+    let trimmed = line.trim_start();
+    let trimmed = trimmed
+        .strip_prefix("- ")
+        .or_else(|| trimmed.strip_prefix("* "))
+        .unwrap_or(trimmed);
+    trimmed.split_once(':')
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {

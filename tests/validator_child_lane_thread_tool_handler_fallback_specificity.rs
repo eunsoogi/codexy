@@ -4,7 +4,6 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");
     std::fs::write(&evidence_path, evidence)?;
-
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args(["--check-child-lane-ownership", "--evidence-file"])
         .arg(&evidence_path)
@@ -175,6 +174,26 @@ fn validator_allows_handoff_fields_on_separate_metadata_lines()
         "validator should accept fallback route and tracking issue metadata lines\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_bulleted_handoff_fields_after_multiline_defect()
+-> Result<(), Box<dyn std::error::Error>> {
+    let evidence = r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread
+- Fallback route: no fallback route was available
+- Tracking issue: #205
+Maintainer reassignment: none
+"#;
+    let output = run_ownership_validator(evidence)?;
+    assert!(
+        output.status.success(),
+        "validator should accept bulleted handoff metadata"
     );
     Ok(())
 }
