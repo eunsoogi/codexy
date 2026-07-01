@@ -129,23 +129,36 @@ fn has_negated_tracking_issue(clause: &str) -> bool {
 }
 
 fn has_placeholder_or_pending_value(clause: &str) -> bool {
+    let pending_phrases = [
+        "not created",
+        "not available",
+        "not provided",
+        "not yet",
+        "will be",
+        "to be created",
+    ];
+
+    pending_phrases
+        .into_iter()
+        .any(|marker| clause.contains(marker))
+        || clause
+            .split_once(':')
+            .is_some_and(|(_, value)| has_placeholder_field_value(value))
+}
+
+fn has_placeholder_field_value(value: &str) -> bool {
+    let trimmed = value.trim();
     [
         "none",
         "n/a",
         "tbd",
         "pending",
-        "not created",
-        "not available",
-        "not provided",
-        "not yet",
         "missing",
         "absent",
         "unavailable",
-        "will be",
-        "to be created",
     ]
     .into_iter()
-    .any(|marker| clause.contains(marker))
+    .any(|placeholder| trimmed == placeholder)
 }
 
 fn has_substantive_route_value(value: &str) -> bool {
