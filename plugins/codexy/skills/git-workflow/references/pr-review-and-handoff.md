@@ -15,6 +15,7 @@ gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
+    labels(first:100) { nodes { name } }
     pullRequest(number:$number) {
       labels(first:50) { nodes { name } }
       closingIssuesReferences(first:20) { nodes { number labels(first:50) { nodes { name } } } }
@@ -62,7 +63,7 @@ jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
   pr-state.comments.pages.json > pr-state.comments.json
 jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
   pr-state.reviews.pages.json > pr-state.reviews.json
-jq '.[0].data.repository.pullRequest | {labels, closingIssuesReferences}' \
+jq '.[0].data.repository | {repositoryLabels: .labels} + (.pullRequest | {labels, closingIssuesReferences})' \
   pr-state.reviewThreads.pages.json > pr-state.labels.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
   --slurpfile labels pr-state.labels.json \
@@ -83,7 +84,16 @@ For review-response handoffs, the PR state file MUST include GraphQL
 `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and
 comment URLs. For PR-readiness or merge-readiness handoffs, the PR state file
 MUST include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with
-issue labels.
+issue labels. When repository labels exist, the PR state file MUST also include
+the repository label taxonomy as `repositoryLabels`; an unlabeled PR is not
+ready merely because handoff prose says no labels apply.
+
+The packaged hook surface currently emits SessionStart routing context, not a
+GitHub PR lifecycle hook. Until a PR lifecycle hook is available, the supported
+hook/readiness enforcement path is the SessionStart-required
+`scripts/validate-plugin-config --check-completion-handoff --handoff-file
+<report> --pr-state-file pr-state.json` command with `repositoryLabels`
+captured in `pr-state.json`.
 
 ## Codex Review Gate
 

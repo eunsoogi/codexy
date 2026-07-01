@@ -52,6 +52,8 @@ fn validator_cli_accepts_installed_readiness_hook_topology()
         .ok_or("readiness hook output should include additional context")?;
     assert!(readiness_context.contains("PR title and merge subject enforcement (#206)"));
     assert!(readiness_context.contains("PR label readiness enforcement (#210)"));
+    assert!(readiness_context.contains("--check-completion-handoff"));
+    assert!(readiness_context.contains("repositoryLabels"));
 
     let output = validate_hooks(&plugin_root)?;
     assert!(
