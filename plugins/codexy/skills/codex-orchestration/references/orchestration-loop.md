@@ -23,8 +23,8 @@
 3. Dispatch:
    - MUST NOT dispatch until classification proves lane type, owner, atomicity,
      required skills, required tools, and first allowed action.
-   - MUST start specialist subagents only for bounded lanes that do not need their
-     own branch or PR.
+   - MUST start specialist subagents only for bounded lanes without their own
+     branch or PR.
    - For bounded helper work, the owning thread MUST route to the packaged
      Codexy specialist whose stated scope clearly matches the task, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex
