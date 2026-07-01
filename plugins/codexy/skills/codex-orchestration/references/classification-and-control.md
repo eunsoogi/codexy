@@ -68,8 +68,13 @@ edits.
   dependency, or ownership mapping; `codexy-pathfinder` for planning or
   approach selection; `codexy-architect` for boundary, schema, MCP, LSP,
   plugin architecture, or long-lived extension-point changes; `codexy-tracer`
-  for root-cause or failing behavior; `codexy-auditor` or `codexy-warden` for
-  compliance, risk, command, permission, credential, or verification passes;
+  for root-cause or failing behavior; `codexy-warden` for workflows, shell
+  commands, credentials, remote MCP endpoints, untrusted input, repository
+  permissions, install scripts, local state mutation, or generated evidence
+  with security implications; `codexy-auditor` after implementation for
+  acceptance-criteria, readiness, and observable verification passes across
+  CLI, config, GitHub, browser, app, plugin, documentation, or workflow
+  surfaces;
   `codexy-scribe` for docs, handoff, PR, release note, or workflow drafting;
   `codexy-forge` for scoped implementation edits after issue, branch, worktree,
   plan, and acceptance criteria are clear; `codexy-weaver` for reconciling

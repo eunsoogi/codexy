@@ -108,9 +108,12 @@ insufficient. Situational routing is:
   architecture, or long-lived extension-point changes.
 - MUST use `codexy-tracer` for failing behavior, broken automation, root-cause
   investigation, or reproduction-heavy defects.
-- MUST use `codexy-auditor` or `codexy-warden` for compliance, risk,
-  credentials, command, permission, or verification passes that need an
-  independent check.
+- MUST use `codexy-warden` for workflows, shell commands, credentials, remote
+  MCP endpoints, untrusted input, repository permissions, install scripts, local
+  state mutation, or generated evidence with security implications.
+- MUST use `codexy-auditor` after implementation for acceptance-criteria,
+  readiness, and observable verification passes across CLI, config, GitHub,
+  browser, app, plugin, documentation, or workflow surfaces.
 - MUST use `codexy-scribe` for docs, handoff, PR, release note, or
   user-facing workflow drafting after behavior is known.
 - MUST use `codexy-forge` for scoped implementation edits after issue, branch,

@@ -12,6 +12,8 @@ fn codex_orchestration_requires_situational_specialist_routing()
     )?;
     let classification =
         std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
+    let skill_flat = skill.split_whitespace().collect::<Vec<_>>().join(" ");
+    let control_flat = control.split_whitespace().collect::<Vec<_>>().join(" ");
 
     assert!(skill.contains("the owning thread MUST use that\nspecialist"));
     assert!(skill.contains("task clearly falls\nwithin that specialist's stated scope"));
@@ -29,13 +31,28 @@ fn codex_orchestration_requires_situational_specialist_routing()
     assert!(
         classification.contains("treat specialist subagent use as the child thread/worktree owner")
     );
+    assert!(skill_flat.contains(
+        "MUST use `codexy-warden` for workflows, shell commands, credentials, remote MCP endpoints, untrusted input, repository permissions"
+    ));
+    assert!(skill_flat.contains(
+        "MUST use `codexy-auditor` after implementation for acceptance-criteria, readiness, and observable verification passes"
+    ));
+    assert!(control_flat.contains(
+        "`codexy-warden` for workflows, shell commands, credentials, remote MCP endpoints, untrusted input, repository permissions"
+    ));
+    assert!(control_flat.contains(
+        "`codexy-auditor` after implementation for acceptance-criteria, readiness, and observable verification passes"
+    ));
     for forbidden in [
         "A generic \"not needed\" note is acceptable.",
         "specialist subagent use may satisfy child thread/worktree ownership",
         "a subagent helper may replace a required Codex child thread/worktree owner",
+        "`codexy-auditor` or `codexy-warden` for compliance",
+        "`codexy-auditor` or `codexy-warden` for credentials",
+        "`codexy-auditor` or `codexy-warden` for command",
     ] {
-        assert!(!skill.contains(forbidden));
-        assert!(!control.contains(forbidden));
+        assert!(!skill_flat.contains(forbidden));
+        assert!(!control_flat.contains(forbidden));
         assert!(!loop_ref.contains(forbidden));
         assert!(!classification.contains(forbidden));
     }
