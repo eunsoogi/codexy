@@ -7,6 +7,9 @@ pub(super) fn has_prohibition_marker(lower: &str, marker: &str) -> bool {
 }
 
 pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> bool {
+    if has_leading_condition_modal(lower, marker_index) {
+        return true;
+    }
     let Some(modal_index) = last_modal_before(lower, marker_index) else {
         return false;
     };
@@ -28,6 +31,16 @@ pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> boo
         .max();
     connector_index
         .is_some_and(|connector| boundary_index.is_none_or(|boundary| connector > boundary))
+}
+
+fn has_leading_condition_modal(lower: &str, marker_index: usize) -> bool {
+    let prefix = lower[..marker_index].trim_start();
+    if !(prefix.starts_with("if ") || prefix.starts_with("when ")) {
+        return false;
+    }
+    lower[marker_index..]
+        .find(", must ")
+        .is_some_and(|offset| is_word_boundary(lower, marker_index + offset + 2, "must"))
 }
 
 fn last_modal_before(lower: &str, marker_index: usize) -> Option<usize> {

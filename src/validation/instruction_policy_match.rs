@@ -10,16 +10,9 @@ pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
     let lower = line.to_ascii_lowercase();
     let inverted_list = has_forbidden_actions_without_must_not(line)
         || line.contains("MUST NOT")
-            && [
-                ", MUST remove",
-                ", MUST rewrite",
-                ", MUST add",
-                " and MUST remove",
-                " and MUST rewrite",
-                " and MUST add",
-            ]
-            .iter()
-            .any(|needle| line.contains(needle));
+            && [", MUST remove", ", MUST rewrite", ", MUST add"]
+                .iter()
+                .any(|needle| line.contains(needle));
     if inverted_list {
         return true;
     }

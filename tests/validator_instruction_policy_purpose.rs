@@ -13,6 +13,7 @@ fn validator_allows_modal_purpose_clauses_with_prohibition_words() -> TestResult
     skill.push_str(
         "\n- Evidence handoffs MUST include exact heads so future agents cannot confuse stale review output with current proof.\n",
     );
+    skill.push_str("- When the check cannot run, MUST stop and report the blocker.\n");
     skill.push_str("- Review summaries MUST stop when the check cannot run.\n");
     skill.push_str("- Review summaries MUST name exact scope to avoid stale handoff claims.\n");
     std::fs::write(&skill_path, skill)?;
@@ -46,6 +47,20 @@ fn validator_rejects_true_prohibitions_without_must_not() -> TestResult {
         );
         assert!(stderr(&output).contains("prohibitions must use MUST NOT"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_separate_must_action_after_prohibition() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/agents-md-authoring/SKILL.md");
+    let mut skill = std::fs::read_to_string(&skill_path)?;
+    skill.push_str(
+        "\n- MUST NOT leave temp servers running, and MUST add the cleanup receipt to the handoff.\n",
+    );
+    std::fs::write(&skill_path, skill)?;
+    let output = validator(&plugin_root, "--check")?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
