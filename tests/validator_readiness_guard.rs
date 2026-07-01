@@ -78,6 +78,46 @@ fn readiness_guard_checks_squash_subject_suffix_spacing() -> Result<(), Box<dyn 
     Ok(())
 }
 
+#[test]
+fn readiness_guard_rejects_whitespace_only_summaries() -> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+
+    let bad_title = Command::new(&script)
+        .args(["--check-pr-title", "--pr-title", "fix:   "])
+        .output()?;
+    assert!(
+        !bad_title.status.success(),
+        "guard should reject whitespace-only PR title summaries"
+    );
+    assert!(
+        String::from_utf8_lossy(&bad_title.stdout)
+            .contains("PR title must use Conventional Commit style"),
+        "unexpected stdout: {}",
+        String::from_utf8_lossy(&bad_title.stdout)
+    );
+
+    let bad_merge_message = Command::new(&script)
+        .args([
+            "--check-merge-message",
+            "--expected-pr",
+            "204",
+            "--merge-message",
+            "fix:    (#204)\n\nFixes #206\n",
+        ])
+        .output()?;
+    assert!(
+        !bad_merge_message.status.success(),
+        "guard should reject whitespace-only merge subject summaries"
+    );
+    assert!(
+        String::from_utf8_lossy(&bad_merge_message.stdout)
+            .contains("merge commit subject must use Conventional Commit style"),
+        "unexpected stdout: {}",
+        String::from_utf8_lossy(&bad_merge_message.stdout)
+    );
+    Ok(())
+}
+
 fn readiness_guard() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("plugins/codexy/hooks/codexy-readiness-guard.sh")

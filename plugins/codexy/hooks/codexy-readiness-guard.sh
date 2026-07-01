@@ -30,7 +30,10 @@ check_conventional_subject() {
   esac
   prefix=${subject%%: *}
   summary=${subject#*: }
-  [ -n "$summary" ] || return 1
+  case "$summary" in
+    "" | *[![:space:]]*) ;;
+    *) return 1 ;;
+  esac
   case "$prefix" in
     *!) prefix=${prefix%!} ;;
   esac
