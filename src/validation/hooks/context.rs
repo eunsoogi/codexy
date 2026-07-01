@@ -21,6 +21,7 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "codexy-readiness-guard.sh",
     "--check-pr-title",
     "--check-merge-message",
+    "--expected-pr",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {

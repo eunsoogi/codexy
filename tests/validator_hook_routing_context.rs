@@ -36,6 +36,7 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
         "codexy-readiness-guard.sh",
         "--check-pr-title",
         "--check-merge-message",
+        "--expected-pr",
     ] {
         assert!(
             context.contains(required),
@@ -179,7 +180,7 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
     Ok(())
 }
 
-fn required_context_fragments() -> [&'static str; 12] {
+fn required_context_fragments() -> [&'static str; 13] {
     [
         "codegraph MCP before direct file reads",
         "include codegraph findings",
@@ -193,6 +194,7 @@ fn required_context_fragments() -> [&'static str; 12] {
         "codexy-readiness-guard.sh",
         "--check-pr-title",
         "--check-merge-message",
+        "--expected-pr",
     ]
 }
 
