@@ -156,21 +156,17 @@ fn has_placeholder_field_value(value: &str) -> bool {
 }
 fn has_substantive_route_value(value: &str) -> bool {
     let trimmed = value.trim();
+    let padded = format!(" {trimmed} ");
     !trimmed.is_empty()
         && !["used", "routed", "available", "not used", "not routed"]
             .into_iter()
             .any(|weak_value| trimmed == weak_value)
-        && ![
-            "not used",
-            "not routed",
-            "not actually used",
-            "not actually routed",
-        ]
-        .into_iter()
-        .any(|weak_phrase| trimmed.contains(weak_phrase))
-        && !["no route", "no fallback route", "no fallback path"]
+        && !([" used", " routed"]
             .into_iter()
-            .any(|weak_prefix| trimmed.contains(weak_prefix) && trimmed.contains("used"))
+            .any(|word| padded.contains(word))
+            && [" no ", " not ", "n't ", " without ", " never "]
+                .into_iter()
+                .any(|negation| padded.contains(negation)))
         && trimmed
             .chars()
             .any(|character| character.is_ascii_alphabetic())

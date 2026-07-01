@@ -54,6 +54,11 @@ fn validator_rejects_long_negated_fallback_value() -> Result<(), Box<dyn std::er
         "Fallback route: no fallback route was actually used because the child thread was unreachable",
         "Fallback route: no fallback route actually used because the child thread was unreachable",
         "Fallback route: no fallback path actually used because the child thread was unreachable",
+        "Fallback route: wasn't used because the child thread was unreachable",
+        "Fallback route: weren't used because the child thread was unreachable",
+        "Fallback route: no fallback was used because the child thread was unreachable",
+        "Fallback route: no alternate route was used because the child thread was unreachable",
+        "Fallback route: no alternate path actually used because the child thread was unreachable",
     ] {
         let output = run_ownership_validator(&base_evidence(route, "Tracking issue: #205"))?;
 
