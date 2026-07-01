@@ -95,6 +95,10 @@ fn has_negated_tracking_issue(clause: &str) -> bool {
         "no separate dogfooding issue",
         "no separate tracking issue",
         "no tracking issue",
+        "without a separate dogfood issue",
+        "without a separate dogfooding issue",
+        "without a separate tracking issue",
+        "without tracking issue",
     ]
     .into_iter()
     .any(|marker| clause.contains(marker))
