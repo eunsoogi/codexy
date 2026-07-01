@@ -32,13 +32,13 @@ Maintainer reassignment: none
     )
 }
 
-fn separate_metadata_evidence(tracking_issue: &str) -> String {
+fn separate_metadata_evidence(fallback_field: &str, tracking_issue: &str) -> String {
     format!(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Fallback route: no fallback route was available
+{fallback_field}
 Tracking issue: {tracking_issue}
 Maintainer reassignment: none
 "#
@@ -77,7 +77,6 @@ fn validator_rejects_bare_fallback_route_used() -> Result<(), Box<dyn std::error
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_bare_fallback_routed() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback routed"))?;
@@ -87,7 +86,6 @@ fn validator_rejects_bare_fallback_routed() -> Result<(), Box<dyn std::error::Er
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_weak_fallback_route_value() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route: used"))?;
@@ -97,7 +95,6 @@ fn validator_rejects_weak_fallback_route_value() -> Result<(), Box<dyn std::erro
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_negated_fallback_route_not_used() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route: not used"))?;
@@ -107,7 +104,6 @@ fn validator_rejects_negated_fallback_route_not_used() -> Result<(), Box<dyn std
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_negated_fallback_route_not_routed() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route: not routed"))?;
@@ -117,7 +113,6 @@ fn validator_rejects_negated_fallback_route_not_routed() -> Result<(), Box<dyn s
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence(
@@ -129,7 +124,6 @@ fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::erro
     );
     Ok(())
 }
-
 #[test]
 fn validator_allows_tracking_issue_for_missing_handler_exposure()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -159,12 +153,28 @@ fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn 
 #[test]
 fn validator_allows_handoff_fields_on_separate_metadata_lines()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(&separate_metadata_evidence("#205"))?;
+    let output = run_ownership_validator(&separate_metadata_evidence(
+        "Fallback route: no fallback route was available",
+        "#205",
+    ))?;
     assert!(
         output.status.success(),
         "validator should accept fallback route and tracking issue metadata lines\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_fallback_route_used_metadata_line() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&separate_metadata_evidence(
+        "Fallback route used: parent posted the handoff in the child thread",
+        "#205",
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator should accept fallback route used metadata"
     );
     Ok(())
 }

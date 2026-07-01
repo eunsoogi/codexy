@@ -94,6 +94,7 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
     matches!(
         key.to_ascii_lowercase().trim(),
         "fallback route"
+            | "fallback route used"
             | "fallback path"
             | "tracking issue"
             | "separate tracking issue"
