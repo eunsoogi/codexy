@@ -25,14 +25,20 @@ fn has_github_issue_url(clause: &str) -> bool {
         {
             return false;
         }
-        let Some((_, issue_number)) = trimmed.rsplit_once("/issues/") else {
+        let Some((_, issue_tail)) = trimmed.rsplit_once("/issues/") else {
             return false;
         };
-        let issue_number =
-            issue_number.trim_end_matches(|character: char| !character.is_ascii_digit());
-        !issue_number.is_empty()
-            && issue_number
-                .chars()
-                .all(|character| character.is_ascii_digit())
+        let digit_end = issue_tail
+            .find(|character: char| !character.is_ascii_digit())
+            .unwrap_or(issue_tail.len());
+        digit_end > 0 && is_issue_url_boundary(&issue_tail[digit_end..])
     })
+}
+
+fn is_issue_url_boundary(suffix: &str) -> bool {
+    suffix.is_empty()
+        || suffix == "/"
+        || suffix
+            .chars()
+            .all(|character| matches!(character, '.' | ',' | ')' | ']' | '}' | '>' | '"' | '\''))
 }

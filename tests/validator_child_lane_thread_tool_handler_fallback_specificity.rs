@@ -148,3 +148,16 @@ fn validator_allows_github_issue_url_tracking_evidence() -> Result<(), Box<dyn s
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_malformed_github_issue_url_suffix() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&tracking_issue_evidence(
+        "tracking issue: https://github.com/eunsoogi/codexy/issues/205abc",
+    ))?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject malformed GitHub issue URL suffixes"
+    );
+    Ok(())
+}
