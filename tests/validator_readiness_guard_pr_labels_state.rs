@@ -1,0 +1,209 @@
+use std::process::Command;
+
+#[test]
+fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+    let temp = tempfile::tempdir()?;
+
+    for (name, json, expected) in [
+        (
+            "missing-taxonomy.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[]}"#,
+            "repositoryLabels taxonomy",
+        ),
+        ("empty-state.json", "", "malformed JSON evidence"),
+        (
+            "truncated-object-labels.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":"type/fix"}]"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "truncated-string-labels.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "missing-comma-labeled.json",
+            r#"{"number":209,"state":"OPEN" "repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "missing-comma-unlabeled.json",
+            r#"{"number":209,"state":"OPEN" "repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "trailing-comma-labeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"],}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "trailing-comma-unlabeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix"],}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-number-lone-minus.json",
+            r#"{"number":-,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-number-trailing-dot.json",
+            r#"{"number":1.,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-number-missing-exponent.json",
+            r#"{"number":1e,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-number-leading-zero.json",
+            r#"{"number":01,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "invalid-string-escape.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type\qfix"],"repositoryLabels":["type/fix"]}"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "raw-newline-in-string.json",
+            "{\"number\":209,\"state\":\"OPEN\",\"repository\":\"eunsoogi/codexy\",\"labels\":[\"type\nfix\"],\"repositoryLabels\":[\"type/fix\"]}",
+            "malformed JSON evidence",
+        ),
+        (
+            "raw-tab-in-string.json",
+            "{\"number\":209,\"state\":\"OPEN\",\"repository\":\"eunsoogi/codexy\",\"labels\":[\"type\tfix\"],\"repositoryLabels\":[\"type/fix\"]}",
+            "malformed JSON evidence",
+        ),
+        (
+            "null-pr-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":null}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "empty-pr-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":""}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "null-pr-label-name-with-color.json",
+            r##"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":null,"color":"#fff"}],"repositoryLabels":[{"name":"type/fix"}]}"##,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "empty-pr-label-name-with-description.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"","description":"empty"}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "graphql-null-pr-label-name-with-color.json",
+            r##"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":[{"name":null,"color":"#fff"}]},"repositoryLabels":[{"name":"type/fix"}]}"##,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "null-repository-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":null}]}"#,
+            "repositoryLabels taxonomy",
+        ),
+        (
+            "empty-repository-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":""}]}"#,
+            "repositoryLabels taxonomy",
+        ),
+        (
+            "null-repository-label-name-with-color.json",
+            r##"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":null,"color":"#fff"}]}"##,
+            "repositoryLabels taxonomy",
+        ),
+        (
+            "bracketed-repository-label-name.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type]fix"]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "missing-repository-identity.json",
+            r#"{"number":209,"state":"OPEN","labels":[],"repositoryLabels":["type/fix"]}"#,
+            "repository identity evidence",
+        ),
+        (
+            "closing-issue-labels-only.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"closingIssuesReferences":{"nodes":[{"number":216,"labels":{"nodes":[{"name":"type/fix"}]}}]}}"#,
+            "repositoryLabels taxonomy",
+        ),
+        (
+            "nested-repository-labels-only.json",
+            r#"{"number":209,"state":"OPEN","url":"https://github.com/eunsoogi/codexy/pull/209","repository":{"metadata":{"labels":{"nodes":[{"name":"type/fix"}]}}},"labels":[]}"#,
+            "repositoryLabels taxonomy",
+        ),
+    ] {
+        let pr_state = temp.path().join(name);
+        std::fs::write(&pr_state, json)?;
+        let output = Command::new(&script)
+            .args([
+                "--check-pr-labels",
+                "--pr-state-file",
+                pr_state.to_str().ok_or("pr state path")?,
+            ])
+            .output()?;
+        assert!(
+            !output.status.success(),
+            "guard should reject incomplete PR state for {name}"
+        );
+        assert!(
+            output_text(&output).contains(expected),
+            "expected {expected} in output: {}",
+            output_text(&output)
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
+fn readiness_guard_accepts_bracketed_label_names() -> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+    let temp = tempfile::tempdir()?;
+
+    for (name, json) in [
+        (
+            "bracketed-string-label.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type]fix"],"repositoryLabels":["type]fix"]}"#,
+        ),
+        (
+            "bracketed-graphql-label.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":["type]fix"]},"repositoryLabels":{"nodes":["type]fix"]}}"#,
+        ),
+    ] {
+        let pr_state = temp.path().join(name);
+        std::fs::write(&pr_state, json)?;
+        let output = Command::new(&script)
+            .args([
+                "--check-pr-labels",
+                "--pr-state-file",
+                pr_state.to_str().ok_or("pr state path")?,
+            ])
+            .output()?;
+        assert!(
+            output.status.success(),
+            "guard should accept bracketed label evidence for {name}: {}",
+            output_text(&output)
+        );
+    }
+
+    Ok(())
+}
+
+fn output_text(output: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    )
+}
+
+fn readiness_guard() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("plugins/codexy/hooks/codexy-readiness-guard.sh")
+}
