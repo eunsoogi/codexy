@@ -200,9 +200,10 @@ fn has_modal_instruction(line: &str) -> bool {
         if line[..index].matches('`').count() % 2 == 1 {
             continue;
         }
-        let before = line[..index].trim_end();
-        if !before.is_empty()
-            && !before.ends_with(|ch: char| ch.is_whitespace() || matches!(ch, ':' | ';'))
+        if line[..index]
+            .chars()
+            .next_back()
+            .is_some_and(|ch| !ch.is_whitespace() && !matches!(ch, ':' | ';' | '(' | '['))
         {
             continue;
         }

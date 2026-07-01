@@ -94,6 +94,18 @@ fn validator_cli_rejects_wrapped_duplicate_modal_wording() -> TestResult {
 }
 
 #[test]
+fn validator_cli_allows_real_wrapped_modal_instruction() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let mut skill = std::fs::read_to_string(&skill_path)?;
+    skill.push_str("\nThe agent MUST use codegraph output to\nidentify nearby files.\n");
+    std::fs::write(&skill_path, skill)?;
+    let output = validator(&plugin_root, "--check")?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_bare_imperative_after_non_modal_to_from() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
