@@ -128,3 +128,79 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_missing_handler_defect_with_empty_fallback_route()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; fallback route: ; separate dogfood issue: #205.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject empty fallback route evidence"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_missing_handler_defect_with_future_tracking_issue()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; tracking issue will be created.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject future tracking issue evidence"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_missing_handler_defect_with_tbd_tracking_issue()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; tracking issue: TBD.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject placeholder tracking issue evidence"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_missing_handler_defect_with_pending_follow_up_issue()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; follow-up issue pending.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject pending follow-up issue evidence"
+    );
+    Ok(())
+}

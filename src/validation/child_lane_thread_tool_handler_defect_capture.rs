@@ -37,34 +37,14 @@ fn has_handler_handoff_fields(evidence: &str) -> bool {
 }
 
 fn has_fallback_route_or_none(evidence: &str) -> bool {
-    [
-        "fallback route",
-        "fallback path",
-        "fallback routed",
-        "no fallback route",
-        "no alternate route",
-    ]
-    .into_iter()
-    .any(|marker| evidence.contains(marker))
+    handoff_clauses(evidence).any(|clause| {
+        clause.contains("no fallback route")
+            || clause.contains("no alternate route")
+            || has_concrete_fallback_route(clause)
+    })
 }
 
 fn has_tracking_issue(evidence: &str) -> bool {
-    let negated_markers = [
-        "no separate dogfood issue",
-        "no separate dogfooding issue",
-        "no separate tracking issue",
-        "no tracking issue",
-        "tracking issue: none",
-        "tracking issue: n/a",
-        "tracking issue was not",
-        "tracking issue not",
-        "tracking issue has not",
-        "tracking issue wasn't",
-        "tracking issue hasn't",
-        "tracking issue unavailable",
-        "tracking issue absent",
-        "tracking issue missing",
-    ];
     let affirmative_markers = [
         "separate dogfood issue",
         "separate dogfooding issue",
@@ -75,17 +55,58 @@ fn has_tracking_issue(evidence: &str) -> bool {
         "follow-up issue",
     ];
 
-    evidence
-        .split(['\n', '.', ';'])
-        .map(str::trim)
-        .any(|clause| {
-            affirmative_markers
-                .into_iter()
-                .any(|marker| clause.contains(marker))
-                && !negated_markers
-                    .into_iter()
-                    .any(|marker| clause.contains(marker))
+    handoff_clauses(evidence).any(|clause| {
+        affirmative_markers
+            .into_iter()
+            .any(|marker| clause.contains(marker))
+            && has_issue_reference(clause)
+            && !has_placeholder_or_pending_value(clause)
+    })
+}
+
+fn has_concrete_fallback_route(clause: &str) -> bool {
+    ["fallback route", "fallback path", "fallback routed"]
+        .into_iter()
+        .any(|marker| clause.contains(marker))
+        && !has_placeholder_or_pending_value(clause)
+        && clause
+            .split_once(':')
+            .is_none_or(|(_, value)| !value.trim().is_empty())
+}
+
+fn has_issue_reference(clause: &str) -> bool {
+    clause
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '#')
+        .any(|word| {
+            let issue_number = word.strip_prefix('#').unwrap_or(word);
+            !issue_number.is_empty()
+                && issue_number
+                    .chars()
+                    .all(|character| character.is_ascii_digit())
         })
+}
+
+fn has_placeholder_or_pending_value(clause: &str) -> bool {
+    [
+        "none",
+        "n/a",
+        "tbd",
+        "pending",
+        "not created",
+        "not available",
+        "not yet",
+        "missing",
+        "absent",
+        "unavailable",
+        "will be",
+        "to be created",
+    ]
+    .into_iter()
+    .any(|marker| clause.contains(marker))
+}
+
+fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
+    evidence.split(['\n', '.', ';']).map(str::trim)
 }
 
 fn is_defect_capture_line(line: &str) -> bool {
