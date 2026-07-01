@@ -24,6 +24,17 @@
             "statusMessage": "Loading Codexy readiness context"
           }
         ]
+      },
+      {
+        "matcher": "PR readiness|pr readiness|merge readiness|ready for parent handoff|ready to merge",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-readiness-guard.sh\" UserPromptSubmit",
+            "timeout": 3,
+            "statusMessage": "Loading Codexy readiness guard"
+          }
+        ]
       }
     ]
   }

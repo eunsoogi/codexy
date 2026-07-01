@@ -35,6 +35,10 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
         "compacted or resumed context hygiene",
         "--check-completion-handoff",
         "repositoryLabels",
+        "codexy-readiness-guard.sh",
+        "--check-pr-title",
+        "--check-merge-message",
+        "--expected-pr",
     ] {
         assert!(
             context.contains(required),
@@ -186,7 +190,7 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
     Ok(())
 }
 
-fn required_context_fragments() -> [&'static str; 11] {
+fn required_context_fragments() -> [&'static str; 15] {
     [
         "codegraph MCP before direct file reads",
         "include codegraph findings",
@@ -199,6 +203,10 @@ fn required_context_fragments() -> [&'static str; 11] {
         "compacted or resumed context hygiene",
         "--check-completion-handoff",
         "repositoryLabels",
+        "codexy-readiness-guard.sh",
+        "--check-pr-title",
+        "--check-merge-message",
+        "--expected-pr",
     ]
 }
 

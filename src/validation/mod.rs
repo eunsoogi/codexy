@@ -18,6 +18,7 @@ mod codex_review_handoff_events;
 mod completion_handoff;
 mod completion_handoff_compaction;
 mod completion_handoff_waiting;
+mod conventional_commit;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;
@@ -56,6 +57,9 @@ pub enum Mode {
         expected_issue: Option<u64>,
         expected_pr: Option<u64>,
         message: String,
+    },
+    PrTitle {
+        title: String,
     },
     CompletionHandoff {
         handoff: String,
@@ -98,6 +102,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             expected_pr,
             message,
         } => merge_message::check(expected_issue, expected_pr, &message),
+        Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(&handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));

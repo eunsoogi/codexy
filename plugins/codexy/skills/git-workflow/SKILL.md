@@ -156,10 +156,12 @@ MUST open PRs with GitHub or `gh`. MUST keep PRs draft only while local verifica
 missing or risk is intentionally unresolved. MUST create or confirm a GitHub issue
 before opening a PR unless a maintainer explicitly scopes an exception.
 
-PR titles MUST use Conventional Commit style, such as:
+PR titles MUST use Conventional Commit style, such as
+`chore(repo): establish repository governance`. Validate the exact PR title
+before PR readiness or merge readiness:
 
-```text
-chore(repo): establish repository governance
+```sh
+scripts/validate-plugin-config --check-pr-title --pr-title "$(gh pr view <pr> --json title --jq .title)"
 ```
 
 PR bodies MUST include `## Summary`, `## Rationale`, `## Changed Areas`,
@@ -231,20 +233,18 @@ MUST stage only resolved files and run relevant verification.
 ## Quick Checklist
 
 - Issue exists or a maintainer provided an explicit issue-sized scope.
-- `$task-classification` ran first and classification evidence names lane type,
-  owner decision, atomic scope, required skills, required tools/evidence, and
-  first allowed action.
+- `$task-classification` ran first and records lane type, owner, scope, skills,
+  tools/evidence, and first allowed action.
 - Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
 - No unrelated files are staged; no force push or force-with-lease is used.
-- Verification covers touched surfaces, including
-  `scripts/validate-plugin-config --check-touched-loc --base-ref <base>` when
+- Verification covers touched surfaces, including `--check-touched-loc` when
   applicable.
 - Code-touching changes include Codexy `codegraph` findings and Codexy `lsp`
   status evidence, or fallback evidence.
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
   approval from `plugins/codexy/agents/codexy-sentinel.toml`.
-- PR body has structured sections and ends with exactly one
-  `Fixes #<issue-number>` line when a matching issue exists.
+- PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
+- PR title has been validated with `--check-pr-title`.
 - Expected Codex review completed on the latest PR head, with no unresolved
   actionable Codex feedback.
 - Squash merge bodies preserve the PR body exactly; branch deletion and main sync are verified after merge.
