@@ -6,7 +6,6 @@ const MANDATORY_LINE_PREFIXES: &[&str] = &["act", "add", "append", "apply", "ass
 const ROOT_AGENTS_PREFIXES: &[&str] = &["add", "capture", "keep", "mention", "preflight", "put", "treat", "wait"];
 #[rustfmt::skip]
 const PASSIVE_MANDATORY: &[&str] = &[" is required", " are required", " requires"];
-
 pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
     let lower = line.to_ascii_lowercase();
     let inverted_list = line.contains("MUST NOT")
@@ -38,7 +37,6 @@ pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
                 .any(|(index, _)| !lower[..index].trim_end().ends_with("must not"))
     })
 }
-
 pub(super) fn starts_with_inverted_prohibition(line: &str) -> bool {
     let line = line.trim_start();
     ["MUST remove", "MUST rewrite", "MUST add"]
@@ -57,6 +55,7 @@ pub(super) fn ends_with_dangling_modal(line: &str) -> bool {
         || has_modal_instruction(line) && (line.ends_with(" to") || line.ends_with(" from"))
 }
 
+#[rustfmt::skip]
 pub(super) fn has_bare_mandatory_without_must(
     line: &str,
     strict_clauses: bool,
@@ -78,6 +77,7 @@ pub(super) fn has_bare_mandatory_without_must(
     if mandatory_segments(line, strict_clauses)
         .iter()
         .any(|segment| starts_with_bare_imperative(segment, strict_clauses))
+        || passive_mandatory && !custom_agent_toml && line.split(", ").skip(1).any(|segment| { let segment = segment.trim_start(); matches_prefix(&segment.to_ascii_lowercase(), &["add", "append", "update"]) && !segment.starts_with("MUST") })
     {
         return true;
     }

@@ -331,9 +331,9 @@ The `inbox/` directory is a drop zone. Users dump files there via Finder, `cp`, 
 
 After writing each source file, MUST update indexes in order:
 
-1. `raw/{type}/_index.md` — add row to Contents table
-2. `raw/_index.md` — add row to Contents table
-3. `_index.md` (master) — increment source count, add to Recent Changes
+1. `raw/{type}/_index.md` — MUST add row to Contents table
+2. `raw/_index.md` — MUST add row to Contents table
+3. `_index.md` (master) — MUST increment source count, MUST add to Recent Changes
 
 ## Batch Ingestion
 

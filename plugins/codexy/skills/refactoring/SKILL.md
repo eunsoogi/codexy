@@ -18,7 +18,7 @@ dependency inversion, naming cleanup, and review-driven maintainability work.
 - Before PR readiness or handoff, MUST run
   `scripts/validate-plugin-config --check-touched-loc --base-ref <base>` over
   the current branch and include the command output in evidence.
-- If a code or test-harness file MUST exceed 250 LOC, add or reference the
+- If a code or test-harness file MUST exceed 250 LOC, MUST add or reference the
   tracked Codexy LOC exception entry with a narrow rationale. MUST NOT rely on
   PR body prose alone, and MUST NOT hide the exception.
 - MUST NOT split files mechanically when the result obscures public contracts,

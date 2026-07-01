@@ -187,6 +187,7 @@ fn validator_cli_rejects_markdown_workflow_bare_imperatives() -> TestResult {
         "- Re-read files before trusting output.",
         "- Add the missing reference.",
         "- Append evidence to the handoff.",
+        "- If tags introduce a category, add it to the Categories section.",
         "- Inspect the current implementation.",
         "- Build the usable experience first.",
         "1. Update the index.",

@@ -75,7 +75,7 @@ But these updates are optional. If skipped (e.g., due to a crash or concurrent w
 
 1. MUST read the current `_index.md`
 2. MUST add a new row to the Contents table: `| [filename.md](filename.md) | Summary | tags | YYYY-MM-DD |`
-3. If the file's tags introduce a new category, add it to the Categories section
+3. If the file's tags introduce a new category, MUST add it to the Categories section
 4. MUST add entry to Recent Changes: `- YYYY-MM-DD: Added filename.md (brief note)`
 5. MUST update "Last updated" date
 
