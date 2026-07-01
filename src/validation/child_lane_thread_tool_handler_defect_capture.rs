@@ -161,9 +161,14 @@ fn has_substantive_route_value(value: &str) -> bool {
         && !["used", "routed", "available", "not used", "not routed"]
             .into_iter()
             .any(|weak_value| trimmed == weak_value)
-        && !["not used", "not routed"]
-            .into_iter()
-            .any(|weak_prefix| trimmed.starts_with(weak_prefix))
+        && ![
+            "not used",
+            "not routed",
+            "not actually used",
+            "not actually routed",
+        ]
+        .into_iter()
+        .any(|weak_phrase| trimmed.contains(weak_phrase))
         && trimmed
             .chars()
             .any(|character| character.is_ascii_alphabetic())

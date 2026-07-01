@@ -45,15 +45,18 @@ fn validator_rejects_negated_follow_up_issue_claim() -> Result<(), Box<dyn std::
 
 #[test]
 fn validator_rejects_long_negated_fallback_value() -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(&base_evidence(
+    for route in [
         "Fallback route: not used because the child thread was unreachable",
-        "Tracking issue: #205",
-    ))?;
+        "Fallback route: was not used because the child thread was unreachable",
+        "Fallback route: not actually used because the child thread was unreachable",
+    ] {
+        let output = run_ownership_validator(&base_evidence(route, "Tracking issue: #205"))?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject longer negated fallback route values"
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject longer negated fallback route values: {route}"
+        );
+    }
     Ok(())
 }
 
@@ -73,6 +76,27 @@ Maintainer reassignment: none
     assert!(
         output.status.success(),
         "validator should include handoff metadata that precedes the defect line\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_metadata_before_same_line_defect() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Fallback route: parent posted the handoff in the child thread
+Tracking issue: #205
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread after `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should include preceding handoff metadata before same-line defect captures\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

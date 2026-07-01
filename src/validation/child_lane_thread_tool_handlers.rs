@@ -155,7 +155,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
     let current_trimmed = evidence[line_start..current_line_end].trim_start();
     if !is_list_item(current_trimmed) {
         if has_defect_label(current_trimmed) {
-            return line_start;
+            return preceding_handoff_metadata_start(evidence, line_start);
         }
         let mut cursor = line_start;
         while cursor > 0 {
