@@ -152,6 +152,7 @@ fn role_instruction_surfaces(plugin_root: &Path) -> std::io::Result<Vec<PathBuf>
     let mut paths = BTreeSet::new();
     paths.insert(plugin_root.join("agents/openai.yaml"));
     collect_agent_toml_surfaces(plugin_root, &mut paths)?;
+    collect_agent_prompt_surfaces(plugin_root, &mut paths)?;
     Ok(paths.into_iter().collect())
 }
 
@@ -164,6 +165,31 @@ fn collect_agent_toml_surfaces(
         if path.extension().and_then(|ext| ext.to_str()) == Some("toml")
             && path.file_name().and_then(|name| name.to_str()) != Some("catalog.toml")
         {
+            paths.insert(path);
+        }
+    }
+    Ok(())
+}
+
+fn collect_agent_prompt_surfaces(
+    plugin_root: &Path,
+    paths: &mut BTreeSet<PathBuf>,
+) -> std::io::Result<()> {
+    collect_agent_prompt_surfaces_from(&plugin_root.join("skills"), paths)
+}
+
+fn collect_agent_prompt_surfaces_from(
+    root: &Path,
+    paths: &mut BTreeSet<PathBuf>,
+) -> std::io::Result<()> {
+    if !root.exists() {
+        return Ok(());
+    }
+    for entry in fs::read_dir(root)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            collect_agent_prompt_surfaces_from(&path, paths)?;
+        } else if path.ends_with("agents/openai.yaml") {
             paths.insert(path);
         }
     }
