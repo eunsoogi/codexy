@@ -176,6 +176,7 @@ fn starts_with_bare_imperative(segment: &str, strict_clauses: bool) -> bool {
     let lower = lower.strip_prefix("you ").unwrap_or(lower);
     let lower = lower.strip_prefix("the orchestrator ").unwrap_or(lower);
     let lower = lower.strip_prefix("orchestrator ").unwrap_or(lower);
+    let lower = lower.split_once("?** ").map_or(lower, |(_, rest)| rest);
     if lower.starts_with("stop condition") || lower.starts_with("stop/blocker") {
         return false;
     }
