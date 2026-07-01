@@ -3,8 +3,9 @@ use super::child_lane_thread_tool_handler_defect_capture::{
     has_handler_marker_and_tool_name_in_defect_capture, has_handler_marker_in_defect_capture,
 };
 use super::child_lane_thread_tool_handler_scope::{
-    capture_end_before_unrelated_evidence, is_handoff_metadata_line,
-    preceding_handoff_metadata_start, previous_nonempty_block_start, scope_start_until_blank,
+    capture_end_before_unrelated_evidence, following_handoff_metadata_has,
+    is_handoff_metadata_line, is_list_item, preceding_handoff_metadata_start,
+    previous_nonempty_block_start, scope_start_until_blank,
 };
 
 pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
@@ -154,6 +155,11 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
     let current_line_end = line_end(evidence, line_start);
     let current_trimmed = evidence[line_start..current_line_end].trim_start();
     if !is_list_item(current_trimmed) {
+        if following_handoff_metadata_has(evidence, line_start, |line| {
+            has_defect_label(line) && !has_absent_defect_capture(line)
+        }) {
+            return preceding_handoff_metadata_start(evidence, line_start);
+        }
         if has_defect_label(current_trimmed) {
             return preceding_handoff_metadata_start(evidence, line_start);
         }
@@ -175,7 +181,6 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
         }
         return line_start;
     }
-
     let mut capture_start = line_start;
     let mut cursor = line_start;
     while cursor > 0 {
@@ -195,11 +200,6 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
         }
     }
     preceding_handoff_metadata_start(evidence, capture_start)
-}
-
-fn is_list_item(line: &str) -> bool {
-    let trimmed = line.trim_start();
-    trimmed.starts_with("- ") || trimmed.starts_with("* ")
 }
 
 fn is_handler_missing_list_item(line: &str) -> bool {

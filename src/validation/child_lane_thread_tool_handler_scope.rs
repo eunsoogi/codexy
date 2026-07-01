@@ -126,6 +126,35 @@ pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize
     capture_start
 }
 
+pub(super) fn following_handoff_metadata_has(
+    evidence: &str,
+    line_start: usize,
+    predicate: impl Fn(&str) -> bool,
+) -> bool {
+    let mut cursor = line_end(evidence, line_start);
+    while cursor < evidence.len() {
+        let next_start = cursor + 1;
+        let next_end = line_end(evidence, next_start);
+        let line = &evidence[next_start..next_end];
+        if line.trim().is_empty() {
+            return false;
+        }
+        if predicate(line) {
+            return true;
+        }
+        if !is_handoff_metadata_line(line) {
+            return false;
+        }
+        cursor = next_end;
+    }
+    false
+}
+
+pub(super) fn is_list_item(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with("- ") || trimmed.starts_with("* ")
+}
+
 fn line_key_value(line: &str) -> Option<(&str, &str)> {
     let trimmed = line.trim_start();
     let trimmed = trimmed
