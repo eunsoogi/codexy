@@ -1,6 +1,28 @@
 use std::process::Command;
 
 #[test]
+fn readiness_guard_context_includes_expected_pr_flag() -> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+
+    let output = Command::new(&script).arg("UserPromptSubmit").output()?;
+    assert!(
+        output.status.success(),
+        "guard context should emit successfully\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let hook_json: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    let context = hook_json["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .ok_or("guard context should include additionalContext")?;
+    assert!(
+        context.contains("--check-merge-message --expected-pr PR_NUMBER"),
+        "merge guidance must include the required expected PR flag: {context}"
+    );
+    Ok(())
+}
+
+#[test]
 fn readiness_guard_checks_pr_titles() -> Result<(), Box<dyn std::error::Error>> {
     let script = readiness_guard();
 

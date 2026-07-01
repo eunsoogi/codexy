@@ -54,7 +54,7 @@ event="${1:-}"
 case "$event" in
   UserPromptSubmit)
     cat <<JSON
-{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy readiness guard: before PR readiness, run hooks/codexy-readiness-guard.sh --check-pr-title with the exact PR title. Before merge readiness, run hooks/codexy-readiness-guard.sh --check-merge-message with the explicit squash merge message and expected PR number."}}
+{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy readiness guard: before PR readiness, run hooks/codexy-readiness-guard.sh --check-pr-title with the exact PR title. Before merge readiness, run hooks/codexy-readiness-guard.sh --check-merge-message --expected-pr PR_NUMBER with the explicit squash merge message."}}
 JSON
     exit 0
     ;;
