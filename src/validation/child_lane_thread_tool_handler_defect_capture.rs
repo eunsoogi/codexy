@@ -104,10 +104,26 @@ fn has_negated_fallback_route_field(clause: &str) -> bool {
 }
 
 fn has_negated_tracking_issue(clause: &str) -> bool {
-    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|has not been filed|hasn't been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|wasn't filed|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
+    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|has not been created|hasn't been created|has not been filed|hasn't been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|wasn't created|wasn't filed|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
     NEGATED_TRACKING_ISSUE_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
+        || has_negated_issue_lifecycle(clause)
+}
+
+fn has_negated_issue_lifecycle(clause: &str) -> bool {
+    let normalized = clause
+        .replace("wasn't", "was not")
+        .replace("hasn't", "has not")
+        .replace("hadn't", "had not");
+    ["was", "has", "had"].into_iter().any(|auxiliary| {
+        ["created", "filed"].into_iter().any(|verb| {
+            normalized.contains(&format!("issue {auxiliary} not been {verb}"))
+                || normalized.contains(&format!("issue {auxiliary} not yet been {verb}"))
+                || normalized.contains(&format!("issue {auxiliary} not {verb}"))
+                || normalized.contains(&format!("issue {auxiliary} not yet {verb}"))
+        })
+    })
 }
 
 fn has_placeholder_or_pending_value(clause: &str) -> bool {
