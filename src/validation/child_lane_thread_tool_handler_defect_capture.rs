@@ -70,7 +70,7 @@ fn has_concrete_fallback_route(clause: &str) -> bool {
         && !has_placeholder_or_pending_value(clause)
         && clause
             .split_once(':')
-            .is_none_or(|(_, value)| !value.trim().is_empty())
+            .is_some_and(|(_, value)| has_substantive_route_value(value))
 }
 
 fn has_explicit_no_route(clause: &str) -> bool {
@@ -82,6 +82,8 @@ fn has_explicit_no_route(clause: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| clause.contains(marker))
+        && !has_negated_fallback_route(clause)
+        && !has_placeholder_or_pending_value(clause)
 }
 
 fn has_negated_fallback_route(clause: &str) -> bool {
@@ -144,6 +146,20 @@ fn has_placeholder_or_pending_value(clause: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| clause.contains(marker))
+}
+
+fn has_substantive_route_value(value: &str) -> bool {
+    let trimmed = value.trim();
+    !trimmed.is_empty()
+        && !["used", "routed", "available"]
+            .into_iter()
+            .any(|weak_value| trimmed == weak_value)
+        && trimmed
+            .chars()
+            .any(|character| character.is_ascii_alphabetic())
+        && (trimmed.split_whitespace().nth(1).is_some()
+            || trimmed.contains("->")
+            || trimmed.contains('/'))
 }
 
 fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
