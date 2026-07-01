@@ -128,10 +128,8 @@ json_has_repository_label_taxonomy() {
     return 0
   fi
   repository=$(top_level_json_field_value "$json_text" "repository")
-  case "$repository" in
-    \{*'"labels"'*\""$graph_key"\"*'"name"'*) return 0 ;;
-    *) return 1 ;;
-  esac
+  repository_labels=$(top_level_json_field_value "$repository" "labels")
+  json_value_has_label_name "$repository_labels"
 }
 
 json_has_pr_label_evidence() {
