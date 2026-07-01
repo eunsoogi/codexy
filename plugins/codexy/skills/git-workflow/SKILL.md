@@ -243,8 +243,7 @@ stage only resolved files and run relevant verification.
   status evidence, or fallback evidence.
 - Non-trivial atomic work includes packaged Codexy reviewer agent findings or
   approval from `plugins/codexy/agents/codexy-sentinel.toml`.
-- PR body has structured sections and ends with exactly one
-  `Fixes #<issue-number>` line when a matching issue exists.
+- PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
 - PR title has been validated with `--check-pr-title`.
 - Expected Codex review completed on the latest PR head, with no unresolved
   actionable Codex feedback.
