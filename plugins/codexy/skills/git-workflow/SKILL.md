@@ -158,7 +158,6 @@ before opening a PR unless a maintainer explicitly scopes an exception.
 
 PR titles MUST use Conventional Commit style. Example:
 `chore(repo): repository governance`.
-
 Before PR readiness or merge readiness, MUST validate the exact PR title:
 
 ```sh
