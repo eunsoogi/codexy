@@ -79,17 +79,23 @@ fn issue_nodes(issues: Option<&Value>) -> Vec<&Value> {
 }
 
 fn repository_label_taxonomy(pr_state: &Value) -> Option<Vec<String>> {
-    pr_state
+    let mut labels = pr_state
         .get("repositoryLabels")
-        .or_else(|| pr_state.pointer("/repository/labels"))
+        .into_iter()
+        .chain(pr_state.pointer("/repository/labels"));
+    labels
+        .find(|labels| {
+            matches!(labels, Value::Array(_))
+                || matches!(labels.get("nodes"), Some(Value::Array(_)))
+        })
         .map(|labels| label_names(Some(labels)))
 }
 
 fn is_open_pr(pr_state: &Value) -> bool {
-    pr_state
-        .get("state")
-        .and_then(Value::as_str)
-        .is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))
+    matches!(
+        pr_state.get("state").and_then(Value::as_str),
+        Some(state) if state.eq_ignore_ascii_case("OPEN")
+    )
 }
 
 fn is_codexy_lane(pr_state: &Value) -> bool {
@@ -112,28 +118,15 @@ fn string_field(value: &Value, keys: &[&str]) -> Vec<String> {
 fn has_label_consideration_evidence(handoff: &str) -> bool {
     handoff.lines().any(|line| {
         let line = line.to_ascii_lowercase();
-        ["labels considered", "label consideration"]
-            .into_iter()
+        "labels considered|label consideration"
+            .split('|')
             .any(|phrase| line.contains(phrase))
-            && [
-                "no matching",
-                "no-match",
-                "no applicable",
-                "not applicable",
-                "not-applicable",
-            ]
-            .into_iter()
-            .any(|phrase| line.contains(phrase))
-            && ![
-                "missing",
-                "empty",
-                "absent",
-                "not applied",
-                "without",
-                "no labels",
-            ]
-            .into_iter()
-            .any(|phrase| line.contains(phrase))
+            && "no matching|no-match|no applicable|not applicable|not-applicable"
+                .split('|')
+                .any(|phrase| line.contains(phrase))
+            && !"missing|empty|absent|not applied|without|no labels"
+                .split('|')
+                .any(|phrase| line.contains(phrase))
     })
 }
 

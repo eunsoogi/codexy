@@ -82,12 +82,7 @@ fn validator_accepts_readiness_with_codexy_lane_labels() -> TestResult {
         r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[{"name":"bug"},{"name":"review"}],"closingIssuesReferences":[{"number":180,"labels":[{"name":"workflow"},{"name":"urgent"}]}]}"#,
     )?;
 
-    assert!(
-        output.status.success(),
-        "validator should accept readiness evidence with repository-specific labels\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert_accepted(&output, "repository-specific labels should accept");
     Ok(())
 }
 
@@ -98,12 +93,7 @@ fn validator_accepts_graphql_label_nodes() -> TestResult {
         r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":{"nodes":[{"name":"bug"},{"name":"review"}]},"closingIssuesReferences":{"nodes":[{"number":180,"labels":{"nodes":[{"name":"workflow"},{"name":"urgent"}]}}]}}"#,
     )?;
 
-    assert!(
-        output.status.success(),
-        "validator should accept GraphQL nodes label evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert_accepted(&output, "GraphQL nodes label evidence should accept");
     Ok(())
 }
 
@@ -133,13 +123,18 @@ fn validator_accepts_codexy_readiness_with_empty_captured_repository_taxonomy() 
 #[test]
 fn validator_rejects_unlabeled_pr_even_with_no_applicable_label_claim_when_repo_labels_exist()
 -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "PR-readiness evidence: all gates passed. Labels considered: no applicable labels for this lane.\n",
+    for pr_state in [
         r#"{"number":209,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/209-example-unlabeled-pr","repository":"eunsoogi/codexy","url":"https://github.com/eunsoogi/codexy/pull/209","labels":[],"repositoryLabels":[{"name":"type/fix"},{"name":"status/review"},{"name":"area/workflow"}],"closingIssuesReferences":[{"number":207,"labels":[{"name":"type/fix"}]}]}"#,
-    )?;
+        r#"{"number":209,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/209-example-unlabeled-pr","repository":"eunsoogi/codexy","url":"https://github.com/eunsoogi/codexy/pull/209","labels":[],"repositoryLabels":null,"repository":{"labels":{"nodes":[{"name":"type/fix"},{"name":"status/review"}]}},"closingIssuesReferences":[{"number":207,"labels":[{"name":"type/fix"}]}]}"#,
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "PR-readiness evidence: all gates passed. Labels considered: no applicable labels for this lane.\n",
+            pr_state,
+        )?;
 
-    assert_rejected(&output, "#208/#209-style unlabeled PR should reject");
-    assert!(String::from_utf8_lossy(&output.stderr).contains("PR labels"));
+        assert_rejected(&output, "#208/#209-style unlabeled PR should reject");
+        assert!(String::from_utf8_lossy(&output.stderr).contains("PR labels"));
+    }
     Ok(())
 }
 
