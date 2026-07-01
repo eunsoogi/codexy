@@ -4,9 +4,12 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context as _, Result, bail};
+use regex::Regex;
 use serde_json::Value;
 
 use crate::paths::display_relative;
+
+use super::command;
 
 const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "codegraph MCP before direct file reads",
@@ -18,6 +21,14 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "unavailable/not applicable evidence",
     "$dreaming",
     "compacted or resumed context hygiene",
+    "--check-completion-handoff",
+    "repositoryLabels",
+];
+
+const REQUIRED_READINESS_CONTEXT: &[&str] = &[
+    "PR label readiness enforcement (#210)",
+    "--check-completion-handoff",
+    "repositoryLabels",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {
@@ -36,6 +47,10 @@ pub(super) fn requirement_message(fragment: &str) -> &str {
         "Use Codexy LSP" | "lsp_status" => "must require LSP evidence",
         "unavailable/not applicable evidence" => "must require LSP fallback evidence",
         "$dreaming" | "compacted or resumed context hygiene" => "must require dreaming hygiene",
+        "--check-completion-handoff" | "repositoryLabels" => {
+            "must require PR label readiness validation"
+        }
+        "PR label readiness enforcement (#210)" => "must require PR label readiness enforcement",
         _ => "must include required context",
     }
 }
@@ -86,4 +101,106 @@ pub(super) fn emitted_session_start_context(
                 display_relative(script_path)
             )
         })
+}
+
+pub(super) fn check_session_start_context(
+    path: &Path,
+    plugin_root: &Path,
+    command_text: &str,
+    timeout_secs: u64,
+    required_event: &str,
+    session_start_script: &str,
+) -> Result<()> {
+    let (hook_path, arguments) = command::plugin_root_entrypoint_path(command_text).with_context(
+        || {
+            format!(
+                "{} {required_event} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
+                display_relative(path)
+            )
+        },
+    )?;
+    if hook_path != Path::new(session_start_script) {
+        bail!(
+            "{} {required_event} hook command must run {session_start_script}",
+            display_relative(path)
+        );
+    }
+    if !arguments
+        .split_ascii_whitespace()
+        .eq(std::iter::once(required_event))
+    {
+        bail!(
+            "{} {required_event} hook command must invoke {required_event} exactly",
+            display_relative(path)
+        );
+    }
+    let script_path = plugin_root.join(&hook_path);
+    let context = emitted_session_start_context(&script_path, required_event, timeout_secs)?;
+    for fragment in required_session_start_context() {
+        if !context.contains(fragment) {
+            bail!(
+                "{} {required_event} emitted additionalContext {}: {}",
+                display_relative(path),
+                requirement_message(fragment),
+                display_relative(&script_path)
+            );
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn check_readiness_context(
+    path: &Path,
+    plugin_root: &Path,
+    command_text: &str,
+    timeout_secs: u64,
+    readiness_event: &str,
+) -> Result<()> {
+    let (hook_path, arguments) = command::plugin_root_entrypoint_path(command_text).with_context(|| {
+        format!(
+            "{} {readiness_event} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
+            display_relative(path)
+        )
+    })?;
+    if !arguments
+        .split_ascii_whitespace()
+        .eq(std::iter::once(readiness_event))
+    {
+        bail!(
+            "{} {readiness_event} hook command must invoke {readiness_event} exactly",
+            display_relative(path)
+        );
+    }
+    let script_path = plugin_root.join(&hook_path);
+    let context = emitted_session_start_context(&script_path, readiness_event, timeout_secs)?;
+    for fragment in REQUIRED_READINESS_CONTEXT {
+        if !context.contains(fragment) {
+            bail!(
+                "{} {readiness_event} emitted additionalContext {}: {}",
+                display_relative(path),
+                requirement_message(fragment),
+                display_relative(&script_path)
+            );
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn session_start_covers_resume_and_compact(
+    path: &Path,
+    matcher: Option<&str>,
+) -> Result<bool> {
+    let Some(matcher) = matcher else {
+        return Ok(true);
+    };
+    if matcher.is_empty() || matcher == "*" {
+        return Ok(true);
+    }
+    let regex = Regex::new(matcher).with_context(|| {
+        format!(
+            "{} SessionStart.matcher must be a valid regex",
+            display_relative(path)
+        )
+    })?;
+    Ok(regex.is_match("resume") && regex.is_match("compact"))
 }
