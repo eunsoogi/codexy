@@ -31,7 +31,7 @@ check_conventional_subject() {
   prefix=${subject%%: *}
   summary=${subject#*: }
   case "$summary" in
-    "" | *[![:space:]]*) ;;
+    *[![:space:]]*) ;;
     *) return 1 ;;
   esac
   case "$prefix" in

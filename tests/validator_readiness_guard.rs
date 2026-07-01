@@ -96,6 +96,20 @@ fn readiness_guard_rejects_whitespace_only_summaries() -> Result<(), Box<dyn std
         String::from_utf8_lossy(&bad_title.stdout)
     );
 
+    let empty_title = Command::new(&script)
+        .args(["--check-pr-title", "--pr-title", "fix: "])
+        .output()?;
+    assert!(
+        !empty_title.status.success(),
+        "guard should reject empty PR title summaries"
+    );
+    assert!(
+        String::from_utf8_lossy(&empty_title.stdout)
+            .contains("PR title must use Conventional Commit style"),
+        "unexpected stdout: {}",
+        String::from_utf8_lossy(&empty_title.stdout)
+    );
+
     let bad_merge_message = Command::new(&script)
         .args([
             "--check-merge-message",
@@ -114,6 +128,26 @@ fn readiness_guard_rejects_whitespace_only_summaries() -> Result<(), Box<dyn std
             .contains("merge commit subject must use Conventional Commit style"),
         "unexpected stdout: {}",
         String::from_utf8_lossy(&bad_merge_message.stdout)
+    );
+
+    let empty_merge_message = Command::new(&script)
+        .args([
+            "--check-merge-message",
+            "--expected-pr",
+            "204",
+            "--merge-message",
+            "fix:  (#204)\n\nFixes #206\n",
+        ])
+        .output()?;
+    assert!(
+        !empty_merge_message.status.success(),
+        "guard should reject empty merge subject summaries"
+    );
+    assert!(
+        String::from_utf8_lossy(&empty_merge_message.stdout)
+            .contains("merge commit subject must use Conventional Commit style"),
+        "unexpected stdout: {}",
+        String::from_utf8_lossy(&empty_merge_message.stdout)
     );
     Ok(())
 }
