@@ -18,6 +18,8 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "unavailable/not applicable evidence",
     "$dreaming",
     "compacted or resumed context hygiene",
+    "--check-completion-handoff",
+    "repositoryLabels",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {
@@ -36,6 +38,9 @@ pub(super) fn requirement_message(fragment: &str) -> &str {
         "Use Codexy LSP" | "lsp_status" => "must require LSP evidence",
         "unavailable/not applicable evidence" => "must require LSP fallback evidence",
         "$dreaming" | "compacted or resumed context hygiene" => "must require dreaming hygiene",
+        "--check-completion-handoff" | "repositoryLabels" => {
+            "must require PR label readiness validation"
+        }
         _ => "must include required context",
     }
 }

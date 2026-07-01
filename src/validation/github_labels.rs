@@ -3,28 +3,27 @@ use serde_json::Value;
 use super::codex_review_handoff::has_negative_label_value;
 
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
-    if !claims_label_guarded_handoff(handoff) {
+    if !(claims_pr_readiness(handoff) || claims_completion(handoff)) {
         return Vec::new();
     }
     let pr_state = match serde_json::from_str::<Value>(pr_state) {
         Ok(value) => value,
         Err(error) => return vec![format!("GitHub label PR state JSON error: {error}")],
     };
-    if !is_open_pr(&pr_state) {
-        return Vec::new();
-    }
-    if !is_codexy_lane(&pr_state) {
+    if !is_open_pr(&pr_state) || !is_codexy_lane(&pr_state) {
         return Vec::new();
     }
     if has_label_consideration_evidence(handoff) {
-        return Vec::new();
+        match repository_label_taxonomy(&pr_state) {
+            Some(labels) if labels.is_empty() => return Vec::new(),
+            None => return vec!["GitHub label evidence missing repositoryLabels taxonomy".into()],
+            _ => {}
+        }
     }
     let mut errors = Vec::new();
-    check_label_evidence(
-        "PR labels",
-        &label_names(pr_state.get("labels")),
-        &mut errors,
-    );
+    if label_names(pr_state.get("labels")).is_empty() {
+        errors.push("PR labels missing label application evidence".into());
+    }
     match issue_nodes(pr_state.get("closingIssuesReferences")) {
         issues if !issues.is_empty() => {
             for issue in issues {
@@ -32,27 +31,17 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
                     .get("number")
                     .and_then(Value::as_u64)
                     .map_or_else(|| "<unknown>".to_owned(), |number| format!("#{number}"));
-                check_label_evidence(
-                    &format!("issue {number} labels"),
-                    &label_names(issue.get("labels")),
-                    &mut errors,
-                );
+                if label_names(issue.get("labels")).is_empty() {
+                    errors.push(format!(
+                        "issue {number} labels missing label application evidence"
+                    ));
+                }
             }
         }
         _ => errors
             .push("GitHub label evidence missing closingIssuesReferences with issue labels".into()),
     }
     errors
-}
-
-fn claims_label_guarded_handoff(handoff: &str) -> bool {
-    claims_pr_readiness(handoff) || claims_completion(handoff)
-}
-
-fn check_label_evidence(surface: &str, labels: &[String], errors: &mut Vec<String>) {
-    if labels.is_empty() {
-        errors.push(format!("{surface} missing label application evidence"));
-    }
 }
 
 fn label_names(labels: Option<&Value>) -> Vec<String> {
@@ -87,6 +76,13 @@ fn issue_nodes(issues: Option<&Value>) -> Vec<&Value> {
             .collect(),
         _ => Vec::new(),
     }
+}
+
+fn repository_label_taxonomy(pr_state: &Value) -> Option<Vec<String>> {
+    pr_state
+        .get("repositoryLabels")
+        .or_else(|| pr_state.pointer("/repository/labels"))
+        .map(|labels| label_names(Some(labels)))
 }
 
 fn is_open_pr(pr_state: &Value) -> bool {
