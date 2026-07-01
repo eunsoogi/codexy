@@ -34,6 +34,12 @@ pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
             && crate::validation::instruction_policy_purpose::has_prohibition_marker(&lower, marker)
     })
 }
+
+pub(super) fn has_forbidden_actions_without_must_not(line: &str) -> bool {
+    let line = line.trim_start();
+    line.starts_with("Forbidden actions:") && !line.contains("MUST NOT")
+}
+
 pub(super) fn starts_with_inverted_prohibition(line: &str) -> bool {
     let line = line.trim_start();
     ["MUST remove", "MUST rewrite", "MUST add"]

@@ -43,6 +43,8 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
         let line_segments = checkable_line_segments(normalized);
         if line_segments.iter().any(|segment| {
             instruction_policy_match::has_prohibition_without_must_not(segment)
+                || custom_agent_toml
+                    && instruction_policy_match::has_forbidden_actions_without_must_not(segment)
                 || previous_prohibition_list
                     && instruction_policy_match::starts_with_inverted_prohibition(segment)
         }) {
