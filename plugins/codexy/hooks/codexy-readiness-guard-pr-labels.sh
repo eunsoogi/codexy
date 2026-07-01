@@ -127,8 +127,9 @@ json_has_repository_label_taxonomy() {
   if json_value_has_label_name "$repository_labels"; then
     return 0
   fi
-  case "$json_text" in
-    *'"repository"'*'"labels"'*\""$graph_key"\"*'"name"'*) return 0 ;;
+  repository=$(top_level_json_field_value "$json_text" "repository")
+  case "$repository" in
+    \{*'"labels"'*\""$graph_key"\"*'"name"'*) return 0 ;;
     *) return 1 ;;
   esac
 }

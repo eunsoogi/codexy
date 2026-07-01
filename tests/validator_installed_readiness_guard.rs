@@ -83,7 +83,7 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
     let unlabeled = write_pr_state(
         temp.path(),
         "unlabeled.json",
-        r#"{"number":216,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repository":{"labels":{"nodes":[{"name":"type/fix"},{"name":"status/review"}]}}}"#,
+        r#"{"number":216,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":{"nodes":[{"name":"type/fix"},{"name":"status/review"}]}}"#,
     )?;
     let bad = Command::new(&script)
         .args([
