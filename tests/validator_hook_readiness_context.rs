@@ -99,6 +99,33 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit"}}'
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_readiness_context_without_label_gate()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    set_readiness_script(
+        &plugin_root,
+        r#"#!/bin/sh
+printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"PR label readiness enforcement (#210) placeholder only"}}'
+"#,
+    )?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject readiness context without label gate command"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("must require PR label readiness validation"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn set_readiness_script(
     plugin_root: &std::path::Path,
     script: &str,
