@@ -1,8 +1,88 @@
 json_is_structurally_complete_object() {
-  command -v jq >/dev/null 2>&1 || return 1
-  printf '%s\n' "$1" | jq -e 'type == "object"' >/dev/null 2>&1
+  printf '%s\n' "$1" | awk '
+function ws() { while (i <= n && substr(s, i, 1) ~ /[[:space:]]/) i++ }
+function str(    c) {
+  if (substr(s, i, 1) != "\"") return 0
+  i++
+  while (i <= n) {
+    c = substr(s, i, 1)
+    if (c == "\\") {
+      i += 2
+    } else if (c == "\"") {
+      i++
+      return 1
+    } else {
+      i++
+    }
+  }
+  return 0
 }
-
+function lit(t) { if (substr(s, i, length(t)) != t) return 0; i += length(t); return 1 }
+function num(    start) {
+  start = i
+  if (substr(s, i, 1) == "-") i++
+  while (i <= n && substr(s, i, 1) ~ /[0-9]/) i++
+  if (substr(s, i, 1) == ".") {
+    i++
+    while (i <= n && substr(s, i, 1) ~ /[0-9]/) i++
+  }
+  if (substr(s, i, 1) ~ /[eE]/) {
+    i++
+    if (substr(s, i, 1) ~ /[+-]/) i++
+    while (i <= n && substr(s, i, 1) ~ /[0-9]/) i++
+  }
+  return i > start
+}
+function val(    c) {
+  ws()
+  c = substr(s, i, 1)
+  if (c == "{") return obj()
+  if (c == "[") return arr()
+  if (c == "\"") return str()
+  if (c == "t") return lit("true")
+  if (c == "f") return lit("false")
+  if (c == "n") return lit("null")
+  return num()
+}
+function arr() {
+  i++
+  ws()
+  if (substr(s, i, 1) == "]") { i++; return 1 }
+  while (val()) {
+    ws()
+    if (substr(s, i, 1) == "]") { i++; return 1 }
+    if (substr(s, i, 1) != ",") return 0
+    i++
+  }
+  return 0
+}
+function obj() {
+  i++
+  ws()
+  if (substr(s, i, 1) == "}") { i++; return 1 }
+  while (str()) {
+    ws()
+    if (substr(s, i, 1) != ":") return 0
+    i++
+    if (!val()) return 0
+    ws()
+    if (substr(s, i, 1) == "}") { i++; return 1 }
+    if (substr(s, i, 1) != ",") return 0
+    i++
+    ws()
+  }
+  return 0
+}
+{ s = $0 }
+END {
+  n = length(s); i = 1; ws()
+  if (substr(s, i, 1) != "{") exit 1
+  if (!obj()) exit 1
+  ws()
+  exit(i > n ? 0 : 1)
+}
+'
+}
 top_level_json_field_value() {
   json_text="$1"
   field_name="$2"
