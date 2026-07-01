@@ -23,6 +23,16 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
             "repository label nodes are strings",
         ),
         (
+            "escaped-repository-unlabeled.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi\/codexy","labels":[],"repositoryLabels":["type/fix"]}"#,
+            "escaped repository identity still scopes to Codexy",
+        ),
+        (
+            "escaped-url-unlabeled.json",
+            r#"{"number":209,"state":"OPEN","url":"https:\/\/github.com\/eunsoogi\/codexy\/pull\/209","labels":[],"repositoryLabels":["type/fix"]}"#,
+            "escaped URL identity still scopes to Codexy",
+        ),
+        (
             "fallback-unlabeled.json",
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","repositoryLabels":[],"labels":[],"repository":{"labels":{"nodes":[{"name":"type/fix"}]}}}"#,
             "fallback repository labels exist",

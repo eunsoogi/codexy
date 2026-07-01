@@ -107,9 +107,10 @@ json_has_pr_label_evidence() {
 pr_state_file="${1:-}"
 [ -n "$pr_state_file" ] || fail "--pr-state-file is required"
 [ -f "$pr_state_file" ] || fail "--pr-state-file must point to a readable file"
-pr_state_json=$(tr -d '\n\r' < "$pr_state_file") || fail "could not read --pr-state-file"
+pr_state_json=$(cat "$pr_state_file") || fail "could not read --pr-state-file"
 json_is_structurally_complete_object "$pr_state_json" ||
   fail "PR state malformed JSON evidence"
+pr_state_json=$(printf '%s' "$pr_state_json" | tr -d '\n\r')
 pr_state_state=$(json_string_field_value "$pr_state_json" "state")
 [ -n "$pr_state_state" ] || fail "PR state missing state evidence"
 json_has_pr_identity "$pr_state_json" || fail "PR state missing repository identity evidence"
