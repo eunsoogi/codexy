@@ -36,18 +36,20 @@ fn validator_cli_check_roles_rejects_forbidden_actions_without_must_not() -> Tes
     let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
     let sentinel = std::fs::read_to_string(&sentinel_path)?;
     assert!(sentinel.contains("Forbidden actions: MUST NOT edit files"));
-    std::fs::write(
-        &sentinel_path,
-        sentinel.replace(
-            "Forbidden actions: MUST NOT edit files",
-            "Forbidden actions: edit files",
-        ),
-    )?;
+    for replacement in [
+        "Forbidden actions: edit files",
+        "Forbidden actions: edit files, MUST NOT merge",
+    ] {
+        std::fs::write(
+            &sentinel_path,
+            sentinel.replace("Forbidden actions: MUST NOT edit files", replacement),
+        )?;
 
-    let output = validator(&plugin_root, "--check-roles")?;
+        let output = validator(&plugin_root, "--check-roles")?;
 
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("prohibitions must use MUST NOT"));
+        assert!(!output.status.success());
+        assert!(stderr(&output).contains("prohibitions must use MUST NOT"));
+    }
     Ok(())
 }
 

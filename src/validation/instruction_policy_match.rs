@@ -36,8 +36,9 @@ pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
 }
 
 pub(super) fn has_forbidden_actions_without_must_not(line: &str) -> bool {
-    let line = line.trim_start();
-    line.starts_with("Forbidden actions:") && !line.contains("MUST NOT")
+    line.trim_start()
+        .strip_prefix("Forbidden actions:")
+        .is_some_and(|actions| !actions.trim_start().starts_with("MUST NOT"))
 }
 
 pub(super) fn starts_with_inverted_prohibition(line: &str) -> bool {
