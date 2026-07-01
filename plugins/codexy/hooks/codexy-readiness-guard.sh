@@ -50,20 +50,114 @@ check_conventional_subject() {
   esac
 }
 
-find_validator() {
-  if [ -n "${CODEXY_VALIDATE:-}" ]; then
-    printf '%s\n' "$CODEXY_VALIDATE"
-    return 0
-  fi
+is_closing_keyword() {
+  keyword=${1%:}
+  keyword=$(printf '%s' "$keyword" | tr '[:upper:]' '[:lower:]')
+  case "$keyword" in
+    close | closes | closed | fix | fixes | fixed | resolve | resolves | resolved) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
-  script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
-  repo_root=$(CDPATH= cd "$script_dir/../../.." && pwd)
-  if [ -x "$repo_root/scripts/validate-plugin-config" ]; then
-    printf '%s\n' "$repo_root/scripts/validate-plugin-config"
-    return 0
-  fi
+is_issue_number() {
+  case "$1" in
+    "" | *[!0123456789]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
 
-  command -v codexy-validate
+is_owner_repo_reference() {
+  case "$1" in
+    */*) ;;
+    *) return 1 ;;
+  esac
+  owner=${1%%/*}
+  repo=${1#*/}
+  case "$owner" in
+    "" | *[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-]*) return 1 ;;
+  esac
+  case "$repo" in
+    "" | *[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-]*) return 1 ;;
+  esac
+}
+
+is_closing_issue_reference() {
+  candidate="$1"
+  while :; do
+    case "$candidate" in
+      *, | *.) candidate=${candidate%?} ;;
+      *) break ;;
+    esac
+  done
+  case "$candidate" in
+    \#*)
+      is_issue_number "${candidate#\#}"
+      return
+      ;;
+    *\#*)
+      owner_repo=${candidate%#*}
+      issue=${candidate##*#}
+      is_owner_repo_reference "$owner_repo" && is_issue_number "$issue"
+      return
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+closing_reference_count() {
+  count=0
+  while [ "$#" -gt 0 ]; do
+    token="$1"
+    shift
+    if ! is_closing_keyword "$token"; then
+      continue
+    fi
+    for candidate in "$@"; do
+      if is_closing_issue_reference "$candidate"; then
+        count=$((count + 1))
+        continue
+      fi
+      break
+    done
+  done
+  printf '%s\n' "$count"
+}
+
+check_merge_message() {
+  subject=${merge_message%%"
+"*}
+  expected_suffix=" (#$expected_pr)"
+  case "$subject" in
+    *"$expected_suffix") ;;
+    *) fail "merge commit subject must end with the expected PR suffix: (#$expected_pr)" ;;
+  esac
+  subject=${subject%"$expected_suffix"}
+  check_conventional_subject "$subject" ||
+    fail "merge commit subject must use Conventional Commit style"
+
+  old_ifs=$IFS
+  IFS='
+'
+  set -- $merge_message
+  IFS=$old_ifs
+  closing_count=0
+  last_non_empty=""
+  for line do
+    case "$line" in
+      *[![:space:]]*) last_non_empty="$line" ;;
+    esac
+    set -- $line
+    line_count=$(closing_reference_count "$@")
+    closing_count=$((closing_count + line_count))
+  done
+  if [ -n "$expected_issue" ]; then
+    expected_line="Fixes #$expected_issue"
+    if [ "$closing_count" -ne 1 ] || [ "$last_non_empty" != "$expected_line" ]; then
+      fail "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #$expected_issue"
+    fi
+  elif [ "$closing_count" -ne 0 ]; then
+    fail "merge commit message must not contain closing references"
+  fi
 }
 
 event="${1:-}"
@@ -146,23 +240,7 @@ case "$mode" in
       merge_message=$(cat "$merge_message_file")
     fi
     [ -n "$merge_message" ] || fail "--merge-message or --merge-message-file is required"
-    validator=$(find_validator) ||
-      fail "merge-message validator is required for readiness guard"
-    if [ -n "$merge_message_file" ]; then
-      if [ -n "$expected_issue" ]; then
-        "$validator" --check-merge-message --expected-pr "$expected_pr" \
-          --expected-issue "$expected_issue" --merge-message-file "$merge_message_file"
-      else
-        "$validator" --check-merge-message --expected-pr "$expected_pr" \
-          --merge-message-file "$merge_message_file"
-      fi
-    elif [ -n "$expected_issue" ]; then
-      "$validator" --check-merge-message --expected-pr "$expected_pr" \
-        --expected-issue "$expected_issue" --merge-message "$merge_message"
-    else
-      "$validator" --check-merge-message --expected-pr "$expected_pr" \
-        --merge-message "$merge_message"
-    fi
+    check_merge_message
     ;;
   *)
     fail "--check-pr-title or --check-merge-message is required"
