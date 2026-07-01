@@ -38,6 +38,7 @@ fn validator_cli_check_roles_rejects_forbidden_actions_without_must_not() -> Tes
     assert!(sentinel.contains("Forbidden actions: MUST NOT edit files"));
     for replacement in [
         "Forbidden actions: edit files",
+        "Forbidden actions: edit files, merge, close issues",
         "Forbidden actions: edit files, MUST NOT merge",
     ] {
         std::fs::write(

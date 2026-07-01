@@ -152,7 +152,7 @@ fn checkable_wrapped_continuations(line: &str) -> Vec<&str> {
     {
         return vec![line];
     }
-    [". ", "; ", " then "]
+    [". ", "; ", ", ", " then ", " and "]
         .iter()
         .filter_map(|separator| {
             line.split_once(separator)

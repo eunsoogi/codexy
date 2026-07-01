@@ -170,7 +170,7 @@ background worker instead of doing it inline inside every tool hook.
 
 Codex plugins can bundle hooks in `hooks/hooks.json`. Plugin-bundled hooks still
 MUST require the user to review/trust them. The bundled llm-wiki Codex hook MUST
-call the copied helper in the plugin root and use `--if-enabled`, so users can
+call the copied helper in the plugin root and MUST use `--if-enabled`, so users can
 turn capture off with `session disable` without editing hook manifests.
 
 Useful Codex events:

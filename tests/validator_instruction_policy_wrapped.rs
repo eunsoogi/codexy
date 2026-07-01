@@ -10,15 +10,42 @@ fn validator_cli_rejects_wrapped_modal_continuation_prohibition() -> TestResult 
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
-    std::fs::write(
-        &skill_path,
-        format!("{skill}\nThe agent MUST use codegraph output to\navoid direct edits.\n"),
-    )?;
+    for addition in [
+        "The agent MUST use codegraph output to\navoid direct edits.",
+        "The agent MUST use codegraph output to\nidentify nearby files. Do not edit files.",
+    ] {
+        std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
 
-    let output = validator(&plugin_root, "--check")?;
+        let output = validator(&plugin_root, "--check")?;
 
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("prohibitions must use MUST NOT"));
+        assert!(
+            !output.status.success(),
+            "instruction {addition:?} unexpectedly passed"
+        );
+        assert!(stderr(&output).contains("prohibitions must use MUST NOT"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_wrapped_modal_continuation_clause_imperatives() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    for addition in [
+        "The agent MUST use codegraph output to\nidentify nearby files, run the validator.",
+        "The agent MUST use codegraph output to\nidentify nearby files and run the validator.",
+    ] {
+        std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
+
+        let output = validator(&plugin_root, "--check")?;
+
+        assert!(
+            !output.status.success(),
+            "instruction {addition:?} unexpectedly passed"
+        );
+        assert!(stderr(&output).contains("mandatory instructions must use MUST"));
+    }
     Ok(())
 }
 
