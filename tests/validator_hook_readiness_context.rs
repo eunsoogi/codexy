@@ -118,8 +118,7 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additi
         "validator should reject readiness context without label gate command"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("must require PR label readiness validation"),
+        String::from_utf8_lossy(&output.stderr).contains("must require PR label readiness guard"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

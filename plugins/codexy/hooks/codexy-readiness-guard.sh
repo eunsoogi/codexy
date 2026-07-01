@@ -5,7 +5,6 @@ fail() {
   printf '%s\n' "error: $1"
   exit 1
 }
-
 is_ident() {
   case "$1" in
     "" | *[!abcdefghijklmnopqrstuvwxyz0123456789-]*)
@@ -13,7 +12,6 @@ is_ident() {
       ;;
   esac
 }
-
 is_scope() {
   case "$1" in
     "" | *[!abcdefghijklmnopqrstuvwxyz0123456789_/-]*)
@@ -21,7 +19,6 @@ is_scope() {
       ;;
   esac
 }
-
 check_conventional_subject() {
   subject="$1"
   case "$subject" in
@@ -58,7 +55,6 @@ is_closing_keyword() {
     *) return 1 ;;
   esac
 }
-
 is_issue_number() {
   case "$1" in
     "" | *[!0123456789]*) return 1 ;;
@@ -160,12 +156,16 @@ check_merge_message() {
   fi
 }
 
+check_pr_labels() {
+  [ -n "$pr_state_file" ] || fail "--pr-state-file is required"
+  guard_dir=${0%/*}
+  "$guard_dir/codexy-readiness-guard-pr-labels.sh" "$pr_state_file"
+}
+
 event="${1:-}"
 case "$event" in
   UserPromptSubmit)
-    cat <<JSON
-{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy readiness guard: before PR readiness, run hooks/codexy-readiness-guard.sh --check-pr-title with the exact PR title. Before merge readiness, run hooks/codexy-readiness-guard.sh --check-merge-message --expected-pr PR_NUMBER with the explicit squash merge message; for issue-backed PRs whose merge body must end in Fixes #ISSUE_NUMBER, add --expected-issue ISSUE_NUMBER."}}
-JSON
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy readiness guard: before PR readiness, run hooks/codexy-readiness-guard.sh --check-pr-title with the exact PR title and hooks/codexy-readiness-guard.sh --check-pr-labels --pr-state-file pr-state.json with captured repositoryLabels. Before merge readiness, run hooks/codexy-readiness-guard.sh --check-merge-message --expected-pr PR_NUMBER with the explicit squash merge message; for issue-backed PRs whose merge body must end in Fixes #ISSUE_NUMBER, add --expected-issue ISSUE_NUMBER."}}'
     exit 0
     ;;
 esac
@@ -176,39 +176,36 @@ expected_issue=""
 expected_pr=""
 merge_message=""
 merge_message_file=""
+pr_state_file=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --check-pr-title)
-      mode="pr-title"
-      ;;
-    --check-merge-message)
-      mode="merge-message"
-      ;;
+    --check-pr-title) mode="pr-title" ;;
+    --check-pr-labels) mode="pr-labels" ;;
+    --check-merge-message) mode="merge-message" ;;
     --pr-title)
       [ "$#" -ge 2 ] || fail "--pr-title requires a value"
-      shift
-      pr_title="$1"
+      shift; pr_title="$1"
       ;;
     --expected-pr)
       [ "$#" -ge 2 ] || fail "--expected-pr requires a value"
-      shift
-      expected_pr="$1"
+      shift; expected_pr="$1"
       ;;
     --expected-issue)
       [ "$#" -ge 2 ] || fail "--expected-issue requires a value"
-      shift
-      expected_issue="$1"
+      shift; expected_issue="$1"
       ;;
     --merge-message)
       [ "$#" -ge 2 ] || fail "--merge-message requires a value"
-      shift
-      merge_message="$1"
+      shift; merge_message="$1"
       ;;
     --merge-message-file)
       [ "$#" -ge 2 ] || fail "--merge-message-file requires a value"
-      shift
-      merge_message_file="$1"
+      shift; merge_message_file="$1"
+      ;;
+    --pr-state-file)
+      [ "$#" -ge 2 ] || fail "--pr-state-file requires a value"
+      shift; pr_state_file="$1"
       ;;
     *)
       fail "unknown argument: $1"
@@ -221,6 +218,9 @@ case "$mode" in
   pr-title)
     [ -n "$pr_title" ] || fail "--pr-title is required"
     check_conventional_subject "$pr_title" || fail "PR title must use Conventional Commit style"
+    ;;
+  pr-labels)
+    check_pr_labels
     ;;
   merge-message)
     [ -n "$expected_pr" ] || fail "--expected-pr is required"
@@ -243,7 +243,7 @@ case "$mode" in
     check_merge_message
     ;;
   *)
-    fail "--check-pr-title or --check-merge-message is required"
+    fail "--check-pr-title, --check-pr-labels, or --check-merge-message is required"
     ;;
 esac
 
