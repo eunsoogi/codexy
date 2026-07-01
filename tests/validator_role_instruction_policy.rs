@@ -40,6 +40,7 @@ fn validator_cli_check_roles_rejects_forbidden_actions_without_must_not() -> Tes
         "Forbidden actions: edit files",
         "Forbidden actions: edit files, merge, close issues",
         "Forbidden actions: edit files, MUST NOT merge",
+        "Forbidden actions: MUST NOT edit files, MUST merge branches",
     ] {
         std::fs::write(
             &sentinel_path,

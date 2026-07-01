@@ -29,10 +29,13 @@ pub(super) fn has_prohibition_without_must_not(line: &str) -> bool {
     })
 }
 
+#[rustfmt::skip]
 pub(super) fn has_forbidden_actions_without_must_not(line: &str) -> bool {
-    line.trim_start()
-        .strip_prefix("Forbidden actions:")
-        .is_some_and(|actions| !actions.trim_start().starts_with("MUST NOT"))
+    let Some(actions) = line.trim_start().strip_prefix("Forbidden actions:") else {
+        return false;
+    };
+    let actions = actions.trim_start();
+    !actions.starts_with("MUST NOT") || actions.match_indices("MUST ").any(|(index, _)| actions[index..].get(..9) != Some("MUST NOT "))
 }
 
 pub(super) fn starts_with_inverted_prohibition(line: &str) -> bool {
@@ -153,6 +156,15 @@ fn mandatory_segments(line: &str, strict_clauses: bool) -> Vec<&str> {
             segments.push(segment.trim());
         }
     }
+    let lower = line.trim_start().to_ascii_lowercase();
+    if ["if ", "when ", "unless "]
+        .iter()
+        .any(|prefix| lower.starts_with(prefix))
+    {
+        if let Some((_, rest)) = line.split_once(", ") {
+            segments.push(rest.trim());
+        }
+    }
     segments
 }
 
@@ -223,12 +235,10 @@ fn has_modal_label_prefix(segment: &str) -> bool {
     })
 }
 
+#[rustfmt::skip]
 fn has_bare_passive_mandatory(segment: &str) -> bool {
     let lower = segment.to_ascii_lowercase();
-    !segment.contains("MUST")
-        && PASSIVE_MANDATORY
-            .iter()
-            .any(|marker| lower.contains(marker))
+    !segment.contains("MUST") && PASSIVE_MANDATORY.iter().any(|marker| lower.contains(marker))
 }
 
 fn matches_prefix(lower: &str, prefixes: &[&str]) -> bool {

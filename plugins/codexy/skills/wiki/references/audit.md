@@ -75,7 +75,7 @@ For each output artifact:
 
 1. MUST read frontmatter and capture `sources:`, `generated:`, `project:`, and
    related metadata if present.
-2. If `sources:` is missing or empty, flag `missing-provenance`.
+2. If `sources:` is missing or empty, MUST flag `missing-provenance`.
 3. MUST resolve each dependency with the Source Reference Resolution protocol in
    `wiki-structure.md`. MUST preserve the whole YAML scalar/path, including spaces;
    MUST NOT split dependency entries on whitespace.
@@ -123,7 +123,7 @@ For each escalated item:
 
 1. MUST re-read the local artifact and note the specific claims at issue.
 2. MUST re-read or fetch its cited raw sources and wiki dependencies.
-3. If a raw source points to a live primary URL, fetch it again when possible.
+3. If a raw source points to a live primary URL, MUST fetch it again when possible.
 4. MUST run targeted research with both supportive and adversarial queries:
    - one query that tries to confirm the current claim
    - one query that tries to break or disprove it

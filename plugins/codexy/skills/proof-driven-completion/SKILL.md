@@ -56,7 +56,7 @@ complete.
   `name` and `description`.
 - For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews,
   review threads, and Codex connector output on the current head.
-- When a handoff or final answer reports addressed review feedback, include
+- When a handoff or final answer reports addressed review feedback, MUST include
   GraphQL `reviewThreads.nodes` in the PR state evidence and MUST run
   `scripts/validate-plugin-config --check-completion-handoff`; addressed
   unresolved threads, including outdated-but-fixed threads, MUST be resolved or

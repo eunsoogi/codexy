@@ -35,7 +35,7 @@ Commands differ in what they do when no wiki is found. Each command picks one of
 
 ### Variant A: wiki-required (most read/write commands)
 
-If no wiki exists, stop with:
+If no wiki exists, MUST stop with:
 
 > No wiki found. Run `/wiki init <topic>` first.
 

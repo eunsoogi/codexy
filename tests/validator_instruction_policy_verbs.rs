@@ -48,6 +48,23 @@ fn validator_cli_accepts_modal_wrapped_remaining_imperative_verbs() -> TestResul
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_conditional_clause_bare_imperatives() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    std::fs::write(
+        &skill_path,
+        format!("{skill}\n- If verification fails, run the validator.\n"),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("mandatory instructions must use MUST"));
+    Ok(())
+}
+
 fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");

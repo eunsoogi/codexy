@@ -313,7 +313,7 @@ The `inbox/` directory is a drop zone. Users dump files there via Finder, `cp`, 
    - Other files → create a metadata stub noting file type and path
 3. MUST move each processed file to `inbox/.processed/` (or delete if user did not pass `--keep`)
 4. MUST report each item processed
-5. If 5+ items were processed, suggest: "You've ingested N new sources. Want me to compile? Run `/wiki:compile`"
+5. If 5+ items were processed, MUST suggest: "You've ingested N new sources. Want me to compile? Run `/wiki:compile`"
 
 ## Slug Generation
 

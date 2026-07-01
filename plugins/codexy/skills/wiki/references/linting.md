@@ -322,9 +322,9 @@ may lack this directory; that is a migration opportunity, not corruption, and
 lint MUST NOT create a blank inventory tree unless part of the layer already
 exists.
 
-- [ ] If `inventory/` is missing entirely, report "no inventory layer yet" as a suggestion.
-- [ ] If `inventory/` exists, it has `_index.md`.
-- [ ] If any inventory subdirectory exists, it has `_index.md`.
+- [ ] If `inventory/` is missing entirely, MUST report "no inventory layer yet" as a suggestion.
+- [ ] If `inventory/` exists, MUST check that it has `_index.md`.
+- [ ] If any inventory subdirectory exists, MUST check that it has `_index.md`.
 - [ ] Inventory records under `inventory/items/`, `inventory/candidates/`,
   `inventory/entities/`, and `inventory/corpora/` have valid frontmatter when present:
   `title`, `kind`, `status`, `priority`, `created`, `updated`, `tags`,
@@ -353,9 +353,9 @@ exists.
 - MUST NOT auto-convert output artifacts into inventory records. MUST report suggested
   commands such as:
   `/wiki:inventory migrate-output output/ingest-queue-2026-05-03.md --kind ingest-candidate --dry-run`
-- When reporting candidates, include a short fit note: good inventory fit, too
+- When reporting candidates, MUST include a short fit note: good inventory fit, too
   small and better left as query/ingest/raw note, or too large and better as a
-  dataset manifest or collection ingest. For high-confidence pivots, show a
+  dataset manifest or collection ingest. For high-confidence pivots, MUST show a
   sample record shape before suggesting `--apply`.
 
 ### C17: Dataset Registry Structure and Migration Candidates (Suggestion)
@@ -365,8 +365,8 @@ external data. New or older wikis may lack this directory; that is a migration
 opportunity, not corruption, and lint MUST NOT create a blank registry unless
 part of the layer already exists.
 
-- [ ] If `datasets/` is missing entirely, report "no dataset registry yet" as a suggestion.
-- [ ] If `datasets/` exists, it has `_index.md`.
+- [ ] If `datasets/` is missing entirely, MUST report "no dataset registry yet" as a suggestion.
+- [ ] If `datasets/` exists, MUST check that it has `_index.md`.
 - [ ] Every `datasets/<slug>/` directory has `_index.md` and `MANIFEST.md`
 - [ ] If a dataset folder has `samples/`, `profiles/`, or `queries/`, those
   subdirectories have `_index.md`. Missing sample/profile/query folders are fine

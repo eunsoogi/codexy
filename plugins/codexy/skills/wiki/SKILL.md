@@ -73,7 +73,7 @@ Resolution order:
 3. Current directory has `.wiki/` → use it
 4. Otherwise → HUB (the hub)
 
-When a command targets the hub and the hub has no content, suggest creating a topic sub-wiki instead.
+When a command targets the hub and the hub has no content, MUST suggest creating a topic sub-wiki instead.
 
 See [references/wiki-structure.md](references/wiki-structure.md) for the complete directory layout and all file format conventions.
 

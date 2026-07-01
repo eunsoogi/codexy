@@ -132,7 +132,7 @@ type, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the cur
 `spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.")`, or
 `spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.")`.
 
-If `spawn_agent` or the requested Codexy `agent_type` is unavailable, report
+If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST report
 that the Codexy agents have not been registered in the active Codex config and
 fall back to packaged TOML/catalog context without claiming native-agent
 success.

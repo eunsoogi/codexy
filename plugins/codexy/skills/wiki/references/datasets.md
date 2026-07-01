@@ -63,7 +63,7 @@ Recommended chat views:
 | `schema` | dataset, schema status, formats, record count, latest profile | deciding what to profile next |
 | `locations` | dataset, storage, access, compact location pointer | finding where the data lives |
 
-If a dataset is linked from an inventory record, include the inventory next
+If a dataset is linked from an inventory record, MUST include the inventory next
 action only when it can be read cheaply from the linked record frontmatter.
 
 ## Directory Layout

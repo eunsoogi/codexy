@@ -113,7 +113,7 @@ paths:
 }
 ```
 
-When reading an entry path, resolve in this order:
+When reading an entry path, MUST resolve in this order:
 
 1. `<HUB>` or `HUB` → the resolved hub path
 2. `<HUB>/...` or `HUB/...` → relative to the resolved hub path

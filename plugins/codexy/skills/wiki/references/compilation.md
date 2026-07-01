@@ -96,7 +96,7 @@ After all articles are written/updated:
 1. Each category `_index.md` (concepts, topics, references) — MUST add/update rows
 2. `wiki/_index.md` — MUST add/update rows
 3. Master `_index.md` — MUST update article count, set "Last compiled" to today, MUST add to Recent Changes
-4. If `output/projects/` exists, regenerate `output/_index.md` as a projects-aware listing: scan each `output/projects/*/WHY.md` for its first `#` heading (title) and first non-heading paragraph (goal, first ~120 chars), list them as a table, then MUST list any remaining loose outputs in `output/` below. This is **best-effort** — if skipped or clobbered by a concurrent session, the next lint/compile will fix it. Member counts per project come from folder scans at render time; there is no cached Members list on disk anymore (the v0.2 simplification removed the `_project.md` manifest, so there's nothing to regenerate inside the project folders themselves — see `references/projects.md`).
+4. If `output/projects/` exists, MUST regenerate `output/_index.md` as a projects-aware listing: MUST scan each `output/projects/*/WHY.md` for its first `#` heading (title) and first non-heading paragraph (goal, first ~120 chars), MUST list them as a table, then MUST list any remaining loose outputs in `output/` below. This is **best-effort** — if skipped or clobbered by a concurrent session, the next lint/compile will fix it. Member counts per project come from folder scans at render time; there is no cached Members list on disk anymore (the v0.2 simplification removed the `_project.md` manifest, so there's nothing to regenerate inside the project folders themselves — see `references/projects.md`).
 
 ## Quality Standards
 
