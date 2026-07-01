@@ -1,6 +1,6 @@
 interface:
   display_name: "Domain-Driven Development"
   short_description: "Protect domain language, boundaries, and invariants."
-  default_prompt: "Use $domain-driven-development to map concepts, boundaries, invariants, and proofs before changing this workflow."
+  default_prompt: "You MUST use $domain-driven-development to map concepts, boundaries, invariants, and proofs before changing this workflow."
 policy:
   allow_implicit_invocation: true

@@ -17,7 +17,7 @@ Earlier iterations of this architecture (v0.1.0, v0.1.1) used a `_project.md` ma
 - First `#` heading → the project title
 - Body → goal, rationale, context, current state, notes — whatever the human wants to write
 
-LLMs rebuild wrong without rationale. LLMs don't need a manifest format to read a markdown file. Keep the first, drop the second.
+LLMs rebuild wrong without rationale. LLMs need no manifest format to read a markdown file. MUST keep the first, MUST drop the second.
 
 ## Directory layout
 
@@ -44,14 +44,14 @@ LLMs rebuild wrong without rationale. LLMs don't need a manifest format to read 
 
 ## Rules
 
-1. **Folder is the project.** The directory name is the slug. No manifest file beyond `WHY.md`.
-2. **`WHY.md` is required and non-empty.** Plain markdown. First `#` heading is the title. Body is the rationale.
-3. **Multi-file or binary artifacts require a project folder.** Code, images, CSVs, SVGs, PDFs colocate with the markdown that references them. This is the whole reason projects exist.
+1. **Folder is the project.** The directory name is the slug. MUST NOT create a manifest file beyond `WHY.md`.
+2. **`WHY.md` MUST be non-empty.** Plain markdown. First `#` heading is the title. Body is the rationale.
+3. **Multi-file or binary artifacts MUST use a project folder.** Code, images, CSVs, SVGs, PDFs colocate with the markdown that references them. This is the whole reason projects exist.
 4. **Single loose markdown outputs can stay flat in `output/`** for backward compatibility.
-5. **No frontmatter schema on member files.** `project: <slug>` in frontmatter is optional sugar for Obsidian tag-based search; folder position is authoritative. If the two disagree, folder wins.
-6. **Max nesting depth: 3 levels inside a project folder.** `projects/<slug>/code/file.py` is the deepest shape allowed.
-7. **Slugs**: lowercase, hyphen-separated, max 40 characters. Semantic, not date-prefixed. Unique within the topic wiki.
-8. **Goal is mandatory at creation.** Enforced by `/wiki:project new <slug> "goal"` — the goal becomes the body of `WHY.md`.
+5. **Agents MUST treat member-file project frontmatter as optional.** `project: <slug>` is optional sugar for Obsidian tag-based search; folder position is authoritative. If the two disagree, folder wins.
+6. **Project folders MUST NOT nest deeper than 3 levels.** `projects/<slug>/code/file.py` is the deepest shape allowed.
+7. **Slugs MUST be lowercase, hyphen-separated, max 40 characters, semantic, not date-prefixed, and unique within the topic wiki.**
+8. **Project creation MUST include a goal.** Enforced by `/wiki:project new <slug> "goal"` — the goal becomes the body of `WHY.md`.
 
 ## Archive = move the folder
 
@@ -77,7 +77,7 @@ inside an already selected topic wiki.
 A project is **stale** when new information relevant to it has been ingested since its artifacts were last updated. This is detected by lint check C8b, not by a manifest field, and the chain runs through frontmatter that already exists:
 
 1. Scan the project folder for member files with `sources:` in frontmatter
-2. Follow each `sources:` entry to the raw source file
+2. MUST follow each `sources:` entry to the raw source file
 3. Compare the raw source's `ingested:` date to the member's `updated:` date
 4. If any source is newer than the member that cites it → the project is stale
 
@@ -87,26 +87,26 @@ No `updated:` field on a manifest. No derived cache. Pure function over the fron
 
 **Removed in the v0.2 simplification.** Earlier iterations used a `.wiki-session.json` file with a `focused_project` field, so that `/wiki:ingest`, `/wiki:research`, `/wiki:query`, etc., would implicitly scope to the focused project. This worked but added a mutable state file, focus-aware logic in every consumer command, and two subcommands (`focus`, `unfocus`) whose only job was to manage it.
 
-The simpler model: pass `--project <slug>` explicitly when you want project scope. One extra flag per command vs. a whole session-state mechanism. If a user finds themselves typing `--project foo` on every command, that's a signal they're deep in the project and should probably `cd` into the folder directly.
+The simpler model: pass `--project <slug>` explicitly when you want project scope. One extra flag per command vs. a whole session-state mechanism. If a user finds themselves typing `--project foo` on every command, that's a signal they're deep enough in the project to `cd` into the folder directly.
 
-## What to avoid
+## What MUST NOT happen
 
-- **Physical lifecycle folders** (`active/`, `done/`) — breaks links on status changes. Archive via `.archive/` is the one exception because it's rare.
-- **Deep nesting beyond 3 levels** — `projects/<slug>/code/file.py` is the max shape.
-- **Date-prefixed slugs** — dates live in filenames inside the folder, not in the slug.
-- **Mandatory projects** — loose single-markdown outputs remain allowed in `output/`.
-- **File duplication for multi-membership** — use markdown links to cross-reference between projects.
-- **Frontmatter-driven lifecycle** — filesystem state is simpler and can't drift.
+- **MUST NOT use physical lifecycle folders** (`active/`, `done/`) — they break links on status changes. Archive via `.archive/` is the one exception because it's rare.
+- **MUST NOT nest deeper than 3 levels** — `projects/<slug>/code/file.py` is the max shape.
+- **MUST NOT use date-prefixed slugs** — dates live in filenames inside the folder, not in the slug.
+- **MUST NOT require project folders for every output** — loose single-markdown outputs remain allowed in `output/`.
+- **MUST NOT duplicate files for multi-membership** — use markdown links to cross-reference between projects.
+- **MUST NOT use frontmatter-driven lifecycle** — filesystem state is simpler and can't drift.
 
 ## Migration from legacy `_project.md`
 
 Existing wikis created under v0.1.0/v0.1.1 will have `_project.md` manifests. Lint check C8c detects these and auto-migrates:
 
-1. Read `_project.md` frontmatter
-2. Extract `goal:` (or `title:` if goal is missing)
-3. Read the `## Goal`, `## Context`, `## Current State` sections if present
-4. Write `WHY.md` in the same folder with the first `#` heading as the title and the extracted prose as the body
-5. Delete `_project.md`
-6. Report the migration in the lint output
+1. MUST read `_project.md` frontmatter
+2. MUST extract `goal:` (or `title:` if goal is missing)
+3. MUST read the `## Goal`, `## Context`, `## Current State` sections if present
+4. MUST write `WHY.md` in the same folder with the first `#` heading as the title and the extracted prose as the body
+5. MUST delete `_project.md`
+6. MUST report the migration in the lint output
 
 This is the first real application of the lint-is-the-migration principle codified in `linting.md`. One-time healing; idempotent; no separate migration command needed. See `linting.md` C8c for the full rule.

@@ -24,6 +24,10 @@ mod custom_agent_mcp_tools;
 mod custom_agent_schema;
 mod github_labels;
 mod hooks;
+mod instruction_policy;
+mod instruction_policy_match;
+mod instruction_policy_purpose;
+mod instruction_policy_text;
 mod lsp;
 mod manifest;
 mod mcp;
@@ -89,6 +93,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all.extend(lsp::check(plugin_root));
             all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
+            all.extend(instruction_policy::check(plugin_root));
             all
         }
         Mode::Lsp => lsp::check(plugin_root),
@@ -106,7 +111,11 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         }
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
-        Mode::Roles => roles::check(plugin_root),
+        Mode::Roles => {
+            let mut errors = roles::check(plugin_root);
+            errors.extend(instruction_policy::check_roles(plugin_root));
+            errors
+        }
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
         Mode::ChildLaneOwnership { evidence } => child_lane_ownership::check(&evidence),
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),

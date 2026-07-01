@@ -10,9 +10,9 @@ Codex work quality.
 ## Scope
 
 - This file governs the whole repository.
-- Keep broad repository guidance in this root `AGENTS.md`.
-- Add nested `AGENTS.md` files only when a subtree has stable local rules that
-  should not apply elsewhere.
+- MUST keep broad repository guidance in this root `AGENTS.md`.
+- MUST add nested `AGENTS.md` files only when a subtree has stable local rules that
+  MUST NOT apply elsewhere.
 - If this file conflicts with a deeper `AGENTS.md`, the deeper file wins inside
   its subtree.
 
@@ -41,88 +41,91 @@ codexy/
 | Task | Location | Notes |
 | --- | --- | --- |
 | Git, issue, PR, review, merge, labels | `plugins/codexy/skills/git-workflow/SKILL.md` | Executable workflow source of truth. |
-| Plugin identity and install surface | `plugins/codexy/.codex-plugin/plugin.json` | Keep marketplace-facing metadata current. |
-| Marketplace registration | `.agents/plugins/marketplace.json` | Version must stay synced with the plugin manifest. |
+| Plugin identity and install surface | `plugins/codexy/.codex-plugin/plugin.json` | MUST keep metadata current. |
+| Marketplace registration | `.agents/plugins/marketplace.json` | Version MUST stay synced with the plugin manifest. |
 | Version bump automation | `.github/workflows/plugin-version-bump.yml` | Uses `scripts/sync-plugin-version`. |
 | Plugin config validation | `scripts/validate-plugin-config` | Covers manifest, MCP, LSP, skills, and agent contracts. |
 | Version synchronization | `scripts/sync-plugin-version` | Checks or updates plugin and marketplace versions. |
 | Specialist agents | `plugins/codexy/agents/*.toml` | One agent per file plus `catalog.toml` and `openai.yaml`. |
 | Orchestration behavior | `plugins/codexy/skills/codex-orchestration/SKILL.md` | Thread, goal, todo, multi-agent, and worktree policy. |
 | Review gate contract | `plugins/codexy/agents/codexy-sentinel.toml` | Required reviewer gate for non-trivial atomic lanes. |
-| MCP/LSP integration | `plugins/codexy/.mcp.json`, `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/server-catalog.toml` | Keep these validator-compatible together. |
+| MCP/LSP integration | `plugins/codexy/.mcp.json`, `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/server-catalog.toml` | MUST keep these validator-compatible together. |
 | User-facing docs | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md` | Root README files stay concise; skills carry executable usage detail. |
-| Visual assets | `assets/`, `plugins/codexy/assets/` | Keep plugin-local assets available from the manifest. |
+| Visual assets | `assets/`, `plugins/codexy/assets/` | MUST keep plugin-local assets available from the manifest. |
 
 ## Documentation
 
 - `README.md` is the concise English first-user introduction.
 - `README.ko.md` is the concise Korean first-user introduction.
-- Keep both README files scoped to the current implemented state of the project.
-- `LICENSE` must remain the standard English MIT license text.
-- Put executable Git, issue, PR, review, and merge rules in
+- MUST keep both README files scoped to the current implemented state of the project.
+- `LICENSE` MUST remain the standard English MIT license text.
+- MUST put executable Git, issue, PR, review, and merge rules in
   `plugins/codexy/skills/git-workflow/SKILL.md`, not in this file.
 
 ## Conventions
 
 - This repository is plugin-first: user-visible behavior usually lands under
   `plugins/codexy/**`, with validators in `scripts/**`.
-- Keep specialist agents as separate `plugins/codexy/agents/*.toml` files.
-- Keep skill instructions under `plugins/codexy/skills/<skill>/SKILL.md`.
-- Keep MCP and LSP changes aligned with `scripts/validate-plugin-config`.
-- Use Codexy codegraph MCP for repository exploration when available, then
-  confirm exact files with direct reads before editing.
+- MUST keep specialist agents as separate `plugins/codexy/agents/*.toml` files.
+- MUST keep skill instructions under `plugins/codexy/skills/<skill>/SKILL.md`.
+- MUST keep MCP and LSP changes aligned with `scripts/validate-plugin-config`.
+- MUST use Codexy codegraph MCP for repository exploration when available, then
+  MUST confirm exact files with direct reads before editing.
 - Prefer repository-specific guidance over generic agent advice.
-- Keep instructions actionable: use `MUST` or `MUST NOT` only for hard
+- MUST keep instructions actionable by reserving `MUST` and `MUST NOT` for hard
   requirements.
+- Codexy-maintained agent-facing instruction artifacts, and agent-facing
+  instruction artifacts Codexy creates or updates in other projects, MUST use
+  `MUST` for mandatory agent instructions and `MUST NOT` for prohibitions.
 
 ## Dogfooding Guardrails
 
-- Treat failures to follow governing `AGENTS.md` files and selected skills as
-  dogfooding defects. Capture the evidence and fix or explicitly track the
+- MUST treat failures to follow governing `AGENTS.md` files and selected skills as
+  dogfooding defects. MUST capture the evidence and fix or explicitly track the
   defect before PR readiness.
 - Every discovered dogfooding defect MUST be tracked in its own separate
-  GitHub issue. Do not bundle a dogfooding defect into the current feature,
-  fix, review-response, or merge lane; route it through the separate issue
+  GitHub issue. MUST NOT bundle a dogfooding defect into the current feature,
+  fix, review-response, or merge lane; MUST route it through the separate issue
   unless a maintainer explicitly re-scopes the current work to that
   issue-sized lane.
 - If a repo or plugin surface is expected, registered, or enabled but is not
-  available in the actual Codex callable tool surface or `tool_search`, treat
+  available in the actual Codex callable tool surface or `tool_search`, MUST treat
   the exposure mismatch as a dogfooding defect, not as a quiet fallback. For
   example, if `codex mcp list` shows Codexy `codegraph` or `lsp` enabled but
   the tools are not callable in the session, record both surfaces as evidence.
 - Every dogfood stage MUST start from a newly created clean Codex thread before
-  delegation. Do not continue a dogfood stage from an inherited, stale, or
-  already-used thread context; create the fresh thread first, then delegate the
-  stage with its issue, branch, owner, evidence requirements, and stop
+  delegation. MUST NOT continue a dogfood stage from an inherited, stale, or
+  already-used thread context; MUST create the fresh thread first, then delegate
+  the stage with its issue, branch, owner, evidence requirements, and stop
   condition.
-- Before creating Codex app threads or worktrees, preflight branch refs and do
-  not pass a non-existent new branch as an existing branch selector. Wait for
-  pending worktree setup before declaring failure, and keep exactly one active
-  owner per issue lane before retrying or reassigning.
-- Dogfooding loops must not stop at an open PR when the requested outcome
+- Before creating Codex app threads or worktrees, MUST preflight branch refs and
+  MUST NOT pass a non-existent new branch as an existing branch selector. MUST wait
+  for pending worktree setup before declaring failure, and MUST keep exactly one
+  active owner per issue lane before retrying or reassigning.
+- Dogfooding loops MUST NOT stop at an open PR when the requested outcome
   includes completion. After verification and review gates are clean, proceed
   through merge, or explicitly report the blocker that prevents merge.
-- Parent/orchestrator threads must decide lane ownership before edits.
+- Parent/orchestrator threads MUST decide lane ownership before edits.
   Child-owned lanes receive implementation and review-feedback patches in the
   child branch, not in the parent workspace.
 
 ## Verification
 
-- Run verification that covers every touched surface before pushing or opening
+- MUST run verification that covers every touched surface before pushing or opening
   a PR.
-- For documentation-only changes, at minimum run `git diff --check` and file
+- For documentation-only changes, at minimum MUST run `git diff --check` and file
   existence checks for changed documents.
-- For structured plugin changes, run the relevant mode of
+- For structured plugin changes, MUST run the relevant mode of
   `scripts/validate-plugin-config`.
-- For version metadata changes, run `scripts/sync-plugin-version --check`.
-- Tests alone do not prove completion when the requested surface is GitHub,
+- For version metadata changes, MUST run `scripts/sync-plugin-version --check`.
+- Tests alone MUST NOT prove completion when the requested surface is GitHub,
   plugin packaging, a CLI, a browser page, a desktop app, or another externally
-  observable workflow; drive the matching surface and capture evidence.
+  observable workflow; MUST drive the matching surface and MUST capture evidence.
 
 ## Style
 
 - Prefer small, surgical changes that directly satisfy the issue.
-- Do not add speculative framework, package, or workflow assumptions.
-- Mention unrelated stale work instead of cleaning it up inside the current PR.
-- Do not store GitHub tokens, Codex credentials, API keys, private logs, or
+- MUST NOT add speculative framework, package, or workflow assumptions.
+- MUST mention unrelated stale work instead of cleaning it up inside the current PR.
+- MUST NOT store GitHub tokens, Codex credentials, API keys, private logs, or
   local machine paths in tracked files.

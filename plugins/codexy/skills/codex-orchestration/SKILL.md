@@ -1,13 +1,13 @@
 ---
 name: codex-orchestration
-description: Use when coordinating Codex plugin calls, long-running goals, issue-sized decomposition, multi-agent or multi-thread execution, worktrees, todo/update_plan tracking, and orchestrator-led implementation loops.
+description: MUST use when coordinating Codex plugin calls, long-running goals, issue-sized decomposition, multi-agent or multi-thread execution, worktrees, todo/update_plan tracking, and orchestrator-led implementation loops.
 ---
 
 # Codex Orchestration
 
 ## Purpose
 
-Run the current plugin-invoking Codex thread as the orchestrator for
+MUST run the current plugin-invoking Codex thread as the orchestrator for
 goal-oriented work. MUST NOT spawn or assign a separate orchestrator agent. The
 invoking Codex thread owns intent, decomposition, routing, evidence
 integration, and final completion claims. Specialist subagents and separate
@@ -18,7 +18,7 @@ execution loop and MUST be read with root `AGENTS.md`.
 
 ## Read Next
 
-Read these relative references before acting on the matching surface:
+MUST read these relative references before acting on the matching surface:
 
 - `references/classification-and-control.md` for classification, goal, plan,
   child execution, multi-agent, codegraph, LSP, and sentinel discipline.
@@ -29,30 +29,30 @@ Read these relative references before acting on the matching surface:
 
 ## Classification Gate
 
-Run `$task-classification` before this skill starts setup, validation, release,
+MUST run `$task-classification` before this skill starts setup, validation, release,
 delegation, implementation, PR handling, review-response routing, or merge
 coordination for Codexy work. Classification evidence MUST name the lane type,
 owner decision, atomic scope, required skills, required tools or evidence,
 first allowed action, and any stop blocker. Missing classification before
 setup, validation, release, or other workflow actions is a workflow defect:
-stop, classify, and only then continue through the matching Codexy workflow.
+MUST stop, classify, and only then MUST continue through the matching Codexy workflow.
 
 ## Packaged Agents
 
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
 TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
-`plugins/codexy/agents/catalog.toml`. Keep one specialist agent per file.
+`plugins/codexy/agents/catalog.toml`. MUST keep one specialist agent per file.
 `plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
 specialist worker.
 
 Installed Codexy agents become native Codex `spawn_agent` roles only after the
 user's Codex config registers those packaged TOMLs through
 `[agents.<codexy-name>] config_file = "<installed-plugin>/agents/<codexy-name>.toml"`.
-Use `skills/codex-orchestration/scripts/register-codexy-agents` from the
-installed plugin to add or remove Codexy's managed config block safely. MUST NOT
-treat `plugins/codexy/.codex/agents` as installed custom agents.
+MUST use `skills/codex-orchestration/scripts/register-codexy-agents` from the
+installed plugin to add or remove Codexy's managed config block safely. MUST NOT treat
+`plugins/codexy/.codex/agents` as installed custom agents.
 
-To register Codexy agents from an installed plugin, run:
+To register Codexy agents from an installed plugin, MUST run:
 
 ```sh
 skills/codex-orchestration/scripts/register-codexy-agents
@@ -63,17 +63,17 @@ Restart Codex or start a fresh session after registration before expecting new
 
 ## Required Control Plane
 
-- Establish the goal before implementation. If `create_goal` is available,
-  use it directly for non-trivial delegated or orchestrated lanes; use
-  `get_goal` to inspect active goal state when needed; use `update_goal` only
+- MUST establish the goal before implementation. If `create_goal` is available,
+  MUST use it directly for non-trivial delegated or orchestrated lanes; MUST use
+  `get_goal` to inspect active goal state when needed; MUST use `update_goal` only
   when completion or true blockage is proved.
-- Maintain a visible todo list with real `update_plan` or todo-tool state for
+- MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- Treat Codex connector review, child-thread work, queued worktree/thread
+- MUST treat Codex connector review, child-thread work, queued worktree/thread
   setup, and asynchronous tool completion as active waiting states, not
-  blockers. Keep polling and keep the goal active.
-- In long multi-issue or multi-PR polling loops, use
+  blockers. MUST keep polling and keep the goal active.
+- In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.
 - Opening a PR is not completion when the requested outcome includes
@@ -87,7 +87,7 @@ Restart Codex or start a fresh session after registration before expecting new
 
 ## Multi-Agent And Reviewer Gate
 
-Use multi-agent dispatch for bounded specialist help inside the current thread
+MUST use multi-agent dispatch for bounded specialist help inside the current thread
 when the lane does not need its own branch or PR and has separable research,
 implementation, QA, verification, review, or review-feedback work. A
 `spawn_agent` subagent is a helper, reviewer, explorer, or worker inside the
@@ -132,14 +132,14 @@ type, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the cur
 `spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.")`, or
 `spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.")`.
 
-If `spawn_agent` or the requested Codexy `agent_type` is unavailable, report
+If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST report
 that the Codexy agents have not been registered in the active Codex config and
 fall back to packaged TOML/catalog context without claiming native-agent
 success.
 
-End every non-trivial atomic unit with the packaged Codexy reviewer agent from
-`plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate MUST review the
-current diff, exact head or file state, lane scope, touched implementation-file
+MUST end every non-trivial atomic unit with the packaged Codexy reviewer agent
+defined in `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate MUST
+review the current diff, exact head or file state, lane scope, touched implementation-file
 LOC evidence, verification outputs, and evidence before handoff, PR readiness,
 completion, or parent acceptance. The parent may verify the evidence, but it
 MUST NOT replace the owning lane's reviewer pass with parent-only readthrough,
@@ -147,12 +147,12 @@ an arbitrary reviewer, generic review role, or stale reviewer output.
 
 ## Codegraph And LSP
 
-For repository code exploration, use the packaged Codexy `codegraph` MCP when
-it is available before falling back to text search. Use codegraph output to
-identify files, import edges, and nearby implementation surfaces, then confirm
+For repository code exploration, MUST use the packaged Codexy `codegraph` MCP when
+it is available before falling back to text search. MUST identify files, import
+edges, and nearby implementation surfaces with codegraph output, then MUST confirm
 with direct file reads before editing.
 
-For language-aware code edits, use Codexy `lsp` to check the matching server
+For language-aware code edits, MUST use Codexy `lsp` to check the matching server
 registration and status when it is callable. If the matching server is not
 callable, not installed, or not applicable, include `lsp_status` output or
 explicit unavailable/not applicable evidence in the handoff or PR readiness
@@ -160,15 +160,15 @@ packet.
 
 If a packaged MCP such as `lsp` or `codegraph` is expected or registered but
 not callable in the active session, follow root `AGENTS.md` dogfooding policy:
-capture both surfaces as evidence and carry the exposure mismatch instead of
+MUST capture both surfaces as evidence and carry the exposure mismatch instead of
 presenting a quiet fallback as normal.
 
 ## Parent Stop Preflight
 
-Run this checkpoint before any implementation edit when a lane may need a
+MUST run this checkpoint before any implementation edit when a lane may need a
 branch, worktree, PR, durable child context, or review-response ownership:
 
-1. Name the atomic lane and decide ownership as `parent-owned` or
+1. MUST name the atomic lane and decide ownership as `parent-owned` or
    `child-owned`.
 2. If the lane is `child-owned`, the parent may prepare issue text, branch
    names, worktree requests, handoff text, and acceptance criteria, but it
@@ -176,15 +176,15 @@ branch, worktree, PR, durable child context, or review-response ownership:
    worktrees in the parent context, or read implementation surfaces as setup
    for a parent patch.
 3. If parent draft implementation diff or setup artifacts already exist for a
-   child-owned lane, preserve the evidence, disclose the workflow defect,
-   inspect overlap with user or other-agent work, and route the draft state to
-   the child instead of continuing implementation.
+   child-owned lane, MUST preserve the evidence, disclose the workflow defect,
+   MUST inspect overlap with user or other-agent work, and MUST route the draft state
+   to the child instead of continuing implementation.
 4. When handoff or final-answer evidence for a child-owned PR includes
    parent-authored implementation, implementation setup, or review-response
-   commits, run
+   commits, MUST run
    `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`.
 5. A failed first search for thread or worktree tooling is not proof that the
-   tooling is unavailable. Continue discovery before reporting a blocker.
+   tooling is unavailable. MUST continue discovery before reporting a blocker.
 
 ## Child Thread Titles
 
@@ -202,7 +202,7 @@ branch, worktree, PR, durable child context, or review-response ownership:
 ## Completion Guard
 
 MUST NOT mark a plan step complete until its evidence has been inspected by the
-orchestrator. Use `update_goal` only when that tool is available, an active or
+orchestrator. MUST use `update_goal` only when that tool is available, an active or
 user-requested goal exists, and every explicit requirement has current matching
 proof. Reserve `blocked` for repeated true impasses where meaningful progress
 requires user input or an external state change.

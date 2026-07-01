@@ -3,7 +3,7 @@
 ## Merge Rules
 
 MUST NOT merge a PR until every review surface has been inspected and resolved.
-Codex connector reviews are merge-blocking reviews. Treat requested changes,
+Codex connector reviews are merge-blocking reviews. MUST treat requested changes,
 actionable suggestions, unresolved review threads, stale concerns after new
 commits, and PR comments that identify defects as blockers until addressed or
 covered by an accepted no-change rationale.
@@ -23,11 +23,11 @@ protected `main` history:
 - PR #203 used PR title `Refactor oversized Codexy skill instructions` and
   squash subject `Refactor oversized Codexy skill instructions (#203)`.
 
-Prevent repeats by deriving the PR number and title from an explicit
-`gh pr view <number>` call and validating the PR title, explicit squash subject,
-and full merge message before every merge.
+To prevent repeats, every merge MUST derive the PR number and title from an
+explicit `gh pr view <number>` call and MUST validate the PR title, explicit
+squash subject, and full merge message before merge.
 
-Before merging, inspect latest PR state, checks, reviews, comments, and review
+Before merging, MUST inspect latest PR state, checks, reviews, comments, and review
 threads:
 
 ```sh
@@ -56,9 +56,9 @@ thread MUST be resolved before merge or have a documented accepted no-change
 rationale.
 
 Default merge continuation is not permission to use `--admin`, merge stale or
-unreviewed heads, ignore child-owned feedback, leave actionable threads open,
-skip PR-body preservation, or merge before rerunning verification after review
-responses.
+unreviewed heads, ignore child-owned feedback, or leave actionable threads open.
+MUST NOT skip PR-body preservation or merge before rerunning verification after
+review responses.
 
 ## Squash Merge Body Preservation
 
@@ -153,12 +153,13 @@ fi
 ```
 
 `gh pr merge` has no flag that means "Codex review passed." `--auto` only waits
-for configured GitHub requirements, and `--admin` bypasses requirements. MUST NOT
-use `--admin` to skip Codex review, required checks, or review-thread cleanup.
+for configured GitHub requirements, and `--admin` bypasses requirements. MUST
+NOT use `--admin` to skip Codex review, required checks, or review-thread
+cleanup.
 
 ## Post-Merge Main Sync
 
-After merge, update the main worktree and verify the merge body:
+After merge, MUST update the main worktree and verify the merge body:
 
 ```bash
 set -euo pipefail
@@ -209,7 +210,7 @@ rm -f "$expected_body_file"
 
 The refreshed `main` commit subject MUST end with `(#<merged-pr-number>)`, and
 the refreshed `main` commit body MUST match the PR body captured before merge.
-If GitHub did not delete the remote topic branch, delete it only after
+If GitHub did not delete the remote topic branch, MUST delete it only after
 confirming the PR was merged and no dependent work needs the branch:
 
 ```sh

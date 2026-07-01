@@ -1,6 +1,6 @@
 interface:
   display_name: "Release Engineering"
   short_description: "Prepare versions, release gates, and publish readiness."
-  default_prompt: "Run $task-classification before release work, then use $release-engineering to plan version sync, release gates, artifacts, and rollback evidence."
+  default_prompt: "You MUST run $task-classification before release work, then you MUST use $release-engineering to plan version sync, release gates, artifacts, and rollback evidence."
 policy:
   allow_implicit_invocation: true
