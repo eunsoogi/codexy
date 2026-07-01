@@ -60,6 +60,7 @@ fn has_tracking_issue(evidence: &str) -> bool {
             .into_iter()
             .any(|marker| clause.contains(marker))
             && has_issue_reference(clause)
+            && !has_negated_tracking_issue(clause)
             && !has_placeholder_or_pending_value(clause)
     })
 }
@@ -78,12 +79,25 @@ fn has_issue_reference(clause: &str) -> bool {
     clause
         .split(|character: char| !character.is_ascii_alphanumeric() && character != '#')
         .any(|word| {
-            let issue_number = word.strip_prefix('#').unwrap_or(word);
+            let Some(issue_number) = word.strip_prefix('#') else {
+                return false;
+            };
             !issue_number.is_empty()
                 && issue_number
                     .chars()
                     .all(|character| character.is_ascii_digit())
         })
+}
+
+fn has_negated_tracking_issue(clause: &str) -> bool {
+    [
+        "no separate dogfood issue",
+        "no separate dogfooding issue",
+        "no separate tracking issue",
+        "no tracking issue",
+    ]
+    .into_iter()
+    .any(|marker| clause.contains(marker))
 }
 
 fn has_placeholder_or_pending_value(clause: &str) -> bool {
