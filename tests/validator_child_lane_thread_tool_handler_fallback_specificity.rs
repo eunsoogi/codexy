@@ -46,6 +46,29 @@ Maintainer reassignment: none
     )
 }
 
+fn preceding_metadata_evidence() -> String {
+    r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Fallback route: no fallback route was available
+Tracking issue: #205
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#
+    .to_owned()
+}
+
+fn preceding_metadata_without_defect_evidence() -> String {
+    r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Fallback route: no fallback route was available
+Tracking issue: #205
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#
+    .to_owned()
+}
+
 #[test]
 fn validator_rejects_bare_fallback_route_used() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route used"))?;
@@ -130,6 +153,32 @@ fn validator_allows_handoff_fields_on_separate_metadata_lines()
         "validator should accept fallback route and tracking issue metadata lines\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_handoff_fields_before_raw_handler_line()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&preceding_metadata_evidence())?;
+
+    assert!(
+        output.status.success(),
+        "validator should include preceding fallback and tracking metadata in handler capture\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_preceding_metadata_without_defect_capture()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&preceding_metadata_without_defect_evidence())?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not treat handoff metadata alone as a handler defect capture"
     );
     Ok(())
 }

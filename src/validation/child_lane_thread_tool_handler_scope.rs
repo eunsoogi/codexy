@@ -87,7 +87,7 @@ fn is_unrelated_metadata_line(line: &str) -> bool {
     !is_capture_related(&key.to_ascii_lowercase())
 }
 
-fn is_handoff_metadata_line(line: &str) -> bool {
+pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
     let Some((key, _)) = line.trim_start().split_once(':') else {
         return false;
     };

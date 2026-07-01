@@ -3,7 +3,8 @@ use super::child_lane_thread_tool_handler_defect_capture::{
     has_handler_marker_and_tool_name_in_defect_capture, has_handler_marker_in_defect_capture,
 };
 use super::child_lane_thread_tool_handler_scope::{
-    capture_end_before_unrelated_evidence, previous_nonempty_block_start, scope_start_until_blank,
+    capture_end_before_unrelated_evidence, is_handoff_metadata_line, previous_nonempty_block_start,
+    scope_start_until_blank,
 };
 
 pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
@@ -34,7 +35,6 @@ const CAPTURE_MARKERS: &str = "captured|classified|recorded|reported|routed|trac
 const THREAD_TOOL_DISCOVERY_MARKERS: &str = "available|callable|discovered|expected|exposed|found|listed|registered|tool_search|tool search|visible";
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
 const NEGATED_HANDLER_MISSING_MARKERS: &str = "did not fail with|didn't fail with|does not fail with|do not fail with|not fail with|without failing with|did not produce|does not produce|no invocation produced|no thread tool invocation produced";
-
 fn has_discovered_or_expected_thread_tool(evidence: &str) -> bool {
     let mut in_discovery_list = false;
     evidence.lines().any(|line| {
@@ -157,16 +157,23 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
         if has_defect_label(current_trimmed) {
             return line_start;
         }
-        let previous_end = line_start.saturating_sub(1);
-        let previous_start = evidence[..previous_end]
-            .rfind('\n')
-            .map_or(0, |index| index + 1);
-        let previous_line = &evidence[previous_start..previous_end];
-        return if has_defect_label(previous_line) && !has_absent_defect_capture(previous_line) {
-            previous_start
-        } else {
-            line_start
-        };
+        let mut cursor = line_start;
+        while cursor > 0 {
+            let previous_end = cursor - 1;
+            let previous_start = evidence[..previous_end]
+                .rfind('\n')
+                .map_or(0, |index| index + 1);
+            let previous_line = &evidence[previous_start..previous_end];
+            if has_defect_label(previous_line) && !has_absent_defect_capture(previous_line) {
+                return previous_start;
+            }
+            if has_absent_defect_capture(previous_line) || !is_handoff_metadata_line(previous_line)
+            {
+                break;
+            }
+            cursor = previous_start;
+        }
+        return line_start;
     }
 
     let mut capture_start = line_start;
