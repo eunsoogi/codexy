@@ -81,14 +81,80 @@ fn validator_rejects_long_negated_fallback_value() -> Result<(), Box<dyn std::er
         "Fallback route: cannot route to the child thread because it was unreachable",
         "Fallback route: failed to route to the child thread because it was unreachable",
         "Fallback route: unable to route to the child thread because it was unreachable",
+        "Fallback route: not sent to the child owner because the handler failed",
+        "Fallback route: not posted in the child thread because the handler failed",
+        "Fallback route: not delivered in the child thread because the handler failed",
+        "Fallback route: used; Tracking issue: #205",
+        "Fallback route: ; Tracking issue: #205",
+        "Fallback route: parent sent the handoff to the parent thread and then checked in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread and then spoke to the reviewer",
+        "Fallback route: parent posted the handoffish to the child thread",
+        "Fallback route: parent posted the handoff with reviewer feedback to the parent thread",
+        "Fallback route: nonparent sent the handoff to the child thread",
+        "Fallback route: grandparent sent the handoff to the child thread",
+        "Fallback route: parent routed the feedback for reviewer notes in the parent thread",
+        "Fallback route: no handoff was sent to the child owner because the handler failed",
+        "Fallback route: no message was posted in the child thread because the handler failed",
+        "Fallback route: was not actually successfully sent to the child owner because the handler failed",
+        "Fallback route: handler failed",
+        "Fallback route: handler failed, parent unavailable",
+        "Fallback route: handler did not respond",
+        "Fallback route: handler did not respond, parent unavailable",
+        "Fallback route: handler didn't respond",
+        "Fallback route: handler failure",
+        "Fallback route: no handoff reached the child owner because the handler failed",
+        "Fallback route: no message reached the child thread because the handler failed",
+        "Fallback route: no handoff to the child thread",
+        "Fallback route: no message to the child thread",
+        "Fallback route: route not via the child thread",
+        "Fallback route: path not in the child thread",
+        "Fallback route: parent sent",
+        "Fallback route: parent posted",
+        "Fallback route: parent sent an unrelated note",
+        "Fallback route: parent posted an unrelated note",
+        "Fallback route: parent sent the handoff not to the child thread",
+        "Fallback route: parent sent the handoff to someone other than the child thread",
+        "Fallback route: parent routed the feedback to someone other than the reviewer",
+        "Fallback route: parent delivered the message not to the child owner",
+        "Fallback route: handler failed, parent sent no handoff to the child thread",
+        "Fallback route: handler did not respond, parent posted no message in the child thread",
         "Fallback route: unused because the child thread was unreachable",
-        "Fallback route: unused, because the child thread was unreachable",
     ] {
         let output = run_ownership_validator(&base_evidence(route, "Tracking issue: #205"))?;
 
         assert!(
             !output.status.success(),
             "validator should reject longer negated fallback route values: {route}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_concrete_route_after_handler_failure_negation()
+-> Result<(), Box<dyn std::error::Error>> {
+    for route in [
+        "Fallback route: handler did not respond, parent sent the handoff to the child thread",
+        "Fallback route: handler did not respond, parent posted the handoff to the child thread",
+        "Fallback route: handler did not respond and parent sent the handoff to the child thread",
+        "Fallback route: handler did not respond; parent sent the handoff to the child thread",
+        "Fallback route: handler did not respond. Parent sent the handoff to the child thread",
+        "Fallback route: handler did not respond to codex_app.read_thread, parent sent the handoff to the child thread",
+        "Fallback route: handler did not respond via codex_app.read_thread, parent posted the handoff to the child thread",
+        "Fallback route: handler failed, parent sent the handoff to the child thread",
+        "Fallback route: handler failed and parent sent the handoff to the child thread",
+        "Fallback route: handler failed and parent posted the handoff to the child thread",
+        "Fallback route: parent posted the handoff in the child thread",
+        "Fallback route: parent delivered the message to the child owner",
+        "Fallback route: parent routed the feedback to the reviewer",
+    ] {
+        let output = run_ownership_validator(&base_evidence(route, "Tracking issue: #205"))?;
+
+        assert!(
+            output.status.success(),
+            "validator should allow concrete fallback route after unrelated handler negation: {route}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
         );
     }
     Ok(())

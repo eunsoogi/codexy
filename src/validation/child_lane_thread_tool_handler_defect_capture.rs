@@ -1,4 +1,5 @@
 use super::child_lane_thread_tool_handler_issue_reference::has_issue_reference;
+use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
 
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     evidence: &str,
@@ -39,24 +40,17 @@ fn has_handler_handoff_fields(evidence: &str) -> bool {
 }
 
 fn has_fallback_route_or_none(evidence: &str) -> bool {
-    handoff_clauses(evidence)
+    evidence
+        .lines()
+        .map(str::trim)
         .any(|clause| has_explicit_no_route(clause) || has_concrete_fallback_route(clause))
 }
 
 fn has_tracking_issue(evidence: &str) -> bool {
-    let affirmative_markers = [
-        "separate dogfood issue",
-        "separate dogfooding issue",
-        "separate tracking issue",
-        "tracking issue",
-        "tracked in issue",
-        "tracked by issue",
-        "follow-up issue",
-    ];
-
+    const AFFIRMATIVE_MARKERS: &str = "separate dogfood issue|separate dogfooding issue|separate tracking issue|tracking issue|tracked in issue|tracked by issue|follow-up issue";
     handoff_clauses(evidence).any(|clause| {
-        affirmative_markers
-            .into_iter()
+        AFFIRMATIVE_MARKERS
+            .split('|')
             .any(|marker| clause.contains(marker))
             && has_issue_reference(clause)
             && !has_negated_tracking_issue(clause)
@@ -65,40 +59,48 @@ fn has_tracking_issue(evidence: &str) -> bool {
 }
 
 fn has_concrete_fallback_route(clause: &str) -> bool {
-    ["fallback route", "fallback path", "fallback routed"]
-        .into_iter()
-        .any(|marker| clause.contains(marker))
-        && !has_negated_fallback_route(clause)
+    !has_negated_fallback_route(clause)
+        && !has_negated_fallback_route_field(clause)
         && !has_placeholder_or_pending_value(clause)
-        && clause
-            .split_once(':')
-            .is_some_and(|(_, value)| has_substantive_route_value(value))
+        && extract_fallback_route_value(clause).is_some_and(has_substantive_route_value)
+}
+
+fn extract_fallback_route_value(clause: &str) -> Option<&str> {
+    ["fallback route used:", "fallback route:", "fallback path:"]
+        .into_iter()
+        .find_map(|marker| clause.split_once(marker).map(|(_, value)| value))
+        .map(trim_at_next_metadata_field)
+}
+
+fn trim_at_next_metadata_field(value: &str) -> &str {
+    const NEXT_FIELDS: &str = "; tracking issue:|; tracked in issue:|; tracked by issue:|; follow-up issue:|; separate dogfood issue:|; separate dogfooding issue:|; separate tracking issue:";
+    NEXT_FIELDS
+        .split('|')
+        .filter_map(|marker| value.find(marker))
+        .min()
+        .map_or(value, |index| &value[..index])
 }
 
 fn has_explicit_no_route(clause: &str) -> bool {
-    [
-        "no fallback route was available",
-        "no fallback route available",
-        "no alternate route was available",
-        "no alternate route available",
-    ]
-    .into_iter()
-    .any(|marker| clause.contains(marker))
+    const NO_ROUTE_MARKERS: &str = "no fallback route was available|no fallback route available|no alternate route was available|no alternate route available";
+    NO_ROUTE_MARKERS
+        .split('|')
+        .any(|marker| clause.contains(marker))
         && !has_negated_fallback_route(clause)
         && !has_placeholder_or_pending_value(clause)
 }
 
 fn has_negated_fallback_route(clause: &str) -> bool {
-    [
-        "no fallback route evidence",
-        "no fallback path evidence",
-        "without fallback route evidence",
-        "without a fallback route",
-        "without fallback path evidence",
-        "without a fallback path",
-    ]
-    .into_iter()
-    .any(|marker| clause.contains(marker))
+    const NEGATED_FALLBACK_MARKERS: &str = "no fallback route evidence|no fallback path evidence|without fallback route evidence|without a fallback route|without fallback path evidence|without a fallback path";
+    NEGATED_FALLBACK_MARKERS
+        .split('|')
+        .any(|marker| clause.contains(marker))
+}
+
+fn has_negated_fallback_route_field(clause: &str) -> bool {
+    ["no fallback route:", "no fallback path:"]
+        .into_iter()
+        .any(|marker| clause.contains(marker))
 }
 
 fn has_negated_tracking_issue(clause: &str) -> bool {
@@ -109,81 +111,17 @@ fn has_negated_tracking_issue(clause: &str) -> bool {
 }
 
 fn has_placeholder_or_pending_value(clause: &str) -> bool {
-    let pending_phrases = [
-        "not created",
-        "not available",
-        "not provided",
-        "not yet",
-        "will be",
-        "to be created",
-    ];
-
-    pending_phrases
-        .into_iter()
+    const PENDING_PHRASES: &str =
+        "not created|not available|not provided|not yet|will be|to be created";
+    PENDING_PHRASES
+        .split('|')
         .any(|marker| clause.contains(marker))
-        || clause
-            .split_once(':')
-            .is_some_and(|(_, value)| has_placeholder_field_value(value))
+        || clause.split_once(':').is_some_and(|(_, value)| {
+            "none|n/a|tbd|pending|missing|absent|unavailable"
+                .split('|')
+                .any(|placeholder| value.trim() == placeholder)
+        })
 }
-
-fn has_placeholder_field_value(value: &str) -> bool {
-    let trimmed = value.trim();
-    [
-        "none",
-        "n/a",
-        "tbd",
-        "pending",
-        "missing",
-        "absent",
-        "unavailable",
-    ]
-    .into_iter()
-    .any(|placeholder| trimmed == placeholder)
-}
-fn has_substantive_route_value(value: &str) -> bool {
-    let trimmed = value.trim();
-    let padded = format!(" {trimmed} ");
-    !trimmed.is_empty()
-        && !matches!(
-            trimmed,
-            "used" | "routed" | "available" | "unused" | "not used" | "not routed"
-        )
-        && !has_negated_route_usage(&padded)
-        && trimmed
-            .chars()
-            .any(|character| character.is_ascii_alphabetic())
-        && (trimmed.split_whitespace().nth(1).is_some()
-            || trimmed.contains("->")
-            || trimmed.contains('/'))
-}
-
-fn has_negated_route_usage(padded_value: &str) -> bool {
-    let words = padded_value.split_whitespace().collect::<Vec<_>>();
-    words.iter().enumerate().any(|(index, word)| {
-        let token = route_word_token(word);
-        if token == "unused" {
-            return true;
-        }
-
-        let is_route_usage = matches!(
-            token,
-            "route" | "use" | "used" | "using" | "routed" | "routing"
-        );
-        is_route_usage
-            && words[index.saturating_sub(8)..index].iter().any(|prior| {
-                let prior = route_word_token(prior);
-                matches!(
-                    prior,
-                    "failed" | "no" | "not" | "never" | "unable" | "without" | "cannot"
-                ) || prior.ends_with("n't")
-            })
-    })
-}
-
-fn route_word_token(word: &str) -> &str {
-    word.trim_matches(|character: char| !character.is_ascii_alphanumeric() && character != '\'')
-}
-
 fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
     evidence
         .split(['\n', ';'])
