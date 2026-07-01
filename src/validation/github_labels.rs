@@ -79,16 +79,21 @@ fn issue_nodes(issues: Option<&Value>) -> Vec<&Value> {
 }
 
 fn repository_label_taxonomy(pr_state: &Value) -> Option<Vec<String>> {
+    let mut found_empty_taxonomy = false;
     let mut labels = pr_state
         .get("repositoryLabels")
         .into_iter()
         .chain(pr_state.pointer("/repository/labels"));
-    labels
-        .find(|labels| {
-            matches!(labels, Value::Array(_))
-                || matches!(labels.get("nodes"), Some(Value::Array(_)))
-        })
-        .map(|labels| label_names(Some(labels)))
+    for labels in labels.by_ref().filter(|labels| {
+        matches!(labels, Value::Array(_)) || matches!(labels.get("nodes"), Some(Value::Array(_)))
+    }) {
+        let names = label_names(Some(labels));
+        if !names.is_empty() {
+            return Some(names);
+        }
+        found_empty_taxonomy = true;
+    }
+    found_empty_taxonomy.then(Vec::new)
 }
 
 fn is_open_pr(pr_state: &Value) -> bool {
