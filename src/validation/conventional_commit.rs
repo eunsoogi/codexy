@@ -20,7 +20,14 @@ fn subject_without_expected_pr_suffix(subject: &str, expected_pr: Option<u64>) -
         return subject;
     };
     let expected_suffix = format!(" (#{expected_pr})");
-    subject.strip_suffix(&expected_suffix).unwrap_or(subject)
+    if let Some(subject) = subject.strip_suffix(&expected_suffix) {
+        return subject;
+    }
+    let unseparated_suffix = format!("(#{expected_pr})");
+    if subject.ends_with(&unseparated_suffix) {
+        return "";
+    }
+    subject
 }
 
 fn is_conventional_subject(subject: &str) -> bool {
@@ -55,4 +62,22 @@ fn is_scope(value: &str) -> bool {
                 || character.is_ascii_digit()
                 || matches!(character, '-' | '_' | '/')
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::check_merge_subject;
+
+    #[test]
+    fn merge_subject_rejects_unseparated_expected_pr_suffix() {
+        assert!(
+            check_merge_subject("fix(workflow): enforce gate(#204)", Some(204))
+                .contains(&"merge commit subject must use Conventional Commit style".to_string())
+        );
+    }
+
+    #[test]
+    fn merge_subject_accepts_separated_expected_pr_suffix() {
+        assert!(check_merge_subject("fix(workflow): enforce gate (#204)", Some(204)).is_empty());
+    }
 }
