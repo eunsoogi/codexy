@@ -11,7 +11,17 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[]}"#,
             "repositoryLabels taxonomy",
         ),
-        ("empty-state.json", "", "state evidence"),
+        ("empty-state.json", "", "malformed JSON evidence"),
+        (
+            "truncated-object-labels.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":"type/fix"}]"#,
+            "malformed JSON evidence",
+        ),
+        (
+            "truncated-string-labels.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix"]"#,
+            "malformed JSON evidence",
+        ),
         (
             "missing-repository-identity.json",
             r#"{"number":209,"state":"OPEN","labels":[],"repositoryLabels":["type/fix"]}"#,
