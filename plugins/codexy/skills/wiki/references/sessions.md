@@ -249,7 +249,7 @@ HUB/topics/<topic>/raw/notes/YYYY-MM-DD-session-<harness>-<session>.md
 ```
 
 The raw note links back to the digest and copies only the distilled digest body,
-not the raw transcript. Append the topic `log.md` entry. Compilation into
+not the raw transcript. MUST append the topic `log.md` entry. Compilation into
 `wiki/` articles remains a separate, explicit wiki compile/update step.
 
 ## Privacy Defaults

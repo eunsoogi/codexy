@@ -203,7 +203,7 @@ Each gap is scored on three dimensions (1-5 each):
 Between rounds, the orchestrating agent MUST, in priority order:
 
 1. **Draw connections** between this round's findings and ALL prior rounds (not just the previous one) — this is the highest-value activity
-2. **Update cross-references** — add See Also links between articles that share concepts across rounds
+2. **MUST update cross-references** — add See Also links between articles that share concepts across rounds
 3. **Re-evaluate earlier gaps** — some gaps from round 1 may now be filled or irrelevant
 4. **Score remaining gaps** using the formula above
 5. **Adjust research direction** — only if findings clearly indicate a shift (rare in practice)
@@ -304,7 +304,7 @@ to classify provenance as `replayable` instead of merely `partial`.
 
 ### Event Log Schema (.session-events.jsonl)
 
-Each line is one JSON object. Append only; MUST NOT rewrite prior entries.
+Each line is one JSON object. MUST append only; MUST NOT rewrite prior entries.
 
 ```json
 {"ts":"2026-04-29T12:00:00Z","command":"research","phase":"start","event":"research_started","session_id":"2026-04-29-120000","topic":"cerebral amyloid angiopathy","mode":"single","min_time_budget":"2h"}
@@ -375,8 +375,8 @@ Recommended fields:
 
 | Event | Action |
 |-------|--------|
-| --min-time research starts | MUST create `.research-session.json`; append `research_started`; MUST write `.session-checkpoint.json` |
-| Round N completes | MUST update `.research-session.json`; append round event(s); refresh checkpoint |
+| --min-time research starts | MUST create `.research-session.json`; MUST append `research_started`; MUST write `.session-checkpoint.json` |
+| Round N completes | MUST update `.research-session.json`; MUST append round event(s); MUST refresh checkpoint |
 | Research completes normally | MUST append completion event; MUST refresh checkpoint; MUST delete `.research-session.json` |
 | Session interrupted | `.research-session.json` persists with `status: "in_progress"`; durable files remain |
 | Next invocation detects file | MUST ask whether to continue or start fresh |

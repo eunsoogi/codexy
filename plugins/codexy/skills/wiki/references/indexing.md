@@ -74,18 +74,18 @@ But these updates are optional. If skipped (e.g., due to a crash or concurrent w
 ### Adding a file
 
 1. MUST read the current `_index.md`
-2. Add a new row to the Contents table: `| [filename.md](filename.md) | Summary | tags | YYYY-MM-DD |`
+2. MUST add a new row to the Contents table: `| [filename.md](filename.md) | Summary | tags | YYYY-MM-DD |`
 3. If the file's tags introduce a new category, add it to the Categories section
-4. Add entry to Recent Changes: `- YYYY-MM-DD: Added filename.md (brief note)`
-5. Update "Last updated" date
+4. MUST add entry to Recent Changes: `- YYYY-MM-DD: Added filename.md (brief note)`
+5. MUST update "Last updated" date
 
 ### Removing a file
 
 1. MUST read the current `_index.md`
 2. MUST remove the row from Contents table
 3. MUST remove from Categories if it was the only file with that category
-4. Add removal entry to Recent Changes
-5. Update "Last updated" date
+4. MUST add removal entry to Recent Changes
+5. MUST update "Last updated" date
 
 ### Master Index Statistics
 

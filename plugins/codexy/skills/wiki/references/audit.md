@@ -171,10 +171,10 @@ reported as a limitation, not as a content failure.
 
 Audits MUST also maintain their own durable provenance:
 
-- append `audit_started`, `audit_output_scan_completed`,
+- MUST append `audit_started`, `audit_output_scan_completed`,
   `audit_truth_escalation_completed`, and `audit_completed` events to
   `.session-events.jsonl`
-- refresh `.session-checkpoint.json` with the current scope, verdict counts,
+- MUST refresh `.session-checkpoint.json` with the current scope, verdict counts,
   provenance state, and written report artifact paths
 
 ## Report Outputs

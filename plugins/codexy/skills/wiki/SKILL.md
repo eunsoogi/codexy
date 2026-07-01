@@ -186,7 +186,7 @@ after the user intent is clear or a write action is needed.
 ## Operational Rules
 
 - MUST use absolute file paths in saved-output messages and markdown links for URLs.
-- Append to `log.md` for every wiki write operation; MUST NOT rewrite old log entries.
+- MUST append to `log.md` for every wiki write operation; MUST NOT rewrite old log entries.
 - MUST keep large writes chunked into multiple edits rather than one long generation.
 - MUST read `_index.md` files before broader scans, and treat indexes as derived data.
 - MUST use article `confidence` fields when answering and flag weak sourcing when seen.

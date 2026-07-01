@@ -79,7 +79,7 @@ HUB/topics/<topic>/raw/notes/YYYY-MM-DD-feedback-<type>-<id>.md
 ```
 
 The note contains the distilled lesson, redacted user-feedback preview, metadata,
-and guidance. It does not copy the raw transcript. Append the topic `log.md` with
+and guidance. It does not copy the raw transcript. MUST append the topic `log.md` with
 a `feedback` entry.
 
 ## Relationship to Lessons Learned

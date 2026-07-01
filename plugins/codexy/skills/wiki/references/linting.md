@@ -28,18 +28,18 @@ There are two layers where this principle applies, each with its own rules:
 
 Concretely, when evolving the schema:
 
-- **Renamed a `raw/`, `wiki/`, `inventory/`, or `datasets/` directory?** Update the placement map in C11/C16/C17 and the allowlist in C12. Every existing wiki self-heals on the next lint.
-- **Renamed a frontmatter field?** Append an entry to C13's alias table (old → new). MUST NOT remove old aliases.
-- **Changed an enum value?** Add a value alias in C13. MUST NOT remove old values.
-- **Added a required field?** Add it to C2 and give it an inference rule (derive from body/filename) or a sane default.
-- **New directory under `raw/`, `wiki/`, `inventory/`, `datasets/`, or hub topic lifecycle paths?** Add it to C12/C19's allowlists and C11/C16/C17/C19's placement maps.
-- **New project-level structure or manifest rule?** Update C8 (and projects.md). Candidate heuristics go in C9.
+- **Renamed a `raw/`, `wiki/`, `inventory/`, or `datasets/` directory?** MUST update the placement map in C11/C16/C17 and the allowlist in C12. Every existing wiki self-heals on the next lint.
+- **Renamed a frontmatter field?** MUST append an entry to C13's alias table (old → new). MUST NOT remove old aliases.
+- **Changed an enum value?** MUST add a value alias in C13. MUST NOT remove old values.
+- **Added a required field?** MUST add it to C2 and give it an inference rule (derive from body/filename) or a sane default.
+- **New directory under `raw/`, `wiki/`, `inventory/`, `datasets/`, or hub topic lifecycle paths?** MUST add it to C12/C19's allowlists and C11/C16/C17/C19's placement maps.
+- **New project-level structure or manifest rule?** MUST update C8 (and projects.md). Candidate heuristics go in C9.
 
 There is no `/wiki:migrate` command, and migration MUST stay inside lint rules. Lint rules **are** the schema.
 
 **When editing the canonical spec** (`wiki-structure.md`, `compilation.md`, `ingestion.md`, `projects.md`, or any reference that defines paths or frontmatter fields), also:
 
-1. Update the relevant check(s) in this file — mechanical changes touch C11/C12/C13; project-model changes touch C8/C9; topic lifecycle changes touch C19.
+1. MUST update the relevant check(s) in this file — mechanical changes touch C11/C12/C13; project-model changes touch C8/C9; topic lifecycle changes touch C19.
 2. MUST verify `commands/lint.md` still runs the placement/alias pass in the correct order.
 3. MUST verify `commands/compile.md` still runs the placement pre-check on `raw/` as step 0.
 
@@ -313,7 +313,7 @@ Flags wiki articles that lack the `volatility` field. New articles MUST always h
 
 **Severity**: Info (not blocking — existing wikis predate this field).
 
-**Auto-fix**: Add `volatility: warm` as the safe default that puts the article into the standard monitoring cadence. MUST NOT invent a `verified:` date unless verification was actually performed; MUST use existing `updated:`/`verified:` dates only for freshness scoring.
+**Auto-fix**: MUST add `volatility: warm` as the safe default that puts the article into the standard monitoring cadence. MUST NOT invent a `verified:` date unless verification was actually performed; MUST use existing `updated:`/`verified:` dates only for freshness scoring.
 
 ### C16: Inventory Structure and Migration Candidates (Suggestion)
 
@@ -481,7 +481,7 @@ Validates the hub-level archive lifecycle described in `archive.md`.
 | **C13** Legacy enum value | MUST rewrite value to canonical per alias table |
 | **C13** Older compiled article missing safe schema fields | MUST infer `category`, `summary`, `created`, `updated`, `tags` for theses, and `volatility` as described above |
 | **C14** Article below freshness score threshold | **Warn/Info only** — composite score below `freshness_threshold` (default 70). MUST report score breakdown and MUST suggest `/wiki:refresh`. |
-| **C15** Missing volatility field | Add `volatility: warm` — safe default |
+| **C15** Missing volatility field | MUST add `volatility: warm` — safe default |
 | **C16** Missing inventory directories/indexes | Repair missing indexes for existing inventory directories; MUST NOT create a completely absent inventory tree or empty unused category folders |
 | **C16** Output looks like inventory | Warn only — suggest `/wiki:inventory migrate-output <path> --dry-run`; MUST NOT auto-migrate |
 | **C17** Missing dataset registry directories/indexes | Repair missing indexes for existing dataset directories; MUST NOT create a completely absent dataset tree or empty unused sample/profile/query folders |
