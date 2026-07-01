@@ -29,7 +29,7 @@ pub(super) fn check(
 }
 
 fn has_expected_pr_suffix(expected_pr: u64, message: &str) -> bool {
-    let expected_suffix = format!("(#{expected_pr})");
+    let expected_suffix = format!(" (#{expected_pr})");
     message
         .lines()
         .next()

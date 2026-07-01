@@ -22,10 +22,8 @@ fn validator_cli_rejects_plain_squash_subject_with_pr_suffix()
 #[test]
 fn validator_cli_accepts_conventional_subject_with_pr_suffix()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = validate_message_for_pr(
-        "fix(workflow): enforce PR title gate (#204)\n\nFixes #121\n",
-        204,
-    )?;
+    let output =
+        validate_message_for_pr("fix(workflow): enforce gate (#204)\n\nFixes #121\n", 204)?;
     assert!(
         output.status.success(),
         "validator should accept a Conventional Commit squash subject with expected PR suffix\nstdout:\n{}\nstderr:\n{}",
@@ -33,6 +31,15 @@ fn validator_cli_accepts_conventional_subject_with_pr_suffix()
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_unseparated_pr_suffix() -> Result<(), Box<dyn std::error::Error>> {
+    reject_message_for_pr(
+        "fix(workflow): enforce gate(#204)\n\nFixes #121\n",
+        204,
+        "merge commit subject must end with the expected PR suffix",
+    )
 }
 
 fn validate_message_for_pr(
