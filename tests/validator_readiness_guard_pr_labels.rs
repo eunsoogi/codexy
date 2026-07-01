@@ -50,6 +50,43 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
 }
 
 #[test]
+fn readiness_guard_ignores_nested_labels_before_top_level_pr_labels()
+-> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+    let temp = tempfile::tempdir()?;
+
+    for (name, json) in [
+        (
+            "repository-before-pr-labels.json",
+            r#"{"number":209,"state":"OPEN","repository":{"labels":{"nodes":[{"name":"type/fix"}]}},"labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
+        ),
+        (
+            "closing-issue-before-pr-labels.json",
+            r#"{"number":209,"state":"OPEN","closingIssuesReferences":[{"number":216,"labels":[{"name":"type/fix"}]}],"labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
+        ),
+    ] {
+        let pr_state = write_pr_state(temp.path(), name, json)?;
+        let output = Command::new(&script)
+            .args([
+                "--check-pr-labels",
+                "--pr-state-file",
+                pr_state.to_str().ok_or("pr state path")?,
+            ])
+            .output()?;
+        assert!(
+            !output.status.success(),
+            "guard should reject unlabeled PR even when nested labels appear first for {name}"
+        );
+        assert!(
+            output_text(&output).contains("PR labels missing label application evidence"),
+            "unexpected output: {}",
+            output_text(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn readiness_guard_allows_missing_or_empty_repository_label_taxonomy()
 -> Result<(), Box<dyn std::error::Error>> {
     let script = readiness_guard();
