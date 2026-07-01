@@ -1,6 +1,6 @@
 ---
 name: agents-md-authoring
-description: Use when creating, updating, reviewing, or relocating AGENTS.md instruction files, including repository root guidance, nested directory rules, instruction precedence, scope boundaries, and verification/readback expectations.
+description: MUST use when creating, updating, reviewing, or relocating AGENTS.md instruction files, including repository root guidance, nested directory rules, instruction precedence, scope boundaries, and verification/readback expectations.
 ---
 
 # AGENTS.md Authoring

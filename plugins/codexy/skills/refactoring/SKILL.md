@@ -1,6 +1,6 @@
 ---
 name: refactoring
-description: Use when restructuring existing code without changing behavior, splitting large files or modules, reducing coupling, extracting helpers, simplifying boundaries, or keeping implementation files at or below the default 250 LOC target.
+description: MUST use when restructuring existing code without changing behavior, splitting large files or modules, reducing coupling, extracting helpers, simplifying boundaries, or keeping implementation files at or below the default 250 LOC target.
 ---
 
 # Refactoring

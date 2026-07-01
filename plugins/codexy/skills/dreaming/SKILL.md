@@ -1,6 +1,6 @@
 ---
 name: dreaming
-description: Use when a Codexy lane resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active fixes, and stale details before continuing.
+description: MUST use when a Codexy lane resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active fixes, and stale details before continuing.
 ---
 
 # Dreaming

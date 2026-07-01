@@ -1,6 +1,6 @@
 ---
 name: plugin-marketplace-prep
-description: Use when preparing Codex plugin manifests, marketplace listings, skill bundles, install candidates, assets, metadata, validation checks, or plugin distribution readiness.
+description: MUST use when preparing Codex plugin manifests, marketplace listings, skill bundles, install candidates, assets, metadata, validation checks, or plugin distribution readiness.
 ---
 
 # Plugin Marketplace Prep

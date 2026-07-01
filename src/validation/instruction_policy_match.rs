@@ -138,7 +138,7 @@ fn mandatory_segments(line: &str, strict_clauses: bool) -> Vec<&str> {
         let lower_label = label.trim_matches('*').to_ascii_lowercase();
         if !matches!(
             lower_label.as_str(),
-            "allowed actions" | "description" | "output" | "role scope" | "short_description"
+            "allowed actions" | "output" | "role scope" | "short_description"
         ) {
             segments.push(rest);
         }

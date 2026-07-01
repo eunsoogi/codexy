@@ -1,6 +1,6 @@
 ---
 name: token-efficient-orchestration
-description: Use during long Codexy orchestration, multi-PR monitoring, review-response loops, or compaction recovery when token use is growing; preserves proof gates while replacing repeated full-context reloads with deltas, ledgers, and bounded polling.
+description: MUST use during long Codexy orchestration, multi-PR monitoring, review-response loops, or compaction recovery when token use is growing; preserves proof gates while replacing repeated full-context reloads with deltas, ledgers, and bounded polling.
 ---
 
 # Token-Efficient Orchestration

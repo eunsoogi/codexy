@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: Use when behavior is wrong, tests fail, processes hang, output is unexpected, regressions appear, UI breaks, GitHub automation misbehaves, or a root cause is unknown.
+description: MUST use when behavior is wrong, tests fail, processes hang, output is unexpected, regressions appear, UI breaks, GitHub automation misbehaves, or a root cause is unknown.
 ---
 
 # Debugging

@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Use when verifying completed work, designing manual QA, checking real user surfaces, validating release candidates, acceptance criteria, repository settings, plugin behavior, or PR readiness.
+description: MUST use when verifying completed work, designing manual QA, checking real user surfaces, validating release candidates, acceptance criteria, repository settings, plugin behavior, or PR readiness.
 ---
 
 # QA

@@ -1,6 +1,6 @@
 ---
 name: spec-driven-development
-description: Use when a task starts from a PRD, issue, acceptance criteria, design brief, API contract, user story, or ambiguous feature request that needs implementation discipline before editing.
+description: MUST use when a task starts from a PRD, issue, acceptance criteria, design brief, API contract, user story, or ambiguous feature request that needs implementation discipline before editing.
 ---
 
 # Spec-Driven Development

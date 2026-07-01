@@ -65,6 +65,24 @@ fn validator_cli_rejects_conditional_clause_bare_imperatives() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_skill_description_bare_imperatives() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/task-classification/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    assert!(skill.contains("description: MUST use first"));
+    std::fs::write(
+        &skill_path,
+        skill.replace("description: MUST use first", "description: Use first"),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("mandatory instructions must use MUST"));
+    Ok(())
+}
+
 fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");

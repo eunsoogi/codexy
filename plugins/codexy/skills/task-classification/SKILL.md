@@ -1,6 +1,6 @@
 ---
 name: task-classification
-description: Use first for incoming Codexy work to classify the lane type, owner, required skills, evidence, and first allowed action before setup, delegation, implementation, PR handling, review response, or merge work begins.
+description: MUST use first for incoming Codexy work to classify the lane type, owner, required skills, evidence, and first allowed action before setup, delegation, implementation, PR handling, review response, or merge work begins.
 ---
 
 # Task Classification

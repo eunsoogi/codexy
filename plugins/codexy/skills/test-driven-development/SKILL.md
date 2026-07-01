@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing a feature, bug fix, behavior change, refactor, validator, harness, CLI behavior, documentation rule, plugin skill, workflow rule, or release automation before production edits.
+description: MUST use when implementing a feature, bug fix, behavior change, refactor, validator, harness, CLI behavior, documentation rule, plugin skill, workflow rule, or release automation before production edits.
 ---
 
 # Test-Driven Development

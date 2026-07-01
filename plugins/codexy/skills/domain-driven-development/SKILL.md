@@ -1,6 +1,6 @@
 ---
 name: domain-driven-development
-description: Use when implementation touches business concepts, workflows, bounded contexts, domain language, invariants, aggregates, state transitions, permissions, or cross-module ownership boundaries.
+description: MUST use when implementation touches business concepts, workflows, bounded contexts, domain language, invariants, aggregates, state transitions, permissions, or cross-module ownership boundaries.
 ---
 
 # Domain-Driven Development

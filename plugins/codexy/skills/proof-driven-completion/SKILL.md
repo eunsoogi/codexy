@@ -1,6 +1,6 @@
 ---
 name: proof-driven-completion
-description: Use before claiming work is done, opening or merging a PR, handing off, closing an issue, reporting success, or completing a goal for code, docs, workflow, UI, plugin, marketplace, or release tasks.
+description: MUST use before claiming work is done, opening or merging a PR, handing off, closing an issue, reporting success, or completing a goal for code, docs, workflow, UI, plugin, marketplace, or release tasks.
 ---
 
 # Proof-Driven Completion

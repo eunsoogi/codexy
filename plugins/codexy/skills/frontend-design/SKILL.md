@@ -1,6 +1,6 @@
 ---
 name: frontend-design
-description: Use when building, redesigning, auditing, or visually verifying web apps, desktop UI, dashboards, games, onboarding, checkout, settings, plugin UI, or other user-facing product surfaces.
+description: MUST use when building, redesigning, auditing, or visually verifying web apps, desktop UI, dashboards, games, onboarding, checkout, settings, plugin UI, or other user-facing product surfaces.
 ---
 
 # Frontend Design

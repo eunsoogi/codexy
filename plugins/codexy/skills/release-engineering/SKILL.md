@@ -1,6 +1,6 @@
 ---
 name: release-engineering
-description: Use when preparing plugin versions, version sync, changelogs, release notes, tags, packaging, GitHub Actions release flows, distribution checks, rollback plans, or publish readiness.
+description: MUST use when preparing plugin versions, version sync, changelogs, release notes, tags, packaging, GitHub Actions release flows, distribution checks, rollback plans, or publish readiness.
 ---
 
 # Release Engineering
