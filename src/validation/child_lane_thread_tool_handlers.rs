@@ -194,7 +194,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
             break;
         }
     }
-    capture_start
+    preceding_handoff_metadata_start(evidence, capture_start)
 }
 
 fn is_list_item(line: &str) -> bool {
