@@ -4,7 +4,6 @@ mod context;
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
-use regex::Regex;
 use serde_json::Value;
 
 use crate::paths::display_relative;
@@ -12,7 +11,11 @@ use crate::validation::load_json;
 
 const HOOKS_PATH: &str = "hooks/hooks.json";
 const REQUIRED_EVENT: &str = "SessionStart";
+const READINESS_EVENT: &str = "UserPromptSubmit";
 const SESSION_START_SCRIPT: &str = "hooks/codexy-routing-context.sh";
+const READINESS_SCRIPT: &str = "hooks/codexy-readiness-context.sh";
+const PURPOSE_ROUTING_CONTEXT: u8 = 1;
+const PURPOSE_READINESS_CONTEXT: u8 = 1 << 1;
 const ALLOWED_EVENTS: &[&str] = &[
     "PermissionRequest",
     "PostCompact",
@@ -45,6 +48,7 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             display_relative(&path)
         );
     }
+    let mut hook_purposes = 0;
     for (event, groups) in events {
         if !ALLOWED_EVENTS.contains(&event.as_str()) {
             bail!(
@@ -62,13 +66,25 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
                 )
             })?;
         for group in groups {
-            check_group(&path, plugin_root, event, group)?;
+            hook_purposes |= check_group(&path, plugin_root, event, group)?;
         }
+    }
+    if hook_purposes & PURPOSE_ROUTING_CONTEXT == 0 {
+        bail!(
+            "{} {REQUIRED_EVENT} hook command must run {SESSION_START_SCRIPT}",
+            display_relative(&path)
+        );
+    }
+    if hook_purposes & PURPOSE_READINESS_CONTEXT == 0 {
+        bail!(
+            "{} {READINESS_EVENT} hook command must run {READINESS_SCRIPT}",
+            display_relative(&path)
+        );
     }
     Ok(())
 }
 
-fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> Result<()> {
+fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> Result<u8> {
     let object = group
         .as_object()
         .with_context(|| format!("{} {event} group must be an object", display_relative(path)))?;
@@ -82,7 +98,7 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
                 );
             };
             if event == REQUIRED_EVENT
-                && !session_start_covers_resume_and_compact(path, Some(matcher))?
+                && !context::session_start_covers_resume_and_compact(path, Some(matcher))?
             {
                 bail!(
                     "{} {REQUIRED_EVENT}.matcher must include resume and compact",
@@ -107,13 +123,14 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
                 display_relative(path)
             )
         })?;
+    let mut hook_purposes = 0;
     for handler in handlers {
-        check_handler(path, plugin_root, event, handler)?;
+        hook_purposes |= check_handler(path, plugin_root, event, handler)?;
     }
-    Ok(())
+    Ok(hook_purposes)
 }
 
-fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) -> Result<()> {
+fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) -> Result<u8> {
     let object = handler.as_object().with_context(|| {
         format!(
             "{} {event} hook handler must be an object",
@@ -151,8 +168,21 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
         })?;
     command::check_command(path, plugin_root, event, command)?;
     let timeout = check_timeout(path, event, object)?;
-    if event == REQUIRED_EVENT {
-        check_session_start_context(path, plugin_root, command, timeout)?;
+    let mut hook_purpose = 0;
+    if event == REQUIRED_EVENT && command_uses_script(command, SESSION_START_SCRIPT) {
+        context::check_session_start_context(
+            path,
+            plugin_root,
+            command,
+            timeout,
+            REQUIRED_EVENT,
+            SESSION_START_SCRIPT,
+        )?;
+        hook_purpose |= PURPOSE_ROUTING_CONTEXT;
+    }
+    if event == READINESS_EVENT && command_uses_script(command, READINESS_SCRIPT) {
+        context::check_readiness_context(path, plugin_root, command, timeout, READINESS_EVENT)?;
+        hook_purpose |= PURPOSE_READINESS_CONTEXT;
     }
     if let Some(status) = object.get("statusMessage") {
         if !status
@@ -165,7 +195,14 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             );
         }
     }
-    Ok(())
+    Ok(hook_purpose)
+}
+
+fn command_uses_script(command: &str, script: &str) -> bool {
+    let Some((hook_path, _)) = command::plugin_root_entrypoint_path(command) else {
+        return false;
+    };
+    hook_path == Path::new(script)
 }
 
 fn check_timeout(path: &Path, event: &str, object: &serde_json::Map<String, Value>) -> Result<u64> {
@@ -188,63 +225,4 @@ fn check_timeout(path: &Path, event: &str, object: &serde_json::Map<String, Valu
         );
     }
     Ok(timeout)
-}
-
-fn check_session_start_context(
-    path: &Path,
-    plugin_root: &Path,
-    command: &str,
-    timeout_secs: u64,
-) -> Result<()> {
-    let (hook_path, arguments) = command::plugin_root_entrypoint_path(command).with_context(|| {
-        format!(
-            "{} {REQUIRED_EVENT} hook command must start with a packaged ${{PLUGIN_ROOT}} entrypoint",
-            display_relative(path)
-        )
-    })?;
-    if hook_path != Path::new(SESSION_START_SCRIPT) {
-        bail!(
-            "{} {REQUIRED_EVENT} hook command must run {SESSION_START_SCRIPT}",
-            display_relative(path)
-        );
-    }
-    if !arguments
-        .split_ascii_whitespace()
-        .eq(std::iter::once(REQUIRED_EVENT))
-    {
-        bail!(
-            "{} {REQUIRED_EVENT} hook command must invoke {REQUIRED_EVENT} exactly",
-            display_relative(path)
-        );
-    }
-    let script_path = plugin_root.join(&hook_path);
-    let context =
-        context::emitted_session_start_context(&script_path, REQUIRED_EVENT, timeout_secs)?;
-    for fragment in context::required_session_start_context() {
-        if !context.contains(fragment) {
-            bail!(
-                "{} {REQUIRED_EVENT} emitted additionalContext {}: {}",
-                display_relative(path),
-                context::requirement_message(fragment),
-                display_relative(&script_path)
-            );
-        }
-    }
-    Ok(())
-}
-
-fn session_start_covers_resume_and_compact(path: &Path, matcher: Option<&str>) -> Result<bool> {
-    let Some(matcher) = matcher else {
-        return Ok(true);
-    };
-    if matcher.is_empty() || matcher == "*" {
-        return Ok(true);
-    }
-    let regex = Regex::new(matcher).with_context(|| {
-        format!(
-            "{} {REQUIRED_EVENT}.matcher must be a valid regex",
-            display_relative(path)
-        )
-    })?;
-    Ok(regex.is_match("resume") && regex.is_match("compact"))
 }
