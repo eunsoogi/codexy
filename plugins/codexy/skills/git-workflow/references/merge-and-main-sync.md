@@ -8,11 +8,24 @@ actionable suggestions, unresolved review threads, stale concerns after new
 commits, and PR comments that identify defects as blockers until addressed or
 covered by an accepted no-change rationale.
 
-PR #18 was squash merged as `docs(license): correct copyright owner (#)` because
-the merge command did not carry the numeric PR identifier into the subject. Do
-not rewrite protected `main` history to repair that old commit. Prevent repeats
-by deriving the PR number from an explicit `gh pr view <number>` call before
-every merge.
+Known process deviations are recorded here and MUST NOT be repaired by rewriting
+protected `main` history:
+
+- PR #18 was squash merged as `docs(license): correct copyright owner (#)`
+  because the merge command did not carry the numeric PR identifier into the
+  subject.
+- PR #200 used PR title and squash subject
+  `Require separate issues for dogfooding defects`.
+- PR #201 used PR title and squash subject
+  `Address LSP and codegraph Codex review follow-up`.
+- PR #202 used PR title and squash subject
+  `Require descriptive child thread titles`.
+- PR #203 used PR title `Refactor oversized Codexy skill instructions` and
+  squash subject `Refactor oversized Codexy skill instructions (#203)`.
+
+Prevent repeats by deriving the PR number and title from an explicit
+`gh pr view <number>` call and validating the PR title, explicit squash subject,
+and full merge message before every merge.
 
 Before merging, inspect latest PR state, checks, reviews, comments, and review
 threads:
@@ -67,6 +80,14 @@ git_common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
 expected_body_file="${git_common_dir}/codexy/merge-bodies/pr-${pr_number}.body"
 trap 'rm -f "$pr_json_file" "$pr_body_file" "$merge_message_file"' EXIT
 
+if ! pr_title=$(gh pr view "$pr_number" --repo "$repo" --json title --jq .title); then
+  printf '%s\n' "failed to capture PR title" >&2
+  exit 1
+fi
+if ! scripts/validate-plugin-config --check-pr-title --pr-title "$pr_title"; then
+  printf '%s\n' "PR title validation failed" >&2
+  exit 1
+fi
 if ! head_oid=$(gh pr view "$pr_number" --repo "$repo" --json headRefOid --jq .headRefOid); then
   printf '%s\n' "failed to capture PR headRefOid" >&2
   exit 1

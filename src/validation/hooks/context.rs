@@ -23,12 +23,17 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "compacted or resumed context hygiene",
     "--check-completion-handoff",
     "repositoryLabels",
+    "codexy-readiness-guard.sh",
+    "--check-pr-title",
+    "--check-merge-message",
+    "--expected-pr",
 ];
 
 const REQUIRED_READINESS_CONTEXT: &[&str] = &[
     "PR label readiness enforcement (#210)",
     "--check-completion-handoff",
     "repositoryLabels",
+    "PR title and merge subject enforcement (#206)",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {
