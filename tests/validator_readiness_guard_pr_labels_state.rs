@@ -88,6 +88,21 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
             "PR labels missing label application evidence",
         ),
         (
+            "null-pr-label-name-with-color.json",
+            r##"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":null,"color":"#fff"}],"repositoryLabels":[{"name":"type/fix"}]}"##,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "empty-pr-label-name-with-description.json",
+            r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"","description":"empty"}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+            "PR labels missing label application evidence",
+        ),
+        (
+            "graphql-null-pr-label-name-with-color.json",
+            r##"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":[{"name":null,"color":"#fff"}]},"repositoryLabels":[{"name":"type/fix"}]}"##,
+            "PR labels missing label application evidence",
+        ),
+        (
             "null-repository-label-name.json",
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":null}]}"#,
             "repositoryLabels taxonomy",
@@ -95,6 +110,11 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
         (
             "empty-repository-label-name.json",
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":""}]}"#,
+            "repositoryLabels taxonomy",
+        ),
+        (
+            "null-repository-label-name-with-color.json",
+            r##"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":null,"color":"#fff"}]}"##,
             "repositoryLabels taxonomy",
         ),
         (

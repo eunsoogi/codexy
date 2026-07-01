@@ -33,7 +33,7 @@ json_has_pr_identity() {
 
 json_value_has_label_name() {
   field_value="$1"
-  graph_key=$(printf '%s%s\n' "no" "des")
+  graph_key=$(printf '%s%s' "no" "des")
   value_is_array=0
   case "$field_value" in
     \[*)
@@ -44,7 +44,7 @@ json_value_has_label_name() {
       if ! printf '%s\n' "$field_value" | grep -Eq "\"$graph_key\"[[:space:]]*:[[:space:]]*\\["; then
         return 1
       fi
-      field_items="$field_value"
+      field_items=$(top_level_json_field_value "$field_value" "$graph_key")
       value_is_array=1
       ;;
     *)
@@ -54,9 +54,11 @@ json_value_has_label_name() {
   if printf '%s\n' "$field_items" | grep -Eq '"name"[[:space:]]*:[[:space:]]*"[^"]+"'; then
     return 0
   fi
-  if [ "$value_is_array" -eq 1 ] &&
-    printf '%s\n' "$field_items" | grep -Eq '(^|[\[,])[[:space:]]*"[^"]+"'; then
-    return 0
+  if [ "$value_is_array" -eq 1 ]; then
+    scalar_items=$(printf '%s\n' "$field_items" | sed 's/{[^{}]*}//g')
+    if printf '%s\n' "$scalar_items" | grep -Eq '(^|[\[,])[[:space:]]*"[^"]+"'; then
+      return 0
+    fi
   fi
   return 1
 }
