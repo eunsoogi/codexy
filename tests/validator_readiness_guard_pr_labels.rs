@@ -110,13 +110,17 @@ fn readiness_guard_scopes_pr_label_policy_to_codexy_prs() -> Result<(), Box<dyn 
             "codexy-name-fragment.json",
             r#"{"number":7,"state":"OPEN","headRefName":"codexy/local-helper","repository":"example/codexy-helper","labels":[],"repositoryLabels":["type/fix"]}"#,
         ),
+        (
+            "closed-codexy-pr.json",
+            r#"{"number":209,"state":"CLOSED","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix"]}"#,
+        ),
     ] {
         assert_accepts(
             &script,
             temp.path(),
             name,
             json,
-            "non-Codexy PR label state",
+            "out-of-scope PR label state",
         )?;
     }
 
