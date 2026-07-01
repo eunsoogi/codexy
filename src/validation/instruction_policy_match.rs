@@ -54,8 +54,7 @@ pub(super) fn ends_with_dangling_modal(line: &str) -> bool {
     let line = line.trim_end();
     line.ends_with("MUST")
         || line.ends_with("MUST NOT")
-        || line.ends_with(" to")
-        || line.ends_with(" from")
+        || line.contains("MUST") && (line.ends_with(" to") || line.ends_with(" from"))
 }
 
 pub(super) fn has_bare_mandatory_without_must(

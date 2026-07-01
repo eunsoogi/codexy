@@ -9,12 +9,20 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn validator_cli_rejects_passive_mandatory_skill_instruction() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let skill_path = plugin_root.join("skills/qa/SKILL.md");
-    let mut skill = std::fs::read_to_string(&skill_path)?;
-    skill.push_str("\n- Screenshots are required before handoff.\n");
-    std::fs::write(&skill_path, skill)?;
-    let output = validator(&plugin_root, "--check")?;
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("mandatory instructions must use MUST"));
+    let skill = std::fs::read_to_string(&skill_path)?;
+    for addition in [
+        "- Screenshots are required before handoff.",
+        "* Screenshots are required before handoff.",
+        "1. Evidence is required.",
+    ] {
+        std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
+        let output = validator(&plugin_root, "--check")?;
+        assert!(
+            !output.status.success(),
+            "addition {addition:?} unexpectedly passed"
+        );
+        assert!(stderr(&output).contains("mandatory instructions must use MUST"));
+    }
     Ok(())
 }
 
@@ -82,6 +90,19 @@ fn validator_cli_rejects_wrapped_duplicate_modal_wording() -> TestResult {
     let output = validator(&plugin_root, "--check")?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("duplicated modal wrapping"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_bare_imperative_after_non_modal_to_from() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let mut skill = std::fs::read_to_string(&skill_path)?;
+    skill.push_str("\nRefer to\nRun the validator.\n");
+    std::fs::write(&skill_path, skill)?;
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("mandatory instructions must use MUST"));
     Ok(())
 }
 

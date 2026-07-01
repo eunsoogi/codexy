@@ -38,7 +38,7 @@ pub(super) fn check_text(path: &Path, text: &str, errors: &mut Vec<String>, stri
         }
         let normalized = instruction_line(trimmed);
         let custom_agent_toml = path.extension().and_then(|ext| ext.to_str()) == Some("toml");
-        let passive_mandatory = custom_agent_toml || trimmed.starts_with("- ");
+        let passive_mandatory = custom_agent_toml || is_markdown_instruction_list(trimmed);
         let line_segments = checkable_line_segments(normalized);
         if line_segments.iter().any(|segment| {
             instruction_policy_match::has_prohibition_without_must_not(segment)
@@ -113,4 +113,12 @@ fn instruction_line(line: &str) -> &str {
     line.split_once(". ")
         .filter(|(prefix, _)| prefix.chars().all(|ch| ch.is_ascii_digit()))
         .map_or(line, |(_, rest)| rest)
+}
+
+fn is_markdown_instruction_list(line: &str) -> bool {
+    line.starts_with("- ")
+        || line.starts_with("* ")
+        || line
+            .split_once(". ")
+            .is_some_and(|(prefix, _)| prefix.chars().all(|ch| ch.is_ascii_digit()))
 }
