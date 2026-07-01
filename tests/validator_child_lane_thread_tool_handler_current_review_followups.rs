@@ -64,6 +64,7 @@ fn validator_rejects_long_negated_fallback_value() -> Result<(), Box<dyn std::er
         "Fallback route: no alternate path actually used because the child thread was unreachable",
         "Fallback route: did not use the child thread because it was unreachable",
         "Fallback route: did not route through the child thread because it was unreachable",
+        "Fallback route: did not route through, because the child thread was unreachable",
         "Fallback route: unused because the child thread was unreachable",
         "Fallback route: unused, because the child thread was unreachable",
     ] {
