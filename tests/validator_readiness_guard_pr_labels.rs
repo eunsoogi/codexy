@@ -76,6 +76,30 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
         output_text(&graphql_string_bad)
     );
 
+    let fallback_unlabeled = write_pr_state(
+        temp.path(),
+        "fallback-unlabeled.json",
+        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","repositoryLabels":[],"labels":[],"repository":{"labels":{"nodes":[{"name":"type/fix"}]}}}"#,
+    )?;
+    let fallback_bad = Command::new(&script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            fallback_unlabeled
+                .to_str()
+                .ok_or("fallback unlabeled state path")?,
+        ])
+        .output()?;
+    assert!(
+        !fallback_bad.status.success(),
+        "guard should reject unlabeled PRs when fallback repository labels exist"
+    );
+    assert!(
+        output_text(&fallback_bad).contains("PR labels missing label application evidence"),
+        "unexpected output: {}",
+        output_text(&fallback_bad)
+    );
+
     let labeled = write_pr_state(
         temp.path(),
         "labeled.json",
@@ -133,6 +157,27 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
         "guard should accept PR label nodes captured as strings\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&graphql_string_good.stdout),
         String::from_utf8_lossy(&graphql_string_good.stderr)
+    );
+
+    let fallback_labeled = write_pr_state(
+        temp.path(),
+        "fallback-labeled.json",
+        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","repositoryLabels":null,"labels":{"nodes":[{"name":"type/fix"}]},"repository":{"labels":{"nodes":[{"name":"type/fix"}]}}}"#,
+    )?;
+    let fallback_good = Command::new(&script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            fallback_labeled
+                .to_str()
+                .ok_or("fallback labeled state path")?,
+        ])
+        .output()?;
+    assert!(
+        fallback_good.status.success(),
+        "guard should accept labeled PRs when fallback repository labels exist\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&fallback_good.stdout),
+        String::from_utf8_lossy(&fallback_good.stderr)
     );
     Ok(())
 }

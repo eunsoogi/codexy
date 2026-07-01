@@ -99,6 +99,79 @@ function emit_value(start,    i, c, depth, in_string, escape, seen) {
 '
 }
 
+top_level_json_object_field_value() {
+  json_text="$1"
+  field_name="$2"
+  printf '%s\n' "$json_text" | awk -v key="$field_name" '
+function skip_spaces(pos) {
+  while (substr($0, pos, 1) ~ /[[:space:]]/) {
+    pos++
+  }
+  return pos
+}
+function emit_object(start,    i, c, depth, in_string, escape) {
+  depth = 0
+  in_string = 0
+  escape = 0
+  for (i = start; i <= length($0); i++) {
+    c = substr($0, i, 1)
+    if (in_string) {
+      if (escape) {
+        escape = 0
+      } else if (c == "\\") {
+        escape = 1
+      } else if (c == "\"") {
+        in_string = 0
+      }
+    } else if (c == "\"") {
+      in_string = 1
+    } else if (c == "{") {
+      depth++
+    } else if (c == "}") {
+      depth--
+      if (depth == 0) {
+        print substr($0, start, i - start + 1)
+        exit
+      }
+    }
+  }
+}
+{
+  pattern = "\"" key "\""
+  depth = 0
+  in_string = 0
+  escape = 0
+  for (i = 1; i <= length($0); i++) {
+    c = substr($0, i, 1)
+    if (in_string) {
+      if (escape) {
+        escape = 0
+      } else if (c == "\\") {
+        escape = 1
+      } else if (c == "\"") {
+        in_string = 0
+      }
+    } else if (depth == 1 && substr($0, i, length(pattern)) == pattern) {
+      after_key = skip_spaces(i + length(pattern))
+      if (substr($0, after_key, 1) == ":") {
+        value_start = skip_spaces(after_key + 1)
+        if (substr($0, value_start, 1) == "{") {
+          emit_object(value_start)
+        }
+        i = after_key
+      }
+    } else if (c == "\"") {
+      in_string = 1
+    } else if (c == "{" || c == "[") {
+      depth++
+    } else if (c == "}" || c == "]") {
+      depth--
+    }
+  }
+}
+'
+}
+
 json_value_has_label_name() {
   field_value="$1"
   graph_key=$(printf '%s%s\n' "no" "des")
@@ -137,7 +210,7 @@ json_has_repository_label_taxonomy() {
   if json_value_has_label_name "$repository_labels"; then
     return 0
   fi
-  repository=$(top_level_json_field_value "$json_text" "repository")
+  repository=$(top_level_json_object_field_value "$json_text" "repository")
   repository_labels=$(top_level_json_field_value "$repository" "labels")
   json_value_has_label_name "$repository_labels"
 }
