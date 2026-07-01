@@ -160,15 +160,21 @@ fn has_substantive_route_value(value: &str) -> bool {
 fn has_negated_route_usage(padded_value: &str) -> bool {
     let words = padded_value.split_whitespace().collect::<Vec<_>>();
     words.iter().enumerate().any(|(index, word)| {
-        if *word == "unused" {
+        let token = word.trim_matches(|character: char| {
+            !character.is_ascii_alphanumeric() && character != '\''
+        });
+        if token == "unused" {
             return true;
         }
 
-        let is_route_usage = matches!(*word, "use" | "used" | "using" | "routed" | "routing")
-            || (*word == "route" && words.get(index + 1).is_some_and(|next| *next == "through"));
+        let is_route_usage = matches!(token, "use" | "used" | "using" | "routed" | "routing")
+            || (token == "route" && words.get(index + 1).is_some_and(|next| *next == "through"));
         is_route_usage
             && words[index.saturating_sub(8)..index].iter().any(|prior| {
-                matches!(*prior, "no" | "not" | "never" | "without") || prior.ends_with("n't")
+                let prior = prior.trim_matches(|character: char| {
+                    !character.is_ascii_alphanumeric() && character != '\''
+                });
+                matches!(prior, "no" | "not" | "never" | "without") || prior.ends_with("n't")
             })
     })
 }
