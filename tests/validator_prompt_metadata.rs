@@ -119,6 +119,8 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details()
         "thread/start",
         "turn/start",
         "tool_search` mismatch is an exposure/discovery defect",
+        "exact missing-handler error",
+        "fallback route used",
         "MUST NOT use `codex exec`, `codex fork`, or `codex app-server`",
         "startingState.type=\"branch\"",
         "git check-ref-format --branch",

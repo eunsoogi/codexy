@@ -19,7 +19,11 @@ child-owned implementation lane through another surface.
 3. If `tool_search` or the visible tool surface discovers a Codex app thread
    tool but invocation fails with `No handler registered for tool: ...`, record
    both the discovered metadata and runtime missing-handler evidence as a
-   dogfooding/tool-exposure defect.
+   dogfooding/tool-exposure defect. This is not ordinary unavailable thread
+   tooling: the handoff or status MUST name the exact discovered tool, the
+   exact missing-handler error, the fallback route used to reach the intended
+   child owner or reviewer, and the separate dogfood issue that tracks the
+   exposure/handler mismatch.
 4. Treat app-server-observed `thread/start` and `turn/start` evidence from a
    freshly created child lane as proof that a real Codex thread started. This
    is not permission to replace thread tooling with generic app-server or CLI
