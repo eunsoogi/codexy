@@ -28,6 +28,30 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
         output_text(&bad)
     );
 
+    let string_unlabeled = write_pr_state(
+        temp.path(),
+        "string-unlabeled.json",
+        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix","status/review"]}"#,
+    )?;
+    let string_bad = Command::new(&script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            string_unlabeled
+                .to_str()
+                .ok_or("string unlabeled state path")?,
+        ])
+        .output()?;
+    assert!(
+        !string_bad.status.success(),
+        "guard should reject unlabeled PRs when repository labels are captured as strings"
+    );
+    assert!(
+        output_text(&string_bad).contains("PR labels missing label application evidence"),
+        "unexpected output: {}",
+        output_text(&string_bad)
+    );
+
     let labeled = write_pr_state(
         temp.path(),
         "labeled.json",
@@ -45,6 +69,25 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
         "guard should accept labeled PRs without hard-coding taxonomy labels\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&good.stdout),
         String::from_utf8_lossy(&good.stderr)
+    );
+
+    let string_labeled = write_pr_state(
+        temp.path(),
+        "string-labeled.json",
+        r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":["type/fix"],"repositoryLabels":["type/fix","status/review"]}"#,
+    )?;
+    let string_good = Command::new(&script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            string_labeled.to_str().ok_or("string labeled state path")?,
+        ])
+        .output()?;
+    assert!(
+        string_good.status.success(),
+        "guard should accept PR labels captured as strings\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&string_good.stdout),
+        String::from_utf8_lossy(&string_good.stderr)
     );
     Ok(())
 }

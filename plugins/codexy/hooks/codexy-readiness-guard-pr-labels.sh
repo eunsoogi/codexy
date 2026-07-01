@@ -102,8 +102,10 @@ function emit_value(start,    i, c, depth, in_string, escape, seen) {
 json_value_has_label_name() {
   field_value="$1"
   graph_key=$(printf '%s%s\n' "no" "des")
+  value_is_array=0
   case "$field_value" in
     \[*)
+      value_is_array=1
       field_items=$(printf '%s\n' "$field_value" | sed 's/^\[\([^]]*\)\].*/\1/')
       ;;
     \{*)
@@ -116,8 +118,12 @@ json_value_has_label_name() {
   esac
   case "$field_items" in
     *'"name"'*) return 0 ;;
-    *) return 1 ;;
   esac
+  if [ "$value_is_array" -eq 1 ] &&
+    printf '%s\n' "$field_items" | grep -Eq '(^|,)[[:space:]]*"[^"]+"'; then
+    return 0
+  fi
+  return 1
 }
 
 json_has_repository_label_taxonomy() {
