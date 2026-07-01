@@ -7,10 +7,9 @@ description: Use when building, redesigning, auditing, or visually verifying web
 
 ## Purpose
 
-Make UI correct as a user experience, not just as code. A frontend change is
-complete only when it fits the product domain, follows existing design
-conventions, handles expected states, and has visual evidence at relevant
-viewport or app sizes.
+Make UI correct as a user experience, not just as code. A frontend change is only
+ready when it fits the product domain, follows existing design conventions,
+handles expected states, and has visual evidence at relevant viewport or app sizes.
 
 ## Workflow
 

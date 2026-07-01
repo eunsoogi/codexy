@@ -121,8 +121,8 @@ Escalate beyond local files when any of these are true:
 
 For each escalated item:
 
-1. Re-read the local artifact and note the specific claims at issue.
-2. Re-read or fetch its cited raw sources and wiki dependencies.
+1. MUST re-read the local artifact and note the specific claims at issue.
+2. MUST re-read or fetch its cited raw sources and wiki dependencies.
 3. If a raw source points to a live primary URL, fetch it again when possible.
 4. MUST run targeted research with both supportive and adversarial queries:
    - one query that tries to confirm the current claim

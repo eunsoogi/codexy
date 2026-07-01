@@ -155,7 +155,7 @@ Recommended chat views:
 | `summary` | counts by kind/status, top priorities | quick status checks |
 | `actions` | title, priority, status, next action, updated | planning the next work |
 | `items` | item, status, priority, quantity, next action, updated | actual inventory checks |
-| `records` | title, kind, status, priority, updated | complete compact inventory |
+| `records` | title, kind, status, priority, updated | compact inventory record list |
 | `sources` | title, source/origin pointers, status | provenance and migration review |
 
 ### Saved Views

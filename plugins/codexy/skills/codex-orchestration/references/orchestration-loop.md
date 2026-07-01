@@ -29,16 +29,16 @@
      Codexy specialist whose stated scope clearly matches the task, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex
      child-thread/worktree owner for an issue-sized implementation lane.
-   - For issue-sized implementation lanes, start or fork a separate Codex
+   - For issue-sized implementation lanes, MUST start or fork a separate Codex
      thread in a worktree when the tool is available.
-   - Complete lane assignment before implementation edits begin. A parent may
+   - MUST complete lane assignment before implementation edits begin. A parent may
      prepare issue text, branch name, worktree path, and handoff text, but MUST
      NOT patch implementation files for the child-owned lane.
-   - Give each lane an assignment, issue, branch, worktree path, allowed paths,
+   - MUST give each lane an assignment, issue, branch, worktree path, allowed paths,
      read-first files, deliverable, required evidence, verification command or
      surface, stop condition, and return format.
 4. Integrate:
-   - Re-read files and outputs before trusting child results.
+   - MUST re-read files and outputs before trusting child results.
    - MUST preserve user changes and unrelated work.
    - MUST resolve cross-lane conflicts in the orchestrator thread.
    - MUST route child-owned review feedback back to the owning child thread.

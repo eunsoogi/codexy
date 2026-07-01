@@ -59,7 +59,7 @@ Recommended chat views:
 | View | Columns | Purpose |
 |------|---------|-----|
 | `summary` | counts by status/storage/schema status, newest manifests | quick status checks |
-| `manifests` | dataset, status, storage, formats, size, records, updated | complete compact registry |
+| `manifests` | dataset, status, storage, formats, size, records, updated | compact registry for complete status |
 | `schema` | dataset, schema status, formats, record count, latest profile | deciding what to profile next |
 | `locations` | dataset, storage, access, compact location pointer | finding where the data lives |
 

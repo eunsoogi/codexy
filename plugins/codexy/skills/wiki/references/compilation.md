@@ -16,8 +16,8 @@ MUST NOT use archived sources to update active articles.
 
 ## Incremental vs Full
 
-- **Incremental** (default): Only process sources ingested since the last compilation date (from master `_index.md`). Compare source `ingested` dates against `Last compiled` in master index.
-- **Full** (`--full`): Re-read all sources, rewrite all articles. Expensive but ensures consistency.
+- **Incremental** (default): MUST process only sources ingested since the last compilation date (from master `_index.md`). MUST compare source `ingested` dates against `Last compiled` in master index.
+- **Full** (`--full`): MUST re-read all sources and rewrite all articles. Expensive but ensures consistency.
 
 ## The Compilation Loop
 
