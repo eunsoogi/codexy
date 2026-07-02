@@ -4,53 +4,7 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
-const FORBIDDEN_COMMAND_FRAGMENTS: &[&str] = &[
-    "~",
-    "$HOME",
-    "${HOME}",
-    "/Users/",
-    "/home/",
-    ".codex/",
-    ".git/",
-    "auth.json",
-    "history.jsonl",
-    "PLUGIN_DATA",
-    "CLAUDE_PLUGIN_DATA",
-    "python",
-    "node ",
-    "npm",
-    "curl",
-    "codex plugin",
-    "codex mcp",
-];
-const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
-    "~/",
-    "$HOME/",
-    "$HOME",
-    "${HOME}/",
-    "${HOME}",
-    "/Users/",
-    "/home/",
-    "~/.codex",
-    "$HOME/.codex",
-    "${HOME}/.codex",
-    ".codex/",
-    ".git/",
-    "auth.json",
-    "history.jsonl",
-    "PLUGIN_DATA",
-    "CLAUDE_PLUGIN_DATA",
-    "python",
-    "node ",
-    "npm",
-    "curl",
-    "codex plugin",
-    "codex mcp",
-    ">",
-];
-const FORBIDDEN_SCRIPT_COMMAND_PREFIXES: &[&str] = &[
-    "gh ", "git ", "mkdir ", "touch ", "rm ", "mv ", "cp ", "chmod ", "chown ", "node ",
-];
+use super::safety;
 
 pub(super) fn check_command(
     path: &Path,
@@ -58,14 +12,7 @@ pub(super) fn check_command(
     event: &str,
     command: &str,
 ) -> Result<()> {
-    for forbidden in FORBIDDEN_COMMAND_FRAGMENTS {
-        if command.contains(forbidden) {
-            bail!(
-                "{} {event} hook command must not reference {forbidden:?}",
-                display_relative(path)
-            );
-        }
-    }
+    safety::check_command_text(path, event, command)?;
     if has_single_quoted_plugin_root_entrypoint(command) {
         bail!(
             "{} {event} hook command single-quoted PLUGIN_ROOT entrypoints are not supported",
@@ -223,27 +170,5 @@ fn is_static_argument_character(character: char) -> bool {
 }
 
 pub(super) fn check_script_safety(path: &Path, event: &str, script_path: &Path) -> Result<()> {
-    let text = std::fs::read_to_string(script_path)
-        .with_context(|| format!("reading {}", display_relative(script_path)))?;
-    for forbidden in FORBIDDEN_SCRIPT_FRAGMENTS {
-        if text.contains(forbidden) {
-            bail!(
-                "{} {event} hook script must not contain {forbidden:?}: {}",
-                display_relative(path),
-                display_relative(script_path)
-            );
-        }
-    }
-    for line in text.lines().map(str::trim_start) {
-        for forbidden in FORBIDDEN_SCRIPT_COMMAND_PREFIXES {
-            if line.starts_with(forbidden) {
-                bail!(
-                    "{} {event} hook script must not run {forbidden:?}: {}",
-                    display_relative(path),
-                    display_relative(script_path)
-                );
-            }
-        }
-    }
-    Ok(())
+    safety::check_script(path, event, script_path)
 }

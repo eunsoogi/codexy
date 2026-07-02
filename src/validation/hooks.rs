@@ -2,6 +2,7 @@ mod command;
 mod context;
 mod lifecycle;
 mod lifecycle_probe;
+mod safety;
 
 use std::path::Path;
 

@@ -66,6 +66,42 @@ fn validator_cli_rejects_unsafe_sourced_hard_hook_helper() -> Result<(), Box<dyn
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_hard_hooks_that_reject_valid_inputs()
+-> Result<(), Box<dyn std::error::Error>> {
+    for (script, expected_error) in [
+        (
+            "codexy-pr-title-check.sh",
+            "PR title must use Conventional Commit style",
+        ),
+        (
+            "codexy-pr-label-check.sh",
+            "PR labels missing label application evidence",
+        ),
+        (
+            "codexy-merge-message-check.sh",
+            "merge commit subject must use Conventional Commit style",
+        ),
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_plugin(&plugin_root)?;
+        replace_guard_delegation_with_failure(&plugin_root, script, expected_error)?;
+
+        let output = validate_hooks(&plugin_root)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject hard hooks that fail valid inputs for {script}"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("hard-mode delegation failed"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_hooks(
     plugin_root: &std::path::Path,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
@@ -76,6 +112,28 @@ fn validate_hooks(
             "--check-hooks",
         ])
         .output()?)
+}
+
+fn replace_guard_delegation_with_failure(
+    plugin_root: &std::path::Path,
+    script: &str,
+    expected_error: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let script_path = plugin_root.join("hooks").join(script);
+    let script_text = std::fs::read_to_string(&script_path)?;
+    let broken = script_text
+        .lines()
+        .map(|line| {
+            if line.contains("codexy-readiness-guard.sh") {
+                format!("printf '%s\\n' 'error: {expected_error}'; exit 1")
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&script_path, format!("{broken}\n"))?;
+    Ok(())
 }
 
 fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {

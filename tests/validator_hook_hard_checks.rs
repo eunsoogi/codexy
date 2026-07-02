@@ -141,7 +141,7 @@ fn validator_cli_rejects_unsafe_delegated_hard_hook_helper()
         "validator should reject unsafe delegated hard hook helpers"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("must not run \"git \""),
+        String::from_utf8_lossy(&output.stderr).contains("must not run \"git\""),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

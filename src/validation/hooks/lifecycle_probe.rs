@@ -2,36 +2,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Result, bail};
 
 use crate::paths::display_relative;
 
 use super::context::process;
 use super::lifecycle::{MERGE_MESSAGE_SCRIPT, PR_LABEL_SCRIPT, PR_TITLE_SCRIPT};
+use super::safety;
 
 const SOURCED_HARD_HELPERS: &[&str] = &["hooks/codexy-readiness-guard-json.sh"];
-const FORBIDDEN_SOURCED_HELPER_FRAGMENTS: &[&str] = &[
-    "~/",
-    "$HOME",
-    "${HOME}",
-    "/Users/",
-    "/home/",
-    ".codex/",
-    ".git/",
-    "auth.json",
-    "history.jsonl",
-    "PLUGIN_DATA",
-    "CLAUDE_PLUGIN_DATA",
-    "python",
-    "node ",
-    "npm",
-    "curl",
-    "codex plugin",
-    "codex mcp",
-];
-const FORBIDDEN_SOURCED_HELPER_PREFIXES: &[&str] = &[
-    "gh ", "git ", "mkdir ", "touch ", "rm ", "mv ", "cp ", "chmod ", "chown ", "node ",
-];
 
 pub(super) fn check_sourced_helper_safety(
     path: &Path,
@@ -39,29 +18,7 @@ pub(super) fn check_sourced_helper_safety(
     event: &str,
 ) -> Result<()> {
     for helper in SOURCED_HARD_HELPERS {
-        let helper_path = plugin_root.join(helper);
-        let text = fs::read_to_string(&helper_path)
-            .with_context(|| format!("reading {}", display_relative(&helper_path)))?;
-        for forbidden in FORBIDDEN_SOURCED_HELPER_FRAGMENTS {
-            if text.contains(forbidden) {
-                bail!(
-                    "{} {event} hook script must not contain {forbidden:?}: {}",
-                    display_relative(path),
-                    display_relative(&helper_path)
-                );
-            }
-        }
-        for line in text.lines().map(str::trim_start) {
-            for forbidden in FORBIDDEN_SOURCED_HELPER_PREFIXES {
-                if line.starts_with(forbidden) {
-                    bail!(
-                        "{} {event} hook script must not run {forbidden:?}: {}",
-                        display_relative(path),
-                        display_relative(&helper_path)
-                    );
-                }
-            }
-        }
+        safety::check_sourced_helper(path, event, &plugin_root.join(helper))?;
     }
     Ok(())
 }
@@ -73,13 +30,8 @@ pub(super) fn check_hard_mode_delegation(
     timeout_secs: u64,
     event: &str,
 ) -> Result<()> {
-    let probe = HardModeProbe::new(script)?;
-    let output = process::output_with_timeout(
-        script_path,
-        script,
-        &probe.args(),
-        Duration::from_secs(timeout_secs),
-    )?;
+    let invalid_probe = HardModeProbe::invalid(script)?;
+    let output = run_probe(script_path, script, &invalid_probe, timeout_secs)?;
     if output.status.success() {
         bail!(
             "{} {event} hard-mode delegation failed: {} accepted representative invalid input",
@@ -99,7 +51,30 @@ pub(super) fn check_hard_mode_delegation(
             display_relative(script_path)
         );
     }
+    let valid_probe = HardModeProbe::valid(script)?;
+    let output = run_probe(script_path, script, &valid_probe, timeout_secs)?;
+    if !output.status.success() {
+        bail!(
+            "{} {event} hard-mode delegation failed: {} rejected representative valid input",
+            display_relative(path),
+            display_relative(script_path)
+        );
+    }
     Ok(())
+}
+
+fn run_probe(
+    script_path: &Path,
+    script: &str,
+    probe: &HardModeProbe,
+    timeout_secs: u64,
+) -> Result<std::process::Output> {
+    process::output_with_timeout(
+        script_path,
+        script,
+        &probe.args(),
+        Duration::from_secs(timeout_secs),
+    )
 }
 
 struct HardModeProbe {
@@ -108,14 +83,16 @@ struct HardModeProbe {
 }
 
 impl HardModeProbe {
-    fn new(script: &str) -> Result<Self> {
+    fn invalid(script: &str) -> Result<Self> {
         let args = match script {
             PR_TITLE_SCRIPT => vec![
                 "--pr-title".to_string(),
                 "Require descriptive child thread titles".to_string(),
             ],
             PR_LABEL_SCRIPT => {
-                let temp_file = write_pr_label_probe_state()?;
+                let temp_file = write_pr_label_probe_state(
+                    r#"{"number":219,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
+                )?;
                 return Ok(Self {
                     args: vec![
                         "--pr-state-file".to_string(),
@@ -138,6 +115,40 @@ impl HardModeProbe {
         })
     }
 
+    fn valid(script: &str) -> Result<Self> {
+        let args = match script {
+            PR_TITLE_SCRIPT => vec![
+                "--pr-title".to_string(),
+                "fix(hooks): verify hard hook delegation".to_string(),
+            ],
+            PR_LABEL_SCRIPT => {
+                let temp_file = write_pr_label_probe_state(
+                    r#"{"number":219,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+                )?;
+                return Ok(Self {
+                    args: vec![
+                        "--pr-state-file".to_string(),
+                        temp_file.to_string_lossy().into_owned(),
+                    ],
+                    temp_file: Some(temp_file),
+                });
+            }
+            MERGE_MESSAGE_SCRIPT => vec![
+                "--expected-issue".to_string(),
+                "219".to_string(),
+                "--expected-pr".to_string(),
+                "220".to_string(),
+                "--merge-message".to_string(),
+                "fix(hooks): verify hard hook delegation (#220)\n\nFixes #219\n".to_string(),
+            ],
+            _ => bail!("unsupported hard hook probe script: {script}"),
+        };
+        Ok(Self {
+            args,
+            temp_file: None,
+        })
+    }
+
     fn args(&self) -> Vec<&str> {
         self.args.iter().map(String::as_str).collect()
     }
@@ -151,7 +162,7 @@ impl Drop for HardModeProbe {
     }
 }
 
-fn write_pr_label_probe_state() -> Result<PathBuf> {
+fn write_pr_label_probe_state(text: &str) -> Result<PathBuf> {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -160,10 +171,7 @@ fn write_pr_label_probe_state() -> Result<PathBuf> {
         "codexy-pr-label-hard-hook-{unique}-{}.json",
         std::process::id()
     ));
-    fs::write(
-        &path,
-        r#"{"number":219,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
-    )?;
+    fs::write(&path, text)?;
     Ok(path)
 }
 
