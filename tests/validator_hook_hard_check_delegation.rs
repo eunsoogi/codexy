@@ -67,6 +67,36 @@ fn validator_cli_rejects_unsafe_sourced_hard_hook_helper() -> Result<(), Box<dyn
 }
 
 #[test]
+fn validator_cli_rejects_redirecting_sourced_hard_hook_helper()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    let helper_path = plugin_root.join("hooks/codexy-readiness-guard-json.sh");
+    let helper_text = std::fs::read_to_string(&helper_path)?;
+    let state_path = temp.path().join("codexy-hook-state");
+    std::fs::write(
+        &helper_path,
+        format!(
+            "{helper_text}\nprintf '%s\\n' state > \"{}\"\n",
+            state_path.display()
+        ),
+    )?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject redirecting sourced hard hook helpers"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("codexy-readiness-guard-json.sh"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_hard_hooks_that_reject_valid_inputs()
 -> Result<(), Box<dyn std::error::Error>> {
     for (script, expected_error) in [
