@@ -87,7 +87,6 @@ fn is_unrelated_metadata_line(line: &str) -> bool {
     };
     !is_capture_related(&key.to_ascii_lowercase())
 }
-
 pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
     let Some((key, _)) = line_key_value(line) else {
         return false;
@@ -226,7 +225,8 @@ fn lane_label(line: &str) -> Option<String> {
         .next()
         .unwrap_or_default()
         .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-    (!label.is_empty()).then(|| format!("lane {}", label.to_ascii_lowercase()))
+    (!label.is_empty() && !label.eq_ignore_ascii_case("ownership"))
+        .then(|| format!("lane {}", label.to_ascii_lowercase()))
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
