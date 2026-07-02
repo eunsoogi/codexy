@@ -49,6 +49,7 @@ fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::er
         "Fallback route: parent sent the handoff to the child thread and then the send failed",
         "Fallback route: parent posted the message in the child thread, but delivery failed",
         "Fallback route: parent posted the message in the child thread; the delivery failed",
+        "Fallback route: parent posted the message in the child thread; delivery failure",
         "Fallback route: parent delivered the message to the child owner, but the handoff failed to send",
         "Fallback route: parent sent the handoff to the child thread. the send failed",
         "Fallback route: parent sent the handoff to the child thread, and the route was not used",

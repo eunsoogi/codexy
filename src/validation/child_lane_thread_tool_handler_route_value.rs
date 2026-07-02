@@ -101,7 +101,13 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_failed_route_delivery_clause(clause: &str) -> bool {
-    clause.contains("failed")
+    ["failed", "failure", "failures"]
+        .into_iter()
+        .any(|failure| {
+            clause
+                .find(failure)
+                .is_some_and(|index| has_phrase_boundaries(clause, index, failure))
+        })
         && [
             "send",
             "sent",
