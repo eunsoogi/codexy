@@ -116,7 +116,7 @@ fn validator_rejects_negated_fallback_route_not_routed() -> Result<(), Box<dyn s
 #[test]
 fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence(
-        "no fallback route available evidence was not provided",
+        "fallback route: it is false that no fallback route was available",
     ))?;
     assert!(
         !output.status.success(),

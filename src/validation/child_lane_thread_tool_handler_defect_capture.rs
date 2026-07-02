@@ -85,8 +85,16 @@ fn has_explicit_no_route(clause: &str) -> bool {
     NO_ROUTE_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
+        && !has_negated_no_route_claim(clause)
         && !has_negated_fallback_route(clause)
         && !has_placeholder_or_pending_value(clause)
+}
+
+fn has_negated_no_route_claim(clause: &str) -> bool {
+    const NEGATED_NO_ROUTE_CLAIMS: &str = "false that no fallback route|false that no alternate route|not true that no fallback route|not true that no alternate route|not the case that no fallback route|not the case that no alternate route";
+    NEGATED_NO_ROUTE_CLAIMS
+        .split('|')
+        .any(|marker| clause.contains(marker))
 }
 
 fn has_negated_fallback_route(clause: &str) -> bool {
