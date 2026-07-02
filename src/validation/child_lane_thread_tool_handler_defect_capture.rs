@@ -61,7 +61,6 @@ fn has_tracking_issue(evidence: &str) -> bool {
 fn has_concrete_fallback_route(clause: &str) -> bool {
     !has_negated_fallback_route(clause)
         && !has_negated_fallback_route_field(clause)
-        && !has_placeholder_or_pending_value(clause)
         && extract_fallback_route_value(clause).is_some_and(has_substantive_route_value)
 }
 

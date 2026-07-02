@@ -141,7 +141,7 @@ fn validator_allows_concrete_route_after_handler_failure_negation()
         "Fallback route: handler did not respond. Parent sent the handoff to the child thread",
         "Fallback route: handler did not respond to codex_app.read_thread, parent sent the handoff to the child thread",
         "Fallback route: handler did not respond via codex_app.read_thread, parent posted the handoff to the child thread",
-        "Fallback route: handler failed, parent sent the handoff to the child thread",
+        "Fallback route: parent posted the handoff in the child thread because read_thread was not available",
         "Fallback route: handler failed and parent sent the handoff to the child thread",
         "Fallback route: handler failed and parent posted the handoff to the child thread",
         "Fallback route: parent posted the handoff in the child thread",
