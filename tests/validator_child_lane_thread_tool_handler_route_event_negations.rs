@@ -27,8 +27,13 @@ Maintainer reassignment: none
 fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::error::Error>> {
     for route in [
         "Fallback route: no, parent sent the handoff to the child thread",
+        "Fallback route: not true, see parent thread",
         "Fallback route: false: parent sent the handoff to the child thread",
+        "Fallback route: false positive parent sent the handoff to the child thread",
+        "Fallback route: false-positive parent sent the handoff to the child thread",
         "Fallback route: it is false that parent sent the handoff to the child thread",
+        "Fallback route: it is not true that parent sent the handoff to the child thread",
+        "Fallback route: it is not the case that parent sent the handoff to the child thread",
         "Fallback route: parent sent the handoff to the child thread? no",
         "Fallback route: parent sent the handoff to the child thread was not used",
         "Fallback route: never parent sent the handoff to the child thread",

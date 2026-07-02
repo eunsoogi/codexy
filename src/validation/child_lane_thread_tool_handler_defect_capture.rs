@@ -32,7 +32,6 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
                         .any(|following| has_handler_marker(following)))
     })
 }
-
 fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
     let start = (0..index)
         .rev()
@@ -46,7 +45,6 @@ fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
     scoped[index - start] = current_defect_clause_scope(lines[index]);
     scoped.join("\n")
 }
-
 fn current_defect_clause_scope(line: &str) -> &str {
     let Some(defect_start) = line.find("defect") else {
         return line;
@@ -163,6 +161,8 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
     }) || ["created", "filed"].into_iter().any(|verb| {
         normalized.contains(&format!("issue not {verb}"))
             || normalized.contains(&format!("issue not yet {verb}"))
+            || normalized.contains(&format!(" not {verb}"))
+            || normalized.contains(&format!(" not yet {verb}"))
     })
 }
 fn has_placeholder_or_pending_value(clause: &str) -> bool {

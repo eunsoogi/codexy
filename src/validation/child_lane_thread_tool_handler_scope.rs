@@ -16,7 +16,6 @@ pub(super) fn scope_start_until_blank(evidence: &str, line_start: usize) -> (usi
     }
     (previous_start, None)
 }
-
 pub(super) fn previous_nonempty_block_start(evidence: &str, block_end: usize) -> Option<usize> {
     let mut block_start = block_end;
     let mut cursor = block_end;
@@ -33,7 +32,6 @@ pub(super) fn previous_nonempty_block_start(evidence: &str, block_end: usize) ->
     }
     (block_start != block_end).then_some(block_start)
 }
-
 pub(super) fn capture_end_before_unrelated_evidence(
     evidence: &str,
     capture_start: usize,
@@ -66,13 +64,11 @@ pub(super) fn capture_end_before_unrelated_evidence(
     }
     evidence.len()
 }
-
 fn line_end(text: &str, line_start: usize) -> usize {
     text[line_start..]
         .find('\n')
         .map_or(text.len(), |index| line_start + index)
 }
-
 fn is_capture_related(line: &str) -> bool {
     [
         "dogfooding defect",
@@ -85,7 +81,6 @@ fn is_capture_related(line: &str) -> bool {
     .into_iter()
     .any(|marker| line.contains(marker))
 }
-
 fn is_unrelated_metadata_line(line: &str) -> bool {
     let Some((key, _)) = line_key_value(line) else {
         return false;
@@ -115,12 +110,22 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
 pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize) -> usize {
     let mut capture_start = line_start;
     let mut cursor = line_start;
+    let current_lane = lane_label(&evidence[line_start..line_end(evidence, line_start)]);
     while cursor > 0 {
         let previous_end = cursor - 1;
         let previous_start = evidence[..previous_end]
             .rfind('\n')
             .map_or(0, |index| index + 1);
         let previous_line = &evidence[previous_start..previous_end];
+        if is_different_lane_line(previous_line, current_lane.as_deref()) {
+            break;
+        }
+        if is_handoff_metadata_line(previous_line)
+            && lane_label_for_scope(evidence, 0, previous_start)
+                .is_some_and(|lane| Some(lane.as_str()) != current_lane.as_deref())
+        {
+            break;
+        }
         if !is_handoff_metadata_line(previous_line) || has_absent_defect_capture(previous_line) {
             break;
         }

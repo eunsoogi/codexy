@@ -90,8 +90,15 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         .trim();
     matches!(
         local,
-        "no" | "false" | "never" | "unable" | "it is false that"
+        "no" | "false"
+            | "never"
+            | "unable"
+            | "it is false that"
+            | "it is not true that"
+            | "it is not the case that"
     ) || local.ends_with(" false that")
+        || local.starts_with("false positive")
+        || local.starts_with("false-positive")
 }
 
 fn has_post_destination_route_negation(suffix: &str) -> bool {
