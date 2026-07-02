@@ -158,7 +158,7 @@ before opening a PR unless a maintainer explicitly scopes an exception.
 
 PR titles MUST use Conventional Commit style, such as
 `chore(repo): repository governance`. Before PR readiness, MUST validate the
-exact PR title with `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title`.
+exact PR title with `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$(gh pr view --json title --jq .title)"`.
 MUST NOT treat `UserPromptSubmit` advisory context as PR title, PR label, or
 merge-message enforcement.
 
