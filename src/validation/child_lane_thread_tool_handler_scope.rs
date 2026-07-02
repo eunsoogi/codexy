@@ -169,7 +169,26 @@ fn line_key_value(line: &str) -> Option<(&str, &str)> {
         .strip_prefix("- ")
         .or_else(|| trimmed.strip_prefix("* "))
         .unwrap_or(trimmed);
-    trimmed.split_once(':')
+    let (key, value) = trimmed.split_once(':')?;
+    Some((strip_lane_label_prefix(key), value))
+}
+
+fn strip_lane_label_prefix(key: &str) -> &str {
+    let Some(rest) = key
+        .trim_start()
+        .strip_prefix("Lane ")
+        .or_else(|| key.trim_start().strip_prefix("lane "))
+    else {
+        return key;
+    };
+    let Some(label_end) = rest.find(|ch: char| ch.is_whitespace() || ch == '-' || ch == '.') else {
+        return key;
+    };
+    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    if label.is_empty() {
+        return key;
+    }
+    rest[label_end..].trim_start_matches(|ch: char| ch.is_whitespace() || ch == '-' || ch == '.')
 }
 
 fn lane_label_for_scope(evidence: &str, start: usize, end: usize) -> Option<String> {
