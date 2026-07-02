@@ -6,32 +6,65 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     tool: &str,
 ) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
-    has_handler_handoff_fields(evidence)
-        && lines.iter().enumerate().any(|(index, line)| {
-            is_defect_capture_line(line)
-                && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
-                    || opens_defect_list(line)
-                        && lines[index + 1..]
-                            .iter()
-                            .take_while(|following| is_list_item(following))
-                            .any(|following| {
-                                has_handler_marker(following) && has_tool_name(following, tool)
-                            }))
-        })
+    lines.iter().enumerate().any(|(index, line)| {
+        is_defect_capture_line(line)
+            && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))
+            && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
+                || opens_defect_list(line)
+                    && lines[index + 1..]
+                        .iter()
+                        .take_while(|following| is_list_item(following))
+                        .any(|following| {
+                            has_handler_marker(following) && has_tool_name(following, tool)
+                        }))
+    })
 }
 
 pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
-    has_handler_handoff_fields(evidence)
-        && lines.iter().enumerate().any(|(index, line)| {
-            is_defect_capture_line(line)
-                && (has_handler_marker_in_defect_clause(line)
-                    || opens_defect_list(line)
-                        && lines[index + 1..]
-                            .iter()
-                            .take_while(|following| is_list_item(following))
-                            .any(|following| has_handler_marker(following)))
+    lines.iter().enumerate().any(|(index, line)| {
+        is_defect_capture_line(line)
+            && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))
+            && (has_handler_marker_in_defect_clause(line)
+                || opens_defect_list(line)
+                    && lines[index + 1..]
+                        .iter()
+                        .take_while(|following| is_list_item(following))
+                        .any(|following| has_handler_marker(following)))
+    })
+}
+
+fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
+    let start = (0..index)
+        .rev()
+        .find(|candidate| is_defect_capture_line(lines[*candidate]))
+        .map_or(0, |candidate| candidate + 1);
+    let end = lines[index + 1..]
+        .iter()
+        .position(|line| is_defect_capture_line(line))
+        .map_or(lines.len(), |offset| index + 1 + offset);
+    let mut scoped = lines[start..end].to_vec();
+    scoped[index - start] = current_defect_clause_scope(lines[index]);
+    scoped.join("\n")
+}
+
+fn current_defect_clause_scope(line: &str) -> &str {
+    let Some(defect_start) = line.find("defect") else {
+        return line;
+    };
+    let search_start = defect_start + "defect".len();
+    let lower = line.to_ascii_lowercase();
+    "dogfooding defect|tool-exposure defect|dogfooding/tool-exposure defect"
+        .split('|')
+        .filter_map(|marker| {
+            let index = search_start + lower[search_start..].find(marker)?;
+            let prefix = lower[..index].trim_end();
+            let suffix = lower[index + marker.len()..].trim_start();
+            (matches!(prefix.as_bytes().last(), Some(b'.' | b';')) && suffix.starts_with(':'))
+                .then_some(index)
         })
+        .min()
+        .map_or(line, |next| &line[..next])
 }
 
 fn has_handler_handoff_fields(evidence: &str) -> bool {
@@ -60,7 +93,6 @@ fn has_tracking_issue(evidence: &str) -> bool {
 
 fn has_concrete_fallback_route(clause: &str) -> bool {
     !has_negated_fallback_route(clause)
-        && !has_negated_fallback_route_field(clause)
         && extract_fallback_route_value(clause).is_some_and(has_substantive_route_value)
 }
 
@@ -112,15 +144,9 @@ fn has_negated_no_route_claim(clause: &str) -> bool {
 }
 
 fn has_negated_fallback_route(clause: &str) -> bool {
-    const NEGATED_FALLBACK_MARKERS: &str = "no fallback route evidence|no fallback path evidence|without fallback route evidence|without a fallback route|without fallback path evidence|without a fallback path";
+    const NEGATED_FALLBACK_MARKERS: &str = "no fallback route:|no fallback path:|no fallback route evidence|no fallback path evidence|without fallback route evidence|without a fallback route|without fallback path evidence|without a fallback path";
     NEGATED_FALLBACK_MARKERS
         .split('|')
-        .any(|marker| clause.contains(marker))
-}
-
-fn has_negated_fallback_route_field(clause: &str) -> bool {
-    ["no fallback route:", "no fallback path:"]
-        .into_iter()
         .any(|marker| clause.contains(marker))
 }
 

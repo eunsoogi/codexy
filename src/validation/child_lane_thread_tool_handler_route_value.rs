@@ -43,10 +43,37 @@ fn has_positive_destination(after_object: &str) -> bool {
 }
 
 fn direct_route_segment(after_object: &str) -> &str {
-    after_object
-        .split_once(" and then ")
-        .and_then(|(before, after)| (!has_invalid_route_followup(after)).then_some(before))
-        .unwrap_or(after_object)
+    [
+        " and then ",
+        ", then ",
+        "; then ",
+        " then ",
+        " and later checked ",
+        ", later checked ",
+        "; later checked ",
+        " later checked ",
+        " before checking ",
+        ", before checking ",
+        "; before checking ",
+        " after checking ",
+        ", after checking ",
+        "; after checking ",
+        " and subsequently checked ",
+        ", subsequently checked ",
+        "; subsequently checked ",
+        " subsequently checked ",
+    ]
+    .into_iter()
+    .filter_map(|delimiter| {
+        after_object.find(delimiter).and_then(|index| {
+            let before = &after_object[..index];
+            let after = &after_object[index + delimiter.len()..];
+            (!has_invalid_route_followup(after)).then_some((index, before))
+        })
+    })
+    .min_by_key(|(index, _)| *index)
+    .map(|(_, before)| before)
+    .unwrap_or(after_object)
 }
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
