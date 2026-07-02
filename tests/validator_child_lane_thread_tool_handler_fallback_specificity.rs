@@ -140,11 +140,16 @@ fn validator_allows_tracking_issue_for_missing_handler_exposure()
 #[test]
 fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn std::error::Error>>
 {
-    let output = run_ownership_validator(&tracking_issue_evidence("tracking issue: missing"))?;
-    assert!(
-        !output.status.success(),
-        "validator should reject placeholder tracking issue field values"
-    );
+    for issue in
+        "tracking issue: missing|tracking issue: none, see #205|tracking issue: missing (#205)|tracking issue: no issue, see #205|tracking issue: no issue (#205)|tracking issue: no issue - #205|tracking issue: no separate issue #205"
+            .split('|')
+    {
+        let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
+        assert!(
+            !output.status.success(),
+            "validator should reject placeholder tracking issue field value `{issue}`"
+        );
+    }
     Ok(())
 }
 #[test]
