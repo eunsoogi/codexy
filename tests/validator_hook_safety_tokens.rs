@@ -56,6 +56,32 @@ fn validator_cli_rejects_node_script_with_tab_separator() -> Result<(), Box<dyn 
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_node_script_behind_shell_wrappers()
+-> Result<(), Box<dyn std::error::Error>> {
+    for line in ["exec node helper.js", "env node helper.js"] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_plugin(&plugin_root)?;
+        std::fs::write(
+            plugin_root.join("hooks/codexy-routing-context.sh"),
+            format!("#!/bin/sh\n{line}\n"),
+        )?;
+
+        let output = validate_hooks(&plugin_root)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject wrapped node token in {line}"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("must not run \"node\""),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_hooks(
     plugin_root: &std::path::Path,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {

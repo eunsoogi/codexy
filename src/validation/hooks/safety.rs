@@ -106,15 +106,17 @@ fn check_script_inner(
         }
     }
     for line in text.lines().map(str::trim_start) {
-        let Some(command) = first_shell_token(line) else {
+        if line.is_empty() || line.starts_with('#') {
             continue;
-        };
-        if FORBIDDEN_SCRIPT_COMMANDS.contains(&command) {
-            bail!(
-                "{} {event} hook script must not run {command:?}: {}",
-                display_relative(path),
-                display_relative(script_path)
-            );
+        }
+        for command in FORBIDDEN_SCRIPT_COMMANDS {
+            if contains_shell_token(line, command) {
+                bail!(
+                    "{} {event} hook script must not run {command:?}: {}",
+                    display_relative(path),
+                    display_relative(script_path)
+                );
+            }
         }
     }
     Ok(())
@@ -130,14 +132,6 @@ fn bail_forbidden_reference(path: &Path, event: &str, forbidden: &str) -> Result
 fn contains_shell_token(text: &str, token: &str) -> bool {
     text.split(is_shell_token_boundary)
         .any(|part| part == token)
-}
-
-fn first_shell_token(line: &str) -> Option<&str> {
-    if line.is_empty() || line.starts_with('#') {
-        return None;
-    }
-    line.split(is_shell_token_boundary)
-        .find(|part| !part.is_empty())
 }
 
 fn is_shell_token_boundary(character: char) -> bool {
