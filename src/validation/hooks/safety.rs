@@ -66,8 +66,9 @@ const FORBIDDEN_SOURCED_HELPER_FRAGMENTS: &[&str] = &[
     "codex mcp",
 ];
 const FORBIDDEN_SCRIPT_COMMANDS: &[&str] = &[
-    "gh", "git", "mkdir", "touch", "rm", "mv", "cp", "chmod", "chown", "node",
+    "gh", "git", "mkdir", "touch", "rm", "mv", "cp", "chmod", "chown", "node", "nodejs",
 ];
+const FORBIDDEN_COMMAND_TOKENS: &[&str] = &["node", "nodejs"];
 
 pub(super) fn check_command_text(path: &Path, event: &str, command: &str) -> Result<()> {
     for forbidden in FORBIDDEN_COMMAND_FRAGMENTS {
@@ -75,8 +76,10 @@ pub(super) fn check_command_text(path: &Path, event: &str, command: &str) -> Res
             bail_forbidden_reference(path, event, forbidden)?;
         }
     }
-    if contains_shell_token(command, "node") {
-        bail_forbidden_reference(path, event, "node")?;
+    for forbidden in FORBIDDEN_COMMAND_TOKENS {
+        if contains_shell_token(command, forbidden) {
+            bail_forbidden_reference(path, event, forbidden)?;
+        }
     }
     Ok(())
 }

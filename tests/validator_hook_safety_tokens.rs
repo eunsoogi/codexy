@@ -33,6 +33,34 @@ fn validator_cli_rejects_node_command_with_tab_separator() -> Result<(), Box<dyn
 }
 
 #[test]
+fn validator_cli_rejects_nodejs_command_alias() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    let hooks_path = plugin_root.join("hooks/hooks.json");
+    let mut hooks_config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
+    hooks_config["hooks"]["PostToolUse"] = serde_json::json!([{ "hooks": [{
+        "type": "command",
+        "command": "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\" nodejs helper.js",
+        "timeout": 5
+    }]}]);
+    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject nodejs command alias"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("must not reference \"nodejs\""),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_node_script_with_tab_separator() -> Result<(), Box<dyn std::error::Error>>
 {
     let temp = tempfile::tempdir()?;
@@ -50,6 +78,29 @@ fn validator_cli_rejects_node_script_with_tab_separator() -> Result<(), Box<dyn 
     );
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("must not run \"node\""),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_nodejs_script_alias() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    std::fs::write(
+        plugin_root.join("hooks/codexy-routing-context.sh"),
+        "#!/bin/sh\nnodejs helper.js\n",
+    )?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject nodejs script alias"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("must not run \"nodejs\""),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
