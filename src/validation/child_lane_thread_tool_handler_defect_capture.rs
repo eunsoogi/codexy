@@ -1,7 +1,6 @@
 use super::child_lane_thread_tool_handler_issue_reference::has_issue_reference;
 use super::child_lane_thread_tool_handler_no_route::has_false_no_route_answer;
 use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
-
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     evidence: &str,
     tool: &str,
@@ -20,7 +19,6 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
                         }))
     })
 }
-
 pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
@@ -143,7 +141,7 @@ fn has_negated_fallback_route(clause: &str) -> bool {
 }
 
 fn has_negated_tracking_issue(clause: &str) -> bool {
-    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue,|no issue #|no separate issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|has not been created|hasn't been created|has not been filed|hasn't been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|wasn't created|wasn't filed|not a tracking issue|not a separate tracking issue|not a dogfood issue|not a separate dogfood issue|not a dogfooding issue|not a separate dogfooding issue|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
+    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue,|no issue #|no separate issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|has not been created|hasn't been created|has not been filed|hasn't been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|not provided|wasn't created|wasn't filed|not a tracking issue|not a separate tracking issue|not a dogfood issue|not a separate dogfood issue|not a dogfooding issue|not a separate dogfooding issue|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
     NEGATED_TRACKING_ISSUE_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
@@ -162,27 +160,32 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
                 || normalized.contains(&format!("issue {auxiliary} not {verb}"))
                 || normalized.contains(&format!("issue {auxiliary} not yet {verb}"))
         })
+    }) || ["created", "filed"].into_iter().any(|verb| {
+        normalized.contains(&format!("issue not {verb}"))
+            || normalized.contains(&format!("issue not yet {verb}"))
     })
 }
-
 fn has_placeholder_or_pending_value(clause: &str) -> bool {
-    const PENDING_PHRASES: &str =
-        "not created|not available|not provided|not yet|will be|to be created";
-    PENDING_PHRASES
+    clause.split_once(':').map_or_else(
+        || starts_with_absent_issue_value(clause),
+        |(_, value)| starts_with_absent_issue_value(value.trim()),
+    )
+}
+
+fn starts_with_absent_issue_value(value: &str) -> bool {
+    const PLACEHOLDER_PREFIXES: &str =
+        "none|n/a|tbd|pending|missing|absent|unavailable|no issue|no separate issue";
+    const PENDING_PREFIXES: &str = "not created|not available|not provided|not yet created|not yet filed|will be|to be created";
+    PLACEHOLDER_PREFIXES
         .split('|')
-        .any(|marker| clause.contains(marker))
-        || clause.split_once(':').is_some_and(|(_, value)| {
-            let value = value.trim();
-            "none|n/a|tbd|pending|missing|absent|unavailable|no issue|no separate issue"
-                .split('|')
-                .any(|placeholder| {
-                    if placeholder == "missing" && value.starts_with("missing-handler") {
-                        return false;
-                    }
-                    value == placeholder
-                        || value.strip_prefix(placeholder).is_some_and(|rest| {
-                            rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
-                        })
+        .chain(PENDING_PREFIXES.split('|'))
+        .any(|placeholder| {
+            if placeholder == "missing" && value.starts_with("missing-handler") {
+                return false;
+            }
+            value == placeholder
+                || value.strip_prefix(placeholder).is_some_and(|rest| {
+                    rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
                 })
         })
 }

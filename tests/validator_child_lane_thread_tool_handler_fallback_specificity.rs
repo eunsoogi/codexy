@@ -30,7 +30,6 @@ Maintainer reassignment: none
 "#
     )
 }
-
 fn separate_metadata_evidence(fallback_field: &str, tracking_field: &str) -> String {
     format!(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -127,9 +126,12 @@ fn validator_allows_reasoned_no_route_evidence() -> Result<(), Box<dyn std::erro
 #[test]
 fn validator_allows_tracking_issue_for_missing_handler_exposure()
 -> Result<(), Box<dyn std::error::Error>> {
-    for issue in "separate dogfood issue: #205 tracks the missing-handler exposure|tracking issue: missing-handler exposure #205".split('|') {
+    for issue in "separate dogfood issue: #205 tracks the missing-handler exposure|tracking issue: missing-handler exposure #205|tracking issue: #205 is not yet closed|tracking issue: #205 covers handler not available".split('|') {
         let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
-        assert!(output.status.success());
+        assert!(
+            output.status.success(),
+            "validator should accept concrete tracking issue field value `{issue}`"
+        );
     }
     let output = run_ownership_validator(&vague_fallback_evidence(
         "fallback route: fallback route available? no; no fallback route was available",
@@ -141,7 +143,7 @@ fn validator_allows_tracking_issue_for_missing_handler_exposure()
 fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn std::error::Error>>
 {
     for issue in
-        "tracking issue: missing|tracking issue: none, see #205|tracking issue: missing (#205)|tracking issue: no issue, see #205|tracking issue: no issue (#205)|tracking issue: no issue - #205|tracking issue: no separate issue #205"
+        "tracking issue: missing|tracking issue: none, see #205|tracking issue: missing (#205)|tracking issue: no issue, see #205|tracking issue: no issue (#205)|tracking issue: no issue - #205|tracking issue: no separate issue #205|tracking issue: issue not created for #205|tracking issue: issue not yet created for #205|tracking issue: issue not yet filed for #205|follow-up issue: issue not yet created for #205"
             .split('|')
     {
         let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
