@@ -26,10 +26,7 @@ fn has_routed_object(after_action: &str) -> bool {
 }
 
 fn has_positive_destination(after_object: &str) -> bool {
-    let direct_segment = after_object
-        .split(" and then ")
-        .next()
-        .unwrap_or(after_object);
+    let direct_segment = direct_route_segment(after_object);
     "to the child thread|in the child thread|into the child thread|via the child thread|through the child thread|at the child thread|to the child owner|at the child owner|to the reviewer"
         .split('|')
         .filter_map(|destination| direct_segment.find(destination).map(|index| (index, destination)))
@@ -43,6 +40,13 @@ fn has_positive_destination(after_object: &str) -> bool {
                     .split('|')
                     .any(|marker| prefix.contains(marker))
         })
+}
+
+fn direct_route_segment(after_object: &str) -> &str {
+    after_object
+        .split_once(" and then ")
+        .and_then(|(before, after)| (!has_invalid_route_followup(after)).then_some(before))
+        .unwrap_or(after_object)
 }
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
@@ -68,18 +72,72 @@ fn has_post_destination_route_negation(suffix: &str) -> bool {
         .trim_start()
         .trim_start_matches([',', ';', '.'])
         .trim_start();
-    suffix.starts_with("? no")
-        || [
-            "? no",
-            "not used",
-            "was not used",
-            "was not actually used",
-            "was never used",
-            "never used",
-            "wasn't used",
+    suffix.starts_with("? no") || has_invalid_route_followup(suffix)
+}
+
+fn has_invalid_route_followup(suffix: &str) -> bool {
+    route_followup_clauses(suffix).any(has_invalid_route_followup_clause)
+}
+
+fn has_invalid_route_followup_clause(clause: &str) -> bool {
+    has_failed_route_delivery_clause(clause) || has_route_not_used_clause(clause)
+}
+
+fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
+    suffix
+        .split([';', '.'])
+        .flat_map(|clause| clause.split(" and then "))
+        .flat_map(|clause| clause.split(" but "))
+        .flat_map(|clause| clause.split(" although "))
+        .flat_map(|clause| clause.split(" yet "))
+        .flat_map(|clause| clause.split(" however "))
+        .flat_map(|clause| clause.strip_prefix("and ").into_iter().chain([clause]))
+        .flat_map(|clause| clause.strip_prefix("but ").into_iter().chain([clause]))
+        .flat_map(|clause| clause.strip_prefix("although ").into_iter().chain([clause]))
+        .flat_map(|clause| clause.strip_prefix("yet ").into_iter().chain([clause]))
+        .flat_map(|clause| clause.strip_prefix("however ").into_iter().chain([clause]))
+        .map(str::trim)
+        .filter(|clause| !clause.is_empty())
+}
+
+fn has_failed_route_delivery_clause(clause: &str) -> bool {
+    clause.contains("failed")
+        && [
+            "send",
+            "sent",
+            "sending",
+            "post",
+            "posted",
+            "posting",
+            "deliver",
+            "delivered",
+            "delivery",
+            "route",
+            "routed",
+            "routing",
+            "handoff",
+            "message",
+            "feedback",
         ]
         .into_iter()
-        .any(|marker| suffix.contains(marker))
+        .any(|term| {
+            clause
+                .find(term)
+                .is_some_and(|index| has_phrase_boundaries(clause, index, term))
+        })
+}
+
+fn has_route_not_used_clause(clause: &str) -> bool {
+    [
+        "not used",
+        "was not used",
+        "was not actually used",
+        "was never used",
+        "never used",
+        "wasn't used",
+    ]
+    .into_iter()
+    .any(|marker| clause.contains(marker))
 }
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
