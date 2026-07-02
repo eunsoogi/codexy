@@ -203,8 +203,24 @@ fn defect_capture_clause(line: &str) -> Option<&str> {
 }
 
 fn is_list_item(line: &str) -> bool {
+    strip_list_prefix(line).len() < line.trim_start().len()
+}
+
+fn strip_list_prefix(line: &str) -> &str {
     let trimmed = line.trim_start();
-    trimmed.starts_with("- ") || trimmed.starts_with("* ")
+    if let Some(stripped) = trimmed
+        .strip_prefix("- ")
+        .or_else(|| trimmed.strip_prefix("* "))
+    {
+        return stripped;
+    }
+    let Some((marker, stripped)) = trimmed.split_once(['.', ')']) else {
+        return trimmed;
+    };
+    if marker.chars().all(|character| character.is_ascii_digit()) && stripped.starts_with(' ') {
+        return stripped.trim_start();
+    }
+    trimmed
 }
 
 fn has_tool_name(line: &str, tool: &str) -> bool {

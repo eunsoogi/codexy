@@ -70,15 +70,8 @@ fn line_end(text: &str, line_start: usize) -> usize {
         .map_or(text.len(), |index| line_start + index)
 }
 fn is_capture_related(line: &str) -> bool {
-    [
-        "dogfooding defect",
-        "tool-exposure defect",
-        "dogfooding/tool-exposure defect",
-        "handler",
-        "missing-handler",
-        "no handler registered",
-    ]
-    .into_iter()
+    "dogfooding defect|tool-exposure defect|dogfooding/tool-exposure defect|handler|missing-handler|no handler registered"
+        .split('|')
     .any(|marker| line.contains(marker))
 }
 fn is_unrelated_metadata_line(line: &str) -> bool {
@@ -163,22 +156,31 @@ pub(super) fn following_handoff_metadata_has(
 }
 
 pub(super) fn is_list_item(line: &str) -> bool {
-    let trimmed = line.trim_start();
-    trimmed.starts_with("- ") || trimmed.starts_with("* ")
+    strip_list_prefix(line) != line.trim_start()
 }
 
 fn line_key_value(line: &str) -> Option<(&str, &str)> {
-    let trimmed = line.trim_start();
-    let trimmed = trimmed
-        .strip_prefix("- ")
-        .or_else(|| trimmed.strip_prefix("* "))
-        .unwrap_or(trimmed);
+    let trimmed = strip_list_prefix(line);
     let (key, value) = trimmed.split_once(':')?;
     let key = strip_lane_label_prefix(key);
     if key.trim().is_empty() {
         return value.trim_start().split_once(':');
     }
     Some((key, value))
+}
+fn strip_list_prefix(line: &str) -> &str {
+    let line = line.trim_start();
+    if let Some(rest) = line.strip_prefix("- ").or_else(|| line.strip_prefix("* ")) {
+        return rest.trim_start();
+    }
+    let Some((marker, rest)) = line.split_once(['.', ')']) else {
+        return line;
+    };
+    if !marker.is_empty() && marker.bytes().all(|byte| byte.is_ascii_digit()) {
+        rest.trim_start()
+    } else {
+        line
+    }
 }
 
 fn strip_lane_label_prefix(key: &str) -> &str {
@@ -211,12 +213,7 @@ fn is_different_lane_line(line: &str, current_lane: Option<&str>) -> bool {
 }
 
 fn lane_label(line: &str) -> Option<String> {
-    let trimmed = line.trim_start();
-    let trimmed = trimmed
-        .strip_prefix("- ")
-        .or_else(|| trimmed.strip_prefix("* "))
-        .unwrap_or(trimmed)
-        .trim_start();
+    let trimmed = strip_list_prefix(line);
     let rest = trimmed
         .strip_prefix("Lane ")
         .or_else(|| trimmed.strip_prefix("lane "))?;
@@ -230,16 +227,9 @@ fn lane_label(line: &str) -> Option<String> {
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
-    [
-        "captured",
-        "classified",
-        "recorded",
-        "reported",
-        "routed",
-        "tracked",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
+    "captured|classified|recorded|reported|routed|tracked"
+        .split('|')
+        .any(|marker| line.contains(marker))
 }
 
 fn is_handler_capture_line(line: &str) -> bool {
