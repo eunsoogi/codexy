@@ -87,7 +87,13 @@ fn has_explicit_no_route(clause: &str) -> bool {
         .any(|marker| clause.contains(marker))
         && !has_negated_no_route_claim(clause)
         && !has_negated_fallback_route(clause)
-        && !has_placeholder_or_pending_value(clause)
+        && !has_placeholder_or_pending_value(no_route_statement(clause))
+}
+
+fn no_route_statement(clause: &str) -> &str {
+    clause
+        .split_once(" because ")
+        .map_or(clause, |(statement, _)| statement)
 }
 
 fn has_negated_no_route_claim(clause: &str) -> bool {

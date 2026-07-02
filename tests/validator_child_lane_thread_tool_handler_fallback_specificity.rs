@@ -70,10 +70,7 @@ Maintainer reassignment: none
 #[test]
 fn validator_rejects_bare_fallback_route_used() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&vague_fallback_evidence("fallback route used"))?;
-    assert!(
-        !output.status.success(),
-        "validator should reject fallback evidence that does not name the route used"
-    );
+    assert!(!output.status.success());
     Ok(())
 }
 #[test]
@@ -124,6 +121,13 @@ fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::erro
             "rejected no-route negation: {route}"
         );
     }
+    Ok(())
+}
+#[test]
+fn validator_allows_reasoned_no_route_evidence() -> Result<(), Box<dyn std::error::Error>> {
+    assert!(
+        run_ownership_validator(&vague_fallback_evidence("fallback route: no fallback route was available because the child thread was not available"))?.status.success()
+    );
     Ok(())
 }
 #[test]
