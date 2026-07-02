@@ -1,4 +1,4 @@
-mod process;
+pub(super) mod process;
 
 use std::path::Path;
 use std::time::Duration;
@@ -23,7 +23,9 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "compacted or resumed context hygiene",
     "--check-completion-handoff",
     "repositoryLabels",
-    "codexy-readiness-guard.sh",
+    "codexy-pr-title-check.sh",
+    "codexy-pr-label-check.sh",
+    "codexy-merge-message-check.sh",
     "--check-pr-title",
     "--check-pr-labels",
     "--check-merge-message",
@@ -33,6 +35,9 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
 const REQUIRED_READINESS_CONTEXT: &[&str] = &[
     "PR label readiness enforcement (#210)",
     "--check-pr-labels",
+    "codexy-pr-title-check.sh",
+    "codexy-pr-label-check.sh",
+    "codexy-merge-message-check.sh",
     "--check-completion-handoff",
     "repositoryLabels",
     "PR title and merge subject enforcement (#206)",
@@ -71,6 +76,7 @@ pub(super) fn emitted_session_start_context(
     let output = process::output_with_timeout(
         script_path,
         required_event,
+        &[required_event],
         Duration::from_secs(timeout_secs),
     )?;
     if !output.status.success() {

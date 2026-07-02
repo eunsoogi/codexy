@@ -156,13 +156,11 @@ MUST open PRs with GitHub or `gh`. MUST keep PRs draft only while local verifica
 missing or risk is intentionally unresolved. MUST create or confirm a GitHub issue
 before opening a PR unless a maintainer explicitly scopes an exception.
 
-PR titles MUST use Conventional Commit style. Example:
-`chore(repo): repository governance`.
-Before PR readiness or merge readiness, MUST validate the exact PR title:
-
-```sh
-scripts/validate-plugin-config --check-pr-title --pr-title "$(gh pr view <pr> --json title --jq .title)"
-```
+PR titles MUST use Conventional Commit style, such as
+`chore(repo): repository governance`. Before PR readiness, MUST validate the
+exact PR title with `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$(gh pr view --json title --jq .title)"`.
+MUST NOT treat `UserPromptSubmit` advisory context as PR title, PR label, or
+merge-message enforcement.
 
 PR bodies MUST include `## Summary`, `## Rationale`, `## Changed Areas`,
 `## Verification`, `## Evidence`, `## Not Run`, and `## Follow-ups`. When a
@@ -176,6 +174,8 @@ When labels are available, MUST inspect the current taxonomy before opening or
 updating a PR. MUST apply repository-appropriate labels before or immediately after
 PR creation without hard-coding a fixed list. PR-readiness handoff is valid only
 when captured PR state shows labels, or repository label taxonomy proves none exist.
+Before PR readiness, MUST run
+`plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file pr-state.json`.
 
 ## Child-Owned Review Feedback
 

@@ -1,5 +1,8 @@
 mod command;
 mod context;
+mod lifecycle;
+mod lifecycle_probe;
+mod safety;
 
 use std::path::Path;
 
@@ -80,6 +83,19 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             "{} {READINESS_EVENT} hook command must run {READINESS_SCRIPT}",
             display_relative(&path)
         );
+    }
+    for purpose in [
+        lifecycle::PURPOSE_PR_TITLE_CHECK,
+        lifecycle::PURPOSE_PR_LABEL_CHECK,
+        lifecycle::PURPOSE_MERGE_MESSAGE_CHECK,
+    ] {
+        if hook_purposes & purpose == 0 {
+            bail!(
+                "{} {}",
+                display_relative(&path),
+                lifecycle::missing_hard_hook_message(purpose).unwrap_or("missing hard hook")
+            );
+        }
     }
     Ok(())
 }
@@ -184,6 +200,7 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
         context::check_readiness_context(path, plugin_root, command, timeout, READINESS_EVENT)?;
         hook_purpose |= PURPOSE_READINESS_CONTEXT;
     }
+    hook_purpose |= lifecycle::check_hard_hook(path, plugin_root, event, command, timeout)?;
     if let Some(status) = object.get("statusMessage") {
         if !status
             .as_str()
