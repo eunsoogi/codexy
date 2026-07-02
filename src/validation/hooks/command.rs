@@ -17,7 +17,7 @@ const FORBIDDEN_COMMAND_FRAGMENTS: &[&str] = &[
     "PLUGIN_DATA",
     "CLAUDE_PLUGIN_DATA",
     "python",
-    "node",
+    "node ",
     "npm",
     "curl",
     "codex plugin",
@@ -41,7 +41,7 @@ const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
     "PLUGIN_DATA",
     "CLAUDE_PLUGIN_DATA",
     "python",
-    "node",
+    "node ",
     "npm",
     "curl",
     "codex plugin",
@@ -49,7 +49,7 @@ const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
     ">",
 ];
 const FORBIDDEN_SCRIPT_COMMAND_PREFIXES: &[&str] = &[
-    "gh ", "git ", "mkdir ", "touch ", "rm ", "mv ", "cp ", "chmod ", "chown ",
+    "gh ", "git ", "mkdir ", "touch ", "rm ", "mv ", "cp ", "chmod ", "chown ", "node ",
 ];
 
 pub(super) fn check_command(
@@ -222,7 +222,7 @@ fn is_static_argument_character(character: char) -> bool {
         || matches!(character, '-' | '_' | '.' | '/' | ':')
 }
 
-fn check_script_safety(path: &Path, event: &str, script_path: &Path) -> Result<()> {
+pub(super) fn check_script_safety(path: &Path, event: &str, script_path: &Path) -> Result<()> {
     let text = std::fs::read_to_string(script_path)
         .with_context(|| format!("reading {}", display_relative(script_path)))?;
     for forbidden in FORBIDDEN_SCRIPT_FRAGMENTS {

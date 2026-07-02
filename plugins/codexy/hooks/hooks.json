@@ -30,9 +30,31 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-readiness-guard.sh\" UserPromptSubmit",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-pr-title-check.sh\" UserPromptSubmit",
             "timeout": 3,
-            "statusMessage": "Loading Codexy readiness guard"
+            "statusMessage": "Checking Codexy PR title readiness"
+          }
+        ]
+      },
+      {
+        "matcher": "PR readiness|pr readiness|merge readiness|ready for parent handoff|ready to merge",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-pr-label-check.sh\" UserPromptSubmit",
+            "timeout": 3,
+            "statusMessage": "Checking Codexy PR label readiness"
+          }
+        ]
+      },
+      {
+        "matcher": "merge readiness|ready to merge",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-merge-message-check.sh\" UserPromptSubmit",
+            "timeout": 3,
+            "statusMessage": "Checking Codexy merge-message readiness"
           }
         ]
       }

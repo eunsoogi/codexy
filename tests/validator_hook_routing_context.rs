@@ -3,6 +3,27 @@ use std::process::Command;
 #[allow(unused)]
 mod support;
 
+const REQUIRED_CONTEXT_FRAGMENTS: &[&str] = &[
+    "codegraph MCP before direct file reads",
+    "include codegraph findings",
+    "codegraph unavailable/uncallable fallback evidence",
+    "registered-but-uncallable/unavailable-tool evidence",
+    "Use Codexy LSP",
+    "lsp_status",
+    "unavailable/not applicable evidence",
+    "$dreaming",
+    "compacted or resumed context hygiene",
+    "--check-completion-handoff",
+    "repositoryLabels",
+    "codexy-pr-title-check.sh",
+    "codexy-pr-label-check.sh",
+    "codexy-merge-message-check.sh",
+    "--check-pr-title",
+    "--check-pr-labels",
+    "--check-merge-message",
+    "--expected-pr",
+];
+
 #[test]
 fn session_start_context_includes_codegraph_lsp_evidence_requirements()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -23,23 +44,7 @@ fn session_start_context_includes_codegraph_lsp_evidence_requirements()
         .as_str()
         .ok_or("hook output should include additional context")?;
 
-    for required in [
-        "codegraph MCP before direct file reads",
-        "include codegraph findings",
-        "codegraph unavailable/uncallable fallback evidence",
-        "registered-but-uncallable/unavailable-tool evidence",
-        "Use Codexy LSP",
-        "lsp_status",
-        "unavailable/not applicable evidence",
-        "$dreaming",
-        "compacted or resumed context hygiene",
-        "--check-completion-handoff",
-        "repositoryLabels",
-        "codexy-readiness-guard.sh",
-        "--check-pr-title",
-        "--check-merge-message",
-        "--expected-pr",
-    ] {
+    for required in REQUIRED_CONTEXT_FRAGMENTS {
         assert!(
             context.contains(required),
             "SessionStart context missing required fragment: {required}"
@@ -108,7 +113,7 @@ fn validator_cli_rejects_session_start_context_that_only_mentions_requirements_i
     copy_plugin(&plugin_root)?;
     let script_path = plugin_root.join("hooks/codexy-routing-context.sh");
     let mut script = std::fs::read_to_string(&script_path)?;
-    for required in required_context_fragments() {
+    for required in REQUIRED_CONTEXT_FRAGMENTS {
         script = script.replace(source_context_fragment(required), "");
         script.push_str(&format!("\n# {required}\n"));
     }
@@ -188,26 +193,6 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
         );
     }
     Ok(())
-}
-
-fn required_context_fragments() -> [&'static str; 15] {
-    [
-        "codegraph MCP before direct file reads",
-        "include codegraph findings",
-        "codegraph unavailable/uncallable fallback evidence",
-        "registered-but-uncallable/unavailable-tool evidence",
-        "Use Codexy LSP",
-        "lsp_status",
-        "unavailable/not applicable evidence",
-        "$dreaming",
-        "compacted or resumed context hygiene",
-        "--check-completion-handoff",
-        "repositoryLabels",
-        "codexy-readiness-guard.sh",
-        "--check-pr-title",
-        "--check-merge-message",
-        "--expected-pr",
-    ]
 }
 
 fn source_context_fragment(fragment: &str) -> &str {
