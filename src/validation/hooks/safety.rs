@@ -161,8 +161,11 @@ fn contains_sourced_helper_redirection(text: &str) -> bool {
     for line in text.lines() {
         let trimmed = line.trim();
         if in_awk_program {
-            if trimmed == "'" {
+            if let Some(remainder) = trimmed.strip_prefix('\'') {
                 in_awk_program = false;
+                if contains_unquoted_line_redirection(remainder) {
+                    return true;
+                }
             }
             continue;
         }
