@@ -6,6 +6,7 @@ use crate::paths::display_relative;
 
 use super::command;
 use super::context;
+use super::lifecycle_probe;
 
 pub(super) const PURPOSE_PR_TITLE_CHECK: u8 = 1 << 2;
 pub(super) const PURPOSE_PR_LABEL_CHECK: u8 = 1 << 3;
@@ -130,6 +131,14 @@ fn check_hard_hook_context(
     for helper in DELEGATED_HARD_HELPERS {
         command::check_script_safety(path, READINESS_EVENT, &plugin_root.join(helper))?;
     }
+    lifecycle_probe::check_sourced_helper_safety(path, plugin_root, READINESS_EVENT)?;
+    lifecycle_probe::check_hard_mode_delegation(
+        path,
+        &script_path,
+        hard_hook.script,
+        timeout_secs,
+        READINESS_EVENT,
+    )?;
     Ok(())
 }
 

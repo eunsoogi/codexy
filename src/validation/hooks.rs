@@ -1,6 +1,7 @@
 mod command;
 mod context;
 mod lifecycle;
+mod lifecycle_probe;
 
 use std::path::Path;
 

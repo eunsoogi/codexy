@@ -1,4 +1,4 @@
-mod process;
+pub(super) mod process;
 
 use std::path::Path;
 use std::time::Duration;
@@ -76,6 +76,7 @@ pub(super) fn emitted_session_start_context(
     let output = process::output_with_timeout(
         script_path,
         required_event,
+        &[required_event],
         Duration::from_secs(timeout_secs),
     )?;
     if !output.status.success() {
