@@ -20,7 +20,6 @@ Maintainer reassignment: none
 "#
     )
 }
-
 fn tracking_issue_evidence(issue_evidence: &str) -> String {
     format!(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -115,13 +114,16 @@ fn validator_rejects_negated_fallback_route_not_routed() -> Result<(), Box<dyn s
 }
 #[test]
 fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(&vague_fallback_evidence(
+    for route in [
         "fallback route: it is false that no fallback route was available",
-    ))?;
-    assert!(
-        !output.status.success(),
-        "validator should reject negated explicit no-route evidence"
-    );
+        "fallback route: no fallback route was available? no",
+    ] {
+        let output = run_ownership_validator(&vague_fallback_evidence(route))?;
+        assert!(
+            !output.status.success(),
+            "rejected no-route negation: {route}"
+        );
+    }
     Ok(())
 }
 #[test]
@@ -130,12 +132,11 @@ fn validator_allows_tracking_issue_for_missing_handler_exposure()
     let output = run_ownership_validator(&tracking_issue_evidence(
         "separate dogfood issue: #205 tracks the missing-handler exposure",
     ))?;
-    assert!(
-        output.status.success(),
-        "validator should allow issue references that describe missing-handler exposure\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success());
+    let output = run_ownership_validator(&vague_fallback_evidence(
+        "fallback route: fallback route available? no; no fallback route was available",
+    ))?;
+    assert!(output.status.success());
     Ok(())
 }
 #[test]
@@ -160,9 +161,7 @@ fn validator_allows_handoff_fields_on_separate_metadata_lines()
         ))?;
         assert!(
             output.status.success(),
-            "validator should accept separate metadata line `{tracking_field}`\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
+            "validator should accept separate metadata line `{tracking_field}`"
         );
     }
     Ok(())
@@ -198,7 +197,6 @@ Maintainer reassignment: none
     );
     Ok(())
 }
-
 #[test]
 fn validator_allows_handoff_fields_before_raw_handler_line()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -211,7 +209,6 @@ fn validator_allows_handoff_fields_before_raw_handler_line()
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_preceding_metadata_without_defect_capture()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -222,7 +219,6 @@ fn validator_rejects_preceding_metadata_without_defect_capture()
     );
     Ok(())
 }
-
 #[test]
 fn validator_allows_github_issue_url_tracking_evidence() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&tracking_issue_evidence(
@@ -236,7 +232,6 @@ fn validator_allows_github_issue_url_tracking_evidence() -> Result<(), Box<dyn s
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_malformed_github_issue_url_suffix() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&tracking_issue_evidence(

@@ -95,6 +95,14 @@ fn has_negated_no_route_claim(clause: &str) -> bool {
     NEGATED_NO_ROUTE_CLAIMS
         .split('|')
         .any(|marker| clause.contains(marker))
+        || [
+            "no fallback route was available? no",
+            "no fallback route available? no",
+            "no alternate route was available? no",
+            "no alternate route available? no",
+        ]
+        .into_iter()
+        .any(|marker| clause.contains(marker))
 }
 
 fn has_negated_fallback_route(clause: &str) -> bool {
