@@ -127,10 +127,10 @@ fn validator_allows_reasoned_no_route_evidence() -> Result<(), Box<dyn std::erro
 #[test]
 fn validator_allows_tracking_issue_for_missing_handler_exposure()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(&tracking_issue_evidence(
-        "separate dogfood issue: #205 tracks the missing-handler exposure",
-    ))?;
-    assert!(output.status.success());
+    for issue in "separate dogfood issue: #205 tracks the missing-handler exposure|tracking issue: missing-handler exposure #205".split('|') {
+        let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
+        assert!(output.status.success());
+    }
     let output = run_ownership_validator(&vague_fallback_evidence(
         "fallback route: fallback route available? no; no fallback route was available",
     ))?;

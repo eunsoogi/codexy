@@ -176,6 +176,9 @@ fn has_placeholder_or_pending_value(clause: &str) -> bool {
             "none|n/a|tbd|pending|missing|absent|unavailable|no issue|no separate issue"
                 .split('|')
                 .any(|placeholder| {
+                    if placeholder == "missing" && value.starts_with("missing-handler") {
+                        return false;
+                    }
                     value == placeholder
                         || value.strip_prefix(placeholder).is_some_and(|rest| {
                             rest.starts_with(|character: char| !character.is_ascii_alphanumeric())

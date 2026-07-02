@@ -170,7 +170,11 @@ fn line_key_value(line: &str) -> Option<(&str, &str)> {
         .or_else(|| trimmed.strip_prefix("* "))
         .unwrap_or(trimmed);
     let (key, value) = trimmed.split_once(':')?;
-    Some((strip_lane_label_prefix(key), value))
+    let key = strip_lane_label_prefix(key);
+    if key.trim().is_empty() {
+        return value.trim_start().split_once(':');
+    }
+    Some((key, value))
 }
 
 fn strip_lane_label_prefix(key: &str) -> &str {
@@ -181,9 +185,9 @@ fn strip_lane_label_prefix(key: &str) -> &str {
     else {
         return key;
     };
-    let Some(label_end) = rest.find(|ch: char| ch.is_whitespace() || ch == '-' || ch == '.') else {
-        return key;
-    };
+    let label_end = rest
+        .find(|ch: char| ch.is_whitespace() || ch == '-' || ch == '.')
+        .unwrap_or(rest.len());
     let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
     if label.is_empty() {
         return key;

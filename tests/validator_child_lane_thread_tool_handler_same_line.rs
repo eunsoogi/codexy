@@ -82,7 +82,7 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_lane_prefixed_handoff_fields_for_matching_lane_capture()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
+    for evidence in [
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Lane A tool search: discovered codex_app.read_thread as an available thread tool.
 Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
@@ -91,14 +91,24 @@ Lane A fallback route: no fallback route was available.
 Lane A tracking issue: #205.
 Maintainer reassignment: none
 "#,
-    )?;
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Lane A tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane A dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Lane A: Fallback route: no fallback route was available.
+Lane A: Tracking issue: #205.
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
 
-    assert!(
-        output.status.success(),
-        "validator should accept lane-prefixed fallback/tracking fields for the matching lane capture\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should accept lane-prefixed fallback/tracking fields for the matching lane capture\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
