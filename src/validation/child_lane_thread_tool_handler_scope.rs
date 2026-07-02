@@ -40,11 +40,15 @@ pub(super) fn capture_end_before_unrelated_evidence(
     handler_start: usize,
 ) -> usize {
     let mut cursor = line_end(evidence, handler_start);
+    let scope_lane = lane_label_for_scope(evidence, capture_start, cursor);
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
         let line = &evidence[line_start..line_end];
+        if is_different_lane_line(line, scope_lane.as_deref()) {
+            return line_start;
+        }
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
         let line_extends_capture = if is_handoff_metadata_line(line) {
             true
@@ -132,11 +136,15 @@ pub(super) fn following_handoff_metadata_has(
     predicate: impl Fn(&str) -> bool,
 ) -> bool {
     let mut cursor = line_end(evidence, line_start);
+    let current_lane = lane_label_for_scope(evidence, line_start, cursor);
     while cursor < evidence.len() {
         let next_start = cursor + 1;
         let next_end = line_end(evidence, next_start);
         let line = &evidence[next_start..next_end];
         if line.trim().is_empty() {
+            return false;
+        }
+        if is_different_lane_line(line, current_lane.as_deref()) {
             return false;
         }
         if predicate(line) {
@@ -162,6 +170,35 @@ fn line_key_value(line: &str) -> Option<(&str, &str)> {
         .or_else(|| trimmed.strip_prefix("* "))
         .unwrap_or(trimmed);
     trimmed.split_once(':')
+}
+
+fn lane_label_for_scope(evidence: &str, start: usize, end: usize) -> Option<String> {
+    evidence[start..end].lines().filter_map(lane_label).last()
+}
+
+fn is_different_lane_line(line: &str, current_lane: Option<&str>) -> bool {
+    let Some(next_lane) = lane_label(line) else {
+        return false;
+    };
+    current_lane.is_none_or(|current_lane| next_lane != current_lane)
+}
+
+fn lane_label(line: &str) -> Option<String> {
+    let trimmed = line.trim_start();
+    let trimmed = trimmed
+        .strip_prefix("- ")
+        .or_else(|| trimmed.strip_prefix("* "))
+        .unwrap_or(trimmed)
+        .trim_start();
+    let rest = trimmed
+        .strip_prefix("Lane ")
+        .or_else(|| trimmed.strip_prefix("lane "))?;
+    let label = rest
+        .split(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .next()
+        .unwrap_or_default()
+        .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    (!label.is_empty()).then(|| format!("lane {}", label.to_ascii_lowercase()))
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
