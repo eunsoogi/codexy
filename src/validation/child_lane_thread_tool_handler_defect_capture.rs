@@ -1,4 +1,5 @@
 use super::child_lane_thread_tool_handler_issue_reference::has_issue_reference;
+use super::child_lane_thread_tool_handler_issue_value::has_placeholder_or_pending_value;
 use super::child_lane_thread_tool_handler_no_route::has_false_no_route_answer;
 use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
@@ -164,30 +165,6 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
             || normalized.contains(&format!(" not {verb}"))
             || normalized.contains(&format!(" not yet {verb}"))
     })
-}
-fn has_placeholder_or_pending_value(clause: &str) -> bool {
-    clause.split_once(':').map_or_else(
-        || starts_with_absent_issue_value(clause),
-        |(_, value)| starts_with_absent_issue_value(value.trim()),
-    )
-}
-
-fn starts_with_absent_issue_value(value: &str) -> bool {
-    const PLACEHOLDER_PREFIXES: &str =
-        "none|n/a|tbd|pending|missing|absent|unavailable|no issue|no separate issue";
-    const PENDING_PREFIXES: &str = "not created|not available|not provided|not yet created|not yet filed|will be|to be created";
-    PLACEHOLDER_PREFIXES
-        .split('|')
-        .chain(PENDING_PREFIXES.split('|'))
-        .any(|placeholder| {
-            if placeholder == "missing" && value.starts_with("missing-handler") {
-                return false;
-            }
-            value == placeholder
-                || value.strip_prefix(placeholder).is_some_and(|rest| {
-                    rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
-                })
-        })
 }
 fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
     evidence

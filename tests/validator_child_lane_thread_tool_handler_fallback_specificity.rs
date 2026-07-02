@@ -143,7 +143,7 @@ fn validator_allows_tracking_issue_for_missing_handler_exposure()
 fn validator_rejects_missing_tracking_issue_field_value() -> Result<(), Box<dyn std::error::Error>>
 {
     for issue in
-        "tracking issue: missing|tracking issue: none, see #205|tracking issue: missing (#205)|tracking issue: no issue, see #205|tracking issue: no issue (#205)|tracking issue: no issue - #205|tracking issue: no separate issue #205|tracking issue: issue not created for #205|tracking issue: issue not yet created for #205|tracking issue: issue not yet filed for #205|follow-up issue: issue not yet created for #205|tracking issue: #205 not filed yet|tracking issue: #205 not created"
+        "tracking issue: missing|tracking issue: none, see #205|tracking issue: missing (#205)|tracking issue: no issue, see #205|tracking issue: no issue (#205)|tracking issue: no issue - #205|tracking issue: no separate issue #205|tracking issue: issue not created for #205|tracking issue: issue not yet created for #205|tracking issue: issue not yet filed for #205|follow-up issue: issue not yet created for #205|tracking issue: #205 not filed yet|tracking issue: #205 not created|tracking issue will be created as #205|tracking issue to be filed as #205|tracking issue: to be filed as #205|follow-up issue pending #205|follow-up issue pending: #205|tracking issue pending: #205|tracking issue will be created: #205|- tracking issue will be created as #205|- follow-up issue pending #205"
             .split('|')
     {
         let output = run_ownership_validator(&tracking_issue_evidence(issue))?;

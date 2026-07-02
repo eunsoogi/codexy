@@ -106,7 +106,20 @@ fn has_post_destination_route_negation(suffix: &str) -> bool {
         .trim_start()
         .trim_start_matches([',', ';', '.'])
         .trim_start();
-    suffix.starts_with("? no") || has_invalid_route_followup(suffix)
+    starts_with_negative_answer(suffix) || has_invalid_route_followup(suffix)
+}
+
+fn starts_with_negative_answer(suffix: &str) -> bool {
+    let answer = suffix.trim_start().trim_start_matches(|character: char| {
+        character.is_ascii_whitespace()
+            || matches!(character, '?' | ':' | '=' | '-' | '\u{2013}' | '\u{2014}')
+    });
+    ["no", "false"].into_iter().any(|negated_answer| {
+        answer == negated_answer
+            || answer.strip_prefix(negated_answer).is_some_and(|rest| {
+                rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
+            })
+    })
 }
 
 fn has_invalid_route_followup(suffix: &str) -> bool {
