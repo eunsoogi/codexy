@@ -1,4 +1,5 @@
 use super::child_lane_thread_tool_handler_issue_reference::has_issue_reference;
+use super::child_lane_thread_tool_handler_no_route::has_false_no_route_answer;
 use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
 
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
@@ -119,13 +120,11 @@ fn has_explicit_no_route(clause: &str) -> bool {
         .any(|marker| clause.contains(marker))
         && !has_negated_no_route_claim(clause)
         && !has_negated_fallback_route(clause)
-        && !has_placeholder_or_pending_value(no_route_statement(clause))
-}
-
-fn no_route_statement(clause: &str) -> &str {
-    clause
-        .split_once(" because ")
-        .map_or(clause, |(statement, _)| statement)
+        && !has_placeholder_or_pending_value(
+            clause
+                .split_once(" because ")
+                .map_or(clause, |(statement, _)| statement),
+        )
 }
 
 fn has_negated_no_route_claim(clause: &str) -> bool {
@@ -133,14 +132,7 @@ fn has_negated_no_route_claim(clause: &str) -> bool {
     NEGATED_NO_ROUTE_CLAIMS
         .split('|')
         .any(|marker| clause.contains(marker))
-        || [
-            "no fallback route was available? no",
-            "no fallback route available? no",
-            "no alternate route was available? no",
-            "no alternate route available? no",
-        ]
-        .into_iter()
-        .any(|marker| clause.contains(marker))
+        || has_false_no_route_answer(clause)
 }
 
 fn has_negated_fallback_route(clause: &str) -> bool {

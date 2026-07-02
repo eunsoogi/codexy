@@ -111,15 +111,9 @@ fn validator_rejects_negated_fallback_route_not_routed() -> Result<(), Box<dyn s
 }
 #[test]
 fn validator_rejects_negated_no_route_evidence() -> Result<(), Box<dyn std::error::Error>> {
-    for route in [
-        "fallback route: it is false that no fallback route was available",
-        "fallback route: no fallback route was available? no",
-    ] {
+    for route in "fallback route: it is false that no fallback route was available|fallback route: no fallback route was available? no|fallback route: no fallback route available: no|fallback route: no fallback route was available: no|fallback route: no fallback route available: false|fallback route: no fallback route was available? false|fallback route: no fallback route available = false|fallback route: no fallback route was available = false|fallback route: no fallback route available = no|fallback route: no fallback route was available - false".split('|') {
         let output = run_ownership_validator(&vague_fallback_evidence(route))?;
-        assert!(
-            !output.status.success(),
-            "rejected no-route negation: {route}"
-        );
+        assert!(!output.status.success());
     }
     Ok(())
 }
