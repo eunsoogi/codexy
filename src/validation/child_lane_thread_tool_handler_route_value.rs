@@ -108,29 +108,45 @@ fn has_failed_route_delivery_clause(clause: &str) -> bool {
                 .find(failure)
                 .is_some_and(|index| has_phrase_boundaries(clause, index, failure))
         })
-        && [
-            "send",
-            "sent",
-            "sending",
-            "post",
-            "posted",
-            "posting",
-            "deliver",
-            "delivered",
-            "delivery",
-            "route",
-            "routed",
-            "routing",
-            "handoff",
-            "message",
-            "feedback",
-        ]
-        .into_iter()
-        .any(|term| {
-            clause
-                .find(term)
-                .is_some_and(|index| has_phrase_boundaries(clause, index, term))
-        })
+        && (has_failed_route_pronoun_clause(clause)
+            || [
+                "send",
+                "sent",
+                "sending",
+                "post",
+                "posted",
+                "posting",
+                "deliver",
+                "delivered",
+                "delivery",
+                "route",
+                "routed",
+                "routing",
+                "handoff",
+                "message",
+                "feedback",
+            ]
+            .into_iter()
+            .any(|term| {
+                clause
+                    .find(term)
+                    .is_some_and(|index| has_phrase_boundaries(clause, index, term))
+            }))
+}
+
+fn has_failed_route_pronoun_clause(clause: &str) -> bool {
+    [
+        "it failed",
+        "that failed",
+        "this failed",
+        "the fallback failed",
+    ]
+    .into_iter()
+    .any(|marker| {
+        clause
+            .find(marker)
+            .is_some_and(|index| has_phrase_boundaries(clause, index, marker))
+    })
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {
