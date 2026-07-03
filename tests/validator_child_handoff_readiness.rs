@@ -145,7 +145,6 @@ fn validator_rejects_pushed_handoff_without_comparable_head() -> TestResult {
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResult {
     assert_rejects_child_handoff(
@@ -156,18 +155,19 @@ fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResu
         "headRefOid",
     )
 }
-
 #[test]
-fn validator_rejects_pushed_handoff_when_branch_is_ahead() -> TestResult {
-    assert_rejects_child_handoff(
-        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
-        pr_state_with(
-            "\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## codexy/example...origin/codexy/example [ahead 1]\",\"reviewThreads\":{\"pageInfo\":{\"hasNextPage\":false},\"nodes\":[]}",
-        ),
-        "ahead",
-    )
+fn validator_rejects_synced_handoff_when_branch_has_diverged() -> TestResult {
+    for divergence in ["ahead", "behind"] {
+        assert_rejects_child_handoff(
+            "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+            pr_state_with(&format!(
+                "\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## codexy/example...origin/codexy/example [{divergence} 1]\",\"reviewThreads\":{{\"pageInfo\":{{\"hasNextPage\":false}},\"nodes\":[]}}"
+            )),
+            divergence,
+        )?;
+    }
+    Ok(())
 }
-
 #[test]
 fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -210,7 +210,6 @@ fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -
     assert!(stderr.contains(needle), "unexpected stderr: {stderr}");
     Ok(())
 }
-
 fn pr_state_with(fields: &str) -> String {
     format!(
         r#"{{
@@ -227,7 +226,6 @@ fn pr_state_with(fields: &str) -> String {
         }}"#
     )
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

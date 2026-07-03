@@ -149,7 +149,9 @@ fn is_dirty_status_line(line: &str) -> bool {
 }
 
 fn branch_divergence(pr_state: &Value) -> Option<String> {
-    status_fields(pr_state).find(|line| line.starts_with("##") && line.contains("[ahead "))
+    status_fields(pr_state).find(|line| {
+        line.starts_with("##") && (line.contains("[ahead ") || line.contains("[behind "))
+    })
 }
 
 fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
