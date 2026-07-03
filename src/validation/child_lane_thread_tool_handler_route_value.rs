@@ -4,7 +4,7 @@ pub(super) fn has_substantive_route_value(value: &str) -> bool {
 }
 
 fn has_affirmative_route_event(value: &str) -> bool {
-    "parent sent|parent posted|parent delivered|parent routed"
+    "parent sent|parent posted|parent delivered|parent routed|orchestrator sent|orchestrator posted|orchestrator delivered|orchestrator routed"
         .split('|')
         .any(|action| {
             value.match_indices(action).any(|(index, _)| {
