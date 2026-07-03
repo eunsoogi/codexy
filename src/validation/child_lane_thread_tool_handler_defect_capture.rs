@@ -77,7 +77,7 @@ pub(super) fn has_negated_fallback_route_field(line: &str) -> bool {
 fn has_bare_no_fallback_field_without_availability(line: &str) -> bool {
     ["no fallback route:", "no fallback path:"]
         .into_iter()
-        .filter_map(|marker| line.split_once(marker).map(|(_, value)| value))
+        .flat_map(|marker| line.split(marker).skip(1))
         .any(|value| {
             let value = value.trim_start();
             ![
