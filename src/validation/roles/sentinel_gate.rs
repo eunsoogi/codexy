@@ -9,10 +9,70 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "workflow/ownership compliance pass",
     "regression coverage and proof pass",
     "reasoning control",
+    "reasoning control used or unavailable evidence",
     "unavailable evidence",
     "edge classes reviewed",
     "no-finding result",
     "repeated-Codex-feedback",
+];
+
+const REASONING_CONTROL_EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
+const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
+    "reasoning control:",
+    "packaged sentinel definition must run with the highest available reasoning setting",
+    "model_reasoning_effort = \"xhigh\"",
+    "reviewer evidence must record explicit unavailable evidence",
+];
+const REASONING_CONTROL_DISALLOWED_PATTERNS: &[&str] = &[
+    "absent",
+    "acceptable",
+    "aren't required",
+    "can be skipped",
+    "can omit",
+    "does not have to",
+    "does not need",
+    "does not require",
+    "doesn't have to",
+    "doesn't need",
+    "doesn't require",
+    "do not have to",
+    "do not need",
+    "do not require",
+    "don't have to",
+    "don't need",
+    "don't require",
+    "isn't needed",
+    "isn't necessary",
+    "isn't required",
+    "leave out",
+    "left out",
+    "may be skipped",
+    "may omit",
+    "missing",
+    "need not",
+    "needn't",
+    "no need",
+    "no explicit reasoning control used or unavailable evidence",
+    "no reasoning control used or unavailable evidence",
+    "no requirement",
+    "not have to",
+    "not a requirement",
+    "not be required",
+    "not mandatory",
+    "not needed",
+    "not required",
+    "not necessary",
+    "omitted",
+    "omit",
+    "optional",
+    "permissive",
+    "skip",
+    "skipped",
+    "unnecessary",
+    "waive",
+    "waived",
+    "waiver",
+    "without",
 ];
 
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
@@ -39,4 +99,86 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
             missing_markers.join(", ")
         ));
     }
+    if !has_reasoning_control_paragraph(instructions) {
+        errors.push(format!(
+            "{} codexy-sentinel reasoning-control paragraph must be present and affirmative",
+            display_relative(path)
+        ));
+    }
+    if !has_affirmative_reasoning_control_evidence(instructions)
+        || has_negated_reasoning_control_evidence(instructions)
+    {
+        errors.push(format!(
+            "{} codexy-sentinel reasoning-control evidence must be affirmative and must not be negated, optional, waived, or permissive",
+            display_relative(path)
+        ));
+    }
+}
+
+fn has_reasoning_control_paragraph(instructions: &str) -> bool {
+    let lower = instructions.to_ascii_lowercase();
+    REASONING_CONTROL_PARAGRAPH_MARKERS
+        .iter()
+        .all(|marker| lower.contains(marker))
+}
+
+fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
+    let lower = instructions.to_ascii_lowercase();
+    lower
+        .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
+        .any(|(start, _)| {
+            !contains_disallowed_reasoning_control_context(marker_clause(
+                &lower,
+                start,
+                REASONING_CONTROL_EVIDENCE_MARKER.len(),
+            ))
+        })
+}
+
+fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
+    let lower = instructions.to_ascii_lowercase();
+    lower
+        .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
+        .any(|(start, _)| {
+            contains_disallowed_reasoning_control_context(marker_clause(
+                &lower,
+                start,
+                REASONING_CONTROL_EVIDENCE_MARKER.len(),
+            ))
+        })
+}
+
+fn marker_clause(text: &str, marker_start: usize, marker_len: usize) -> &str {
+    let bytes = text.as_bytes();
+    let mut start = marker_start;
+    while start > 0 && !is_clause_boundary(bytes[start - 1]) {
+        start -= 1;
+    }
+    let mut end = marker_start + marker_len;
+    while end < bytes.len() && !is_clause_boundary(bytes[end]) {
+        end += 1;
+    }
+    text[start..end].trim()
+}
+
+fn is_clause_boundary(byte: u8) -> bool {
+    matches!(byte, b'.')
+}
+
+fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
+    REASONING_CONTROL_DISALLOWED_PATTERNS
+        .iter()
+        .any(|pattern| contains_context_pattern(clause, pattern))
+}
+
+fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
+    if pattern
+        .chars()
+        .any(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
+    {
+        return clause.contains(pattern);
+    }
+    clause
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|word| word == pattern)
 }

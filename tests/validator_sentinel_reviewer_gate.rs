@@ -27,13 +27,74 @@ fn validator_cli_rejects_sentinel_without_specialized_review_passes() -> TestRes
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
+    for replacement in [
+        "missing reasoning control used or unavailable evidence is acceptable",
+        "reasoning control used or unavailable evidence is optional",
+        "reasoning control used or unavailable evidence: optional",
+        "reasoning control used or unavailable evidence, optional",
+        "optional: reasoning control used or unavailable evidence",
+        "no reasoning control used or unavailable evidence is required",
+        "no reasoning control used or unavailable evidence required",
+        "no explicit reasoning control used or unavailable evidence is required",
+        "does not require reasoning control used or unavailable evidence",
+        "doesn't need reasoning control used or unavailable evidence",
+        "waived reasoning control used or unavailable evidence",
+        "reasoning control used or unavailable evidence may be skipped",
+        "reasoning control used or unavailable evidence does not have to be supplied",
+        "reasoning control used or unavailable evidence needn't be supplied",
+        "reasoning control used or unavailable evidence isn't required",
+        "reasoning control used or unavailable evidence isn't necessary",
+        "reasoning control used or unavailable evidence is not necessary",
+        "reasoning control used or unavailable evidence may be left out",
+        "may omit reasoning control used or unavailable evidence",
+        "can omit reasoning control used or unavailable evidence",
+        "reasoning control used or unavailable evidence\nis optional",
+    ] {
+        let output = validate_sentinel_replacement(
+            "reasoning control used or unavailable evidence",
+            replacement,
+        )?;
+
+        assert!(
+            !output.status.success(),
+            "validator accepted {replacement:?}"
+        );
+        assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestResult {
+    let output = validate_sentinel_edit(|mut sentinel| {
+        let start = sentinel
+            .find("Reasoning control:")
+            .ok_or("reasoning control paragraph start")?;
+        let end = sentinel
+            .find("Adversarial review method:")
+            .ok_or("reasoning control paragraph end")?;
+        sentinel.replace_range(start..end, "");
+        Ok(sentinel)
+    })?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
+    Ok(())
+}
+
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
+    validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement)))
+}
+
+fn validate_sentinel_edit(edit: impl FnOnce(String) -> TestResult<String>) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
     let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
     let sentinel = std::fs::read_to_string(&sentinel_path)?;
-    std::fs::write(&sentinel_path, sentinel.replace(needle, replacement))?;
+    std::fs::write(&sentinel_path, edit(sentinel)?)?;
     validator(&plugin_root)
 }
 
