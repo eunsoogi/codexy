@@ -8,6 +8,8 @@ fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Pushed: yes.\n",
         "PR ready: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
+        "PR readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
+        "Merge readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR ready for parent handoff. Sentinel verdict: UNOBSERVABLE after bounded wait. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel pending after bounded wait. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel is delayed after bounded wait. Pushed: yes.\n",
@@ -38,6 +40,8 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: BLOCK, Carver found same-scope issue. Pushed: yes.\n",
         "PR ready: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
+        "PR readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
+        "Merge readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "PR ready for parent handoff. Sentinel verdict: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel result: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel gate returned BLOCK. Pushed: yes.\n",
