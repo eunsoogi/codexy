@@ -1,0 +1,153 @@
+use std::{path::Path, process::Command};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
+
+#[test]
+fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+        r#"{
+            "number": 204,
+            "state": "OPEN",
+            "isDraft": false,
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": "APPROVED",
+            "headRefOid": "1111111111111111111111111111111111111111",
+            "latestReviews": [{
+                "body": "Didn't find any major issues.\n\nReviewed commit: `1111111111111111111111111111111111111111`",
+                "author": {"login": "chatgpt-codex-connector"},
+                "submittedAt": "2026-07-03T00:00:00Z"
+            }],
+            "worktreeStatus": "M src/validation/instruction_policy.rs\n?? tests/validator_role_instruction_policy.rs",
+            "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject false clean child handoff\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("child handoff"),
+        "unexpected stderr: {stderr}"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff.\n",
+        pr_state_with(
+            r#""mergeStateStatus":"DIRTY","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+        ),
+        "mergeStateStatus",
+    )
+}
+
+#[test]
+fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff.\n",
+        pr_state_with(
+            r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOOpen","isResolved":false,"isOutdated":false,"path":"src/validation/mod.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/215#discussion_r1"}]}}]}"#,
+        ),
+        "unresolved review thread",
+    )
+}
+
+#[test]
+fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. Parent can open PR next: yes.\n",
+        pr_state_with(
+            r#""mergeStateStatus":"CLEAN","headRefOid":"2222222222222222222222222222222222222222","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+        ),
+        "headRefOid",
+    )
+}
+
+#[test]
+fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+        r#"{
+            "number": 204,
+            "state": "OPEN",
+            "isDraft": false,
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": "APPROVED",
+            "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
+            "latestReviews": [{
+                "body": "Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`",
+                "author": {"login": "chatgpt-codex-connector"},
+                "submittedAt": "2026-07-03T00:00:00Z"
+            }],
+            "worktreeStatus": "",
+            "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow clean child handoff evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -> TestResult {
+    let output = validate_handoff_with_pr_state(handoff, &pr_state)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject false child handoff\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains(needle), "unexpected stderr: {stderr}");
+    Ok(())
+}
+
+fn pr_state_with(fields: &str) -> String {
+    format!(
+        r#"{{
+            "number":204,
+            "state":"OPEN",
+            "isDraft":false,
+            "reviewDecision":"APPROVED",
+            "latestReviews":[{{
+                "body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`",
+                "author":{{"login":"chatgpt-codex-connector"}},
+                "submittedAt":"2026-07-03T00:00:00Z"
+            }}],
+            {fields}
+        }}"#
+    )
+}
+
+fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
+    let temp = tempfile::tempdir()?;
+    let handoff_path = temp.path().join("handoff.md");
+    let pr_state_path = temp.path().join("pr-state.json");
+    std::fs::write(&handoff_path, handoff)?;
+    std::fs::write(&pr_state_path, pr_state)?;
+    validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-completion-handoff",
+            "--handoff-file",
+            handoff_path.to_str().ok_or("handoff path")?,
+            "--pr-state-file",
+            pr_state_path.to_str().ok_or("pr state path")?,
+        ])
+        .output()?)
+}
