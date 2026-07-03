@@ -53,10 +53,12 @@ fn is_conventional_subject(subject: &str) -> bool {
 }
 
 fn is_issue_conventional_subject(subject: &str) -> bool {
-    let Some((prefix, summary)) = subject.split_once(": ") else {
-        return false;
-    };
-    !summary.trim().is_empty() && is_conventional_prefix(&prefix.to_ascii_lowercase())
+    if let Some((prefix, summary)) = subject.split_once(": ") {
+        return !summary.trim().is_empty() && is_conventional_prefix(&prefix.to_ascii_lowercase());
+    }
+    let prefix = subject.split_whitespace().next().unwrap_or(subject);
+    (prefix.contains('(') || prefix.ends_with('!'))
+        && is_conventional_prefix(&prefix.to_ascii_lowercase())
 }
 
 fn is_conventional_prefix(prefix: &str) -> bool {

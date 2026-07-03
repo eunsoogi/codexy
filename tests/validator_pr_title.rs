@@ -46,6 +46,15 @@ fn validator_cli_rejects_capitalized_conventional_issue_title()
 }
 
 #[test]
+fn validator_cli_rejects_prefix_only_conventional_issue_title()
+-> Result<(), Box<dyn std::error::Error>> {
+    reject_issue_title(
+        "Fix(agents) reject negated sentinel evidence",
+        "issue title must not use Conventional Commit style",
+    )
+}
+
+#[test]
 fn validator_cli_rejects_issue_title_with_leading_whitespace()
 -> Result<(), Box<dyn std::error::Error>> {
     reject_issue_title(

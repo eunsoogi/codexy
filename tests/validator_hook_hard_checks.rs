@@ -105,7 +105,6 @@ fn separated_hard_hooks_reject_issue_219_examples() -> Result<(), Box<dyn std::e
         "unexpected output: {}",
         output_text(&bad_issue)
     );
-
     let title = hook_script("codexy-pr-title-check.sh");
     let bad_title = Command::new(&title)
         .args(["--pr-title", "Require descriptive child thread titles"])
