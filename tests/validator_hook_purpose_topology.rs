@@ -54,6 +54,10 @@ fn validator_cli_accepts_installed_readiness_hook_topology()
     assert!(readiness_context.contains("PR label readiness enforcement (#210)"));
     assert!(readiness_context.contains("--check-completion-handoff"));
     assert!(readiness_context.contains("repositoryLabels"));
+    assert!(readiness_context.contains("target base"));
+    assert!(readiness_context.contains("hook entrypoints"));
+    assert!(readiness_context.contains("available fallback"));
+    assert!(readiness_context.contains("separate dogfood defect"));
 
     let output = validate_hooks(&plugin_root)?;
     assert!(

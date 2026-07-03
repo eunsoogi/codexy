@@ -30,6 +30,10 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "--check-pr-labels",
     "--check-merge-message",
     "--expected-pr",
+    "target base",
+    "hook entrypoints",
+    "available fallback",
+    "separate dogfood defect",
 ];
 
 const REQUIRED_READINESS_CONTEXT: &[&str] = &[
@@ -41,6 +45,10 @@ const REQUIRED_READINESS_CONTEXT: &[&str] = &[
     "--check-completion-handoff",
     "repositoryLabels",
     "PR title and merge subject enforcement (#206)",
+    "target base",
+    "hook entrypoints",
+    "available fallback",
+    "separate dogfood defect",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {
@@ -64,6 +72,10 @@ pub(super) fn requirement_message(fragment: &str) -> &str {
         }
         "--check-pr-labels" => "must require PR label readiness guard",
         "PR label readiness enforcement (#210)" => "must require PR label readiness enforcement",
+        "target base" | "hook entrypoints" => "must require target-base hook entrypoint validation",
+        "available fallback" | "separate dogfood defect" => {
+            "must require hook fallback or mismatch defect routing"
+        }
         _ => "must include required context",
     }
 }
