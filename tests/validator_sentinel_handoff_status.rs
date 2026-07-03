@@ -123,10 +123,16 @@ fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
 
 #[test]
 fn validator_accepts_unobservable_sentinel_when_handoff_stops_before_readiness() -> TestResult {
-    accept_open_pr_handoff(
+    for handoff in [
         "Sentinel: UNOBSERVABLE after bounded waits. Pushed: no. PR ready: no. Parent decision required: yes. This lane is not ready for handoff.\n",
-        "validator should accept a bounded stuck Sentinel status when it does not claim readiness",
-    )
+        "Sentinel: UNOBSERVABLE after bounded waits. Pushed: no.\nPR ready: no\nParent decision required: yes.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should accept a bounded stuck Sentinel status when it does not claim readiness",
+        )?;
+    }
+    Ok(())
 }
 
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {

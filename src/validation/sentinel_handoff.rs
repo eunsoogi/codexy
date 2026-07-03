@@ -132,8 +132,8 @@ fn has_negative_label_value(suffix: &str) -> bool {
 fn is_standalone_negative_no(value: &str) -> bool {
     let rest = value.strip_prefix("no");
     rest.is_some_and(|rest| {
-        let rest = rest.trim_start_matches([' ', '\t', '\n', '\r']);
-        rest.is_empty() || rest.starts_with(['.', ',', ';', '!', '?'])
+        let rest = rest.trim_start_matches([' ', '\t']);
+        rest.is_empty() || rest.starts_with(['.', ',', ';', '!', '?', '\n', '\r'])
     })
 }
 
