@@ -125,6 +125,48 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additi
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_readiness_context_without_stacked_base_hook_guard()
+-> Result<(), Box<dyn std::error::Error>> {
+    for (fragment, expected) in [
+        (
+            "target base",
+            "must require target-base hook entrypoint validation",
+        ),
+        (
+            "hook entrypoints",
+            "must require target-base hook entrypoint validation",
+        ),
+        (
+            "available fallback",
+            "must require hook fallback or mismatch defect routing",
+        ),
+        (
+            "separate dogfood defect",
+            "must require hook fallback or mismatch defect routing",
+        ),
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_plugin(&plugin_root)?;
+        let script_path = plugin_root.join("hooks/codexy-readiness-context.sh");
+        let script = std::fs::read_to_string(&script_path)?.replace(fragment, "");
+        std::fs::write(&script_path, script)?;
+
+        let output = validate_hooks(&plugin_root)?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            !output.status.success(),
+            "validator should reject readiness context missing {fragment:?}"
+        );
+        assert!(
+            stderr.contains("emitted additionalContext") && stderr.contains(expected),
+            "unexpected stderr: {stderr}"
+        );
+    }
+    Ok(())
+}
+
 fn set_readiness_script(
     plugin_root: &std::path::Path,
     script: &str,
