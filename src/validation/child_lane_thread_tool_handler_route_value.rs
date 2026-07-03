@@ -90,13 +90,15 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         .trim();
     matches!(
         local,
-        "no" | "false"
+        "no" | "non"
+            | "false"
             | "never"
             | "unable"
             | "it is false that"
             | "it is not true that"
             | "it is not the case that"
-    ) || local.ends_with(" false that")
+    ) || local.ends_with(" non")
+        || local.ends_with(" false that")
         || local.starts_with("false positive")
         || local.starts_with("false-positive")
 }
@@ -148,13 +150,19 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_failed_route_delivery_clause(clause: &str) -> bool {
+    let normalized_clause;
+    let route_connectors = [
+        '_', '-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}', '\u{2015}',
+    ];
+    let clause = if clause.contains(route_connectors) {
+        normalized_clause = clause.replace(route_connectors, " ");
+        normalized_clause.as_str()
+    } else {
+        clause
+    };
     ["failed", "failure", "failures"]
         .into_iter()
-        .any(|failure| {
-            clause
-                .find(failure)
-                .is_some_and(|index| has_phrase_boundaries(clause, index, failure))
-        })
+        .any(|failure| contains_phrase(clause, failure))
         && (has_failed_route_pronoun_clause(clause)
             || [
                 "send",
@@ -174,11 +182,7 @@ fn has_failed_route_delivery_clause(clause: &str) -> bool {
                 "feedback",
             ]
             .into_iter()
-            .any(|term| {
-                clause
-                    .find(term)
-                    .is_some_and(|index| has_phrase_boundaries(clause, index, term))
-            }))
+            .any(|term| contains_phrase(clause, term)))
 }
 
 fn has_failed_route_pronoun_clause(clause: &str) -> bool {
@@ -189,11 +193,7 @@ fn has_failed_route_pronoun_clause(clause: &str) -> bool {
         "the fallback failed",
     ]
     .into_iter()
-    .any(|marker| {
-        clause
-            .find(marker)
-            .is_some_and(|index| has_phrase_boundaries(clause, index, marker))
-    })
+    .any(|marker| contains_phrase(clause, marker))
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {
@@ -214,11 +214,25 @@ fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
     value[..start]
         .chars()
         .last()
-        .is_none_or(|character| !character.is_ascii_alphanumeric())
+        .is_none_or(|character| !is_route_word_character(character))
         && value[end..]
             .chars()
             .next()
-            .is_none_or(|character| !character.is_ascii_alphanumeric())
+            .is_none_or(|character| !is_route_word_character(character))
+}
+
+fn contains_phrase(value: &str, phrase: &str) -> bool {
+    value
+        .find(phrase)
+        .is_some_and(|index| has_phrase_boundaries(value, index, phrase))
+}
+
+fn is_route_word_character(character: char) -> bool {
+    character.is_ascii_alphanumeric()
+        || matches!(
+            character,
+            '_' | '-' | '\u{2010}' | '\u{2011}' | '\u{2012}' | '\u{2013}' | '\u{2014}' | '\u{2015}'
+        )
 }
 
 fn has_route_event_negation(text: &str) -> bool {
