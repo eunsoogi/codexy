@@ -5,13 +5,16 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
+            && !has_negated_fallback_route_field(line)
             && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
                 || opens_defect_list(line)
                     && lines[index + 1..]
                         .iter()
                         .take_while(|following| is_list_item(following))
                         .any(|following| {
-                            has_handler_marker(following) && has_tool_name(following, tool)
+                            !has_negated_fallback_route_field(following)
+                                && has_handler_marker(following)
+                                && has_tool_name(following, tool)
                         }))
     })
 }
@@ -20,12 +23,16 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
+            && !has_negated_fallback_route_field(line)
             && (has_handler_marker_in_defect_clause(line)
                 || opens_defect_list(line)
                     && lines[index + 1..]
                         .iter()
                         .take_while(|following| is_list_item(following))
-                        .any(|following| has_handler_marker(following)))
+                        .any(|following| {
+                            !has_negated_fallback_route_field(following)
+                                && has_handler_marker(following)
+                        }))
     })
 }
 
@@ -46,6 +53,24 @@ fn has_handler_marker_and_tool_name_in_defect_clause(line: &str, tool: &str) -> 
 
 fn opens_defect_list(line: &str) -> bool {
     defect_capture_clause(line).is_some_and(|clause| clause.trim_end().ends_with(':'))
+}
+
+fn has_negated_fallback_route_field(line: &str) -> bool {
+    let normalized = line.to_ascii_lowercase();
+    [
+        "no fallback route:",
+        "no fallback path:",
+        "not a fallback route:",
+        "not a fallback path:",
+        "not a fallback route used:",
+        "not a fallback path used:",
+        "without fallback route evidence",
+        "without fallback path evidence",
+        "without a fallback route",
+        "without a fallback path",
+    ]
+    .into_iter()
+    .any(|marker| normalized.contains(marker))
 }
 
 fn defect_capture_clause(line: &str) -> Option<&str> {
