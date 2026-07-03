@@ -6,7 +6,7 @@ pub(super) fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
         let end = start + phrase.len();
         if phrase_has_boundaries(text, start, end)
             && !is_locally_negated(&text[..start])
-            && !super::codex_review_handoff::has_negative_label_value(&text[end..])
+            && !has_non_claim_label_value(&text[end..])
         {
             return true;
         }
@@ -14,6 +14,69 @@ pub(super) fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
         rest = &text[offset..];
     }
     false
+}
+
+pub(super) fn has_non_claim_phrase_label(text: &str, phrase: &str) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(phrase) {
+        let start = offset + index;
+        let end = start + phrase.len();
+        if phrase_has_boundaries(text, start, end) && has_non_claim_label_value(&text[end..]) {
+            return true;
+        }
+        offset = end;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn has_non_claim_label_value(suffix: &str) -> bool {
+    super::codex_review_handoff::has_negative_label_value(suffix)
+        || [
+            "not verified",
+            "not yet verified",
+            "not currently verified",
+            "not confirmed",
+            "not yet confirmed",
+            "not currently confirmed",
+            "not checked",
+            "not run",
+            "not clean",
+            "not pushed",
+            "not synced",
+            "unverified",
+            "unconfirmed",
+            "unchecked",
+            "missing",
+            "unknown",
+            "pending",
+            "dirty",
+            "blocked",
+            "waiting",
+            "deferred",
+            "n/a",
+            "na",
+        ]
+        .iter()
+        .any(|phrase| label_value_starts_with(suffix, phrase))
+}
+
+fn label_value_starts_with(suffix: &str, phrase: &str) -> bool {
+    let Some(value) = label_value(suffix) else {
+        return false;
+    };
+    value
+        .strip_prefix(phrase)
+        .is_some_and(|rest| is_boundary(rest.chars().next()))
+}
+
+fn label_value(suffix: &str) -> Option<&str> {
+    let suffix = suffix.trim_start_matches([' ', '\t']);
+    let value = suffix
+        .strip_prefix(':')
+        .or_else(|| suffix.strip_prefix('?'))?;
+    Some(value.trim_start_matches([' ', '\t', '\n', '\r', '-', '*']))
 }
 
 fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {

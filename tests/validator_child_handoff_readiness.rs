@@ -1,8 +1,6 @@
-use std::{path::Path, process::Command};
-
+use std::process::Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -114,7 +112,23 @@ fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult 
     );
     Ok(())
 }
-
+#[test]
+fn validator_rejects_ready_child_handoff_with_negative_proof_labels() -> TestResult {
+    let state = pr_state_with(
+        r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+    );
+    for handoff in [
+        "Child handoff: ready for parent handoff. Branch clean: no. Synced: not verified. Pushed: no. PR-ready: no. Merge-ready: no.\n",
+        "Child handoff: ready for parent handoff. Parent can open PR next: no.\n",
+        "Child handoff: ready for parent handoff. Clean: no. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: not clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: pending. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Branch clean: dirty. Synced: not synced. Pushed: not pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+    ] {
+        assert_rejects_child_handoff(handoff, state.clone(), "negative or non-claim")?;
+    }
+    Ok(())
+}
 #[test]
 fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
     assert_rejects_child_handoff(
@@ -218,17 +232,12 @@ fn pr_state_with(fields: &str) -> String {
         }}"#
     )
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(&pr_state_path, pr_state)?;
-    validate_completion_handoff(&handoff_path, &pr_state_path)
-}
-
-fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--check-completion-handoff",

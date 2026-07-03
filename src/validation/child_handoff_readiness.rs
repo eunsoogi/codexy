@@ -1,11 +1,18 @@
 use serde_json::Value;
 
+use super::child_handoff_readiness_text::has_non_claim_phrase_label;
+
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_child_readiness(&text) {
         return Vec::new();
     }
     let mut errors = Vec::new();
+    if claims_pr_ready(&text) {
+        errors.extend(negative_proof_labels(&text).map(|label| {
+            format!("child handoff claims readiness but {label} proof is negative or non-claim")
+        }));
+    }
     if claims_clean(&text) {
         if let Some(status) = dirty_status(pr_state) {
             errors.push(format!(
@@ -93,12 +100,49 @@ fn claims_synced_or_pushed(text: &str) -> bool {
 fn claims_pr_ready(text: &str) -> bool {
     [
         "pr ready",
+        "pr-ready",
         "ready for parent handoff",
+        "ready to merge",
+        "merge-ready",
+        "merge ready",
         "parent can open pr next: yes",
         "parent can merge",
     ]
     .iter()
     .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
+}
+
+fn negative_proof_labels(text: &str) -> impl Iterator<Item = &'static str> + '_ {
+    [
+        ("clean", &["clean", "branch clean", "worktree clean"][..]),
+        ("synced", &["synced"][..]),
+        ("pushed", &["pushed", "remote/pr head match"][..]),
+        (
+            "PR-ready",
+            &[
+                "pr ready",
+                "pr-ready",
+                "ready for parent handoff",
+                "parent can open pr next",
+            ][..],
+        ),
+        (
+            "merge-ready",
+            &[
+                "merge-ready",
+                "merge ready",
+                "ready to merge",
+                "parent can merge",
+            ][..],
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(label, phrases)| {
+        phrases
+            .iter()
+            .any(|phrase| has_non_claim_phrase_label(text, phrase))
+            .then_some(label)
+    })
 }
 
 fn dirty_status(pr_state: &Value) -> Option<String> {
