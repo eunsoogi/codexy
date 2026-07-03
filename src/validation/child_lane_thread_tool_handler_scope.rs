@@ -39,19 +39,28 @@ pub(super) fn capture_end_before_unrelated_evidence(
 ) -> usize {
     let mut cursor = line_end(evidence, handler_start);
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
+    let mut saw_handler_capture = is_handler_capture_line(&evidence[capture_start..cursor]);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
         let line = &evidence[line_start..line_end];
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
-        let line_extends_capture = is_capture_related(line)
-            && (!line_is_unrelated_metadata || is_handler_capture_line(line));
+        let line_is_same_lane_header_metadata =
+            is_same_lane_header_metadata_line(evidence, line_start, line_end);
+        let line_is_handler_capture = is_handler_capture_line(line);
+        let line_extends_capture =
+            is_capture_related(line) && (!line_is_unrelated_metadata || line_is_handler_capture);
         if line.trim().is_empty()
-            || saw_capture && !line_extends_capture && line_is_unrelated_metadata
+            || saw_handler_capture && line_is_same_lane_header_metadata
+            || saw_capture
+                && !line_extends_capture
+                && line_is_unrelated_metadata
+                && !line_is_same_lane_header_metadata
         {
             return line_start;
         }
         saw_capture |= line_extends_capture;
+        saw_handler_capture |= line_is_handler_capture;
         cursor = line_end;
     }
     evidence.len()
@@ -81,6 +90,59 @@ fn is_unrelated_metadata_line(line: &str) -> bool {
         return false;
     };
     !is_capture_related(&key.to_ascii_lowercase())
+}
+
+fn is_same_lane_header_metadata_line(evidence: &str, line_start: usize, line_end: usize) -> bool {
+    let line = &evidence[line_start..line_end];
+    let Some((key, _)) = line.trim_start().split_once(':') else {
+        return false;
+    };
+    let key = metadata_key(key);
+    matches!(
+        key.as_str(),
+        "issue"
+            | "pr"
+            | "tracking issue"
+            | "branch"
+            | "head"
+            | "worktree path"
+            | "fallback route"
+            | "owner"
+            | "lane owner"
+            | "child owner"
+    ) || key.starts_with("lane ")
+        && next_nonempty_line(evidence, line_end)
+            .is_some_and(|next| is_same_lane_header_field(next))
+}
+
+fn next_nonempty_line(evidence: &str, mut cursor: usize) -> Option<&str> {
+    while cursor < evidence.len() {
+        let start = cursor + usize::from(evidence.as_bytes()[cursor] == b'\n');
+        let end = line_end(evidence, start);
+        let line = &evidence[start..end];
+        if !line.trim().is_empty() {
+            return Some(line);
+        }
+        cursor = end;
+    }
+    None
+}
+
+fn is_same_lane_header_field(line: &str) -> bool {
+    let Some((key, _)) = line.trim_start().split_once(':') else {
+        return false;
+    };
+    matches!(
+        metadata_key(key).as_str(),
+        "fallback route" | "tracking issue" | "issue" | "pr" | "branch" | "head" | "worktree path"
+    )
+}
+
+fn metadata_key(key: &str) -> String {
+    key.trim_start_matches(['-', '*'])
+        .trim_start()
+        .trim()
+        .to_ascii_lowercase()
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
