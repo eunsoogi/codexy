@@ -60,6 +60,8 @@ pub(super) fn has_negated_fallback_route_field(line: &str) -> bool {
     [
         "not a fallback route:",
         "not a fallback path:",
+        "no fallback route used:",
+        "no fallback path used:",
         "not a fallback route used:",
         "not a fallback path used:",
         "without fallback route evidence",
