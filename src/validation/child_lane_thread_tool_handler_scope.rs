@@ -102,7 +102,11 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
 pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize) -> usize {
     let mut capture_start = line_start;
     let mut cursor = line_start;
-    let current_lane = lane_label(&evidence[line_start..line_end(evidence, line_start)]);
+    let current_line = &evidence[line_start..line_end(evidence, line_start)];
+    let current_lane = lane_label(current_line).or_else(|| {
+        let (block_start, _) = scope_start_until_blank(evidence, line_start);
+        lane_label_for_scope(evidence, block_start, line_start)
+    });
     while cursor > 0 {
         let previous_end = cursor - 1;
         let previous_start = evidence[..previous_end]

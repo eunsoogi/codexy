@@ -133,7 +133,7 @@ fn has_negated_no_route_claim(clause: &str) -> bool {
 }
 
 fn has_negated_fallback_route(clause: &str) -> bool {
-    const NEGATED_FALLBACK_MARKERS: &str = "no fallback route:|no fallback path:|no fallback route evidence|no fallback path evidence|without fallback route evidence|without a fallback route|without fallback path evidence|without a fallback path";
+    const NEGATED_FALLBACK_MARKERS: &str = "no fallback route:|no fallback path:|not a fallback route:|not a fallback path:|not a fallback route used:|not a fallback path used:|no fallback route evidence|no fallback path evidence|without fallback route evidence|without a fallback route|without fallback path evidence|without a fallback path";
     NEGATED_FALLBACK_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
