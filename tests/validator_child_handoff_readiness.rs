@@ -61,6 +61,61 @@ fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff. Maintainer override: yes.\n",
+        r#"{
+            "number": 204,
+            "state": "OPEN",
+            "isDraft": false,
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": "APPROVED",
+            "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
+            "worktreeStatus": ""
+        }"#
+        .to_owned(),
+        "reviewThreads",
+    )
+}
+
+#[test]
+fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff. Maintainer override: yes.\n",
+        r#"{
+            "number": 204,
+            "state": "OPEN",
+            "isDraft": false,
+            "mergeStateStatus": "CLEAN",
+            "reviewDecision": "APPROVED",
+            "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
+            "worktreeStatus": "",
+            "reviewThreads": {"pageInfo":{"hasNextPage":false}}
+        }"#
+        .to_owned(),
+        "reviewThreads.nodes",
+    )
+}
+
+#[test]
+fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff: branch clean. PR ready: no. Parent can merge: no. Pushed: no. Waiting on current blockers.\n",
+        &pr_state_with(
+            r#""mergeStateStatus":"DIRTY","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+        ),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "negative readiness labels should not be treated as claims\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. Parent can open PR next: yes.\n",
