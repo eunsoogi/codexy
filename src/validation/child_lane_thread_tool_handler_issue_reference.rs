@@ -5,19 +5,19 @@ pub(super) fn has_issue_reference(clause: &str) -> bool {
 }
 
 fn has_hash_issue_reference(clause: &str) -> bool {
-    clause
-        .split(|character: char| {
-            !character.is_ascii_alphanumeric() && !matches!(character, '#' | '/')
-        })
-        .any(|word| {
-            let Some(issue_number) = word.strip_prefix('#') else {
-                return false;
-            };
-            !issue_number.is_empty()
-                && issue_number
-                    .chars()
-                    .all(|character| character.is_ascii_digit())
-        })
+    clause.match_indices('#').any(|(hash_index, _)| {
+        let token_start = clause[..hash_index]
+            .rfind(|character: char| character.is_whitespace())
+            .map_or(0, |index| index + 1);
+        if token_start != hash_index {
+            return false;
+        }
+        let issue_tail = &clause[hash_index + 1..];
+        let digit_end = issue_tail
+            .find(|character: char| !character.is_ascii_digit())
+            .unwrap_or(issue_tail.len());
+        digit_end > 0 && is_bare_issue_boundary(&issue_tail[digit_end..])
+    })
 }
 
 fn has_github_issue_url(clause: &str) -> bool {
@@ -68,6 +68,18 @@ fn is_repository_reference_segment(segment: &str) -> bool {
         && segment.chars().all(|character| {
             character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-')
         })
+}
+
+fn is_bare_issue_boundary(suffix: &str) -> bool {
+    suffix.is_empty()
+        || suffix
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_whitespace())
+        || suffix.starts_with('/')
+        || suffix
+            .chars()
+            .all(|character| matches!(character, '.' | ',' | ')' | ']' | '}' | '>' | '"' | '\''))
 }
 
 fn is_issue_url_boundary(suffix: &str) -> bool {

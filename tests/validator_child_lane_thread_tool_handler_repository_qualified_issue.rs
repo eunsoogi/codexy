@@ -37,6 +37,19 @@ fn validator_allows_repository_qualified_tracking_issue_evidence()
 }
 
 #[test]
+fn validator_allows_slash_delimited_bare_tracking_issue_references()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&tracking_issue_evidence("tracking issue: #205/#206"))?;
+    assert!(
+        output.status.success(),
+        "validator should accept slash-delimited bare issue references\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_malformed_repository_qualified_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
@@ -44,11 +57,13 @@ fn validator_rejects_malformed_repository_qualified_issue_references()
         "tracking issue: eunsoogi/codexy#205abc",
         "tracking issue: eunsoogi/#205",
         "tracking issue: /codexy#205",
+        "tracking issue: abc#205",
+        "tracking issue: codexy#205",
     ] {
         let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
         assert!(
             !output.status.success(),
-            "validator should reject malformed repository-qualified issue evidence `{issue}`"
+            "validator should reject malformed issue evidence `{issue}`"
         );
     }
     Ok(())
