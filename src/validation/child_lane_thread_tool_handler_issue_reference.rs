@@ -1,10 +1,14 @@
 pub(super) fn has_issue_reference(clause: &str) -> bool {
-    has_hash_issue_reference(clause) || has_github_issue_url(clause)
+    has_hash_issue_reference(clause)
+        || has_github_issue_url(clause)
+        || has_repository_qualified_issue_reference(clause)
 }
 
 fn has_hash_issue_reference(clause: &str) -> bool {
     clause
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '#')
+        .split(|character: char| {
+            !character.is_ascii_alphanumeric() && !matches!(character, '#' | '/')
+        })
         .any(|word| {
             let Some(issue_number) = word.strip_prefix('#') else {
                 return false;
@@ -33,6 +37,37 @@ fn has_github_issue_url(clause: &str) -> bool {
             .unwrap_or(issue_tail.len());
         digit_end > 0 && is_issue_url_boundary(&issue_tail[digit_end..])
     })
+}
+
+fn has_repository_qualified_issue_reference(clause: &str) -> bool {
+    clause.split_whitespace().any(|word| {
+        let trimmed = word.trim_matches(|character: char| {
+            !character.is_ascii_alphanumeric() && !"/.#_-".contains(character)
+        });
+        if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+            return false;
+        }
+        let Some((repository, issue_tail)) = trimmed.rsplit_once('#') else {
+            return false;
+        };
+        let Some((owner, repo)) = repository.rsplit_once('/') else {
+            return false;
+        };
+        if !is_repository_reference_segment(owner) || !is_repository_reference_segment(repo) {
+            return false;
+        }
+        let digit_end = issue_tail
+            .find(|character: char| !character.is_ascii_digit())
+            .unwrap_or(issue_tail.len());
+        digit_end > 0 && is_issue_url_boundary(&issue_tail[digit_end..])
+    })
+}
+
+fn is_repository_reference_segment(segment: &str) -> bool {
+    !segment.is_empty()
+        && segment.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-')
+        })
 }
 
 fn is_issue_url_boundary(suffix: &str) -> bool {
