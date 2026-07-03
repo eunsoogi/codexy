@@ -55,11 +55,9 @@ fn opens_defect_list(line: &str) -> bool {
     defect_capture_clause(line).is_some_and(|clause| clause.trim_end().ends_with(':'))
 }
 
-fn has_negated_fallback_route_field(line: &str) -> bool {
+pub(super) fn has_negated_fallback_route_field(line: &str) -> bool {
     let normalized = line.to_ascii_lowercase();
     [
-        "no fallback route:",
-        "no fallback path:",
         "not a fallback route:",
         "not a fallback path:",
         "not a fallback route used:",

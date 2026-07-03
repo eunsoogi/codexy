@@ -71,6 +71,8 @@ fn is_capture_related(line: &str) -> bool {
         "handler",
         "missing-handler",
         "no handler registered",
+        "fallback route",
+        "fallback path",
     ]
     .into_iter()
     .any(|marker| line.contains(marker))
