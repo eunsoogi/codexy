@@ -52,6 +52,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "can omit reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence\nis optional",
         "MUST NOT record reasoning control used or unavailable evidence",
+        "recording reasoning control used or unavailable evidence is forbidden",
+        "recording reasoning control used or unavailable evidence is prohibited",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -74,6 +76,7 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
         "No Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
         "Negated Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
         "Reasoning control: no packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence is forbidden.\n\n",
     ] {
         let output = validate_reasoning_control_paragraph_replacement(replacement)?;
 
