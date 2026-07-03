@@ -149,14 +149,22 @@ fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResu
 }
 
 #[test]
-fn validator_rejects_pushed_handoff_when_branch_is_ahead() -> TestResult {
-    assert_rejects_child_handoff(
-        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
-        pr_state_with(
-            "\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## codexy/example...origin/codexy/example [ahead 1]\",\"reviewThreads\":{\"pageInfo\":{\"hasNextPage\":false},\"nodes\":[]}",
-        ),
-        "ahead",
-    )
+fn validator_rejects_pushed_handoff_when_branch_status_is_unsynced() -> TestResult {
+    for (status, needle) in [
+        ("[ahead 1]", "ahead"),
+        ("[behind 1]", "behind"),
+        ("[ahead 1, behind 2]", "ahead 1, behind 2"),
+        ("[gone]", "gone"),
+    ] {
+        assert_rejects_child_handoff(
+            "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+            pr_state_with(&format!(
+                "\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## codexy/example...origin/codexy/example {status}\",\"reviewThreads\":{{\"pageInfo\":{{\"hasNextPage\":false}},\"nodes\":[]}}",
+            )),
+            needle,
+        )?;
+    }
+    Ok(())
 }
 
 #[test]
