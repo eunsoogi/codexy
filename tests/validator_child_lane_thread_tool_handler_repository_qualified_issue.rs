@@ -50,6 +50,21 @@ fn validator_allows_slash_delimited_bare_tracking_issue_references()
 }
 
 #[test]
+fn validator_allows_punctuation_delimited_bare_tracking_issue_references()
+-> Result<(), Box<dyn std::error::Error>> {
+    for issue in ["tracking issue: (#205)", "Tracking issue:#205"] {
+        let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
+        assert!(
+            output.status.success(),
+            "validator should accept punctuation-delimited bare issue reference `{issue}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_malformed_repository_qualified_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [

@@ -6,10 +6,7 @@ pub(super) fn has_issue_reference(clause: &str) -> bool {
 
 fn has_hash_issue_reference(clause: &str) -> bool {
     clause.match_indices('#').any(|(hash_index, _)| {
-        let token_start = clause[..hash_index]
-            .rfind(|character: char| character.is_whitespace())
-            .map_or(0, |index| index + 1);
-        if token_start != hash_index {
+        if !is_bare_issue_start(clause[..hash_index].chars().next_back()) {
             return false;
         }
         let issue_tail = &clause[hash_index + 1..];
@@ -68,6 +65,13 @@ fn is_repository_reference_segment(segment: &str) -> bool {
         && segment.chars().all(|character| {
             character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-')
         })
+}
+
+fn is_bare_issue_start(previous: Option<char>) -> bool {
+    match previous {
+        None => true,
+        Some(character) => !character.is_ascii_alphanumeric() && !matches!(character, '/' | '#'),
+    }
 }
 
 fn is_bare_issue_boundary(suffix: &str) -> bool {
