@@ -94,6 +94,39 @@ fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResul
 }
 
 #[test]
+fn validator_rejects_generic_reviewer_gate_pass_as_sentinel_readiness() -> TestResult {
+    for handoff in [
+        "PR ready for parent handoff. Reviewer gate returned PASS. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate passed. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate PASS. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate: PASS. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned BLOCK. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate BLOCK. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate: BLOCK. Pushed: yes.\n",
+        "Parent can open PR next. Packaged reviewer gate returned PASS. Remote/PR head match: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Missing Sentinel: PASS evidence. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS missing. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel: PASS evidence missing. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS absent. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS evidence was not provided. Pushed: yes.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject generic reviewer-gate PASS as packaged Sentinel proof\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("Sentinel"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
     for handoff in [
         "Push-ready. Sentinel timed out after bounded wait. Pushed: no. PR ready: no.\n",
@@ -119,10 +152,20 @@ fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
 
 #[test]
 fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
-    accept_open_pr_handoff(
+    for handoff in [
         "PR ready for parent handoff. Sentinel: PASS, Euclid reviewed exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
-        "validator should accept explicit Sentinel PASS readiness evidence",
-    )
+        "PR ready for parent handoff. Sentinel: PASS. Missing follow-ups: none. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS. Missing follow-ups: none. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Packaged Sentinel returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Codexy Sentinel returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Packaged Codexy Sentinel reviewer gate returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+    ] {
+        accept_open_pr_handoff(
+            handoff,
+            "validator should accept explicit Sentinel PASS readiness evidence",
+        )?;
+    }
+    Ok(())
 }
 
 #[test]

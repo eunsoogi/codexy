@@ -1,6 +1,7 @@
-const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel|packaged reviewer gate|reviewer gate";
-const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass|reviewer gate returned pass";
-const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate returned block";
+const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
+const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate pass|reviewer gate passed|reviewer gate block|reviewer gate: pass|reviewer gate: block|reviewer gate returned pass|reviewer gate returned block|packaged reviewer gate";
+const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass|sentinel reviewer gate returned pass";
+const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
 const READINESS_MARKERS: &str = "merge-ready|merge ready|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|pr-ready|pr ready|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|ready to push|ready for push|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
 
@@ -8,6 +9,12 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_readiness(&text) {
         return Vec::new();
+    }
+    if has_any(&text, GENERIC_REVIEWER_GATE_MARKERS) && !has_any(&text, SENTINEL_MARKERS) {
+        return vec![
+            "Generic reviewer-gate evidence cannot satisfy packaged Sentinel readiness proof"
+                .into(),
+        ];
     }
     if !has_any(&text, SENTINEL_MARKERS) {
         return Vec::new();
@@ -80,6 +87,7 @@ fn last_affirmed_phrase_start(text: &str, phrase: &str) -> Option<usize> {
         let end = start + phrase.len();
         if phrase_has_boundaries(text, start, end)
             && !is_locally_negated(&text[..start])
+            && !is_locally_negated_after(&text[end..])
             && !has_negative_label_value(&text[end..])
         {
             last = Some(start);
@@ -155,9 +163,33 @@ fn is_locally_negated(prefix: &str) -> bool {
         .any(|word| {
             matches!(
                 word,
-                "no" | "not" | "without" | "isn't" | "wasn't" | "hasn't"
+                "no" | "not"
+                    | "without"
+                    | "isn't"
+                    | "wasn't"
+                    | "hasn't"
+                    | "missing"
+                    | "absent"
+                    | "lacking"
             )
         })
+}
+
+fn is_locally_negated_after(suffix: &str) -> bool {
+    let clause = &suffix[..suffix
+        .find(|character: char| matches!(character, '.' | '!' | '?' | ';' | ':' | ',' | '\n'))
+        .unwrap_or(suffix.len())];
+    let words: Vec<&str> = clause
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '\'')
+        .filter(|word| !word.is_empty())
+        .take(5)
+        .collect();
+    words
+        .iter()
+        .any(|word| matches!(*word, "missing" | "absent" | "lacking"))
+        || words
+            .windows(2)
+            .any(|pair| matches!(pair, ["not", "provided"]))
 }
 
 fn last_clause_boundary(text: &str) -> Option<usize> {
