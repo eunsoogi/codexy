@@ -7,10 +7,19 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     }
     let mut errors = Vec::new();
     if claims_clean(&text) {
-        if let Some(status) = dirty_status(pr_state) {
-            errors.push(format!(
-                "child handoff claims clean worktree but current status is dirty: {status}"
-            ));
+        match local_status(pr_state) {
+            Some(lines) => {
+                if lines.iter().any(|line| is_dirty_status_line(line)) {
+                    errors.push(format!(
+                        "child handoff claims clean worktree but current status is dirty: {}",
+                        lines.join("; ")
+                    ));
+                }
+            }
+            None => errors.push(
+                "child handoff claims clean worktree but current local git status evidence is missing"
+                    .into(),
+            ),
         }
     }
     if claims_synced_or_pushed(&text) {
@@ -101,8 +110,8 @@ fn claims_pr_ready(text: &str) -> bool {
     .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
-fn dirty_status(pr_state: &Value) -> Option<String> {
-    [
+fn local_status(pr_state: &Value) -> Option<Vec<String>> {
+    let statuses: Vec<_> = [
         "worktreeStatus",
         "localStatus",
         "gitStatus",
@@ -112,8 +121,8 @@ fn dirty_status(pr_state: &Value) -> Option<String> {
     .into_iter()
     .filter_map(|field| pr_state.get(field))
     .filter_map(status_lines)
-    .find(|lines| lines.iter().any(|line| is_dirty_status_line(line)))
-    .map(|lines| lines.join("; "))
+    .collect();
+    (!statuses.is_empty()).then(|| statuses.into_iter().flatten().collect())
 }
 
 fn status_lines(value: &Value) -> Option<Vec<String>> {

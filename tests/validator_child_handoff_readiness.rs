@@ -1,8 +1,7 @@
 use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
+const CLEAN_SYNCED_HANDOFF: &str = "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff.\n";
 #[test]
 fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -37,7 +36,6 @@ fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestResult {
     assert_rejects_child_handoff(
@@ -48,7 +46,6 @@ fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestRes
         "mergeStateStatus",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
     assert_rejects_child_handoff(
@@ -59,7 +56,6 @@ fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
         "unresolved review thread",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestResult {
     assert_rejects_child_handoff(
@@ -77,7 +73,6 @@ fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestR
         "reviewThreads",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResult {
     assert_rejects_child_handoff(
@@ -98,6 +93,22 @@ fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResul
 }
 
 #[test]
+fn validator_rejects_clean_child_handoff_without_current_clean_status_evidence() -> TestResult {
+    for (fields, needle) in [
+        (
+            r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+            "local git status evidence is missing",
+        ),
+        (
+            r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","gitStatusShort":"M src/validation/child_handoff_readiness.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+            "current status is dirty",
+        ),
+    ] {
+        assert_rejects_child_handoff(CLEAN_SYNCED_HANDOFF, pr_state_with(fields), needle)?;
+    }
+    Ok(())
+}
+#[test]
 fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Child handoff: branch clean. PR ready: no. Parent can merge: no. Pushed: no. Waiting on current blockers.\n",
@@ -114,7 +125,6 @@ fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult 
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
     assert_rejects_child_handoff(
@@ -125,7 +135,6 @@ fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_without_comparable_head() -> TestResult {
     assert_rejects_child_handoff(
