@@ -140,7 +140,13 @@ fn is_dirty_status_line(line: &str) -> bool {
 }
 
 fn branch_divergence(pr_state: &Value) -> Option<String> {
-    status_fields(pr_state).find(|line| line.starts_with("##") && line.contains("[ahead "))
+    status_fields(pr_state).find(|line| {
+        let normalized = line.to_ascii_lowercase();
+        line.starts_with("##")
+            && (normalized.contains("[ahead ")
+                || normalized.contains("[behind ")
+                || normalized.contains("diverged"))
+    })
 }
 
 fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
@@ -149,11 +155,14 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
             "child handoff claims pushed/synced head but PR state is missing headRefOid".into(),
         );
     };
-    let claimed = hex_refs(handoff);
-    if claimed
-        .iter()
-        .any(|oid| pr_head.to_ascii_lowercase().starts_with(oid))
-    {
+    let claimed = full_hex_refs(handoff);
+    if claimed.is_empty() {
+        return Some(
+            "child handoff claims pushed/synced head but no comparable handoff head was provided"
+                .into(),
+        );
+    }
+    if claimed.iter().any(|oid| pr_head.eq_ignore_ascii_case(oid)) {
         return None;
     }
     Some(format!(
@@ -196,9 +205,9 @@ fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
     .flatten()
 }
 
-fn hex_refs(text: &str) -> Vec<String> {
+fn full_hex_refs(text: &str) -> Vec<String> {
     text.split(|ch: char| !ch.is_ascii_hexdigit())
-        .filter(|part| (7..=40).contains(&part.len()))
+        .filter(|part| part.len() == 40)
         .map(str::to_ascii_lowercase)
         .collect()
 }
