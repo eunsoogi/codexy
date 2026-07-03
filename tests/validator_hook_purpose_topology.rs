@@ -50,6 +50,8 @@ fn validator_cli_accepts_installed_readiness_hook_topology()
     let readiness_context = readiness_json["hookSpecificOutput"]["additionalContext"]
         .as_str()
         .ok_or("readiness hook output should include additional context")?;
+    assert!(readiness_context.contains("codexy-issue-title-check.sh --issue-title"));
+    assert!(readiness_context.contains("--check-issue-title"));
     assert!(readiness_context.contains("PR title and merge subject enforcement (#206)"));
     assert!(readiness_context.contains("PR label readiness enforcement (#210)"));
     assert!(readiness_context.contains("--check-completion-handoff"));

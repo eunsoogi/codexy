@@ -22,6 +22,8 @@ fn git_workflow_validates_pr_suffix_without_issue_number() -> Result<(), Box<dyn
     assert!(skill.contains(
         "plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title \"$(gh pr view --json title --jq .title)\""
     ));
+    assert!(skill.contains("plugins/codexy/hooks/codexy-issue-title-check.sh --issue-title"));
+    assert!(skill.contains("--check-issue-title"));
     assert!(skill.contains("plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file"));
     assert!(skill.contains("MUST NOT treat `UserPromptSubmit` advisory context"));
 

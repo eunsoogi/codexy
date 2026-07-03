@@ -7,7 +7,9 @@ use anyhow::{Result, bail};
 use crate::paths::display_relative;
 
 use super::context::process;
-use super::lifecycle::{MERGE_MESSAGE_SCRIPT, PR_LABEL_SCRIPT, PR_TITLE_SCRIPT};
+use super::lifecycle::{
+    ISSUE_TITLE_SCRIPT, MERGE_MESSAGE_SCRIPT, PR_LABEL_SCRIPT, PR_TITLE_SCRIPT,
+};
 use super::safety;
 
 const SOURCED_HARD_HELPERS: &[&str] = &["hooks/codexy-readiness-guard-json.sh"];
@@ -85,6 +87,10 @@ struct HardModeProbe {
 impl HardModeProbe {
     fn invalid(script: &str) -> Result<Self> {
         let args = match script {
+            ISSUE_TITLE_SCRIPT => vec![
+                "--issue-title".to_string(),
+                "fix(agents): reject negated sentinel evidence".to_string(),
+            ],
             PR_TITLE_SCRIPT => vec![
                 "--pr-title".to_string(),
                 "Require descriptive child thread titles".to_string(),
@@ -117,6 +123,10 @@ impl HardModeProbe {
 
     fn valid(script: &str) -> Result<Self> {
         let args = match script {
+            ISSUE_TITLE_SCRIPT => vec![
+                "--issue-title".to_string(),
+                "Reject negated sentinel reasoning evidence".to_string(),
+            ],
             PR_TITLE_SCRIPT => vec![
                 "--pr-title".to_string(),
                 "fix(hooks): verify hard hook delegation".to_string(),
@@ -177,6 +187,7 @@ fn write_pr_label_probe_state(text: &str) -> Result<PathBuf> {
 
 fn expected_failure(script: &str) -> Result<&'static str> {
     match script {
+        ISSUE_TITLE_SCRIPT => Ok("issue title must not use Conventional Commit style"),
         PR_TITLE_SCRIPT => Ok("PR title must use Conventional Commit style"),
         PR_LABEL_SCRIPT => Ok("PR labels missing label application evidence"),
         MERGE_MESSAGE_SCRIPT => Ok("merge commit subject must use Conventional Commit style"),

@@ -23,9 +23,11 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "compacted or resumed context hygiene",
     "--check-completion-handoff",
     "repositoryLabels",
+    "codexy-issue-title-check.sh",
     "codexy-pr-title-check.sh",
     "codexy-pr-label-check.sh",
     "codexy-merge-message-check.sh",
+    "--check-issue-title",
     "--check-pr-title",
     "--check-pr-labels",
     "--check-merge-message",
@@ -34,6 +36,8 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
 
 const REQUIRED_READINESS_CONTEXT: &[&str] = &[
     "PR label readiness enforcement (#210)",
+    "codexy-issue-title-check.sh",
+    "--check-issue-title",
     "--check-pr-labels",
     "codexy-pr-title-check.sh",
     "codexy-pr-label-check.sh",

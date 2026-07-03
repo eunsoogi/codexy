@@ -85,6 +85,7 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
         );
     }
     for purpose in [
+        lifecycle::PURPOSE_ISSUE_TITLE_CHECK,
         lifecycle::PURPOSE_PR_TITLE_CHECK,
         lifecycle::PURPOSE_PR_LABEL_CHECK,
         lifecycle::PURPOSE_MERGE_MESSAGE_CHECK,

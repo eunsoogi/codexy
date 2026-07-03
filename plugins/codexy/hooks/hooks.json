@@ -26,6 +26,17 @@
         ]
       },
       {
+        "matcher": "issue|GitHub issue|create issue|creating issue",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" UserPromptSubmit",
+            "timeout": 3,
+            "statusMessage": "Checking Codexy issue title readiness"
+          }
+        ]
+      },
+      {
         "matcher": "PR readiness|pr readiness|merge readiness|ready for parent handoff|ready to merge",
         "hooks": [
           {

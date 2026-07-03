@@ -6,6 +6,21 @@ pub(super) fn check_pr_title(title: &str) -> Vec<String> {
     }
 }
 
+pub(super) fn check_issue_title(title: &str) -> Vec<String> {
+    if title
+        .chars()
+        .next()
+        .is_some_and(|character| character.is_ascii_uppercase())
+        && !is_issue_conventional_subject(title)
+    {
+        Vec::new()
+    } else if is_issue_conventional_subject(title) {
+        vec!["issue title must not use Conventional Commit style".to_string()]
+    } else {
+        vec!["issue title must start with an uppercase descriptive title".to_string()]
+    }
+}
+
 pub(super) fn check_merge_subject(subject: &str, expected_pr: Option<u64>) -> Vec<String> {
     let subject = subject_without_expected_pr_suffix(subject, expected_pr);
     if is_conventional_subject(subject) {
@@ -35,6 +50,13 @@ fn is_conventional_subject(subject: &str) -> bool {
         return false;
     };
     !summary.trim().is_empty() && is_conventional_prefix(prefix)
+}
+
+fn is_issue_conventional_subject(subject: &str) -> bool {
+    let Some((prefix, summary)) = subject.split_once(": ") else {
+        return false;
+    };
+    !summary.trim().is_empty() && is_conventional_prefix(&prefix.to_ascii_lowercase())
 }
 
 fn is_conventional_prefix(prefix: &str) -> bool {
