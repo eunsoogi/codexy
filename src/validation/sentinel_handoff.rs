@@ -12,20 +12,23 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     if !has_any(&text, SENTINEL_MARKERS) {
         return Vec::new();
     }
-    if has_any(&text, BLOCK_MARKERS) {
-        return vec!["Sentinel BLOCK verdict cannot satisfy PR readiness or push readiness".into()];
+    match current_sentinel_status(&text) {
+        Some(SentinelStatus::Block) => {
+            vec!["Sentinel BLOCK verdict cannot satisfy PR readiness or push readiness".into()]
+        }
+        Some(SentinelStatus::Unobservable) => {
+            vec![
+                "Sentinel UNOBSERVABLE or pending verdict cannot satisfy PR readiness or push readiness".into(),
+            ]
+        }
+        Some(SentinelStatus::Pass) => Vec::new(),
+        None => {
+            vec![
+                "Sentinel readiness evidence must state PASS, BLOCK, or UNOBSERVABLE explicitly"
+                    .into(),
+            ]
+        }
     }
-    if has_any(&text, UNOBSERVABLE_MARKERS) {
-        return vec![
-            "Sentinel UNOBSERVABLE or pending verdict cannot satisfy PR readiness or push readiness".into(),
-        ];
-    }
-    if !has_any(&text, PASS_MARKERS) {
-        return vec![
-            "Sentinel readiness evidence must state PASS, BLOCK, or UNOBSERVABLE explicitly".into(),
-        ];
-    }
-    Vec::new()
 }
 
 fn claims_readiness(text: &str) -> bool {
@@ -38,6 +41,53 @@ fn has_any(text: &str, phrases: &str) -> bool {
     phrases
         .split('|')
         .any(|phrase| has_affirmed_phrase(text, phrase))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SentinelStatus {
+    Pass,
+    Block,
+    Unobservable,
+}
+
+fn current_sentinel_status(text: &str) -> Option<SentinelStatus> {
+    PASS_MARKERS
+        .split('|')
+        .map(|phrase| (SentinelStatus::Pass, phrase))
+        .chain(
+            BLOCK_MARKERS
+                .split('|')
+                .map(|phrase| (SentinelStatus::Block, phrase)),
+        )
+        .chain(
+            UNOBSERVABLE_MARKERS
+                .split('|')
+                .map(|phrase| (SentinelStatus::Unobservable, phrase)),
+        )
+        .filter_map(|(status, phrase)| {
+            last_affirmed_phrase_start(text, phrase).map(|start| (start, status))
+        })
+        .max_by_key(|(start, _)| *start)
+        .map(|(_, status)| status)
+}
+
+fn last_affirmed_phrase_start(text: &str, phrase: &str) -> Option<usize> {
+    let mut rest = text;
+    let mut offset = 0;
+    let mut last = None;
+    while let Some(index) = rest.find(phrase) {
+        let start = offset + index;
+        let end = start + phrase.len();
+        if phrase_has_boundaries(text, start, end)
+            && !is_locally_negated(&text[..start])
+            && !has_negative_label_value(&text[end..])
+        {
+            last = Some(start);
+        }
+        offset = end;
+        rest = &text[offset..];
+    }
+    last
 }
 
 fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
@@ -62,8 +112,10 @@ fn has_negative_label_value(suffix: &str) -> bool {
     let Some(value) = label_value(suffix) else {
         return false;
     };
+    if is_standalone_negative_no(value) {
+        return true;
+    }
     [
-        "no",
         "false",
         "not ready",
         "not yet ready",
@@ -75,6 +127,14 @@ fn has_negative_label_value(suffix: &str) -> bool {
     ]
     .iter()
     .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
+}
+
+fn is_standalone_negative_no(value: &str) -> bool {
+    let rest = value.strip_prefix("no");
+    rest.is_some_and(|rest| {
+        let rest = rest.trim_start_matches([' ', '\t', '\n', '\r']);
+        rest.is_empty() || rest.starts_with(['.', ',', ';', '!', '?'])
+    })
 }
 
 fn label_value(suffix: &str) -> Option<&str> {

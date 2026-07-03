@@ -7,6 +7,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Pushed: yes.\n",
+        "PR ready: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR ready for parent handoff. Sentinel verdict: UNOBSERVABLE after bounded wait. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel pending after bounded wait. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel is delayed after bounded wait. Pushed: yes.\n",
@@ -36,6 +37,7 @@ fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
 fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: BLOCK, Carver found same-scope issue. Pushed: yes.\n",
+        "PR ready: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "PR ready for parent handoff. Sentinel verdict: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel result: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel gate returned BLOCK. Pushed: yes.\n",
@@ -77,6 +79,14 @@ fn validator_rejects_sentinel_readiness_without_explicit_status() -> TestResult 
         );
     }
     Ok(())
+}
+
+#[test]
+fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResult {
+    accept_open_pr_handoff(
+        "PR ready for parent handoff. Initial Sentinel: BLOCK on earlier head; addressed with parser fixes. Rerun Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "validator should accept current Sentinel PASS after superseded historical BLOCK evidence",
+    )
 }
 
 #[test]
