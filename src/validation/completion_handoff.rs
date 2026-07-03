@@ -15,6 +15,10 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
+    let sentinel_errors = super::sentinel_handoff::check(handoff);
+    if !sentinel_errors.is_empty() {
+        return sentinel_errors;
+    }
     if let Some(error) = super::completion_handoff_waiting::check(handoff) {
         return vec![error];
     }

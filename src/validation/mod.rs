@@ -43,6 +43,7 @@ mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
 mod runtime;
+mod sentinel_handoff;
 mod touched_loc;
 
 use std::path::Path;

@@ -145,6 +145,12 @@ completion, or parent acceptance. The parent may verify the evidence, but it
 MUST NOT replace the owning lane's reviewer pass with parent-only readthrough,
 an arbitrary reviewer, generic review role, or stale reviewer output.
 
+Packaged Sentinel waits MUST end in one explicit lane status: `PASS`, `BLOCK`,
+or `UNOBSERVABLE`. The owning lane MUST bound its wait, MUST report the
+reviewer name and exact head, and MUST keep push/readiness blocked for `BLOCK` or
+`UNOBSERVABLE` unless a maintainer explicitly approves a fallback. A delayed,
+pending, stuck, or unobservable Sentinel MUST NOT be treated as approval.
+
 ## Codegraph And LSP
 
 For repository code exploration, MUST use the packaged Codexy `codegraph` MCP when

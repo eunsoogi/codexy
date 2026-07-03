@@ -91,6 +91,10 @@ edits.
   MUST run `plugins/codexy/agents/codexy-sentinel.toml` against the current
   diff, exact head or file state, lane scope, touched implementation-file LOC
   evidence, verification outputs, and available evidence.
+- Packaged Sentinel waits MUST end in `PASS`, `BLOCK`, or `UNOBSERVABLE`
+  status. The child MUST keep push/readiness blocked for `BLOCK` or
+  `UNOBSERVABLE`, and MUST NOT treat delayed, pending, stuck, or unobservable
+  Sentinel output as approval without explicit maintainer fallback approval.
 
 ## Completion-Handoff Validation
 
