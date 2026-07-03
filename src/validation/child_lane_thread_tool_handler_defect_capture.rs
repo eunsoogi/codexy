@@ -66,8 +66,6 @@ pub(super) fn has_negated_fallback_route_field(line: &str) -> bool {
         "not a fallback path used:",
         "without fallback route evidence",
         "without fallback path evidence",
-        "without a fallback route",
-        "without a fallback path",
     ]
     .into_iter()
     .any(|marker| normalized.contains(marker))
