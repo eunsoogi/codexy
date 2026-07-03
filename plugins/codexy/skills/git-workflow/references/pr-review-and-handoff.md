@@ -10,7 +10,10 @@ completion or the default Codexy merge flow. MUST capture current PR state first
 pr=<pr>
 owner=<owner>
 repo=<repo>
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > pr-state.base.json
+state_dir=$(mktemp -d)
+trap 'rm -rf "$state_dir"' EXIT
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
+git status --short --branch > "$state_dir/worktreeStatus.txt"
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -25,7 +28,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.reviewThreads.pages.json
+}' > "$state_dir/reviewThreads.pages.json"
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -43,7 +46,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.comments.pages.json
+}' > "$state_dir/comments.pages.json"
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -55,26 +58,23 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.reviews.pages.json
+}' > "$state_dir/reviews.pages.json"
 jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
   | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
-  pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
+  "$state_dir/reviewThreads.pages.json" > "$state_dir/reviewThreads.json"
 jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
-  pr-state.comments.pages.json > pr-state.comments.json
+  "$state_dir/comments.pages.json" > "$state_dir/comments.json"
 jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
-  pr-state.reviews.pages.json > pr-state.reviews.json
+  "$state_dir/reviews.pages.json" > "$state_dir/reviews.json"
 jq '.[0].data.repository | {repositoryLabels: .labels} + (.pullRequest | {labels, closingIssuesReferences})' \
-  pr-state.reviewThreads.pages.json > pr-state.labels.json
-jq --slurpfile reviewThreads pr-state.reviewThreads.json \
-  --slurpfile labels pr-state.labels.json \
-  --slurpfile comments pr-state.comments.json \
-  --slurpfile reviews pr-state.reviews.json \
-  '. + $labels[0] + {reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
-  pr-state.base.json > pr-state.json
-rm -f pr-state.base.json pr-state.reviewThreads.pages.json \
-  pr-state.reviewThreads.json pr-state.comments.pages.json \
-  pr-state.comments.json pr-state.reviews.pages.json \
-  pr-state.reviews.json pr-state.labels.json
+  "$state_dir/reviewThreads.pages.json" > "$state_dir/labels.json"
+jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
+  --slurpfile labels "$state_dir/labels.json" \
+  --slurpfile comments "$state_dir/comments.json" \
+  --slurpfile reviews "$state_dir/reviews.json" \
+  --rawfile worktreeStatus "$state_dir/worktreeStatus.txt" \
+  '. + $labels[0] + {worktreeStatus: $worktreeStatus, reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
+  "$state_dir/pr-state.base.json" > pr-state.json
 scripts/validate-plugin-config --check-completion-handoff \
   --handoff-file <report> \
   --pr-state-file pr-state.json
@@ -87,6 +87,10 @@ MUST include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with
 issue labels. When repository labels exist, the PR state file MUST also include
 the repository label taxonomy as `repositoryLabels`; an unlabeled PR is not
 ready merely because handoff prose says no labels apply.
+For child handoffs that claim pushed or synced branch state, the PR state file
+MUST include the local `git status --short --branch` output as `worktreeStatus`;
+missing branch-status evidence blocks the handoff because stale local branches
+MUST NOT be ruled out without local branch-status evidence.
 
 The packaged hook surface currently emits SessionStart routing context, not a
 GitHub PR lifecycle hook. Until a PR lifecycle hook is available, the supported
