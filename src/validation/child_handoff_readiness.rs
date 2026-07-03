@@ -14,6 +14,11 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         }
     }
     if claims_synced_or_pushed(&text) {
+        if let Some(status) = branch_divergence(pr_state) {
+            errors.push(format!(
+                "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
+            ));
+        }
         if let Some(error) = pushed_head_mismatch(handoff, pr_state) {
             errors.push(error);
         }
@@ -65,7 +70,7 @@ fn claims_child_readiness(text: &str) -> bool {
         "synced, and pushed",
     ]
     .iter()
-    .any(|phrase| has_affirmed_phrase(text, phrase))
+    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
 fn claims_clean(text: &str) -> bool {
@@ -76,13 +81,13 @@ fn claims_clean(text: &str) -> bool {
         " clean,",
     ]
     .iter()
-    .any(|phrase| has_affirmed_phrase(text, phrase))
+    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
 fn claims_synced_or_pushed(text: &str) -> bool {
     ["synced", "pushed", "remote/pr head match: yes"]
         .iter()
-        .any(|phrase| has_affirmed_phrase(text, phrase))
+        .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
 fn claims_pr_ready(text: &str) -> bool {
@@ -93,7 +98,7 @@ fn claims_pr_ready(text: &str) -> bool {
         "parent can merge",
     ]
     .iter()
-    .any(|phrase| has_affirmed_phrase(text, phrase))
+    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
 fn dirty_status(pr_state: &Value) -> Option<String> {
@@ -134,15 +139,28 @@ fn is_dirty_status_line(line: &str) -> bool {
             .any(|clean| line.eq_ignore_ascii_case(clean))
 }
 
+fn branch_divergence(pr_state: &Value) -> Option<String> {
+    status_fields(pr_state).find(|line| line.starts_with("##") && line.contains("[ahead "))
+}
+
 fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
-    let pr_head = string_field(pr_state, "headRefOid")?;
-    let claimed = hex_oids(handoff);
-    if claimed.is_empty() || claimed.iter().any(|oid| oid == pr_head) {
+    let Some(pr_head) = string_field(pr_state, "headRefOid").filter(|head| !head.is_empty()) else {
+        return Some(
+            "child handoff claims pushed/synced head but PR state is missing headRefOid".into(),
+        );
+    };
+    let claimed = hex_refs(handoff);
+    if claimed
+        .iter()
+        .any(|oid| pr_head.to_ascii_lowercase().starts_with(oid))
+    {
         return None;
     }
     Some(format!(
         "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not {}",
-        claimed.join(", ")
+        claimed
+            .first()
+            .map_or("any comparable handoff head", String::as_str)
     ))
 }
 
@@ -164,72 +182,23 @@ fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
 }
 
-fn hex_oids(text: &str) -> Vec<String> {
+fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
+    [
+        "worktreeStatus",
+        "localStatus",
+        "gitStatus",
+        "gitStatusShort",
+        "statusShort",
+    ]
+    .into_iter()
+    .filter_map(|field| pr_state.get(field))
+    .filter_map(status_lines)
+    .flatten()
+}
+
+fn hex_refs(text: &str) -> Vec<String> {
     text.split(|ch: char| !ch.is_ascii_hexdigit())
-        .filter(|part| part.len() == 40)
-        .map(ToOwned::to_owned)
+        .filter(|part| (7..=40).contains(&part.len()))
+        .map(str::to_ascii_lowercase)
         .collect()
-}
-
-fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
-    let mut rest = text;
-    let mut offset = 0;
-    while let Some(index) = rest.find(phrase) {
-        let start = offset + index;
-        let end = start + phrase.len();
-        if phrase_has_boundaries(text, start, end)
-            && !is_locally_negated(&text[..start])
-            && !super::codex_review_handoff::has_negative_label_value(&text[end..])
-        {
-            return true;
-        }
-        offset = end;
-        rest = &text[offset..];
-    }
-    false
-}
-
-fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
-    is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
-}
-
-fn is_boundary(character: Option<char>) -> bool {
-    character.is_none_or(|character| {
-        !character.is_ascii_alphanumeric() && character != '-' && character != '_'
-    })
-}
-
-fn is_locally_negated(prefix: &str) -> bool {
-    let clause_start = last_clause_boundary(prefix).map_or(0, |index| index);
-    prefix[clause_start..]
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '\'')
-        .filter(|word| !word.is_empty())
-        .rev()
-        .take(4)
-        .any(|word| {
-            matches!(
-                word,
-                "no" | "not"
-                    | "never"
-                    | "without"
-                    | "isn't"
-                    | "wasn't"
-                    | "hasn't"
-                    | "haven't"
-                    | "aren't"
-                    | "don't"
-                    | "doesn't"
-                    | "didn't"
-                    | "won't"
-                    | "can't"
-                    | "cannot"
-            )
-        })
-}
-
-fn last_clause_boundary(text: &str) -> Option<usize> {
-    text.char_indices()
-        .filter(|(_, character)| matches!(character, '.' | '!' | '?' | ';' | ':' | ',' | '\n'))
-        .map(|(index, character)| index + character.len_utf8())
-        .last()
 }

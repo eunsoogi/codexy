@@ -127,6 +127,39 @@ fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_pushed_handoff_without_comparable_head() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean. Pushed: yes at 068dbb2.\n",
+        pr_state_with(
+            r#""mergeStateStatus":"CLEAN","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+        ),
+        "headRefOid",
+    )
+}
+
+#[test]
+fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean. Pushed: yes at 2222222.\n",
+        pr_state_with(
+            r#""mergeStateStatus":"CLEAN","headRefOid":"1111111111111111111111111111111111111111","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+        ),
+        "headRefOid",
+    )
+}
+
+#[test]
+fn validator_rejects_pushed_handoff_when_branch_is_ahead() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        pr_state_with(
+            "\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## codexy/example...origin/codexy/example [ahead 1]\",\"reviewThreads\":{\"pageInfo\":{\"hasNextPage\":false},\"nodes\":[]}",
+        ),
+        "ahead",
+    )
+}
+
+#[test]
 fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",

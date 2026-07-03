@@ -1,5 +1,6 @@
 mod agent_registration;
 mod child_handoff_readiness;
+mod child_handoff_readiness_text;
 mod child_lane_ownership;
 mod child_lane_ownership_fixes;
 mod child_lane_ownership_phrases;
