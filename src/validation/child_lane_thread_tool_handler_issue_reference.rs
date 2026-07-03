@@ -1,0 +1,44 @@
+pub(super) fn has_issue_reference(clause: &str) -> bool {
+    has_hash_issue_reference(clause) || has_github_issue_url(clause)
+}
+
+fn has_hash_issue_reference(clause: &str) -> bool {
+    clause
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '#')
+        .any(|word| {
+            let Some(issue_number) = word.strip_prefix('#') else {
+                return false;
+            };
+            !issue_number.is_empty()
+                && issue_number
+                    .chars()
+                    .all(|character| character.is_ascii_digit())
+        })
+}
+
+fn has_github_issue_url(clause: &str) -> bool {
+    clause.split_whitespace().any(|word| {
+        let trimmed = word.trim_matches(|character: char| {
+            !character.is_ascii_alphanumeric() && !":/.#_-".contains(character)
+        });
+        if !trimmed.starts_with("https://github.com/") && !trimmed.starts_with("http://github.com/")
+        {
+            return false;
+        }
+        let Some((_, issue_tail)) = trimmed.rsplit_once("/issues/") else {
+            return false;
+        };
+        let digit_end = issue_tail
+            .find(|character: char| !character.is_ascii_digit())
+            .unwrap_or(issue_tail.len());
+        digit_end > 0 && is_issue_url_boundary(&issue_tail[digit_end..])
+    })
+}
+
+fn is_issue_url_boundary(suffix: &str) -> bool {
+    suffix.is_empty()
+        || suffix == "/"
+        || suffix
+            .chars()
+            .all(|character| matches!(character, '.' | ',' | ')' | ']' | '}' | '>' | '"' | '\''))
+}
