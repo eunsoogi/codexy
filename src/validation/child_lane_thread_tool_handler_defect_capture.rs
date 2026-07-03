@@ -57,6 +57,9 @@ fn opens_defect_list(line: &str) -> bool {
 
 pub(super) fn has_negated_fallback_route_field(line: &str) -> bool {
     let normalized = line.to_ascii_lowercase();
+    if has_bare_no_fallback_field_without_availability(&normalized) {
+        return true;
+    }
     [
         "not a fallback route:",
         "not a fallback path:",
@@ -69,6 +72,27 @@ pub(super) fn has_negated_fallback_route_field(line: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| normalized.contains(marker))
+}
+
+fn has_bare_no_fallback_field_without_availability(line: &str) -> bool {
+    ["no fallback route:", "no fallback path:"]
+        .into_iter()
+        .filter_map(|marker| line.split_once(marker).map(|(_, value)| value))
+        .any(|value| {
+            let value = value.trim_start();
+            ![
+                "no fallback route was available",
+                "no fallback route available",
+                "no fallback path was available",
+                "no fallback path available",
+                "without a fallback route available",
+                "without fallback route available",
+                "without a fallback path available",
+                "without fallback path available",
+            ]
+            .into_iter()
+            .any(|allowed| value.starts_with(allowed))
+        })
 }
 
 fn defect_capture_clause(line: &str) -> Option<&str> {

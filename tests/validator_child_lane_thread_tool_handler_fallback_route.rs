@@ -61,6 +61,30 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_bare_no_fallback_route_field() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+No fallback route: parent posted the handoff in the child thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject a bare no-fallback-route field"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_no_fallback_path_used_field() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -75,6 +99,30 @@ Maintainer reassignment: none
     assert!(
         !output.status.success(),
         "validator should reject a no-fallback-path-used field"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_bare_no_fallback_path_field() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+No fallback path: parent posted the handoff in the child thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject a bare no-fallback-path field"
     );
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
