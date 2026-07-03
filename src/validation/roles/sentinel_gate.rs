@@ -23,6 +23,7 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "model_reasoning_effort = \"xhigh\"",
     "reviewer evidence must record explicit unavailable evidence",
 ];
+const REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS: &[&str] = &["negated", "no"];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &[&str] = &[
     "absent",
     "acceptable",
@@ -119,14 +120,15 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
 
 fn has_reasoning_control_paragraph(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
-    let Some(start) = lower.find("reasoning control:") else {
+    let Some(marker_start) = lower.find("reasoning control:") else {
         return false;
     };
-    let paragraph = reasoning_control_paragraph(&lower, start);
+    let paragraph = reasoning_control_paragraph(&lower, marker_start);
     REASONING_CONTROL_PARAGRAPH_MARKERS
         .iter()
         .all(|marker| paragraph.contains(marker))
         && !contains_disallowed_reasoning_control_context(paragraph)
+        && !contains_disallowed_reasoning_control_paragraph_context(paragraph)
 }
 
 fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
@@ -155,10 +157,13 @@ fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
         })
 }
 
-fn reasoning_control_paragraph(text: &str, start: usize) -> &str {
-    let end = text[start..]
+fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
+    let start = text[..marker_start]
+        .rfind("\n\n")
+        .map_or(0, |offset| offset + 2);
+    let end = text[marker_start..]
         .find("\n\n")
-        .map_or(text.len(), |offset| start + offset);
+        .map_or(text.len(), |offset| marker_start + offset);
     text[start..end].trim()
 }
 
@@ -183,6 +188,12 @@ fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
     REASONING_CONTROL_DISALLOWED_PATTERNS
         .iter()
         .any(|pattern| contains_context_pattern(clause, pattern))
+}
+
+fn contains_disallowed_reasoning_control_paragraph_context(paragraph: &str) -> bool {
+    REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS
+        .iter()
+        .any(|pattern| contains_context_pattern(paragraph, pattern))
 }
 
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {

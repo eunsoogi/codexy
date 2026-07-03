@@ -69,22 +69,20 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestResult {
-    let output = validate_sentinel_edit(|mut sentinel| {
-        let start = sentinel
-            .find("Reasoning control:")
-            .ok_or("reasoning control paragraph start")?;
-        let end = sentinel
-            .find("Adversarial review method:")
-            .ok_or("reasoning control paragraph end")?;
-        sentinel.replace_range(
-            start..end,
-            "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\" is optional. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        );
-        Ok(sentinel)
-    })?;
+    for replacement in [
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\" is optional. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "No Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Negated Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: no packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+    ] {
+        let output = validate_reasoning_control_paragraph_replacement(replacement)?;
 
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
+        assert!(
+            !output.status.success(),
+            "validator accepted {replacement:?}"
+        );
+        assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
+    }
     Ok(())
 }
 
@@ -108,6 +106,19 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
 
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
     validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement)))
+}
+
+fn validate_reasoning_control_paragraph_replacement(replacement: &str) -> TestResult<Output> {
+    validate_sentinel_edit(|mut sentinel| {
+        let start = sentinel
+            .find("Reasoning control:")
+            .ok_or("reasoning control paragraph start")?;
+        let end = sentinel
+            .find("Adversarial review method:")
+            .ok_or("reasoning control paragraph end")?;
+        sentinel.replace_range(start..end, replacement);
+        Ok(sentinel)
+    })
 }
 
 fn validate_sentinel_edit(edit: impl FnOnce(String) -> TestResult<String>) -> TestResult<Output> {
