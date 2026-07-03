@@ -49,6 +49,8 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &[&str] = &[
     "may be skipped",
     "may omit",
     "missing",
+    "must not",
+    "mustn't",
     "need not",
     "needn't",
     "no need",
@@ -117,9 +119,14 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
 
 fn has_reasoning_control_paragraph(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
+    let Some(start) = lower.find("reasoning control:") else {
+        return false;
+    };
+    let paragraph = reasoning_control_paragraph(&lower, start);
     REASONING_CONTROL_PARAGRAPH_MARKERS
         .iter()
-        .all(|marker| lower.contains(marker))
+        .all(|marker| paragraph.contains(marker))
+        && !contains_disallowed_reasoning_control_context(paragraph)
 }
 
 fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
@@ -146,6 +153,13 @@ fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
                 REASONING_CONTROL_EVIDENCE_MARKER.len(),
             ))
         })
+}
+
+fn reasoning_control_paragraph(text: &str, start: usize) -> &str {
+    let end = text[start..]
+        .find("\n\n")
+        .map_or(text.len(), |offset| start + offset);
+    text[start..end].trim()
 }
 
 fn marker_clause(text: &str, marker_start: usize, marker_len: usize) -> &str {

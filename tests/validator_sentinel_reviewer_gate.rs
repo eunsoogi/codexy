@@ -51,6 +51,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "may omit reasoning control used or unavailable evidence",
         "can omit reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence\nis optional",
+        "MUST NOT record reasoning control used or unavailable evidence",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -63,6 +64,27 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         );
         assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestResult {
+    let output = validate_sentinel_edit(|mut sentinel| {
+        let start = sentinel
+            .find("Reasoning control:")
+            .ok_or("reasoning control paragraph start")?;
+        let end = sentinel
+            .find("Adversarial review method:")
+            .ok_or("reasoning control paragraph end")?;
+        sentinel.replace_range(
+            start..end,
+            "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\" is optional. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        );
+        Ok(sentinel)
+    })?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
     Ok(())
 }
 
