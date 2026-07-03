@@ -195,6 +195,46 @@ fn readiness_guard_accepts_bracketed_label_names() -> Result<(), Box<dyn std::er
     Ok(())
 }
 
+#[test]
+fn readiness_guard_accepts_unicode_review_and_comment_bodies()
+-> Result<(), Box<dyn std::error::Error>> {
+    let script = readiness_guard();
+    let temp = tempfile::tempdir()?;
+    let json = r#"{
+        "number": 247, "state": "OPEN", "repository": "eunsoogi/codexy",
+        "labels": [{"name": "type/fix"}, {"name": "area/workflow"}],
+        "repositoryLabels": [{"name": "type/fix"}, {"name": "area/workflow"}],
+        "reviews": [
+            {
+                "author": {"login": "chatgpt-codex-connector[bot]"}, "body": "확인했습니다 ✅ multibyte review body", "state": "COMMENTED"
+            }
+        ],
+        "comments": [
+            {
+                "author": {"login": "chatgpt-codex-connector[bot]"}, "body": "Codex review contains emoji 🚀 and Korean 텍스트.",
+                "url": "https://github.com/eunsoogi/codexy/pull/247#issuecomment-1"
+            }
+        ]
+    }"#;
+
+    let pr_state = temp.path().join("unicode-review-bodies.json");
+    std::fs::write(&pr_state, json)?;
+    let output = Command::new(&script)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            pr_state.to_str().ok_or("pr state path")?,
+        ])
+        .output()?;
+    assert!(
+        output.status.success(),
+        "guard should accept valid label evidence with unicode review/comment bodies: {}",
+        output_text(&output)
+    );
+
+    Ok(())
+}
+
 fn output_text(output: &std::process::Output) -> String {
     format!(
         "{}{}",

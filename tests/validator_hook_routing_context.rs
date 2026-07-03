@@ -24,6 +24,10 @@ const REQUIRED_CONTEXT_FRAGMENTS: &[&str] = &[
     "--check-pr-labels",
     "--check-merge-message",
     "--expected-pr",
+    "target base",
+    "hook entrypoints",
+    "available fallback",
+    "separate dogfood defect",
 ];
 
 #[test]
