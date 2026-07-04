@@ -6,6 +6,8 @@ mod git_preflight_lines;
 
 use serde_json::Value;
 
+use super::codex_review_handoff_events::has_pending_codex_review_request_or_current_head_output;
+
 const COMPACTION_CONTEXT_PHRASES: &[&str] = &[
     "compacted continuation",
     "after compaction",
@@ -44,6 +46,11 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     }
     if !git_preflight::has_git_graph_log_preflight(handoff) {
         errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph before editing".into());
+    }
+    if has_review_request_context(&text)
+        && has_pending_codex_review_request_or_current_head_output(pr_state)
+    {
+        errors.push("duplicate current-head Codex review request blocked: re-read latest PR comments/reviews immediately before posting and do not post @codex review when a request or current-head output already exists".into());
     }
     errors
 }

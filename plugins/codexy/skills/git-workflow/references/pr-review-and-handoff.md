@@ -167,6 +167,22 @@ it:
 gh pr comment <pr> --body "@codex review"
 ```
 
+Immediately before posting `@codex review`, the parent/orchestrator MUST re-read
+the latest PR comments and reviews for the current head. The parent/orchestrator
+MUST NOT post `@codex review` when that fresh state already contains a Codex
+review request or current-head Codex review output. This duplicate guard is not
+limited to requests with `eyes`; a just-posted child request is already enough
+that the parent/orchestrator MUST wait or poll instead. Because plain PR
+comments are not reliably commit-bound in captured PR state, the
+parent/orchestrator MUST treat any existing `@codex review` request comment as
+active unless stronger current-head evidence proves otherwise. Historical
+evidence for this guard includes PR #255
+comments
+`https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880788420` and
+`https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880788656`, where a
+child and parent posted duplicate requests seven seconds apart without a fresh
+parent read of the latest comments.
+
 An `eyes` reaction on the request means Codex noticed it; it is not approval.
 Eyes-only evidence on a current-head review request is not merge-ready. Actual
 review text, inline review output, a recognized no-suggestion body, or a
@@ -178,8 +194,8 @@ such as `Didn't find any major issues`. Setup comments such as "create an
 environment for this repo" are connector responses but not review completion.
 
 If new commits are pushed after Codex review, request or wait for fresh review
-on the new head. MUST NOT send duplicate `@codex review` requests while an
-existing request already has `eyes` for the same PR head.
+on the new head only after the immediate pre-post comment/review re-read proves
+that no current-head Codex review request or output exists.
 
 ## Child-Owned Review Feedback
 
