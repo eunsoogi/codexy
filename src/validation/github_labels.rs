@@ -1,6 +1,12 @@
+mod evidence;
+
 use serde_json::Value;
 
 use super::codex_review_handoff::has_negative_label_value;
+use evidence::{
+    is_codexy_lane, is_open_pr, is_stacked_pr, issue_label_errors, issue_nodes, label_names,
+    repository_label_taxonomy, stacked_issue_evidence,
+};
 
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
     if !(claims_pr_readiness(handoff) || claims_completion(handoff)) {
@@ -24,100 +30,25 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
     if label_names(pr_state.get("labels")).is_empty() {
         errors.push("PR labels missing label application evidence".into());
     }
-    match issue_nodes(pr_state.get("closingIssuesReferences")) {
-        issues if !issues.is_empty() => {
-            for issue in issues {
-                let number = issue
-                    .get("number")
-                    .and_then(Value::as_u64)
-                    .map_or_else(|| "<unknown>".to_owned(), |number| format!("#{number}"));
-                if label_names(issue.get("labels")).is_empty() {
-                    errors.push(format!(
-                        "issue {number} labels missing label application evidence"
-                    ));
-                }
-            }
+    if is_stacked_pr(&pr_state) {
+        match stacked_issue_evidence(&pr_state) {
+            Some(issues) => errors.extend(issue_label_errors(issues)),
+            None => errors.push(
+                "GitHub label evidence missing stacked linkedIssueReferences with issue labels"
+                    .into(),
+            ),
         }
-        _ => errors
-            .push("GitHub label evidence missing closingIssuesReferences with issue labels".into()),
+    } else {
+        let closing_issues = issue_nodes(pr_state.get("closingIssuesReferences"));
+        if closing_issues.is_empty() {
+            errors.push(
+                "GitHub label evidence missing closingIssuesReferences with issue labels".into(),
+            );
+        } else {
+            errors.extend(issue_label_errors(closing_issues));
+        }
     }
     errors
-}
-
-fn label_names(labels: Option<&Value>) -> Vec<String> {
-    match labels {
-        Some(Value::Array(items)) => items.iter().filter_map(label_name).collect(),
-        Some(Value::Object(map)) => map
-            .get("nodes")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(label_name)
-            .collect(),
-        _ => Vec::new(),
-    }
-}
-
-fn label_name(value: &Value) -> Option<String> {
-    value
-        .as_str()
-        .or_else(|| value.get("name").and_then(Value::as_str))
-        .map(str::to_owned)
-}
-
-fn issue_nodes(issues: Option<&Value>) -> Vec<&Value> {
-    match issues {
-        Some(Value::Array(items)) => items.iter().collect(),
-        Some(Value::Object(map)) => map
-            .get("nodes")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .collect(),
-        _ => Vec::new(),
-    }
-}
-
-fn repository_label_taxonomy(pr_state: &Value) -> Option<Vec<String>> {
-    let mut found_empty_taxonomy = false;
-    let mut labels = pr_state
-        .get("repositoryLabels")
-        .into_iter()
-        .chain(pr_state.pointer("/repository/labels"));
-    for labels in labels.by_ref().filter(|labels| {
-        matches!(labels, Value::Array(_)) || matches!(labels.get("nodes"), Some(Value::Array(_)))
-    }) {
-        let names = label_names(Some(labels));
-        if !names.is_empty() {
-            return Some(names);
-        }
-        found_empty_taxonomy = true;
-    }
-    found_empty_taxonomy.then(Vec::new)
-}
-
-fn is_open_pr(pr_state: &Value) -> bool {
-    matches!(
-        pr_state.get("state").and_then(Value::as_str),
-        Some(state) if state.eq_ignore_ascii_case("OPEN")
-    )
-}
-
-fn is_codexy_lane(pr_state: &Value) -> bool {
-    string_field(pr_state, &["repository", "nameWithOwner", "headRepository"])
-        .iter()
-        .any(|value| value == "eunsoogi/codexy")
-        || string_field(pr_state, &["url"]).iter().any(|value| {
-            value.contains("github.com/eunsoogi/codexy/")
-                || value.ends_with("github.com/eunsoogi/codexy")
-        })
-}
-
-fn string_field(value: &Value, keys: &[&str]) -> Vec<String> {
-    keys.iter()
-        .filter_map(|key| value.get(*key).and_then(Value::as_str))
-        .map(|value| value.to_ascii_lowercase())
-        .collect()
 }
 
 fn has_label_consideration_evidence(handoff: &str) -> bool {
