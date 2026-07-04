@@ -98,6 +98,8 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
     matches!(
         local,
         "no" | "non"
+            | "not"
+            | "not the"
             | "false"
             | "never"
             | "unable"
@@ -190,14 +192,9 @@ fn has_failed_route_delivery_clause(clause: &str) -> bool {
 }
 
 fn has_failed_route_pronoun_clause(clause: &str) -> bool {
-    [
-        "it failed",
-        "that failed",
-        "this failed",
-        "the fallback failed",
-    ]
-    .into_iter()
-    .any(|marker| contains_phrase(clause, marker))
+    "it failed|that failed|this failed|the fallback failed"
+        .split('|')
+        .any(|marker| contains_phrase(clause, marker))
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {

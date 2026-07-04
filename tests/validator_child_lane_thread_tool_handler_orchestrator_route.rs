@@ -57,6 +57,8 @@ fn validator_rejects_non_orchestrator_fallback_route() -> Result<(), Box<dyn std
         "Fallback route: non / - orchestrator posted the handoff in the child thread",
         "Fallback route: non - / orchestrator posted the handoff in the child thread",
         "Fallback route: no / - orchestrator posted the handoff in the child thread",
+        "Fallback route: handler failed, not orchestrator posted the handoff in the child thread",
+        "Fallback route: handler failed, not the orchestrator posted the handoff in the child thread",
         "Fallback route: non/orchestrator posted the handoff in the child thread",
         "Fallback route: non \u{2013} orchestrator posted the handoff in the child thread",
         "Fallback route: non-orchestrator posted the handoff in the child thread",
