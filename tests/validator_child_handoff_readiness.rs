@@ -170,6 +170,16 @@ fn validator_rejects_pushed_handoff_when_branch_is_behind() -> TestResult {
 }
 
 #[test]
+fn validator_allows_pushed_handoff_when_branch_name_contains_diverged() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        &pr_state_with("\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## feature-diverged-case...origin/feature-diverged-case\",\"reviewThreads\":{\"pageInfo\":{\"hasNextPage\":false},\"nodes\":[]}"),
+    )?;
+    assert!(output.status.success(), "branch name should not imply divergence");
+    Ok(())
+}
+
+#[test]
 fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",

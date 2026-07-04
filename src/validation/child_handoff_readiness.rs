@@ -143,9 +143,7 @@ fn branch_divergence(pr_state: &Value) -> Option<String> {
     status_fields(pr_state).find(|line| {
         let normalized = line.to_ascii_lowercase();
         line.starts_with("##")
-            && (normalized.contains("[ahead ")
-                || normalized.contains("[behind ")
-                || normalized.contains("diverged"))
+            && (normalized.contains("[ahead ") || normalized.contains("[behind "))
     })
 }
 
