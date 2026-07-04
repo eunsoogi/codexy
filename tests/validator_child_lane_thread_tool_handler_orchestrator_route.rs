@@ -53,6 +53,12 @@ fn validator_rejects_vague_orchestrator_fallback_route() -> Result<(), Box<dyn s
 fn validator_rejects_non_orchestrator_fallback_route() -> Result<(), Box<dyn std::error::Error>> {
     for route in [
         "Fallback route: non orchestrator posted the handoff in the child thread",
+        "Fallback route: non / orchestrator posted the handoff in the child thread",
+        "Fallback route: non / - orchestrator posted the handoff in the child thread",
+        "Fallback route: non - / orchestrator posted the handoff in the child thread",
+        "Fallback route: no / - orchestrator posted the handoff in the child thread",
+        "Fallback route: non/orchestrator posted the handoff in the child thread",
+        "Fallback route: non \u{2013} orchestrator posted the handoff in the child thread",
         "Fallback route: non-orchestrator posted the handoff in the child thread",
         "Fallback route: non\u{2013}orchestrator posted the handoff in the child thread",
         "Fallback route: non_orchestrator posted the handoff in the child thread",

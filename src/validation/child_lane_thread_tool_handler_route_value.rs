@@ -1,3 +1,8 @@
+const ROUTE_PREFIX_TRIM_CHARACTERS: [char; 12] = [
+    ',', ';', '.', '_', '-', '/', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}',
+    '\u{2015}',
+];
+
 pub(super) fn has_substantive_route_value(value: &str) -> bool {
     let trimmed = value.trim();
     !trimmed.is_empty() && !trimmed.starts_with("not ") && has_affirmative_route_event(trimmed)
@@ -79,7 +84,9 @@ fn direct_route_segment(after_object: &str) -> &str {
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
     let prefix = value[..action_index]
         .trim()
-        .trim_end_matches([',', ';', '.', '-'])
+        .trim_end_matches(|character: char| {
+            character.is_ascii_whitespace() || ROUTE_PREFIX_TRIM_CHARACTERS.contains(&character)
+        })
         .trim();
     let local = prefix
         .rsplit([',', ';', '.'])
@@ -151,11 +158,8 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
 
 fn has_failed_route_delivery_clause(clause: &str) -> bool {
     let normalized_clause;
-    let route_connectors = [
-        '_', '-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}', '\u{2015}',
-    ];
-    let clause = if clause.contains(route_connectors) {
-        normalized_clause = clause.replace(route_connectors, " ");
+    let clause = if clause.contains(&ROUTE_PREFIX_TRIM_CHARACTERS[3..]) {
+        normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
         normalized_clause.as_str()
     } else {
         clause
@@ -228,11 +232,7 @@ fn contains_phrase(value: &str, phrase: &str) -> bool {
 }
 
 fn is_route_word_character(character: char) -> bool {
-    character.is_ascii_alphanumeric()
-        || matches!(
-            character,
-            '_' | '-' | '\u{2010}' | '\u{2011}' | '\u{2012}' | '\u{2013}' | '\u{2014}' | '\u{2015}'
-        )
+    character.is_ascii_alphanumeric() || ROUTE_PREFIX_TRIM_CHARACTERS[3..].contains(&character)
 }
 
 fn has_route_event_negation(text: &str) -> bool {
