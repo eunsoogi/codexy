@@ -182,18 +182,18 @@ fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
 fn marker_context(text: &str, marker_start: usize, marker_len: usize) -> &str {
     let bytes = text.as_bytes();
     let mut start = marker_start;
-    while start > 0 && !is_clause_boundary(bytes[start - 1]) {
+    while start > 0 && bytes[start - 1] != b'.' {
         start -= 1;
     }
     let mut end = marker_start + marker_len;
-    while end < bytes.len() && !is_clause_boundary(bytes[end]) {
+    while end < bytes.len() && bytes[end] != b'.' {
         end += 1;
     }
     if let Some(next_start) = next_sentence_start(bytes, end) {
         let next_sentence = &text[next_start..];
         if has_reasoning_control_evidence_followup(next_sentence) {
             end = next_start;
-            while end < bytes.len() && !is_clause_boundary(bytes[end]) {
+            while end < bytes.len() && bytes[end] != b'.' {
                 end += 1;
             }
         }
@@ -201,12 +201,8 @@ fn marker_context(text: &str, marker_start: usize, marker_len: usize) -> &str {
     text[start..end].trim()
 }
 
-fn is_clause_boundary(byte: u8) -> bool {
-    matches!(byte, b'.')
-}
-
 fn next_sentence_start(bytes: &[u8], clause_end: usize) -> Option<usize> {
-    if clause_end >= bytes.len() || !is_clause_boundary(bytes[clause_end]) {
+    if clause_end >= bytes.len() || bytes[clause_end] != b'.' {
         return None;
     }
     let mut start = clause_end + 1;
@@ -239,9 +235,13 @@ fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
         .chars()
         .any(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
     {
-        return clause.contains(pattern);
+        return normalize_ascii_whitespace(clause).contains(&normalize_ascii_whitespace(pattern));
     }
     clause
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .any(|word| word == pattern)
+}
+
+fn normalize_ascii_whitespace(text: &str) -> String {
+    text.split_ascii_whitespace().collect::<Vec<_>>().join(" ")
 }
