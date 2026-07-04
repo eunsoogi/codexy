@@ -81,9 +81,14 @@ fn is_bare_issue_boundary(suffix: &str) -> bool {
             .next()
             .is_some_and(|character| character.is_whitespace())
         || suffix.starts_with('/')
+        || suffix.chars().next().is_some_and(is_bare_issue_delimiter)
         || suffix
             .chars()
             .all(|character| matches!(character, '.' | ',' | ')' | ']' | '}' | '>' | '"' | '\''))
+}
+
+fn is_bare_issue_delimiter(character: char) -> bool {
+    !character.is_ascii_alphanumeric() && !matches!(character, '#' | '/')
 }
 
 fn is_issue_url_boundary(suffix: &str) -> bool {

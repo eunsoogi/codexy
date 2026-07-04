@@ -52,7 +52,12 @@ fn validator_allows_slash_delimited_bare_tracking_issue_references()
 #[test]
 fn validator_allows_punctuation_delimited_bare_tracking_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
-    for issue in ["tracking issue: (#205)", "Tracking issue:#205"] {
+    for issue in [
+        "tracking issue: (#205)",
+        "Tracking issue:#205",
+        "tracking issue: #205, covers the handler exposure",
+        "tracking issue: #205 - missing handler",
+    ] {
         let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
         assert!(
             output.status.success(),
@@ -74,6 +79,7 @@ fn validator_rejects_malformed_repository_qualified_issue_references()
         "tracking issue: /codexy#205",
         "tracking issue: abc#205",
         "tracking issue: codexy#205",
+        "tracking issue: #205abc",
     ] {
         let output = run_ownership_validator(&tracking_issue_evidence(issue))?;
         assert!(
