@@ -134,7 +134,7 @@ fn is_same_lane_header_field(line: &str) -> bool {
     };
     matches!(
         metadata_key(key).as_str(),
-        "fallback route" | "tracking issue" | "issue" | "pr" | "branch" | "head" | "worktree path"
+        "fallback route" | "tracking issue"
     )
 }
 
