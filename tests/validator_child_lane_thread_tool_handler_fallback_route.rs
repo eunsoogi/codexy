@@ -133,6 +133,29 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_hyphenated_fallback_route_fields() -> Result<(), Box<dyn std::error::Error>> {
+    for field in
+        "Not a fallback-route|Not a fallback-path|No fallback-route|No fallback-path".split('|')
+    {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+{field}: parent posted the handoff in the child thread.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject a hyphenated {field} field"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_allows_explicit_no_fallback_route_available() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(

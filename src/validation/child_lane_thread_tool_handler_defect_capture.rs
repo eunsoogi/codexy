@@ -62,37 +62,58 @@ pub(super) fn has_negated_fallback_route_field(line: &str) -> bool {
     }
     [
         "not a fallback route:",
+        "not a fallback-route:",
         "not a fallback path:",
+        "not a fallback-path:",
         "no fallback route used:",
+        "no fallback-route used:",
         "no fallback path used:",
+        "no fallback-path used:",
         "not a fallback route used:",
+        "not a fallback-route used:",
         "not a fallback path used:",
+        "not a fallback-path used:",
         "without fallback route evidence",
+        "without fallback-route evidence",
         "without fallback path evidence",
+        "without fallback-path evidence",
     ]
     .into_iter()
     .any(|marker| normalized.contains(marker))
 }
 
 fn has_bare_no_fallback_field_without_availability(line: &str) -> bool {
-    ["no fallback route:", "no fallback path:"]
+    [
+        "no fallback route:",
+        "no fallback-route:",
+        "no fallback path:",
+        "no fallback-path:",
+    ]
+    .into_iter()
+    .flat_map(|marker| line.split(marker).skip(1))
+    .any(|value| {
+        let value = value.trim_start();
+        ![
+            "no fallback route was available",
+            "no fallback-route was available",
+            "no fallback route available",
+            "no fallback-route available",
+            "no fallback path was available",
+            "no fallback-path was available",
+            "no fallback path available",
+            "no fallback-path available",
+            "without a fallback route available",
+            "without a fallback-route available",
+            "without fallback route available",
+            "without fallback-route available",
+            "without a fallback path available",
+            "without a fallback-path available",
+            "without fallback path available",
+            "without fallback-path available",
+        ]
         .into_iter()
-        .flat_map(|marker| line.split(marker).skip(1))
-        .any(|value| {
-            let value = value.trim_start();
-            ![
-                "no fallback route was available",
-                "no fallback route available",
-                "no fallback path was available",
-                "no fallback path available",
-                "without a fallback route available",
-                "without fallback route available",
-                "without a fallback path available",
-                "without fallback path available",
-            ]
-            .into_iter()
-            .any(|allowed| value.starts_with(allowed))
-        })
+        .any(|allowed| value.starts_with(allowed))
+    })
 }
 
 fn defect_capture_clause(line: &str) -> Option<&str> {
