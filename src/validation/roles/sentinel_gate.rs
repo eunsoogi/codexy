@@ -17,6 +17,16 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
 ];
 
 const REASONING_CONTROL_EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
+const REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES: &[&str] = &[
+    "this ",
+    "that ",
+    "it ",
+    "the evidence",
+    "the requirement",
+    "reviewer evidence",
+    "evidence",
+    "requirement",
+];
 const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reasoning control:",
     "packaged sentinel definition must run with the highest available reasoning setting",
@@ -138,7 +148,7 @@ fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
     lower
         .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
         .any(|(start, _)| {
-            !contains_disallowed_reasoning_control_context(marker_clause(
+            !contains_disallowed_reasoning_control_context(marker_context(
                 &lower,
                 start,
                 REASONING_CONTROL_EVIDENCE_MARKER.len(),
@@ -151,7 +161,7 @@ fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
     lower
         .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
         .any(|(start, _)| {
-            contains_disallowed_reasoning_control_context(marker_clause(
+            contains_disallowed_reasoning_control_context(marker_context(
                 &lower,
                 start,
                 REASONING_CONTROL_EVIDENCE_MARKER.len(),
@@ -169,7 +179,7 @@ fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
     text[start..end].trim()
 }
 
-fn marker_clause(text: &str, marker_start: usize, marker_len: usize) -> &str {
+fn marker_context(text: &str, marker_start: usize, marker_len: usize) -> &str {
     let bytes = text.as_bytes();
     let mut start = marker_start;
     while start > 0 && !is_clause_boundary(bytes[start - 1]) {
@@ -179,11 +189,37 @@ fn marker_clause(text: &str, marker_start: usize, marker_len: usize) -> &str {
     while end < bytes.len() && !is_clause_boundary(bytes[end]) {
         end += 1;
     }
+    if let Some(next_start) = next_sentence_start(bytes, end) {
+        let next_sentence = &text[next_start..];
+        if has_reasoning_control_evidence_followup(next_sentence) {
+            end = next_start;
+            while end < bytes.len() && !is_clause_boundary(bytes[end]) {
+                end += 1;
+            }
+        }
+    }
     text[start..end].trim()
 }
 
 fn is_clause_boundary(byte: u8) -> bool {
     matches!(byte, b'.')
+}
+
+fn next_sentence_start(bytes: &[u8], clause_end: usize) -> Option<usize> {
+    if clause_end >= bytes.len() || !is_clause_boundary(bytes[clause_end]) {
+        return None;
+    }
+    let mut start = clause_end + 1;
+    while start < bytes.len() && bytes[start].is_ascii_whitespace() {
+        start += 1;
+    }
+    (start < bytes.len()).then_some(start)
+}
+
+fn has_reasoning_control_evidence_followup(sentence: &str) -> bool {
+    REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES
+        .iter()
+        .any(|prefix| sentence.starts_with(prefix))
 }
 
 fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
