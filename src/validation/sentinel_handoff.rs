@@ -1,5 +1,5 @@
 const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
-const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate pass|reviewer gate passed|reviewer gate block|reviewer gate: pass|reviewer gate: block|reviewer gate returned pass|reviewer gate returned block|packaged reviewer gate";
+const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate";
 const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass|sentinel reviewer gate returned pass";
 const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
