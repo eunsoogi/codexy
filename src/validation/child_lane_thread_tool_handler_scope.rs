@@ -40,7 +40,6 @@ pub(super) fn capture_end_before_unrelated_evidence(
     let mut cursor = line_end(evidence, handler_start);
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     let mut saw_handler_capture = is_handler_capture_line(&evidence[capture_start..cursor]);
-    let mut pending_lane_header = None;
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
@@ -49,15 +48,10 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line_is_same_lane_header_metadata =
             is_same_lane_header_metadata_line(evidence, line_start, line_end);
         let line_is_handler_capture = is_handler_capture_line(line);
-        let line_is_pending_lane_capture = line_is_handler_capture
-            && pending_lane_header
-                .as_deref()
-                .is_some_and(|lane| handler_capture_mentions_lane(line, lane));
         let line_extends_capture =
             is_capture_related(line) && (!line_is_unrelated_metadata || line_is_handler_capture);
         if line.trim().is_empty()
             || saw_handler_capture && line_is_same_lane_header_metadata
-            || line_is_pending_lane_capture
             || saw_capture
                 && !line_extends_capture
                 && line_is_unrelated_metadata
@@ -67,9 +61,6 @@ pub(super) fn capture_end_before_unrelated_evidence(
         }
         saw_capture |= line_extends_capture;
         saw_handler_capture |= line_is_handler_capture;
-        if !saw_handler_capture && line_is_same_lane_header_metadata {
-            pending_lane_header = lane_header_key(line).or(pending_lane_header);
-        }
         cursor = line_end;
     }
     evidence.len()
@@ -122,6 +113,7 @@ fn is_same_lane_header_metadata_line(evidence: &str, line_start: usize, line_end
     ) || key.starts_with("lane ")
         && next_nonempty_line(evidence, line_end)
             .is_some_and(|next| is_same_lane_header_field(next))
+        && same_lane_header_block_has_same_lane_marker(evidence, line_end)
 }
 
 fn next_nonempty_line(evidence: &str, mut cursor: usize) -> Option<&str> {
@@ -141,21 +133,23 @@ fn is_same_lane_header_field(line: &str) -> bool {
     let Some((key, _)) = line.trim_start().split_once(':') else {
         return false;
     };
-    matches!(
-        metadata_key(key).as_str(),
-        "fallback route" | "tracking issue"
-    )
+    matches!(metadata_key(key).as_str(), "fallback route" | "tracking issue")
 }
 
-fn lane_header_key(line: &str) -> Option<String> {
-    let (key, _) = line.trim_start().split_once(':')?;
-    let key = metadata_key(key);
-    key.starts_with("lane ").then_some(key)
-}
-
-fn handler_capture_mentions_lane(line: &str, lane: &str) -> bool {
-    let line = line.to_ascii_lowercase();
-    line.contains(&format!("in {lane}")) || line.contains(&format!("under {lane}"))
+fn same_lane_header_block_has_same_lane_marker(evidence: &str, mut cursor: usize) -> bool {
+    while cursor < evidence.len() {
+        let start = cursor + usize::from(evidence.as_bytes()[cursor] == b'\n');
+        let end = line_end(evidence, start);
+        let line = &evidence[start..end];
+        if line.trim().is_empty() || is_capture_related(line) {
+            return false;
+        }
+        if line.to_ascii_lowercase().contains("same lane") {
+            return true;
+        }
+        cursor = end;
+    }
+    false
 }
 
 fn metadata_key(key: &str) -> String {
