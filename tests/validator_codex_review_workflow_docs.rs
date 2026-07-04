@@ -36,9 +36,8 @@ fn git_workflow_fetches_inline_review_comment_commit_oids() -> Result<(), Box<dy
 fn pr_review_handoff_capture_includes_branch_status_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
     let reference = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-            "plugins/codexy/skills/git-workflow/references/pr-review-and-handoff.md",
-        ),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/git-workflow/references/pr-review-and-handoff.md"),
     )?;
 
     assert!(
@@ -64,18 +63,23 @@ fn pr_review_handoff_capture_includes_branch_status_evidence()
 fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
 -> Result<(), Box<dyn std::error::Error>> {
     let repo = tempfile::tempdir()?;
+    let remote = tempfile::tempdir()?;
     let state = tempfile::tempdir()?;
     let status_path = state.path().join("worktreeStatus.txt");
 
-    assert!(
-        std::process::Command::new("git")
-            .args(["init", "-b", "main"])
-            .current_dir(repo.path())
-            .output()?
-            .status
-            .success(),
-        "git init should succeed"
-    );
+    run_git(repo.path(), ["init", "-b", "codexy/example"])?;
+    run_git(remote.path(), ["init", "--bare"])?;
+    run_git(repo.path(), ["commit", "--allow-empty", "-m", "init"])?;
+    run_git(
+        repo.path(),
+        [
+            "remote",
+            "add",
+            "origin",
+            remote.path().to_str().ok_or("remote path")?,
+        ],
+    )?;
+    run_git(repo.path(), ["push", "-u", "origin", "codexy/example"])?;
     let status = std::process::Command::new("git")
         .args(["status", "--short", "--branch"])
         .current_dir(repo.path())
@@ -103,6 +107,7 @@ fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
             "state": "OPEN",
             "isDraft": false,
             "mergeStateStatus": "CLEAN",
+            "headRefName": "codexy/example",
             "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
             "worktreeStatus": status_text,
             "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
@@ -123,6 +128,29 @@ fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
     assert!(
         output.status.success(),
         "clean external branch-status evidence should validate\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn run_git<const N: usize>(
+    cwd: &std::path::Path,
+    args: [&str; N],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = std::process::Command::new("git")
+        .args([
+            "-c",
+            "user.name=Codexy Test",
+            "-c",
+            "user.email=codexy@example.invalid",
+        ])
+        .args(args)
+        .current_dir(cwd)
+        .output()?;
+    assert!(
+        output.status.success(),
+        "git command should succeed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
