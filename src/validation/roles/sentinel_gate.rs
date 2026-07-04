@@ -21,6 +21,12 @@ const REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES: &[&str] = &[
     "this ",
     "that ",
     "it ",
+    "but this ",
+    "but that ",
+    "but it ",
+    "however, this ",
+    "however, that ",
+    "however, it ",
     "the evidence",
     "the requirement",
     "reviewer evidence",
@@ -147,26 +153,22 @@ fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     lower
         .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
-        .any(|(start, _)| {
-            !contains_disallowed_reasoning_control_context(marker_context(
-                &lower,
-                start,
-                REASONING_CONTROL_EVIDENCE_MARKER.len(),
-            ))
-        })
+        .any(|(start, _)| !has_disallowed_marker_context(&lower, start))
 }
 
 fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     lower
         .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
-        .any(|(start, _)| {
-            contains_disallowed_reasoning_control_context(marker_context(
-                &lower,
-                start,
-                REASONING_CONTROL_EVIDENCE_MARKER.len(),
-            ))
-        })
+        .any(|(start, _)| has_disallowed_marker_context(&lower, start))
+}
+
+fn has_disallowed_marker_context(text: &str, marker_start: usize) -> bool {
+    contains_disallowed_reasoning_control_context(marker_context(
+        text,
+        marker_start,
+        REASONING_CONTROL_EVIDENCE_MARKER.len(),
+    ))
 }
 
 fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
@@ -235,13 +237,13 @@ fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
         .chars()
         .any(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
     {
-        return normalize_ascii_whitespace(clause).contains(&normalize_ascii_whitespace(pattern));
+        return clause
+            .split_ascii_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .contains(pattern);
     }
     clause
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .any(|word| word == pattern)
-}
-
-fn normalize_ascii_whitespace(text: &str) -> String {
-    text.split_ascii_whitespace().collect::<Vec<_>>().join(" ")
 }

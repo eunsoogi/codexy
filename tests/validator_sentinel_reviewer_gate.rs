@@ -55,6 +55,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "can omit reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence\nis optional",
         "reasoning control used or unavailable evidence. This evidence is optional",
+        "reasoning control used or unavailable evidence. However, this evidence is optional",
+        "reasoning control used or unavailable evidence. But this requirement may be skipped",
         "reasoning control used or unavailable evidence. This requirement may be skipped",
         "reasoning control used or unavailable evidence. This evidence is waived",
         "MUST NOT record reasoning control used or unavailable evidence",
