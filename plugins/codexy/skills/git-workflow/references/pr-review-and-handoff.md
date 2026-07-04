@@ -10,11 +10,30 @@ completion or the default Codexy merge flow. MUST capture current PR state first
 pr=<pr>
 owner=<owner>
 repo=<repo>
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > pr-state.base.json
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > pr-state.base.json
+default_branch="$(gh repo view "$owner/$repo" --json defaultBranchRef --jq '.defaultBranchRef.name')"
+closing_issue="$(
+  jq -r '.body // ""
+    | split("\n")
+    | map(select((. | gsub("[[:space:]]"; "")) != ""))
+    | last // ""
+    | capture("^(Fixes|Closes|Resolves) #(?<number>[0-9]+)$").number? // empty' \
+    pr-state.base.json
+)"
+if [ -n "$closing_issue" ] &&
+  [ "$(jq -r '.baseRefName // ""' pr-state.base.json)" != "$default_branch" ]; then
+  gh issue view "$closing_issue" --repo "$owner/$repo" --json number,url,labels \
+    > pr-state.linkedIssue.json
+  jq '{nodes:[{number,url,labels:{nodes:(.labels | map({name}))}}]}' \
+    pr-state.linkedIssue.json > pr-state.linkedIssueReferences.json
+else
+  jq -n '{nodes:[]}' > pr-state.linkedIssueReferences.json
+fi
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
+    defaultBranchRef { name }
     labels(first:100) { nodes { name } }
     pullRequest(number:$number) {
       labels(first:50) { nodes { name } }
@@ -63,37 +82,67 @@ jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
   pr-state.comments.pages.json > pr-state.comments.json
 jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
   pr-state.reviews.pages.json > pr-state.reviews.json
-jq '.[0].data.repository | {repositoryLabels: .labels} + (.pullRequest | {labels, closingIssuesReferences})' \
+jq '.[0].data.repository | {repositoryLabels: .labels, defaultBranchRef} + (.pullRequest | {labels, closingIssuesReferences})' \
   pr-state.reviewThreads.pages.json > pr-state.labels.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
   --slurpfile labels pr-state.labels.json \
+  --slurpfile linkedIssueReferences pr-state.linkedIssueReferences.json \
   --slurpfile comments pr-state.comments.json \
   --slurpfile reviews pr-state.reviews.json \
-  '. + $labels[0] + {reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
+  '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
   pr-state.base.json > pr-state.json
 rm -f pr-state.base.json pr-state.reviewThreads.pages.json \
   pr-state.reviewThreads.json pr-state.comments.pages.json \
   pr-state.comments.json pr-state.reviews.pages.json \
-  pr-state.reviews.json pr-state.labels.json
+  pr-state.reviews.json pr-state.labels.json \
+  pr-state.linkedIssue.json pr-state.linkedIssueReferences.json
 scripts/validate-plugin-config --check-completion-handoff \
   --handoff-file <report> \
   --pr-state-file pr-state.json
 ```
 
+For stacked PRs whose `baseRefName` is not the captured `defaultBranchRef.name`,
+GitHub does not populate PR `closingIssuesReferences` from closing keywords. The
+PR state file MUST still include comparable authoritative issue evidence before
+readiness. It MUST keep the PR `body` final closing-keyword line and MUST add
+`linkedIssueReferences.nodes[]` for that issue, including `number`, `url`, and
+`labels.nodes[].name`, captured from the same GitHub repository's issue or
+GraphQL API output.
+
 For review-response handoffs, the PR state file MUST include GraphQL
 `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and
 comment URLs. For PR-readiness or merge-readiness handoffs, the PR state file
 MUST include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with
-issue labels. When repository labels exist, the PR state file MUST also include
-the repository label taxonomy as `repositoryLabels`; an unlabeled PR is not
-ready merely because handoff prose says no labels apply.
+issue labels for default-branch PRs. For non-default-base stacked PRs where
+GitHub ignores closing keywords, the PR state file MUST include
+`linkedIssueReferences` with issue labels instead. When repository labels exist,
+the PR state file MUST also include the repository label taxonomy as
+`repositoryLabels`; an unlabeled PR is not ready merely because handoff prose
+says no labels apply.
 
-The packaged hook surface currently emits SessionStart routing context, not a
-GitHub PR lifecycle hook. Until a PR lifecycle hook is available, the supported
-hook/readiness enforcement path is the SessionStart-required
-`scripts/validate-plugin-config --check-completion-handoff --handoff-file
-<report> --pr-state-file pr-state.json` command with `repositoryLabels`
-captured in `pr-state.json`.
+Before PR readiness, the owning lane MUST run the hard PR title hook with the
+exact GitHub PR title:
+
+```sh
+plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$(gh pr view "$pr" --json title --jq .title)"
+```
+
+Before PR readiness, the owning lane MUST run the hard PR label hook against
+captured PR state with `repositoryLabels`:
+
+```sh
+plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file pr-state.json
+```
+
+Completion-handoff validation MUST run in the same readiness path. Linked issue
+labels and repository label evidence MUST NOT be skipped after the label hook
+passes:
+
+```sh
+scripts/validate-plugin-config --check-completion-handoff \
+  --handoff-file <report> \
+  --pr-state-file pr-state.json
+```
 
 ## Codex Review Gate
 
