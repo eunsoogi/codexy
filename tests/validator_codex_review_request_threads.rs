@@ -1,0 +1,123 @@
+use std::{path::Path, process::Command};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
+
+#[test]
+fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_thread() -> TestResult {
+    for handoff in [
+        "Next action: request fresh @codex review on the current head.\n",
+        "Codex review state: no current-head request exists. Request exactly one fresh Codex review now.\n",
+        "No current-head Codex output exists; ready to request Codex review.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, unresolved_thread_pr_state())?;
+        assert_failure_contains(
+            &output,
+            "validator should reject fresh review requests while unresolved actionable review threads remain",
+            "unresolved review thread blocks fresh Codex review requests",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_single_fresh_codex_review_request_without_unresolved_threads() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review state: no current-head request or output exists. Request exactly one fresh Codex review now.\n",
+        clean_thread_pr_state(),
+    )?;
+    assert_success(
+        &output,
+        "validator should preserve the exactly-one fresh Codex review path when no review thread blocks it",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_negated_fresh_codex_review_request_with_unresolved_thread() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
+        unresolved_thread_pr_state(),
+    )?;
+    assert_success(
+        &output,
+        "validator should not block handoffs that prohibit fresh Codex review requests",
+    );
+    Ok(())
+}
+
+fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
+    let temp = tempfile::tempdir()?;
+    let handoff_path = temp.path().join("handoff.md");
+    let pr_state_path = temp.path().join("pr-state.json");
+    std::fs::write(&handoff_path, handoff)?;
+    std::fs::write(&pr_state_path, pr_state)?;
+    validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-completion-handoff",
+            "--handoff-file",
+            handoff_path.to_str().ok_or("handoff path")?,
+            "--pr-state-file",
+            pr_state_path.to_str().ok_or("pr state path")?,
+        ])
+        .output()?)
+}
+
+fn assert_success(output: &std::process::Output, message: &str) {
+    assert!(
+        output.status.success(),
+        "{message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn assert_failure_contains(output: &std::process::Output, message: &str, needle: &str) {
+    assert!(
+        !output.status.success(),
+        "{message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(needle),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn clean_thread_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
+    }"#
+}
+
+fn unresolved_thread_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
+            "nodes": [{
+                "id": "PRRT_kwDOWaiting",
+                "isResolved": false,
+                "isOutdated": false,
+                "path": "src/validation/review_thread_resolution.rs",
+                "comments": {"nodes": [{"author":{"login":"reviewer"},"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}
+            }]
+        }
+    }"#
+}

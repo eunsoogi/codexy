@@ -10,8 +10,17 @@ const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for me
 const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_ready = claims_codex_review_ready(handoff);
+    let claims_fresh_review_request = super::codex_review_fresh_request::claims(handoff);
     let claims_completion = claims_codex_review_completion(handoff);
     let has_override = states_codex_review_override(handoff);
+    if claims_fresh_review_request
+        && super::codex_review_fresh_request::has_unresolved_actionable_thread(pr_state)
+    {
+        return vec![format!(
+            "unresolved review thread blocks fresh Codex review requests: PR #{} must resolve or document accepted no-change rationale before requesting another @codex review",
+            pr_number(pr_state)
+        )];
+    }
     if claims_ready
         && !has_head_ref_oid(pr_state)
         && (claims_completion || has_codex_review_activity(pr_state))
