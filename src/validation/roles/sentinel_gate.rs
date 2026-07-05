@@ -32,7 +32,7 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "does not need|does not require|doesn't have to|doesn't need|doesn't require|if available|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
-    "may be ignored|may be skipped|may include|may omit|may reference|missing|must not|mustn't|",
+    "may be ignored|may be skipped|may ignore|may include|may omit|may reference|may skip|missing|must not|mustn't|",
     "need not|needn't|no need|",
     "no explicit reasoning control used or unavailable evidence|",
     "no reasoning control used or unavailable evidence|no requirement|not have to|",

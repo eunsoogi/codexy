@@ -83,6 +83,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence. Waived in practice",
         "reasoning control used or unavailable evidence. Not required for this gate",
         "reasoning control used or unavailable evidence. Reviewers may skip this evidence",
+        "reasoning control used or unavailable evidence. Reviewers may skip it",
+        "reasoning control used or unavailable evidence. Reviewers may ignore it",
         "reasoning control used or unavailable evidence. This requirement may be skipped",
         "reasoning control used or unavailable evidence. This evidence is waived",
         "reasoning control used or unavailable evidence. This evidence may be ignored",
