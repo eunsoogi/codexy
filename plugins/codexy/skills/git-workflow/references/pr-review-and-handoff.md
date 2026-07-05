@@ -11,6 +11,7 @@ pr=<pr>
 owner=<owner>
 repo=<repo>
 gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > pr-state.base.json
+git status --short --branch > pr-state.worktreeStatus.txt
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -69,11 +70,12 @@ jq --slurpfile reviewThreads pr-state.reviewThreads.json \
   --slurpfile labels pr-state.labels.json \
   --slurpfile comments pr-state.comments.json \
   --slurpfile reviews pr-state.reviews.json \
-  '. + $labels[0] + {reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
+  --rawfile worktreeStatus pr-state.worktreeStatus.txt \
+  '. + $labels[0] + {worktreeStatus: $worktreeStatus, reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
   pr-state.base.json > pr-state.json
 rm -f pr-state.base.json pr-state.reviewThreads.pages.json \
   pr-state.reviewThreads.json pr-state.comments.pages.json \
-  pr-state.comments.json pr-state.reviews.pages.json \
+  pr-state.comments.json pr-state.reviews.pages.json pr-state.worktreeStatus.txt \
   pr-state.reviews.json pr-state.labels.json
 scripts/validate-plugin-config --check-completion-handoff \
   --handoff-file <report> \

@@ -6,18 +6,18 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         return Vec::new();
     }
     let mut errors = Vec::new();
-    if claims_clean(&text) {
+    if claims_clean(&text) || claims_pr_ready(&text) {
         match local_status(pr_state) {
             Some(lines) => {
                 if lines.iter().any(|line| is_dirty_status_line(line)) {
                     errors.push(format!(
-                        "child handoff claims clean worktree but current status is dirty: {}",
+                        "child handoff claims clean/PR-ready worktree but current status is dirty: {}",
                         lines.join("; ")
                     ));
                 }
             }
             None => errors.push(
-                "child handoff claims clean worktree but current local git status evidence is missing"
+                "child handoff claims clean/PR-ready worktree but current local git status evidence is missing"
                     .into(),
             ),
         }
@@ -102,6 +102,7 @@ fn claims_synced_or_pushed(text: &str) -> bool {
 fn claims_pr_ready(text: &str) -> bool {
     [
         "pr ready",
+        "pr-ready",
         "ready for parent handoff",
         "parent can open pr next: yes",
         "parent can merge",
@@ -160,18 +161,24 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
             "child handoff claims pushed/synced head but PR state is missing headRefOid".into(),
         );
     };
-    let claimed = hex_refs(handoff);
+    let claimed = claimed_pushed_heads(handoff);
+    if claimed.is_empty() {
+        return Some(format!(
+            "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not any comparable handoff head"
+        ));
+    }
     if claimed
         .iter()
-        .any(|oid| pr_head.to_ascii_lowercase().starts_with(oid))
+        .all(|oid| pr_head.to_ascii_lowercase().starts_with(oid))
     {
         return None;
     }
+    let mismatched = claimed
+        .iter()
+        .find(|oid| !pr_head.to_ascii_lowercase().starts_with(*oid));
     Some(format!(
         "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not {}",
-        claimed
-            .first()
-            .map_or("any comparable handoff head", String::as_str)
+        mismatched.map_or("any comparable handoff head", String::as_str)
     ))
 }
 
@@ -207,9 +214,33 @@ fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
     .flatten()
 }
 
-fn hex_refs(text: &str) -> Vec<String> {
-    text.split(|ch: char| !ch.is_ascii_hexdigit())
-        .filter(|part| (7..=40).contains(&part.len()))
-        .map(str::to_ascii_lowercase)
+fn claimed_pushed_heads(text: &str) -> Vec<String> {
+    text.split(|ch| matches!(ch, '\n' | ';'))
+        .filter(|sentence| {
+            sentence.to_ascii_lowercase().contains("pushed")
+                || sentence.to_ascii_lowercase().contains("synced")
+                || sentence.to_ascii_lowercase().contains("local head")
+        })
+        .flat_map(head_refs_after_markers)
         .collect()
+}
+
+fn head_refs_after_markers(text: &str) -> Vec<String> {
+    let mut refs = Vec::new();
+    let mut previous = String::new();
+    for token in text.split_whitespace() {
+        let candidate = token.trim_matches(|ch: char| !ch.is_ascii_hexdigit());
+        if matches!(
+            previous.as_str(),
+            "at" | "head" | "head:" | "sha" | "sha:" | "commit" | "commit:"
+        ) && (7..=40).contains(&candidate.len())
+            && candidate.chars().all(|ch| ch.is_ascii_hexdigit())
+        {
+            refs.push(candidate.to_ascii_lowercase());
+        }
+        previous = token
+            .trim_matches(|ch: char| !ch.is_ascii_alphabetic() && ch != ':')
+            .to_ascii_lowercase();
+    }
+    refs
 }
