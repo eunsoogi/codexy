@@ -49,6 +49,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence isn't required",
         "reasoning control used or unavailable evidence isn't necessary",
         "reasoning control used or unavailable evidence is not necessary",
+        "reasoning control used or unavailable evidence is not explicitly required",
         "reasoning control used or unavailable evidence may be left out",
         "may omit reasoning control used or unavailable evidence",
         "may\nomit reasoning control used or unavailable evidence",

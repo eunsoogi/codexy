@@ -65,6 +65,7 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &[&str] = &[
     "not have to",
     "not a requirement",
     "not be required",
+    "not explicitly required",
     "not mandatory",
     "not needed",
     "not required",
