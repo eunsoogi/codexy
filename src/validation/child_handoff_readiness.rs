@@ -1,5 +1,13 @@
 use serde_json::Value;
 
+const STATUS_FIELDS: [&str; 5] = [
+    "worktreeStatus",
+    "localStatus",
+    "gitStatus",
+    "gitStatusShort",
+    "statusShort",
+];
+
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_child_readiness(&text) {
@@ -14,10 +22,18 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         }
     }
     if claims_synced_or_pushed(&text) {
-        if let Some(status) = branch_divergence(pr_state) {
-            errors.push(format!(
-                "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
-            ));
+        let statuses = pr_branch_statuses(pr_state);
+        if statuses.is_empty() {
+            errors.push(
+                "child handoff claims pushed/synced branch but matching current branch status evidence is missing"
+                    .into(),
+            );
+        } else {
+            if let Some(status) = statuses.iter().find(|status| branch_diverged(status)) {
+                errors.push(format!(
+                    "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
+                ));
+            }
         }
         if let Some(error) = pushed_head_mismatch(handoff, pr_state) {
             errors.push(error);
@@ -102,18 +118,12 @@ fn claims_pr_ready(text: &str) -> bool {
 }
 
 fn dirty_status(pr_state: &Value) -> Option<String> {
-    [
-        "worktreeStatus",
-        "localStatus",
-        "gitStatus",
-        "gitStatusShort",
-        "statusShort",
-    ]
-    .into_iter()
-    .filter_map(|field| pr_state.get(field))
-    .filter_map(status_lines)
-    .find(|lines| lines.iter().any(|line| is_dirty_status_line(line)))
-    .map(|lines| lines.join("; "))
+    STATUS_FIELDS
+        .into_iter()
+        .filter_map(|field| pr_state.get(field))
+        .filter_map(status_lines)
+        .find(|lines| lines.iter().any(|line| is_dirty_status_line(line)))
+        .map(|lines| lines.join("; "))
 }
 
 fn status_lines(value: &Value) -> Option<Vec<String>> {
@@ -139,8 +149,24 @@ fn is_dirty_status_line(line: &str) -> bool {
             .any(|clean| line.eq_ignore_ascii_case(clean))
 }
 
-fn branch_divergence(pr_state: &Value) -> Option<String> {
-    status_fields(pr_state).find(|line| line.starts_with("##") && line.contains("[ahead "))
+fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
+    let Some(head) = string_field(pr_state, "headRefName") else {
+        return Vec::new();
+    };
+    let prefix = format!("## {head}...");
+    status_fields(pr_state)
+        .filter(|line| {
+            line.strip_prefix(&prefix)
+                .and_then(|suffix| suffix.split_whitespace().next())
+                .is_some_and(|upstream| !upstream.starts_with('['))
+        })
+        .collect()
+}
+
+fn branch_diverged(status: &str) -> bool {
+    ["[ahead ", "[behind ", "[gone]"]
+        .iter()
+        .any(|marker| status.contains(marker))
 }
 
 fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
@@ -183,17 +209,11 @@ fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
 }
 
 fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
-    [
-        "worktreeStatus",
-        "localStatus",
-        "gitStatus",
-        "gitStatusShort",
-        "statusShort",
-    ]
-    .into_iter()
-    .filter_map(|field| pr_state.get(field))
-    .filter_map(status_lines)
-    .flatten()
+    STATUS_FIELDS
+        .into_iter()
+        .filter_map(|field| pr_state.get(field))
+        .filter_map(status_lines)
+        .flatten()
 }
 
 fn hex_refs(text: &str) -> Vec<String> {
