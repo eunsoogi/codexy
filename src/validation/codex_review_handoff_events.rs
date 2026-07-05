@@ -1,5 +1,7 @@
 use serde_json::Value;
 
+use super::codex_review_handoff_output::{is_review_output_text, iter_json_objects, oid_matches};
+
 pub(super) fn has_unresolved_codex_review_thread(pr_state: &Value) -> bool {
     iter_json_objects(pr_state).any(|item| {
         item.get("isResolved").and_then(Value::as_bool) == Some(false)
@@ -24,8 +26,7 @@ pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
 
 pub(super) fn has_pending_codex_review_request_or_current_head_output(pr_state: &Value) -> bool {
     let head = text_field(pr_state, "headRefOid");
-    iter_json_objects(pr_state)
-        .any(|item| is_codex_review_output_item(item, head))
+    iter_json_objects(pr_state).any(|item| is_codex_review_output_item(item, head))
         || latest_request_without_later_output(pr_state, false)
 }
 
@@ -33,10 +34,9 @@ pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Valu
     latest_request_without_later_output(pr_state, true)
 }
 
-fn latest_request_without_later_output(
-    pr_state: &Value,
-    current_head_output_only: bool,
-) -> bool {
+fn latest_request_without_later_output(pr_state: &Value, current_head_output_only: bool) -> bool {
+    let head = text_field(pr_state, "headRefOid");
+    let head_timestamp = text_field(pr_state, "headRefCommittedDate");
     let events = review_events(pr_state, current_head_output_only);
     let Some(latest_eyes_request) = events
         .iter()
@@ -47,12 +47,13 @@ fn latest_request_without_later_output(
     else {
         return false;
     };
-    !events
-        .iter()
-        .enumerate()
-        .filter(|(_, event)| matches!(event.kind, ReviewEventKind::CodexOutput))
-        .filter(|(_, event)| is_after_event(event, &events[latest_eyes_request]))
-        .any(|(index, _)| index != latest_eyes_request)
+    let request = &events[latest_eyes_request];
+    !events.iter().enumerate().any(|(index, event)| {
+        index != latest_eyes_request
+            && matches!(event.kind, ReviewEventKind::CodexOutput)
+            && is_after_event(event, request)
+            && output_can_fulfill_latest_request(event, request, &events, head, head_timestamp)
+    })
 }
 
 fn review_events(pr_state: &Value, current_head_output_only: bool) -> Vec<ReviewEvent<'_>> {
@@ -74,6 +75,7 @@ fn review_events(pr_state: &Value, current_head_output_only: bool) -> Vec<Review
             Some(ReviewEvent {
                 kind,
                 timestamp: event_timestamp(item),
+                commit: output_commit(item),
                 order,
             })
         })
@@ -84,6 +86,7 @@ fn review_events(pr_state: &Value, current_head_output_only: bool) -> Vec<Review
 struct ReviewEvent<'a> {
     kind: ReviewEventKind,
     timestamp: Option<&'a str>,
+    commit: Option<&'a str>,
     order: usize,
 }
 
@@ -95,6 +98,28 @@ enum ReviewEventKind {
 
 fn is_after_event(event: &ReviewEvent<'_>, baseline: &ReviewEvent<'_>) -> bool {
     matches!((event.timestamp, baseline.timestamp), (Some(event), Some(baseline)) if event > baseline)
+}
+
+fn output_can_fulfill_latest_request(
+    event: &ReviewEvent<'_>,
+    request: &ReviewEvent<'_>,
+    events: &[ReviewEvent<'_>],
+    head: Option<&str>,
+    head_timestamp: Option<&str>,
+) -> bool {
+    event.commit.is_none_or(|commit| {
+        let current_head_output = head.is_some_and(|head| oid_matches(head, commit));
+        let stale_for_current_head = !current_head_output
+            && head.is_some()
+            && !matches!((event.timestamp, head_timestamp), (Some(event), Some(head)) if head > event);
+        !stale_for_current_head
+            && (current_head_output
+                || !events.iter().any(|prior| {
+                    matches!(prior.kind, ReviewEventKind::CodexOutput)
+                        && prior.commit == Some(commit)
+                        && is_after_event(request, prior)
+                }))
+    })
 }
 
 fn compare_event_order(left: &ReviewEvent<'_>, right: &ReviewEvent<'_>) -> std::cmp::Ordering {
@@ -149,10 +174,9 @@ fn is_pr_comment_item(item: &Value) -> bool {
 }
 
 fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
-    if !is_codex_connector_item(item) {
-        return false;
-    }
-    is_review_output_signal(item) && codex_output_matches_head(item, head)
+    is_codex_connector_item(item)
+        && is_review_output_signal(item)
+        && codex_output_matches_head(item, head)
 }
 
 fn is_review_output_signal(item: &Value) -> bool {
@@ -167,15 +191,14 @@ fn codex_output_matches_head(item: &Value, head: Option<&str>) -> bool {
     let Some(head) = head.filter(|head| !head.trim().is_empty()) else {
         return false;
     };
-    let Some(oid) = item
-        .get("commit")
+    output_commit(item).is_some_and(|oid| oid_matches(head, oid))
+}
+
+fn output_commit(item: &Value) -> Option<&str> {
+    item.get("commit")
         .and_then(|commit| text_field(commit, "oid"))
         .filter(|oid| is_commit_oid(oid))
         .or_else(|| text_field(item, "body").and_then(reviewed_commit))
-    else {
-        return false;
-    };
-    head.starts_with(oid) || oid.starts_with(head)
 }
 
 fn reviewed_commit(text: &str) -> Option<&str> {
@@ -218,32 +241,6 @@ fn is_codex_connector_identity(value: &Value) -> bool {
         })
 }
 
-fn is_review_output_text(text: &str) -> bool {
-    let text = text.to_ascii_lowercase();
-    let output = "didn't find any major issues|no major issues|no actionable issues|no suggestions|no issues|suggestion|review complete|review completed|completed review|finished review|looks good|actionable issue|approved|+1";
-    !text.trim().eq("@codex review")
-        && !text.contains("create an environment for this repo")
-        && !is_review_progress_text(&text)
-        && output.split('|').any(|phrase| text.contains(phrase))
-}
-
-fn is_review_progress_text(text: &str) -> bool {
-    let future = "will post|will provide|will add|i'll post|i will post|when complete|once complete|after review completes|review is still running|review is in progress|review started";
-    let result = "suggestion|finding|issue|comment";
-    future.split('|').any(|phrase| text.contains(phrase))
-        && result.split('|').any(|phrase| text.contains(phrase))
-}
-
 fn text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
-}
-
-fn iter_json_objects(value: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {
-    match value {
-        Value::Object(map) => Box::new(
-            std::iter::once(value).chain(map.values().flat_map(|value| iter_json_objects(value))),
-        ),
-        Value::Array(items) => Box::new(items.iter().flat_map(|value| iter_json_objects(value))),
-        _ => Box::new(std::iter::empty()),
-    }
 }

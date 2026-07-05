@@ -109,6 +109,7 @@ fn validator_cli_allows_request_after_old_request_was_fulfilled() -> TestResult 
             "isDraft":false,
             "mergeStateStatus":"CLEAN",
             "headRefOid":"a5af7920ff3e61d4496bfcf0d9e5c7acea96243f",
+            "headRefCommittedDate":"2026-07-05T04:00:00Z",
             "comments":[{
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
@@ -127,6 +128,86 @@ fn validator_cli_allows_request_after_old_request_was_fulfilled() -> TestResult 
     assert!(
         output.status.success(),
         "validator should allow one fresh request after an old request has later Codex output\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_latest_request_when_first_later_output_is_stale() -> TestResult {
+    let handoff = format!(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #262 has no duplicate lane after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         {GIT_PREFLIGHT}\n\
+         Stop condition: no merge; request at most one current-head Codex review.\n\
+         Next action: request Codex review on current head.\n"
+    );
+    let output = validate_handoff_with_pr_state(
+        &handoff,
+        r#"{
+            "number":262,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "headRefCommittedDate":"2026-07-05T10:39:00Z",
+            "comments":[{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-07-05T10:30:00Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799988"
+            },{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-07-05T10:40:00Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999"
+            }],
+            "reviews":[{
+                "body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
+                "author":{"login":"chatgpt-codex-connector"},
+                "submittedAt":"2026-07-05T10:41:00Z",
+                "commit":{"oid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+            }],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should keep the latest request pending when first later output is for an older request\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("duplicate current-head Codex review request"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_later_current_head_output_after_latest_request() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review passed on the current head. PR is merge-ready.\n",
+        r#"{
+            "number":262,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED",
+            "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "comments":[
+                {"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-07-05T10:30:00Z","url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799988"},
+                {"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-07-05T10:40:00Z","url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999"}],
+            "reviews":[
+                {"body":"Didn't find any major issues.\n\nReviewed commit: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-07-05T10:35:00Z","commit":{"oid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}},
+                {"body":"Didn't find any major issues.\n\nReviewed commit: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-07-05T10:41:00Z","commit":{"oid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+    assert!(
+        output.status.success(),
+        "later current-head output should satisfy the latest review request\nstdout: {}\nstderr: {}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

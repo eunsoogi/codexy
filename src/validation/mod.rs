@@ -15,6 +15,7 @@ mod child_lane_thread_tools;
 mod codex_review_handoff;
 mod codex_review_handoff_actionable;
 mod codex_review_handoff_events;
+mod codex_review_handoff_output;
 mod completion_handoff;
 mod completion_handoff_compaction;
 mod completion_handoff_waiting;

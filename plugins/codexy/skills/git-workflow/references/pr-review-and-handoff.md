@@ -36,6 +36,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
     defaultBranchRef { name }
     labels(first:100) { nodes { name } }
     pullRequest(number:$number) {
+      headRef { target { ... on Commit { committedDate } } }
       labels(first:50) { nodes { name } }
       closingIssuesReferences(first:20) { nodes { number labels(first:50) { nodes { name } } } }
       reviewThreads(first:100, after:$endCursor) {
@@ -82,8 +83,14 @@ jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
   pr-state.comments.pages.json > pr-state.comments.json
 jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
   pr-state.reviews.pages.json > pr-state.reviews.json
-jq '.[0].data.repository | {repositoryLabels: .labels, defaultBranchRef} + (.pullRequest | {labels, closingIssuesReferences})' \
-  pr-state.reviewThreads.pages.json > pr-state.labels.json
+	jq '.[0].data.repository
+	  | {repositoryLabels: .labels, defaultBranchRef}
+	    + (.pullRequest | {
+	        labels,
+	        closingIssuesReferences,
+	        headRefCommittedDate: (.headRef.target.committedDate // null)
+	      })' \
+	  pr-state.reviewThreads.pages.json > pr-state.labels.json
 jq --slurpfile reviewThreads pr-state.reviewThreads.json \
   --slurpfile labels pr-state.labels.json \
   --slurpfile linkedIssueReferences pr-state.linkedIssueReferences.json \
@@ -112,9 +119,10 @@ GraphQL API output.
 For review-response handoffs, the PR state file MUST include GraphQL
 `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and
 comment URLs. For PR-readiness or merge-readiness handoffs, the PR state file
-MUST include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with
-issue labels for default-branch PRs. For non-default-base stacked PRs where
-GitHub ignores closing keywords, the PR state file MUST include
+MUST include PR `headRefName`, PR `headRefCommittedDate`, PR `labels`, and
+`closingIssuesReferences` with issue labels for default-branch PRs. For
+non-default-base stacked PRs where GitHub ignores closing keywords, the PR state
+file MUST include
 `linkedIssueReferences` with issue labels instead. When repository labels exist,
 the PR state file MUST also include the repository label taxonomy as
 `repositoryLabels`; an unlabeled PR is not ready merely because handoff prose
