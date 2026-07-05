@@ -47,9 +47,11 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "Every approval can reference reasoning control used or unavailable evidence",
         "Every approval MUST reference reasoning control used or unavailable evidence if available",
         "Every approval MUST reference reasoning control used or unavailable evidence if applicable",
+        "Every approval MUST reference reasoning control used or unavailable evidence if-applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence if needed",
         "Every approval MUST reference reasoning control used or unavailable evidence when possible",
         "Every approval MUST reference reasoning control used or unavailable evidence when applicable",
+        "Every approval MUST reference reasoning control used or unavailable evidence when-applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence, when applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence where applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence where-applicable",
@@ -105,6 +107,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "recording reasoning control used or unavailable evidence is forbidden",
         "recording reasoning control used or unavailable evidence is prohibited",
         "reasoning control used or unavailable evidence is not in any practical sense required",
+        "reasoning control used or unavailable evidence is best-effort",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -115,6 +118,25 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
             !output.status.success(),
             "validator accepted {replacement:?}"
         );
+        assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_weak_reasoning_control_evidence_preamble() -> TestResult {
+    const EVIDENCE_PREAMBLE: &str = "Every approval MUST reference the current diff or head";
+
+    for replacement in [
+        "Every approval MUST try to reference the current diff or head",
+        "Every approval MUST attempt to reference the current diff or head",
+        "Every approval MUST prefer to reference the current diff or head",
+    ] {
+        let output = validate_sentinel_replacement(EVIDENCE_PREAMBLE, replacement)?;
+
+        if output.status.success() {
+            panic!("validator accepted {replacement:?}");
+        }
         assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
     Ok(())
