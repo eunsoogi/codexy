@@ -129,7 +129,15 @@ fn has_concrete_identity(value: &Value) -> bool {
 
 fn is_codex_review_request(item: &Value) -> bool {
     !is_codex_connector_item(item)
+        && is_pr_comment_item(item)
         && text_field(item, "body").is_some_and(|body| body.contains("@codex review"))
+}
+
+fn is_pr_comment_item(item: &Value) -> bool {
+    item.get("author").is_some()
+        || item.get("user").is_some()
+        || text_field(item, "url").is_some_and(|url| url.contains("#issuecomment-"))
+        || text_field(item, "html_url").is_some_and(|url| url.contains("#issuecomment-"))
 }
 
 fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
