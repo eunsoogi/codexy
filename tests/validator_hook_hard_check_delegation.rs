@@ -6,6 +6,7 @@ mod support;
 #[test]
 fn validator_cli_rejects_broken_hard_hook_delegation() -> Result<(), Box<dyn std::error::Error>> {
     for script in [
+        "codexy-issue-title-check.sh",
         "codexy-pr-title-check.sh",
         "codexy-pr-label-check.sh",
         "codexy-merge-message-check.sh",
@@ -141,6 +142,10 @@ fn validator_cli_rejects_awk_closing_line_redirect_in_sourced_helper()
 fn validator_cli_rejects_hard_hooks_that_reject_valid_inputs()
 -> Result<(), Box<dyn std::error::Error>> {
     for (script, expected_error) in [
+        (
+            "codexy-issue-title-check.sh",
+            "issue title must not use Conventional Commit style",
+        ),
         (
             "codexy-pr-title-check.sh",
             "PR title must use Conventional Commit style",
