@@ -22,10 +22,9 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "model_reasoning_effort = \"xhigh\"",
     "reviewer evidence must record explicit unavailable evidence",
 ];
-const REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS: &[&str] = &["negated", "no"];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "absent|acceptable|aren't required|can be skipped|can include|can omit|can reference|does not have to|",
-    "does not need|does not require|doesn't have to|doesn't need|doesn't require|if available|if possible|",
+    "does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if available|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
     "may be ignored|may be skipped|may ignore|may include|may omit|may reference|may skip|missing|must not|mustn't|",
@@ -34,9 +33,8 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
     "not a requirement|not compulsory|not mandatory|not needed|not necessary|omitted|omit|optional|",
     "permissive|prohibited|recommended|should include|should reference|skip|skipped|",
-    "unnecessary|waive|waived|waiver|when available|when possible|where available|where possible|without",
+    "unnecessary|waive|waived|waiver|as applicable|when available|when possible|where applicable|where available|where possible|without",
 );
-
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
         errors.push(format!(
@@ -89,7 +87,6 @@ fn has_reasoning_control_paragraph(instructions: &str) -> bool {
         && !contains_disallowed_reasoning_control_context(paragraph)
         && !contains_disallowed_reasoning_control_paragraph_context(paragraph)
 }
-
 fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     lower
@@ -199,9 +196,12 @@ fn contains_mandatory_reasoning_control_context(clause: &str) -> bool {
 }
 
 fn contains_disallowed_reasoning_control_paragraph_context(paragraph: &str) -> bool {
-    REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS
-        .iter()
-        .any(|pattern| contains_context_pattern(paragraph, pattern))
+    let after = paragraph
+        .split_once("reasoning control:")
+        .map(|(_, tail)| tail.trim_start());
+    contains_context_pattern(paragraph, "negated")
+        || paragraph.trim_start().starts_with("no reasoning control:")
+        || after.is_some_and(|tail| tail.starts_with("no "))
 }
 
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {

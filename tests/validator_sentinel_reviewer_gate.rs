@@ -46,9 +46,13 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "Every approval SHOULD reference reasoning control used or unavailable evidence",
         "Every approval can reference reasoning control used or unavailable evidence",
         "Every approval MUST reference reasoning control used or unavailable evidence if available",
+        "Every approval MUST reference reasoning control used or unavailable evidence if applicable",
+        "Every approval MUST reference reasoning control used or unavailable evidence if needed",
         "Every approval MUST reference reasoning control used or unavailable evidence when possible",
         "Every approval MUST reference reasoning control used or unavailable evidence when applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence, when applicable",
+        "Every approval MUST reference reasoning control used or unavailable evidence where applicable",
+        "Every approval MUST reference reasoning control used or unavailable evidence as applicable",
         "Every approval MUST include reasoning control used or unavailable evidence where available",
         "Every approval may include reasoning control used or unavailable evidence",
         "Every approval may reference reasoning control used or unavailable evidence",
@@ -137,6 +141,16 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
         );
         assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() -> TestResult {
+    let output = validate_reasoning_control_paragraph_replacement(
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If no invocation surface exposes reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
+    )?;
+
+    assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 
