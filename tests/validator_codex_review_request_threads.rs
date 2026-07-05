@@ -9,6 +9,10 @@ fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_threa
         "Next action: request fresh @codex review on the current head.\n",
         "Codex review state: no current-head request exists. Request exactly one fresh Codex review now.\n",
         "No current-head Codex output exists; ready to request Codex review.\n",
+        "Next action: post @codex review on the current head.\n",
+        "Next action: comment @codex review on the current head.\n",
+        "Next action: request review from @codex on the current head.\n",
+        "Next action: request @codex to review the current head.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, unresolved_thread_pr_state())?;
         assert_failure_contains(

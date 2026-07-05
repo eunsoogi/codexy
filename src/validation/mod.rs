@@ -37,6 +37,7 @@ mod merge_message;
 mod prompt_yaml;
 mod release_publish_contract;
 mod review_thread_evidence;
+mod review_thread_readiness;
 mod review_thread_resolution;
 mod review_thread_waiting;
 mod review_thread_waiting_phrases;

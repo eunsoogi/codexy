@@ -59,6 +59,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                 pr_number(pr_state)
             )];
         }
+        if let Some(error) = super::review_thread_readiness::check(pr_state) {
+            return vec![format!("{error}: PR #{}", pr_number(pr_state))];
+        }
     }
     Vec::new()
 }
