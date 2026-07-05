@@ -4,14 +4,15 @@ use super::child_handoff_readiness_text::has_non_claim_phrase_label;
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
-    if !claims_child_readiness(&text) {
-        return Vec::new();
-    }
+    let claims_pr_ready = claims_pr_ready(&text);
     let mut errors = Vec::new();
-    if claims_pr_ready(&text) {
+    if claims_pr_ready {
         errors.extend(negative_proof_labels(&text).map(|label| {
             format!("child handoff claims readiness but {label} proof is negative or non-claim")
         }));
+    }
+    if !claims_child_readiness(&text) {
+        return errors;
     }
     if claims_clean(&text) {
         if let Some(status) = dirty_status(pr_state) {
@@ -30,7 +31,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             errors.push(error);
         }
     }
-    if claims_pr_ready(&text) {
+    if claims_pr_ready {
         if let Some(state) = string_field(pr_state, "mergeStateStatus") {
             if !state.eq_ignore_ascii_case("CLEAN") {
                 errors.push(format!(

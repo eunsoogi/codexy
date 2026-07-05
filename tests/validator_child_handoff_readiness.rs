@@ -123,7 +123,7 @@ fn validator_rejects_ready_child_handoff_with_negative_proof_labels() -> TestRes
         "Child handoff: ready for parent handoff. Clean: no. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: not clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: pending. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
-        "Child handoff: ready for parent handoff. Branch clean: dirty. Synced: not synced. Pushed: not pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "PR is merge-ready. Branch clean: dirty. Synced: not synced. Pushed: not pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
     ] {
         assert_rejects_child_handoff(handoff, state.clone(), "negative or non-claim")?;
     }
