@@ -12,7 +12,7 @@ pub(super) fn claims(handoff: &str) -> bool {
     })
 }
 
-pub(super) fn has_unresolved_actionable_thread(pr_state: &Value) -> bool {
+pub(super) fn has_blocking_unresolved_thread(handoff: &str, pr_state: &Value) -> bool {
     pr_state
         .get("reviewThreads")
         .and_then(|threads| threads.get("nodes"))
@@ -21,6 +21,9 @@ pub(super) fn has_unresolved_actionable_thread(pr_state: &Value) -> bool {
             nodes.iter().any(|thread| {
                 thread.get("isResolved").and_then(Value::as_bool) == Some(false)
                     && thread.get("isOutdated").and_then(Value::as_bool) != Some(true)
+                    && !super::review_thread_resolution::documents_accepted_no_change_rationale(
+                        handoff, thread,
+                    )
             })
         })
 }
@@ -29,7 +32,13 @@ fn has_negated_review_request(clause: &str) -> bool {
     [
         "do not request",
         "don't request",
+        "no current-head request",
+        "no current head request",
+        "no request",
         "not request",
+        "without current-head request",
+        "without current head request",
+        "without request",
         "will not request",
         "won't request",
         "must not request",

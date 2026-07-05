@@ -14,7 +14,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_completion = claims_codex_review_completion(handoff);
     let has_override = states_codex_review_override(handoff);
     if claims_fresh_review_request
-        && super::codex_review_fresh_request::has_unresolved_actionable_thread(pr_state)
+        && super::codex_review_fresh_request::has_blocking_unresolved_thread(handoff, pr_state)
     {
         return vec![format!(
             "unresolved review thread blocks fresh Codex review requests: PR #{} must resolve or document accepted no-change rationale before requesting another @codex review",

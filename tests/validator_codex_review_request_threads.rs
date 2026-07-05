@@ -46,6 +46,32 @@ fn validator_allows_negated_fresh_codex_review_request_with_unresolved_thread() 
     Ok(())
 }
 
+#[test]
+fn validator_allows_no_request_status_with_negated_next_action() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Codex review state: no current-head request exists. Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
+        unresolved_thread_pr_state(),
+    )?;
+    assert_success(
+        &output,
+        "validator should not treat no-current-head-request status as a fresh review request",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_fresh_codex_review_request_with_accepted_no_change_rationale() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Accepted no-change rationale documented for thread PRRT_kwDOWaiting. Request exactly one fresh Codex review now.\n",
+        unresolved_thread_pr_state(),
+    )?;
+    assert_success(
+        &output,
+        "validator should allow fresh review when each unresolved thread has accepted no-change rationale",
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
