@@ -101,6 +101,8 @@ fn validator_allows_no_request_status_with_negated_next_action() -> TestResult {
         "Codex review comments: none. Next action: keep waiting on review threads; do not request @codex review yet.\n",
         "Next action: do not post @codex review yet because review threads remain unresolved.\n",
         "Next action: must not comment @codex review yet because review threads remain unresolved.\n",
+        "Next action: do not send @codex review yet because review threads remain unresolved.\n",
+        "Next action: must not send @codex review yet because review threads remain unresolved.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, unresolved_thread_pr_state())?;
         assert_success(
