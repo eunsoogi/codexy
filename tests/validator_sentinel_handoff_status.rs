@@ -165,6 +165,9 @@ fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Packaged Codexy Sentinel reviewer gate returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "PR ready for parent handoff. Packaged Codexy Sentinel reviewer gate result: PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "PR ready for parent handoff. Packaged Codexy Sentinel reviewer gate verdict: PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Packaged Codexy Sentinel reviewer-gate returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Packaged Codexy Sentinel reviewer-gate result: PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Packaged Codexy Sentinel reviewer-gate verdict: PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
