@@ -1,9 +1,6 @@
-use std::path::Path;
-
-use toml::Value;
-
 use crate::paths::display_relative;
-
+use std::path::Path;
+use toml::Value;
 const REVIEWER_GATE_MARKERS: &[&str] = &[
     "validator/parser edge-case pass",
     "workflow/ownership compliance pass",
@@ -15,7 +12,6 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "no-finding result",
     "repeated-Codex-feedback",
 ];
-
 const REASONING_CONTROL_EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
 const REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES: &str = "this |that |it |evidence|requirement";
 const REASONING_CONTROL_EVIDENCE_FOLLOWUP_REFERENCES: &str =
@@ -116,7 +112,11 @@ fn has_disallowed_marker_context(text: &str, marker_start: usize) -> bool {
     contains_disallowed_reasoning_control_context(context)
         || context
             .split_once(REASONING_CONTROL_EVIDENCE_MARKER)
-            .and_then(|(_, tail)| tail.split(|ch| ch == ',' || ch == ';').next())
+            .and_then(|(_, tail)| {
+                tail.trim_start_matches(|ch| matches!(ch, ',' | ';') || ch.is_ascii_whitespace())
+                    .split(|ch| ch == ',' || ch == ';')
+                    .next()
+            })
             .is_some_and(|tail| contains_context_pattern(tail, "when applicable"))
 }
 
