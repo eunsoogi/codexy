@@ -20,14 +20,19 @@ fn git_workflow_does_not_accept_thumbs_up_only_codex_completion()
 #[test]
 fn git_workflow_fetches_inline_review_comment_commit_oids() -> Result<(), Box<dyn std::error::Error>>
 {
-    let skill = std::fs::read_to_string(
+    let reference = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/skills/git-workflow/SKILL.md"),
+            .join("plugins/codexy/skills/git-workflow/references/pr-review-and-handoff.md"),
     )?;
 
     assert!(
-        skill.contains("commit { oid }"),
+        reference.contains("commit { oid }"),
         "reviewThreads comment evidence must include inline review comment commit OIDs"
+    );
+    assert!(
+        reference.contains("git status --short --branch > \"$state_dir/worktreeStatus.txt\"")
+            && reference.contains("worktreeStatus: $worktreeStatus"),
+        "completion-handoff capture must include current local git status evidence"
     );
     Ok(())
 }
