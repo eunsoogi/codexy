@@ -1,5 +1,13 @@
 use serde_json::Value;
 
+const STATUS_FIELDS: [&str; 5] = [
+    "worktreeStatus",
+    "localStatus",
+    "gitStatus",
+    "gitStatusShort",
+    "statusShort",
+];
+
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_child_readiness(&text) {
@@ -7,26 +15,35 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     }
     let mut errors = Vec::new();
     if claims_clean(&text) || claims_pr_ready(&text) {
-        match local_status(pr_state) {
-            Some(lines) => {
-                if lines.iter().any(|line| is_dirty_status_line(line)) {
-                    errors.push(format!(
-                        "child handoff claims clean/PR-ready worktree but current status is dirty: {}",
-                        lines.join("; ")
-                    ));
-                }
-            }
-            None => errors.push(
-                "child handoff claims clean/PR-ready worktree but current local git status evidence is missing"
-                    .into(),
-            ),
+        let lines: Vec<_> = status_fields(pr_state).collect();
+        if lines.is_empty() {
+            errors.push(
+                "child handoff claims clean/PR-ready worktree but current local git status evidence is missing".into(),
+            );
+        } else if lines.iter().any(|line| is_dirty_status_line(line)) {
+            errors.push(format!(
+                "child handoff claims clean/PR-ready worktree but current status is dirty: {}",
+                lines.join("; ")
+            ));
         }
     }
     if claims_synced_or_pushed(&text) {
-        if let Some(status) = branch_divergence(pr_state) {
-            errors.push(format!(
-                "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
-            ));
+        let statuses = pr_branch_statuses(pr_state);
+        if statuses.is_empty() {
+            errors.push(
+                "child handoff claims pushed/synced branch but matching current branch status evidence is missing"
+                    .into(),
+            );
+        } else {
+            if let Some(status) = statuses.iter().find(|status| {
+                status.contains("[ahead ")
+                    || status.contains("[behind ")
+                    || status.contains("[gone]")
+            }) {
+                errors.push(format!(
+                    "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
+                ));
+            }
         }
         if let Some(error) = pushed_head_mismatch(handoff, pr_state) {
             errors.push(error);
@@ -111,23 +128,11 @@ fn claims_pr_ready(text: &str) -> bool {
     .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
-fn local_status(pr_state: &Value) -> Option<Vec<String>> {
-    let statuses: Vec<_> = [
-        "worktreeStatus",
-        "localStatus",
-        "gitStatus",
-        "gitStatusShort",
-        "statusShort",
-    ]
-    .into_iter()
-    .filter_map(|field| pr_state.get(field))
-    .filter_map(status_lines)
-    .collect();
-    (!statuses.is_empty()).then(|| statuses.into_iter().flatten().collect())
-}
-
 fn status_lines(value: &Value) -> Option<Vec<String>> {
     if let Some(text) = value.as_str() {
+        if text.is_empty() {
+            return Some(vec![String::new()]);
+        }
         return Some(text.lines().map(str::trim).map(ToOwned::to_owned).collect());
     }
     value.as_array().map(|items| {
@@ -149,10 +154,18 @@ fn is_dirty_status_line(line: &str) -> bool {
             .any(|clean| line.eq_ignore_ascii_case(clean))
 }
 
-fn branch_divergence(pr_state: &Value) -> Option<String> {
-    status_fields(pr_state).find(|line| {
-        line.starts_with("##") && (line.contains("[ahead ") || line.contains("[behind "))
-    })
+fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
+    let Some(head) = string_field(pr_state, "headRefName") else {
+        return Vec::new();
+    };
+    let prefix = format!("## {head}...");
+    status_fields(pr_state)
+        .filter(|line| {
+            line.strip_prefix(&prefix)
+                .and_then(|suffix| suffix.split_whitespace().next())
+                .is_some_and(|upstream| !upstream.starts_with('['))
+        })
+        .collect()
 }
 
 fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
@@ -161,7 +174,7 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
             "child handoff claims pushed/synced head but PR state is missing headRefOid".into(),
         );
     };
-    let claimed = claimed_pushed_heads(handoff);
+    let claimed = super::child_handoff_readiness_heads::claimed_pushed_heads(handoff);
     if claimed.is_empty() {
         return Some(format!(
             "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not any comparable handoff head"
@@ -185,15 +198,14 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
 fn unresolved_thread(pr_state: &Value) -> Option<String> {
     let nodes = pr_state.get("reviewThreads")?.get("nodes")?.as_array()?;
     nodes.iter().find_map(|thread| {
-        (thread.get("isResolved").and_then(Value::as_bool) == Some(false))
-            .then(|| thread_label(thread))
+        (thread.get("isResolved").and_then(Value::as_bool) == Some(false)).then(|| {
+            format!(
+                "{} at {}",
+                string_field(thread, "id").unwrap_or("unknown thread"),
+                string_field(thread, "path").unwrap_or("unknown path")
+            )
+        })
     })
-}
-
-fn thread_label(thread: &Value) -> String {
-    let id = string_field(thread, "id").unwrap_or("unknown thread");
-    let path = string_field(thread, "path").unwrap_or("unknown path");
-    format!("{id} at {path}")
 }
 
 fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
@@ -201,46 +213,9 @@ fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
 }
 
 fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
-    [
-        "worktreeStatus",
-        "localStatus",
-        "gitStatus",
-        "gitStatusShort",
-        "statusShort",
-    ]
-    .into_iter()
-    .filter_map(|field| pr_state.get(field))
-    .filter_map(status_lines)
-    .flatten()
-}
-
-fn claimed_pushed_heads(text: &str) -> Vec<String> {
-    text.split(|ch| matches!(ch, '\n' | ';'))
-        .filter(|sentence| {
-            sentence.to_ascii_lowercase().contains("pushed")
-                || sentence.to_ascii_lowercase().contains("synced")
-                || sentence.to_ascii_lowercase().contains("local head")
-        })
-        .flat_map(head_refs_after_markers)
-        .collect()
-}
-
-fn head_refs_after_markers(text: &str) -> Vec<String> {
-    let mut refs = Vec::new();
-    let mut previous = String::new();
-    for token in text.split_whitespace() {
-        let candidate = token.trim_matches(|ch: char| !ch.is_ascii_hexdigit());
-        if matches!(
-            previous.as_str(),
-            "at" | "head" | "head:" | "sha" | "sha:" | "commit" | "commit:"
-        ) && (7..=40).contains(&candidate.len())
-            && candidate.chars().all(|ch| ch.is_ascii_hexdigit())
-        {
-            refs.push(candidate.to_ascii_lowercase());
-        }
-        previous = token
-            .trim_matches(|ch: char| !ch.is_ascii_alphabetic() && ch != ':')
-            .to_ascii_lowercase();
-    }
-    refs
+    STATUS_FIELDS
+        .into_iter()
+        .filter_map(|field| pr_state.get(field))
+        .filter_map(status_lines)
+        .flatten()
 }
