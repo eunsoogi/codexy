@@ -10,7 +10,6 @@ fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
         "child handoff",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestResult {
     assert_rejects_child_handoff(
@@ -21,7 +20,6 @@ fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestRes
         "mergeStateStatus",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
     assert_rejects_child_handoff(
@@ -32,7 +30,6 @@ fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
         "unresolved review thread",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestResult {
     assert_rejects_child_handoff(
