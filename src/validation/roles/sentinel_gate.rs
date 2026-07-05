@@ -27,63 +27,17 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reviewer evidence must record explicit unavailable evidence",
 ];
 const REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS: &[&str] = &["negated", "no"];
-const REASONING_CONTROL_DISALLOWED_PATTERNS: &[&str] = &[
-    "absent",
-    "acceptable",
-    "aren't required",
-    "can be skipped",
-    "can omit",
-    "does not have to",
-    "does not need",
-    "does not require",
-    "doesn't have to",
-    "doesn't need",
-    "doesn't require",
-    "do not have to",
-    "do not need",
-    "do not require",
-    "don't have to",
-    "don't need",
-    "don't require",
-    "forbidden",
-    "isn't needed",
-    "isn't necessary",
-    "isn't required",
-    "leave out",
-    "left out",
-    "may be skipped",
-    "may omit",
-    "missing",
-    "must not",
-    "mustn't",
-    "never required",
-    "need not",
-    "needn't",
-    "no need",
-    "no explicit reasoning control used or unavailable evidence",
-    "no reasoning control used or unavailable evidence",
-    "no requirement",
-    "not have to",
-    "not a requirement",
-    "not be required",
-    "not explicitly required",
-    "not mandatory",
-    "not needed",
-    "not required",
-    "not necessary",
-    "omitted",
-    "omit",
-    "optional",
-    "permissive",
-    "prohibited",
-    "skip",
-    "skipped",
-    "unnecessary",
-    "waive",
-    "waived",
-    "waiver",
-    "without",
-];
+const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
+    "absent|acceptable|aren't required|can be skipped|can omit|does not have to|",
+    "does not need|does not require|doesn't have to|doesn't need|doesn't require|",
+    "do not have to|do not need|do not require|don't have to|don't need|don't require|",
+    "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
+    "may be skipped|may omit|missing|must not|mustn't|need not|needn't|no need|",
+    "no explicit reasoning control used or unavailable evidence|",
+    "no reasoning control used or unavailable evidence|no requirement|not have to|",
+    "not a requirement|not mandatory|not needed|not necessary|omitted|omit|optional|",
+    "permissive|prohibited|skip|skipped|unnecessary|waive|waived|waiver|without",
+);
 
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
@@ -205,8 +159,9 @@ fn has_reasoning_control_evidence_followup(sentence: &str) -> bool {
             .split('|')
             .any(|prefix| candidate.starts_with(prefix))
             || REASONING_CONTROL_DISALLOWED_PATTERNS
-                .iter()
+                .split('|')
                 .any(|pattern| candidate.starts_with(pattern))
+            || contains_required_negation(candidate)
     };
     starts_with_followup(sentence)
         || sentence
@@ -223,8 +178,9 @@ fn has_reasoning_control_evidence_followup(sentence: &str) -> bool {
 
 fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
     REASONING_CONTROL_DISALLOWED_PATTERNS
-        .iter()
+        .split('|')
         .any(|pattern| contains_context_pattern(clause, pattern))
+        || contains_required_negation(clause)
 }
 
 fn contains_disallowed_reasoning_control_paragraph_context(paragraph: &str) -> bool {
@@ -247,4 +203,25 @@ fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
     clause
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .any(|word| word == pattern)
+}
+
+fn contains_required_negation(clause: &str) -> bool {
+    let mut before_previous = "";
+    let mut previous = "";
+    for word in clause
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+    {
+        if word == "required"
+            && (previous == "not"
+                || previous == "never"
+                || (before_previous == "not" && previous != "only")
+                || (before_previous == "no" && previous == "longer"))
+        {
+            return true;
+        }
+        before_previous = previous;
+        previous = word;
+    }
+    false
 }

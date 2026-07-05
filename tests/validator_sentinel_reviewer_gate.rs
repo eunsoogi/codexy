@@ -50,6 +50,9 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence isn't necessary",
         "reasoning control used or unavailable evidence is not necessary",
         "reasoning control used or unavailable evidence is not explicitly required",
+        "reasoning control used or unavailable evidence is not strictly required",
+        "reasoning control used or unavailable evidence is not actually required",
+        "reasoning control used or unavailable evidence is no longer required",
         "reasoning control used or unavailable evidence is never required",
         "reasoning control used or unavailable evidence may be left out",
         "may omit reasoning control used or unavailable evidence",
@@ -86,6 +89,17 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         );
         assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_accepts_affirmative_reasoning_control_evidence_control() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence",
+        "reasoning control used or unavailable evidence remains required",
+    )?;
+
+    assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 
