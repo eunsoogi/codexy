@@ -95,10 +95,13 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         .trim()
         .trim_end_matches(':')
         .trim();
+    let local = local.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
+    let local = local.split_whitespace().collect::<Vec<_>>().join(" ");
     matches!(
-        local,
+        local.as_str(),
         "no" | "non"
             | "not"
+            | "not an"
             | "not the"
             | "false"
             | "never"
