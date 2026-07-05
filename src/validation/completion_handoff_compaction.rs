@@ -160,7 +160,12 @@ fn has_negated_review_request_context(line: &str) -> bool {
             "not request codex review",
             "will not request codex review",
             "won't request codex review",
-        ],
+            "do not post @codex review", "don't post @codex review",
+            "must not post @codex review", "not post @codex review",
+            "will not post @codex review", "won't post @codex review",
+            "do not post codex review", "don't post codex review",
+            "must not post codex review", "not post codex review",
+            "will not post codex review", "won't post codex review"],
     ) || has_negated_request_codex_review_context(line)
 }
 

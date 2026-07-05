@@ -175,6 +175,49 @@ fn validator_cli_rejects_pending_request_followed_by_stale_prior_head_output() -
     Ok(())
 }
 
+#[test]
+fn validator_cli_allows_negated_post_review_request_wait_handoff() -> TestResult {
+    let handoff = format!(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #262 is duplicate/no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         {GIT_PREFLIGHT}\n\
+         Stop condition: do not post @codex review; wait for current-head review output.\n\
+         Next action: poll current Codex review; must not post @codex review.\n"
+    );
+    let output = validate_handoff_with_pr_state(
+        &handoff,
+        r#"{
+            "number":262,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "headRefOid":"0572edeeb262c70ccf5dbdb0e89b4136e27fd5e4",
+            "comments":[{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-07-05T03:47:46Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884742478"
+            }],
+            "reviews":[{
+                "body":"Codex Review\n\nReviewed commit: `0572edeeb2`",
+                "author":{"login":"chatgpt-codex-connector"},
+                "submittedAt":"2026-07-05T03:50:40Z",
+                "commit":{"oid":"0572edeeb262c70ccf5dbdb0e89b4136e27fd5e4"}
+            }],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should accept negated post-review wait/poll handoffs\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn valid_review_request_handoff(duplicate_state: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
