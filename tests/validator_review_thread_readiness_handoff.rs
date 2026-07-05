@@ -31,6 +31,36 @@ fn validator_rejects_ready_handoff_with_unresolved_accepted_no_change_thread() -
     Ok(())
 }
 
+#[test]
+fn validator_rejects_override_ready_handoff_without_review_thread_evidence() -> TestResult {
+    let handoff =
+        "Maintainer override: yes. PR is merge-ready after review-thread cleanup verification.\n";
+    for (pr_state, expected) in [
+        (
+            override_ready_missing_review_threads_pr_state(),
+            "missing reviewThreads",
+        ),
+        (
+            override_ready_paginated_review_threads_pr_state(),
+            "pagination hasNextPage true",
+        ),
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, pr_state)?;
+        assert!(
+            !output.status.success(),
+            "validator should require complete reviewThreads evidence before override readiness claims\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains(expected),
+            "expected {expected:?} in stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
@@ -95,5 +125,26 @@ fn unresolved_accepted_thread_override_pr_state() -> &'static str {
                 "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r1"
             }]}
         }]}
+    }"#
+}
+
+fn override_ready_missing_review_threads_pr_state() -> &'static str {
+    r#"{
+        "number": 133,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED"
+    }"#
+}
+
+fn override_ready_paginated_review_threads_pr_state() -> &'static str {
+    r#"{
+        "number": 133,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "reviewThreads": {"pageInfo":{"hasNextPage":true},"nodes":[]}
     }"#
 }
