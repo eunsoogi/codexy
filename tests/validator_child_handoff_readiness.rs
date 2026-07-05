@@ -53,7 +53,7 @@ fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult 
     let output = validate_handoff_with_pr_state(
         "Child handoff: branch clean. PR ready: no. Parent can merge: no. Pushed: no. Waiting on current blockers.\n",
         &pr_state_with(
-            r#""mergeStateStatus":"DIRTY","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+            r###""mergeStateStatus":"DIRTY","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
         ),
     )?;
 

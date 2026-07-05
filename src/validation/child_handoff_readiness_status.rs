@@ -8,13 +8,28 @@ const STATUS_FIELDS: [&str; 5] = [
     "statusShort",
 ];
 
-pub(super) fn dirty_status(pr_state: &Value) -> Option<String> {
+pub(super) fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
     STATUS_FIELDS
         .into_iter()
         .filter_map(|field| pr_state.get(field))
         .filter_map(status_lines)
-        .find(|lines| lines.iter().any(|line| is_dirty_status_line(line)))
-        .map(|lines| lines.join("; "))
+        .flatten()
+}
+
+pub(super) fn dirty_status(lines: &[String]) -> Option<String> {
+    lines
+        .iter()
+        .any(|line| is_dirty_status_line(line))
+        .then(|| lines.join("; "))
+}
+
+pub(super) fn branch_status_not_pushed(lines: &[String]) -> Option<&str> {
+    lines
+        .iter()
+        .find(|line| {
+            line.contains("[ahead ") || line.contains("[behind ") || line.contains("[gone]")
+        })
+        .map(String::as_str)
 }
 
 pub(super) fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
@@ -31,21 +46,22 @@ pub(super) fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
         .collect()
 }
 
-pub(super) fn branch_diverged(status: &str) -> bool {
-    ["[ahead ", "[behind ", "[gone]"]
-        .iter()
-        .any(|marker| status.contains(marker))
-}
-
 fn status_lines(value: &Value) -> Option<Vec<String>> {
     if let Some(text) = value.as_str() {
-        return Some(text.lines().map(str::trim).map(ToOwned::to_owned).collect());
+        let lines: Vec<_> = text
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(ToOwned::to_owned)
+            .collect();
+        return (!lines.is_empty()).then_some(lines);
     }
     value.as_array().map(|items| {
         items
             .iter()
             .filter_map(Value::as_str)
             .map(str::trim)
+            .filter(|line| !line.is_empty())
             .map(ToOwned::to_owned)
             .collect()
     })
@@ -58,14 +74,6 @@ fn is_dirty_status_line(line: &str) -> bool {
         && !["clean", "working tree clean", "nothing to commit"]
             .iter()
             .any(|clean| line.eq_ignore_ascii_case(clean))
-}
-
-fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
-    STATUS_FIELDS
-        .into_iter()
-        .filter_map(|field| pr_state.get(field))
-        .filter_map(status_lines)
-        .flatten()
 }
 
 fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
