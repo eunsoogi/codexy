@@ -11,7 +11,6 @@ fn validator_cli_rejects_sentinel_without_xhigh_reasoning() -> TestResult {
         "model_reasoning_effort = \"xhigh\"",
         "model_reasoning_effort = \"high\"",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("codexy-sentinel model_reasoning_effort must be xhigh"));
     Ok(())
@@ -21,7 +20,6 @@ fn validator_cli_rejects_sentinel_without_xhigh_reasoning() -> TestResult {
 fn validator_cli_rejects_sentinel_without_specialized_review_passes() -> TestResult {
     let output =
         validate_sentinel_replacement("validator/parser edge-case pass", "edge-case pass")?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
     Ok(())
@@ -53,11 +51,14 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "Every approval MUST reference reasoning control used or unavailable evidence when applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence when-applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence, when applicable",
+        "Every approval MUST reference reasoning control used or unavailable evidence unless the invocation surface exposes no reasoning controls",
         "Every approval MUST reference reasoning control used or unavailable evidence where applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence where-applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence as applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence as-applicable",
         "Every approval MUST include reasoning control used or unavailable evidence where available",
+        "reasoning control used or unavailable evidence as needed",
+        "reasoning control used or unavailable evidence where practical",
         "Every approval may include reasoning control used or unavailable evidence",
         "Every approval may reference reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence does not have to be supplied",
@@ -113,11 +114,9 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
             "reasoning control used or unavailable evidence",
             replacement,
         )?;
-
-        assert!(
-            !output.status.success(),
-            "validator accepted {replacement:?}"
-        );
+        if output.status.success() {
+            panic!("validator accepted {replacement:?}");
+        }
         assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
     Ok(())
@@ -131,9 +130,11 @@ fn validator_cli_rejects_weak_reasoning_control_evidence_preamble() -> TestResul
         "Every approval MUST try to reference the current diff or head",
         "Every approval MUST attempt to reference the current diff or head",
         "Every approval MUST prefer to reference the current diff or head",
+        "Every approval MUST endeavor to reference the current diff or head",
+        "Every approval MUST strive to reference the current diff or head",
+        "Every approval MUST make reasonable efforts to reference the current diff or head",
     ] {
         let output = validate_sentinel_replacement(EVIDENCE_PREAMBLE, replacement)?;
-
         if output.status.success() {
             panic!("validator accepted {replacement:?}");
         }
@@ -148,7 +149,6 @@ fn validator_cli_accepts_affirmative_reasoning_control_evidence_control() -> Tes
         "reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence remains required",
     )?;
-
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }

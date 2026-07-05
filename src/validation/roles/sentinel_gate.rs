@@ -27,13 +27,13 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
-    "may be ignored|may be skipped|may ignore|may include|may omit|may reference|may skip|missing|must attempt|must not|must prefer|must try|mustn't|",
+    "may be ignored|may be skipped|may ignore|may include|may omit|may reference|may skip|missing|must attempt|must endeavor|must make reasonable efforts|must not|must prefer|must strive|must try|mustn't|",
     "need not|needn't|no need|",
     "no explicit reasoning control used or unavailable evidence|",
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
     "not a requirement|not compulsory|not mandatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
     "permissive|prohibited|recommended|should include|should reference|skip|skipped|",
-    "unnecessary|waive|waived|waiver|as applicable|as-applicable|when-applicable|when available|when possible|where applicable|where-applicable|where available|where possible|without",
+    "unnecessary|unless|waive|waived|waiver|as applicable|as-applicable|as needed|when-applicable|when available|when possible|where applicable|where-applicable|where available|where possible|where practical|without",
 );
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
