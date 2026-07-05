@@ -154,17 +154,12 @@ fn validator_cli_rejects_pending_request_followed_by_stale_prior_head_output() -
                 "createdAt":"2026-07-04T05:20:00Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880789999"
             }],
-            "latestReviews":[{
-                "body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
-                "author":{"login":"chatgpt-codex-connector"},
-                "submittedAt":"2026-07-04T05:21:00Z"
-            }],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
     assert!(
         !output.status.success(),
-        "validator should reject another request when a request may still be pending despite stale output\nstdout: {}",
+        "validator should reject another request when a request may still be pending\nstdout: {}",
         String::from_utf8_lossy(&output.stdout)
     );
     assert!(

@@ -25,11 +25,19 @@ pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
 pub(super) fn has_pending_codex_review_request_or_current_head_output(pr_state: &Value) -> bool {
     let head = text_field(pr_state, "headRefOid");
     iter_json_objects(pr_state)
-        .any(|item| is_codex_review_request(item) || is_codex_review_output_item(item, head))
+        .any(|item| is_codex_review_output_item(item, head))
+        || latest_request_without_later_output(pr_state, false)
 }
 
 pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool {
-    let events = review_events(pr_state, true);
+    latest_request_without_later_output(pr_state, true)
+}
+
+fn latest_request_without_later_output(
+    pr_state: &Value,
+    current_head_output_only: bool,
+) -> bool {
+    let events = review_events(pr_state, current_head_output_only);
     let Some(latest_eyes_request) = events
         .iter()
         .enumerate()
