@@ -72,6 +72,7 @@ fn validator_rejects_ready_child_handoff_with_negative_proof_labels() -> TestRes
     );
     for handoff in [
         "Child handoff: ready for parent handoff. Branch clean: no. Synced: not verified. Pushed: no. PR-ready: no. Merge-ready: no.\n",
+        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. Clean: none. Synced: none. Pushed: none at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: none. Synced: none. Pushed: none at 068dbb247b7755035223c91ee39f26830f3c1609. PR-ready: none. Merge-ready: none.\n",
         "Child handoff: ready for parent handoff. Branch clean: no - worktree dirty. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Parent can open PR next: no.\n",
@@ -98,7 +99,6 @@ fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_without_comparable_head() -> TestResult {
     assert_rejects_child_handoff(

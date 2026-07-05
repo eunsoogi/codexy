@@ -8,16 +8,27 @@ use super::child_handoff_readiness_text::has_non_claim_phrase_label;
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     let claims_pr_ready = claims_pr_ready(&text);
+    let claims_child_readiness = claims_child_readiness(&text);
+    let claims_clean = claims_clean(&text);
+    let claims_synced = claims_synced(&text);
+    let claims_pushed = claims_pushed(&text);
     let mut errors = Vec::new();
-    if claims_pr_ready {
-        errors.extend(negative_proof_labels(&text).map(|label| {
+    errors.extend(
+        negative_proof_labels(
+            &text,
+            claims_pr_ready,
+            claims_clean,
+            claims_synced,
+            claims_pushed,
+        )
+        .map(|label| {
             format!("child handoff claims readiness but {label} proof is negative or non-claim")
-        }));
-    }
-    if !claims_child_readiness(&text) {
+        }),
+    );
+    if !claims_child_readiness {
         return errors;
     }
-    if claims_clean(&text) || claims_pr_ready {
+    if claims_clean || claims_pr_ready {
         let lines: Vec<_> = status_fields(pr_state).collect();
         if lines.is_empty() {
             errors.push(
@@ -35,7 +46,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             }
         }
     }
-    if claims_synced_or_pushed(&text) {
+    if claims_synced || claims_pushed {
         let statuses = pr_branch_statuses(pr_state);
         if statuses.is_empty() {
             errors.push(
@@ -112,8 +123,14 @@ fn claims_clean(text: &str) -> bool {
     .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
-fn claims_synced_or_pushed(text: &str) -> bool {
-    ["synced", "pushed", "remote/pr head match: yes"]
+fn claims_synced(text: &str) -> bool {
+    ["synced", "remote/pr head match: yes"]
+        .iter()
+        .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
+}
+
+fn claims_pushed(text: &str) -> bool {
+    ["pushed", "remote/pr head match: yes"]
         .iter()
         .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
@@ -133,12 +150,27 @@ fn claims_pr_ready(text: &str) -> bool {
     .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
 }
 
-fn negative_proof_labels(text: &str) -> impl Iterator<Item = &'static str> + '_ {
+fn negative_proof_labels(
+    text: &str,
+    claims_pr_ready: bool,
+    claims_clean: bool,
+    claims_synced: bool,
+    claims_pushed: bool,
+) -> impl Iterator<Item = &'static str> + '_ {
     [
-        ("clean", &["clean", "branch clean", "worktree clean"][..]),
-        ("synced", &["synced"][..]),
-        ("pushed", &["pushed", "remote/pr head match"][..]),
         (
+            claims_pr_ready || claims_clean,
+            "clean",
+            &["clean", "branch clean", "worktree clean"][..],
+        ),
+        (claims_pr_ready || claims_synced, "synced", &["synced"][..]),
+        (
+            claims_pr_ready || claims_pushed,
+            "pushed",
+            &["pushed", "remote/pr head match"][..],
+        ),
+        (
+            claims_pr_ready,
             "PR-ready",
             &[
                 "pr ready",
@@ -148,6 +180,7 @@ fn negative_proof_labels(text: &str) -> impl Iterator<Item = &'static str> + '_ 
             ][..],
         ),
         (
+            claims_pr_ready,
             "merge-ready",
             &[
                 "merge-ready",
@@ -158,11 +191,12 @@ fn negative_proof_labels(text: &str) -> impl Iterator<Item = &'static str> + '_ 
         ),
     ]
     .into_iter()
-    .filter_map(|(label, phrases)| {
-        phrases
-            .iter()
-            .any(|phrase| has_non_claim_phrase_label(text, phrase))
-            .then_some(label)
+    .filter_map(|(required, label, phrases)| {
+        (required
+            && phrases
+                .iter()
+                .any(|phrase| has_non_claim_phrase_label(text, phrase)))
+        .then_some(label)
     })
 }
 
