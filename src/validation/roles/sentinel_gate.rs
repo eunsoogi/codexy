@@ -56,6 +56,7 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &[&str] = &[
     "missing",
     "must not",
     "mustn't",
+    "never required",
     "need not",
     "needn't",
     "no need",
