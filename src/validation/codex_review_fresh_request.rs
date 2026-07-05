@@ -55,6 +55,15 @@ fn has_negated_review_request(clause: &str) -> bool {
         "won't request",
         "must not request",
         "mustn't request",
+        "not ready to request",
+        "not yet ready to request",
+        "not currently ready to request",
+        "isn't ready to request",
+        "isn't yet ready to request",
+        "isn't currently ready to request",
+        "aren't ready to request",
+        "aren't yet ready to request",
+        "aren't currently ready to request",
     ]
     .iter()
     .any(|phrase| clause.contains(phrase))
