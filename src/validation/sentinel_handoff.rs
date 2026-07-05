@@ -132,6 +132,7 @@ fn has_negative_label_value(suffix: &str) -> bool {
         "isn't currently ready",
         "missing",
         "missing evidence",
+        "evidence missing",
         "absent",
         "not provided",
         "not applicable",
@@ -189,8 +190,20 @@ fn is_locally_negated_after(suffix: &str) -> bool {
         .take(5)
         .collect();
     words
-        .iter()
-        .any(|word| matches!(*word, "missing" | "absent" | "lacking"))
+        .first()
+        .is_some_and(|word| matches!(*word, "missing" | "absent" | "lacking"))
+        || words.windows(2).any(|pair| {
+            matches!(
+                pair,
+                [
+                    "missing" | "absent" | "lacking",
+                    "evidence" | "status" | "verdict"
+                ] | [
+                    "evidence" | "status" | "verdict",
+                    "missing" | "absent" | "lacking"
+                ]
+            )
+        })
         || words
             .windows(2)
             .any(|pair| matches!(pair, ["not", "provided"]))

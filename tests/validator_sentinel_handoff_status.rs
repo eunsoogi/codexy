@@ -116,6 +116,7 @@ fn validator_rejects_generic_reviewer_gate_pass_as_sentinel_readiness() -> TestR
         "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS absent. Pushed: yes.\n",
         "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS evidence was not provided. Pushed: yes.\n",
         "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS: missing evidence. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel: PASS: evidence missing. Pushed: yes.\n",
         "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS: not provided. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
@@ -164,6 +165,7 @@ fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel: PASS, Euclid reviewed exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "PR ready for parent handoff. Sentinel: PASS. Missing follow-ups: none. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: PASS. Missing follow-ups: none. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Sentinel: PASS after fixing missing tests. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "PR ready for parent handoff. Packaged Sentinel returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "PR ready for parent handoff. Codexy Sentinel returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "PR ready for parent handoff. Packaged Codexy Sentinel reviewer gate returned PASS after reviewing exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
