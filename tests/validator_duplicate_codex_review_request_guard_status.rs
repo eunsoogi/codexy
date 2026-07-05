@@ -42,6 +42,54 @@ fn validator_cli_allows_status_evidence_about_absent_review_request() -> TestRes
     Ok(())
 }
 
+#[test]
+fn validator_cli_ignores_nested_review_text_request_mentions() -> TestResult {
+    let handoff = format!(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #262 has no-active-work after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         {GIT_PREFLIGHT}\n\
+         Stop condition: no merge; request at most one current-head Codex review.\n\
+         Next action: request Codex review on current head.\n"
+    );
+    let output = validate_handoff_with_pr_state(
+        &handoff,
+        r##"{
+            "number":262,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "headRefOid":"9ca76685a9f4a1f041ee6ef2e846876897ee3009",
+            "comments":[],
+            "reviews":[{
+                "body":"please request @codex review after this lands",
+                "author":{"login":"human-reviewer"},
+                "submittedAt":"2026-07-05T08:10:19Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/262#pullrequestreview-123"
+            }],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{
+                "id":"PRRT_nested",
+                "isResolved":false,
+                "isOutdated":false,
+                "path":"src/validation/codex_review_handoff_events.rs",
+                "comments":{"nodes":[{
+                    "body":"please request @codex review",
+                    "author":{"login":"human-reviewer"},
+                    "url":"https://github.com/eunsoogi/codexy/pull/262#discussion_r123"
+                }]}
+            }]}
+        }"##,
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should ignore non-issue-comment @codex review mentions\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(
     handoff: &str,
     pr_state: &str,

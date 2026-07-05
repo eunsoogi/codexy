@@ -151,7 +151,8 @@ fn validator_cli_rejects_pending_request_followed_by_stale_prior_head_output() -
             "comments":[{
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
-                "createdAt":"2026-07-04T05:20:00Z"
+                "createdAt":"2026-07-04T05:20:00Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880789999"
             }],
             "latestReviews":[{
                 "body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",

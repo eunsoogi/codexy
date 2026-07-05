@@ -25,8 +25,8 @@ fn validator_cli_accepts_later_inline_codex_review_comment() -> TestResult {
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-3001",
                 "reactionGroups":[{
                     "content":"EYES",
                     "users":{"totalCount":1}
@@ -69,8 +69,8 @@ fn validator_cli_rejects_unresolved_inline_codex_review_comment() -> TestResult 
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-3002",
                 "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{
@@ -103,7 +103,7 @@ fn validator_cli_rejects_readiness_without_complete_review_thread_evidence() -> 
         let output = validate_handoff_with_pr_state(
             "Codex review passed on the current head. PR is merge-ready.\n",
             &format!(
-                r#"{{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{{"body":"@codex review","author":{{"login":"eunsoogi"}},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{{"content":"EYES","users":{{"totalCount":1}}}}]}},{{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`","author":{{"login":"chatgpt-codex-connector"}},"createdAt":"2026-06-22T12:50:03Z"}}]{review_threads}}}"#
+                r#"{{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{{"body":"@codex review","author":{{"login":"eunsoogi"}},"createdAt":"2026-06-22T12:45:06Z","url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-3003","reactionGroups":[{{"content":"EYES","users":{{"totalCount":1}}}}]}},{{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`","author":{{"login":"chatgpt-codex-connector"}},"createdAt":"2026-06-22T12:50:03Z"}}]{review_threads}}}"#
             ),
         )?;
         assert_rejected_with_stderr(
@@ -119,11 +119,11 @@ fn validator_cli_rejects_readiness_without_complete_review_thread_evidence() -> 
 fn validator_cli_rejects_codex_output_for_prior_head() -> TestResult {
     for (pr_state, message) in [
         (
-            r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],"latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+            r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-3004","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],"latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
             "validator should reject Codex output reviewed on an older head",
         ),
         (
-            r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],"latestReviews":[{"body":"Didn't find any major issues.","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
+            r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-3005","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],"latestReviews":[{"body":"Didn't find any major issues.","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
             "validator should reject Codex output without current-head commit evidence",
         ),
     ] {
@@ -162,7 +162,7 @@ fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult 
             "mergeStateStatus":"CLEAN",
             "reviewDecision":"APPROVED",
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
-            "comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],
+            "comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-3006","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],
             "reviews":[{"body":"","state":"APPROVED","commit":{"oid":"32b03a210b3defb2d29dd352283ea2488e60d893"},"author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
@@ -197,7 +197,7 @@ fn validator_cli_rejects_unchecked_maintainer_override_with_eyes_only_review() -
 }
 
 fn eyes_only_pr_state() -> &'static str {
-    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
+    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-3007","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
 }
 
 fn assert_rejected_eyes_only(output: &std::process::Output, message: &str) {

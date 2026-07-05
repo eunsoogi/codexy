@@ -134,10 +134,10 @@ fn is_codex_review_request(item: &Value) -> bool {
 }
 
 fn is_pr_comment_item(item: &Value) -> bool {
-    item.get("author").is_some()
-        || item.get("user").is_some()
-        || text_field(item, "url").is_some_and(|url| url.contains("#issuecomment-"))
-        || text_field(item, "html_url").is_some_and(|url| url.contains("#issuecomment-"))
+    ["url", "html_url"]
+        .iter()
+        .filter_map(|field| text_field(item, field))
+        .any(|url| url.contains("#issuecomment-"))
 }
 
 fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
