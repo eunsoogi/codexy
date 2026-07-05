@@ -85,6 +85,23 @@ Restart Codex or start a fresh session after registration before expecting new
   If the report discusses addressed review feedback, the PR state evidence
   MUST include GraphQL `reviewThreads.nodes`.
 
+## Active Child Thread Limit
+
+- Orchestrators MUST keep at most five active Codex app child threads at a time
+  when creating, continuing, or resuming child lanes. MUST NOT create or resume
+  a sixth active child thread until another active child thread has finished,
+  stopped, or been explicitly removed from the active set.
+- Before creating a new child Codex thread, orchestrators MUST check whether an
+  existing thread already owns the same issue or PR. If an owner exists and is
+  usable, orchestrators MUST reuse that owner thread or MUST continue that
+  owner thread instead of creating a replacement.
+- Replacement child threads MUST be created only after existing owner evidence
+  is inspected and the old owner is stopped, unusable, or explicitly
+  superseded.
+- The active-child limit applies to Codex app child threads created or continued
+  by an orchestrator. Packaged specialist subagents are helper/reviewer roles
+  and MUST NOT count as active Codex app child threads.
+
 ## Multi-Agent And Reviewer Gate
 
 MUST use multi-agent dispatch for bounded specialist help inside the current thread

@@ -1,5 +1,6 @@
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let mut errors = Vec::new();
+    errors.extend(super::child_lane_active_threads::check(evidence));
     if super::child_lane_ownership_subagents::has_subagent_as_thread_owner(evidence) {
         errors.push(
             "child-owned lane claims a subagent as the Codex subthread/worktree owner".to_owned(),

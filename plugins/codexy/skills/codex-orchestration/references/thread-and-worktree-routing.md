@@ -40,6 +40,19 @@ child-owned implementation lane through another surface.
 MUST use this when calling Codex app thread/worktree tools such as `fork_thread` or
 `create_thread` with a worktree environment.
 
+- MUST inspect current child owner state before creating or resuming a child
+  Codex thread. The preflight evidence MUST include the current active child
+  Codex thread count and whether an existing thread owns the same issue or PR.
+- MUST keep at most five active Codex app child threads at a time. MUST NOT call
+  `create_thread`, `fork_thread`, or a child-thread resume/continue operation
+  that would make six active Codex app child threads.
+- If an existing usable thread already owns the same issue or PR, MUST reuse
+  that owner thread or MUST continue that owner thread instead of creating a
+  replacement. Replacement child threads MUST require inspected existing-owner
+  evidence plus proof that the old owner is stopped, unusable, or explicitly
+  superseded.
+- Packaged specialist subagents are helper or reviewer roles and MUST NOT count
+  toward the five active Codex app child-thread limit.
 - MUST preflight branch names with local Git:
 
 ```sh
@@ -83,6 +96,11 @@ git rev-parse --verify origin/<branch>
 - One branch per pull request.
 - One independent requested outcome per child lane unless a maintainer
   explicitly scoped multiple outcomes as one atomic lane before implementation.
+- Orchestrators MUST keep at most five Codex app child threads active
+  concurrently for orchestrator-created or orchestrator-resumed child lanes.
+- Existing issue or PR owner threads MUST be reused when present and usable;
+  replacement owner threads MUST require old-owner stop, unusable, or
+  supersession evidence.
 - Worktree-based implementation lanes MUST require a Codex thread when thread tools
   are available.
 - Worktree-based implementation lanes MUST require lane ownership before edits:
