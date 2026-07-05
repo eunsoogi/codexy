@@ -12,6 +12,28 @@ fn issue_title_hook_rejects_newline_after_conventional_prefix()
     reject_issue_title("Fix(agents)\nreject negated sentinel evidence")
 }
 
+#[test]
+fn issue_title_hook_rejects_bare_colon_conventional_title() -> Result<(), Box<dyn std::error::Error>>
+{
+    reject_issue_title("Fix(agents):")?;
+    reject_issue_title("Fix!: ")
+}
+
+#[test]
+fn issue_title_hook_rejects_repeated_colon_conventional_title()
+-> Result<(), Box<dyn std::error::Error>> {
+    reject_issue_title("Fix(agents)::")?;
+    reject_issue_title("Fix!::")
+}
+
+#[test]
+fn issue_title_hook_rejects_adjacent_colon_conventional_title()
+-> Result<(), Box<dyn std::error::Error>> {
+    reject_issue_title("Fix(agents):reject")?;
+    reject_issue_title("Fix!:break")?;
+    reject_issue_title("Fix:break")
+}
+
 fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
     let output = Command::new(hook_script("codexy-issue-title-check.sh"))
         .args(["--issue-title", title])
