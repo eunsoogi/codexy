@@ -12,6 +12,9 @@ fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_threa
         "No current-head Codex output exists; ready to request Codex review.\n",
         "Next action: post @codex review on the current head.\n",
         "Next action: comment @codex review on the current head.\n",
+        "Next action: @codex review.\n",
+        "Review request: @codex review current head.\n",
+        "Next action: send @codex review on the current head.\n",
         "Next action: request review from @codex on the current head.\n",
         "Next action: request @codex to review the current head.\n",
     ] {
