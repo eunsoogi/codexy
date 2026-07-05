@@ -57,12 +57,7 @@ fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult 
         ),
     )?;
 
-    assert!(
-        output.status.success(),
-        "negative readiness labels should not be treated as claims\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "blocker handoff should pass");
     Ok(())
 }
 #[test]
@@ -76,6 +71,7 @@ fn validator_rejects_ready_child_handoff_with_negative_proof_labels() -> TestRes
         "Child handoff: ready for parent handoff. Clean: none. Synced: none. Pushed: none at 068dbb247b7755035223c91ee39f26830f3c1609. PR-ready: none. Merge-ready: none.\n",
         "Child handoff: ready for parent handoff. Branch clean: no - worktree dirty. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Parent can open PR next: no.\n",
+        "Child handoff: ready for parent handoff. Pull request ready: no. Clean: yes. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: no. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: not clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: not yet clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
@@ -86,6 +82,17 @@ fn validator_rejects_ready_child_handoff_with_negative_proof_labels() -> TestRes
         "PR is merge-ready. Branch clean: dirty. Synced: not synced. Pushed: not pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
     ] {
         assert_rejects_child_handoff(handoff, state.clone(), "negative or non-claim")?;
+    }
+    for label in
+        "PR readiness|PR-readiness|Merge readiness|Merge-readiness|Ready for handoff".split('|')
+    {
+        assert_rejects_child_handoff(
+            &format!(
+                "Child handoff: ready for parent handoff. {label}: no. Clean: yes. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n"
+            ),
+            state.clone(),
+            "negative or non-claim",
+        )?;
     }
     Ok(())
 }
@@ -194,22 +201,14 @@ fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
         ),
     )?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow clean child handoff evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "clean child handoff should pass");
     Ok(())
 }
-
 fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, &pr_state)?;
     assert!(
         !output.status.success(),
-        "validator should reject false child handoff\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        "validator should reject false child handoff"
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains(needle), "unexpected stderr: {stderr}");

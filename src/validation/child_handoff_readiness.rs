@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+use super::child_handoff_readiness_claims as claims;
 use super::child_handoff_readiness_status::{
     branch_status_not_pushed, dirty_status, pr_branch_statuses, status_fields,
 };
@@ -7,11 +8,11 @@ use super::child_handoff_readiness_text::has_non_claim_phrase_label;
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
-    let claims_pr_ready = claims_pr_ready(&text);
-    let claims_child_readiness = claims_child_readiness(&text);
-    let claims_clean = claims_clean(&text);
-    let claims_synced = claims_synced(&text);
-    let claims_pushed = claims_pushed(&text);
+    let claims_pr_ready = claims::pr_ready(&text);
+    let claims_child_readiness = claims::child_readiness(&text);
+    let claims_clean = claims::clean(&text);
+    let claims_synced = claims::synced(&text);
+    let claims_pushed = claims::pushed(&text);
     let mut errors = Vec::new();
     errors.extend(
         negative_proof_labels(
@@ -95,61 +96,6 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     errors
 }
 
-fn claims_child_readiness(text: &str) -> bool {
-    [
-        "child handoff",
-        "parent handoff",
-        "pr ready for parent handoff",
-        "parent can open pr next: yes",
-        "parent can merge",
-        "remote/pr head match: yes",
-        "pushed: yes",
-        "branch clean",
-        "clean, synced",
-        "synced, and pushed",
-    ]
-    .iter()
-    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn claims_clean(text: &str) -> bool {
-    [
-        "branch clean",
-        "worktree clean",
-        "dirty state: clean",
-        " clean,",
-    ]
-    .iter()
-    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn claims_synced(text: &str) -> bool {
-    ["synced", "remote/pr head match: yes"]
-        .iter()
-        .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn claims_pushed(text: &str) -> bool {
-    ["pushed", "remote/pr head match: yes"]
-        .iter()
-        .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn claims_pr_ready(text: &str) -> bool {
-    [
-        "pr ready",
-        "pr-ready",
-        "ready for parent handoff",
-        "ready to merge",
-        "merge-ready",
-        "merge ready",
-        "parent can open pr next: yes",
-        "parent can merge",
-    ]
-    .iter()
-    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
 fn negative_proof_labels(
     text: &str,
     claims_pr_ready: bool,
@@ -175,7 +121,14 @@ fn negative_proof_labels(
             &[
                 "pr ready",
                 "pr-ready",
+                "pr is ready",
+                "pull-request-ready",
+                "pull request ready",
+                "pull request is ready",
+                "pr readiness",
+                "pr-readiness",
                 "ready for parent handoff",
+                "ready for handoff",
                 "parent can open pr next",
             ][..],
         ),
@@ -186,6 +139,9 @@ fn negative_proof_labels(
                 "merge-ready",
                 "merge ready",
                 "ready to merge",
+                "ready for merge",
+                "merge readiness",
+                "merge-readiness",
                 "parent can merge",
             ][..],
         ),
@@ -239,7 +195,6 @@ fn unresolved_thread(pr_state: &Value) -> Option<String> {
         })
     })
 }
-
 fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
 }
