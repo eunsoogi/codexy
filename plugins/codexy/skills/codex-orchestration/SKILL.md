@@ -90,8 +90,8 @@ Orchestration MUST maintain a durable active/waiting child thread ledger for
 Codex app child threads across normal polling, compaction recovery, dreaming
 rehydration, and parent handoffs. Active child Codex app threads MUST be capped
 at 5. The orchestrator MUST count only active or waiting Codex app child threads
-against that cap; packaged specialist subagents MUST NOT be counted unless
-existing code explicitly treats them as Codex app child threads.
+against that cap. Packaged specialist subagents MUST NOT be counted as active
+child Codex app threads.
 Before creating a new child Codex app thread, orchestration MUST check the
 ledger and current issue/PR state for an existing issue/PR owner thread, and
 MUST reuse it when present instead of creating a duplicate owner.

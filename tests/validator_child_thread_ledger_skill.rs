@@ -33,6 +33,27 @@ fn validator_cli_rejects_missing_child_thread_ledger_contract() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_specialist_subagent_cap_exception() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    assert!(skill.contains("Packaged specialist subagents MUST NOT be counted"));
+    std::fs::write(
+        &skill_path,
+        skill.replace(
+            "Packaged specialist subagents MUST NOT be counted as active\nchild Codex app threads.",
+            "Packaged specialist subagents MUST NOT be counted unless existing code explicitly treats them as Codex app child threads.",
+        ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("packaged specialist subagents must not be counted unless"));
+    Ok(())
+}
+
 fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");

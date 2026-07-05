@@ -42,6 +42,13 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "packaged specialist subagents must not be counted",
             ],
         );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must not allow specialist subagents to count against the child thread cap",
+            &["packaged specialist subagents must not be counted unless"],
+        );
     }
 }
 
@@ -57,6 +64,24 @@ fn require_all(
         if !lower.contains(phrase) {
             errors.push(format!(
                 "{} {requirement}: missing `{phrase}`",
+                display_relative(path)
+            ));
+        }
+    }
+}
+
+fn reject_all(
+    path: &Path,
+    text: &str,
+    errors: &mut Vec<String>,
+    requirement: &str,
+    phrases: &[&str],
+) {
+    let lower = normalized_whitespace(text);
+    for phrase in phrases {
+        if lower.contains(phrase) {
+            errors.push(format!(
+                "{} {requirement}: forbidden `{phrase}`",
                 display_relative(path)
             ));
         }
