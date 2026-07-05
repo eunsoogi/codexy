@@ -61,6 +61,57 @@ fn validator_rejects_override_ready_handoff_without_review_thread_evidence() -> 
     Ok(())
 }
 
+#[test]
+fn validator_rejects_readiness_aliases_without_review_thread_evidence() -> TestResult {
+    for handoff in [
+        "Maintainer override: yes. PR-readiness evidence: all gates passed.\n",
+        "Maintainer override: yes. PR readiness evidence: all gates passed.\n",
+        "Maintainer override: yes. merge-readiness evidence: all gates passed.\n",
+        "Maintainer override: yes. merge readiness evidence: all gates passed.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            handoff,
+            override_ready_missing_review_threads_pr_state(),
+        )?;
+        assert!(
+            !output.status.success(),
+            "validator should require reviewThreads evidence for readiness alias handoff {handoff:?}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("missing reviewThreads"),
+            "expected missing reviewThreads in stderr for handoff {handoff:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_readiness_aliases_with_unresolved_threads() -> TestResult {
+    for handoff in [
+        "Maintainer override: yes. PR-readiness evidence: all gates passed.\n",
+        "Maintainer override: yes. PR readiness evidence: all gates passed.\n",
+        "Maintainer override: yes. merge-readiness evidence: all gates passed.\n",
+        "Maintainer override: yes. merge readiness evidence: all gates passed.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, unresolved_alias_ready_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should reject readiness alias handoff {handoff:?} while review threads remain unresolved\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOAlias"),
+            "expected unresolved thread id in stderr for handoff {handoff:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
@@ -146,5 +197,28 @@ fn override_ready_paginated_review_threads_pr_state() -> &'static str {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "reviewThreads": {"pageInfo":{"hasNextPage":true},"nodes":[]}
+    }"#
+}
+
+fn unresolved_alias_ready_pr_state() -> &'static str {
+    r#"{
+        "number": 133,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "repository": "eunsoogi/codexy",
+        "labels": [{"name":"type/fix"},{"name":"status/review"}],
+        "closingIssuesReferences": [{"number":266,"labels":[{"name":"type/fix"},{"name":"status/review"}]}],
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[{
+            "id": "PRRT_kwDOAlias",
+            "isResolved": false,
+            "isOutdated": false,
+            "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+            "comments": {"nodes": [{
+                "author": {"login":"reviewer"},
+                "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r2"
+            }]}
+        }]}
     }"#
 }

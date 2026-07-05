@@ -112,8 +112,8 @@ fn validator_rejects_label_consideration_without_captured_repository_taxonomy() 
 #[test]
 fn validator_accepts_codexy_readiness_with_empty_captured_repository_taxonomy() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "PR-readiness evidence: all gates passed. Labels considered: repository has no matching lane label.\n",
-        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[],"closingIssuesReferences":[{"number":180,"labels":[]}]}"#,
+        "Maintainer override: yes. PR-readiness evidence: all gates passed. Labels considered: repository has no matching lane label.\n",
+        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[],"closingIssuesReferences":[{"number":180,"labels":[]}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )?;
 
     assert_accepted(&output, "empty captured repository taxonomy should accept");

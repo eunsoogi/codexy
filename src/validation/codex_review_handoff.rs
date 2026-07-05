@@ -6,7 +6,7 @@ use super::codex_review_handoff_events::{
     has_latest_eyes_request_without_later_codex_output, has_unresolved_codex_review_thread,
 };
 
-const READY_PHRASES: &str = "merge-ready|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr ready|pull-request-ready|pull request ready|codex review passed|codex review completed|codex review complete|codex review approved";
+const READY_PHRASES: &str = "merge-ready|merge-readiness|merge readiness|merge ready|ready to merge|ready for merge|ready for parent handoff|pr-ready|pr-readiness|pr readiness|pr ready|pull-request-ready|pull request ready|codex review passed|codex review completed|codex review complete|codex review approved";
 const OVERRIDE_PHRASES: &str = "maintainer override: yes|maintainer override: granted|maintainer accepted proceeding without codex review|maintainer accepted proceeding without full codex review|maintainer explicitly accepted proceeding without codex review|maintainer explicitly accepted proceeding without full codex review";
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_ready = claims_codex_review_ready(handoff);
