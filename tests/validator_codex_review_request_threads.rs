@@ -34,6 +34,42 @@ fn validator_allows_single_fresh_codex_review_request_without_unresolved_threads
 }
 
 #[test]
+fn validator_rejects_fresh_codex_review_request_with_existing_current_head_request() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Current-head @codex review request already has eyes. Request exactly one fresh Codex review now.\n",
+        current_head_eyes_request_pr_state(),
+    )?;
+    assert_failure_contains(
+        &output,
+        "validator should preserve duplicate current-head Codex review request guard",
+        "current-head Codex review activity blocks fresh Codex review requests",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_fresh_codex_review_request_without_review_thread_evidence() -> TestResult {
+    for (pr_state, needle) in [
+        (missing_review_threads_pr_state(), "missing reviewThreads"),
+        (
+            paginated_review_threads_pr_state(),
+            "pagination hasNextPage true",
+        ),
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "Request exactly one fresh Codex review now.\n",
+            pr_state,
+        )?;
+        assert_failure_contains(
+            &output,
+            "validator should require complete reviewThreads evidence before fresh review requests",
+            needle,
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_allows_negated_fresh_codex_review_request_with_unresolved_thread() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
@@ -53,6 +89,7 @@ fn validator_allows_no_request_status_with_negated_next_action() -> TestResult {
         "Codex review state: no current-head Codex review request exists. Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
         "Codex review state: no @codex review request exists. Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
         "Codex review state: not ready to request @codex review because review threads remain unresolved.\n",
+        "Before requesting @codex review, inspect PR review threads. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, unresolved_thread_pr_state())?;
         assert_success(
@@ -149,5 +186,46 @@ fn unresolved_thread_pr_state() -> &'static str {
                 "comments": {"nodes": [{"author":{"login":"reviewer"},"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}
             }]
         }
+    }"#
+}
+
+fn current_head_eyes_request_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body": "@codex review",
+            "author": {"login": "eunsoogi"},
+            "createdAt": "2026-06-22T12:45:06Z",
+            "reactionGroups": [{"content":"EYES","users":{"totalCount":1}}]
+        }],
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
+    }"#
+}
+
+fn missing_review_threads_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"
+    }"#
+}
+
+fn paginated_review_threads_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "reviewThreads": {"pageInfo":{"hasNextPage":true},"nodes":[]}
     }"#
 }
