@@ -63,6 +63,10 @@ fn validator_cli_rejects_prefix_only_conventional_issue_title()
     reject_issue_title(
         "Fix(agents) reject negated sentinel evidence",
         "issue title must not use Conventional Commit style",
+    )?;
+    reject_issue_title(
+        "Fix(agents) please: reject evidence",
+        "issue title must not use Conventional Commit style",
     )
 }
 

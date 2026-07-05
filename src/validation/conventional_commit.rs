@@ -58,11 +58,16 @@ fn is_issue_conventional_subject(subject: &str) -> bool {
             if is_conventional_prefix(&prefix.to_ascii_lowercase()) {
                 return true;
             }
-            if !prefix.ends_with(':') {
-                return false;
+            if prefix.ends_with(':') {
+                let prefix = prefix.trim_end_matches(':');
+                if is_conventional_prefix(&prefix.to_ascii_lowercase()) {
+                    return true;
+                }
             }
-            let prefix = prefix.trim_end_matches(':');
-            if is_conventional_prefix(&prefix.to_ascii_lowercase()) {
+            let token = prefix.split_whitespace().next().unwrap_or(prefix);
+            if (token.contains('(') || token.ends_with('!'))
+                && is_conventional_prefix(&token.to_ascii_lowercase())
+            {
                 return true;
             }
         }
