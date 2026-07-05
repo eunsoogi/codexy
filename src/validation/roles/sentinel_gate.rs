@@ -17,8 +17,9 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
 ];
 
 const REASONING_CONTROL_EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
-const REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES: &[&str] =
-    &["this ", "that ", "it ", "evidence", "requirement"];
+const REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES: &str = "this |that |it |evidence|requirement";
+const REASONING_CONTROL_EVIDENCE_FOLLOWUP_REFERENCES: &str =
+    "this evidence|that evidence|the evidence|this requirement|that requirement|the requirement";
 const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reasoning control:",
     "packaged sentinel definition must run with the highest available reasoning setting",
@@ -199,7 +200,7 @@ fn next_sentence_start(bytes: &[u8], clause_end: usize) -> Option<usize> {
 fn has_reasoning_control_evidence_followup(sentence: &str) -> bool {
     let starts_with_followup = |candidate: &str| {
         REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES
-            .iter()
+            .split('|')
             .any(|prefix| candidate.starts_with(prefix))
             || REASONING_CONTROL_DISALLOWED_PATTERNS
                 .iter()
@@ -212,6 +213,10 @@ fn has_reasoning_control_evidence_followup(sentence: &str) -> bool {
         || sentence
             .split_once(' ')
             .is_some_and(|(_, tail)| starts_with_followup(tail.trim_start()))
+        || (contains_disallowed_reasoning_control_context(sentence)
+            && REASONING_CONTROL_EVIDENCE_FOLLOWUP_REFERENCES
+                .split('|')
+                .any(|pattern| contains_context_pattern(sentence, pattern)))
 }
 
 fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
