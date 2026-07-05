@@ -43,8 +43,14 @@ fn has_non_claim_label_value(suffix: &str) -> bool {
             "not checked",
             "not run",
             "not clean",
+            "not yet clean",
+            "not currently clean",
             "not pushed",
+            "not yet pushed",
+            "not currently pushed",
             "not synced",
+            "not yet synced",
+            "not currently synced",
             "unverified",
             "unconfirmed",
             "unchecked",
@@ -57,6 +63,7 @@ fn has_non_claim_label_value(suffix: &str) -> bool {
             "deferred",
             "n/a",
             "na",
+            "no",
         ]
         .iter()
         .any(|phrase| label_value_starts_with(suffix, phrase))

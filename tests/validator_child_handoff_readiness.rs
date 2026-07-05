@@ -39,7 +39,6 @@ fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestR
         "reviewThreads",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResult {
     assert_rejects_child_handoff(
@@ -49,7 +48,6 @@ fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResul
         "reviewThreads.nodes",
     )
 }
-
 #[test]
 fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -70,14 +68,19 @@ fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult 
 #[test]
 fn validator_rejects_ready_child_handoff_with_negative_proof_labels() -> TestResult {
     let state = pr_state_with(
-        r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+        r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
     );
     for handoff in [
         "Child handoff: ready for parent handoff. Branch clean: no. Synced: not verified. Pushed: no. PR-ready: no. Merge-ready: no.\n",
+        "Child handoff: ready for parent handoff. Branch clean: no - worktree dirty. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Parent can open PR next: no.\n",
         "Child handoff: ready for parent handoff. Clean: no. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: not clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: not yet clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "Child handoff: ready for parent handoff. Clean: pending. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: yes. Synced: not currently synced. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: yes. Synced: yes. Pushed: no (local ahead) at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: yes. Synced: yes. Pushed: not yet pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
         "PR is merge-ready. Branch clean: dirty. Synced: not synced. Pushed: not pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
     ] {
         assert_rejects_child_handoff(handoff, state.clone(), "negative or non-claim")?;
@@ -105,7 +108,6 @@ fn validator_rejects_pushed_handoff_without_comparable_head() -> TestResult {
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_without_matching_branch_status_evidence() -> TestResult {
     let handoff =
@@ -140,7 +142,6 @@ fn validator_rejects_pushed_handoff_without_matching_branch_status_evidence() ->
     }
     Ok(())
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResult {
     assert_rejects_child_handoff(
@@ -151,7 +152,6 @@ fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResu
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_when_branch_status_is_unsynced() -> TestResult {
     let handoff =
