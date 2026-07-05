@@ -48,14 +48,17 @@ fn validator_allows_negated_fresh_codex_review_request_with_unresolved_thread() 
 
 #[test]
 fn validator_allows_no_request_status_with_negated_next_action() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Codex review state: no current-head request exists. Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
-        unresolved_thread_pr_state(),
-    )?;
-    assert_success(
-        &output,
-        "validator should not treat no-current-head-request status as a fresh review request",
-    );
+        "Codex review state: no current-head Codex review request exists. Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
+        "Codex review state: no @codex review request exists. Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, unresolved_thread_pr_state())?;
+        assert_success(
+            &output,
+            "validator should not treat no-current-head-request status as a fresh review request",
+        );
+    }
     Ok(())
 }
 
