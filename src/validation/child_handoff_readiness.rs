@@ -1,31 +1,45 @@
 use serde_json::Value;
 
-const STATUS_FIELDS: [&str; 5] = [
-    "worktreeStatus",
-    "localStatus",
-    "gitStatus",
-    "gitStatusShort",
-    "statusShort",
-];
+use super::child_handoff_readiness_claims as claims;
+use super::child_handoff_readiness_status::{
+    branch_status_not_pushed, dirty_status, pr_branch_statuses, status_fields,
+};
+use super::child_handoff_readiness_text::has_non_claim_phrase_label;
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
-    if !claims_child_readiness(&text) {
-        return Vec::new();
-    }
+    let claims_pr_ready = claims::pr_ready(&text);
+    let claims_child_readiness = claims::child_readiness(&text);
+    let claims_clean = claims::clean(&text);
+    let claims_synced = claims::synced(&text);
+    let claims_pushed = claims::pushed(&text);
     let mut errors = Vec::new();
-    if claims_clean(&text) || claims_pr_ready(&text) {
+    errors.extend(
+        negative_proof_labels(
+            &text,
+            claims_pr_ready,
+            claims_clean,
+            claims_synced,
+            claims_pushed,
+        )
+        .map(|label| {
+            format!("child handoff claims readiness but {label} proof is negative or non-claim")
+        }),
+    );
+    if !claims_child_readiness {
+        return errors;
+    }
+    if claims_clean || claims_pr_ready {
         let lines: Vec<_> = status_fields(pr_state).collect();
         if lines.is_empty() {
             errors.push(
                 "child handoff claims clean/PR-ready worktree but current local git status evidence is missing".into(),
             );
-        } else if lines.iter().any(|line| is_dirty_status_line(line)) {
+        } else if let Some(status) = dirty_status(&lines) {
             errors.push(format!(
-                "child handoff claims clean/PR-ready worktree but current status is dirty: {}",
-                lines.join("; ")
+                "child handoff claims clean/PR-ready worktree but current status is dirty: {status}"
             ));
-        } else if claims_pr_ready(&text) {
+        } else if claims_pr_ready {
             if let Some(status) = branch_status_not_pushed(&lines) {
                 errors.push(format!(
                     "child handoff claims PR readiness but current branch status is not pushed: {status}"
@@ -33,25 +47,23 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             }
         }
     }
-    if claims_synced_or_pushed(&text) {
+    if claims_synced || claims_pushed {
         let statuses = pr_branch_statuses(pr_state);
         if statuses.is_empty() {
             errors.push(
                 "child handoff claims pushed/synced branch but matching current branch status evidence is missing"
                     .into(),
             );
-        } else {
-            if let Some(status) = branch_status_not_pushed(&statuses) {
-                errors.push(format!(
-                    "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
-                ));
-            }
+        } else if let Some(status) = branch_status_not_pushed(&statuses) {
+            errors.push(format!(
+                "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
+            ));
         }
         if let Some(error) = pushed_head_mismatch(handoff, pr_state) {
             errors.push(error);
         }
     }
-    if claims_pr_ready(&text) {
+    if claims_pr_ready {
         if let Some(state) = string_field(pr_state, "mergeStateStatus") {
             if !state.eq_ignore_ascii_case("CLEAN") {
                 errors.push(format!(
@@ -84,103 +96,64 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     errors
 }
 
-fn claims_child_readiness(text: &str) -> bool {
+fn negative_proof_labels(
+    text: &str,
+    claims_pr_ready: bool,
+    claims_clean: bool,
+    claims_synced: bool,
+    claims_pushed: bool,
+) -> impl Iterator<Item = &'static str> + '_ {
     [
-        "child handoff",
-        "parent handoff",
-        "pr ready for parent handoff",
-        "parent can open pr next: yes",
-        "parent can merge",
-        "remote/pr head match: yes",
-        "pushed: yes",
-        "branch clean",
-        "clean, synced",
-        "synced, and pushed",
+        (
+            claims_pr_ready || claims_clean,
+            "clean",
+            &["clean", "branch clean", "worktree clean"][..],
+        ),
+        (claims_pr_ready || claims_synced, "synced", &["synced"][..]),
+        (
+            claims_pr_ready || claims_pushed,
+            "pushed",
+            &["pushed", "remote/pr head match"][..],
+        ),
+        (
+            claims_pr_ready,
+            "PR-ready",
+            &[
+                "pr ready",
+                "pr-ready",
+                "pr is ready",
+                "pull-request-ready",
+                "pull request ready",
+                "pull request is ready",
+                "pr readiness",
+                "pr-readiness",
+                "ready for parent handoff",
+                "ready for handoff",
+                "parent can open pr next",
+            ][..],
+        ),
+        (
+            claims_pr_ready,
+            "merge-ready",
+            &[
+                "merge-ready",
+                "merge ready",
+                "ready to merge",
+                "ready for merge",
+                "merge readiness",
+                "merge-readiness",
+                "parent can merge",
+            ][..],
+        ),
     ]
-    .iter()
-    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn claims_clean(text: &str) -> bool {
-    [
-        "branch clean",
-        "worktree clean",
-        "dirty state: clean",
-        " clean,",
-    ]
-    .iter()
-    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn claims_synced_or_pushed(text: &str) -> bool {
-    ["synced", "pushed", "remote/pr head match: yes"]
-        .iter()
-        .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn claims_pr_ready(text: &str) -> bool {
-    [
-        "pr ready",
-        "pr-ready",
-        "ready for parent handoff",
-        "parent can open pr next: yes",
-        "parent can merge",
-    ]
-    .iter()
-    .any(|phrase| super::child_handoff_readiness_text::has_affirmed_phrase(text, phrase))
-}
-
-fn status_lines(value: &Value) -> Option<Vec<String>> {
-    if let Some(text) = value.as_str() {
-        let lines: Vec<_> = text
-            .lines()
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .map(ToOwned::to_owned)
-            .collect();
-        return (!lines.is_empty()).then_some(lines);
-    }
-    value.as_array().map(|items| {
-        items
-            .iter()
-            .filter_map(Value::as_str)
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .map(ToOwned::to_owned)
-            .collect()
+    .into_iter()
+    .filter_map(|(required, label, phrases)| {
+        (required
+            && phrases
+                .iter()
+                .any(|phrase| has_non_claim_phrase_label(text, phrase)))
+        .then_some(label)
     })
-}
-
-fn is_dirty_status_line(line: &str) -> bool {
-    let line = line.trim();
-    !line.is_empty()
-        && !line.starts_with("##")
-        && !["clean", "working tree clean", "nothing to commit"]
-            .iter()
-            .any(|clean| line.eq_ignore_ascii_case(clean))
-}
-
-fn branch_status_not_pushed(lines: &[String]) -> Option<&str> {
-    lines
-        .iter()
-        .find(|line| {
-            line.contains("[ahead ") || line.contains("[behind ") || line.contains("[gone]")
-        })
-        .map(String::as_str)
-}
-
-fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
-    let Some(head) = string_field(pr_state, "headRefName") else {
-        return Vec::new();
-    };
-    let prefix = format!("## {head}...");
-    status_fields(pr_state)
-        .filter(|line| {
-            line.strip_prefix(&prefix)
-                .and_then(|suffix| suffix.split_whitespace().next())
-                .is_some_and(|upstream| !upstream.starts_with('['))
-        })
-        .collect()
 }
 
 fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
@@ -222,15 +195,6 @@ fn unresolved_thread(pr_state: &Value) -> Option<String> {
         })
     })
 }
-
 fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
-}
-
-fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + '_ {
-    STATUS_FIELDS
-        .into_iter()
-        .filter_map(|field| pr_state.get(field))
-        .filter_map(status_lines)
-        .flatten()
 }

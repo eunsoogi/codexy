@@ -1,8 +1,6 @@
-use std::{path::Path, process::Command};
-
+use std::process::Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
     assert_rejects_child_handoff(
@@ -12,7 +10,6 @@ fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
         "child handoff",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestResult {
     assert_rejects_child_handoff(
@@ -23,7 +20,6 @@ fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestRes
         "mergeStateStatus",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
     assert_rejects_child_handoff(
@@ -34,7 +30,6 @@ fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
         "unresolved review thread",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestResult {
     assert_rejects_child_handoff(
@@ -44,7 +39,6 @@ fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestR
         "reviewThreads",
     )
 }
-
 #[test]
 fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResult {
     assert_rejects_child_handoff(
@@ -54,7 +48,6 @@ fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResul
         "reviewThreads.nodes",
     )
 }
-
 #[test]
 fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -64,15 +57,45 @@ fn validator_allows_negative_child_handoff_labels_with_blockers() -> TestResult 
         ),
     )?;
 
-    assert!(
-        output.status.success(),
-        "negative readiness labels should not be treated as claims\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "blocker handoff should pass");
     Ok(())
 }
-
+#[test]
+fn validator_rejects_ready_child_handoff_with_negative_proof_labels() -> TestResult {
+    let state = pr_state_with(
+        r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+    );
+    for handoff in [
+        "Child handoff: ready for parent handoff. Branch clean: no. Synced: not verified. Pushed: no. PR-ready: no. Merge-ready: no.\n",
+        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. Clean: none. Synced: none. Pushed: none at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: none. Synced: none. Pushed: none at 068dbb247b7755035223c91ee39f26830f3c1609. PR-ready: none. Merge-ready: none.\n",
+        "Child handoff: ready for parent handoff. Branch clean: no - worktree dirty. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Parent can open PR next: no.\n",
+        "Child handoff: ready for parent handoff. Pull request ready: no. Clean: yes. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: no. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: not clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: not yet clean. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: pending. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: yes. Synced: not currently synced. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: yes. Synced: yes. Pushed: no (local ahead) at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: ready for parent handoff. Clean: yes. Synced: yes. Pushed: not yet pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "PR is merge-ready. Branch clean: dirty. Synced: not synced. Pushed: not pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+    ] {
+        assert_rejects_child_handoff(handoff, state.clone(), "negative or non-claim")?;
+    }
+    for label in
+        "PR readiness|PR-readiness|Merge readiness|Merge-readiness|Ready for handoff".split('|')
+    {
+        assert_rejects_child_handoff(
+            &format!(
+                "Child handoff: ready for parent handoff. {label}: no. Clean: yes. Synced: yes. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n"
+            ),
+            state.clone(),
+            "negative or non-claim",
+        )?;
+    }
+    Ok(())
+}
 #[test]
 fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
     assert_rejects_child_handoff(
@@ -83,7 +106,6 @@ fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_without_comparable_head() -> TestResult {
     assert_rejects_child_handoff(
@@ -94,7 +116,6 @@ fn validator_rejects_pushed_handoff_without_comparable_head() -> TestResult {
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_without_matching_branch_status_evidence() -> TestResult {
     let handoff =
@@ -129,7 +150,6 @@ fn validator_rejects_pushed_handoff_without_matching_branch_status_evidence() ->
     }
     Ok(())
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResult {
     assert_rejects_child_handoff(
@@ -140,7 +160,6 @@ fn validator_rejects_pushed_handoff_with_abbreviated_head_mismatch() -> TestResu
         "headRefOid",
     )
 }
-
 #[test]
 fn validator_rejects_pushed_handoff_when_branch_status_is_unsynced() -> TestResult {
     let handoff =
@@ -173,7 +192,6 @@ fn validator_rejects_pushed_handoff_when_branch_status_is_unsynced() -> TestResu
     }
     Ok(())
 }
-
 #[test]
 fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -183,22 +201,14 @@ fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
         ),
     )?;
 
-    assert!(
-        output.status.success(),
-        "validator should allow clean child handoff evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "clean child handoff should pass");
     Ok(())
 }
-
 fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, &pr_state)?;
     assert!(
         !output.status.success(),
-        "validator should reject false child handoff\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        "validator should reject false child handoff"
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains(needle), "unexpected stderr: {stderr}");
@@ -221,17 +231,12 @@ fn pr_state_with(fields: &str) -> String {
         }}"#
     )
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(&pr_state_path, pr_state)?;
-    validate_completion_handoff(&handoff_path, &pr_state_path)
-}
-
-fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--check-completion-handoff",
