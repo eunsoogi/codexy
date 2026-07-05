@@ -93,6 +93,23 @@ fn validator_allows_compact_pushed_hash_labels() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_remote_pr_head_match_hashes() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff: branch clean. Remote/PR head match: yes (068dbb247b7755035223c91ee39f26830f3c1609). PR ready for parent handoff; parent will handle merge gates.\n",
+        &pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+    )?;
+    assert!(
+        output.status.success(),
+        "should allow remote/pr head match hash evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, &pr_state)?;
     assert!(
