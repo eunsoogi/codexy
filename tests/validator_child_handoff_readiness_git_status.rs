@@ -18,6 +18,16 @@ fn validator_rejects_clean_or_pr_ready_handoff_without_local_status() -> TestRes
         ),
         (
             "Child handoff: branch clean.\n",
+            r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+            "local git status evidence is missing",
+        ),
+        (
+            "Child handoff: PR-ready.\n",
+            r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"  ","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+            "local git status evidence is missing",
+        ),
+        (
+            "Child handoff: branch clean.\n",
             r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","gitStatusShort":"M src/validation/child_handoff_readiness.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
             "current status is dirty",
         ),

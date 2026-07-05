@@ -130,16 +130,20 @@ fn claims_pr_ready(text: &str) -> bool {
 
 fn status_lines(value: &Value) -> Option<Vec<String>> {
     if let Some(text) = value.as_str() {
-        if text.is_empty() {
-            return Some(vec![String::new()]);
-        }
-        return Some(text.lines().map(str::trim).map(ToOwned::to_owned).collect());
+        let lines: Vec<_> = text
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(ToOwned::to_owned)
+            .collect();
+        return (!lines.is_empty()).then_some(lines);
     }
     value.as_array().map(|items| {
         items
             .iter()
             .filter_map(Value::as_str)
             .map(str::trim)
+            .filter(|line| !line.is_empty())
             .map(ToOwned::to_owned)
             .collect()
     })
