@@ -110,6 +110,28 @@ fn validator_allows_remote_pr_head_match_hashes() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_equals_style_local_head_hashes() -> TestResult {
+    for handoff in [
+        "Child handoff: branch clean, synced. Pushed: yes HEAD=068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+        "Child handoff: branch clean, synced. local head=068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+        )?;
+        assert!(
+            output.status.success(),
+            "should allow equals-style local head evidence\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, &pr_state)?;
     assert!(
