@@ -29,7 +29,7 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
 const REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS: &[&str] = &["negated", "no"];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "absent|acceptable|aren't required|can be skipped|can include|can omit|can reference|does not have to|",
-    "does not need|does not require|doesn't have to|doesn't need|doesn't require|",
+    "does not need|does not require|doesn't have to|doesn't need|doesn't require|if available|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
     "may be skipped|may include|may omit|may reference|missing|must not|mustn't|",
@@ -38,7 +38,7 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
     "not a requirement|not compulsory|not mandatory|not needed|not necessary|omitted|omit|optional|",
     "permissive|prohibited|recommended|should include|should reference|skip|skipped|",
-    "unnecessary|waive|waived|waiver|without",
+    "unnecessary|waive|waived|waiver|when available|when possible|where available|where possible|without",
 );
 
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
