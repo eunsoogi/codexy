@@ -25,6 +25,12 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                 "child handoff claims clean/PR-ready worktree but current status is dirty: {}",
                 lines.join("; ")
             ));
+        } else if claims_pr_ready(&text) {
+            if let Some(status) = branch_status_not_pushed(&lines) {
+                errors.push(format!(
+                    "child handoff claims PR readiness but current branch status is not pushed: {status}"
+                ));
+            }
         }
     }
     if claims_synced_or_pushed(&text) {
@@ -35,11 +41,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                     .into(),
             );
         } else {
-            if let Some(status) = statuses.iter().find(|status| {
-                status.contains("[ahead ")
-                    || status.contains("[behind ")
-                    || status.contains("[gone]")
-            }) {
+            if let Some(status) = branch_status_not_pushed(&statuses) {
                 errors.push(format!(
                     "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
                 ));
@@ -156,6 +158,15 @@ fn is_dirty_status_line(line: &str) -> bool {
         && !["clean", "working tree clean", "nothing to commit"]
             .iter()
             .any(|clean| line.eq_ignore_ascii_case(clean))
+}
+
+fn branch_status_not_pushed(lines: &[String]) -> Option<&str> {
+    lines
+        .iter()
+        .find(|line| {
+            line.contains("[ahead ") || line.contains("[behind ") || line.contains("[gone]")
+        })
+        .map(String::as_str)
 }
 
 fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
