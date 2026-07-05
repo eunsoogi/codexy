@@ -46,6 +46,8 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel result: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel gate returned BLOCK. Pushed: yes.\n",
         "Parent can open PR next. Packaged Codexy Sentinel returned BLOCK but focused tests passed.\n",
+        "Initial Sentinel: PASS. Packaged Codexy Sentinel reviewer gate returned BLOCK. PR ready for parent handoff. Pushed: yes.\n",
+        "Initial Sentinel: PASS. Packaged Codexy Sentinel reviewer-gate verdict: BLOCK. PR ready for parent handoff. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -113,6 +115,8 @@ fn validator_rejects_generic_reviewer_gate_pass_as_sentinel_readiness() -> TestR
         "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel: PASS evidence missing. Pushed: yes.\n",
         "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS absent. Pushed: yes.\n",
         "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS evidence was not provided. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS: missing evidence. Pushed: yes.\n",
+        "PR ready for parent handoff. Reviewer gate returned PASS. Sentinel PASS: not provided. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(

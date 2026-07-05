@@ -1,7 +1,7 @@
 const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
 const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate|reviewer-gate";
 const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass|sentinel reviewer gate returned pass|sentinel reviewer gate result: pass|sentinel reviewer gate verdict: pass|sentinel reviewer-gate returned pass|sentinel reviewer-gate result: pass|sentinel reviewer-gate verdict: pass";
-const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block";
+const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|sentinel reviewer gate returned block|sentinel reviewer gate result: block|sentinel reviewer gate verdict: block|sentinel reviewer-gate returned block|sentinel reviewer-gate result: block|sentinel reviewer-gate verdict: block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
 const READINESS_MARKERS: &str = "merge-ready|merge ready|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|pr-ready|pr ready|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|ready to push|ready for push|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
 
@@ -130,6 +130,10 @@ fn has_negative_label_value(suffix: &str) -> bool {
         "not currently ready",
         "isn't ready",
         "isn't currently ready",
+        "missing",
+        "missing evidence",
+        "absent",
+        "not provided",
         "not applicable",
         "n/a",
     ]
