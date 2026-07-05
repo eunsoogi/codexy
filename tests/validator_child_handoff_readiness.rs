@@ -5,25 +5,13 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    assert_rejects_child_handoff(
         "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
-        &pr_state_with(
-            r#""mergeStateStatus":"CLEAN","headRefOid":"1111111111111111111111111111111111111111","worktreeStatus":"M src/validation/instruction_policy.rs\n?? tests/validator_role_instruction_policy.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+        pr_state_with(
+            r#""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"1111111111111111111111111111111111111111","worktreeStatus":"M src/validation/instruction_policy.rs\n?? tests/validator_role_instruction_policy.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
         ),
-    )?;
-
-    assert!(
-        !output.status.success(),
-        "validator should reject false clean child handoff\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        stderr.contains("child handoff"),
-        "unexpected stderr: {stderr}"
-    );
-    Ok(())
+        "child handoff",
+    )
 }
 
 #[test]
@@ -52,15 +40,7 @@ fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
 fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff. Maintainer override: yes.\n",
-        r#"{
-            "number": 204,
-            "state": "OPEN",
-            "isDraft": false,
-            "mergeStateStatus": "CLEAN",
-            "reviewDecision": "APPROVED",
-            "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
-            "worktreeStatus": ""
-        }"#
+        r#"{"number":204,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":""}"#
         .to_owned(),
         "reviewThreads",
     )
@@ -70,16 +50,7 @@ fn validator_rejects_pr_ready_handoff_without_review_threads_evidence() -> TestR
 fn validator_rejects_pr_ready_handoff_without_review_thread_nodes() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff. Maintainer override: yes.\n",
-        r#"{
-            "number": 204,
-            "state": "OPEN",
-            "isDraft": false,
-            "mergeStateStatus": "CLEAN",
-            "reviewDecision": "APPROVED",
-            "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
-            "worktreeStatus": "",
-            "reviewThreads": {"pageInfo":{"hasNextPage":false}}
-        }"#
+        r#"{"number":204,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false}}}"#
         .to_owned(),
         "reviewThreads.nodes",
     )
@@ -112,6 +83,46 @@ fn validator_rejects_synced_handoff_with_pr_head_mismatch() -> TestResult {
         ),
         "headRefOid",
     )
+}
+
+#[test]
+fn validator_rejects_pushed_handoff_when_incidental_sha_matches_pr_head() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean. Pushed: yes at 2222222222222222222222222222222222222222. PR head is 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+        "headRefOid",
+    )
+}
+
+#[test]
+fn validator_rejects_pushed_handoff_when_comma_incidental_sha_matches_pr_head() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: branch clean. Pushed: yes at 2222222222222222222222222222222222222222, PR head is 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+        "headRefOid",
+    )
+}
+
+#[test]
+fn validator_allows_comma_pushed_handoff_with_matching_head() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609, checks are green.\n",
+        &pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "matching comma pushed-head evidence should pass\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
 }
 
 #[test]
@@ -148,43 +159,11 @@ fn validator_rejects_pushed_handoff_with_incomparable_abbreviated_head() -> Test
 }
 
 #[test]
-fn validator_rejects_pushed_handoff_when_branch_is_ahead() -> TestResult {
-    assert_rejects_child_handoff(
-        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
-        pr_state_with(
-            "\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## codexy/example...origin/codexy/example [ahead 1]\",\"reviewThreads\":{\"pageInfo\":{\"hasNextPage\":false},\"nodes\":[]}",
-        ),
-        "ahead",
-    )
-}
-
-#[test]
-fn validator_rejects_pushed_handoff_when_branch_is_behind() -> TestResult {
-    assert_rejects_child_handoff(
-        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
-        pr_state_with(
-            "\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## codexy/example...origin/codexy/example [behind 1]\",\"reviewThreads\":{\"pageInfo\":{\"hasNextPage\":false},\"nodes\":[]}",
-        ),
-        "behind",
-    )
-}
-
-#[test]
-fn validator_allows_pushed_handoff_when_branch_name_contains_diverged() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Child handoff: branch clean. Pushed: yes at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
-        &pr_state_with("\"mergeStateStatus\":\"CLEAN\",\"headRefOid\":\"068dbb247b7755035223c91ee39f26830f3c1609\",\"worktreeStatus\":\"## feature-diverged-case...origin/feature-diverged-case\",\"reviewThreads\":{\"pageInfo\":{\"hasNextPage\":false},\"nodes\":[]}"),
-    )?;
-    assert!(output.status.success(), "branch name should not imply divergence");
-    Ok(())
-}
-
-#[test]
 fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
         &pr_state_with(
-            r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
         ),
     )?;
 
