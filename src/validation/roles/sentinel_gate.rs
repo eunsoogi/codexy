@@ -21,12 +21,6 @@ const REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES: &[&str] = &[
     "this ",
     "that ",
     "it ",
-    "but this ",
-    "but that ",
-    "but it ",
-    "however, this ",
-    "however, that ",
-    "however, it ",
     "the evidence",
     "the requirement",
     "reviewer evidence",
@@ -164,11 +158,7 @@ fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
 }
 
 fn has_disallowed_marker_context(text: &str, marker_start: usize) -> bool {
-    contains_disallowed_reasoning_control_context(marker_context(
-        text,
-        marker_start,
-        REASONING_CONTROL_EVIDENCE_MARKER.len(),
-    ))
+    contains_disallowed_reasoning_control_context(marker_context(text, marker_start))
 }
 
 fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
@@ -181,13 +171,13 @@ fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
     text[start..end].trim()
 }
 
-fn marker_context(text: &str, marker_start: usize, marker_len: usize) -> &str {
+fn marker_context(text: &str, marker_start: usize) -> &str {
     let bytes = text.as_bytes();
     let mut start = marker_start;
     while start > 0 && bytes[start - 1] != b'.' {
         start -= 1;
     }
-    let mut end = marker_start + marker_len;
+    let mut end = marker_start + REASONING_CONTROL_EVIDENCE_MARKER.len();
     while end < bytes.len() && bytes[end] != b'.' {
         end += 1;
     }
@@ -215,9 +205,18 @@ fn next_sentence_start(bytes: &[u8], clause_end: usize) -> Option<usize> {
 }
 
 fn has_reasoning_control_evidence_followup(sentence: &str) -> bool {
-    REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES
-        .iter()
-        .any(|prefix| sentence.starts_with(prefix))
+    let starts_with_prefix = |candidate: &str| {
+        REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES
+            .iter()
+            .any(|prefix| candidate.starts_with(prefix))
+    };
+    starts_with_prefix(sentence)
+        || sentence
+            .split_once(',')
+            .is_some_and(|(_, tail)| starts_with_prefix(tail.trim_start()))
+        || sentence
+            .split_once(' ')
+            .is_some_and(|(_, tail)| starts_with_prefix(tail.trim_start()))
 }
 
 fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
