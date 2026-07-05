@@ -28,16 +28,17 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
 ];
 const REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS: &[&str] = &["negated", "no"];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
-    "absent|acceptable|aren't required|can be skipped|can omit|does not have to|",
+    "absent|acceptable|aren't required|can be skipped|can include|can omit|can reference|does not have to|",
     "does not need|does not require|doesn't have to|doesn't need|doesn't require|",
-    "do not have to|do not need|do not require|don't have to|don't need|don't require|",
+    "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
     "may be skipped|may include|may omit|may reference|missing|must not|mustn't|",
     "need not|needn't|no need|",
     "no explicit reasoning control used or unavailable evidence|",
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
-    "not a requirement|not mandatory|not needed|not necessary|omitted|omit|optional|",
-    "permissive|prohibited|skip|skipped|unnecessary|waive|waived|waiver|without",
+    "not a requirement|not compulsory|not mandatory|not needed|not necessary|omitted|omit|optional|",
+    "permissive|prohibited|recommended|should include|should reference|skip|skipped|",
+    "unnecessary|waive|waived|waiver|without",
 );
 
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
@@ -97,7 +98,11 @@ fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     lower
         .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
-        .any(|(start, _)| !has_disallowed_marker_context(&lower, start))
+        .any(|(start, _)| {
+            let context = marker_context(&lower, start);
+            contains_mandatory_reasoning_control_context(context)
+                && !contains_disallowed_reasoning_control_context(context)
+        })
 }
 
 fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
@@ -184,6 +189,11 @@ fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
         || contains_required_negation(clause)
 }
 
+fn contains_mandatory_reasoning_control_context(clause: &str) -> bool {
+    contains_context_pattern(clause, "must")
+        || (contains_context_pattern(clause, "required") && !contains_required_negation(clause))
+}
+
 fn contains_disallowed_reasoning_control_paragraph_context(paragraph: &str) -> bool {
     REASONING_CONTROL_PARAGRAPH_DISALLOWED_PATTERNS
         .iter()
@@ -207,22 +217,30 @@ fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
 }
 
 fn contains_required_negation(clause: &str) -> bool {
-    let mut before_previous = "";
-    let mut previous = "";
-    for word in clause
+    let words = clause
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .filter(|word| !word.is_empty())
-    {
-        if word == "required"
-            && (previous == "not"
-                || previous == "never"
-                || (before_previous == "not" && previous != "only")
-                || (before_previous == "no" && previous == "longer"))
-        {
-            return true;
+        .collect::<Vec<_>>();
+    for (index, word) in words.iter().enumerate() {
+        if *word != "required" {
+            continue;
         }
-        before_previous = previous;
-        previous = word;
+        for negation_index in index.saturating_sub(4)..index {
+            match words[negation_index] {
+                "never" => return true,
+                "not" => {
+                    if words
+                        .get(negation_index + 1)
+                        .is_some_and(|word| matches!(*word, "only" | "just" | "merely" | "simply"))
+                    {
+                        continue;
+                    }
+                    return true;
+                }
+                "no" if words.get(negation_index + 1) == Some(&"longer") => return true,
+                _ => {}
+            }
+        }
     }
     false
 }
