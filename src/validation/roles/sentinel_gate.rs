@@ -15,7 +15,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
 const REASONING_CONTROL_EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
 const REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES: &str = "this |that |it |evidence|requirement";
 const REASONING_CONTROL_EVIDENCE_FOLLOWUP_REFERENCES: &str =
-    "this evidence|that evidence|the evidence|this requirement|that requirement|the requirement";
+    "this evidence|that evidence|the evidence|this requirement|that requirement|the requirement|it";
 const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reasoning control:",
     "packaged sentinel definition must run with the highest available reasoning setting",
@@ -33,7 +33,7 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
     "not a requirement|not compulsory|not mandatory|not needed|not necessary|omitted|omit|optional|",
     "permissive|prohibited|recommended|should include|should reference|skip|skipped|",
-    "unnecessary|waive|waived|waiver|as applicable|when available|when possible|where applicable|where available|where possible|without",
+    "unnecessary|waive|waived|waiver|as applicable|as-applicable|when available|when possible|where applicable|where-applicable|where available|where possible|without",
 );
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
@@ -116,7 +116,6 @@ fn has_disallowed_marker_context(text: &str, marker_start: usize) -> bool {
             })
             .is_some_and(|tail| contains_context_pattern(tail, "when applicable"))
 }
-
 fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
     let start = text[..marker_start]
         .rfind("\n\n")
@@ -161,6 +160,7 @@ fn next_sentence_start(bytes: &[u8], clause_end: usize) -> Option<usize> {
 }
 
 fn has_reasoning_control_evidence_followup(sentence: &str) -> bool {
+    let sentence = sentence.split('.').next().unwrap_or(sentence);
     let starts_with_followup = |candidate: &str| {
         REASONING_CONTROL_EVIDENCE_FOLLOWUP_PREFIXES
             .split('|')
