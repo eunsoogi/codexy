@@ -47,6 +47,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "Every approval can reference reasoning control used or unavailable evidence",
         "Every approval MUST reference reasoning control used or unavailable evidence if available",
         "Every approval MUST reference reasoning control used or unavailable evidence when possible",
+        "Every approval MUST reference reasoning control used or unavailable evidence when applicable",
         "Every approval MUST include reasoning control used or unavailable evidence where available",
         "Every approval may include reasoning control used or unavailable evidence",
         "Every approval may reference reasoning control used or unavailable evidence",

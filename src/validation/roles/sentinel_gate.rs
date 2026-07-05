@@ -111,9 +111,13 @@ fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
         .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
         .any(|(start, _)| has_disallowed_marker_context(&lower, start))
 }
-
 fn has_disallowed_marker_context(text: &str, marker_start: usize) -> bool {
-    contains_disallowed_reasoning_control_context(marker_context(text, marker_start))
+    let context = marker_context(text, marker_start);
+    contains_disallowed_reasoning_control_context(context)
+        || context
+            .split_once(REASONING_CONTROL_EVIDENCE_MARKER)
+            .and_then(|(_, tail)| tail.split(|ch| ch == ',' || ch == ';').next())
+            .is_some_and(|tail| contains_context_pattern(tail, "when applicable"))
 }
 
 fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
