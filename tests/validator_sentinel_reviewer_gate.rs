@@ -85,9 +85,11 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence. Reviewers may skip this evidence",
         "reasoning control used or unavailable evidence. This requirement may be skipped",
         "reasoning control used or unavailable evidence. This evidence is waived",
+        "reasoning control used or unavailable evidence. This evidence may be ignored",
         "MUST NOT record reasoning control used or unavailable evidence",
         "recording reasoning control used or unavailable evidence is forbidden",
         "recording reasoning control used or unavailable evidence is prohibited",
+        "reasoning control used or unavailable evidence is not in any practical sense required",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
