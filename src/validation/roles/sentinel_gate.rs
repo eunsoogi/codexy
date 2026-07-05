@@ -23,7 +23,7 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reviewer evidence must record explicit unavailable evidence",
 ];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
-    "absent|acceptable|aren't required|can be skipped|can include|can omit|can reference|does not have to|",
+    "absent|acceptable|aren't required|can be skipped|can include|can omit|can reference|does not have to|encouraged|",
     "does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
@@ -33,7 +33,7 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
     "not a requirement|not compulsory|not mandatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
     "permissive|prohibited|recommended|should include|should reference|skip|skipped|",
-    "unnecessary|unless|waive|waived|waiver|as applicable|as-applicable|as needed|when-applicable|when available|when possible|where applicable|where-applicable|where available|where possible|where practical|without",
+    "suggested|unnecessary|unless|waive|waived|waiver|as applicable|as-applicable|as needed|except if|except when|when-applicable|when available|when possible|where applicable|where-applicable|where available|where possible|where practical|without reasoning control used or unavailable evidence",
 );
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {

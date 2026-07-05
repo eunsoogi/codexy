@@ -2,7 +2,6 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 mod support;
-
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
@@ -52,6 +51,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "Every approval MUST reference reasoning control used or unavailable evidence when-applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence, when applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence unless the invocation surface exposes no reasoning controls",
+        "Every approval MUST reference reasoning control used or unavailable evidence except when the invocation surface exposes no reasoning controls",
+        "Every approval MUST reference reasoning control used or unavailable evidence except if the invocation surface exposes no reasoning controls",
         "Every approval MUST reference reasoning control used or unavailable evidence where applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence where-applicable",
         "Every approval MUST reference reasoning control used or unavailable evidence as applicable",
@@ -74,8 +75,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence is no longer required",
         "reasoning control used or unavailable evidence is never required",
         "reasoning control used or unavailable evidence is not compulsory",
-        "reasoning control used or unavailable evidence is recommended",
-        "reasoning control used or unavailable evidence is discretionary",
+        "reasoning control used or unavailable evidence is encouraged",
+        "reasoning control used or unavailable evidence is suggested",
         "reasoning control used or unavailable evidence may be left out",
         "may omit reasoning control used or unavailable evidence",
         "may\nomit reasoning control used or unavailable evidence",
@@ -142,7 +143,6 @@ fn validator_cli_rejects_weak_reasoning_control_evidence_preamble() -> TestResul
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_accepts_affirmative_reasoning_control_evidence_control() -> TestResult {
     let output = validate_sentinel_replacement(
@@ -176,7 +176,7 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
 #[test]
 fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() -> TestResult {
     let output = validate_reasoning_control_paragraph_replacement(
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If no invocation surface exposes reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface is available without reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
     )?;
 
     assert!(output.status.success(), "{}", stderr(&output));
