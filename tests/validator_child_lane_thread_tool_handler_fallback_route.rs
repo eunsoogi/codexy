@@ -134,9 +134,7 @@ Maintainer reassignment: none
 
 #[test]
 fn validator_rejects_hyphenated_fallback_route_fields() -> Result<(), Box<dyn std::error::Error>> {
-    for field in
-        "Not a fallback-route|Not a fallback-path|No fallback-route|No fallback-path".split('|')
-    {
+    for field in "Not a fallback-route|Not a fallback-path|No fallback-route|No fallback-path|Fallback route not used|Fallback path not used|Fallback route: not used|Fallback path: not used".split('|') {
         let output = run_ownership_validator(&format!(
             r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
