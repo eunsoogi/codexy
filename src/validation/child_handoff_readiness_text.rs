@@ -63,6 +63,7 @@ fn has_non_claim_label_value(suffix: &str) -> bool {
             "deferred",
             "n/a",
             "na",
+            "none",
             "no",
         ]
         .iter()
