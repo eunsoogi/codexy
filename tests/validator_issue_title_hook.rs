@@ -34,6 +34,41 @@ fn issue_title_hook_rejects_adjacent_colon_conventional_title()
     reject_issue_title("Fix:break")
 }
 
+#[test]
+fn issue_title_context_includes_runnable_validator_fallback()
+-> Result<(), Box<dyn std::error::Error>> {
+    let issue_hook = Command::new(hook_script("codexy-issue-title-check.sh"))
+        .arg("UserPromptSubmit")
+        .output()?;
+    assert!(
+        issue_hook.status.success(),
+        "issue title context hook should succeed\n{}",
+        output_text(&issue_hook)
+    );
+    assert!(
+        output_text(&issue_hook)
+            .contains("scripts/validate-plugin-config --check-issue-title --issue-title"),
+        "issue title context should include runnable validator fallback: {}",
+        output_text(&issue_hook)
+    );
+
+    let readiness_hook = Command::new(hook_script("codexy-readiness-guard.sh"))
+        .arg("UserPromptSubmit")
+        .output()?;
+    assert!(
+        readiness_hook.status.success(),
+        "readiness context hook should succeed\n{}",
+        output_text(&readiness_hook)
+    );
+    assert!(
+        output_text(&readiness_hook)
+            .contains("hooks/codexy-readiness-guard.sh --check-issue-title --issue-title"),
+        "readiness context should include runnable hard check: {}",
+        output_text(&readiness_hook)
+    );
+    Ok(())
+}
+
 fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
     let output = Command::new(hook_script("codexy-issue-title-check.sh"))
         .args(["--issue-title", title])
