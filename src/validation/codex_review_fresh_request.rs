@@ -7,10 +7,12 @@ use super::codex_review_handoff_events::{
 pub(super) fn claims(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     text.lines().any(|line| {
-        line.split([';', '.', '!', '?', ',']).any(|clause| {
-            let clause = clause.trim();
-            !has_negated_review_request(clause) && is_review_request_clause(clause)
-        })
+        line.split([';', '.', '!', '?', ','])
+            .flat_map(request_subclauses)
+            .any(|clause| {
+                let clause = clause.trim();
+                !has_negated_review_request(clause) && is_review_request_clause(clause)
+            })
     })
 }
 
@@ -19,9 +21,39 @@ fn is_review_request_clause(clause: &str) -> bool {
     names_codex_review
         && ["request", "post", "comment"]
             .iter()
-            .any(|verb| clause.contains(verb))
+            .any(|verb| contains_word(clause, verb))
         || clause.contains("request review from @codex")
         || clause.contains("request @codex to review")
+}
+
+fn request_subclauses(clause: &str) -> impl Iterator<Item = &str> {
+    clause
+        .split(" and ")
+        .flat_map(|part| part.split(" then "))
+        .flat_map(|part| part.split(" next action is to "))
+}
+
+fn contains_word(text: &str, word: &str) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(word) {
+        let start = offset + index;
+        let end = start + word.len();
+        if text[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+            && text[end..]
+                .chars()
+                .next()
+                .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+        {
+            return true;
+        }
+        offset = end;
+        rest = &text[offset..];
+    }
+    false
 }
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {

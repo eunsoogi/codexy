@@ -5,21 +5,29 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_ready_handoff_with_unresolved_accepted_no_change_thread() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Codex review passed on the current head. PR is merge-ready.\n",
-        unresolved_accepted_thread_ready_pr_state(),
-    )?;
-    assert!(
-        !output.status.success(),
-        "validator should reject readiness claims while accepted no-change threads remain unresolved\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOExample"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    for (handoff, pr_state) in [
+        (
+            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Codex review passed on the current head. PR is merge-ready.\n",
+            unresolved_accepted_thread_ready_pr_state(),
+        ),
+        (
+            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Maintainer override: yes. PR is merge-ready.\n",
+            unresolved_accepted_thread_override_pr_state(),
+        ),
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, pr_state)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject readiness claims while accepted no-change threads remain unresolved\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOExample"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
@@ -57,6 +65,26 @@ fn unresolved_accepted_thread_ready_pr_state() -> &'static str {
             "author": {"login":"chatgpt-codex-connector"},
             "submittedAt":"2026-06-22T12:50:03Z"
         }],
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[{
+            "id": "PRRT_kwDOExample",
+            "isResolved": false,
+            "isOutdated": false,
+            "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+            "comments": {"nodes": [{
+                "author": {"login":"reviewer"},
+                "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r1"
+            }]}
+        }]}
+    }"#
+}
+
+fn unresolved_accepted_thread_override_pr_state() -> &'static str {
+    r#"{
+        "number": 133,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
         "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[{
             "id": "PRRT_kwDOExample",
             "isResolved": false,

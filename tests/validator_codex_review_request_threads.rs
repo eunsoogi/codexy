@@ -8,6 +8,7 @@ fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_threa
     for handoff in [
         "Next action: request fresh @codex review on the current head.\n",
         "Codex review state: no current-head request exists. Request exactly one fresh Codex review now.\n",
+        "No current-head request exists and the next action is to request exactly one fresh Codex review now.\n",
         "No current-head Codex output exists; ready to request Codex review.\n",
         "Next action: post @codex review on the current head.\n",
         "Next action: comment @codex review on the current head.\n",
@@ -94,6 +95,7 @@ fn validator_allows_no_request_status_with_negated_next_action() -> TestResult {
         "Codex review state: no @codex review request exists. Next action: do not request fresh @codex review yet because review threads remain unresolved.\n",
         "Codex review state: not ready to request @codex review because review threads remain unresolved.\n",
         "Before requesting @codex review, inspect PR review threads. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet; this lane is not complete.\n",
+        "Codex review comments: none. Next action: keep waiting on review threads; do not request @codex review yet.\n",
         "Next action: do not post @codex review yet because review threads remain unresolved.\n",
         "Next action: must not comment @codex review yet because review threads remain unresolved.\n",
     ] {

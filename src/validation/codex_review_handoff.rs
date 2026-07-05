@@ -52,7 +52,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             pr_number(pr_state)
         )];
     }
-    if claims_ready && has_codex_review_output(pr_state) {
+    if claims_ready
+        && (has_codex_review_output(pr_state) || has_override && has_review_threads(pr_state))
+    {
         if let Some(error) = review_thread_evidence_error(pr_state) {
             return vec![format!(
                 "{error} before merge/readiness claims: PR #{}",
@@ -116,6 +118,9 @@ fn review_thread_evidence_error(pr_state: &Value) -> Option<String> {
         return Some("incomplete reviewThreads.nodes PR state evidence: missing nodes".into());
     }
     super::review_thread_evidence::check(threads)
+}
+fn has_review_threads(pr_state: &Value) -> bool {
+    pr_state.get("reviewThreads").is_some()
 }
 fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     let mut rest = text;
