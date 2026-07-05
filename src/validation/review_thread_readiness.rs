@@ -6,10 +6,7 @@ pub(super) fn check(pr_state: &Value) -> Option<String> {
         .and_then(|threads| threads.get("nodes"))
         .and_then(Value::as_array)?
         .iter()
-        .find(|thread| {
-            thread.get("isResolved").and_then(Value::as_bool) == Some(false)
-                && thread.get("isOutdated").and_then(Value::as_bool) != Some(true)
-        })?;
+        .find(|thread| thread.get("isResolved").and_then(Value::as_bool) == Some(false))?;
     Some(format!(
         "unresolved review thread remains before PR-ready or merge-ready claims: {}; resolve fixed or accepted threads after current-head verification",
         thread_label(thread)

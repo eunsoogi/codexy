@@ -5,14 +5,21 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_ready_handoff_with_unresolved_accepted_no_change_thread() -> TestResult {
-    for (handoff, pr_state) in [
+    for (handoff, pr_state, expected_thread) in [
         (
             "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Codex review passed on the current head. PR is merge-ready.\n",
             unresolved_accepted_thread_ready_pr_state(),
+            "PRRT_kwDOExample",
         ),
         (
             "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Maintainer override: yes. PR is merge-ready.\n",
             unresolved_accepted_thread_override_pr_state(),
+            "PRRT_kwDOExample",
+        ),
+        (
+            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOOutdated. Maintainer override: yes. PR is merge-ready.\n",
+            unresolved_accepted_outdated_thread_override_pr_state(),
+            "PRRT_kwDOOutdated",
         ),
     ] {
         let output = validate_handoff_with_pr_state(handoff, pr_state)?;
@@ -23,7 +30,7 @@ fn validator_rejects_ready_handoff_with_unresolved_accepted_no_change_thread() -
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(
-            String::from_utf8_lossy(&output.stderr).contains("PRRT_kwDOExample"),
+            String::from_utf8_lossy(&output.stderr).contains(expected_thread),
             "unexpected stderr: {}",
             String::from_utf8_lossy(&output.stderr)
         );
@@ -174,6 +181,25 @@ fn unresolved_accepted_thread_override_pr_state() -> &'static str {
             "comments": {"nodes": [{
                 "author": {"login":"reviewer"},
                 "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r1"
+            }]}
+        }]}
+    }"#
+}
+
+fn unresolved_accepted_outdated_thread_override_pr_state() -> &'static str {
+    r#"{
+        "number": 133,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[{
+            "id": "PRRT_kwDOOutdated",
+            "isResolved": false,
+            "isOutdated": true,
+            "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+            "comments": {"nodes": [{
+                "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r3"
             }]}
         }]}
     }"#
