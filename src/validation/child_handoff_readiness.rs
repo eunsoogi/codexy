@@ -64,6 +64,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         }
     }
     if claims_pr_ready {
+        if let Some(error) = captured_head_mismatch(pr_state) {
+            errors.push(error);
+        }
         if let Some(state) = string_field(pr_state, "mergeStateStatus") {
             if !state.eq_ignore_ascii_case("CLEAN") {
                 errors.push(format!(
@@ -181,6 +184,36 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
         "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not {}",
         mismatched.map_or("any comparable handoff head", String::as_str)
     ))
+}
+
+fn captured_head_mismatch(pr_state: &Value) -> Option<String> {
+    let pr_head = string_field(pr_state, "headRefOid")?;
+    [
+        ("localHeadOid", "current local HEAD"),
+        ("localHead", "current local HEAD"),
+        ("gitHeadOid", "current local HEAD"),
+        ("remoteHeadOid", "remote-tracking HEAD"),
+        ("remoteHead", "remote-tracking HEAD"),
+    ]
+    .into_iter()
+    .filter_map(|(field, label)| {
+        string_field(pr_state, field)
+            .filter(|head| !head.is_empty())
+            .map(|head| (label, head))
+    })
+    .find_map(|(label, head)| {
+        (!heads_match(pr_head, head)).then(|| {
+            format!(
+                "child handoff claims PR readiness but {label} is {head}, not PR headRefOid {pr_head}"
+            )
+        })
+    })
+}
+
+fn heads_match(pr_head: &str, captured_head: &str) -> bool {
+    let pr_head = pr_head.to_ascii_lowercase();
+    let captured_head = captured_head.to_ascii_lowercase();
+    pr_head.starts_with(&captured_head) || captured_head.starts_with(&pr_head)
 }
 
 fn unresolved_thread(pr_state: &Value) -> Option<String> {
