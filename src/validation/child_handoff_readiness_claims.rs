@@ -56,6 +56,8 @@ pub(super) fn pr_ready(text: &str) -> bool {
             "pr-readiness",
             "ready for parent handoff",
             "ready for handoff",
+            "parent-handoff-ready",
+            "parent handoff ready",
             "ready to merge",
             "ready for merge",
             "merge readiness",

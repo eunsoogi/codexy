@@ -43,13 +43,20 @@ fn validator_rejects_synced_pushed_handoff_with_pr_blockers() -> TestResult {
 
 #[test]
 fn validator_treats_no_blockers_as_readiness_claim() -> TestResult {
-    assert_rejects_child_handoff(
+    for handoff in [
         "Child handoff: PR ready: no blockers.\n",
-        &pr_state_with(
-            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example\n M src/validation/child_handoff_readiness_text.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
-        ),
-        "current status is dirty",
-    )
+        "Child handoff: parent-handoff-ready: yes.\n",
+        "Parent handoff ready: yes.\n",
+    ] {
+        assert_rejects_child_handoff(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example\n M src/validation/child_handoff_readiness_text.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+            "current status is dirty",
+        )?;
+    }
+    Ok(())
 }
 
 #[test]
