@@ -109,6 +109,18 @@ fn validator_rejects_pr_ready_handoff_without_head_ref_name() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_pr_ready_handoff_without_captured_heads() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: PR-ready.\n",
+        pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+        "local HEAD evidence is missing",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn validator_allows_capitalized_pushed_head_markers() -> TestResult {
     for marker in ["HEAD", "SHA", "Commit"] {
         let output = validate_handoff_with_pr_state(
@@ -116,7 +128,7 @@ fn validator_allows_capitalized_pushed_head_markers() -> TestResult {
                 "Child handoff: branch clean, synced. Pushed review-feedback fixes {marker} 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n"
             ),
             &pr_state_with(
-                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
             ),
         )?;
         assert!(output.status.success(), "should allow {marker}");
@@ -133,7 +145,7 @@ fn validator_allows_compact_pushed_hash_labels() -> TestResult {
         let output = validate_handoff_with_pr_state(
             handoff,
             &pr_state_with(
-                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
             ),
         )?;
         assert!(
@@ -151,7 +163,7 @@ fn validator_allows_remote_pr_head_match_hashes() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Child handoff: branch clean. Remote/PR head match: yes (068dbb247b7755035223c91ee39f26830f3c1609). PR ready for parent handoff; parent will handle merge gates.\n",
         &pr_state_with(
-            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
         ),
     )?;
     assert!(
@@ -172,7 +184,7 @@ fn validator_allows_equals_style_local_head_hashes() -> TestResult {
         let output = validate_handoff_with_pr_state(
             handoff,
             &pr_state_with(
-                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
             ),
         )?;
         assert!(

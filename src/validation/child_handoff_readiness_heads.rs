@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
     text.split(|ch| matches!(ch, '\n' | ';'))
         .flat_map(|line| line.split(". "))
@@ -10,6 +12,55 @@ pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
         })
         .flat_map(head_refs_after_markers)
         .collect()
+}
+
+pub(super) fn captured_head_mismatch(pr_state: &Value) -> Option<String> {
+    let pr_head = string_field(pr_state, "headRefOid")?;
+    let captured = [
+        ("localHeadOid", "current local HEAD"),
+        ("localHead", "current local HEAD"),
+        ("gitHeadOid", "current local HEAD"),
+        ("remoteHeadOid", "remote-tracking HEAD"),
+        ("remoteHead", "remote-tracking HEAD"),
+    ];
+    if !captured.iter().any(|(field, label)| {
+        label == &"current local HEAD" && string_field(pr_state, field).is_some()
+    }) {
+        return Some(
+            "child handoff claims PR readiness but current local HEAD evidence is missing".into(),
+        );
+    }
+    if !captured.iter().any(|(field, label)| {
+        label == &"remote-tracking HEAD" && string_field(pr_state, field).is_some()
+    }) {
+        return Some(
+            "child handoff claims PR readiness but remote-tracking HEAD evidence is missing".into(),
+        );
+    }
+    captured
+        .into_iter()
+        .filter_map(|(field, label)| {
+            string_field(pr_state, field)
+                .filter(|head| !head.is_empty())
+                .map(|head| (label, head))
+        })
+        .find_map(|(label, head)| {
+            (!heads_match(pr_head, head)).then(|| {
+                format!(
+                    "child handoff claims PR readiness but {label} is {head}, not PR headRefOid {pr_head}"
+                )
+            })
+        })
+}
+
+fn heads_match(pr_head: &str, captured_head: &str) -> bool {
+    let pr_head = pr_head.to_ascii_lowercase();
+    let captured_head = captured_head.to_ascii_lowercase();
+    pr_head.starts_with(&captured_head) || captured_head.starts_with(&pr_head)
+}
+
+fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+    value.get(key).and_then(Value::as_str)
 }
 
 fn head_refs_after_markers(text: &str) -> Vec<String> {

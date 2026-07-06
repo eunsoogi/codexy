@@ -14,6 +14,8 @@ state_dir=$(mktemp -d)
 trap 'rm -rf "$state_dir"' EXIT
 gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
 git status --short --branch > "$state_dir/worktreeStatus.txt"
+git rev-parse HEAD > "$state_dir/localHeadOid.txt"
+git rev-parse "origin/$(jq -r '.headRefName' "$state_dir/pr-state.base.json")" > "$state_dir/remoteHeadOid.txt"
 default_branch="$(gh repo view "$owner/$repo" --json defaultBranchRef --jq '.defaultBranchRef.name')"
 closing_issue="$(
   jq -r '.body // ""
@@ -93,7 +95,9 @@ jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
   --slurpfile comments "$state_dir/comments.json" \
   --slurpfile reviews "$state_dir/reviews.json" \
   --rawfile worktreeStatus "$state_dir/worktreeStatus.txt" \
-  '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
+  --rawfile localHeadOid "$state_dir/localHeadOid.txt" \
+  --rawfile remoteHeadOid "$state_dir/remoteHeadOid.txt" \
+  '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, localHeadOid: ($localHeadOid | gsub("\n$"; "")), remoteHeadOid: ($remoteHeadOid | gsub("\n$"; "")), reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
   "$state_dir/pr-state.base.json" > pr-state.json
 scripts/validate-plugin-config --check-completion-handoff \
   --handoff-file <report> \
@@ -122,6 +126,9 @@ For child handoffs that claim pushed or synced branch state, the PR state file
 MUST include the local `git status --short --branch` output as `worktreeStatus`;
 missing branch-status evidence blocks the handoff because stale local branches
 MUST NOT be ruled out without local branch-status evidence.
+For child handoffs that claim parent acceptance, merge evaluation, or PR
+readiness, the PR state file MUST include captured local `HEAD` as
+`localHeadOid` and the PR branch remote-tracking ref as `remoteHeadOid`.
 
 Before PR readiness, the owning lane MUST run the hard PR title hook with the
 exact GitHub PR title:
