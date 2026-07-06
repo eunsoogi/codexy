@@ -36,7 +36,12 @@ pub(super) fn branch_status_not_pr_branch<'a>(
     lines: &'a [String],
     pr_state: &Value,
 ) -> Option<&'a str> {
-    let head = string_field(pr_state, "headRefName")?;
+    let Some(head) = string_field(pr_state, "headRefName") else {
+        return lines
+            .iter()
+            .find(|line| line.starts_with("## "))
+            .map(String::as_str);
+    };
     let prefix = format!("## {head}...");
     lines
         .iter()
