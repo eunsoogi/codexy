@@ -23,7 +23,7 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reviewer evidence must record explicit unavailable evidence",
 ];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
-    "absent reasoning control used or unavailable evidence|acceptable|aren't required|can be disregarded|can be ignored|can be skipped|can disregard|can ignore|can include|can omit|can reference|does not have to|encouraged|",
+    "absent reasoning control used or unavailable evidence|acceptable|allowed to disregard|allowed to ignore|aren't required|can be disregarded|can be ignored|can be skipped|can disregard|can ignore|can include|can omit|can reference|does not have to|encouraged|",
     "does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
@@ -31,9 +31,9 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "need not|needn't|no need|",
     "no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|",
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
-    "not a requirement|not compulsory|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
-    "only if requested|ought|permissive|prohibited|provided that|recommended|should|should include|should reference|skip|skipped|",
-    "suggested|subject to tool availability|unnecessary|unless|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
+    "not a requirement|not binding|not compulsory|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
+    "only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|",
+    "suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
@@ -110,9 +110,13 @@ fn has_disallowed_marker_context(text: &str, marker_start: usize) -> bool {
     let Some((head, tail)) = context.split_once(REASONING_CONTROL_EVIDENCE_MARKER) else {
         return false;
     };
-    head.rsplit_once("must").is_some_and(|(_, tail)| {
+    let head_after_must = head.rsplit_once("must").map(|(_, tail)| tail);
+    head_after_must.is_some_and(|tail| {
         let tail = tail.trim_start().trim_start_matches(',').trim_start();
         tail.starts_with("when applicable ") || tail.starts_with("when applicable,")
+    }) || head_after_must.is_some_and(|tail| {
+        let tail = tail.trim();
+        tail.ends_with("reference, when applicable,") || tail.ends_with("reference when applicable")
     }) || tail
         .trim_start_matches(|ch| matches!(ch, ',' | ';') || ch.is_ascii_whitespace())
         .split(|ch| ch == ',' || ch == ';')
