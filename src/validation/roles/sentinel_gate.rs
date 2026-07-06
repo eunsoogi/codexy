@@ -27,10 +27,8 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|",
     "for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
     "may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing|must attempt|must endeavor|must make reasonable efforts|must never|must not|must-not|must prefer|must strive|must try|mustn't|",
-    "need not|needn't|no need|",
-    "no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|",
-    "no reasoning control used or unavailable evidence|no requirement|not have to|",
-    "not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
+    "need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|",
+    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
     "only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|",
     "suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|when applicable|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
@@ -114,13 +112,15 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     }
     let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
     let sentence_end = tail.find('.').unwrap_or(tail.len());
-    let scoped_tail = tail[..sentence_end]
-        .split([',', ';'])
-        .next()
-        .unwrap_or(&tail[..sentence_end]);
+    let sentence_tail = &tail[..sentence_end];
+    let mut tail_segments = sentence_tail.split([',', ';']);
+    let scoped_tail = tail_segments.next().unwrap_or(sentence_tail);
+    let opt_out_tail = tail_segments
+        .find(|segment| has_reasoning_control_evidence_followup(segment.trim_start()))
+        .unwrap_or("");
     let followups = &tail[sentence_end..];
     contains_disallowed_reasoning_control_context(&format!(
-        "{scoped_head}{REASONING_CONTROL_EVIDENCE_MARKER}{scoped_tail}{followups}"
+        "{scoped_head}{REASONING_CONTROL_EVIDENCE_MARKER}{scoped_tail} {opt_out_tail}{followups}"
     ))
 }
 fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
