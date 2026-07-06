@@ -112,6 +112,22 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
 }
 
 fn has_negated_disposition_claim(line: &str) -> bool {
+    let words = line
+        .to_ascii_lowercase()
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|part| !part.is_empty())
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    if words.iter().enumerate().any(|(index, word)| {
+        word == "not"
+            && words
+                .iter()
+                .skip(index + 1)
+                .take(3)
+                .any(|word| matches!(word.as_str(), "stopped" | "unusable" | "superseded"))
+    }) {
+        return true;
+    }
     [
         "not stopped",
         "not unusable",

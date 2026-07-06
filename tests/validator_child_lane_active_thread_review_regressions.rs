@@ -50,6 +50,31 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_period_separated_operation_after_unrelated_negation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Did not create a duplicate owner. Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let an unrelated sentence-level negation hide a real child-thread operation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_bare_none_found_without_owner_context()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -68,6 +93,31 @@ Maintainer reassignment: none
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
         "stderr should name missing owner lookup evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_not_explicitly_superseded_old_owner() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-148 found for issue #269.
+Old owner disposition: thread-148 was not explicitly superseded for issue #269.
+Thread creation: created replacement child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject replacement when old-owner disposition says the owner was not explicitly superseded"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should name missing old-owner disposition, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

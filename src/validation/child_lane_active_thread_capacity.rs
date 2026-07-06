@@ -240,7 +240,7 @@ fn has_negated_operation_claim(line: &str) -> bool {
     };
     let mut has_negated_operation = false;
     let mut has_unnegated_operation = false;
-    for clause in line.split(';') {
+    for clause in line.split(';').flat_map(|clause| clause.split(". ")) {
         if has_operation(clause) {
             has_negated_operation |= has_negation(clause);
             has_unnegated_operation |= !has_negation(clause);
