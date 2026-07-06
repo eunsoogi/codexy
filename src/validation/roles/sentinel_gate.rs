@@ -22,14 +22,10 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reviewer evidence must record explicit unavailable evidence",
 ];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
-    "absent reasoning control used or unavailable evidence|acceptable|allowed to disregard|allowed to ignore|aren't required|can be disregarded|can be ignored|can be skipped|can disregard|can ignore|can include|can omit|can reference|does not have to|encouraged|",
-    "does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
-    "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|",
-    "for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
-    "may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing|must attempt|must endeavor|must make reasonable efforts|must never|must not|must-not|must prefer|must strive|must try|mustn't|",
-    "need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|",
-    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
-    "only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|",
+    "absent reasoning control used or unavailable evidence|acceptable|allowed to disregard|allowed to ignore|aren't required|can be disregarded|can be ignored|can be skipped|can disregard|can ignore|can include|can omit|can reference|does not have to|encouraged|does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
+    "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|choose not|for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave it out|leave out|left out|",
+    "may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing|must attempt|must endeavor|must make reasonable efforts|must never|must not|must-not|must prefer|must strive|must try|mustn't|need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|",
+    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|",
     "suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|when applicable|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
@@ -102,8 +98,15 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let Some((head, tail)) = context.split_once(REASONING_CONTROL_EVIDENCE_MARKER) else {
         return contains_disallowed_reasoning_control_context(context);
     };
-    let preamble = head.split([',', ';']).next().unwrap_or(head);
+    let head_segments = head.split([',', ';']).map(str::trim).collect::<Vec<_>>();
+    let preamble = head_segments.first().copied().unwrap_or(head);
     if contains_disallowed_reasoning_control_context(preamble)
+        || head_segments
+            .iter()
+            .rev()
+            .skip(1)
+            .take(1)
+            .any(|segment| contains_disallowed_reasoning_control_context(segment))
         || "if applicable, reference|when applicable, reference|where applicable, reference|as applicable, reference|reference, if applicable|reference, when applicable|reference, where applicable|reference, as applicable|reference if applicable|reference when applicable|reference where applicable|reference as applicable"
             .split('|')
             .any(|pattern| contains_context_pattern(head, pattern))
@@ -116,8 +119,9 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let mut tail_segments = sentence_tail.split([',', ';']);
     let scoped_tail = tail_segments.next().unwrap_or(sentence_tail);
     let opt_out_tail = tail_segments
-        .find(|segment| has_reasoning_control_evidence_followup(segment.trim_start()))
-        .unwrap_or("");
+        .filter(|segment| has_reasoning_control_evidence_followup(segment.trim_start()))
+        .collect::<Vec<_>>()
+        .join(" ");
     let followups = &tail[sentence_end..];
     contains_disallowed_reasoning_control_context(&format!(
         "{scoped_head}{REASONING_CONTROL_EVIDENCE_MARKER}{scoped_tail} {opt_out_tail}{followups}"
@@ -155,9 +159,7 @@ fn marker_context(text: &str, marker_start: usize) -> &str {
     text[start..end].trim()
 }
 fn next_sentence_start(bytes: &[u8], clause_end: usize) -> Option<usize> {
-    if clause_end >= bytes.len() || bytes[clause_end] != b'.' {
-        return None;
-    }
+    (clause_end < bytes.len() && bytes[clause_end] == b'.').then_some(())?;
     let mut start = clause_end + 1;
     while start < bytes.len() && bytes[start].is_ascii_whitespace() {
         start += 1;
@@ -210,11 +212,8 @@ fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
         .chars()
         .any(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
     {
-        return clause
-            .split_ascii_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ")
-            .contains(pattern);
+        let words = clause.split_ascii_whitespace().collect::<Vec<_>>();
+        return words.join(" ").contains(pattern);
     }
     clause
         .split(|ch: char| !ch.is_ascii_alphanumeric())
