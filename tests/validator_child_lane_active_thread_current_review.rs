@@ -222,3 +222,27 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_new_owner_when_mixed_lookup_line_finds_linked_pr_owner()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #269; existing owner thread thread-300 found for PR #300.
+Thread creation: created child thread thread-new for issue #269 / PR #300.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should preserve the found PR owner when an operation mentions linked issue and PR"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

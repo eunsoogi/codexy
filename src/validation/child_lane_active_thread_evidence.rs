@@ -190,18 +190,19 @@ fn owner_lookup(line: &str) -> Option<OwnerLookup> {
 }
 
 fn owner_lookup_for_operation(line: &str, operation_owner: &ThreadOwner) -> Option<OwnerLookup> {
-    line.split(';')
+    let mut not_found = None;
+    for segment in line
+        .split(';')
         .map(str::trim)
-        .find_map(|segment| {
-            lookup_matches_operation(segment, operation_owner)
-                .then(|| owner_lookup(segment))
-                .flatten()
-        })
-        .or_else(|| {
-            lookup_matches_operation(line, operation_owner)
-                .then(|| owner_lookup(line))
-                .flatten()
-        })
+        .filter(|segment| lookup_matches_operation(segment, operation_owner))
+    {
+        match owner_lookup(segment) {
+            Some(OwnerLookup::Found(owner)) => return Some(OwnerLookup::Found(owner)),
+            Some(OwnerLookup::NotFound) => not_found = Some(OwnerLookup::NotFound),
+            None => {}
+        }
+    }
+    not_found
 }
 
 fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
