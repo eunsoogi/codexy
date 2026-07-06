@@ -109,9 +109,11 @@ fn output_can_fulfill_latest_request(
 ) -> bool {
     event.commit.is_none_or(|commit| {
         let current_head_output = head.is_some_and(|head| oid_matches(head, commit));
+        let request_before_current_head =
+            matches!((request.timestamp, head_timestamp), (Some(request), Some(head)) if request < head);
         let stale_for_current_head = !current_head_output
             && head.is_some()
-            && !matches!((event.timestamp, head_timestamp), (Some(event), Some(head)) if head > event);
+            && !request_before_current_head;
         !stale_for_current_head
             && (current_head_output
                 || !events.iter().any(|prior| {

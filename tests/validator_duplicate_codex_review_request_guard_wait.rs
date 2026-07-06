@@ -41,6 +41,43 @@ fn validator_cli_allows_wait_only_codex_review_output_handoff() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_allows_wait_only_codex_review_output_from_existing_request() -> TestResult {
+    let handoff = format!(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #262 is duplicate/no-active-work; waiting for current-head Codex review output after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         {GIT_PREFLIGHT}\n\
+         Stop condition: leave PR open until Codex review output arrives.\n\
+         Next action: wait for @codex review output from the existing request.\n"
+    );
+    let output = validate_handoff_with_pr_state(
+        &handoff,
+        r#"{
+            "number":262,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "headRefOid":"7363f7b29a5323f82d0a03d0046d9a62ecc70976",
+            "comments":[{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-07-06T01:18:12Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
+            }],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should allow wait-only output handoffs that mention an existing request\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(
     handoff: &str,
     pr_state: &str,

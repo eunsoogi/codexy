@@ -33,7 +33,17 @@ fn has_wait_only_review_output_context(line: &str) -> bool {
                 "codex review response",
             ],
         )
-        && !has_any(line, &["request", "post"])
+        && !has_any(
+            line,
+            &[
+                "post",
+                "request @codex review",
+                "request codex review",
+                "request a codex review",
+                "request fresh codex review",
+                "request a fresh codex review",
+            ],
+        )
 }
 
 fn has_negated_review_request_context(line: &str) -> bool {
