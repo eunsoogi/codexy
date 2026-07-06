@@ -63,6 +63,9 @@ pub enum Mode {
     PrTitle {
         title: String,
     },
+    IssueTitle {
+        title: String,
+    },
     CompletionHandoff {
         handoff: String,
         pr_state: String,
@@ -105,6 +108,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             message,
         } => merge_message::check(expected_issue, expected_pr, &message),
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
+        Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(&handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));

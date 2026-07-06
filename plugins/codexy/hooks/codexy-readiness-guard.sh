@@ -215,7 +215,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$mode" in
-  pr-title)
+pr-title)
     [ -n "$pr_title" ] || fail "--pr-title is required"
     check_conventional_subject "$pr_title" || fail "PR title must use Conventional Commit style"
     ;;
