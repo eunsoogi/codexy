@@ -71,8 +71,19 @@ fn line_end(text: &str, line_start: usize) -> usize {
         .map_or(text.len(), |index| line_start + index)
 }
 fn is_capture_related(line: &str) -> bool {
-    "dogfooding defect|tool-exposure defect|dogfooding/tool-exposure defect|handler|missing-handler|no handler registered"
-        .split('|')
+    [
+        "dogfooding defect",
+        "tool-exposure defect",
+        "dogfooding/tool-exposure defect",
+        "handler",
+        "missing-handler",
+        "no handler registered",
+        "fallback route",
+        "fallback-route",
+        "fallback path",
+        "fallback-path",
+    ]
+    .into_iter()
     .any(|marker| line.contains(marker))
 }
 fn is_unrelated_metadata_line(line: &str) -> bool {

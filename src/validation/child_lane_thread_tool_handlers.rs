@@ -1,6 +1,7 @@
 use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
 use super::child_lane_thread_tool_handler_defect_capture::{
     has_handler_marker_and_tool_name_in_defect_capture, has_handler_marker_in_defect_capture,
+    has_negated_fallback_route_field,
 };
 use super::child_lane_thread_tool_handler_scope::{
     capture_end_before_unrelated_evidence, following_handoff_metadata_has,
@@ -57,11 +58,13 @@ fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
     has_defect_label(evidence)
         && has_handler_marker_and_tool_name_in_defect_capture(evidence, tool)
         && has_affirmative_defect_capture(evidence)
+        && !has_negated_fallback_route_field(evidence)
         && !has_absent_defect_capture(evidence)
 }
 fn has_actionable_handler_placeholder_report(evidence: &str) -> bool {
     has_handler_marker_in_defect_capture(evidence)
         && has_affirmative_defect_capture(evidence)
+        && !has_negated_fallback_route_field(evidence)
         && !has_absent_defect_capture(evidence)
 }
 fn has_defect_label(line: &str) -> bool {

@@ -10,15 +10,15 @@ use anyhow::{Context as _, Result};
 use crate::paths::display_relative;
 
 const MAX_HOOK_OUTPUT_BYTES: usize = 1024 * 1024;
-
-pub(super) fn output_with_timeout(
+pub(in crate::validation::hooks) fn output_with_timeout(
     script_path: &Path,
-    required_event: &str,
+    label: &str,
+    args: &[&str],
     timeout: Duration,
 ) -> Result<Output> {
     let mut command = Command::new(script_path);
     command
-        .arg(required_event)
+        .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);
@@ -49,7 +49,7 @@ pub(super) fn output_with_timeout(
                     stdout_data,
                     stderr_data,
                     script_path,
-                    required_event,
+                    label,
                     timeout,
                 );
             }
@@ -59,7 +59,7 @@ pub(super) fn output_with_timeout(
                     child_id,
                     stdout_data,
                     script_path,
-                    required_event,
+                    label,
                 );
             }
         }
@@ -73,7 +73,7 @@ pub(super) fn output_with_timeout(
                     stdout_data,
                     stderr_data,
                     script_path,
-                    required_event,
+                    label,
                     timeout,
                 );
             }
@@ -83,7 +83,7 @@ pub(super) fn output_with_timeout(
                     child_id,
                     stdout_data,
                     script_path,
-                    required_event,
+                    label,
                 );
             }
         }
@@ -109,7 +109,7 @@ pub(super) fn output_with_timeout(
                 stdout_data,
                 stderr_data,
                 script_path,
-                required_event,
+                label,
                 timeout,
             );
         }

@@ -107,6 +107,10 @@ merge_validation_args=(--check-merge-message --expected-pr "$pr_number")
 if [ -n "${issue_number:-}" ]; then
   merge_validation_args+=(--expected-issue "$issue_number")
 fi
+if ! plugins/codexy/hooks/codexy-merge-message-check.sh "${merge_validation_args[@]}" --merge-message-file "$merge_message_file"; then
+  printf '%s\n' "merge message hook validation failed" >&2
+  exit 1
+fi
 if ! scripts/validate-plugin-config "${merge_validation_args[@]}" --merge-message-file "$merge_message_file"; then
   printf '%s\n' "merge message validation failed" >&2
   exit 1
