@@ -91,6 +91,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "recording reasoning control used or unavailable evidence is forbidden",
         "reasoning control used or unavailable evidence is not in any practical sense required",
         "reasoning control used or unavailable evidence is best-effort",
+        "reasoning control used or unavailable evidence except in rare cases",
+        "reasoning control used or unavailable evidence only for merge readiness",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -142,6 +144,7 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
         "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\" is optional. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
         "No Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
         "Negated Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Not Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
         "Reasoning control: no packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
         "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence is forbidden.\n\n",
     ] {
