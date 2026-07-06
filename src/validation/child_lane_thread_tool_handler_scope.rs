@@ -38,10 +38,8 @@ pub(super) fn capture_end_before_unrelated_evidence(
     handler_start: usize,
 ) -> usize {
     let mut cursor = line_end(evidence, handler_start);
-    let scope_lane = lane_label_for_scope(evidence, capture_start, cursor).or_else(|| {
-        let (block_start, _) = scope_start_until_blank(evidence, handler_start);
-        lane_label_for_scope(evidence, block_start, cursor)
-    });
+    let scope_lane = lane_label_for_scope(evidence, capture_start, cursor)
+        .or_else(|| lane_label_for_current_scope(evidence, handler_start, cursor));
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
@@ -101,15 +99,12 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
             | "follow-up issue"
     )
 }
-
 pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize) -> usize {
     let mut capture_start = line_start;
     let mut cursor = line_start;
     let current_line = &evidence[line_start..line_end(evidence, line_start)];
-    let current_lane = lane_label(current_line).or_else(|| {
-        let (block_start, _) = scope_start_until_blank(evidence, line_start);
-        lane_label_for_scope(evidence, block_start, line_start)
-    });
+    let current_lane = lane_label(current_line)
+        .or_else(|| lane_label_for_current_scope(evidence, line_start, line_start));
     while cursor > 0 {
         let previous_end = cursor - 1;
         let previous_start = evidence[..previous_end]
@@ -133,17 +128,13 @@ pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize
     }
     capture_start
 }
-
 pub(super) fn following_handoff_metadata_has(
     evidence: &str,
     line_start: usize,
     predicate: impl Fn(&str) -> bool,
 ) -> bool {
     let mut cursor = line_end(evidence, line_start);
-    let current_lane = lane_label_for_scope(evidence, line_start, cursor).or_else(|| {
-        let (block_start, _) = scope_start_until_blank(evidence, line_start);
-        lane_label_for_scope(evidence, block_start, cursor)
-    });
+    let current_lane = lane_label_for_current_scope(evidence, line_start, cursor);
     while cursor < evidence.len() {
         let next_start = cursor + 1;
         let next_end = line_end(evidence, next_start);
@@ -168,7 +159,6 @@ pub(super) fn following_handoff_metadata_has(
 pub(super) fn is_list_item(line: &str) -> bool {
     strip_list_prefix(line) != line.trim_start()
 }
-
 fn line_key_value(line: &str) -> Option<(&str, &str)> {
     let trimmed = strip_list_prefix(line);
     let (key, value) = trimmed.split_once(':')?;
@@ -192,7 +182,6 @@ fn strip_list_prefix(line: &str) -> &str {
         line
     }
 }
-
 fn strip_lane_label_prefix(key: &str) -> &str {
     let Some(rest) = key
         .trim_start()
@@ -213,6 +202,17 @@ fn strip_lane_label_prefix(key: &str) -> &str {
 
 fn lane_label_for_scope(evidence: &str, start: usize, end: usize) -> Option<String> {
     evidence[start..end].lines().filter_map(lane_label).last()
+}
+
+fn lane_label_for_current_scope(evidence: &str, line_start: usize, end: usize) -> Option<String> {
+    let (block_start, blank_start) = scope_start_until_blank(evidence, line_start);
+    lane_label_for_scope(evidence, line_start, end)
+        .or_else(|| lane_label_for_scope(evidence, block_start, end))
+        .or_else(|| {
+            let blank_start = blank_start?;
+            let previous_start = previous_nonempty_block_start(evidence, blank_start)?;
+            lane_label_for_scope(evidence, previous_start, blank_start)
+        })
 }
 
 fn is_different_lane_line(line: &str, current_lane: Option<&str>) -> bool {

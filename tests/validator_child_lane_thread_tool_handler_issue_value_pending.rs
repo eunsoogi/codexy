@@ -61,3 +61,36 @@ fn validator_accepts_concrete_tracking_issue_values_with_status_context()
     }
     Ok(())
 }
+
+#[test]
+fn validator_rejects_lifecycle_negated_issue_url_values() -> Result<(), Box<dyn std::error::Error>>
+{
+    for issue in [
+        "tracking issue: https://github.com/eunsoogi/codexy/issues/205 not filed yet",
+        "tracking issue: https://github.com/eunsoogi/codexy/issues/205 was not filed",
+        "tracking issue: https://github.com/eunsoogi/codexy/issues/205 has not been created",
+    ] {
+        let output = run_ownership_validator(&evidence_for(issue))?;
+        assert!(
+            !output.status.success(),
+            "validator should reject lifecycle-negated issue URL evidence `{issue}`"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_accepts_concrete_issue_url_with_defect_context_negation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&evidence_for(
+        "tracking issue: https://github.com/eunsoogi/codexy/issues/205 covers child thread not created",
+    ))?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept concrete issue URLs when negation describes the defect, not issue lifecycle\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

@@ -63,23 +63,43 @@ fn has_issue_reference_with_lifecycle_negation(clause: &str, verb: &str) -> bool
                     ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';'
                 )
         });
-        [
-            format!("not {verb}"),
-            format!("not yet {verb}"),
-            format!("not {verb} yet"),
-            format!("was not {verb}"),
-            format!("was not yet {verb}"),
-            format!("was not {verb} yet"),
-            format!("has not been {verb}"),
-            format!("has not yet been {verb}"),
-            format!("has not been {verb} yet"),
-        ]
-        .into_iter()
-        .any(|prefix| {
-            after_reference == prefix
-                || after_reference.strip_prefix(&prefix).is_some_and(|rest| {
-                    rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
-                })
-        })
+        has_lifecycle_negation_prefix(after_reference, verb)
+    }) || clause.match_indices("/issues/").any(|(index, marker)| {
+        let tail = &clause[index + marker.len()..];
+        let digit_end = tail
+            .find(|character: char| !character.is_ascii_digit())
+            .unwrap_or(tail.len());
+        if digit_end == 0 {
+            return false;
+        }
+        let after_reference = tail[digit_end..].trim_start_matches(|character: char| {
+            character.is_ascii_whitespace()
+                || matches!(
+                    character,
+                    '/' | ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';' | '.'
+                )
+        });
+        has_lifecycle_negation_prefix(after_reference, verb)
+    })
+}
+
+fn has_lifecycle_negation_prefix(after_reference: &str, verb: &str) -> bool {
+    [
+        format!("not {verb}"),
+        format!("not yet {verb}"),
+        format!("not {verb} yet"),
+        format!("was not {verb}"),
+        format!("was not yet {verb}"),
+        format!("was not {verb} yet"),
+        format!("has not been {verb}"),
+        format!("has not yet been {verb}"),
+        format!("has not been {verb} yet"),
+    ]
+    .into_iter()
+    .any(|prefix| {
+        after_reference == prefix
+            || after_reference.strip_prefix(&prefix).is_some_and(|rest| {
+                rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
+            })
     })
 }
