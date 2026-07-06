@@ -56,6 +56,9 @@ fn strip_markdown_quote_markers(mut text: &str) -> &str {
             .strip_prefix('>')
             .or_else(|| text.strip_prefix("&gt;"))
             .or_else(|| text.strip_prefix("&gt"))
+            .or_else(|| text.strip_prefix("- "))
+            .or_else(|| text.strip_prefix("* "))
+            .or_else(|| text.strip_prefix("+ "))
         {
             text = rest;
         } else {

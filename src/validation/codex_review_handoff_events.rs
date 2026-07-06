@@ -10,7 +10,7 @@ pub(super) fn has_unresolved_codex_review_thread(pr_state: &Value) -> bool {
 }
 
 pub(super) fn has_codex_review_output(pr_state: &Value) -> bool {
-    review_events(pr_state)
+    review_events(pr_state, true)
         .iter()
         .any(|event| matches!(event.kind, ReviewEventKind::CodexOutput))
 }
@@ -23,7 +23,7 @@ pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
 }
 
 pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool {
-    let events = review_events(pr_state);
+    let events = review_events(pr_state, false);
     let Some(latest_eyes_request) = events
         .iter()
         .enumerate()
@@ -41,14 +41,14 @@ pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Valu
         .any(|(index, _)| index != latest_eyes_request)
 }
 
-fn review_events(pr_state: &Value) -> Vec<ReviewEvent<'_>> {
+fn review_events(pr_state: &Value, require_head_match: bool) -> Vec<ReviewEvent<'_>> {
     let head = text_field(pr_state, "headRefOid");
     iter_json_objects(pr_state)
         .enumerate()
         .filter_map(|(order, item)| {
             let kind = if is_codex_review_request(item) {
                 ReviewEventKind::CodexRequest
-            } else if is_codex_review_output_item(item, head) {
+            } else if is_codex_review_output_item(item, head, require_head_match) {
                 ReviewEventKind::CodexOutput
             } else {
                 return None;
@@ -122,11 +122,11 @@ fn is_codex_review_request(item: &Value) -> bool {
         && text_field(item, "body").is_some_and(|body| body.contains("@codex review"))
 }
 
-fn is_codex_review_output_item(item: &Value, head: Option<&str>) -> bool {
+fn is_codex_review_output_item(item: &Value, head: Option<&str>, require_head_match: bool) -> bool {
     if !is_codex_connector_item(item) {
         return false;
     }
-    is_review_output_signal(item) && codex_output_matches_head(item, head)
+    is_review_output_signal(item) && (!require_head_match || codex_output_matches_head(item, head))
 }
 
 fn is_review_output_signal(item: &Value) -> bool {

@@ -10,6 +10,7 @@ fn validator_allows_quoted_codex_review_boilerplate_in_readiness_handoff() -> Te
         r#"Comment '@codex review' to request another review."#,
         r#"Comment `@codex review` to request another review."#,
         r#"> Comment "@codex review" to request another review."#,
+        r#"- Comment "@codex review" to request another review."#,
     ] {
         let output = validate_handoff_with_pr_state(
             &format!(
@@ -59,11 +60,13 @@ fn validator_rejects_suffixed_quoted_footer_as_fresh_request() -> TestResult {
 fn validator_allows_negative_codex_review_request_status_labels() -> TestResult {
     for status in [
         "Codex review request: none yet.\n",
+        "Codex review request? none yet.\n",
+        "- Codex review request: none yet.\n",
         "Codex review request: not requested.\n",
         "Current-head Codex review request: none.\n",
         "@codex review request: false.\n",
     ] {
-        let output = validate_handoff_with_pr_state(status, current_head_output_pr_state())?;
+        let output = validate_handoff_with_pr_state(status, unresolved_thread_pr_state())?;
         assert!(
             output.status.success(),
             "validator should not treat negative request status labels as fresh review requests\nstatus: {status}\nstdout:\n{}\nstderr:\n{}",
@@ -71,6 +74,21 @@ fn validator_allows_negative_codex_review_request_status_labels() -> TestResult 
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_fresh_codex_review_request_after_stale_activity() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Request exactly one fresh Codex review now.\n",
+        stale_codex_activity_pr_state(),
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should allow one fresh review when prior request and output are stale\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
@@ -95,6 +113,26 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
         .output()?)
 }
 
+fn unresolved_thread_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},
+            "nodes": [{
+                "id": "PRRT_kwDOWaiting",
+                "isResolved": false,
+                "isOutdated": false,
+                "path": "src/validation/review_thread_resolution.rs",
+                "comments": {"nodes": [{"author":{"login":"reviewer"},"url": "https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}
+            }]
+        }
+    }"#
+}
+
 fn current_head_output_pr_state() -> &'static str {
     r#"{
         "number": 174,
@@ -115,6 +153,31 @@ fn current_head_output_pr_state() -> &'static str {
             "author":{"login":"chatgpt-codex-connector"},
             "submittedAt":"2026-06-22T12:50:03Z",
             "commit":{"oid":"32b03a210b3defb2d29dd352283ea2488e60d893"}
+        }],
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
+    }"#
+}
+
+fn stale_codex_activity_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "APPROVED",
+        "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "comments": [{
+            "body": "@codex review",
+            "author": {"login": "eunsoogi"},
+            "createdAt": "2026-06-22T12:45:06Z",
+            "reactionGroups": [{"content":"EYES","users":{"totalCount":1}}]
+        }],
+        "reviews": [{
+            "body":"Review completed.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
+            "state": "COMMENTED",
+            "author":{"login":"chatgpt-codex-connector"},
+            "submittedAt":"2026-06-22T12:50:03Z",
+            "commit":{"oid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
         }],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
     }"#

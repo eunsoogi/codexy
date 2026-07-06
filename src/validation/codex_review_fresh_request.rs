@@ -7,7 +7,7 @@ use super::codex_review_handoff_events::{
 pub(super) fn claims(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     text.lines().any(|line| {
-        line.split([';', '.', '!', '?', ','])
+        line.split([';', '.', '!', ','])
             .flat_map(request_subclauses)
             .any(|clause| {
                 let clause = clause.trim();

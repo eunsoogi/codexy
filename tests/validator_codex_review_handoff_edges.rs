@@ -131,7 +131,7 @@ fn validator_cli_rejects_codex_output_for_prior_head() -> TestResult {
             "Codex review passed on the current head. PR is merge-ready.\n",
             pr_state,
         )?;
-        assert_rejected_eyes_only(&output, message);
+        assert_rejected_with_stderr(&output, message, "current-head Codex review output");
     }
     Ok(())
 }
