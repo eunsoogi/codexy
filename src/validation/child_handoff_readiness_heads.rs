@@ -15,7 +15,11 @@ pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
 }
 
 pub(super) fn captured_head_mismatch(pr_state: &Value) -> Option<String> {
-    let pr_head = string_field(pr_state, "headRefOid")?;
+    let Some(pr_head) = non_empty_string_field(pr_state, "headRefOid") else {
+        return Some(
+            "child handoff claims PR readiness but PR headRefOid evidence is missing".into(),
+        );
+    };
     let captured = [
         ("localHeadOid", "current local HEAD"),
         ("localHead", "current local HEAD"),
@@ -24,14 +28,14 @@ pub(super) fn captured_head_mismatch(pr_state: &Value) -> Option<String> {
         ("remoteHead", "remote-tracking HEAD"),
     ];
     if !captured.iter().any(|(field, label)| {
-        label == &"current local HEAD" && string_field(pr_state, field).is_some()
+        label == &"current local HEAD" && non_empty_string_field(pr_state, field).is_some()
     }) {
         return Some(
             "child handoff claims PR readiness but current local HEAD evidence is missing".into(),
         );
     }
     if !captured.iter().any(|(field, label)| {
-        label == &"remote-tracking HEAD" && string_field(pr_state, field).is_some()
+        label == &"remote-tracking HEAD" && non_empty_string_field(pr_state, field).is_some()
     }) {
         return Some(
             "child handoff claims PR readiness but remote-tracking HEAD evidence is missing".into(),
@@ -40,9 +44,7 @@ pub(super) fn captured_head_mismatch(pr_state: &Value) -> Option<String> {
     captured
         .into_iter()
         .filter_map(|(field, label)| {
-            string_field(pr_state, field)
-                .filter(|head| !head.is_empty())
-                .map(|head| (label, head))
+            non_empty_string_field(pr_state, field).map(|head| (label, head))
         })
         .find_map(|(label, head)| {
             (!heads_match(pr_head, head)).then(|| {
@@ -61,6 +63,12 @@ fn heads_match(pr_head: &str, captured_head: &str) -> bool {
 
 fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
+}
+
+fn non_empty_string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+    string_field(value, key)
+        .map(str::trim)
+        .filter(|head| !head.is_empty())
 }
 
 fn head_refs_after_markers(text: &str) -> Vec<String> {
