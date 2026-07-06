@@ -36,6 +36,10 @@ pub(super) fn branch_status_not_pr_branch<'a>(
     lines: &'a [String],
     pr_state: &Value,
 ) -> Option<&'a str> {
+    let has_branch_header = lines.iter().any(|line| line.starts_with("## "));
+    if !has_branch_header {
+        return Some("current branch status evidence is missing");
+    }
     let Some(head) = string_field(pr_state, "headRefName") else {
         return lines
             .iter()

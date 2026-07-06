@@ -97,6 +97,18 @@ fn validator_rejects_pr_ready_handoff_from_non_pr_branch() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_pr_ready_handoff_without_branch_header() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: PR-ready.\n",
+        pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"nothing to commit","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+        "current branch status evidence is missing",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_pr_ready_handoff_without_head_ref_name() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: PR-ready.\n",
