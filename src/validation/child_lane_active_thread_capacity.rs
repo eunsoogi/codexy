@@ -159,6 +159,7 @@ fn normalized_operation_line(line: &str) -> String {
     line.to_ascii_lowercase()
         .replace("child codex app thread", "child thread")
         .replace("child codex thread", "child thread")
+        .replace("created a child thread", "created child thread")
 }
 
 fn operation_markers() -> impl Iterator<Item = &'static str> {

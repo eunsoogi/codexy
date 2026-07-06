@@ -31,6 +31,12 @@ pub(super) fn matching_owner_lookup_before(
             && !has_negated_owner_check_claim(line)
         {
             if let Some(lookup) = owner_lookup_for_operation(line, operation_owner) {
+                if matches!(
+                    (&latest, &lookup),
+                    (Some(OwnerLookup::Found(_)), OwnerLookup::NotFound)
+                ) {
+                    continue;
+                }
                 latest = Some(lookup);
             }
         }
@@ -99,10 +105,10 @@ fn is_codex_thread_id(token: &str) -> bool {
 pub(super) fn issue_ids(line: &str) -> Vec<String> {
     let mut ids = issue_hash_tokens(line);
     if let Some(issue) = number_after_marker(line, "issue") {
-        push_unique(&mut ids, issue);
+        ids.push(issue);
     }
     if let Some(pr) = number_after_marker(line, "pr") {
-        push_unique(&mut ids, pr);
+        ids.push(pr);
     }
     ids
 }
@@ -117,12 +123,6 @@ fn issue_hash_tokens(line: &str) -> Vec<String> {
     })
     .map(|number| format!("#{number}"))
     .collect()
-}
-
-fn push_unique(ids: &mut Vec<String>, id: String) {
-    if !ids.iter().any(|existing| existing == &id) {
-        ids.push(id);
-    }
 }
 
 fn number_after_marker(line: &str, marker: &str) -> Option<String> {

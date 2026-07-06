@@ -1,0 +1,141 @@
+use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
+use super::child_lane_ownership_phrases::{
+    field_value, has_absent_field_value, metadata_key, trimmed_value,
+};
+
+pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> bool {
+    for (index, line) in lines
+        .iter()
+        .enumerate()
+        .take(setup_index + 1)
+        .rev()
+        .map(|(index, line)| (index, trimmed_value(line)))
+    {
+        if index != setup_index && is_lane_context_boundary(lines, index, line) {
+            return is_child_owned_lane_evidence(line);
+        }
+        if is_parent_owned_lane_evidence(line) {
+            return false;
+        }
+        if is_child_owned_lane_evidence(line) {
+            return true;
+        }
+    }
+    lines
+        .iter()
+        .enumerate()
+        .skip(setup_index + 1)
+        .map(|(index, line)| (index, trimmed_value(line)))
+        .take_while(|(index, line)| !is_later_lane_boundary(lines, *index, line))
+        .any(|(_, line)| is_child_owned_lane_evidence(line))
+}
+
+fn is_child_owned_lane_evidence(line: &str) -> bool {
+    let line = metadata_key(line);
+    matches!(line, "child-owned" | "child-owned lane")
+        || has_present_child_owner_metadata(line)
+        || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
+        || "lane ownership: child-owned|owner: child-owned|lane owner: child-owned|owner decision: child-owned|owner decision: current-thread-owned child implementation|owner decision: current-thread-owned implementation lane"
+            .split('|')
+            .any(|marker| line.starts_with(marker))
+}
+
+fn has_present_child_owner_metadata(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, value)| {
+        metadata_key(key) == "child owner"
+            && !trimmed_value(value).is_empty()
+            && !has_absent_field_value(value, "child owner")
+    })
+}
+
+fn is_parent_owned_lane_evidence(line: &str) -> bool {
+    let line = metadata_key(line);
+    if field_value(line, "owner decision").is_some_and(|value| {
+        is_parent_owned_value(value) && !is_child_delegation_owner_decision(value)
+    }) {
+        return true;
+    }
+    "lane ownership: parent-owned|owner: parent-owned|lane owner: parent-owned"
+        .split('|')
+        .any(|marker| line.starts_with(marker))
+}
+
+fn is_later_lane_boundary(lines: &[&str], index: usize, line: &str) -> bool {
+    let line = metadata_key(line);
+    is_parent_owned_lane_evidence(line)
+        || "pr:|pull request:|review response:|maintainer reassignment:"
+            .split('|')
+            .any(|marker| line.starts_with(marker))
+        || line.starts_with("lane ownership:")
+        || (is_owner_metadata(line) && !is_inside_task_classification(lines, index))
+}
+
+fn is_lane_context_boundary(lines: &[&str], index: usize, line: &str) -> bool {
+    let line = metadata_key(line);
+    "pr:|pull request:|review response:|maintainer reassignment:"
+        .split('|')
+        .any(|marker| line.starts_with(marker))
+        || line.starts_with("lane ownership:")
+        || (is_owner_metadata(line) && !is_inside_task_classification(lines, index))
+}
+
+fn is_owner_metadata(line: &str) -> bool {
+    "owner:|child owner:|lane owner:|owner decision:"
+        .split('|')
+        .any(|marker| line.starts_with(marker))
+}
+
+fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
+    for line in lines
+        .iter()
+        .take(index)
+        .rev()
+        .map(|line| trimmed_value(line))
+    {
+        if line.is_empty() {
+            continue;
+        }
+        if metadata_key(line) == "task classification:" {
+            return true;
+        }
+        if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
+            return false;
+        }
+        if !is_task_classification_field(line) {
+            return false;
+        }
+    }
+    false
+}
+
+fn is_lane_boundary_terminator(line: &str) -> bool {
+    "review response:|maintainer reassignment:"
+        .split('|')
+        .any(|marker| line.starts_with(marker))
+}
+
+fn is_hard_lane_boundary(line: &str) -> bool {
+    "pr:|pull request:|lane ownership:"
+        .split('|')
+        .any(|marker| line.starts_with(marker))
+}
+
+fn is_task_classification_field(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, _)| {
+        matches!(
+            metadata_key(key),
+            "lane type"
+                | "secondary surfaces"
+                | "owner decision"
+                | "atomic scope"
+                | "required skills"
+                | "required tools/evidence"
+                | "required tools"
+                | "required evidence"
+                | "first allowed action"
+                | "stop/blocker"
+                | "stop blocker"
+                | "blocker"
+        )
+    })
+}
