@@ -3,10 +3,12 @@ mod evidence_fields;
 mod git_preflight;
 mod git_preflight_commands;
 mod git_preflight_lines;
+mod review_request_context;
 
 use serde_json::Value;
 
 use super::codex_review_handoff_events::has_pending_codex_review_request_or_current_head_output;
+use review_request_context::has_review_request_context;
 
 const COMPACTION_CONTEXT_PHRASES: &[&str] = &[
     "compacted continuation",
@@ -117,68 +119,6 @@ fn has_pending_edit_plan(line: &str) -> bool {
                 "start editing",
                 "edit the pr now",
                 "edit the pr branch",
-            ],
-        )
-}
-
-fn has_review_request_context(line: &str) -> bool {
-    line.split([';', '.', '!', '?', ',']).any(|clause| {
-        let clause = clause.trim();
-        !has_negated_review_request_context(clause)
-            && (has_any(
-                clause,
-                &[
-                    "review request",
-                    "ready for review",
-                    "@codex review",
-                    "request codex review",
-                    "request a codex review",
-                    "request fresh codex review",
-                    "request a fresh codex review",
-                ],
-            ) || has_request_codex_review_context(clause))
-    })
-}
-
-fn has_request_codex_review_context(line: &str) -> bool {
-    line.contains("request") && (line.contains("codex review") || line.contains("@codex review"))
-}
-
-fn has_negated_review_request_context(line: &str) -> bool {
-    has_any(
-        line,
-        &[
-            "not ready for review",
-            "no @codex review request",
-            "no codex review request",
-            "no active @codex review request", "no active codex review request",
-            "no review request", "without @codex review request",
-            "without codex review request",
-            "without review request",
-            "do not request codex review",
-            "don't request codex review",
-            "not request codex review",
-            "will not request codex review",
-            "won't request codex review",
-            "do not post @codex review", "don't post @codex review",
-            "must not post @codex review", "not post @codex review",
-            "will not post @codex review", "won't post @codex review",
-            "do not post codex review", "don't post codex review",
-            "must not post codex review", "not post codex review",
-            "will not post codex review", "won't post codex review"],
-    ) || has_negated_request_codex_review_context(line)
-}
-
-fn has_negated_request_codex_review_context(line: &str) -> bool {
-    has_request_codex_review_context(line)
-        && has_any(
-            line,
-            &[
-                "do not request",
-                "don't request",
-                "not request",
-                "will not request",
-                "won't request",
             ],
         )
 }
