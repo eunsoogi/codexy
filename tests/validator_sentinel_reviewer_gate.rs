@@ -126,6 +126,19 @@ fn validator_cli_rejects_sentinel_with_optional_split_approval_marker() -> TestR
 }
 
 #[test]
+fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sentence() -> TestResult
+{
+    let output = validate_sentinel_replacement(
+        "direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable",
+        "direct reviewer passes performed, replayed review examples when applicable",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("edge classes reviewed"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
     let output = validate_sentinel_replacement(
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",

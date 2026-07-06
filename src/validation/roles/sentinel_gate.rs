@@ -26,6 +26,20 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "no-finding result when no blockers remain",
     "any unresolved risk",
 ];
+
+const APPROVAL_EVIDENCE_MARKERS: &[&str] = &[
+    "Every approval MUST reference the current diff or head",
+    "lane scope",
+    "touched implementation-file LOC evidence",
+    "verification commands and results",
+    "direct readback for structured files",
+    "reasoning control used or unavailable evidence",
+    "direct reviewer passes performed",
+    "edge classes reviewed",
+    "replayed review examples when applicable",
+    "no-finding result when no blockers remain",
+    "any unresolved risk",
+];
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
         errors.push(format!(
@@ -63,6 +77,29 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
+    let missing_approval_markers = missing_approval_evidence_markers(instructions);
+    if !missing_approval_markers.is_empty() {
+        errors.push(format!(
+            "{} codexy-sentinel approval evidence contract is missing: {}",
+            display_relative(path),
+            missing_approval_markers.join(", ")
+        ));
+    }
+}
+
+fn missing_approval_evidence_markers(instructions: &str) -> Vec<&'static str> {
+    let Some(approval_start) = instructions.find("Every approval MUST reference") else {
+        return APPROVAL_EVIDENCE_MARKERS.to_vec();
+    };
+    let sentence_end = instructions[approval_start..]
+        .find(['.', '!', '?', '\n'])
+        .map_or(instructions.len(), |index| approval_start + index);
+    let sentence = &instructions[approval_start..sentence_end];
+    APPROVAL_EVIDENCE_MARKERS
+        .iter()
+        .filter(|marker| !sentence.contains(**marker))
+        .copied()
+        .collect()
 }
 
 fn has_positive_marker(instructions: &str, marker: &str) -> bool {
