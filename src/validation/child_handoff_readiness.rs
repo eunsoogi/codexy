@@ -14,6 +14,8 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_clean = claims::clean(&text);
     let claims_synced = claims::synced(&text);
     let claims_pushed = claims::pushed(&text);
+    let claims_current_pr_readiness =
+        claims_pr_ready || (claims_child_readiness && (claims_synced || claims_pushed));
     let mut errors = Vec::new();
     errors.extend(
         negative_proof_labels(
@@ -30,7 +32,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !claims_child_readiness {
         return errors;
     }
-    if claims_clean || claims_pr_ready {
+    if claims_clean || claims_current_pr_readiness {
         let lines: Vec<_> = status_fields(pr_state).collect();
         if lines.is_empty() {
             errors.push(
@@ -40,7 +42,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             errors.push(format!(
                 "child handoff claims clean/PR-ready worktree but current status is dirty: {status}"
             ));
-        } else if claims_pr_ready {
+        } else if claims_current_pr_readiness {
             if let Some(status) = branch_status_not_pr_branch(&lines, pr_state) {
                 errors.push(format!(
                     "child handoff claims PR readiness but current branch status does not match PR branch: {status}"
@@ -68,7 +70,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             errors.push(error);
         }
     }
-    if claims_pr_ready {
+    if claims_current_pr_readiness {
         if let Some(error) = super::child_handoff_readiness_heads::captured_head_mismatch(pr_state)
         {
             errors.push(error);

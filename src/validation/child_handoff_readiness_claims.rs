@@ -22,6 +22,10 @@ pub(super) fn clean(text: &str) -> bool {
         &[
             "branch clean",
             "worktree clean",
+            "clean: yes",
+            "clean yes",
+            "branch clean: yes",
+            "worktree clean: yes",
             "dirty state: clean",
             " clean,",
         ],
