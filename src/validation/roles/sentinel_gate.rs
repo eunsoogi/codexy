@@ -106,9 +106,9 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     };
     let preamble = head.split([',', ';']).next().unwrap_or(head);
     if contains_disallowed_reasoning_control_context(preamble)
-        || contains_context_pattern(head, "when applicable, reference")
-        || contains_context_pattern(head, "reference, when applicable")
-        || contains_context_pattern(head, "reference when applicable")
+        || "if applicable, reference|when applicable, reference|where applicable, reference|as applicable, reference|reference, if applicable|reference, when applicable|reference, where applicable|reference, as applicable|reference if applicable|reference when applicable|reference where applicable|reference as applicable"
+            .split('|')
+            .any(|pattern| contains_context_pattern(head, pattern))
     {
         return true;
     }
