@@ -23,7 +23,7 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
     "reviewer evidence must record explicit unavailable evidence",
 ];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
-    "absent reasoning control used or unavailable evidence|acceptable|aren't required|can be skipped|can include|can omit|can reference|does not have to|encouraged|",
+    "absent reasoning control used or unavailable evidence|acceptable|aren't required|can be ignored|can be skipped|can ignore|can include|can omit|can reference|does not have to|encouraged|",
     "does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|",
     "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
