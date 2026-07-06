@@ -12,7 +12,8 @@ pub(super) fn claims(handoff: &str) -> bool {
             .any(|clause| {
                 let clause = clause.trim();
                 !has_negated_review_request(clause)
-                    && !is_quoted_connector_boilerplate(clause)
+                    && !super::codex_review_fresh_request_text::has_negative_request_status(clause)
+                    && !super::codex_review_fresh_request_text::is_connector_footer(clause)
                     && is_review_request_clause(clause)
             })
     })
@@ -62,16 +63,6 @@ fn contains_word(text: &str, word: &str) -> bool {
         rest = &text[offset..];
     }
     false
-}
-
-fn is_quoted_connector_boilerplate(clause: &str) -> bool {
-    [
-        "comment \"@codex review\" to request another review",
-        "comment '@codex review' to request another review",
-        "comment `@codex review` to request another review",
-    ]
-    .iter()
-    .any(|footer| clause.trim_start().starts_with(footer))
 }
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {

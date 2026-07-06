@@ -5,21 +5,72 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_allows_quoted_codex_review_boilerplate_in_readiness_handoff() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        r#"Codex review completed. PR is merge-ready. Maintainer requested leave-open for handoff.
+    for footer in [
+        r#"Comment "@codex review" to request another review."#,
+        r#"Comment '@codex review' to request another review."#,
+        r#"Comment `@codex review` to request another review."#,
+        r#"> Comment "@codex review" to request another review."#,
+    ] {
+        let output = validate_handoff_with_pr_state(
+            &format!(
+                r#"Codex review completed. PR is merge-ready. Maintainer requested leave-open for handoff.
 
 Connector evidence:
 Reviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`
-Comment "@codex review" to request another review.
-"#,
-        current_head_output_pr_state(),
-    )?;
-    assert!(
-        output.status.success(),
-        "validator should not treat quoted Codex connector boilerplate as a fresh review request\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+{footer}
+"#
+            ),
+            current_head_output_pr_state(),
+        )?;
+        assert!(
+            output.status.success(),
+            "validator should not treat quoted Codex connector boilerplate as a fresh review request\nfooter: {footer}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_suffixed_quoted_footer_as_fresh_request() -> TestResult {
+    for request in [
+        r#"Comment "@codex review" to request another review now."#,
+        r#"Comment "@codex review" to request another review on the current head."#,
+    ] {
+        let output = validate_handoff_with_pr_state(request, current_head_output_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should preserve duplicate-review guard for suffixed review requests\nrequest: {request}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("current-head Codex review activity blocks fresh Codex review requests"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_negative_codex_review_request_status_labels() -> TestResult {
+    for status in [
+        "Codex review request: none yet.\n",
+        "Codex review request: not requested.\n",
+        "Current-head Codex review request: none.\n",
+        "@codex review request: false.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(status, current_head_output_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should not treat negative request status labels as fresh review requests\nstatus: {status}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
