@@ -54,14 +54,19 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         && operations
             .iter()
             .zip(&owner_lookups)
-            .any(|(operation, lookup)| {
+            .enumerate()
+            .any(|(index, (operation, lookup))| {
                 let Some(OwnerLookup::Found(existing_owner)) = lookup else {
                     return false;
                 };
+                let previous_operation_line = index
+                    .checked_sub(1)
+                    .map(|previous| operations[previous].line_number);
                 !continues_existing_owner(Some(existing_owner), operation)
                     && !has_matching_old_owner_disposition_before(
                         evidence,
                         Some(existing_owner),
+                        previous_operation_line,
                         operation.line_number,
                     )
             })
@@ -74,10 +79,12 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 fn has_matching_old_owner_disposition_before(
     evidence: &str,
     existing_owner: Option<&ThreadOwner>,
+    previous_operation_line: Option<usize>,
     operation_line_number: usize,
 ) -> bool {
     evidence.lines().enumerate().any(|(line_number, line)| {
         line_number < operation_line_number
+            && previous_operation_line.is_none_or(|previous| line_number > previous)
             && (line.contains("old owner") || line.contains("existing owner thread"))
             && ["stopped", "unusable", "superseded"]
                 .into_iter()

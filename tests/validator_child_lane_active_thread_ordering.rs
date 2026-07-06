@@ -139,6 +139,34 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_stale_issue_only_old_owner_disposition_for_later_replacement()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3
+Existing issue/PR owner check: existing owner thread thread-111 found for issue #269.
+Old owner disposition: existing owner thread was stopped as unusable and explicitly superseded for issue #269.
+Thread creation: created replacement child thread thread-222 for issue #269.
+Active child Codex threads: 3
+Existing issue/PR owner check: existing owner thread thread-222 found for issue #269.
+Thread creation: created replacement child thread thread-333 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not reuse stale issue-only old-owner disposition for a later replacement"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should name missing current old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_thread_only_creation_after_different_issue_lookup()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

@@ -147,30 +147,35 @@ fn child_thread_freed_capacity(line: &str) -> bool {
 }
 
 fn is_child_thread_operation_line(line: &str) -> bool {
-    let line = line.to_ascii_lowercase();
-    let has_child_thread = line.contains("child thread")
-        || line.contains("child codex thread")
-        || line.contains("child codex app thread");
-    if has_child_thread
-        && [
-            "thread creation:",
-            "thread resume:",
-            "thread continuation:",
-            "created child thread",
-            "created replacement child thread",
-            "continued child thread",
-            "forked child thread",
-            "resumed child thread",
-            "started child thread",
-        ]
-        .into_iter()
-        .any(|marker| line.contains(marker))
-    {
+    let line = normalized_operation_line(line);
+    if line.contains("child thread") && operation_markers().any(|marker| line.contains(marker)) {
         return true;
     }
     ["create_thread", "fork_thread", "send_message_to_thread"]
         .into_iter()
-        .any(|tool| line.contains(tool))
+        .any(|tool| is_thread_tool_invocation(&line, tool))
+}
+
+fn normalized_operation_line(line: &str) -> String {
+    line.to_ascii_lowercase()
+        .replace("child codex app thread", "child thread")
+        .replace("child codex thread", "child thread")
+}
+
+fn operation_markers() -> impl Iterator<Item = &'static str> {
+    "thread creation:|thread resume:|thread continuation:|created child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
+}
+
+fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
+    line.match_indices(tool)
+        .any(|(index, _)| line[index + tool.len()..].trim_start().starts_with('('))
+        || (["called", "invoked", "executed", "ran", "used"]
+            .into_iter()
+            .any(|word| line.contains(word))
+            && line.contains(tool)
+            && !["tool search", "discovered", "available thread tool"]
+                .into_iter()
+                .any(|marker| line.contains(marker)))
 }
 
 fn fresh_count_before_operation<'a>(
@@ -193,48 +198,22 @@ fn projected_active_count(projected_count: Option<u64>, fresh_count: &ActiveCoun
 }
 
 fn is_reuse_operation_line(line: &str) -> bool {
-    [
-        "thread resume:",
-        "thread continuation:",
-        "continued child thread",
-        "resumed child thread",
-        "send_message_to_thread",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
+    "thread resume:|thread continuation:|continued child thread|resumed child thread|send_message_to_thread"
+        .split('|')
+        .any(|marker| line.contains(marker))
 }
 
 fn has_negated_operation_claim(line: &str) -> bool {
-    let line = line.to_ascii_lowercase();
-    [
-        "did not call",
-        "did not continue",
-        "did not create",
-        "did not resume",
-        "didn't call",
-        "didn't continue",
-        "didn't create",
-        "didn't resume",
-        "do not call",
-        "do not continue",
-        "do not create",
-        "do not resume",
-        "must not call",
-        "must not continue",
-        "must not create",
-        "must not resume",
-        "not call",
-        "not continue",
-        "not create",
-        "not resume",
-        "no child thread created",
-        "no child thread continued",
-        "no child thread resumed",
-        "without calling",
-        "without continuing",
-        "without creating",
-        "without resuming",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
+    let line = normalized_operation_line(line);
+    let negation = "did not call|did not continue|did not create|did not resume|didn't call|didn't continue|didn't create|didn't resume|do not call|do not continue|do not create|do not resume|must not call|must not continue|must not create|must not resume|not call|not continue|not create|not resume|no child thread created|no child thread continued|no child thread resumed|without calling|without continuing|without creating|without resuming"
+        .split('|')
+    .filter_map(|marker| line.find(marker))
+    .min();
+    let Some(negation) = negation else {
+        return false;
+    };
+    !operation_markers()
+        .chain(["create_thread", "fork_thread", "send_message_to_thread"])
+        .filter_map(|marker| line.find(marker))
+        .any(|operation| operation < negation)
 }

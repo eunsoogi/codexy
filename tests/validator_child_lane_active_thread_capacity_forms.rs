@@ -61,6 +61,31 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_unlabelled_codex_app_thread_over_active_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex app threads: 5
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Created child Codex app thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should treat unlabelled Codex app child-thread wording as a child-thread operation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_negated_thread_tool_policy_line() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for orchestration only; child routing required
@@ -74,6 +99,50 @@ Maintainer reassignment: none
         output.status.success(),
         "validator should not treat negated tool-name policy prose as an actual child-thread operation\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_thread_tool_discovery_without_invocation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Tool search: discovered codex_app.create_thread as an available thread tool.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not treat thread-tool discovery as a child-thread operation\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_operation_with_unrelated_later_negation_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269; did not create a duplicate owner.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let unrelated later negation hide a real child-thread operation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
