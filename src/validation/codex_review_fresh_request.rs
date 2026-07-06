@@ -141,6 +141,12 @@ fn pr_number(pr_state: &Value) -> String {
 }
 
 pub(super) fn has_negated_review_request(clause: &str) -> bool {
+    if clause
+        .rsplit_once(':')
+        .is_some_and(|(_, action)| is_post_colon_request_action(action.trim()))
+    {
+        return false;
+    }
     [
         "do not request",
         "don't request",
@@ -204,4 +210,13 @@ pub(super) fn has_negated_review_request(clause: &str) -> bool {
     ]
     .iter()
     .any(|phrase| clause.contains(phrase))
+}
+
+fn is_post_colon_request_action(action: &str) -> bool {
+    (action.starts_with("request ")
+        || action.starts_with("post ")
+        || action.starts_with("comment ")
+        || action.starts_with("send ")
+        || action.starts_with("@codex review"))
+        && is_review_request_clause(action)
 }

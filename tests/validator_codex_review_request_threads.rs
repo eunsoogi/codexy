@@ -7,6 +7,8 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_thread() -> TestResult {
     for handoff in [
         "Next action: request fresh @codex review on the current head.\n",
+        "No current-head request exists: request @codex review now.\n",
+        "Codex review state: no current-head request exists: request @codex review now.\n",
         "Codex review state: no current-head request exists. Request exactly one fresh Codex review now.\n",
         "No current-head request exists and the next action is to request exactly one fresh Codex review now.\n",
         "No current-head Codex output exists; ready to request Codex review.\n",
