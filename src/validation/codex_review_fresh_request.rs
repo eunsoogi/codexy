@@ -81,6 +81,9 @@ fn is_review_request_status_clause(clause: &str) -> bool {
             "request has eyes only",
             "request already has eyes",
             "request is waiting",
+            "request: pending",
+            "request: has eyes",
+            "request: has eyes only",
         ]
         .iter()
         .any(|status| clause.contains(status))
@@ -203,6 +206,7 @@ pub(super) fn has_negated_review_request(clause: &str) -> bool {
 }
 
 fn is_post_colon_request_action(action: &str) -> bool {
+    let action = action.strip_prefix("please ").unwrap_or(action);
     (action.starts_with("request ")
         || action.starts_with("post ")
         || action.starts_with("comment ")
