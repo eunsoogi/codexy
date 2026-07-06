@@ -29,6 +29,7 @@ fn validator_cli_rejects_duplicate_current_head_codex_review_request_plan() -> T
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-04T05:17:54Z"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -39,7 +40,7 @@ fn validator_cli_rejects_duplicate_current_head_codex_review_request_plan() -> T
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("duplicate current-head Codex review request"),
+            .contains("duplicate current-head Codex review request blocked"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
@@ -60,6 +61,7 @@ fn validator_cli_allows_first_current_head_codex_review_request_plan() -> TestRe
             "mergeStateStatus":"CLEAN",
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -92,6 +94,7 @@ fn validator_cli_ignores_review_request_text_in_pr_body() -> TestResult {
                 "createdAt":"2026-07-05T02:41:37Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884600598"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -118,6 +121,7 @@ fn validator_cli_allows_review_request_after_stale_prior_head_output() -> TestRe
             "mergeStateStatus":"CLEAN",
             "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "comments":[],
+            "reviews":[],
             "latestReviews":[{
                 "body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
                 "author":{"login":"chatgpt-codex-connector"},
@@ -154,6 +158,7 @@ fn validator_cli_rejects_pending_request_followed_by_stale_prior_head_output() -
                 "createdAt":"2026-07-04T05:20:00Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880789999"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -164,7 +169,7 @@ fn validator_cli_rejects_pending_request_followed_by_stale_prior_head_output() -
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("duplicate current-head Codex review request"),
+            .contains("duplicate current-head Codex review request blocked"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

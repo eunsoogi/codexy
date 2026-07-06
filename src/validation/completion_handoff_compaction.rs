@@ -49,12 +49,23 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !git_preflight::has_git_graph_log_preflight(handoff) {
         errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph before editing".into());
     }
-    if has_review_request_context(&text)
-        && has_pending_codex_review_request_or_current_head_output(pr_state)
-    {
-        errors.push("duplicate current-head Codex review request blocked: re-read latest PR comments/reviews immediately before posting and do not post @codex review when a request or current-head output already exists".into());
+    if has_review_request_context(&text) {
+        if !has_pr_comments_and_reviews_evidence(pr_state) {
+            errors.push("duplicate current-head Codex review request evidence missing: include freshly captured PR comments and reviews before planning @codex review".into());
+        } else if has_pending_codex_review_request_or_current_head_output(pr_state) {
+            errors.push("duplicate current-head Codex review request blocked: re-read latest PR comments/reviews immediately before posting and do not post @codex review when a request or current-head output already exists".into());
+        }
     }
     errors
+}
+
+fn has_pr_comments_and_reviews_evidence(pr_state: &Value) -> bool {
+    has_array_field(pr_state, "comments")
+        && (has_array_field(pr_state, "reviews") || has_array_field(pr_state, "latestReviews"))
+}
+
+fn has_array_field(value: &Value, field: &str) -> bool {
+    value.get(field).is_some_and(Value::is_array)
 }
 
 fn claims_compacted_continuation_readiness(text: &str) -> bool {

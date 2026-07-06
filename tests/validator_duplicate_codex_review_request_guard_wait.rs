@@ -29,6 +29,7 @@ fn validator_cli_allows_wait_only_codex_review_output_handoff() -> TestResult {
                 "createdAt":"2026-07-06T01:18:12Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -66,6 +67,7 @@ fn validator_cli_allows_wait_only_codex_review_output_from_existing_request() ->
                 "createdAt":"2026-07-06T01:18:12Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -103,6 +105,7 @@ fn validator_cli_allows_bare_wait_only_codex_review_handoff() -> TestResult {
                 "createdAt":"2026-07-06T01:18:12Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -140,6 +143,7 @@ fn validator_cli_rejects_wait_only_codex_review_then_request_again() -> TestResu
                 "createdAt":"2026-07-06T01:18:12Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
@@ -183,6 +187,7 @@ fn validator_cli_rejects_negated_stop_then_wait_only_request_again() -> TestResu
                 "createdAt":"2026-07-06T01:18:12Z",
                 "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
             }],
+            "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
     )?;
