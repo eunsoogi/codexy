@@ -25,14 +25,14 @@ const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "absent reasoning control used or unavailable evidence|acceptable|allowed to disregard|allowed to ignore|aren't required|can be disregarded|can be ignored|can be skipped|can disregard|can ignore|can include|can omit|can reference|does not have to|encouraged|",
     "does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|",
-    "forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
+    "for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave out|left out|",
     "may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing|must attempt|must endeavor|must make reasonable efforts|must never|must not|must-not|must prefer|must strive|must try|mustn't|",
     "need not|needn't|no need|",
     "no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|",
     "no reasoning control used or unavailable evidence|no requirement|not have to|",
-    "not a requirement|not binding|not compulsory|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
+    "not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|",
     "only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|",
-    "suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
+    "suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|when applicable|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
@@ -41,7 +41,6 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
-
     let instructions = agent
         .get("developer_instructions")
         .and_then(Value::as_str)
@@ -92,35 +91,37 @@ fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
         .any(|(start, _)| {
             let context = marker_context(&lower, start);
             contains_mandatory_reasoning_control_context(context)
-                && !contains_disallowed_reasoning_control_context(context)
+                && !contains_disallowed_marker_scoped_context(context)
         })
 }
 fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     lower
         .match_indices(REASONING_CONTROL_EVIDENCE_MARKER)
-        .any(|(start, _)| has_disallowed_marker_context(&lower, start))
+        .any(|(start, _)| contains_disallowed_marker_scoped_context(marker_context(&lower, start)))
 }
-fn has_disallowed_marker_context(text: &str, marker_start: usize) -> bool {
-    let context = marker_context(text, marker_start);
-    if contains_disallowed_reasoning_control_context(context) {
+fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
+    let Some((head, tail)) = context.split_once(REASONING_CONTROL_EVIDENCE_MARKER) else {
+        return contains_disallowed_reasoning_control_context(context);
+    };
+    let preamble = head.split([',', ';']).next().unwrap_or(head);
+    if contains_disallowed_reasoning_control_context(preamble)
+        || contains_context_pattern(head, "when applicable, reference")
+        || contains_context_pattern(head, "reference, when applicable")
+        || contains_context_pattern(head, "reference when applicable")
+    {
         return true;
     }
-    let Some((head, tail)) = context.split_once(REASONING_CONTROL_EVIDENCE_MARKER) else {
-        return false;
-    };
-    let head_after_must = head.rsplit_once("must").map(|(_, tail)| tail);
-    head_after_must.is_some_and(|tail| {
-        let tail = tail.trim_start().trim_start_matches(',').trim_start();
-        tail.starts_with("when applicable ") || tail.starts_with("when applicable,")
-    }) || head_after_must.is_some_and(|tail| {
-        let tail = tail.trim();
-        tail.ends_with("reference, when applicable,") || tail.ends_with("reference when applicable")
-    }) || tail
-        .trim_start_matches(|ch| matches!(ch, ',' | ';') || ch.is_ascii_whitespace())
-        .split(|ch| ch == ',' || ch == ';')
+    let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
+    let sentence_end = tail.find('.').unwrap_or(tail.len());
+    let scoped_tail = tail[..sentence_end]
+        .split([',', ';'])
         .next()
-        .is_some_and(|tail| contains_context_pattern(tail, "when applicable"))
+        .unwrap_or(&tail[..sentence_end]);
+    let followups = &tail[sentence_end..];
+    contains_disallowed_reasoning_control_context(&format!(
+        "{scoped_head}{REASONING_CONTROL_EVIDENCE_MARKER}{scoped_tail}{followups}"
+    ))
 }
 fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
     let start = text[..marker_start]

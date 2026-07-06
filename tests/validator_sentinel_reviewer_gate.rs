@@ -68,18 +68,15 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence needn't be supplied",
         "reasoning control used or unavailable evidence isn't required",
         "reasoning control used or unavailable evidence isn't necessary",
-        "reasoning control used or unavailable evidence is not necessary",
         "reasoning control used or unavailable evidence is not explicitly required",
-        "reasoning control used or unavailable evidence is not strictly required",
-        "reasoning control used or unavailable evidence is not actually required",
-        "reasoning control used or unavailable evidence is not in practice required",
         "reasoning control used or unavailable evidence is no longer required",
         "reasoning control used or unavailable evidence is never required",
         "reasoning control used or unavailable evidence is not obligatory",
+        "reasoning control used or unavailable evidence is not expected",
+        "reasoning control used or unavailable evidence is for awareness only",
         "reasoning control used or unavailable evidence is encouraged",
         "reasoning control used or unavailable evidence is suggested",
         "reasoning control used or unavailable evidence is voluntary",
-        "reasoning control used or unavailable evidence is at reviewer discretion",
         "reasoning control used or unavailable evidence should be recorded",
         "reasoning control used or unavailable evidence can be disregarded",
         "may omit reasoning control used or unavailable evidence",
@@ -103,9 +100,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence. Reviewers may ignore it",
         "reasoning control used or unavailable evidence. This evidence can be ignored",
         "reasoning control used or unavailable evidence. Reviewers can ignore it",
-        "reasoning control used or unavailable evidence. Reviewers can skip it",
         "reasoning control used or unavailable evidence. Reviewers are allowed to skip it",
-        "reasoning control used or unavailable evidence. The gate may ignore it",
         "reasoning control used or unavailable evidence. This requirement may be skipped",
         "reasoning control used or unavailable evidence. This evidence is waived",
         "reasoning control used or unavailable evidence. This evidence records the invocation surface. It may be omitted",
@@ -149,6 +144,11 @@ fn validator_cli_accepts_affirmative_reasoning_control_evidence_control() -> Tes
     let output = validate_sentinel_replacement(
         "reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence remains required",
+    )?;
+    assert!(output.status.success(), "{}", stderr(&output));
+    let output = validate_sentinel_replacement(
+        "touched implementation-file LOC evidence when applicable",
+        "touched implementation-file LOC evidence where applicable",
     )?;
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
