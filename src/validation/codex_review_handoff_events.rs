@@ -155,7 +155,7 @@ fn has_actionable_codex_review_request_text(body: &str) -> bool {
         .flat_map(super::codex_review_fresh_request::request_subclauses)
         .map(str::trim)
         .any(|clause| {
-            clause.contains("@codex review")
+            super::codex_review_fresh_request::is_review_request_clause(clause)
                 && !super::codex_review_fresh_request::has_negated_review_request(clause)
                 && !super::codex_review_fresh_request_text::is_connector_footer(clause)
                 && !super::codex_review_fresh_request_text::has_negative_request_status(clause)

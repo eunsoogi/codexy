@@ -22,6 +22,24 @@ fn validator_allows_readiness_blocker_headings_as_waiting_status() -> TestResult
     Ok(())
 }
 
+#[test]
+fn validator_rejects_affirmative_readiness_blocker_status_labels() -> TestResult {
+    for handoff in [
+        "Maintainer override: yes. PR-readiness blockers: none.\n",
+        "Maintainer override: yes. PR readiness status: ready.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should treat affirmative blocker/status values as readiness claims {handoff:?}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("missing reviewThreads"));
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

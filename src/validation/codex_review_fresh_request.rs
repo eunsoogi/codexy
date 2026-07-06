@@ -20,7 +20,7 @@ pub(super) fn claims(handoff: &str) -> bool {
     })
 }
 
-fn is_review_request_clause(clause: &str) -> bool {
+pub(super) fn is_review_request_clause(clause: &str) -> bool {
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
     let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
