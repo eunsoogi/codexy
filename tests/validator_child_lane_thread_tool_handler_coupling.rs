@@ -65,3 +65,26 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_allows_handler_list_item_with_following_handoff_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread: `No handler registered for tool: read_thread`
+Fallback route: no fallback route was available
+Tracking issue: #205
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept handler list items with following unbulleted handoff metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

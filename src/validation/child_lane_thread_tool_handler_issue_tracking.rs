@@ -32,7 +32,8 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
     let normalized = clause
         .replace("wasn't", "was not")
         .replace("hasn't", "has not")
-        .replace("hadn't", "had not");
+        .replace("hadn't", "had not")
+        .replace("won't", "will not");
     ["was", "has", "had"].into_iter().any(|auxiliary| {
         ["created", "filed"].into_iter().any(|verb| {
             normalized.contains(&format!("issue {auxiliary} not been {verb}"))
@@ -98,6 +99,7 @@ fn has_lifecycle_negation_prefix(after_reference: &str, verb: &str) -> bool {
         format!("has not yet been {verb}"),
         format!("has not been {verb} yet"),
         format!("will be {verb}"),
+        format!("will not be {verb}"),
     ]
     .into_iter()
     .any(|prefix| {

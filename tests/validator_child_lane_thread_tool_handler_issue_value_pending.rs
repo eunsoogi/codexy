@@ -85,9 +85,13 @@ fn validator_rejects_pending_issue_values_after_reference() -> Result<(), Box<dy
     for issue in [
         "tracking issue: #205 will be created",
         "tracking issue: #205 (will be created)",
+        "tracking issue: #205 will not be created",
+        "tracking issue: #205 won't be created",
         "tracking issue: #205 is not yet created",
         "tracking issue: #205 (is not yet created)",
         "tracking issue: #205 will be filed",
+        "tracking issue: #205 will not be filed",
+        "tracking issue: #205 won't be filed",
         "tracking issue: #205 is not yet filed",
     ] {
         let output = run_ownership_validator(&evidence_for(issue))?;
