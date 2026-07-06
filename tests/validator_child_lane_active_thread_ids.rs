@@ -114,6 +114,46 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_found_no_existing_owner_result() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3
+Existing issue/PR owner check: found no existing owner thread for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept found-no-existing-owner result wording before child creation\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_none_found_owner_result() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3
+Existing issue/PR owner check: none found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept none-found owner lookup result wording before child creation\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_not_run_owner_check_with_no_owner_words()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
