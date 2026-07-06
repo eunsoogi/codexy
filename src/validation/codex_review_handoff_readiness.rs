@@ -69,7 +69,7 @@ fn has_blocking_label_value(suffix: &str) -> bool {
             !starts_with_any(
                 value,
                 &["ready", "complete", "completed", "passed", "clean"],
-            ) && (has_negative_label_value(suffix)
+            ) && (has_negative_label_value(&format!(": {value}"))
                 || starts_with_any(
                     value,
                     &[

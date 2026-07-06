@@ -9,6 +9,8 @@ fn validator_allows_readiness_blocker_headings_as_waiting_status() -> TestResult
         "Maintainer override: yes. PR-readiness blockers: unresolved review threads remain.\n",
         "Maintainer override: yes. merge-readiness blocker: waiting on review cleanup.\n",
         "Maintainer override: yes. PR readiness status: blocked pending CI.\n",
+        "Maintainer override: yes. PR readiness status: not ready.\n",
+        "Maintainer override: yes. merge readiness status: not currently ready.\n",
         "Maintainer override: yes. merge readiness status: not yet complete.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
