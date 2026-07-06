@@ -11,10 +11,18 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let operations = child_thread_operations(evidence);
     let has_child_thread_operation = !operations.is_empty();
     let active_counts = active_child_thread_count_records(evidence);
+    let mut previous_operation_line = None;
     let owner_lookups = operations
         .iter()
         .map(|operation| {
-            matching_owner_lookup_before(evidence, &operation.owner, operation.line_number)
+            let lookup = matching_owner_lookup_before(
+                evidence,
+                &operation.owner,
+                operation.line_number,
+                previous_operation_line,
+            );
+            previous_operation_line = Some(operation.line_number);
+            lookup
         })
         .collect::<Vec<_>>();
     let existing_owners = owner_lookups

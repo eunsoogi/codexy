@@ -123,8 +123,8 @@ Maintainer reassignment: none
         "validator should reject a later unsafe replacement operation after a safe owner reuse"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should name missing old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should name missing current owner lookup evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

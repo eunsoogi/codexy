@@ -13,10 +13,12 @@ pub(super) fn matching_owner_lookup_before(
     evidence: &str,
     operation_owner: &ThreadOwner,
     operation_line_number: usize,
+    previous_operation_line: Option<usize>,
 ) -> Option<OwnerLookup> {
     let mut latest = None;
     for (line_number, line) in evidence.lines().enumerate() {
         if line_number < operation_line_number
+            && previous_operation_line.is_none_or(|previous| line_number > previous)
             && !has_negated_owner_check_claim(line)
             && lookup_matches_operation(line, operation_owner)
         {
@@ -129,6 +131,7 @@ fn line_contains_no_existing_owner_found(line: &str) -> bool {
     line.contains("no existing owner thread found")
         || line.contains("no existing issue owner thread found")
         || line.contains("no existing pr owner thread found")
+        || line.contains("no existing issue/pr owner thread found")
 }
 
 fn owner_lookup(line: &str) -> Option<OwnerLookup> {
