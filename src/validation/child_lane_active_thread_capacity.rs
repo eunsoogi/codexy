@@ -147,7 +147,10 @@ fn child_thread_freed_capacity(line: &str) -> bool {
 }
 
 fn is_child_thread_operation_line(line: &str) -> bool {
-    let has_child_thread = line.contains("child thread") || line.contains("child codex thread");
+    let line = line.to_ascii_lowercase();
+    let has_child_thread = line.contains("child thread")
+        || line.contains("child codex thread")
+        || line.contains("child codex app thread");
     if has_child_thread
         && [
             "thread creation:",
@@ -202,25 +205,32 @@ fn is_reuse_operation_line(line: &str) -> bool {
 }
 
 fn has_negated_operation_claim(line: &str) -> bool {
+    let line = line.to_ascii_lowercase();
     [
+        "did not call",
         "did not continue",
         "did not create",
         "did not resume",
+        "didn't call",
         "didn't continue",
         "didn't create",
         "didn't resume",
+        "do not call",
         "do not continue",
         "do not create",
         "do not resume",
+        "must not call",
         "must not continue",
         "must not create",
         "must not resume",
+        "not call",
         "not continue",
         "not create",
         "not resume",
         "no child thread created",
         "no child thread continued",
         "no child thread resumed",
+        "without calling",
         "without continuing",
         "without creating",
         "without resuming",

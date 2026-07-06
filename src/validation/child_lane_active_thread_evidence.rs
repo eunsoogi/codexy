@@ -122,16 +122,28 @@ fn number_after_marker(line: &str, marker: &str) -> Option<String> {
 }
 
 fn line_contains_existing_owner_found(line: &str) -> bool {
+    let line = normalized_owner_lookup_line(line);
     line.contains("owner thread")
         && line.contains("found")
         && !line_contains_no_existing_owner_found(line)
 }
 
-fn line_contains_no_existing_owner_found(line: &str) -> bool {
+fn normalized_owner_lookup_line(line: &str) -> String {
+    line.to_ascii_lowercase()
+        .replace("owner-thread", "owner thread")
+}
+
+fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
+    let line = normalized_owner_lookup_line(line.as_ref());
     line.contains("no existing owner thread found")
         || line.contains("no existing issue owner thread found")
         || line.contains("no existing pr owner thread found")
         || line.contains("no existing issue/pr owner thread found")
+        || line.contains("existing owner thread not found")
+        || line.contains("existing issue owner thread not found")
+        || line.contains("existing pr owner thread not found")
+        || line.contains("existing issue/pr owner thread not found")
+        || line.contains("owner thread not found")
 }
 
 fn owner_lookup(line: &str) -> Option<OwnerLookup> {
@@ -160,6 +172,7 @@ fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
 }
 
 fn has_negated_owner_check_claim(line: &str) -> bool {
+    let line = normalized_owner_lookup_line(line);
     [
         "not run",
         "not checked",
