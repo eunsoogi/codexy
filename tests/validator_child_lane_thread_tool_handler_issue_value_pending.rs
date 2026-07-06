@@ -80,6 +80,26 @@ fn validator_rejects_lifecycle_negated_issue_url_values() -> Result<(), Box<dyn 
 }
 
 #[test]
+fn validator_rejects_pending_issue_values_after_reference() -> Result<(), Box<dyn std::error::Error>>
+{
+    for issue in [
+        "tracking issue: #205 will be created",
+        "tracking issue: #205 (will be created)",
+        "tracking issue: #205 is not yet created",
+        "tracking issue: #205 (is not yet created)",
+        "tracking issue: #205 will be filed",
+        "tracking issue: #205 is not yet filed",
+    ] {
+        let output = run_ownership_validator(&evidence_for(issue))?;
+        assert!(
+            !output.status.success(),
+            "validator should reject pending tracking issue evidence after a reference `{issue}`"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_concrete_issue_url_with_defect_context_negation()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&evidence_for(

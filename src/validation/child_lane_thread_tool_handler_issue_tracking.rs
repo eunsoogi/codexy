@@ -60,7 +60,7 @@ fn has_issue_reference_with_lifecycle_negation(clause: &str, verb: &str) -> bool
             character.is_ascii_whitespace()
                 || matches!(
                     character,
-                    ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';'
+                    ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';' | '('
                 )
         });
         has_lifecycle_negation_prefix(after_reference, verb)
@@ -76,7 +76,7 @@ fn has_issue_reference_with_lifecycle_negation(clause: &str, verb: &str) -> bool
             character.is_ascii_whitespace()
                 || matches!(
                     character,
-                    '/' | ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';' | '.'
+                    '/' | ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';' | '.' | '('
                 )
         });
         has_lifecycle_negation_prefix(after_reference, verb)
@@ -91,9 +91,13 @@ fn has_lifecycle_negation_prefix(after_reference: &str, verb: &str) -> bool {
         format!("was not {verb}"),
         format!("was not yet {verb}"),
         format!("was not {verb} yet"),
+        format!("is not {verb}"),
+        format!("is not yet {verb}"),
+        format!("is not {verb} yet"),
         format!("has not been {verb}"),
         format!("has not yet been {verb}"),
         format!("has not been {verb} yet"),
+        format!("will be {verb}"),
     ]
     .into_iter()
     .any(|prefix| {
