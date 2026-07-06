@@ -169,6 +169,11 @@ fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
         || line.contains("no existing pr owner thread found")
         || line.contains("no existing issue/pr owner thread found")
         || line.contains("no existing issue or pr owner thread found")
+        || line.contains("no existing owner thread was found")
+        || line.contains("no existing issue owner thread was found")
+        || line.contains("no existing pr owner thread was found")
+        || line.contains("no existing issue/pr owner thread was found")
+        || line.contains("no existing issue or pr owner thread was found")
         || line.contains("found no existing owner thread")
         || line.contains("found no existing issue owner thread")
         || line.contains("found no existing pr owner thread")
@@ -221,6 +226,10 @@ fn has_negated_owner_check_claim(line: &str) -> bool {
         "not checked",
         "without checking",
         "no existing owner thread evidence",
+        "no existing evidence",
+        "without evidence",
+        "no evidence",
+        "missing evidence",
     ]
     .into_iter()
     .any(|marker| line.contains(marker))

@@ -3,7 +3,7 @@ use super::child_lane_active_thread_capacity::{
     child_thread_operations, continues_existing_owner,
 };
 use super::child_lane_active_thread_evidence::{
-    OwnerLookup, ThreadOwner, issue_id, matching_owner_lookup_before, thread_id,
+    OwnerLookup, ThreadOwner, issue_ids, matching_owner_lookup_before, thread_id,
 };
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
@@ -101,20 +101,24 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
         return true;
     };
     let line_thread = thread_id(line);
-    let line_issue = issue_id(line);
+    let line_issues = issue_ids(line);
     if let (Some(line_thread), Some(owner_thread)) =
         (line_thread.as_deref(), existing_owner.thread_id.as_deref())
     {
         return line_thread == owner_thread;
     }
-    line_issue
+    existing_owner
+        .issue_id
         .as_deref()
-        .zip(existing_owner.issue_id.as_deref())
-        .is_some_and(|(line_issue, owner_issue)| line_issue == owner_issue)
+        .is_some_and(|owner_issue| {
+            line_issues
+                .iter()
+                .any(|line_issue| line_issue == owner_issue)
+        })
         || (!existing_owner.issue_ids.is_empty()
-            && line_issue.as_deref().is_some_and(|line_issue| {
-                existing_owner.issue_ids.iter().any(|id| id == line_issue)
-            }))
+            && line_issues
+                .iter()
+                .any(|line_issue| existing_owner.issue_ids.iter().any(|id| id == line_issue)))
 }
 
 fn has_negated_disposition_claim(line: &str) -> bool {
