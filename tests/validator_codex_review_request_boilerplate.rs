@@ -100,6 +100,21 @@ fn validator_allows_fresh_codex_review_request_after_stale_activity() -> TestRes
     Ok(())
 }
 
+#[test]
+fn validator_allows_pull_request_readiness_after_codex_review() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Pull request is ready after Codex review completed. Maintainer requested leave-open for handoff.\n",
+        current_head_output_pr_state(),
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should not treat pull request readiness nouns as fresh Codex review requests\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
