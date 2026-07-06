@@ -15,13 +15,19 @@ const REQUIRED_CONTEXT_FRAGMENTS: &[&str] = &[
     "compacted or resumed context hygiene",
     "--check-completion-handoff",
     "repositoryLabels",
+    "codexy-issue-title-check.sh",
     "codexy-pr-title-check.sh",
     "codexy-pr-label-check.sh",
     "codexy-merge-message-check.sh",
+    "--check-issue-title",
     "--check-pr-title",
     "--check-pr-labels",
     "--check-merge-message",
     "--expected-pr",
+    "target base",
+    "hook entrypoints",
+    "available fallback",
+    "separate dogfood defect",
 ];
 
 #[test]

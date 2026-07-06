@@ -13,6 +13,9 @@ post-merge sync work.
 
 MUST read these relative references before acting on the matching surface:
 
+- `references/local-git-and-branches.md` for branch/worktree setup, local
+  change discipline, commit messages, conflict resolution, and pre-PR Git
+  checks.
 - `references/pr-review-and-handoff.md` for PR bodies, Codex connector review,
   child-owned review feedback, and completion-handoff PR state capture,
   including review thread comment `commit { oid }` evidence.
@@ -55,6 +58,9 @@ pulling, and ordinary push.
 Issue titles MUST summarize the user-visible problem or needed work in plain
 prose. They MUST start with an uppercase letter and MUST NOT use Conventional
 Commit prefixes such as `feat(...)`.
+Before creating or updating an issue title, MUST validate the exact title with
+`plugins/codexy/hooks/codexy-issue-title-check.sh --issue-title "<title>"` or
+`scripts/validate-plugin-config --check-issue-title --issue-title "<title>"`.
 
 Issue bodies MUST include `## Problem`, `## Scope`,
 `## Acceptance Criteria`, and `## Verification`.
@@ -65,18 +71,10 @@ those concepts exist.
 
 ## Worktrees And Branches
 
-MUST create task worktrees from an up-to-date `main`:
-
-```sh
-git fetch origin main
-git switch main
-git pull --ff-only origin main
-git worktree add -b codexy/<issue-or-scope> ../<repo>-worktrees/<issue-or-scope> main
-```
-
-MUST NOT force-push task branches. If push is rejected because the remote branch
-changed, MUST inspect the remote changes and bring required adjustments in with a
-new commit.
+Before branch, worktree, local commit, push, or conflict work, MUST read
+`references/local-git-and-branches.md`. MUST start task branches from current
+`main`/`origin/main`, MUST NOT work directly on `main`, and MUST NOT force-push
+task branches.
 
 ## Child Worktree Thread Titles
 
@@ -90,29 +88,15 @@ implementation work.
 
 ## Local Change Discipline
 
-MUST inspect before editing or committing:
-
-```sh
-git status --short
-git diff
-```
-
-MUST stage only intended files. MUST preserve unrelated dirty work. MUST NOT revert or
-discard user changes unless explicitly asked. MUST NOT commit `.omo/**`, local
-logs, secrets, or scratch files by default.
+MUST read `references/local-git-and-branches.md` before staging or committing.
+MUST inspect `git status --short` and `git diff`, stage only intended files, and
+MUST NOT revert or discard user changes unless explicitly asked.
 
 ## Commit Messages
 
-MUST use Conventional Commit style:
-
-```text
-<type>(<scope>): <summary>
-```
-
-Common types are `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, and
-`revert`. Project-local skill changes under `plugins/codexy/skills/**` change
-agent behavior, so prefer non-`docs` types. MUST NOT use vague messages such as
-`update`, `fix`, `WIP`, or `misc`.
+MUST read `references/local-git-and-branches.md` before committing. Commit
+messages MUST use Conventional Commit style and MUST NOT use vague subjects such
+as `update`, `fix`, `WIP`, or `misc`.
 
 ## Verification Before Push Or PR
 
@@ -219,16 +203,9 @@ private repository lacks the required plan, report the exact platform blocker.
 
 ## Conflict Resolution
 
-Before resolving conflicts, MUST inspect:
-
-```sh
-git status
-git diff
-```
-
-MUST resolve conflict markers carefully. MUST preserve both sides' intended behavior when
-possible. If resolution depends on domain intent, MUST stop and ask. After resolving,
-MUST stage only resolved files and run relevant verification.
+Before resolving conflicts, MUST read `references/local-git-and-branches.md`.
+MUST preserve both sides' intended behavior when possible, MUST stop and ask
+when domain intent is unclear, and MUST stage only resolved files.
 
 ## Quick Checklist
 
@@ -237,6 +214,8 @@ MUST stage only resolved files and run relevant verification.
   tools/evidence, and first allowed action.
 - Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
 - No unrelated files are staged; no force push or force-with-lease is used.
+- Issue title has been validated with `--check-issue-title` before issue
+  creation or title updates.
 - Verification covers touched surfaces, including `--check-touched-loc` when
   applicable.
 - Code-touching changes include Codexy `codegraph` findings and Codexy `lsp`

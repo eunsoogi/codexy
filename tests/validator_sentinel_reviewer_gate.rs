@@ -25,6 +25,107 @@ fn validator_cli_rejects_sentinel_without_specialized_review_passes() -> TestRes
 }
 
 #[test]
+fn validator_cli_rejects_sentinel_without_reasoning_control_marker() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface does not expose or confirm reasoning controls, the reviewer evidence MUST record explicit unavailable evidence and MUST still state that the packaged Sentinel file declares xhigh.",
+        "Reasoning controls are described by later evidence expectations.",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("Reasoning control:"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_with_negated_specialized_review_passes() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Reviewer specialization: MUST split the review into named passes",
+        "Reviewer specialization: MUST NOT split the review into named passes",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output)
+            .contains("Reviewer specialization: MUST split the review into named passes")
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_without_reasoning_unavailable_evidence_clause() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "the reviewer evidence MUST record explicit unavailable evidence",
+        "the reviewer evidence can omit unavailable evidence",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output).contains("the reviewer evidence MUST record explicit unavailable evidence")
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_with_negated_no_finding_result_clause() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+        "MUST NOT require edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_without_no_finding_result_suffix() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+        "replayed review examples when applicable",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_with_split_negated_approval_suffix() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+        "edge classes reviewed. MUST NOT require replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_with_prefix_negated_approval_marker() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Every approval MUST reference the current diff or head",
+        "MUST NOT require that Every approval MUST reference the current diff or head",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("Every approval MUST reference"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
+        "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MAY skip replaying",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("repeated-Codex-feedback lanes"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     for replacement in [
         "missing reasoning control used or unavailable evidence is acceptable",
@@ -174,8 +275,8 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
 #[test]
 fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() -> TestResult {
     for replacement in [
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface is available without reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If the invocation surface is missing reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface is available without reasoning controls, the reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If the invocation surface is missing reasoning controls, the reviewer evidence MUST record explicit unavailable evidence.\n\n",
     ] {
         let output = validate_reasoning_control_paragraph_replacement(replacement)?;
         assert!(output.status.success(), "{}", stderr(&output));
