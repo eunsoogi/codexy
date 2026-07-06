@@ -81,6 +81,18 @@ fn validator_cli_rejects_sentinel_with_negated_no_finding_result_clause() -> Tes
 }
 
 #[test]
+fn validator_cli_rejects_sentinel_without_no_finding_result_suffix() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+        "replayed review examples when applicable",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("no-finding result when no blockers remain"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
     let output = validate_sentinel_replacement(
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",

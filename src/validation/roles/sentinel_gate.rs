@@ -13,6 +13,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "The regression coverage and proof pass MUST verify",
     "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
     "Every approval MUST reference the current diff or head, lane scope, touched implementation-file LOC evidence when applicable, verification commands and results, direct readback for structured files, reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
+    "replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
 ];
 
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
