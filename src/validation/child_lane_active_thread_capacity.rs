@@ -30,6 +30,8 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
                 || ThreadOperation {
                     line_number,
                     reuses_existing_owner: is_reuse_operation_line(line),
+                    replaces_existing_owner: normalized_operation_line(line)
+                        .contains("replacement child thread"),
                     owner: ThreadOwner::from_line(line),
                 },
             )
@@ -57,8 +59,9 @@ pub(super) fn active_capacity_errors(
         } else {
             errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
         }
-
-        if !continues_existing_owner(existing_owner.as_ref(), operation) {
+        if !continues_existing_owner(existing_owner.as_ref(), operation)
+            && !(existing_owner.is_some() && operation.replaces_existing_owner)
+        {
             projected_count = Some(projected_count.unwrap_or(0).saturating_add(1));
         }
         if projected_count.is_some_and(|count| count > MAX_ACTIVE_CHILD_CODEX_THREADS) {
@@ -73,16 +76,14 @@ pub(super) fn continues_existing_owner(
     existing_owner: Option<&ThreadOwner>,
     operation: &ThreadOperation,
 ) -> bool {
-    let Some(existing_owner) = existing_owner else {
-        return false;
-    };
-    if !operation.reuses_existing_owner {
-        return false;
-    }
     existing_owner
-        .thread_id
-        .as_deref()
-        .zip(operation.owner.thread_id.as_deref())
+        .filter(|_| operation.reuses_existing_owner)
+        .and_then(|existing_owner| {
+            existing_owner
+                .thread_id
+                .as_deref()
+                .zip(operation.owner.thread_id.as_deref())
+        })
         .is_some_and(|(existing, operation)| existing == operation)
 }
 
@@ -90,6 +91,7 @@ pub(super) struct ThreadOperation {
     pub(super) line_number: usize,
     pub(super) owner: ThreadOwner,
     reuses_existing_owner: bool,
+    replaces_existing_owner: bool,
 }
 
 pub(super) struct ActiveCount {
@@ -161,13 +163,13 @@ fn is_child_thread_operation_line(line: &str) -> bool {
 
 fn normalized_operation_line(line: &str) -> String {
     line.to_ascii_lowercase()
+        .replace("child-thread", "child thread")
         .replace("child codex app thread", "child thread")
         .replace("child codex thread", "child thread")
         .replace("created a child thread", "created child thread")
 }
-
 fn operation_markers() -> impl Iterator<Item = &'static str> {
-    "created child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
+    "child thread created:|created child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
 }
 
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
