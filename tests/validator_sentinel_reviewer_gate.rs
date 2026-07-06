@@ -93,6 +93,18 @@ fn validator_cli_rejects_sentinel_without_no_finding_result_suffix() -> TestResu
 }
 
 #[test]
+fn validator_cli_rejects_sentinel_with_split_negated_approval_suffix() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+        "edge classes reviewed. MUST NOT require replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("Every approval MUST reference"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
     let output = validate_sentinel_replacement(
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
