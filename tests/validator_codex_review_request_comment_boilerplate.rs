@@ -13,11 +13,9 @@ fn validator_ignores_copied_footer_comments_before_fresh_codex_review() -> TestR
             "Request exactly one fresh Codex review now.\n",
             clean_pr_state_with_comment(comment),
         )?;
-        assert!(
-            output.status.success(),
+        assert_success(
+            &output,
             "validator should ignore copied connector footer/status comments\ncomment: {comment}\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
         );
     }
     Ok(())
@@ -33,11 +31,9 @@ fn validator_ignores_negated_pr_comments_before_fresh_codex_review() -> TestResu
             "Request exactly one fresh Codex review now.\n",
             clean_pr_state_with_comment(comment),
         )?;
-        assert!(
-            output.status.success(),
+        assert_success(
+            &output,
             "validator should ignore negated captured Codex request comments\ncomment: {comment}\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
         );
     }
     Ok(())
@@ -48,17 +44,10 @@ fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResu
         "Request exactly one fresh Codex review now.\n",
         clean_pr_state_with_comment("@codex review"),
     )?;
-    assert!(
-        !output.status.success(),
+    assert_failure_contains(
+        &output,
         "validator should still reject a duplicate fresh request after a real @codex review comment\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("current-head Codex review activity blocks fresh Codex review requests"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+        "current-head Codex review activity blocks fresh Codex review requests",
     );
     Ok(())
 }
@@ -70,37 +59,36 @@ fn validator_preserves_acknowledged_split_comment_duplicate_guard() -> TestResul
             "No current-head request exists and the next action is to @codex review now.",
         ),
     )?;
-    assert!(
-        !output.status.success(),
+    assert_failure_contains(
+        &output,
         "validator should reject a duplicate request after an acknowledged split-action comment\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("current-head Codex review activity blocks fresh Codex review requests"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+        "current-head Codex review activity blocks fresh Codex review requests",
     );
     Ok(())
 }
 #[test]
-fn validator_preserves_current_head_request_after_later_stale_output() -> TestResult {
+fn validator_clears_no_head_request_after_later_stale_output() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Request exactly one fresh Codex review now.\n",
         clean_pr_state_with_later_stale_codex_output(),
     )?;
-    assert!(
-        !output.status.success(),
-        "validator should reject duplicate fresh review requests when only stale Codex output follows the current-head request\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+    assert_success(
+        &output,
+        "validator should allow fresh review requests when later stale Codex output clears a no-head issue-comment request\nstdout:\n{}\nstderr:\n{}",
     );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("current-head Codex review activity blocks fresh Codex review requests"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    Ok(())
+}
+
+#[test]
+fn validator_preserves_current_head_request_after_later_stale_output() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Request exactly one fresh Codex review now.\n",
+        clean_pr_state_with_current_head_request_and_later_stale_output(),
+    )?;
+    assert_failure_contains(
+        &output,
+        "validator should reject duplicate fresh review requests when only stale Codex output follows a current-head request\nstdout:\n{}\nstderr:\n{}",
+        "current-head Codex review activity blocks fresh Codex review requests",
     );
     Ok(())
 }
@@ -114,17 +102,10 @@ fn validator_preserves_rest_captured_eyes_request() -> TestResult {
             "Request exactly one fresh Codex review now.\n",
             clean_pr_state_with_rest_eyes_reaction(reactions),
         )?;
-        assert!(
-            !output.status.success(),
+        assert_failure_contains(
+            &output,
             "validator should reject duplicate fresh review requests after REST-captured EYES reactions\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(
-            String::from_utf8_lossy(&output.stderr)
-                .contains("current-head Codex review activity blocks fresh Codex review requests"),
-            "unexpected stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
+            "current-head Codex review activity blocks fresh Codex review requests",
         );
     }
     Ok(())
@@ -135,11 +116,9 @@ fn validator_ignores_unacknowledged_codex_review_comment_before_retry() -> TestR
         "Request exactly one fresh Codex review now.\n",
         clean_pr_state_with_unacknowledged_comment("@codex review"),
     )?;
-    assert!(
-        output.status.success(),
+    assert_success(
+        &output,
         "validator should allow retry when prior @codex review comment lacks EYES acknowledgement\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
 }
@@ -162,6 +141,22 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
         ])
         .output()?)
 }
+fn assert_success(output: &std::process::Output, message: &str) {
+    assert!(
+        output.status.success(),
+        "{message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+fn assert_failure_contains(output: &std::process::Output, message: &str, needle: &str) {
+    assert!(!output.status.success(), "{message}");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(needle),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
 fn clean_pr_state_with_comment(comment: &str) -> String {
     serde_json::json!({
         "number": 174,
@@ -182,17 +177,34 @@ fn clean_pr_state_with_comment(comment: &str) -> String {
 }
 fn clean_pr_state_with_later_stale_codex_output() -> String {
     serde_json::json!({
-        "number": 174,
-        "state": "OPEN",
-        "isDraft": false,
-        "mergeStateStatus": "CLEAN",
-        "reviewDecision": "REVIEW_REQUIRED",
+        "number": 174, "state": "OPEN", "isDraft": false,
+        "mergeStateStatus": "CLEAN", "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
         "comments": [{
-            "body": "@codex review",
-            "author": {"login": "eunsoogi"},
+            "body": "@codex review", "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
             "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
+        }],
+        "latestReviews": [{
+            "body": "Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`",
+            "author": {"login": "chatgpt-codex-connector"},
+            "submittedAt": "2026-06-22T12:50:03Z"
+        }],
+        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
+    })
+    .to_string()
+}
+
+fn clean_pr_state_with_current_head_request_and_later_stale_output() -> String {
+    serde_json::json!({
+        "number": 174, "state": "OPEN", "isDraft": false,
+        "mergeStateStatus": "CLEAN", "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body": "@codex review", "author": {"login": "eunsoogi"},
+            "createdAt": "2026-06-22T12:45:06Z",
+            "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}],
+            "commit": {"oid": "32b03a210b3defb2d29dd352283ea2488e60d893"}
         }],
         "latestReviews": [{
             "body": "Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`",
@@ -211,11 +223,6 @@ fn clean_pr_state_with_rest_eyes_reaction(reactions: serde_json::Value) -> Strin
         "comments": [{
             "body": "@codex review", "user": {"login": "eunsoogi"},
             "created_at": "2026-06-22T12:45:06Z", "reactions": reactions
-        }],
-        "latestReviews": [{
-            "body": "Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`",
-            "author": {"login": "chatgpt-codex-connector"},
-            "submittedAt": "2026-06-22T12:50:03Z"
         }],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })
