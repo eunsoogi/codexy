@@ -23,10 +23,8 @@ const REASONING_CONTROL_PARAGRAPH_MARKERS: &[&str] = &[
 ];
 const REASONING_CONTROL_DISALLOWED_PATTERNS: &str = concat!(
     "absent reasoning control used or unavailable evidence|acceptable|allowed to disregard|allowed to ignore|aren't required|can be disregarded|can be ignored|can be skipped|can decide whether|can choose whether|can disregard|can ignore|can include|can omit|can reference|consider|considered|does not have to|encouraged|does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
-    "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|choose not|for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave it out|leave out|left out|",
-    "may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing|must attempt|must endeavor|must make reasonable efforts|must never|must not|must-not|must prefer|must strive|must try|mustn't|need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|",
-    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|",
-    "suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|reviewer's discretion|when applicable|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
+    "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|choose not|for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave it out|leave out|left out|may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing reasoning control used or unavailable evidence|must attempt|must endeavor|must evaluate|must inspect|must make reasonable efforts|must never|must not|must-not|must prefer|must review|must strive|must try|mustn't|need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|required to evaluate|required to inspect|required to review|",
+    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except if|except when|reviewer's discretion|when applicable|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
@@ -196,16 +194,19 @@ fn contains_disallowed_reasoning_control_context(clause: &str) -> bool {
         || contains_required_negation(clause)
 }
 fn contains_mandatory_reasoning_control_context(clause: &str) -> bool {
-    contains_context_pattern(clause, "must")
-        || (contains_context_pattern(clause, "required") && !contains_required_negation(clause))
+    "reference|record"
+        .split('|')
+        .any(|pattern| contains_context_pattern(clause, pattern))
+        && (contains_context_pattern(clause, "must")
+            || (contains_context_pattern(clause, "required")
+                && !contains_required_negation(clause)))
 }
 fn contains_disallowed_reasoning_control_paragraph_context(paragraph: &str) -> bool {
-    let after = paragraph
-        .split_once("reasoning control:")
-        .map(|(_, tail)| tail.trim_start());
     contains_context_pattern(paragraph, "negated")
         || paragraph.trim_start().starts_with("no reasoning control:")
-        || after.is_some_and(|tail| tail.starts_with("no "))
+        || paragraph
+            .split_once("reasoning control:")
+            .is_some_and(|(_, tail)| tail.trim_start().starts_with("no "))
 }
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
     if pattern

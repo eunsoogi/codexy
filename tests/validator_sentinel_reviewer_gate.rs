@@ -62,7 +62,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence as needed",
         "reasoning control used or unavailable evidence where practical",
         "Every approval MUST consider reasoning control used or unavailable evidence",
-        "Every approval may reference reasoning control used or unavailable evidence",
+        "Every approval MUST inspect reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence does not have to be supplied",
         "reasoning control used or unavailable evidence does not\nneed to be supplied",
         "reasoning control used or unavailable evidence needn't be supplied",
@@ -175,7 +175,7 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
 fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() -> TestResult {
     for replacement in [
         "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface is available without reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If the invocation surface is absent, reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If the invocation surface is missing reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
     ] {
         let output = validate_reasoning_control_paragraph_replacement(replacement)?;
         assert!(output.status.success(), "{}", stderr(&output));
