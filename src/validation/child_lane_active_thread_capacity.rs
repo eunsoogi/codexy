@@ -139,7 +139,6 @@ fn child_thread_freed_capacity(line: &str) -> bool {
     let words = key_words(line);
     words.iter().any(|word| word == "child")
         && words.iter().any(|word| word == "thread")
-        && words.iter().any(|word| word == "active")
         && (words.iter().any(|word| word == "finished")
             || words.iter().any(|word| word == "stopped")
             || words.iter().any(|word| word == "removed"))
@@ -168,21 +167,7 @@ fn is_child_thread_operation_line(line: &str) -> bool {
     }
     ["create_thread", "fork_thread", "send_message_to_thread"]
         .into_iter()
-        .any(|tool| {
-            line.contains(tool)
-                && [
-                    "called",
-                    "calling",
-                    "continued",
-                    "created",
-                    "invoked",
-                    "invoking",
-                    "resumed",
-                    "started",
-                ]
-                .into_iter()
-                .any(|marker| line.contains(marker))
-        })
+        .any(|tool| line.contains(tool))
 }
 
 fn fresh_count_before_operation<'a>(
