@@ -68,6 +68,30 @@ fn validator_cli_rejects_sentinel_without_reasoning_unavailable_evidence_clause(
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_sentinel_with_negated_no_finding_result_clause() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Every approval MUST reference the current diff or head",
+        "Every approval MUST NOT reference the current diff or head",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("Every approval MUST reference the current diff or head"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
+        "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MAY skip replaying",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("repeated-Codex-feedback lanes"));
+    Ok(())
+}
+
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");

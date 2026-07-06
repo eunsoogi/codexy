@@ -11,9 +11,9 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "The validator/parser edge-case pass MUST search",
     "The workflow/ownership compliance pass MUST verify",
     "The regression coverage and proof pass MUST verify",
-    "edge classes reviewed",
-    "no-finding result",
-    "repeated-Codex-feedback",
+    "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
+    "Every approval MUST reference the current diff or head",
+    "edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
 ];
 
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
