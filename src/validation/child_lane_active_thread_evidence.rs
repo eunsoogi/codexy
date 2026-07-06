@@ -169,7 +169,7 @@ fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
         || line.contains("existing issue/pr owner thread not found")
         || line.contains("existing issue or pr owner thread not found")
         || line.contains("owner thread not found")
-        || line.contains("none found")
+        || (line.contains("none found") && line.contains("owner"))
 }
 
 fn owner_lookup(line: &str) -> Option<OwnerLookup> {

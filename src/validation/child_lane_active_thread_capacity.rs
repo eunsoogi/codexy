@@ -138,7 +138,9 @@ fn first_unsigned_integer(value: &str) -> Option<u64> {
 fn child_thread_freed_capacity(line: &str) -> bool {
     let words = key_words(line);
     words.iter().any(|word| word == "child")
-        && words.iter().any(|word| word == "thread")
+        && words
+            .iter()
+            .any(|word| matches!(word.as_str(), "thread" | "threads"))
         && (words.iter().any(|word| word == "finished")
             || words.iter().any(|word| word == "stopped")
             || words.iter().any(|word| word == "removed"))
@@ -226,15 +228,23 @@ fn is_reuse_operation_line(line: &str) -> bool {
 
 fn has_negated_operation_claim(line: &str) -> bool {
     let line = normalized_operation_line(line);
-    let negation = "did not call|did not continue|did not create|did not resume|didn't call|didn't continue|didn't create|didn't resume|do not call|do not continue|do not create|do not resume|must not call|must not continue|must not create|must not resume|not call|not continue|not create|not resume|no child thread created|no child thread continued|no child thread resumed|without calling|without continuing|without creating|without resuming"
-        .split('|')
-    .filter_map(|marker| line.find(marker))
-    .min();
-    let Some(_) = negation else {
-        return false;
+    let has_operation = |clause: &str| {
+        operation_markers()
+            .chain(["create_thread", "fork_thread", "send_message_to_thread"])
+            .any(|marker| clause.contains(marker))
     };
-    let has_operation = operation_markers()
-        .chain(["create_thread", "fork_thread", "send_message_to_thread"])
-        .any(|marker| line.contains(marker));
-    !has_operation
+    let has_negation = |clause: &str| {
+        "did not call|did not continue|did not create|did not resume|didn't call|didn't continue|didn't create|didn't resume|do not call|do not continue|do not create|do not resume|must not call|must not continue|must not create|must not resume|not call|not continue|not create|not resume|no child thread created|no child thread continued|no child thread resumed|without calling|without continuing|without creating|without resuming"
+            .split('|')
+            .any(|marker| clause.contains(marker))
+    };
+    let mut has_negated_operation = false;
+    let mut has_unnegated_operation = false;
+    for clause in line.split(';') {
+        if has_operation(clause) {
+            has_negated_operation |= has_negation(clause);
+            has_unnegated_operation |= !has_negation(clause);
+        }
+    }
+    has_negated_operation && !has_unnegated_operation
 }
