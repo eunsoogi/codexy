@@ -29,7 +29,7 @@ pub(super) fn matching_owner_lookup_before(
 }
 
 pub(super) fn thread_id(line: &str) -> Option<String> {
-    token_with_prefix(line, "thread-")
+    token_with_prefix(line, "thread-").or_else(|| non_prefixed_thread_id(line))
 }
 
 pub(super) fn issue_id(line: &str) -> Option<String> {
@@ -48,6 +48,30 @@ fn token_with_prefix(line: &str, prefix: &str) -> Option<String> {
             .is_some_and(|rest| !rest.is_empty())
     })
     .map(str::to_owned)
+}
+
+fn non_prefixed_thread_id(line: &str) -> Option<String> {
+    let mut tokens = line.split(|character: char| {
+        !(character.is_ascii_alphanumeric() || character == '-' || character == '#')
+    });
+    while let Some(token) = tokens.next() {
+        if token.eq_ignore_ascii_case("thread") {
+            if let Some(thread_id) = tokens.next().filter(|next| is_codex_thread_id(next)) {
+                return Some(thread_id.to_owned());
+            }
+        }
+    }
+    None
+}
+
+fn is_codex_thread_id(token: &str) -> bool {
+    !token.starts_with('#')
+        && !token.starts_with("thread-")
+        && token.len() >= 4
+        && token
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '-')
+        && token.chars().any(|character| character.is_ascii_digit())
 }
 
 fn number_after_marker(line: &str, marker: &str) -> Option<String> {
