@@ -1,10 +1,23 @@
 pub(super) fn is_connector_footer(clause: &str) -> bool {
+    if is_listed_trigger_footer(clause) {
+        return true;
+    }
     matches!(
         strip_markdown_quote_markers(clause),
         "comment \"@codex review\" to request another review"
             | "comment '@codex review' to request another review"
             | "comment `@codex review` to request another review"
     )
+}
+
+fn is_listed_trigger_footer(clause: &str) -> bool {
+    let line = clause.trim_start();
+    ["- ", "* ", "+ "]
+        .iter()
+        .filter_map(|marker| line.strip_prefix(marker))
+        .map(str::trim)
+        .map(trim_task_marker)
+        .any(|line| line == "comment \"@codex review\"")
 }
 
 pub(super) fn has_negative_request_status(clause: &str) -> bool {
@@ -59,10 +72,24 @@ fn strip_markdown_quote_markers(mut text: &str) -> &str {
             .or_else(|| text.strip_prefix("- "))
             .or_else(|| text.strip_prefix("* "))
             .or_else(|| text.strip_prefix("+ "))
+            .or_else(|| strip_task_marker(text))
         {
             text = rest;
         } else {
             return text;
         }
     }
+}
+
+fn trim_task_marker(text: &str) -> &str {
+    ["[ ] ", "[x] ", "[X] "]
+        .iter()
+        .find_map(|marker| text.strip_prefix(marker))
+        .unwrap_or(text)
+}
+
+fn strip_task_marker(text: &str) -> Option<&str> {
+    ["[ ] ", "[x] ", "[X] "]
+        .iter()
+        .find_map(|marker| text.strip_prefix(marker))
 }
