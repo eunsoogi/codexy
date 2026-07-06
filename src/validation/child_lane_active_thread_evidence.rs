@@ -139,10 +139,12 @@ fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
         || line.contains("no existing issue owner thread found")
         || line.contains("no existing pr owner thread found")
         || line.contains("no existing issue/pr owner thread found")
+        || line.contains("no existing issue or pr owner thread found")
         || line.contains("existing owner thread not found")
         || line.contains("existing issue owner thread not found")
         || line.contains("existing pr owner thread not found")
         || line.contains("existing issue/pr owner thread not found")
+        || line.contains("existing issue or pr owner thread not found")
         || line.contains("owner thread not found")
 }
 
@@ -173,16 +175,19 @@ fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
 
 fn has_negated_owner_check_claim(line: &str) -> bool {
     let line = normalized_owner_lookup_line(line);
-    [
+    if [
         "not run",
         "not checked",
-        "not found",
-        "none found",
         "without checking",
-        "without owner",
         "no existing owner thread evidence",
     ]
     .into_iter()
     .any(|marker| line.contains(marker))
+    {
+        return true;
+    }
+    ["not found", "none found", "without owner"]
+        .into_iter()
+        .any(|marker| line.contains(marker))
         && !line_contains_no_existing_owner_found(line)
 }

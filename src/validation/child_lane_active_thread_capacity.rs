@@ -167,6 +167,9 @@ fn operation_markers() -> impl Iterator<Item = &'static str> {
 }
 
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
+    if has_negated_thread_tool_reference(line, tool) {
+        return false;
+    }
     line.match_indices(tool)
         .any(|(index, _)| line[index + tool.len()..].trim_start().starts_with('('))
         || (["called", "invoked", "executed", "ran", "used"]
@@ -176,6 +179,23 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
             && !["tool search", "discovered", "available thread tool"]
                 .into_iter()
                 .any(|marker| line.contains(marker)))
+}
+
+fn has_negated_thread_tool_reference(line: &str, tool: &str) -> bool {
+    [
+        format!("{tool} was not used"),
+        format!("{tool} wasn't used"),
+        format!("{tool} is not used"),
+        format!("{tool} not used"),
+        format!("did not use {tool}"),
+        format!("didn't use {tool}"),
+        format!("do not use {tool}"),
+        format!("must not use {tool}"),
+        format!("not using {tool}"),
+        format!("without using {tool}"),
+    ]
+    .into_iter()
+    .any(|marker| line.contains(&marker))
 }
 
 fn fresh_count_before_operation<'a>(
@@ -198,6 +218,7 @@ fn projected_active_count(projected_count: Option<u64>, fresh_count: &ActiveCoun
 }
 
 fn is_reuse_operation_line(line: &str) -> bool {
+    let line = normalized_operation_line(line);
     "thread resume:|thread continuation:|continued child thread|resumed child thread|send_message_to_thread"
         .split('|')
         .any(|marker| line.contains(marker))

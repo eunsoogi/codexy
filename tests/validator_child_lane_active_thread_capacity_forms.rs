@@ -86,6 +86,27 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_codex_app_thread_reuse_at_active_cap() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex app threads: 5
+Existing issue/PR owner check: existing owner thread thread-148 found for issue #269.
+Continued child Codex app thread thread-148 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should treat Codex app child-thread continuation wording as same-owner reuse\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_negated_thread_tool_policy_line() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for orchestration only; child routing required
@@ -117,6 +138,25 @@ Maintainer reassignment: none
     assert!(
         output.status.success(),
         "validator should not treat thread-tool discovery as a child-thread operation\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_negated_raw_thread_tool_use() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Review response: create_thread was not used in this review-only lane.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not treat negated raw thread-tool prose as a child-thread operation\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
