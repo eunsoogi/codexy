@@ -114,6 +114,8 @@ fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
             "mergeStateStatus": "CLEAN",
             "headRefName": "codexy/example",
             "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
+            "localHeadOid": "068dbb247b7755035223c91ee39f26830f3c1609",
+            "remoteHeadOid": "068dbb247b7755035223c91ee39f26830f3c1609",
             "worktreeStatus": status_text,
             "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
         })
