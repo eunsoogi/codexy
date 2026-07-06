@@ -142,13 +142,14 @@ fn marker_context(text: &str, marker_start: usize) -> &str {
     while end < bytes.len() && bytes[end] != b'.' {
         end += 1;
     }
-    if let Some(next_start) = next_sentence_start(bytes, end) {
+    while let Some(next_start) = next_sentence_start(bytes, end) {
         let next_sentence = &text[next_start..];
-        if has_reasoning_control_evidence_followup(next_sentence) {
-            end = next_start;
-            while end < bytes.len() && bytes[end] != b'.' {
-                end += 1;
-            }
+        if !has_reasoning_control_evidence_followup(next_sentence) {
+            break;
+        }
+        end = next_start;
+        while end < bytes.len() && bytes[end] != b'.' {
+            end += 1;
         }
     }
     text[start..end].trim()
