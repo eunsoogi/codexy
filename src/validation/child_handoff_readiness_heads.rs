@@ -58,6 +58,9 @@ pub(super) fn captured_head_mismatch(pr_state: &Value) -> Option<String> {
 fn heads_match(pr_head: &str, captured_head: &str) -> bool {
     let pr_head = pr_head.to_ascii_lowercase();
     let captured_head = captured_head.to_ascii_lowercase();
+    if pr_head.len() < 7 || captured_head.len() < 7 {
+        return false;
+    }
     pr_head.starts_with(&captured_head) || captured_head.starts_with(&pr_head)
 }
 

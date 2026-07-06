@@ -77,7 +77,7 @@ fn validator_rejects_pr_ready_handoff_when_local_head_is_stale() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: branch clean. Remote/PR head match: yes (068dbb247b7755035223c91ee39f26830f3c1609). PR ready for parent handoff; parent will handle merge gates.\n",
         pr_state_with(
-            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"1111111111111111111111111111111111111111","remoteHeadOid":"1111111111111111111111111111111111111111","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"0","remoteHeadOid":"068dbb","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
         ),
         "current local HEAD",
     )?;
