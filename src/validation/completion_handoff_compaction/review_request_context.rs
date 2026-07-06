@@ -1,4 +1,8 @@
 pub(super) fn has_review_request_context(line: &str) -> bool {
+    if has_follow_up_review_request_context(line) {
+        return true;
+    }
+
     line.split([';', '.', '!', '?', ',']).any(|clause| {
         let clause = clause.trim();
         !has_negated_review_request_context(clause)
@@ -22,11 +26,90 @@ fn has_request_codex_review_context(line: &str) -> bool {
     line.contains("request") && (line.contains("codex review") || line.contains("@codex review"))
 }
 
+fn has_follow_up_review_request_context(line: &str) -> bool {
+    let mut has_review_wait_context = false;
+    for clause in line.split([';', '.', '!', '?', ',', '\n']) {
+        let clause = clause.trim();
+        if has_wait_only_review_output_context(clause) {
+            has_review_wait_context = true;
+        }
+        if !has_negated_follow_up_review_request_context(clause)
+            && has_follow_up_request_phrase(clause)
+            && (has_review_wait_context
+                || clause.contains("codex review")
+                || clause.contains("@codex review"))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn has_follow_up_request_phrase(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "request again",
+            "request another",
+            "request a new",
+            "request new",
+            "request fresh",
+            "request a fresh",
+        ],
+    )
+}
+
+fn has_negated_follow_up_review_request_context(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "do not request again",
+            "do not request another",
+            "do not request fresh",
+            "do not request a fresh",
+            "do not request new",
+            "do not request a new",
+            "don't request again",
+            "don't request another",
+            "don't request fresh",
+            "don't request a fresh",
+            "don't request new",
+            "don't request a new",
+            "must not request again",
+            "must not request another",
+            "must not request fresh",
+            "must not request a fresh",
+            "must not request new",
+            "must not request a new",
+            "not request again",
+            "not request another",
+            "not request fresh",
+            "not request a fresh",
+            "not request new",
+            "not request a new",
+            "will not request again",
+            "will not request another",
+            "will not request fresh",
+            "will not request a fresh",
+            "will not request new",
+            "will not request a new",
+            "won't request again",
+            "won't request another",
+            "won't request fresh",
+            "won't request a fresh",
+            "won't request new",
+            "won't request a new",
+        ],
+    )
+}
+
 fn has_wait_only_review_output_context(line: &str) -> bool {
     has_any(line, &["wait", "waiting", "poll", "polling"])
         && has_any(
             line,
             &[
+                "@codex review",
+                "codex review",
                 "@codex review output",
                 "codex review output",
                 "codex review result",
