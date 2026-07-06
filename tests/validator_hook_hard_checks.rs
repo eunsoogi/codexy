@@ -4,6 +4,27 @@ use std::process::Command;
 mod support;
 
 #[test]
+fn validator_cli_requires_separate_issue_title_hook() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    remove_user_prompt_hook_containing(&plugin_root, "codexy-issue-title-check.sh")?;
+
+    let output = validate_hooks(&plugin_root)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject topology missing the hard issue title hook"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("UserPromptSubmit hook command must run hooks/codexy-issue-title-check.sh"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_requires_separate_pr_title_hook() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
@@ -68,6 +89,22 @@ fn validator_cli_requires_separate_merge_message_hook() -> Result<(), Box<dyn st
 
 #[test]
 fn separated_hard_hooks_reject_issue_219_examples() -> Result<(), Box<dyn std::error::Error>> {
+    let issue = hook_script("codexy-issue-title-check.sh");
+    let bad_issue = Command::new(&issue)
+        .args([
+            "--issue-title",
+            "fix(agents): reject negated sentinel evidence",
+        ])
+        .output()?;
+    assert!(
+        !bad_issue.status.success(),
+        "issue title hook should reject Conventional Commit titles"
+    );
+    assert!(
+        output_text(&bad_issue).contains("issue title must not use Conventional Commit style"),
+        "unexpected output: {}",
+        output_text(&bad_issue)
+    );
     let title = hook_script("codexy-pr-title-check.sh");
     let bad_title = Command::new(&title)
         .args(["--pr-title", "Require descriptive child thread titles"])
