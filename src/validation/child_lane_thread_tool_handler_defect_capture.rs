@@ -1,4 +1,4 @@
-use super::child_lane_thread_tool_handler_issue_reference::has_issue_reference;
+use super::child_lane_thread_tool_handler_issue_tracking::has_tracking_issue;
 use super::child_lane_thread_tool_handler_issue_value::has_placeholder_or_pending_value;
 use super::child_lane_thread_tool_handler_no_route::has_false_no_route_answer;
 use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
@@ -77,18 +77,6 @@ fn has_fallback_route_or_none(evidence: &str) -> bool {
         .any(|clause| has_explicit_no_route(clause) || has_concrete_fallback_route(clause))
 }
 
-fn has_tracking_issue(evidence: &str) -> bool {
-    const AFFIRMATIVE_MARKERS: &str = "separate dogfood issue|separate dogfooding issue|separate tracking issue|tracking issue|tracked in issue|tracked by issue|follow-up issue";
-    handoff_clauses(evidence).any(|clause| {
-        AFFIRMATIVE_MARKERS
-            .split('|')
-            .any(|marker| clause.contains(marker))
-            && has_issue_reference(clause)
-            && !has_negated_tracking_issue(clause)
-            && !has_placeholder_or_pending_value(clause)
-    })
-}
-
 fn has_concrete_fallback_route(clause: &str) -> bool {
     !has_negated_fallback_route(clause)
         && extract_fallback_route_value(clause).is_some_and(has_substantive_route_value)
@@ -137,40 +125,6 @@ fn has_negated_fallback_route(clause: &str) -> bool {
     NEGATED_FALLBACK_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
-}
-
-fn has_negated_tracking_issue(clause: &str) -> bool {
-    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue,|no issue #|no separate issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|has not been created|hasn't been created|has not been filed|hasn't been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not filed|not provided|wasn't created|wasn't filed|not a tracking issue|not a separate tracking issue|not a dogfood issue|not a separate dogfood issue|not a dogfooding issue|not a separate dogfooding issue|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
-    NEGATED_TRACKING_ISSUE_MARKERS
-        .split('|')
-        .any(|marker| clause.contains(marker))
-        || has_negated_issue_lifecycle(clause)
-}
-
-fn has_negated_issue_lifecycle(clause: &str) -> bool {
-    let normalized = clause
-        .replace("wasn't", "was not")
-        .replace("hasn't", "has not")
-        .replace("hadn't", "had not");
-    ["was", "has", "had"].into_iter().any(|auxiliary| {
-        ["created", "filed"].into_iter().any(|verb| {
-            normalized.contains(&format!("issue {auxiliary} not been {verb}"))
-                || normalized.contains(&format!("issue {auxiliary} not yet been {verb}"))
-                || normalized.contains(&format!("issue {auxiliary} not {verb}"))
-                || normalized.contains(&format!("issue {auxiliary} not yet {verb}"))
-        })
-    }) || ["created", "filed"].into_iter().any(|verb| {
-        normalized.contains(&format!("issue not {verb}"))
-            || normalized.contains(&format!("issue not yet {verb}"))
-            || normalized.contains(&format!(" not {verb}"))
-            || normalized.contains(&format!(" not yet {verb}"))
-    })
-}
-fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
-    evidence
-        .split(['\n', ';'])
-        .flat_map(|clause| clause.split(". "))
-        .map(str::trim)
 }
 
 fn is_defect_capture_line(line: &str) -> bool {

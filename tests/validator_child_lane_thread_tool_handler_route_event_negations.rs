@@ -77,3 +77,22 @@ fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::er
     }
     Ok(())
 }
+
+#[test]
+fn validator_accepts_orchestrator_fallback_route_events() -> Result<(), Box<dyn std::error::Error>>
+{
+    for route in [
+        "Fallback route: orchestrator posted the handoff in the child thread",
+        "Fallback route: orchestrator sent the message to the child owner",
+        "Fallback route: orchestrator delivered the feedback to the reviewer",
+    ] {
+        let output = run_ownership_validator(&evidence(route))?;
+        assert!(
+            output.status.success(),
+            "validator should accept orchestrator-authored fallback route evidence: {route}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}

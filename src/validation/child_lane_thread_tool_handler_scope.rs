@@ -38,7 +38,10 @@ pub(super) fn capture_end_before_unrelated_evidence(
     handler_start: usize,
 ) -> usize {
     let mut cursor = line_end(evidence, handler_start);
-    let scope_lane = lane_label_for_scope(evidence, capture_start, cursor);
+    let scope_lane = lane_label_for_scope(evidence, capture_start, cursor).or_else(|| {
+        let (block_start, _) = scope_start_until_blank(evidence, handler_start);
+        lane_label_for_scope(evidence, block_start, cursor)
+    });
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
@@ -137,7 +140,10 @@ pub(super) fn following_handoff_metadata_has(
     predicate: impl Fn(&str) -> bool,
 ) -> bool {
     let mut cursor = line_end(evidence, line_start);
-    let current_lane = lane_label_for_scope(evidence, line_start, cursor);
+    let current_lane = lane_label_for_scope(evidence, line_start, cursor).or_else(|| {
+        let (block_start, _) = scope_start_until_blank(evidence, line_start);
+        lane_label_for_scope(evidence, block_start, cursor)
+    });
     while cursor < evidence.len() {
         let next_start = cursor + 1;
         let next_end = line_end(evidence, next_start);

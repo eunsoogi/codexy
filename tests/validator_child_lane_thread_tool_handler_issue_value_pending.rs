@@ -49,6 +49,7 @@ fn validator_accepts_concrete_tracking_issue_values_with_status_context()
     for issue in [
         "tracking issue: #205 is not yet closed",
         "tracking issue: #205 covers handler not available",
+        "tracking issue: #205 covers child thread not created",
         "- tracking issue: #205",
         "1. tracking issue: missing-handler exposure #205",
     ] {

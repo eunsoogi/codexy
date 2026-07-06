@@ -1,0 +1,85 @@
+use super::child_lane_thread_tool_handler_issue_reference::has_issue_reference;
+use super::child_lane_thread_tool_handler_issue_value::has_placeholder_or_pending_value;
+
+pub(super) fn has_tracking_issue(evidence: &str) -> bool {
+    const AFFIRMATIVE_MARKERS: &str = "separate dogfood issue|separate dogfooding issue|separate tracking issue|tracking issue|tracked in issue|tracked by issue|follow-up issue";
+    handoff_clauses(evidence).any(|clause| {
+        AFFIRMATIVE_MARKERS
+            .split('|')
+            .any(|marker| clause.contains(marker))
+            && has_issue_reference(clause)
+            && !has_negated_tracking_issue(clause)
+            && !has_placeholder_or_pending_value(clause)
+    })
+}
+
+fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
+    evidence
+        .split(['\n', ';'])
+        .flat_map(|clause| clause.split(". "))
+        .map(str::trim)
+}
+
+fn has_negated_tracking_issue(clause: &str) -> bool {
+    const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue,|no issue #|no separate issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|not provided|not a tracking issue|not a separate tracking issue|not a dogfood issue|not a separate dogfood issue|not a dogfooding issue|not a separate dogfooding issue|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
+    NEGATED_TRACKING_ISSUE_MARKERS
+        .split('|')
+        .any(|marker| clause.contains(marker))
+        || has_negated_issue_lifecycle(clause)
+}
+
+fn has_negated_issue_lifecycle(clause: &str) -> bool {
+    let normalized = clause
+        .replace("wasn't", "was not")
+        .replace("hasn't", "has not")
+        .replace("hadn't", "had not");
+    ["was", "has", "had"].into_iter().any(|auxiliary| {
+        ["created", "filed"].into_iter().any(|verb| {
+            normalized.contains(&format!("issue {auxiliary} not been {verb}"))
+                || normalized.contains(&format!("issue {auxiliary} not yet been {verb}"))
+                || normalized.contains(&format!("issue {auxiliary} not {verb}"))
+                || normalized.contains(&format!("issue {auxiliary} not yet {verb}"))
+        })
+    }) || ["created", "filed"].into_iter().any(|verb| {
+        normalized.contains(&format!("issue not {verb}"))
+            || normalized.contains(&format!("issue not yet {verb}"))
+            || has_issue_reference_with_lifecycle_negation(&normalized, verb)
+    })
+}
+
+fn has_issue_reference_with_lifecycle_negation(clause: &str, verb: &str) -> bool {
+    clause.match_indices('#').any(|(index, _)| {
+        let tail = &clause[index + 1..];
+        let digit_end = tail
+            .find(|character: char| !character.is_ascii_digit())
+            .unwrap_or(tail.len());
+        if digit_end == 0 {
+            return false;
+        }
+        let after_reference = tail[digit_end..].trim_start_matches(|character: char| {
+            character.is_ascii_whitespace()
+                || matches!(
+                    character,
+                    ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';'
+                )
+        });
+        [
+            format!("not {verb}"),
+            format!("not yet {verb}"),
+            format!("not {verb} yet"),
+            format!("was not {verb}"),
+            format!("was not yet {verb}"),
+            format!("was not {verb} yet"),
+            format!("has not been {verb}"),
+            format!("has not yet been {verb}"),
+            format!("has not been {verb} yet"),
+        ]
+        .into_iter()
+        .any(|prefix| {
+            after_reference == prefix
+                || after_reference.strip_prefix(&prefix).is_some_and(|rest| {
+                    rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
+                })
+        })
+    })
+}
