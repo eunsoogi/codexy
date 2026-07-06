@@ -85,22 +85,23 @@ Restart Codex or start a fresh session after registration before expecting new
   If the report discusses addressed review feedback, the PR state evidence
   MUST include GraphQL `reviewThreads.nodes`.
 
-## Active Child Thread Limit
+## Active Child Thread Ledger
+Orchestration MUST maintain a durable active/waiting child thread ledger across normal polling, compaction recovery, dreaming rehydration, and parent handoffs.
+Active child Codex app threads MUST be capped at 5. Orchestrators MUST count
+only active/waiting Codex app child threads against that cap and MUST NOT create, continue, or resume a sixth active child thread until another active child thread has finished, stopped, or been explicitly removed from the ledger.
+Packaged specialist subagents MUST NOT be counted as active
+child Codex app threads.
 
-- Orchestrators MUST keep at most five active Codex app child threads at a time
-  when creating, continuing, or resuming child lanes. MUST NOT create or resume
-  a sixth active child thread until another active child thread has finished,
-  stopped, or been explicitly removed from the active set.
-- Before creating a new child Codex thread, orchestrators MUST check whether an
-  existing thread already owns the same issue or PR. If an owner exists and is
-  usable, orchestrators MUST reuse that owner thread or MUST continue that
-  owner thread instead of creating a replacement.
-- Replacement child threads MUST be created only after existing owner evidence
-  is inspected and the old owner is stopped, unusable, or explicitly
-  superseded.
-- The active-child limit applies to Codex app child threads created or continued
-  by an orchestrator. Packaged specialist subagents are helper/reviewer roles
-  and MUST NOT count as active Codex app child threads.
+Before creating a new child Codex app thread, orchestration MUST check the ledger and current issue/PR state for an existing issue/PR owner thread, MUST treat it as the existing owner thread, and MUST reuse it when present. If that owner is usable, orchestration MUST reuse or continue it instead of creating a duplicate owner.
+Replacement child threads MUST be created only after existing owner evidence is inspected and the old owner is stopped, unusable, or explicitly superseded.
+Each ledger entry MUST include issue/PR, thread id, status, owner state,
+blocker, latest evidence, and next action. Normal polling MUST refresh those
+fields from current thread, worktree, issue, PR, and review evidence.
+Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger.
+Compaction recovery and dreaming rehydration MUST rebuild the ledger before
+dispatching more child work or claiming no active child work remains. Completed
+child threads MUST be removed from the active/waiting ledger after current
+evidence proves completion, and MUST be archived/deleted where supported or recorded as unavailable-tool evidence.
 
 ## Multi-Agent And Reviewer Gate
 
