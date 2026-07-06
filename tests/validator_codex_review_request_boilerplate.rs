@@ -233,6 +233,7 @@ fn stale_codex_activity_pr_state() -> &'static str {
             "body": "@codex review",
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
+            "commit":{"oid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
             "reactionGroups": [{"content":"EYES","users":{"totalCount":1}}]
         }],
         "reviews": [{

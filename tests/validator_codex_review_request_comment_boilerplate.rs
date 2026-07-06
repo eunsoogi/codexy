@@ -1,8 +1,6 @@
 use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_ignores_copied_footer_comments_before_fresh_codex_review() -> TestResult {
     for comment in [
@@ -24,7 +22,6 @@ fn validator_ignores_copied_footer_comments_before_fresh_codex_review() -> TestR
     }
     Ok(())
 }
-
 #[test]
 fn validator_ignores_negated_pr_comments_before_fresh_codex_review() -> TestResult {
     for comment in [
@@ -45,7 +42,6 @@ fn validator_ignores_negated_pr_comments_before_fresh_codex_review() -> TestResu
     }
     Ok(())
 }
-
 #[test]
 fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -66,7 +62,6 @@ fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResu
     );
     Ok(())
 }
-
 #[test]
 fn validator_preserves_acknowledged_split_comment_duplicate_guard() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -89,7 +84,6 @@ fn validator_preserves_acknowledged_split_comment_duplicate_guard() -> TestResul
     );
     Ok(())
 }
-
 #[test]
 fn validator_preserves_current_head_request_after_later_stale_output() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -110,7 +104,31 @@ fn validator_preserves_current_head_request_after_later_stale_output() -> TestRe
     );
     Ok(())
 }
-
+#[test]
+fn validator_preserves_rest_captured_eyes_request() -> TestResult {
+    for reactions in [
+        serde_json::json!([{"content": "eyes"}]),
+        serde_json::json!({"eyes": 1}),
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "Request exactly one fresh Codex review now.\n",
+            clean_pr_state_with_rest_eyes_reaction(reactions),
+        )?;
+        assert!(
+            !output.status.success(),
+            "validator should reject duplicate fresh review requests after REST-captured EYES reactions\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("current-head Codex review activity blocks fresh Codex review requests"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
 #[test]
 fn validator_ignores_unacknowledged_codex_review_comment_before_retry() -> TestResult {
     let output = validate_handoff_with_pr_state(
@@ -125,7 +143,6 @@ fn validator_ignores_unacknowledged_codex_review_comment_before_retry() -> TestR
     );
     Ok(())
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: String) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
@@ -134,7 +151,6 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: String) -> OutputResu
     std::fs::write(&pr_state_path, pr_state)?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
-
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
@@ -146,7 +162,6 @@ fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> Out
         ])
         .output()?)
 }
-
 fn clean_pr_state_with_comment(comment: &str) -> String {
     serde_json::json!({
         "number": 174,
@@ -165,7 +180,6 @@ fn clean_pr_state_with_comment(comment: &str) -> String {
     })
     .to_string()
 }
-
 fn clean_pr_state_with_later_stale_codex_output() -> String {
     serde_json::json!({
         "number": 174,
@@ -178,7 +192,6 @@ fn clean_pr_state_with_later_stale_codex_output() -> String {
             "body": "@codex review",
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
-            "commit": {"oid": "32b03a210b3defb2d29dd352283ea2488e60d893"},
             "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
         }],
         "latestReviews": [{
@@ -190,7 +203,24 @@ fn clean_pr_state_with_later_stale_codex_output() -> String {
     })
     .to_string()
 }
-
+fn clean_pr_state_with_rest_eyes_reaction(reactions: serde_json::Value) -> String {
+    serde_json::json!({
+        "number": 174, "state": "OPEN", "isDraft": false,
+        "mergeStateStatus": "CLEAN", "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body": "@codex review", "user": {"login": "eunsoogi"},
+            "created_at": "2026-06-22T12:45:06Z", "reactions": reactions
+        }],
+        "latestReviews": [{
+            "body": "Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`",
+            "author": {"login": "chatgpt-codex-connector"},
+            "submittedAt": "2026-06-22T12:50:03Z"
+        }],
+        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
+    })
+    .to_string()
+}
 fn clean_pr_state_with_unacknowledged_comment(comment: &str) -> String {
     serde_json::json!({
         "number": 174,
