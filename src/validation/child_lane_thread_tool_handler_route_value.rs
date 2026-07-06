@@ -138,6 +138,7 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
         .flat_map(|clause| clause.split(" although "))
         .flat_map(|clause| clause.split(" yet "))
         .flat_map(|clause| clause.split(" however "))
+        .flat_map(|clause| clause.strip_prefix("then ").into_iter().chain([clause]))
         .flat_map(|clause| clause.strip_prefix("and ").into_iter().chain([clause]))
         .flat_map(|clause| clause.strip_prefix("but ").into_iter().chain([clause]))
         .flat_map(|clause| clause.strip_prefix("although ").into_iter().chain([clause]))
@@ -148,6 +149,9 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_failed_route_delivery_clause(clause: &str) -> bool {
+    if matches!(clause, "failed" | "failure" | "failures") {
+        return true;
+    }
     ["failed", "failure", "failures"]
         .into_iter()
         .any(|failure| {
