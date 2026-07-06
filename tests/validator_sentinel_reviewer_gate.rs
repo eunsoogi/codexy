@@ -71,12 +71,12 @@ fn validator_cli_rejects_sentinel_without_reasoning_unavailable_evidence_clause(
 #[test]
 fn validator_cli_rejects_sentinel_with_negated_no_finding_result_clause() -> TestResult {
     let output = validate_sentinel_replacement(
-        "Every approval MUST reference the current diff or head",
-        "Every approval MUST NOT reference the current diff or head",
+        "edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
+        "MUST NOT require edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
     )?;
 
     assert!(!output.status.success());
-    assert!(stderr(&output).contains("Every approval MUST reference the current diff or head"));
+    assert!(stderr(&output).contains("edge classes reviewed"));
     Ok(())
 }
 
