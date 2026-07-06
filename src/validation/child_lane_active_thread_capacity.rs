@@ -108,15 +108,13 @@ pub(super) struct ActiveCount {
 }
 
 fn thread_owner_matches(candidate: &ThreadOwner, owner: &ThreadOwner) -> bool {
-    candidate
-        .thread_id
-        .as_deref()
-        .zip(owner.thread_id.as_deref())
-        .is_some_and(|(candidate, owner)| candidate == owner)
-        || candidate
+    match (candidate.thread_id.as_deref(), owner.thread_id.as_deref()) {
+        (Some(candidate), Some(owner)) => candidate == owner,
+        _ => candidate
             .issue_ids
             .iter()
-            .any(|id| owner.issue_ids.contains(id))
+            .any(|id| owner.issue_ids.contains(id)),
+    }
 }
 fn active_child_thread_count(line: &str) -> Option<u64> {
     let (key, value) = line.split_once(':')?;
@@ -136,7 +134,9 @@ fn key_words(key: &str) -> Vec<String> {
         .collect()
 }
 fn has_active_child_thread_key(words: &[String]) -> bool {
-    words.iter().any(|word| word == "active")
+    words
+        .iter()
+        .any(|word| matches!(word.as_str(), "active" | "waiting"))
         && words.iter().any(|word| word == "child")
         && words
             .iter()
