@@ -133,7 +133,6 @@ fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     setup_clauses(clauses)
         .into_iter()
         .filter(|clause| !metadata_value_describes_required_negative_setup_proof(clause))
-        .filter(|clause| !is_generic_child_setup_artifact(clause))
         .filter(|clause| clause_has_child_branch_or_worktree_setup(clause))
         .collect()
 }
@@ -193,12 +192,6 @@ fn has_setup_action(line: &str) -> bool {
     "created | created:| created.| created,| created;|-created | was created| got created|creation occurred|switched | switched:| switched.| switched,| switched;| was switched| checked out| checkout |git switch | setup| set up|worktree add"
         .split('|')
         .any(|marker| line.contains(marker))
-}
-fn is_generic_child_setup_artifact(line: &str) -> bool {
-    has_child_setup_actor(line)
-        && !has_codexy_branch_setup_subject(line)
-        && !line_claims_setup_before_classification(line)
-        && !line.contains("immediately after thread rename")
 }
 fn has_absent_child_setup(line: &str) -> bool {
     let line = trimmed_value(line);
