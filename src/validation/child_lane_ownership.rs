@@ -1,3 +1,6 @@
+use super::child_lane_owner_decision::{
+    is_affirmative_child_owned_value, is_child_delegation_owner_decision, is_parent_owned_value,
+};
 use super::child_lane_ownership_fixes::line_has_parent_authored_fix;
 use super::child_lane_ownership_phrases::*;
 use super::child_lane_ownership_recovery::line_has_parent_setup_recovery;
@@ -5,6 +8,7 @@ use super::child_lane_ownership_setup::line_has_parent_implementation_setup;
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_lowercase();
     let mut errors = super::child_lane_thread_tools::check(&normalized);
+    errors.extend(super::child_lane_classification_setup::check(&normalized));
     if has_unreassigned_parent_authored_fix(&normalized) {
         errors.push("child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment; parent implementation setup evidence is also a workflow defect".to_owned());
     }
@@ -175,53 +179,6 @@ fn has_present_child_owner_metadata(line: &str) -> bool {
             && !trimmed_value(value).is_empty()
             && !has_absent_field_value(value, "child owner")
     })
-}
-fn is_affirmative_child_owned_value(value: &str) -> bool {
-    let value = trimmed_value(value);
-    value.contains("child-owned")
-        && !value.contains("not child-owned")
-        && !value.starts_with("parent-owned")
-        && !has_absent_field_value(value, "child-owned")
-}
-fn is_parent_owned_value(value: &str) -> bool {
-    let value = trimmed_value(value);
-    value.starts_with("parent-owned") && !value.contains("not parent-owned")
-}
-fn is_child_delegation_owner_decision(value: &str) -> bool {
-    let value = trimmed_value(value);
-    is_affirmative_child_owned_value(value)
-        || (!has_negated_child_routing_requirement(value)
-            && has_child_delegation(value)
-            && has_routing_only_parent_context(value))
-}
-fn has_child_delegation(value: &str) -> bool {
-    (value.contains("child delegation")
-        || value.contains("child-lane setup")
-        || value.contains("child routing")
-        || value.contains("thread/worktree tool discovery")
-        || value.contains("thread tool discovery")
-        || value.contains("worktree tool discovery"))
-        && !value.contains("without child delegation")
-}
-fn has_routing_only_parent_context(value: &str) -> bool {
-    value.contains("routing-only")
-        || value.contains("coordination-only")
-        || value.contains("delegation-only")
-        || value.contains("child routing required")
-        || value.contains("tool discovery only")
-        || value.contains("tool-discovery-only")
-}
-fn has_negated_child_routing_requirement(value: &str) -> bool {
-    let value = value.replace("child-routing", "child routing");
-    [
-        "no child routing required",
-        "child routing not required",
-        "no child routing is required",
-        "child routing is not required",
-        "without child routing",
-    ]
-    .into_iter()
-    .any(|marker| value.contains(marker))
 }
 fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
