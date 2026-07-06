@@ -126,6 +126,7 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
         if is_boundary(text[..start].chars().next_back())
             && is_boundary(text[end..].chars().next())
             && !is_locally_negated(&text[..start])
+            && !has_blocker_status_label(&text[end..])
             && !has_negative_label_value(&text[end..])
         {
             return true;
@@ -134,6 +135,12 @@ fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
         rest = &text[offset..];
     }
     false
+}
+fn has_blocker_status_label(suffix: &str) -> bool {
+    let suffix = suffix.trim_start_matches([' ', '\t']);
+    suffix
+        .split_once(':')
+        .is_some_and(|(label, _)| matches!(label.trim(), "blocker" | "blockers" | "status"))
 }
 pub(super) fn has_negative_label_value(suffix: &str) -> bool {
     let Some(value) = label_value(suffix) else {
