@@ -36,6 +36,7 @@ pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Valu
         .enumerate()
         .filter(|(_, event)| matches!(event.kind, ReviewEventKind::CodexOutput))
         .filter(|(_, event)| is_after_event(event, &events[latest_eyes_request]))
+        .filter(|(_, event)| !events[latest_eyes_request].matches_head || event.matches_head)
         .any(|(index, _)| index != latest_eyes_request)
 }
 
@@ -44,15 +45,20 @@ fn review_events(pr_state: &Value, require_head_match: bool) -> Vec<ReviewEvent<
     iter_json_objects(pr_state)
         .enumerate()
         .filter_map(|(order, item)| {
+            let matches_head = codex_item_matches_head(item, head);
             let kind = if is_codex_review_request(item) {
                 ReviewEventKind::CodexRequest
-            } else if is_codex_review_output_item(item, head, require_head_match) {
+            } else if is_codex_connector_item(item)
+                && is_review_output_signal(item)
+                && (!require_head_match || matches_head)
+            {
                 ReviewEventKind::CodexOutput
             } else {
                 return None;
             };
             Some(ReviewEvent {
                 kind,
+                matches_head,
                 timestamp: event_timestamp(item),
                 order,
             })
@@ -63,6 +69,7 @@ fn review_events(pr_state: &Value, require_head_match: bool) -> Vec<ReviewEvent<
 #[derive(Clone, Copy)]
 struct ReviewEvent<'a> {
     kind: ReviewEventKind,
+    matches_head: bool,
     timestamp: Option<&'a str>,
     order: usize,
 }
@@ -149,13 +156,6 @@ fn has_actionable_codex_review_request_text(body: &str) -> bool {
         })
 }
 
-fn is_codex_review_output_item(item: &Value, head: Option<&str>, require_head_match: bool) -> bool {
-    if !is_codex_connector_item(item) {
-        return false;
-    }
-    is_review_output_signal(item) && (!require_head_match || codex_output_matches_head(item, head))
-}
-
 fn is_review_output_signal(item: &Value) -> bool {
     is_inline_review_comment_item(item)
         || text_field(item, "state").is_some_and(is_review_output_text)
@@ -164,7 +164,7 @@ fn is_review_output_signal(item: &Value) -> bool {
             .is_some_and(is_review_output_text)
 }
 
-fn codex_output_matches_head(item: &Value, head: Option<&str>) -> bool {
+fn codex_item_matches_head(item: &Value, head: Option<&str>) -> bool {
     let Some(head) = head.filter(|head| !head.trim().is_empty()) else {
         return false;
     };

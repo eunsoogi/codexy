@@ -91,6 +91,27 @@ fn validator_preserves_acknowledged_split_comment_duplicate_guard() -> TestResul
 }
 
 #[test]
+fn validator_preserves_current_head_request_after_later_stale_output() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Request exactly one fresh Codex review now.\n",
+        clean_pr_state_with_later_stale_codex_output(),
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should reject duplicate fresh review requests when only stale Codex output follows the current-head request\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("current-head Codex review activity blocks fresh Codex review requests"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_unacknowledged_codex_review_comment_before_retry() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Request exactly one fresh Codex review now.\n",
@@ -139,6 +160,31 @@ fn clean_pr_state_with_comment(comment: &str) -> String {
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
             "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
+        }],
+        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
+    })
+    .to_string()
+}
+
+fn clean_pr_state_with_later_stale_codex_output() -> String {
+    serde_json::json!({
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body": "@codex review",
+            "author": {"login": "eunsoogi"},
+            "createdAt": "2026-06-22T12:45:06Z",
+            "commit": {"oid": "32b03a210b3defb2d29dd352283ea2488e60d893"},
+            "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
+        }],
+        "latestReviews": [{
+            "body": "Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`",
+            "author": {"login": "chatgpt-codex-connector"},
+            "submittedAt": "2026-06-22T12:50:03Z"
         }],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })
