@@ -42,7 +42,30 @@ fn is_review_request_clause(clause: &str) -> bool {
 fn is_pull_request_noun_clause(clause: &str) -> bool {
     let clause = clause.trim_start();
     (clause.contains("pull request") || clause.contains("pr request"))
-        && !clause.starts_with("request ")
+        && !has_codex_review_request_action(clause)
+}
+
+fn has_codex_review_request_action(clause: &str) -> bool {
+    let mut rest = clause;
+    let mut offset = 0;
+    while let Some(index) = rest.find("request") {
+        let start = offset + index;
+        let end = start + "request".len();
+        if is_word_match(clause, start, end) && !is_pull_request_noun_at(clause, start) {
+            let after = &clause[end..];
+            if after.contains("codex review") || after.contains("@codex review") {
+                return true;
+            }
+        }
+        offset = end;
+        rest = &clause[offset..];
+    }
+    false
+}
+
+fn is_pull_request_noun_at(text: &str, request_start: usize) -> bool {
+    let before = text[..request_start].trim_end();
+    before.ends_with("pull") || before.ends_with("pr")
 }
 
 fn is_review_request_status_clause(clause: &str) -> bool {
@@ -72,21 +95,24 @@ fn contains_word(text: &str, word: &str) -> bool {
     while let Some(index) = rest.find(word) {
         let start = offset + index;
         let end = start + word.len();
-        if text[..start]
-            .chars()
-            .next_back()
-            .is_none_or(|ch| !ch.is_ascii_alphanumeric())
-            && text[end..]
-                .chars()
-                .next()
-                .is_none_or(|ch| !ch.is_ascii_alphanumeric())
-        {
+        if is_word_match(text, start, end) {
             return true;
         }
         offset = end;
         rest = &text[offset..];
     }
     false
+}
+
+fn is_word_match(text: &str, start: usize, end: usize) -> bool {
+    text[..start]
+        .chars()
+        .next_back()
+        .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+        && text[end..]
+            .chars()
+            .next()
+            .is_none_or(|ch| !ch.is_ascii_alphanumeric())
 }
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
@@ -168,69 +194,8 @@ pub(super) fn has_negated_review_request(clause: &str) -> bool {
     {
         return false;
     }
-    [
-        "do not request",
-        "don't request",
-        "do not post",
-        "don't post",
-        "do not comment",
-        "don't comment",
-        "do not send",
-        "don't send",
-        "before requesting",
-        "@codex review requested",
-        "codex review requested",
-        "requested a @codex review",
-        "requested a codex review",
-        "requested @codex review",
-        "requested codex review",
-        "no @codex review request",
-        "no codex review request",
-        "no current-head @codex review request",
-        "no current-head codex review request",
-        "no current-head request",
-        "no current head @codex review request",
-        "no current head codex review request",
-        "no current head request",
-        "no request",
-        "without @codex review request",
-        "without codex review request",
-        "without current-head @codex review request",
-        "without current-head codex review request",
-        "not request",
-        "without current-head request",
-        "without current head @codex review request",
-        "without current head codex review request",
-        "without current head request",
-        "without request",
-        "will not request",
-        "won't request",
-        "must not request",
-        "mustn't request",
-        "will not post",
-        "won't post",
-        "must not post",
-        "mustn't post",
-        "will not comment",
-        "won't comment",
-        "must not comment",
-        "mustn't comment",
-        "will not send",
-        "won't send",
-        "must not send",
-        "mustn't send",
-        "not ready to request",
-        "not yet ready to request",
-        "not currently ready to request",
-        "isn't ready to request",
-        "isn't yet ready to request",
-        "isn't currently ready to request",
-        "aren't ready to request",
-        "aren't yet ready to request",
-        "aren't currently ready to request",
-    ]
-    .iter()
-    .any(|phrase| clause.contains(phrase))
+    const PHRASES: &str = "do not request|don't request|do not post|don't post|do not comment|don't comment|do not send|don't send|before requesting|@codex review requested|codex review requested|requested a @codex review|requested a codex review|requested @codex review|requested codex review|no @codex review request|no codex review request|no current-head @codex review request|no current-head codex review request|no current-head request|no current head @codex review request|no current head codex review request|no current head request|no request|without @codex review request|without codex review request|without current-head @codex review request|without current-head codex review request|not request|without current-head request|without current head @codex review request|without current head codex review request|without current head request|without request|will not request|won't request|must not request|mustn't request|will not post|won't post|must not post|mustn't post|will not comment|won't comment|must not comment|mustn't comment|will not send|won't send|must not send|mustn't send|not ready to request|not yet ready to request|not currently ready to request|isn't ready to request|isn't yet ready to request|isn't currently ready to request|aren't ready to request|aren't yet ready to request|aren't currently ready to request";
+    PHRASES.split('|').any(|phrase| clause.contains(phrase))
 }
 
 fn is_post_colon_request_action(action: &str) -> bool {

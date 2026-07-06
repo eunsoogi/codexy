@@ -128,6 +128,16 @@ fn validator_rejects_real_review_requests_for_pull_request() -> TestResult {
             unresolved_thread_pr_state(),
             "unresolved review thread blocks fresh Codex review requests",
         ),
+        (
+            "Next action: request @codex review for this pull request now.\n",
+            current_head_output_pr_state(),
+            "current-head Codex review activity blocks fresh Codex review requests",
+        ),
+        (
+            "Please request @codex review for this pull request now.\n",
+            unresolved_thread_pr_state(),
+            "unresolved review thread blocks fresh Codex review requests",
+        ),
     ] {
         let output = validate_handoff_with_pr_state(handoff, pr_state)?;
         assert!(
