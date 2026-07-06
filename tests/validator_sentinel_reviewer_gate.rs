@@ -77,6 +77,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence is not compulsory",
         "reasoning control used or unavailable evidence is encouraged",
         "reasoning control used or unavailable evidence is suggested",
+        "reasoning control used or unavailable evidence should be recorded",
         "reasoning control used or unavailable evidence may be left out",
         "may omit reasoning control used or unavailable evidence",
         "may\nomit reasoning control used or unavailable evidence",
@@ -115,9 +116,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
             "reasoning control used or unavailable evidence",
             replacement,
         )?;
-        if output.status.success() {
-            panic!("validator accepted {replacement:?}");
-        }
+        assert!(!output.status.success(), "accepted {replacement:?}");
         assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
     Ok(())
@@ -136,9 +135,7 @@ fn validator_cli_rejects_weak_reasoning_control_evidence_preamble() -> TestResul
         "Every approval MUST make reasonable efforts to reference the current diff or head",
     ] {
         let output = validate_sentinel_replacement(EVIDENCE_PREAMBLE, replacement)?;
-        if output.status.success() {
-            panic!("validator accepted {replacement:?}");
-        }
+        assert!(!output.status.success(), "accepted {replacement:?}");
         assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
     Ok(())
@@ -164,10 +161,7 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
     ] {
         let output = validate_reasoning_control_paragraph_replacement(replacement)?;
 
-        assert!(
-            !output.status.success(),
-            "validator accepted {replacement:?}"
-        );
+        assert!(!output.status.success(), "accepted {replacement:?}");
         assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
     }
     Ok(())
@@ -175,11 +169,13 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
 
 #[test]
 fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() -> TestResult {
-    let output = validate_reasoning_control_paragraph_replacement(
+    for replacement in [
         "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface is available without reasoning controls, reviewer evidence MUST record explicit unavailable evidence.\n\n",
-    )?;
-
-    assert!(output.status.success(), "{}", stderr(&output));
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If the invocation surface is absent, reviewer evidence MUST record explicit unavailable evidence.\n\n",
+    ] {
+        let output = validate_reasoning_control_paragraph_replacement(replacement)?;
+        assert!(output.status.success(), "{}", stderr(&output));
+    }
     Ok(())
 }
 
