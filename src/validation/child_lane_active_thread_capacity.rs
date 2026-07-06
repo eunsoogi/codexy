@@ -230,11 +230,11 @@ fn has_negated_operation_claim(line: &str) -> bool {
         .split('|')
     .filter_map(|marker| line.find(marker))
     .min();
-    let Some(negation) = negation else {
+    let Some(_) = negation else {
         return false;
     };
-    !operation_markers()
+    let has_operation = operation_markers()
         .chain(["create_thread", "fork_thread", "send_message_to_thread"])
-        .filter_map(|marker| line.find(marker))
-        .any(|operation| operation < negation)
+        .any(|marker| line.contains(marker));
+    !has_operation
 }

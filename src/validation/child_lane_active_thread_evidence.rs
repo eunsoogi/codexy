@@ -37,9 +37,7 @@ pub(super) fn thread_id(line: &str) -> Option<String> {
 }
 
 pub(super) fn issue_id(line: &str) -> Option<String> {
-    issue_hash_token(line)
-        .or_else(|| number_after_marker(line, "issue"))
-        .or_else(|| number_after_marker(line, "pr"))
+    issue_ids(line).into_iter().next()
 }
 
 fn token_with_prefix(line: &str, prefix: &str) -> Option<String> {
@@ -94,13 +92,33 @@ fn is_codex_thread_id(token: &str) -> bool {
         && token.chars().any(|character| character.is_ascii_digit())
 }
 
-fn issue_hash_token(line: &str) -> Option<String> {
+fn issue_ids(line: &str) -> Vec<String> {
+    let mut ids = issue_hash_tokens(line);
+    if let Some(issue) = number_after_marker(line, "issue") {
+        push_unique(&mut ids, issue);
+    }
+    if let Some(pr) = number_after_marker(line, "pr") {
+        push_unique(&mut ids, pr);
+    }
+    ids
+}
+
+fn issue_hash_tokens(line: &str) -> Vec<String> {
     line.split(|character: char| {
         !(character.is_ascii_alphanumeric() || character == '-' || character == '#')
     })
     .filter_map(|token| token.strip_prefix('#'))
-    .find(|number| !number.is_empty() && number.chars().all(|character| character.is_ascii_digit()))
+    .filter(|number| {
+        !number.is_empty() && number.chars().all(|character| character.is_ascii_digit())
+    })
     .map(|number| format!("#{number}"))
+    .collect()
+}
+
+fn push_unique(ids: &mut Vec<String>, id: String) {
+    if !ids.iter().any(|existing| existing == &id) {
+        ids.push(id);
+    }
 }
 
 fn number_after_marker(line: &str, marker: &str) -> Option<String> {
@@ -108,7 +126,7 @@ fn number_after_marker(line: &str, marker: &str) -> Option<String> {
         !(character.is_ascii_alphanumeric() || character == '-' || character == '#')
     });
     while let Some(token) = tokens.next() {
-        if token == marker {
+        if token.eq_ignore_ascii_case(marker) {
             if let Some(number) = tokens
                 .next()
                 .and_then(|next| next.strip_prefix('#').or(Some(next)))
@@ -166,9 +184,9 @@ fn owner_lookup(line: &str) -> Option<OwnerLookup> {
 
 fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
     if let Some(operation_issue) = operation_owner.issue_id.as_deref() {
-        return issue_id(line)
-            .as_deref()
-            .is_some_and(|line_issue| line_issue == operation_issue);
+        return issue_ids(line)
+            .into_iter()
+            .any(|line_issue| line_issue == operation_issue);
     }
     let Some(operation_thread) = operation_owner.thread_id.as_deref() else {
         return false;

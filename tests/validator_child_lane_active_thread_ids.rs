@@ -154,6 +154,27 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_pr_owner_lookup_when_issue_hash_is_also_present()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3
+Existing issue/PR owner check: no existing owner thread found for issue #269 / PR #300.
+Thread creation: created child thread thread-300 for PR #300.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should match a PR-scoped child operation when the owner lookup line also mentions the linked issue\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_not_run_owner_check_with_no_owner_words()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

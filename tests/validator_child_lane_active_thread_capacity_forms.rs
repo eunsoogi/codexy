@@ -189,6 +189,31 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_operation_with_unrelated_earlier_negation_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Did not create a duplicate owner; Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let unrelated earlier negation hide a real child-thread operation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_new_thread_after_ledger_removal_frees_capacity()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
