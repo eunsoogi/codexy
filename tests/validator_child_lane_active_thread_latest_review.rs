@@ -59,3 +59,44 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_allows_explicit_total_after_thread_id_list() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: thread-101, thread-102, thread-103, thread-104, thread-105 (5 total)
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should parse explicit total instead of thread id digits\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_explicit_total_after_over_cap_thread_id_list()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: thread-001, thread-002, thread-003, thread-004, thread-005, thread-006 (6 total)
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject explicit over-cap total after thread id list"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("keep at most five active child Codex threads"),
+        "stderr should name over-cap explicit total, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

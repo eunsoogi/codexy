@@ -1,5 +1,6 @@
 mod agent_registration;
 mod child_lane_active_thread_capacity;
+mod child_lane_active_thread_count;
 mod child_lane_active_thread_evidence;
 mod child_lane_active_threads;
 mod child_lane_classification_boundaries;

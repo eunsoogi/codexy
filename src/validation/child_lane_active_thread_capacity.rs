@@ -1,3 +1,4 @@
+use super::child_lane_active_thread_count::{active_child_thread_count, key_words};
 use super::child_lane_active_thread_evidence::ThreadOwner;
 
 pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
@@ -116,40 +117,6 @@ fn thread_owner_matches(candidate: &ThreadOwner, owner: &ThreadOwner) -> bool {
             .any(|id| owner.issue_ids.contains(id)),
     }
 }
-fn active_child_thread_count(line: &str) -> Option<u64> {
-    let (key, value) = line.split_once(':')?;
-    if !has_active_child_thread_key(&key_words(key)) {
-        return None;
-    }
-    value
-        .split(|character: char| !character.is_ascii_digit())
-        .find(|part| !part.is_empty())
-        .and_then(|part| part.parse().ok())
-}
-fn key_words(key: &str) -> Vec<String> {
-    key.to_ascii_lowercase()
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|part| !part.is_empty())
-        .map(str::to_owned)
-        .collect()
-}
-fn has_active_child_thread_key(words: &[String]) -> bool {
-    words
-        .iter()
-        .any(|word| matches!(word.as_str(), "active" | "waiting"))
-        && words.iter().any(|word| word == "child")
-        && words
-            .iter()
-            .any(|word| matches!(word.as_str(), "thread" | "threads"))
-        && !words.iter().any(|word| word == "inactive")
-        && !words
-            .windows(2)
-            .any(|window| window[0] == "non" && window[1] == "active")
-        && !words
-            .iter()
-            .any(|word| matches!(word.as_str(), "subagent" | "specialist"))
-}
-
 fn child_thread_freed_capacity(line: &str) -> bool {
     let words = key_words(line);
     words.iter().any(|word| word == "child")
