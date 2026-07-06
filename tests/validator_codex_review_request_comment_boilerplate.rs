@@ -67,6 +67,21 @@ fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResu
     Ok(())
 }
 
+#[test]
+fn validator_ignores_unacknowledged_codex_review_comment_before_retry() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Request exactly one fresh Codex review now.\n",
+        clean_pr_state_with_unacknowledged_comment("@codex review"),
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should allow retry when prior @codex review comment lacks EYES acknowledgement\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: String) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
@@ -101,6 +116,25 @@ fn clean_pr_state_with_comment(comment: &str) -> String {
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
             "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
+        }],
+        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
+    })
+    .to_string()
+}
+
+fn clean_pr_state_with_unacknowledged_comment(comment: &str) -> String {
+    serde_json::json!({
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body": comment,
+            "author": {"login": "eunsoogi"},
+            "createdAt": "2026-06-22T12:45:06Z",
+            "reactionGroups": []
         }],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })

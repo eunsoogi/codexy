@@ -14,7 +14,6 @@ pub(super) fn has_codex_review_output(pr_state: &Value) -> bool {
         .iter()
         .any(|event| matches!(event.kind, ReviewEventKind::CodexOutput))
 }
-
 pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
     iter_json_objects(pr_state).any(|item| {
         is_codex_review_request(item)
@@ -119,7 +118,22 @@ fn has_concrete_identity(value: &Value) -> bool {
 
 fn is_codex_review_request(item: &Value) -> bool {
     !is_codex_connector_item(item)
+        && has_eyes_reaction(item)
         && text_field(item, "body").is_some_and(has_actionable_codex_review_request_text)
+}
+
+fn has_eyes_reaction(item: &Value) -> bool {
+    item.get("reactionGroups")
+        .and_then(Value::as_array)
+        .is_some_and(|groups| {
+            groups.iter().any(|group| {
+                text_field(group, "content") == Some("EYES")
+                    && group
+                        .get("users")
+                        .and_then(|users| users.get("totalCount").and_then(Value::as_u64))
+                        .is_some_and(|count| count > 0)
+            })
+        })
 }
 
 fn has_actionable_codex_review_request_text(body: &str) -> bool {
