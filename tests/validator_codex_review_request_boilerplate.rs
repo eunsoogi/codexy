@@ -115,6 +115,36 @@ fn validator_allows_pull_request_readiness_after_codex_review() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_rejects_real_review_requests_for_pull_request() -> TestResult {
+    for (handoff, pr_state, expected) in [
+        (
+            "Request Codex review for this pull request.\n",
+            current_head_output_pr_state(),
+            "current-head Codex review activity blocks fresh Codex review requests",
+        ),
+        (
+            "Request exactly one fresh Codex review now for this pull request.\n",
+            unresolved_thread_pr_state(),
+            "unresolved review thread blocks fresh Codex review requests",
+        ),
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, pr_state)?;
+        assert!(
+            !output.status.success(),
+            "validator should preserve fresh-review guards for real request actions mentioning pull requests\nhandoff: {handoff}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains(expected),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

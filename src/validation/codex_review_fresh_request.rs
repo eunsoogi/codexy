@@ -40,7 +40,9 @@ fn is_review_request_clause(clause: &str) -> bool {
 }
 
 fn is_pull_request_noun_clause(clause: &str) -> bool {
-    clause.contains("pull request") || clause.contains("pr request")
+    let clause = clause.trim_start();
+    (clause.contains("pull request") || clause.contains("pr request"))
+        && !clause.starts_with("request ")
 }
 
 fn is_review_request_status_clause(clause: &str) -> bool {
