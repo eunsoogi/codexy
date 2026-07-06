@@ -26,6 +26,27 @@ fn validator_ignores_copied_footer_comments_before_fresh_codex_review() -> TestR
 }
 
 #[test]
+fn validator_ignores_negated_pr_comments_before_fresh_codex_review() -> TestResult {
+    for comment in [
+        "Next action: do not request fresh @codex review yet.",
+        "Next action: don't request @codex review until review threads are resolved.",
+        "Next action: must not comment @codex review yet because review threads remain unresolved.",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "Request exactly one fresh Codex review now.\n",
+            clean_pr_state_with_comment(comment),
+        )?;
+        assert!(
+            output.status.success(),
+            "validator should ignore negated captured Codex request comments\ncomment: {comment}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Request exactly one fresh Codex review now.\n",

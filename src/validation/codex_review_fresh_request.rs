@@ -140,7 +140,7 @@ fn pr_number(pr_state: &Value) -> String {
         .map_or_else(|| "<unknown>".to_owned(), |number| number.to_string())
 }
 
-fn has_negated_review_request(clause: &str) -> bool {
+pub(super) fn has_negated_review_request(clause: &str) -> bool {
     [
         "do not request",
         "don't request",
