@@ -63,6 +63,9 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
     let sentence_end = tail.find('.').unwrap_or(tail.len());
     let sentence_tail = &tail[..sentence_end];
+    if contains_exception_scope(sentence_tail) {
+        return true;
+    }
     let mut tail_segments = sentence_tail.split([',', ';']);
     let scoped_tail = tail_segments.next().unwrap_or(sentence_tail);
     let opt_out_tail = tail_segments
@@ -166,24 +169,39 @@ fn contains_disallowed_paragraph_context(paragraph: &str) -> bool {
             .is_some_and(|(_, tail)| tail.trim_start().starts_with("no "))
 }
 
+fn contains_exception_scope(clause: &str) -> bool {
+    ["except in", "except for", "only for"]
+        .iter()
+        .any(|pattern| contains_context_pattern(clause, pattern))
+}
+
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
     if pattern
         .chars()
         .any(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
     {
-        let words = clause.split_ascii_whitespace().collect::<Vec<_>>();
-        return words.join(" ").contains(pattern);
+        let clause_words = context_words(clause);
+        let pattern_words = context_words(pattern);
+        if pattern_words.is_empty() || pattern_words.len() > clause_words.len() {
+            return false;
+        }
+        return clause_words
+            .windows(pattern_words.len())
+            .any(|window| window == pattern_words.as_slice());
     }
     clause
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .any(|word| word == pattern)
 }
 
-fn contains_required_negation(clause: &str) -> bool {
-    let words = clause
-        .split(|ch: char| !ch.is_ascii_alphanumeric())
+fn context_words(text: &str) -> Vec<&str> {
+    text.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
         .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
+        .collect()
+}
+
+fn contains_required_negation(clause: &str) -> bool {
+    let words = context_words(clause);
     for (index, word) in words.iter().enumerate() {
         if *word != "required" {
             continue;
