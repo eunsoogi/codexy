@@ -15,11 +15,13 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let owner_lookups = operations
         .iter()
         .map(|operation| {
+            let lookup_bound =
+                previous_operation_line.filter(|line| line != &operation.line_number);
             let lookup = matching_owner_lookup_before(
                 evidence,
                 &operation.owner,
                 operation.line_number,
-                previous_operation_line,
+                lookup_bound,
             );
             previous_operation_line = Some(operation.line_number);
             lookup

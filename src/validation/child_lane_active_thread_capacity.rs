@@ -19,26 +19,31 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
     }
     records
 }
-
 pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
     evidence
         .lines()
         .enumerate()
-        .filter_map(|line| {
-            let (line_number, line) = line;
-            (is_child_thread_operation_line(line) && !has_negated_operation_claim(line)).then(
-                || ThreadOperation {
-                    line_number,
-                    reuses_existing_owner: is_reuse_operation_line(line),
-                    replaces_existing_owner: normalized_operation_line(line)
-                        .contains("replacement child thread"),
-                    owner: ThreadOwner::from_line(line),
-                },
-            )
+        .flat_map(|(line_number, line)| {
+            operation_segments(line).filter_map(move |line| {
+                (is_child_thread_operation_line(line) && !has_negated_operation_claim(line)).then(
+                    || ThreadOperation {
+                        line_number,
+                        reuses_existing_owner: is_reuse_operation_line(line),
+                        replaces_existing_owner: normalized_operation_line(line)
+                            .contains("replacement child thread"),
+                        owner: ThreadOwner::from_line(line),
+                    },
+                )
+            })
         })
         .collect()
 }
 
+fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
+    line.split(';')
+        .flat_map(|line| line.split(". "))
+        .flat_map(|line| line.split(" and "))
+}
 pub(super) fn active_capacity_errors(
     operations: &[ThreadOperation],
     active_counts: &[ActiveCount],
@@ -49,9 +54,8 @@ pub(super) fn active_capacity_errors(
     let mut projected_count: Option<u64> = None;
     for (operation, existing_owner) in operations.iter().zip(existing_owners) {
         let mut counted_replacement = false;
-        if let Some(record) =
-            fresh_count_before_operation(active_counts, previous_operation_line, operation)
-        {
+        let count_bound = previous_operation_line.filter(|line| line != &operation.line_number);
+        if let Some(record) = fresh_count_before_operation(active_counts, count_bound, operation) {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
                 operation.replaces_existing_owner && thread_owner_matches(&record.owner, owner)
             });
@@ -112,21 +116,18 @@ fn thread_owner_matches(candidate: &ThreadOwner, owner: &ThreadOwner) -> bool {
         || candidate
             .issue_ids
             .iter()
-            .any(|id| owner.issue_ids.iter().any(|owner_id| owner_id == id))
+            .any(|id| owner.issue_ids.contains(id))
 }
-
 fn active_child_thread_count(line: &str) -> Option<u64> {
     let (key, value) = line.split_once(':')?;
-    has_active_child_thread_key(&key_words(key))
-        .then(|| {
-            value
-                .split(|character: char| !character.is_ascii_digit())
-                .find(|part| !part.is_empty())
-                .and_then(|part| part.parse().ok())
-        })
-        .flatten()
+    if !has_active_child_thread_key(&key_words(key)) {
+        return None;
+    }
+    value
+        .split(|character: char| !character.is_ascii_digit())
+        .find(|part| !part.is_empty())
+        .and_then(|part| part.parse().ok())
 }
-
 fn key_words(key: &str) -> Vec<String> {
     key.to_ascii_lowercase()
         .split(|character: char| !character.is_ascii_alphanumeric())
@@ -134,7 +135,6 @@ fn key_words(key: &str) -> Vec<String> {
         .map(str::to_owned)
         .collect()
 }
-
 fn has_active_child_thread_key(words: &[String]) -> bool {
     words.iter().any(|word| word == "active")
         && words.iter().any(|word| word == "child")
