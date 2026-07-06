@@ -11,7 +11,7 @@ pub(super) fn is_connector_footer(clause: &str) -> bool {
 }
 
 fn is_listed_trigger_footer(clause: &str) -> bool {
-    let line = clause.trim_start();
+    let line = strip_markdown_quote_prefixes(clause);
     ["- ", "* ", "+ "]
         .iter()
         .filter_map(|marker| line.strip_prefix(marker))
@@ -73,6 +73,21 @@ fn strip_markdown_quote_markers(mut text: &str) -> &str {
             .or_else(|| text.strip_prefix("* "))
             .or_else(|| text.strip_prefix("+ "))
             .or_else(|| strip_task_marker(text))
+        {
+            text = rest;
+        } else {
+            return text;
+        }
+    }
+}
+
+fn strip_markdown_quote_prefixes(mut text: &str) -> &str {
+    loop {
+        text = text.trim_start();
+        if let Some(rest) = text
+            .strip_prefix('>')
+            .or_else(|| text.strip_prefix("&gt;"))
+            .or_else(|| text.strip_prefix("&gt"))
         {
             text = rest;
         } else {

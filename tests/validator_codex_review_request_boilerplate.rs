@@ -13,6 +13,8 @@ fn validator_allows_quoted_codex_review_boilerplate_in_readiness_handoff() -> Te
         r#"- Comment "@codex review" to request another review."#,
         r#"- [x] Comment "@codex review" to request another review."#,
         r#"- Comment "@codex review"."#,
+        r#"> - Comment "@codex review"."#,
+        r#"> - [x] Comment "@codex review"."#,
     ] {
         let output = validate_handoff_with_pr_state(
             &format!(
@@ -42,6 +44,7 @@ fn validator_rejects_suffixed_quoted_footer_as_fresh_request() -> TestResult {
         r#"Comment "@codex review" to request another review on the current head."#,
         r#"- Comment "@codex review" on the current head."#,
         r#"- [x] Comment "@codex review" on the current head."#,
+        r#"> - Comment "@codex review" on the current head."#,
     ] {
         let output = validate_handoff_with_pr_state(request, current_head_output_pr_state())?;
         assert!(

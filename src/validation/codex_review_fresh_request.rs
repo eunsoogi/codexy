@@ -75,6 +75,16 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
             pr_number(pr_state)
         ));
     }
+    if pr_state
+        .get("headRefOid")
+        .and_then(Value::as_str)
+        .is_none_or(|head| head.trim().is_empty())
+    {
+        return Some(format!(
+            "incomplete headRefOid PR state evidence before fresh Codex review requests: PR #{}",
+            pr_number(pr_state)
+        ));
+    }
     if has_latest_eyes_request_without_later_codex_output(pr_state)
         || has_codex_review_output(pr_state)
     {
