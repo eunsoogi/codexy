@@ -22,17 +22,7 @@ fn is_listed_trigger_footer(clause: &str) -> bool {
 
 pub(super) fn has_negative_request_status(clause: &str) -> bool {
     let clause = strip_markdown_quote_markers(clause);
-    let Some(value) = [
-        "current-head codex review request",
-        "current-head @codex review request",
-        "current head codex review request",
-        "current head @codex review request",
-        "codex review request",
-        "@codex review request",
-    ]
-    .iter()
-    .filter_map(|label| clause.strip_prefix(label))
-    .find_map(request_status_value) else {
+    let Some(value) = request_status_value_for_clause(clause) else {
         return false;
     };
     [
@@ -52,6 +42,27 @@ pub(super) fn has_negative_request_status(clause: &str) -> bool {
                 .next()
                 .is_none_or(|character| !character.is_ascii_alphanumeric())
         })
+    })
+}
+
+fn request_status_value_for_clause(clause: &str) -> Option<&str> {
+    std::iter::successors(Some(clause), |clause| {
+        clause
+            .split_once(':')
+            .map(|(_, suffix)| suffix.trim_start())
+    })
+    .find_map(|clause| {
+        [
+            "current-head codex review request",
+            "current-head @codex review request",
+            "current head codex review request",
+            "current head @codex review request",
+            "codex review request",
+            "@codex review request",
+        ]
+        .iter()
+        .filter_map(|label| clause.strip_prefix(label))
+        .find_map(request_status_value)
     })
 }
 

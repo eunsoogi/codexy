@@ -73,6 +73,8 @@ fn validator_allows_negative_codex_review_request_status_labels() -> TestResult 
         "Codex review request: not requested.\n",
         "Current-head Codex review request: none.\n",
         "@codex review request: false.\n",
+        "Codex review state: @codex review request: none yet.\n",
+        "Review evidence: current-head Codex review request: not requested.\n",
     ] {
         let output = validate_handoff_with_pr_state(status, unresolved_thread_pr_state())?;
         assert!(
