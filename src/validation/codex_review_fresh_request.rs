@@ -180,7 +180,6 @@ pub(super) fn has_blocking_unresolved_thread(handoff: &str, pr_state: &Value) ->
         .is_some_and(|nodes| {
             nodes.iter().any(|thread| {
                 thread.get("isResolved").and_then(Value::as_bool) == Some(false)
-                    && thread.get("isOutdated").and_then(Value::as_bool) != Some(true)
                     && !super::review_thread_resolution::documents_accepted_no_change_rationale(
                         handoff, thread,
                     )

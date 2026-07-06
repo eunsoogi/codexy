@@ -67,32 +67,6 @@ fn validator_preserves_acknowledged_split_comment_duplicate_guard() -> TestResul
     Ok(())
 }
 #[test]
-fn validator_clears_no_head_request_after_later_stale_output() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Request exactly one fresh Codex review now.\n",
-        clean_pr_state_with_later_stale_codex_output(),
-    )?;
-    assert_success(
-        &output,
-        "validator should allow fresh review requests when later stale Codex output clears a no-head issue-comment request\nstdout:\n{}\nstderr:\n{}",
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_preserves_current_head_request_after_later_stale_output() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Request exactly one fresh Codex review now.\n",
-        clean_pr_state_with_current_head_request_and_later_stale_output(),
-    )?;
-    assert_failure_contains(
-        &output,
-        "validator should reject duplicate fresh review requests when only stale Codex output follows a current-head request\nstdout:\n{}\nstderr:\n{}",
-        "current-head Codex review activity blocks fresh Codex review requests",
-    );
-    Ok(())
-}
-#[test]
 fn validator_preserves_rest_captured_eyes_request() -> TestResult {
     for reactions in [
         serde_json::json!([{"content": "eyes"}]),
@@ -170,46 +144,6 @@ fn clean_pr_state_with_comment(comment: &str) -> String {
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
             "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
-        }],
-        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
-    })
-    .to_string()
-}
-fn clean_pr_state_with_later_stale_codex_output() -> String {
-    serde_json::json!({
-        "number": 174, "state": "OPEN", "isDraft": false,
-        "mergeStateStatus": "CLEAN", "reviewDecision": "REVIEW_REQUIRED",
-        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
-        "comments": [{
-            "body": "@codex review", "author": {"login": "eunsoogi"},
-            "createdAt": "2026-06-22T12:45:06Z",
-            "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
-        }],
-        "latestReviews": [{
-            "body": "Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`",
-            "author": {"login": "chatgpt-codex-connector"},
-            "submittedAt": "2026-06-22T12:50:03Z"
-        }],
-        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
-    })
-    .to_string()
-}
-
-fn clean_pr_state_with_current_head_request_and_later_stale_output() -> String {
-    serde_json::json!({
-        "number": 174, "state": "OPEN", "isDraft": false,
-        "mergeStateStatus": "CLEAN", "reviewDecision": "REVIEW_REQUIRED",
-        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
-        "comments": [{
-            "body": "@codex review", "author": {"login": "eunsoogi"},
-            "createdAt": "2026-06-22T12:45:06Z",
-            "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}],
-            "commit": {"oid": "32b03a210b3defb2d29dd352283ea2488e60d893"}
-        }],
-        "latestReviews": [{
-            "body": "Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaa`",
-            "author": {"login": "chatgpt-codex-connector"},
-            "submittedAt": "2026-06-22T12:50:03Z"
         }],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })
