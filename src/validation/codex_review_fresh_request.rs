@@ -21,10 +21,13 @@ pub(super) fn claims(handoff: &str) -> bool {
 
 fn is_review_request_clause(clause: &str) -> bool {
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
+    let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
-        && (["request", "post", "comment", "send"]
-            .iter()
-            .any(|verb| contains_word(clause, verb))
+        && (contains_word(clause, "request")
+            || names_at_codex_review
+                && ["post", "comment", "send"]
+                    .iter()
+                    .any(|verb| contains_word(clause, verb))
             || clause.trim() == "@codex review"
             || clause
                 .trim_start()
