@@ -1,6 +1,8 @@
 use super::child_lane_active_thread_capacity::{
-    MAX_ACTIVE_CHILD_CODEX_THREADS, active_capacity_errors, active_child_thread_count_records,
-    child_thread_operations, continues_existing_owner,
+    active_capacity_errors, child_thread_operations, continues_existing_owner,
+};
+use super::child_lane_active_thread_count_records::{
+    active_child_thread_count_errors, active_child_thread_count_records,
 };
 use super::child_lane_active_thread_evidence::{
     OwnerLookup, ThreadOwner, issue_ids, matching_owner_lookup_before, thread_id,
@@ -34,13 +36,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
             Some(OwnerLookup::NotFound) | None => None,
         })
         .collect::<Vec<_>>();
-    for count in active_counts.iter().map(|record| record.count) {
-        if count > MAX_ACTIVE_CHILD_CODEX_THREADS {
-            errors.push(format!(
-                "orchestration evidence reports {count} active child Codex threads; keep at most five active child Codex threads before creating or resuming more"
-            ));
-        }
-    }
+    errors.extend(active_child_thread_count_errors(&active_counts));
     if has_child_thread_operation && active_counts.is_empty() {
         errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
     }

@@ -1,25 +1,6 @@
-use super::child_lane_active_thread_count::{active_child_thread_count, key_words};
+use super::child_lane_active_thread_count_records::{ActiveCount, MAX_ACTIVE_CHILD_CODEX_THREADS};
 use super::child_lane_active_thread_evidence::ThreadOwner;
 
-pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
-pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCount> {
-    let mut records = Vec::new();
-    let mut freed_capacity = false;
-    for (line_number, line) in evidence.lines().enumerate() {
-        if let Some(count) = active_child_thread_count(line) {
-            records.push(ActiveCount {
-                count,
-                line_number,
-                freed_capacity,
-                owner: ThreadOwner::from_line(line),
-            });
-            freed_capacity = false;
-        } else if child_thread_freed_capacity(line) {
-            freed_capacity = true;
-        }
-    }
-    records
-}
 pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
     evidence
         .lines()
@@ -89,7 +70,7 @@ pub(super) fn active_capacity_errors(
         let count_bound = previous_operation_line.filter(|line| line != &operation.line_number);
         if let Some(record) = fresh_count_before_operation(active_counts, count_bound, operation) {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
-                operation.replaces_existing_owner && thread_owner_matches(&record.owner, owner)
+                operation.replaces_existing_owner && active_count_matches_owner(record, owner)
             });
             projected_count = Some(match projected_count {
                 Some(_) if record.freed_capacity => record.count,
@@ -132,34 +113,24 @@ pub(super) struct ThreadOperation {
     replaces_existing_owner: bool,
 }
 
-pub(super) struct ActiveCount {
-    pub(super) count: u64,
-    owner: ThreadOwner,
-    line_number: usize,
-    freed_capacity: bool,
-}
-
-fn thread_owner_matches(candidate: &ThreadOwner, owner: &ThreadOwner) -> bool {
-    match (candidate.thread_id.as_deref(), owner.thread_id.as_deref()) {
-        (Some(candidate), Some(owner)) => candidate == owner,
-        _ => candidate
+fn active_count_matches_owner(record: &ActiveCount, owner: &ThreadOwner) -> bool {
+    if let Some(owner_thread) = owner.thread_id.as_deref() {
+        if !record.thread_ids.is_empty() {
+            return record
+                .thread_ids
+                .iter()
+                .any(|thread_id| thread_id == owner_thread);
+        }
+        if let Some(record_thread) = record.owner.thread_id.as_deref() {
+            return record_thread == owner_thread;
+        }
+    }
+    !owner.issue_ids.is_empty()
+        && record
+            .owner
             .issue_ids
             .iter()
-            .any(|id| owner.issue_ids.contains(id)),
-    }
-}
-fn child_thread_freed_capacity(line: &str) -> bool {
-    let words = key_words(line);
-    words.iter().any(|word| word == "child")
-        && words
-            .iter()
-            .any(|word| matches!(word.as_str(), "thread" | "threads"))
-        && ["finished", "stopped", "removed"]
-            .into_iter()
-            .any(|marker| words.iter().any(|word| word == marker))
-        && !["not", "no", "inactive"]
-            .into_iter()
-            .any(|marker| words.iter().any(|word| word == marker))
+            .any(|id| owner.issue_ids.contains(id))
 }
 
 fn is_child_thread_operation_line(line: &str) -> bool {
