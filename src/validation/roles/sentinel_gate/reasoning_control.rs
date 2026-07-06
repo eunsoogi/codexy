@@ -63,7 +63,7 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
     let sentence_end = tail.find('.').unwrap_or(tail.len());
     let sentence_tail = &tail[..sentence_end];
-    if contains_exception_scope(sentence_tail) {
+    if contains_scoped_opt_out(sentence_tail) {
         return true;
     }
     let mut tail_segments = sentence_tail.split([',', ';']);
@@ -169,7 +169,13 @@ fn contains_disallowed_paragraph_context(paragraph: &str) -> bool {
             .is_some_and(|(_, tail)| tail.trim_start().starts_with("no "))
 }
 
-fn contains_exception_scope(clause: &str) -> bool {
+fn contains_scoped_opt_out(clause: &str) -> bool {
+    if context_words(clause)
+        .first()
+        .is_some_and(|word| matches!(*word, "if" | "when" | "where" | "unless" | "provided"))
+    {
+        return true;
+    }
     ["except in", "except for", "only for"]
         .iter()
         .any(|pattern| contains_context_pattern(clause, pattern))
