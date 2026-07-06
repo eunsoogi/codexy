@@ -1,7 +1,6 @@
 #[derive(Clone, Debug)]
 pub(super) struct ThreadOwner {
     pub(super) thread_id: Option<String>,
-    pub(super) issue_id: Option<String>,
     pub(super) issue_ids: Vec<String>,
 }
 
@@ -9,7 +8,6 @@ impl ThreadOwner {
     pub(super) fn from_line(line: &str) -> Self {
         Self {
             thread_id: thread_id(line),
-            issue_id: issue_id(line),
             issue_ids: issue_ids(line),
         }
     }
@@ -31,9 +29,8 @@ pub(super) fn matching_owner_lookup_before(
         if line_number < operation_line_number
             && previous_operation_line.is_none_or(|previous| line_number > previous)
             && !has_negated_owner_check_claim(line)
-            && lookup_matches_operation(line, operation_owner)
         {
-            if let Some(lookup) = owner_lookup(line) {
+            if let Some(lookup) = owner_lookup_for_operation(line, operation_owner) {
                 latest = Some(lookup);
             }
         }
@@ -45,10 +42,6 @@ pub(super) fn thread_id(line: &str) -> Option<String> {
     token_with_prefix(line, "thread-")
         .or_else(|| thread_id_argument(line))
         .or_else(|| non_prefixed_thread_id(line))
-}
-
-pub(super) fn issue_id(line: &str) -> Option<String> {
-    issue_ids(line).into_iter().next()
 }
 
 fn token_with_prefix(line: &str, prefix: &str) -> Option<String> {
@@ -196,6 +189,21 @@ fn owner_lookup(line: &str) -> Option<OwnerLookup> {
     line_contains_no_existing_owner_found(line).then_some(OwnerLookup::NotFound)
 }
 
+fn owner_lookup_for_operation(line: &str, operation_owner: &ThreadOwner) -> Option<OwnerLookup> {
+    line.split(';')
+        .map(str::trim)
+        .find_map(|segment| {
+            lookup_matches_operation(segment, operation_owner)
+                .then(|| owner_lookup(segment))
+                .flatten()
+        })
+        .or_else(|| {
+            lookup_matches_operation(line, operation_owner)
+                .then(|| owner_lookup(line))
+                .flatten()
+        })
+}
+
 fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
     if !operation_owner.issue_ids.is_empty() {
         let line_issues = issue_ids(line);
@@ -204,11 +212,6 @@ fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
                 .iter()
                 .any(|line_issue| line_issue == operation_issue)
         });
-    }
-    if let Some(operation_issue) = operation_owner.issue_id.as_deref() {
-        return issue_ids(line)
-            .into_iter()
-            .any(|line_issue| line_issue == operation_issue);
     }
     let Some(operation_thread) = operation_owner.thread_id.as_deref() else {
         return false;

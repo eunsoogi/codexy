@@ -107,18 +107,10 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
     {
         return line_thread == owner_thread;
     }
-    existing_owner
-        .issue_id
-        .as_deref()
-        .is_some_and(|owner_issue| {
-            line_issues
-                .iter()
-                .any(|line_issue| line_issue == owner_issue)
-        })
-        || (!existing_owner.issue_ids.is_empty()
-            && line_issues
-                .iter()
-                .any(|line_issue| existing_owner.issue_ids.iter().any(|id| id == line_issue)))
+    !existing_owner.issue_ids.is_empty()
+        && line_issues
+            .iter()
+            .any(|line_issue| existing_owner.issue_ids.iter().any(|id| id == line_issue))
 }
 
 fn has_negated_disposition_claim(line: &str) -> bool {
@@ -129,7 +121,7 @@ fn has_negated_disposition_claim(line: &str) -> bool {
         .map(str::to_owned)
         .collect::<Vec<_>>();
     if words.iter().enumerate().any(|(index, word)| {
-        word == "not"
+        matches!(word.as_str(), "not" | "never")
             && words
                 .iter()
                 .skip(index + 1)
@@ -145,6 +137,12 @@ fn has_negated_disposition_claim(line: &str) -> bool {
         "was not stopped",
         "was not unusable",
         "was not superseded",
+        "wasn't stopped",
+        "wasn't unusable",
+        "wasn't superseded",
+        "wasnt stopped",
+        "wasnt unusable",
+        "wasnt superseded",
     ]
     .into_iter()
     .any(|marker| line.contains(marker))
@@ -161,7 +159,6 @@ old owner disposition: thread-148 was STOPPED as UNUSABLE and explicitly SUPERSE
 Thread creation: created replacement child thread thread-269 for issue #269.";
         let owner = ThreadOwner {
             thread_id: Some("thread-148".to_owned()),
-            issue_id: Some("#269".to_owned()),
             issue_ids: vec!["#269".to_owned()],
         };
 
