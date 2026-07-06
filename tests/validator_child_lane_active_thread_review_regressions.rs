@@ -124,6 +124,71 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_capitalized_old_owner_disposition() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-148 found for issue #269.
+old owner disposition: thread-148 was STOPPED as UNUSABLE and explicitly SUPERSEDED for issue #269.
+Thread creation: created replacement child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should normalize old-owner disposition wording before matching\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_none_found_without_owner_check_context()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned; blockers for issue #269: none found
+Active child Codex threads: 3
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not treat owner decision blocker text as owner lookup evidence"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should name missing owner lookup evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_operation_pr_lookup_when_issue_hash_is_also_present()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3
+Existing issue/PR owner check: no existing owner thread found for PR #300.
+Thread creation: created child thread thread-300 for issue #269 / PR #300.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should match a PR-scoped lookup when the operation also mentions the linked issue\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_new_thread_after_plural_ledger_removal_frees_capacity()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

@@ -2,6 +2,17 @@
 pub(super) struct ThreadOwner {
     pub(super) thread_id: Option<String>,
     pub(super) issue_id: Option<String>,
+    pub(super) issue_ids: Vec<String>,
+}
+
+impl ThreadOwner {
+    pub(super) fn from_line(line: &str) -> Self {
+        Self {
+            thread_id: thread_id(line),
+            issue_id: issue_id(line),
+            issue_ids: issue_ids(line),
+        }
+    }
 }
 
 pub(super) enum OwnerLookup {
@@ -92,7 +103,7 @@ fn is_codex_thread_id(token: &str) -> bool {
         && token.chars().any(|character| character.is_ascii_digit())
 }
 
-fn issue_ids(line: &str) -> Vec<String> {
+pub(super) fn issue_ids(line: &str) -> Vec<String> {
     let mut ids = issue_hash_tokens(line);
     if let Some(issue) = number_after_marker(line, "issue") {
         push_unique(&mut ids, issue);
@@ -169,20 +180,26 @@ fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
         || line.contains("existing issue/pr owner thread not found")
         || line.contains("existing issue or pr owner thread not found")
         || line.contains("owner thread not found")
-        || (line.contains("none found") && line.contains("owner"))
+        || (line.contains("none found")
+            && (line.contains("owner check") || line.contains("owner thread")))
 }
 
 fn owner_lookup(line: &str) -> Option<OwnerLookup> {
     if line_contains_existing_owner_found(line) {
-        return Some(OwnerLookup::Found(ThreadOwner {
-            thread_id: thread_id(line),
-            issue_id: issue_id(line),
-        }));
+        return Some(OwnerLookup::Found(ThreadOwner::from_line(line)));
     }
     line_contains_no_existing_owner_found(line).then_some(OwnerLookup::NotFound)
 }
 
 fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
+    if !operation_owner.issue_ids.is_empty() {
+        let line_issues = issue_ids(line);
+        return operation_owner.issue_ids.iter().any(|operation_issue| {
+            line_issues
+                .iter()
+                .any(|line_issue| line_issue == operation_issue)
+        });
+    }
     if let Some(operation_issue) = operation_owner.issue_id.as_deref() {
         return issue_ids(line)
             .into_iter()

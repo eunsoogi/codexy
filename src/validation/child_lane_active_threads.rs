@@ -83,12 +83,14 @@ fn has_matching_old_owner_disposition_before(
     operation_line_number: usize,
 ) -> bool {
     evidence.lines().enumerate().any(|(line_number, line)| {
+        let normalized_line = line.to_ascii_lowercase();
         line_number < operation_line_number
             && previous_operation_line.is_none_or(|previous| line_number > previous)
-            && (line.contains("old owner") || line.contains("existing owner thread"))
+            && (normalized_line.contains("old owner")
+                || normalized_line.contains("existing owner thread"))
             && ["stopped", "unusable", "superseded"]
                 .into_iter()
-                .any(|marker| line.contains(marker))
+                .any(|marker| normalized_line.contains(marker))
             && !has_negated_disposition_claim(line)
             && disposition_matches_owner(line, existing_owner)
     })
@@ -109,6 +111,10 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
         .as_deref()
         .zip(existing_owner.issue_id.as_deref())
         .is_some_and(|(line_issue, owner_issue)| line_issue == owner_issue)
+        || (!existing_owner.issue_ids.is_empty()
+            && line_issue.as_deref().is_some_and(|line_issue| {
+                existing_owner.issue_ids.iter().any(|id| id == line_issue)
+            }))
 }
 
 fn has_negated_disposition_claim(line: &str) -> bool {
@@ -138,4 +144,28 @@ fn has_negated_disposition_claim(line: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| line.contains(marker))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_owner_disposition_matching_normalizes_case() {
+        let evidence = "\
+old owner disposition: thread-148 was STOPPED as UNUSABLE and explicitly SUPERSEDED for issue #269.
+Thread creation: created replacement child thread thread-269 for issue #269.";
+        let owner = ThreadOwner {
+            thread_id: Some("thread-148".to_owned()),
+            issue_id: Some("#269".to_owned()),
+            issue_ids: vec!["#269".to_owned()],
+        };
+
+        assert!(has_matching_old_owner_disposition_before(
+            evidence,
+            Some(&owner),
+            None,
+            1,
+        ));
+    }
 }

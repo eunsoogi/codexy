@@ -1,4 +1,4 @@
-use super::child_lane_active_thread_evidence::{ThreadOwner, issue_id, thread_id};
+use super::child_lane_active_thread_evidence::ThreadOwner;
 
 pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
 
@@ -30,10 +30,7 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
                 || ThreadOperation {
                     line_number,
                     reuses_existing_owner: is_reuse_operation_line(line),
-                    owner: ThreadOwner {
-                        thread_id: thread_id(line),
-                        issue_id: issue_id(line),
-                    },
+                    owner: ThreadOwner::from_line(line),
                 },
             )
         })
