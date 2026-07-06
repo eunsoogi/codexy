@@ -107,21 +107,20 @@ fn output_can_fulfill_latest_request(
     head: Option<&str>,
     head_timestamp: Option<&str>,
 ) -> bool {
-    event.commit.is_none_or(|commit| {
-        let current_head_output = head.is_some_and(|head| oid_matches(head, commit));
-        let request_before_current_head =
-            matches!((request.timestamp, head_timestamp), (Some(request), Some(head)) if request < head);
-        let stale_for_current_head = !current_head_output
-            && head.is_some()
-            && !request_before_current_head;
-        !stale_for_current_head
-            && (current_head_output
-                || !events.iter().any(|prior| {
-                    matches!(prior.kind, ReviewEventKind::CodexOutput)
-                        && prior.commit == Some(commit)
-                        && is_after_event(request, prior)
-                }))
-    })
+    let request_before_current_head = matches!((request.timestamp, head_timestamp), (Some(request), Some(head)) if request < head);
+    let Some(commit) = event.commit else {
+        return request_before_current_head;
+    };
+    let current_head_output = head.is_some_and(|head| oid_matches(head, commit));
+    let stale_for_current_head =
+        !current_head_output && head.is_some() && !request_before_current_head;
+    !stale_for_current_head
+        && (current_head_output
+            || !events.iter().any(|prior| {
+                matches!(prior.kind, ReviewEventKind::CodexOutput)
+                    && prior.commit == Some(commit)
+                    && is_after_event(request, prior)
+            }))
 }
 
 fn compare_event_order(left: &ReviewEvent<'_>, right: &ReviewEvent<'_>) -> std::cmp::Ordering {

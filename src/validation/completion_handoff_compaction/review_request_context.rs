@@ -27,22 +27,49 @@ fn has_request_codex_review_context(line: &str) -> bool {
 }
 
 fn has_follow_up_review_request_context(line: &str) -> bool {
+    for sentence in line.split(['.', '!', '?', '\n']) {
+        if has_follow_up_review_request_context_in_sentence(sentence) {
+            return true;
+        }
+    }
+    false
+}
+
+fn has_follow_up_review_request_context_in_sentence(sentence: &str) -> bool {
     let mut has_review_wait_context = false;
-    for clause in line.split([';', '.', '!', '?', ',', '\n']) {
+    for clause in sentence.split([';', ',']) {
         let clause = clause.trim();
         if has_wait_only_review_output_context(clause) {
             has_review_wait_context = true;
+            continue;
         }
         if !has_negated_follow_up_review_request_context(clause)
-            && has_follow_up_request_phrase(clause)
-            && (has_review_wait_context
-                || clause.contains("codex review")
-                || clause.contains("@codex review"))
+            && (has_explicit_follow_up_review_request_context(clause)
+                || has_review_wait_context && has_implicit_follow_up_review_request_phrase(clause))
         {
             return true;
         }
     }
     false
+}
+
+fn has_explicit_follow_up_review_request_context(line: &str) -> bool {
+    has_follow_up_request_phrase(line)
+        && (line.contains("codex review") || line.contains("@codex review"))
+}
+
+fn has_implicit_follow_up_review_request_phrase(line: &str) -> bool {
+    has_any(
+        line,
+        &[
+            "request again",
+            "request another review",
+            "request a new review",
+            "request new review",
+            "request fresh review",
+            "request a fresh review",
+        ],
+    )
 }
 
 fn has_follow_up_request_phrase(line: &str) -> bool {
