@@ -32,6 +32,18 @@ pub(super) fn branch_status_not_pushed(lines: &[String]) -> Option<&str> {
         .map(String::as_str)
 }
 
+pub(super) fn branch_status_not_pr_branch<'a>(
+    lines: &'a [String],
+    pr_state: &Value,
+) -> Option<&'a str> {
+    let head = string_field(pr_state, "headRefName")?;
+    let prefix = format!("## {head}...");
+    lines
+        .iter()
+        .find(|line| line.starts_with("## ") && !line.starts_with(&prefix))
+        .map(String::as_str)
+}
+
 pub(super) fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
     let Some(head) = string_field(pr_state, "headRefName") else {
         return Vec::new();

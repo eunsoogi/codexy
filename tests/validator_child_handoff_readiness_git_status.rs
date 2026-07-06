@@ -85,6 +85,18 @@ fn validator_rejects_pr_ready_handoff_when_local_head_is_stale() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_pr_ready_handoff_from_non_pr_branch() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: PR-ready.\n",
+        pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## main...origin/main","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+        "current branch status does not match PR branch",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn validator_allows_capitalized_pushed_head_markers() -> TestResult {
     for marker in ["HEAD", "SHA", "Commit"] {
         let output = validate_handoff_with_pr_state(

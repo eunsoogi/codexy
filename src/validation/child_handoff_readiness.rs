@@ -2,7 +2,8 @@ use serde_json::Value;
 
 use super::child_handoff_readiness_claims as claims;
 use super::child_handoff_readiness_status::{
-    branch_status_not_pushed, dirty_status, pr_branch_statuses, status_fields,
+    branch_status_not_pr_branch, branch_status_not_pushed, dirty_status, pr_branch_statuses,
+    status_fields,
 };
 use super::child_handoff_readiness_text::has_non_claim_phrase_label;
 
@@ -40,7 +41,11 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                 "child handoff claims clean/PR-ready worktree but current status is dirty: {status}"
             ));
         } else if claims_pr_ready {
-            if let Some(status) = branch_status_not_pushed(&lines) {
+            if let Some(status) = branch_status_not_pr_branch(&lines, pr_state) {
+                errors.push(format!(
+                    "child handoff claims PR readiness but current branch status does not match PR branch: {status}"
+                ));
+            } else if let Some(status) = branch_status_not_pushed(&lines) {
                 errors.push(format!(
                     "child handoff claims PR readiness but current branch status is not pushed: {status}"
                 ));
