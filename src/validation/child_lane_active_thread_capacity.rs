@@ -68,6 +68,13 @@ fn starts_operation_clause(clause: &str) -> bool {
     operation_markers()
         .chain(["create_thread", "fork_thread", "send_message_to_thread"])
         .any(|marker| clause.starts_with(marker))
+        || ["called", "invoked", "executed", "ran", "used"]
+            .into_iter()
+            .any(|verb| {
+                ["create_thread", "fork_thread", "send_message_to_thread"]
+                    .into_iter()
+                    .any(|tool| clause.starts_with(&format!("{verb} {tool}")))
+            })
 }
 pub(super) fn active_capacity_errors(
     operations: &[ThreadOperation],

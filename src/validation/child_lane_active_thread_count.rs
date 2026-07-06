@@ -16,11 +16,20 @@ pub(super) fn key_words(key: &str) -> Vec<String> {
 }
 
 fn explicit_total(words: &[String]) -> Option<u64> {
-    words.windows(2).find_map(|window| {
-        (window[1] == "total")
-            .then(|| window[0].parse().ok())
-            .flatten()
-    })
+    words
+        .windows(2)
+        .find_map(|window| {
+            (window[0] == "total")
+                .then(|| window[1].parse().ok())
+                .flatten()
+        })
+        .or_else(|| {
+            words.windows(2).find_map(|window| {
+                (window[1] == "total")
+                    .then(|| window[0].parse().ok())
+                    .flatten()
+            })
+        })
 }
 
 fn fallback_count(words: &[String]) -> Option<u64> {
