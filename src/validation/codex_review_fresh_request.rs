@@ -40,6 +40,7 @@ fn is_review_request_clause(clause: &str) -> bool {
                 .is_some_and(|action| action.trim_start().starts_with("@codex review"))
             || clause.trim_start().starts_with("review request:"))
         || clause.contains("request review from @codex")
+        || clause.contains("request a review from @codex")
         || clause.contains("request @codex to review")
 }
 
