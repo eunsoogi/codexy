@@ -32,6 +32,13 @@ pub(super) fn has_non_claim_phrase_label(text: &str, phrase: &str) -> bool {
 }
 
 fn has_non_claim_label_value(suffix: &str) -> bool {
+    if label_value(suffix).is_some_and(|value| {
+        value
+            .strip_prefix("no blockers")
+            .is_some_and(|rest| is_boundary(rest.chars().next()))
+    }) {
+        return false;
+    }
     super::codex_review_handoff::has_negative_label_value(suffix)
         || [
             "not verified",

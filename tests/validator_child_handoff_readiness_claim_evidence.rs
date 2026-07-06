@@ -41,6 +41,28 @@ fn validator_rejects_synced_pushed_handoff_with_pr_blockers() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_treats_no_blockers_as_readiness_claim() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: PR ready: no blockers.\n",
+        &pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example\n M src/validation/child_handoff_readiness_text.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+        "current status is dirty",
+    )
+}
+
+#[test]
+fn validator_rejects_synced_yes_with_pushed_no() -> TestResult {
+    assert_rejects_child_handoff(
+        "Child handoff: Synced: yes at 068dbb247b7755035223c91ee39f26830f3c1609. Pushed: no.\n",
+        &pr_state_with(
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+        "pushed proof is negative or non-claim",
+    )
+}
+
 fn assert_rejects_child_handoff(handoff: &str, pr_state: &str, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
     assert!(
