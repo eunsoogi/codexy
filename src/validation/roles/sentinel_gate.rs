@@ -5,11 +5,12 @@ use toml::Value;
 use crate::paths::display_relative;
 
 const REVIEWER_GATE_MARKERS: &[&str] = &[
-    "validator/parser edge-case pass",
-    "workflow/ownership compliance pass",
-    "regression coverage and proof pass",
-    "Reasoning control:",
-    "unavailable evidence",
+    "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting",
+    "the reviewer evidence MUST record explicit unavailable evidence",
+    "Reviewer specialization: MUST split the review into named passes",
+    "The validator/parser edge-case pass MUST search",
+    "The workflow/ownership compliance pass MUST verify",
+    "The regression coverage and proof pass MUST verify",
     "edge classes reviewed",
     "no-finding result",
     "repeated-Codex-feedback",

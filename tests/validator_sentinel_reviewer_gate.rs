@@ -39,6 +39,35 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_sentinel_with_negated_specialized_review_passes() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Reviewer specialization: MUST split the review into named passes",
+        "Reviewer specialization: MUST NOT split the review into named passes",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output)
+            .contains("Reviewer specialization: MUST split the review into named passes")
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_sentinel_without_reasoning_unavailable_evidence_clause() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "the reviewer evidence MUST record explicit unavailable evidence",
+        "the reviewer evidence can omit unavailable evidence",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output).contains("the reviewer evidence MUST record explicit unavailable evidence")
+    );
+    Ok(())
+}
+
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
