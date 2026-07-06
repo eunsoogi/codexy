@@ -119,7 +119,19 @@ fn has_concrete_identity(value: &Value) -> bool {
 
 fn is_codex_review_request(item: &Value) -> bool {
     !is_codex_connector_item(item)
-        && text_field(item, "body").is_some_and(|body| body.contains("@codex review"))
+        && text_field(item, "body").is_some_and(has_actionable_codex_review_request_text)
+}
+
+fn has_actionable_codex_review_request_text(body: &str) -> bool {
+    body.to_ascii_lowercase()
+        .lines()
+        .flat_map(|line| line.split([';', '.', '!', ',']))
+        .map(str::trim)
+        .any(|clause| {
+            clause.contains("@codex review")
+                && !super::codex_review_fresh_request_text::is_connector_footer(clause)
+                && !super::codex_review_fresh_request_text::has_negative_request_status(clause)
+        })
 }
 
 fn is_codex_review_output_item(item: &Value, head: Option<&str>, require_head_match: bool) -> bool {

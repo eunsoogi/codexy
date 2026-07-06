@@ -1,0 +1,87 @@
+use std::{path::Path, process::Command};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
+
+#[test]
+fn validator_ignores_copied_footer_comments_before_fresh_codex_review() -> TestResult {
+    for comment in [
+        r#"Comment "@codex review" to request another review."#,
+        r#"- Comment "@codex review" to request another review."#,
+        r#"- [x] Comment "@codex review" to request another review."#,
+        r#"@codex review request: none yet."#,
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "Request exactly one fresh Codex review now.\n",
+            clean_pr_state_with_comment(comment),
+        )?;
+        assert!(
+            output.status.success(),
+            "validator should ignore copied connector footer/status comments\ncomment: {comment}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Request exactly one fresh Codex review now.\n",
+        clean_pr_state_with_comment("@codex review"),
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should still reject a duplicate fresh request after a real @codex review comment\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("current-head Codex review activity blocks fresh Codex review requests"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn validate_handoff_with_pr_state(handoff: &str, pr_state: String) -> OutputResult {
+    let temp = tempfile::tempdir()?;
+    let handoff_path = temp.path().join("handoff.md");
+    let pr_state_path = temp.path().join("pr-state.json");
+    std::fs::write(&handoff_path, handoff)?;
+    std::fs::write(&pr_state_path, pr_state)?;
+    validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--check-completion-handoff",
+            "--handoff-file",
+            handoff_path.to_str().ok_or("handoff path")?,
+            "--pr-state-file",
+            pr_state_path.to_str().ok_or("pr state path")?,
+        ])
+        .output()?)
+}
+
+fn clean_pr_state_with_comment(comment: &str) -> String {
+    serde_json::json!({
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body": comment,
+            "author": {"login": "eunsoogi"},
+            "createdAt": "2026-06-22T12:45:06Z",
+            "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
+        }],
+        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
+    })
+    .to_string()
+}
