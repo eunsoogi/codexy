@@ -69,7 +69,12 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let mut tail_segments = sentence_tail.split([',', ';']);
     let scoped_tail = tail_segments.next().unwrap_or(sentence_tail);
     let opt_out_tail = tail_segments
-        .filter(|segment| has_evidence_followup(segment.trim_start()))
+        .filter(|segment| {
+            let segment = segment.trim_start();
+            has_evidence_followup(segment)
+                || (contains_disallowed_context(segment)
+                    && references_reasoning_control_evidence(segment))
+        })
         .collect::<Vec<_>>()
         .join(" ");
     let followups = &tail[sentence_end..];
@@ -149,6 +154,11 @@ fn contains_disallowed_context(clause: &str) -> bool {
         .split('|')
         .any(|pattern| contains_context_pattern(clause, pattern))
         || contains_required_negation(clause)
+}
+
+fn references_reasoning_control_evidence(clause: &str) -> bool {
+    contains_context_pattern(clause, "reasoning control")
+        || contains_context_pattern(clause, "reasoning control evidence")
 }
 
 fn contains_mandatory_context(clause: &str) -> bool {

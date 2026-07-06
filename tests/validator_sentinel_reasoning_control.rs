@@ -107,6 +107,13 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         assert!(!output.status.success(), "accepted {replacement:?}");
         assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
+    let needle = "reasoning control used or unavailable evidence, direct reviewer passes performed";
+    let output = validate_sentinel_replacement(
+        needle,
+        "reasoning control used or unavailable evidence, but reviewers may omit reasoning-control evidence, direct reviewer passes performed",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     Ok(())
 }
 
