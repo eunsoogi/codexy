@@ -20,7 +20,6 @@ pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
             || is_codex_connector_item(item) && is_review_output_signal(item)
     })
 }
-
 pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Value) -> bool {
     let events = review_events(pr_state, false);
     let Some(latest_eyes_request) = events
@@ -140,6 +139,7 @@ fn has_actionable_codex_review_request_text(body: &str) -> bool {
     body.to_ascii_lowercase()
         .lines()
         .flat_map(|line| line.split([';', '.', '!', ',']))
+        .flat_map(super::codex_review_fresh_request::request_subclauses)
         .map(str::trim)
         .any(|clause| {
             clause.contains("@codex review")

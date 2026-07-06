@@ -68,6 +68,29 @@ fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResu
 }
 
 #[test]
+fn validator_preserves_acknowledged_split_comment_duplicate_guard() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Request exactly one fresh Codex review now.\n",
+        clean_pr_state_with_comment(
+            "No current-head request exists and the next action is to @codex review now.",
+        ),
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should reject a duplicate request after an acknowledged split-action comment\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("current-head Codex review activity blocks fresh Codex review requests"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_unacknowledged_codex_review_comment_before_retry() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Request exactly one fresh Codex review now.\n",
