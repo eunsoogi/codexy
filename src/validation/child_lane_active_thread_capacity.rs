@@ -43,7 +43,31 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
         .flat_map(|line| line.split(". "))
-        .flat_map(|line| line.split(" and "))
+        .flat_map(split_operation_and_clauses)
+}
+
+fn split_operation_and_clauses(segment: &str) -> Vec<&str> {
+    let lower = normalized_operation_line(segment);
+    let mut clauses = Vec::new();
+    let mut start = 0;
+    let mut cursor = 0;
+    while let Some(relative) = lower[cursor..].find(" and ") {
+        let marker_start = cursor + relative;
+        let next_start = marker_start + " and ".len();
+        if starts_operation_clause(lower[next_start..].trim_start()) {
+            clauses.push(&segment[start..marker_start]);
+            start = next_start;
+        }
+        cursor = next_start;
+    }
+    clauses.push(&segment[start..]);
+    clauses
+}
+
+fn starts_operation_clause(clause: &str) -> bool {
+    operation_markers()
+        .chain(["create_thread", "fork_thread", "send_message_to_thread"])
+        .any(|marker| clause.starts_with(marker))
 }
 pub(super) fn active_capacity_errors(
     operations: &[ThreadOperation],

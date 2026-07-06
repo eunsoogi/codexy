@@ -1,3 +1,5 @@
+use super::child_lane_active_thread_owner_lookup_segments::owner_lookup_segments;
+
 #[derive(Clone, Debug)]
 pub(super) struct ThreadOwner {
     pub(super) thread_id: Option<String>,
@@ -191,13 +193,11 @@ fn owner_lookup(line: &str) -> Option<OwnerLookup> {
 
 fn owner_lookup_for_operation(line: &str, operation_owner: &ThreadOwner) -> Option<OwnerLookup> {
     let mut not_found = None;
-    for segment in line
-        .split(';')
-        .flat_map(|segment| segment.split(". "))
-        .map(str::trim)
+    for segment in owner_lookup_segments(line)
+        .into_iter()
         .filter(|segment| lookup_matches_operation(segment, operation_owner))
     {
-        match owner_lookup(segment) {
+        match owner_lookup(&segment) {
             Some(OwnerLookup::Found(owner)) => return Some(OwnerLookup::Found(owner)),
             Some(OwnerLookup::NotFound) => not_found = Some(OwnerLookup::NotFound),
             None => {}
