@@ -60,3 +60,81 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_same_sentence_operation_before_unrelated_negation_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269 and did not create a duplicate owner.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should count an operation before unrelated same-sentence negation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_stale_count_after_negated_ledger_removal()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+No child threads were removed from the ledger.
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #270.
+Thread creation: created child thread thread-270 for issue #270.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not treat negated ledger-removal wording as freed capacity"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_new_owner_when_period_separated_lookup_finds_linked_pr_owner()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-300 found for PR #300. no existing owner thread found for issue #269.
+Thread creation: created child thread thread-new for issue #269 / PR #300.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should preserve period-separated found owner evidence on mixed lookup lines"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

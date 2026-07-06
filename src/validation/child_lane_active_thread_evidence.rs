@@ -193,6 +193,7 @@ fn owner_lookup_for_operation(line: &str, operation_owner: &ThreadOwner) -> Opti
     let mut not_found = None;
     for segment in line
         .split(';')
+        .flat_map(|segment| segment.split(". "))
         .map(str::trim)
         .filter(|segment| lookup_matches_operation(segment, operation_owner))
     {

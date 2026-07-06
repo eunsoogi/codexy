@@ -49,7 +49,11 @@ pub(super) fn active_capacity_errors(
         if let Some(record) =
             fresh_count_before_operation(active_counts, previous_operation_line, operation)
         {
-            projected_count = Some(projected_active_count(projected_count, record));
+            projected_count = Some(match projected_count {
+                Some(_) if record.freed_capacity => record.count,
+                Some(projected) => projected.max(record.count),
+                None => record.count,
+            });
         } else {
             errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
         }
@@ -116,13 +120,14 @@ fn has_active_child_thread_key(words: &[String]) -> bool {
         && words.iter().any(|word| word == "child")
         && words
             .iter()
-            .any(|word| word == "thread" || word == "threads")
+            .any(|word| matches!(word.as_str(), "thread" | "threads"))
         && !words.iter().any(|word| word == "inactive")
         && !words
             .windows(2)
             .any(|window| window[0] == "non" && window[1] == "active")
-        && !words.iter().any(|word| word == "subagent")
-        && !words.iter().any(|word| word == "specialist")
+        && !words
+            .iter()
+            .any(|word| matches!(word.as_str(), "subagent" | "specialist"))
 }
 
 fn first_unsigned_integer(value: &str) -> Option<u64> {
@@ -141,18 +146,17 @@ fn child_thread_freed_capacity(line: &str) -> bool {
         && (words.iter().any(|word| word == "finished")
             || words.iter().any(|word| word == "stopped")
             || words.iter().any(|word| word == "removed"))
-        && !words.iter().any(|word| word == "not")
-        && !words.iter().any(|word| word == "inactive")
+        && !words
+            .iter()
+            .any(|word| matches!(word.as_str(), "not" | "no" | "inactive"))
 }
 
 fn is_child_thread_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
-    if line.contains("child thread") && operation_markers().any(|marker| line.contains(marker)) {
-        return true;
-    }
-    ["create_thread", "fork_thread", "send_message_to_thread"]
-        .into_iter()
-        .any(|tool| is_thread_tool_invocation(&line, tool))
+    line.contains("child thread") && operation_markers().any(|marker| line.contains(marker))
+        || ["create_thread", "fork_thread", "send_message_to_thread"]
+            .into_iter()
+            .any(|tool| is_thread_tool_invocation(&line, tool))
 }
 
 fn normalized_operation_line(line: &str) -> String {
@@ -163,7 +167,7 @@ fn normalized_operation_line(line: &str) -> String {
 }
 
 fn operation_markers() -> impl Iterator<Item = &'static str> {
-    "thread creation:|thread resume:|thread continuation:|created child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
+    "created child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
 }
 
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
@@ -209,14 +213,6 @@ fn fresh_count_before_operation<'a>(
     })
 }
 
-fn projected_active_count(projected_count: Option<u64>, fresh_count: &ActiveCount) -> u64 {
-    match projected_count {
-        Some(_) if fresh_count.freed_capacity => fresh_count.count,
-        Some(projected) => projected.max(fresh_count.count),
-        None => fresh_count.count,
-    }
-}
-
 fn is_reuse_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
     "thread resume:|thread continuation:|continued child thread|resumed child thread|send_message_to_thread"
@@ -226,22 +222,26 @@ fn is_reuse_operation_line(line: &str) -> bool {
 
 fn has_negated_operation_claim(line: &str) -> bool {
     let line = normalized_operation_line(line);
-    let has_operation = |clause: &str| {
+    let operation_position = |clause: &str| {
         operation_markers()
             .chain(["create_thread", "fork_thread", "send_message_to_thread"])
-            .any(|marker| clause.contains(marker))
+            .filter_map(|marker| clause.find(marker))
+            .min()
     };
-    let has_negation = |clause: &str| {
+    let negation_position = |clause: &str| {
         "did not call|did not continue|did not create|did not resume|didn't call|didn't continue|didn't create|didn't resume|do not call|do not continue|do not create|do not resume|must not call|must not continue|must not create|must not resume|not call|not continue|not create|not resume|no child thread created|no child thread continued|no child thread resumed|without calling|without continuing|without creating|without resuming"
             .split('|')
-            .any(|marker| clause.contains(marker))
+            .filter_map(|marker| clause.find(marker))
+            .min()
     };
     let mut has_negated_operation = false;
     let mut has_unnegated_operation = false;
     for clause in line.split(';').flat_map(|clause| clause.split(". ")) {
-        if has_operation(clause) {
-            has_negated_operation |= has_negation(clause);
-            has_unnegated_operation |= !has_negation(clause);
+        if let Some(operation) = operation_position(clause) {
+            match negation_position(clause) {
+                Some(negation) if negation <= operation => has_negated_operation = true,
+                _ => has_unnegated_operation = true,
+            }
         }
     }
     has_negated_operation && !has_unnegated_operation
