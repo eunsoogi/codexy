@@ -1,4 +1,4 @@
-use std::{path::Path, process::Command};
+use std::process::Command;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
@@ -54,6 +54,22 @@ fn validator_rejects_fresh_codex_review_request_with_existing_current_head_reque
         "validator should preserve duplicate current-head Codex review request guard",
         "current-head Codex review activity blocks fresh Codex review requests",
     );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_current_head_request_status_without_fresh_request() -> TestResult {
+    for handoff in [
+        "Current-head @codex review request is pending.\n",
+        "Current-head @codex review request has eyes only.\n",
+        "Current-head Codex review request is pending; waiting for output.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, current_head_eyes_request_pr_state())?;
+        assert_success(
+            &output,
+            "validator should not treat request-status nouns as fresh review requests",
+        );
+    }
     Ok(())
 }
 
@@ -134,10 +150,6 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(&pr_state_path, pr_state)?;
-    validate_completion_handoff(&handoff_path, &pr_state_path)
-}
-
-fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--check-completion-handoff",
@@ -223,24 +235,14 @@ fn current_head_eyes_request_pr_state() -> &'static str {
 }
 
 fn missing_review_threads_pr_state() -> &'static str {
-    r#"{
-        "number": 174,
-        "state": "OPEN",
-        "isDraft": false,
-        "mergeStateStatus": "CLEAN",
-        "reviewDecision": "REVIEW_REQUIRED",
-        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"
-    }"#
+    r#"{"number":174,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN",
+        "reviewDecision":"REVIEW_REQUIRED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#
 }
 
 fn paginated_review_threads_pr_state() -> &'static str {
-    r#"{
-        "number": 174,
-        "state": "OPEN",
-        "isDraft": false,
-        "mergeStateStatus": "CLEAN",
-        "reviewDecision": "REVIEW_REQUIRED",
+    r#"{"number":174,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN",
+        "reviewDecision":"REVIEW_REQUIRED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
-        "reviewThreads": {"pageInfo":{"hasNextPage":true},"nodes":[]}
-    }"#
+        "reviewThreads":{"pageInfo":{"hasNextPage":true},"nodes":[]}}"#
 }

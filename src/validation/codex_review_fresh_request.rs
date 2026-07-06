@@ -14,6 +14,7 @@ pub(super) fn claims(handoff: &str) -> bool {
                 !has_negated_review_request(clause)
                     && !super::codex_review_fresh_request_text::has_negative_request_status(clause)
                     && !super::codex_review_fresh_request_text::is_connector_footer(clause)
+                    && !is_review_request_status_clause(clause)
                     && is_review_request_clause(clause)
             })
     })
@@ -36,6 +37,20 @@ fn is_review_request_clause(clause: &str) -> bool {
             || clause.trim_start().starts_with("review request:"))
         || clause.contains("request review from @codex")
         || clause.contains("request @codex to review")
+}
+
+fn is_review_request_status_clause(clause: &str) -> bool {
+    (clause.contains("@codex review request") || clause.contains("codex review request"))
+        && [
+            "request is pending",
+            "request pending",
+            "request has eyes",
+            "request has eyes only",
+            "request already has eyes",
+            "request is waiting",
+        ]
+        .iter()
+        .any(|status| clause.contains(status))
 }
 
 fn request_subclauses(clause: &str) -> impl Iterator<Item = &str> {
