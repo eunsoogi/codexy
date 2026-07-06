@@ -1,7 +1,6 @@
 use super::child_lane_active_thread_evidence::ThreadOwner;
 
 pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
-
 pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCount> {
     let mut records = Vec::new();
     let mut freed_capacity = false;
@@ -11,6 +10,7 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
                 count,
                 line_number,
                 freed_capacity,
+                owner: ThreadOwner::from_line(line),
             });
             freed_capacity = false;
         } else if child_thread_freed_capacity(line) {
@@ -48,9 +48,13 @@ pub(super) fn active_capacity_errors(
     let mut previous_operation_line = None;
     let mut projected_count: Option<u64> = None;
     for (operation, existing_owner) in operations.iter().zip(existing_owners) {
+        let mut counted_replacement = false;
         if let Some(record) =
             fresh_count_before_operation(active_counts, previous_operation_line, operation)
         {
+            counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
+                operation.replaces_existing_owner && thread_owner_matches(&record.owner, owner)
+            });
             projected_count = Some(match projected_count {
                 Some(_) if record.freed_capacity => record.count,
                 Some(projected) => projected.max(record.count),
@@ -59,9 +63,7 @@ pub(super) fn active_capacity_errors(
         } else {
             errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
         }
-        if !continues_existing_owner(existing_owner.as_ref(), operation)
-            && !(existing_owner.is_some() && operation.replaces_existing_owner)
-        {
+        if !continues_existing_owner(existing_owner.as_ref(), operation) && !counted_replacement {
             projected_count = Some(projected_count.unwrap_or(0).saturating_add(1));
         }
         if projected_count.is_some_and(|count| count > MAX_ACTIVE_CHILD_CODEX_THREADS) {
@@ -96,17 +98,33 @@ pub(super) struct ThreadOperation {
 
 pub(super) struct ActiveCount {
     pub(super) count: u64,
+    owner: ThreadOwner,
     line_number: usize,
     freed_capacity: bool,
 }
 
+fn thread_owner_matches(candidate: &ThreadOwner, owner: &ThreadOwner) -> bool {
+    candidate
+        .thread_id
+        .as_deref()
+        .zip(owner.thread_id.as_deref())
+        .is_some_and(|(candidate, owner)| candidate == owner)
+        || candidate
+            .issue_ids
+            .iter()
+            .any(|id| owner.issue_ids.iter().any(|owner_id| owner_id == id))
+}
+
 fn active_child_thread_count(line: &str) -> Option<u64> {
     let (key, value) = line.split_once(':')?;
-    let key_words = key_words(key);
-    if !has_active_child_thread_key(&key_words) {
-        return None;
-    }
-    first_unsigned_integer(value)
+    has_active_child_thread_key(&key_words(key))
+        .then(|| {
+            value
+                .split(|character: char| !character.is_ascii_digit())
+                .find(|part| !part.is_empty())
+                .and_then(|part| part.parse().ok())
+        })
+        .flatten()
 }
 
 fn key_words(key: &str) -> Vec<String> {
@@ -132,25 +150,18 @@ fn has_active_child_thread_key(words: &[String]) -> bool {
             .any(|word| matches!(word.as_str(), "subagent" | "specialist"))
 }
 
-fn first_unsigned_integer(value: &str) -> Option<u64> {
-    value
-        .split(|character: char| !character.is_ascii_digit())
-        .find(|part| !part.is_empty())
-        .and_then(|part| part.parse().ok())
-}
-
 fn child_thread_freed_capacity(line: &str) -> bool {
     let words = key_words(line);
     words.iter().any(|word| word == "child")
         && words
             .iter()
             .any(|word| matches!(word.as_str(), "thread" | "threads"))
-        && (words.iter().any(|word| word == "finished")
-            || words.iter().any(|word| word == "stopped")
-            || words.iter().any(|word| word == "removed"))
-        && !words
-            .iter()
-            .any(|word| matches!(word.as_str(), "not" | "no" | "inactive"))
+        && ["finished", "stopped", "removed"]
+            .into_iter()
+            .any(|marker| words.iter().any(|word| word == marker))
+        && !["not", "no", "inactive"]
+            .into_iter()
+            .any(|marker| words.iter().any(|word| word == marker))
 }
 
 fn is_child_thread_operation_line(line: &str) -> bool {
@@ -188,19 +199,8 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
 }
 
 fn has_negated_thread_tool_reference(line: &str, tool: &str) -> bool {
-    [
-        format!("{tool} was not used"),
-        format!("{tool} wasn't used"),
-        format!("{tool} is not used"),
-        format!("{tool} not used"),
-        format!("did not use {tool}"),
-        format!("didn't use {tool}"),
-        format!("do not use {tool}"),
-        format!("must not use {tool}"),
-        format!("not using {tool}"),
-        format!("without using {tool}"),
-    ]
-    .into_iter()
+    format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}")
+        .split('|')
     .any(|marker| line.contains(&marker))
 }
 
