@@ -8,7 +8,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "validator/parser edge-case pass",
     "workflow/ownership compliance pass",
     "regression coverage and proof pass",
-    "reasoning control",
+    "Reasoning control:",
     "unavailable evidence",
     "edge classes reviewed",
     "no-finding result",

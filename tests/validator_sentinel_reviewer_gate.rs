@@ -27,6 +27,18 @@ fn validator_cli_rejects_sentinel_without_specialized_review_passes() -> TestRes
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface does not expose or confirm reasoning controls, the reviewer evidence MUST record explicit unavailable evidence and MUST still state that the packaged Sentinel file declares xhigh.",
+        "Reasoning controls are described by later evidence expectations.",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("Reasoning control:"));
+    Ok(())
+}
+
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
