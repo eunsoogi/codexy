@@ -105,6 +105,18 @@ fn validator_cli_rejects_sentinel_with_split_negated_approval_suffix() -> TestRe
 }
 
 #[test]
+fn validator_cli_rejects_sentinel_with_prefix_negated_approval_marker() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Every approval MUST reference the current diff or head",
+        "MUST NOT require that Every approval MUST reference the current diff or head",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("Every approval MUST reference"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
     let output = validate_sentinel_replacement(
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",

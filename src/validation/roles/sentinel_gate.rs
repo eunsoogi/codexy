@@ -29,7 +29,7 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
         .unwrap_or("");
     let missing_markers = REVIEWER_GATE_MARKERS
         .iter()
-        .filter(|marker| !instructions.contains(**marker))
+        .filter(|marker| !has_positive_marker(instructions, marker))
         .copied()
         .collect::<Vec<_>>();
     if !missing_markers.is_empty() {
@@ -39,4 +39,26 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
             missing_markers.join(", ")
         ));
     }
+}
+
+fn has_positive_marker(instructions: &str, marker: &str) -> bool {
+    let mut search_start = 0;
+    while let Some(relative_index) = instructions[search_start..].find(marker) {
+        let marker_index = search_start + relative_index;
+        if !is_prefix_negated(&instructions[..marker_index]) {
+            return true;
+        }
+        search_start = marker_index + marker.len();
+    }
+    false
+}
+
+fn is_prefix_negated(prefix: &str) -> bool {
+    let sentence_start = prefix
+        .rfind(['.', '!', '?', '\n'])
+        .map_or(0, |index| index + 1);
+    let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase();
+    sentence_prefix.contains("must not")
+        || sentence_prefix.contains("do not")
+        || sentence_prefix.contains("should not")
 }
