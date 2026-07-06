@@ -69,7 +69,9 @@ fn has_positive_marker(instructions: &str, marker: &str) -> bool {
     let mut search_start = 0;
     while let Some(relative_index) = instructions[search_start..].find(marker) {
         let marker_index = search_start + relative_index;
-        if !is_prefix_negated(&instructions[..marker_index]) {
+        if !is_prefix_negated(&instructions[..marker_index])
+            && !is_marker_sentence_weakened(instructions, marker_index, marker)
+        {
             return true;
         }
         search_start = marker_index + marker.len();
@@ -85,4 +87,25 @@ fn is_prefix_negated(prefix: &str) -> bool {
     sentence_prefix.contains("must not")
         || sentence_prefix.contains("do not")
         || sentence_prefix.contains("should not")
+}
+
+fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: &str) -> bool {
+    let sentence_start = instructions[..marker_index]
+        .rfind(['.', '!', '?', '\n'])
+        .map_or(0, |index| index + 1);
+    let sentence_end = instructions[marker_index + marker.len()..]
+        .find(['.', '!', '?', '\n'])
+        .map_or(instructions.len(), |index| {
+            marker_index + marker.len() + index
+        });
+    let sentence = instructions[sentence_start..sentence_end].to_ascii_lowercase();
+    sentence
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|word| matches!(word, "optional" | "permissive"))
+        || sentence.contains("not required")
+        || sentence.contains("not mandatory")
+        || sentence.contains("may skip")
+        || sentence.contains("may omit")
+        || sentence.contains("can skip")
+        || sentence.contains("can omit")
 }

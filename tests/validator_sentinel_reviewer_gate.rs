@@ -117,6 +117,15 @@ fn validator_cli_rejects_sentinel_with_prefix_negated_approval_marker() -> TestR
 }
 
 #[test]
+fn validator_cli_rejects_sentinel_with_optional_split_approval_marker() -> TestResult {
+    let output = validate_sentinel_replacement("lane scope", "lane scope is optional.")?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("lane scope"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
     let output = validate_sentinel_replacement(
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
