@@ -149,7 +149,7 @@ fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestR
 #[test]
 fn validator_allows_rationale_after_unrelated_no_blockers_summary() -> TestResult {
     assert_handoff_succeeds(
-        "No blockers. Accepted no-change rationale documented for thread PRRT_kwDOExample.\n",
+        "No blockers. Accepted no-change rationale documented for thread PRRT_kwDOExample. Preventive adjacent review no-change rationale: inspected functions review_thread_resolution::check and tests validator_review_thread_evidence_handoff; invariants hold because sibling thread-reference parsing still requires exact ids or URLs.\n",
         unresolved_review_thread_pr_state(),
     )
 }

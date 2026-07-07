@@ -7,17 +7,17 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_rejects_ready_handoff_with_unresolved_accepted_no_change_thread() -> TestResult {
     for (handoff, pr_state, expected_thread) in [
         (
-            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Codex review passed on the current head. PR is merge-ready.\n",
+            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Preventive adjacent review no-change rationale: inspected functions review_thread_readiness::check and tests validator_review_thread_readiness_handoff; invariants hold because accepted threads still must be resolved before readiness. Codex review passed on the current head. PR is merge-ready.\n",
             unresolved_accepted_thread_ready_pr_state(),
             "PRRT_kwDOExample",
         ),
         (
-            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Maintainer override: yes. PR is merge-ready.\n",
+            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Preventive adjacent review no-change rationale: inspected functions review_thread_readiness::check and tests validator_review_thread_readiness_handoff; invariants hold because accepted threads still must be resolved before readiness. Maintainer override: yes. PR is merge-ready.\n",
             unresolved_accepted_thread_override_pr_state(),
             "PRRT_kwDOExample",
         ),
         (
-            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOOutdated. Maintainer override: yes. PR is merge-ready.\n",
+            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOOutdated. Preventive adjacent review no-change rationale: inspected functions review_thread_readiness::check and tests validator_review_thread_readiness_handoff; invariants hold because accepted threads still must be resolved before readiness. Maintainer override: yes. PR is merge-ready.\n",
             unresolved_accepted_outdated_thread_override_pr_state(),
             "PRRT_kwDOOutdated",
         ),

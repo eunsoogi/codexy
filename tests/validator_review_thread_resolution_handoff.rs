@@ -27,7 +27,7 @@ fn validator_rejects_review_response_handoff_with_unresolved_thread() -> TestRes
 #[test]
 fn validator_allows_review_response_handoff_with_accepted_no_change_rationale() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample.\n",
+        "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Preventive adjacent review: focused regression coverage exercises adjacent workflow variants in the touched helper family.\n",
         unresolved_review_thread_pr_state(),
     )?;
 

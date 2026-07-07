@@ -37,6 +37,11 @@
    - MUST give each lane an assignment, issue, branch, worktree path, allowed paths,
      read-first files, deliverable, required evidence, verification command or
      surface, stop condition, and return format.
+   - For review-response child lanes, the assignment MUST require a preventive
+     adjacent review pass in addition to the quoted review-thread fix. The child
+     MUST preserve atomic issue scope while inspecting the touched helper family,
+     adjacent parser or workflow variants, prior nearby review regressions, and
+     invariant boundaries.
 4. Integrate:
    - MUST re-read files and outputs before trusting child results.
    - MUST preserve user changes and unrelated work.
@@ -83,6 +88,9 @@ Return evidence:
   - Codegraph findings and LSP status or unavailable/not-applicable evidence
   - Multi-agent usage for separable subtasks, or a concrete not-useful
     rationale tied to atomicity, tiny scope, or unavailable tooling
+  - Preventive adjacent review evidence for review-response lanes: focused
+    preventive regression coverage for any adjacent gap found, or a concrete
+    no-change rationale naming inspected functions/tests and why invariants hold
   - Packaged Codexy reviewer gate result for the current diff, exact head or
     file state, scope, verification outputs, and evidence
 Child execution discipline:
@@ -115,6 +123,10 @@ Return format:
     evidence for code-touching lanes.
   - MUST include touched implementation-file LOC gate output for non-trivial code,
     validator, harness, or workflow-rule lanes.
+  - MUST include preventive adjacent review evidence for review-response lanes:
+    focused preventive regression coverage for any adjacent gap found, or a
+    concrete no-change rationale naming inspected functions/tests and why
+    invariants hold.
   - MUST include packaged Codexy reviewer gate findings or approval for the current
     diff, exact head or file state, scope, verification outputs, and evidence.
 ```

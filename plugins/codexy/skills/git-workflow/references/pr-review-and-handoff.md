@@ -208,6 +208,13 @@ condition. For non-trivial lanes it MUST require goal tool usage,
 todo/plan tool usage, multi-agent usage or concrete not-useful rationale,
 unavailable-tool fallbacks, current-diff sentinel review findings, codegraph
 evidence, and LSP status.
+For review-response lanes it MUST also require preventive adjacent review
+evidence, not only the quoted review-thread fix. The child MUST preserve atomic
+issue scope while inspecting the touched helper family, adjacent parser or
+workflow variants, prior nearby review regressions, and invariant boundaries.
+The child handoff MUST include focused preventive regression coverage for any
+real adjacent gap found, or a concrete no-change rationale naming inspected
+functions/tests and why invariants hold.
 
 After the owning child pushes a review-response commit, the parent MUST inspect
 unresolved review threads after child fixes and fresh current-head review, then

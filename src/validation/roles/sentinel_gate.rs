@@ -9,6 +9,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "the reviewer evidence MUST record explicit unavailable evidence",
     "Reviewer specialization: MUST split the review into named passes",
     "The validator/parser edge-case pass MUST search",
+    "MUST challenge touched helper families, adjacent parser variants, prior review regressions, and invariant boundaries before accepting an exact-comment fix",
     "The workflow/ownership compliance pass MUST verify",
     "The regression coverage and proof pass MUST verify",
     "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",

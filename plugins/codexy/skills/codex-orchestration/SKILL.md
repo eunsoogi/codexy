@@ -163,12 +163,8 @@ fall back to packaged TOML/catalog context without claiming native-agent
 success.
 
 MUST end every non-trivial atomic unit with the packaged Codexy reviewer agent
-defined in `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate MUST
-review the current diff, exact head or file state, lane scope, touched implementation-file
-LOC evidence, verification outputs, and evidence before handoff, PR readiness,
-completion, or parent acceptance. The parent may verify the evidence, but it
-MUST NOT replace the owning lane's reviewer pass with parent-only readthrough,
-an arbitrary reviewer, generic review role, or stale reviewer output.
+defined in `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate MUST review the current diff, exact head or file state, lane scope, touched implementation-file LOC evidence, verification outputs, and evidence before handoff, PR readiness, completion, or parent acceptance. The parent may verify the evidence, but it MUST NOT replace the owning lane's reviewer pass with parent-only readthrough, an arbitrary reviewer, generic review role, or stale reviewer output.
+For review-response lanes, the reviewer gate MUST challenge the touched helper family, adjacent parser or workflow variants, prior nearby review regressions, and invariant boundaries before accepting an exact-comment fix, while preserving atomic issue scope. Handoff evidence MUST include focused preventive regression coverage for any real adjacent gap, or a concrete no-change rationale naming inspected functions/tests and why invariants hold.
 
 ## Codegraph And LSP
 

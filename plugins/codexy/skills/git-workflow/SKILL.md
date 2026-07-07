@@ -180,6 +180,13 @@ worker for that lane.
   actual todo/plan tool usage, multi-agent usage or a concrete not-useful
   rationale, codegraph evidence, LSP status evidence, and unavailable-tool
   fallbacks.
+- For review-response lanes, the child thread MUST also report preventive
+  adjacent review evidence. It MUST preserve atomic issue scope while reviewing
+  the touched helper family, adjacent parser or workflow variants, prior nearby
+  review regressions, and invariant boundaries. The handoff MUST include
+  focused preventive regression coverage for any real adjacent gap found, or a
+  concrete no-change rationale naming inspected functions/tests and why
+  invariants hold.
 - Before returning a non-trivial atomic lane as ready, the owning thread
   MUST run the packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/codexy-sentinel.toml`.

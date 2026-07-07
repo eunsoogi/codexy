@@ -128,6 +128,18 @@ fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestR
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_sentinel_without_preventive_adjacent_review_clause() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "MUST challenge touched helper families, adjacent parser variants, prior review regressions, and invariant boundaries before accepting an exact-comment fix",
+        "MUST verify the exact review comment before accepting a review-response fix",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("touched helper families"));
+    Ok(())
+}
+
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");

@@ -27,7 +27,7 @@ fn validator_rejects_comment_url_prefix_collision_for_thread_rationale() -> Test
 #[test]
 fn validator_accepts_later_comment_url_for_thread_rationale() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Review response: addressed and verified current head. Accepted no-change rationale documented for https://github.com/eunsoogi/codexy/pull/134#discussion_r3435371456.\n",
+        "Review response: addressed and verified current head. Accepted no-change rationale documented for https://github.com/eunsoogi/codexy/pull/134#discussion_r3435371456. Preventive adjacent review no-change rationale: inspected functions review_thread_resolution::thread_referenced and tests validator_review_thread_reference_matching; invariants hold because sibling URL variants still require exact reference boundaries.\n",
         multi_comment_review_thread_pr_state(),
     )?;
 
