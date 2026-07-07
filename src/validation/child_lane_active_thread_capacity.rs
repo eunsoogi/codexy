@@ -48,7 +48,6 @@ fn split_operation_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str
     clauses.push(&segment[start..]);
     clauses
 }
-
 fn starts_operation_clause(clause: &str) -> bool {
     operation_markers()
         .chain(["create_thread", "fork_thread", "send_message_to_thread"])
@@ -77,6 +76,7 @@ pub(super) fn active_capacity_errors(
         if !records.is_empty() {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
                 operation.replaces_existing_owner
+                    && records.iter().any(|record| record.freed_capacity)
                     && records
                         .iter()
                         .any(|record| active_count_matches_owner(record, owner))
@@ -100,7 +100,6 @@ pub(super) fn active_capacity_errors(
     }
     errors
 }
-
 pub(super) fn continues_existing_owner(
     existing_owner: Option<&ThreadOwner>,
     operation: &ThreadOperation,
@@ -120,7 +119,6 @@ pub(super) struct ThreadOperation {
     reuses_existing_owner: bool,
     replaces_existing_owner: bool,
 }
-
 fn active_count_matches_owner(record: &ActiveCount, owner: &ThreadOwner) -> bool {
     if let Some(owner_thread) = owner.thread_id.as_deref() {
         if !record.thread_ids.is_empty() {
@@ -140,7 +138,6 @@ fn active_count_matches_owner(record: &ActiveCount, owner: &ThreadOwner) -> bool
             .iter()
             .any(|id| owner.issue_ids.contains(id))
 }
-
 fn is_child_thread_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
     line.contains("child thread") && operation_markers().any(|marker| line.contains(marker))
@@ -155,6 +152,10 @@ fn normalized_operation_line(line: &str) -> String {
         .replace("child codex app thread", "child thread")
         .replace("child codex thread", "child thread")
         .replace("created a child thread", "created child thread")
+        .replace("continued the child thread", "continued child thread")
+        .replace("continued a child thread", "continued child thread")
+        .replace("resumed the child thread", "resumed child thread")
+        .replace("resumed a child thread", "resumed child thread")
 }
 fn operation_markers() -> impl Iterator<Item = &'static str> {
     "child thread created:|created child thread|created a replacement child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
@@ -174,7 +175,6 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
                 .into_iter()
                 .any(|marker| line.contains(marker)))
 }
-
 fn has_negated_thread_tool_reference(line: &str, tool: &str) -> bool {
     format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}")
         .split('|')

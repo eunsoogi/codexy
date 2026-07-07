@@ -16,6 +16,7 @@ fn validator_allows_replacement_when_count_lists_old_owner_after_other_thread()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for orchestration only; child routing required
+Child thread thread-old stopped and freed replacement capacity.
 Active child Codex threads: 5, including thread-other for issue #270, thread-old for issue #269.
 Existing issue/PR owner check: existing owner thread thread-old found for issue #269.
 Old owner disposition: existing owner thread thread-old was stopped as unusable for issue #269.
