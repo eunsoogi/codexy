@@ -100,6 +100,9 @@ fn has_lifecycle_negation_prefix(after_reference: &str, verb: &str) -> bool {
         format!("has not been {verb} yet"),
         format!("will be {verb}"),
         format!("will not be {verb}"),
+        format!("to be {verb}"),
+        format!("should be {verb}"),
+        format!("needs to be {verb}"),
     ]
     .into_iter()
     .any(|prefix| {
