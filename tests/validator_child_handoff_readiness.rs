@@ -25,7 +25,7 @@ fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff.\n",
         pr_state_with(
-            r#""mergeStateStatus":"CLEAN","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOOpen","isResolved":false,"isOutdated":false,"path":"src/validation/mod.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/215#discussion_r1"}]}}]}"#,
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOOpen","isResolved":false,"isOutdated":true,"path":"src/validation/mod.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/215#discussion_r1"}]}}]}"###,
         ),
         "unresolved review thread",
     )
@@ -197,7 +197,7 @@ fn validator_allows_child_handoff_with_matching_clean_evidence() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
         &pr_state_with(
-            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOOutdated","isResolved":false,"isOutdated":true,"path":"src/validation/mod.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/215#discussion_r1"}]}}]}"###,
+            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOOutdated","isResolved":true,"isOutdated":true,"path":"src/validation/mod.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/215#discussion_r1"}]}}]}"###,
         ),
     )?;
 

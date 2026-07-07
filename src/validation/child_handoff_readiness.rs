@@ -220,9 +220,7 @@ fn has_affirmative_ready_label(line: &str) -> bool {
 fn unresolved_thread(pr_state: &Value) -> Option<String> {
     let nodes = pr_state.get("reviewThreads")?.get("nodes")?.as_array()?;
     nodes.iter().find_map(|thread| {
-        (thread.get("isResolved").and_then(Value::as_bool) == Some(false)
-            && thread.get("isOutdated").and_then(Value::as_bool) != Some(true))
-        .then(|| {
+        (thread.get("isResolved").and_then(Value::as_bool) == Some(false)).then(|| {
             format!(
                 "{} at {}",
                 string_field(thread, "id").unwrap_or("unknown thread"),
