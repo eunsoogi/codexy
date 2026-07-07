@@ -176,3 +176,54 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_did_not_use_fallback_route_followups() -> Result<(), Box<dyn std::error::Error>>
+{
+    for route in [
+        "Fallback route: parent posted the handoff in the child thread, but didn't use it",
+        "Fallback route: parent posted the handoff in the child thread, but did not use it",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+{route}
+Tracking issue: #205
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject did-not-use fallback route follow-up: {route}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_did_not_create_tracking_issue_text() -> Result<(), Box<dyn std::error::Error>>
+{
+    for issue in [
+        "tracking issue: issue did not get created for #205",
+        "tracking issue: issue didn't get created for #205",
+        "tracking issue: issue did not create #205",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; {issue}.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject did-not-create tracking issue text: {issue}"
+        );
+    }
+    Ok(())
+}

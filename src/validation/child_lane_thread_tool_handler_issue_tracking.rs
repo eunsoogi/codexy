@@ -34,6 +34,7 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
         .replace("hasn't", "has not")
         .replace("hadn't", "had not")
         .replace("isn't", "is not")
+        .replace("didn't", "did not")
         .replace("won't", "will not");
     ["was", "has", "had", "is"].into_iter().any(|auxiliary| {
         ["created", "filed"].into_iter().any(|verb| {
@@ -45,8 +46,21 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
     }) || ["created", "filed", "opened"].into_iter().any(|verb| {
         normalized.contains(&format!("issue not {verb}"))
             || normalized.contains(&format!("issue not yet {verb}"))
+            || normalized.contains(&format!("issue did not {verb}"))
+            || normalized.contains(&format!("issue did not get {verb}"))
+            || lifecycle_verb_stem(verb)
+                .is_some_and(|stem| normalized.contains(&format!("issue did not {stem}")))
             || has_issue_reference_with_lifecycle_negation(&normalized, verb)
     })
+}
+
+fn lifecycle_verb_stem(verb: &str) -> Option<&str> {
+    match verb {
+        "created" => Some("create"),
+        "filed" => Some("file"),
+        "opened" => Some("open"),
+        _ => None,
+    }
 }
 
 fn has_issue_reference_with_lifecycle_negation(clause: &str, verb: &str) -> bool {

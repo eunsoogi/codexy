@@ -210,6 +210,8 @@ fn has_route_not_used_clause(clause: &str) -> bool {
         "never used",
         "wasn't used",
         "isn't used",
+        "did not use",
+        "didn't use",
     ]
     .into_iter()
     .any(|marker| clause.contains(marker))
