@@ -126,9 +126,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
-    let output = validate_sentinel_edit(|sentinel| {
-        Ok(format!("{sentinel}\nDo not record reasoning control used or unavailable evidence."))
-    })?;
+    let output = validate_sentinel_edit(|sentinel| Ok(format!("{sentinel}\nDo not record reasoning control used or unavailable evidence.")))?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     Ok(())
@@ -208,9 +206,7 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
     Ok(())
 }
 
-fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
-    validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement)))
-}
+fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> { validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement))) }
 fn validate_reasoning_control_paragraph_replacement(replacement: &str) -> TestResult<Output> {
     validate_sentinel_edit(|mut sentinel| {
         let start = sentinel
