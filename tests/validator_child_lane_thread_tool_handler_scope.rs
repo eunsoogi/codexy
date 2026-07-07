@@ -86,6 +86,7 @@ fn validator_keeps_review_lane_header_metadata_inside_handler_capture_scope()
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
@@ -110,6 +111,7 @@ fn validator_keeps_lane_qualified_same_lane_capture_inside_handler_capture_scope
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.

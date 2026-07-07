@@ -46,7 +46,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line = &evidence[line_start..line_end];
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
         let line_is_same_lane_header_metadata =
-            is_same_lane_header_metadata_line(evidence, line_start, line_end);
+            is_same_lane_header_metadata_line(evidence, line_start, line_end, handler_start);
         let line_is_handler_capture = is_handler_capture_line(line);
         let line_extends_capture =
             is_capture_related(line) && (!line_is_unrelated_metadata || line_is_handler_capture);
@@ -92,7 +92,12 @@ fn is_unrelated_metadata_line(line: &str) -> bool {
     !is_capture_related(&key.to_ascii_lowercase())
 }
 
-fn is_same_lane_header_metadata_line(evidence: &str, line_start: usize, line_end: usize) -> bool {
+fn is_same_lane_header_metadata_line(
+    evidence: &str,
+    line_start: usize,
+    line_end: usize,
+    handler_start: usize,
+) -> bool {
     let line = &evidence[line_start..line_end];
     let Some((key, _)) = line.trim_start().split_once(':') else {
         return false;
@@ -111,9 +116,32 @@ fn is_same_lane_header_metadata_line(evidence: &str, line_start: usize, line_end
             | "lane owner"
             | "child owner"
     ) || key.starts_with("lane ")
+        && current_lane_header_before(evidence, handler_start)
+            .is_some_and(|current_lane| current_lane == key)
         && next_nonempty_line(evidence, line_end)
             .is_some_and(|next| is_same_lane_header_field(next))
         && same_lane_header_block_has_same_lane_marker(evidence, line_end)
+}
+
+fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<String> {
+    while cursor > 0 {
+        let previous_end = cursor - 1;
+        let previous_start = evidence[..previous_end]
+            .rfind('\n')
+            .map_or(0, |index| index + 1);
+        let line = evidence[previous_start..previous_end].trim_start();
+        if line.trim().is_empty() {
+            return None;
+        }
+        if let Some((key, _)) = line.split_once(':') {
+            let key = metadata_key(key);
+            if key.starts_with("lane ") {
+                return Some(key);
+            }
+        }
+        cursor = previous_start;
+    }
+    None
 }
 
 fn next_nonempty_line(evidence: &str, mut cursor: usize) -> Option<&str> {
@@ -133,7 +161,10 @@ fn is_same_lane_header_field(line: &str) -> bool {
     let Some((key, _)) = line.trim_start().split_once(':') else {
         return false;
     };
-    matches!(metadata_key(key).as_str(), "fallback route" | "tracking issue")
+    matches!(
+        metadata_key(key).as_str(),
+        "fallback route" | "tracking issue"
+    )
 }
 
 fn same_lane_header_block_has_same_lane_marker(evidence: &str, mut cursor: usize) -> bool {
