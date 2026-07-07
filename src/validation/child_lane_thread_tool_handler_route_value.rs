@@ -100,27 +100,17 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
 }
 
 fn has_qualified_actor_negation(local: &str) -> bool {
+    const QUALIFIERS: &str =
+        "actual|assigned|authorized|correct|expected|intended|real|responsible|same|valid";
     let tokens = local.split_whitespace().collect::<Vec<_>>();
     let Some(negation_index) = tokens.iter().rposition(|token| *token == "not") else {
         return false;
     };
     let actor_prefix = strip_actor_article(&tokens[negation_index + 1..]);
     actor_prefix.is_empty()
-        || actor_prefix.iter().all(|token| {
-            matches!(
-                *token,
-                "actual"
-                    | "assigned"
-                    | "authorized"
-                    | "correct"
-                    | "expected"
-                    | "intended"
-                    | "real"
-                    | "responsible"
-                    | "same"
-                    | "valid"
-            )
-        })
+        || actor_prefix
+            .iter()
+            .all(|token| QUALIFIERS.split('|').any(|qualifier| *token == qualifier))
 }
 
 fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
@@ -192,53 +182,23 @@ fn has_failed_route_delivery_clause(clause: &str) -> bool {
         .into_iter()
         .any(|failure| contains_phrase(clause, failure))
         && (has_failed_route_pronoun_clause(clause)
-            || [
-                "send",
-                "sent",
-                "sending",
-                "post",
-                "posted",
-                "posting",
-                "deliver",
-                "delivered",
-                "delivery",
-                "route",
-                "routed",
-                "routing",
-                "handoff",
-                "message",
-                "feedback",
-            ]
-            .into_iter()
-            .any(|term| contains_phrase(clause, term)))
+            || {
+                "send|sent|sending|post|posted|posting|deliver|delivered|delivery|route|routed|routing|handoff|message|feedback"
+                .split('|')
+                .any(|term| contains_phrase(clause, term))
+            })
 }
 
 fn has_failed_route_pronoun_clause(clause: &str) -> bool {
-    [
-        "it failed",
-        "that failed",
-        "this failed",
-        "the fallback failed",
-    ]
-    .into_iter()
-    .any(|marker| contains_phrase(clause, marker))
+    "it failed|that failed|this failed|the fallback failed"
+        .split('|')
+        .any(|marker| contains_phrase(clause, marker))
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {
-    [
-        "not used",
-        "was not used",
-        "was not actually used",
-        "was never used",
-        "never used",
-        "wasn't used",
-        "isn't used",
-        "did not use",
-        "didn't use",
-        "unused",
-    ]
-    .into_iter()
-    .any(|marker| contains_phrase(clause, marker))
+    "not used|was not used|was not actually used|was never used|never used|wasn't used|isn't used|did not use|didn't use|unused"
+        .split('|')
+        .any(|marker| contains_phrase(clause, marker))
 }
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
