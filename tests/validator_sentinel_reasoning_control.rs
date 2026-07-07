@@ -43,6 +43,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence as needed",
         "reasoning control used or unavailable evidence where practical",
         "Every approval MUST consider reasoning control used or unavailable evidence",
+        "Every approval MUST decide whether to reference reasoning control used or unavailable evidence",
         "Every approval MUST inspect reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence does not have to be supplied",
         "reasoning control used or unavailable evidence does not\nneed to be supplied",
@@ -166,7 +167,6 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
         "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence is forbidden.\n\n",
     ] {
         let output = validate_reasoning_control_paragraph_replacement(replacement)?;
-
         assert!(!output.status.success(), "accepted {replacement:?}");
         assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
     }
