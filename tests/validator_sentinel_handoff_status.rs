@@ -50,6 +50,7 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel verdict: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel result: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel gate returned BLOCK. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head; rerun Sentinel: PASS before push.\n",
         "Parent can open PR next. Packaged Codexy Sentinel returned BLOCK but focused tests passed.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
@@ -152,6 +153,28 @@ fn validator_accepts_explicit_maintainer_fallback_for_unobservable_sentinel_read
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
         "validator should honor an explicit maintainer-approved fallback for unobservable Sentinel readiness",
     )
+}
+
+#[test]
+fn validator_rejects_unapproved_sentinel_fallback_requirement_as_readiness() -> TestResult {
+    for handoff in [
+        "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer-approved fallback required before readiness; no maintainer response yet. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer approved fallback required before readiness; no maintainer response yet. Pushed: yes.\n",
+    ] {
+        let output = validate_open_pr_handoff(handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator should reject fallback requirement text without actual approval\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("Sentinel"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
 }
 
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {

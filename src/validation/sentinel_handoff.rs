@@ -3,7 +3,8 @@ const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|
 const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate returned block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
 const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|ready for handoff|pr-ready|pr ready|pr-readiness|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|push-readiness|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
-const MAINTAINER_FALLBACK_APPROVAL_MARKERS: &str = "maintainer explicitly approved fallback|maintainer explicitly approved a fallback|maintainer explicitly approved the fallback|maintainer approved fallback|maintainer approved a fallback|maintainer approved the fallback|maintainer-approved fallback|maintainer-approved sentinel fallback|maintainer approval: fallback approved|maintainer approval fallback approved";
+const MAINTAINER_FALLBACK_APPROVAL_MARKERS: &str = "maintainer explicitly approved fallback|maintainer explicitly approved a fallback|maintainer explicitly approved the fallback|maintainer approval: fallback approved|maintainer approval fallback approved";
+const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before handoff|before merge|before parent handoff|before pr readiness|before merge readiness|before push readiness|required before|needed before|must pass before|needs to pass before|should pass before";
 
 pub(super) fn check(handoff: &str) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
@@ -76,10 +77,17 @@ fn current_sentinel_status(text: &str) -> Option<SentinelStatus> {
                 .map(|phrase| (SentinelStatus::Unobservable, phrase)),
         )
         .filter_map(|(status, phrase)| {
-            last_affirmed_phrase_start(text, phrase).map(|start| (start, status))
+            last_affirmed_phrase_start(text, phrase)
+                .filter(|start| !has_future_status_context(&text[*start + phrase.len()..]))
+                .map(|start| (start, status))
         })
         .max_by_key(|(start, _)| *start)
         .map(|(_, status)| status)
+}
+
+fn has_future_status_context(suffix: &str) -> bool {
+    let clause = &suffix[..next_clause_boundary(suffix).unwrap_or(suffix.len())];
+    has_any(clause, FUTURE_STATUS_CONTEXT_MARKERS)
 }
 
 fn last_affirmed_phrase_start(text: &str, phrase: &str) -> Option<usize> {
@@ -180,6 +188,15 @@ fn last_clause_boundary(text: &str) -> Option<usize> {
         }
     }
     boundary
+}
+
+fn next_clause_boundary(text: &str) -> Option<usize> {
+    for (index, character) in text.char_indices() {
+        if matches!(character, '.' | '!' | '?' | ';' | '\n') {
+            return Some(index);
+        }
+    }
+    None
 }
 
 fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
