@@ -6,21 +6,22 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
         .lines()
         .enumerate()
         .flat_map(|(line_number, line)| {
-            operation_segments(line).filter_map(move |line| {
-                (is_child_thread_operation_line(line) && !has_negated_operation_claim(line)).then(
-                    || ThreadOperation {
-                        line_number,
-                        reuses_existing_owner: is_reuse_operation_line(line),
-                        replaces_existing_owner: normalized_operation_line(line)
-                            .contains("replacement child thread"),
-                        owner: ThreadOwner::from_line(line),
-                    },
-                )
-            })
+            operation_segments(line)
+                .enumerate()
+                .filter_map(move |(segment_number, line)| {
+                    (is_child_thread_operation_line(line) && !has_negated_operation_claim(line))
+                        .then(|| ThreadOperation {
+                            line_number,
+                            segment_number,
+                            reuses_existing_owner: is_reuse_operation_line(line),
+                            replaces_existing_owner: normalized_operation_line(line)
+                                .contains("replacement child thread"),
+                            owner: ThreadOwner::from_line(line),
+                        })
+                })
         })
         .collect()
 }
-
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
         .flat_map(|line| line.split(". "))
@@ -28,7 +29,6 @@ fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
         .flat_map(|line| line.split(" then "))
         .flat_map(split_operation_and_clauses)
 }
-
 fn split_operation_and_clauses(segment: &str) -> Vec<&str> {
     let lower = normalized_operation_line(segment);
     let mut clauses = Vec::new();
@@ -65,11 +65,12 @@ pub(super) fn active_capacity_errors(
     existing_owners: &[Option<ThreadOwner>],
 ) -> Vec<String> {
     let mut errors = Vec::new();
-    let mut previous_operation_line = None;
+    let mut previous_operation_position = None;
     let mut projected_count: Option<u64> = None;
     for (operation, existing_owner) in operations.iter().zip(existing_owners) {
         let mut counted_replacement = false;
-        let count_bound = previous_operation_line.filter(|line| line != &operation.line_number);
+        let count_bound = previous_operation_position
+            .filter(|position| position != &(operation.line_number, operation.segment_number));
         let records = fresh_counts_before_operation(active_counts, count_bound, operation);
         if !records.is_empty() {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
@@ -93,7 +94,7 @@ pub(super) fn active_capacity_errors(
         if projected_count.is_some_and(|count| count > MAX_ACTIVE_CHILD_CODEX_THREADS) {
             errors.push("new or resumed child Codex thread operation would exceed five active child Codex threads".to_owned());
         }
-        previous_operation_line = Some(operation.line_number);
+        previous_operation_position = Some((operation.line_number, operation.segment_number));
     }
     errors
 }
@@ -104,17 +105,15 @@ pub(super) fn continues_existing_owner(
 ) -> bool {
     existing_owner
         .filter(|_| operation.reuses_existing_owner)
-        .and_then(|existing_owner| {
-            existing_owner
-                .thread_id
-                .as_deref()
-                .zip(operation.owner.thread_id.as_deref())
+        .is_some_and(|existing_owner| {
+            let existing_thread = existing_owner.thread_id.as_deref();
+            existing_thread.is_some() && existing_thread == operation.owner.thread_id.as_deref()
         })
-        .is_some_and(|(existing, operation)| existing == operation)
 }
 
 pub(super) struct ThreadOperation {
     pub(super) line_number: usize,
+    segment_number: usize,
     pub(super) owner: ThreadOwner,
     reuses_existing_owner: bool,
     replaces_existing_owner: bool,
@@ -182,15 +181,15 @@ fn has_negated_thread_tool_reference(line: &str, tool: &str) -> bool {
 
 fn fresh_counts_before_operation<'a>(
     active_counts: &'a [ActiveCount],
-    previous_operation_line: Option<usize>,
+    previous_operation_position: Option<(usize, usize)>,
     operation: &ThreadOperation,
 ) -> Vec<&'a ActiveCount> {
     active_counts
         .iter()
         .filter(|record| {
-            record.line_number < operation.line_number
-                && previous_operation_line
-                    .is_none_or(|line_number| record.line_number > line_number)
+            let record_position = (record.line_number, record.segment_number);
+            record_position < (operation.line_number, operation.segment_number)
+                && previous_operation_position.is_none_or(|position| record_position > position)
         })
         .collect()
 }

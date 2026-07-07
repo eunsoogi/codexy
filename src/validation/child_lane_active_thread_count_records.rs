@@ -28,12 +28,14 @@ fn active_count_records_for_line(
     line.split(';')
         .flat_map(|segment| segment.split(". "))
         .flat_map(split_count_comma_clauses)
-        .filter_map(|segment| {
+        .enumerate()
+        .filter_map(|(segment_number, segment)| {
             let count = active_child_thread_count(segment)?;
             Some(ActiveCount {
                 count,
                 kind: count_kind(segment),
                 line_number,
+                segment_number,
                 freed_capacity,
                 owner: ThreadOwner::from_line(segment),
                 thread_ids: thread_ids(segment),
@@ -103,6 +105,7 @@ pub(super) struct ActiveCount {
     pub(super) owner: ThreadOwner,
     pub(super) thread_ids: Vec<String>,
     pub(super) line_number: usize,
+    pub(super) segment_number: usize,
     pub(super) freed_capacity: bool,
     kind: CountKind,
 }
