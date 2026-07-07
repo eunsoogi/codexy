@@ -151,6 +151,7 @@ fn normalized_operation_line(line: &str) -> String {
         .replace("child codex app thread", "child thread")
         .replace("child codex thread", "child thread")
         .replace("created a new child thread", "created child thread")
+        .replace("created new child thread", "created child thread")
         .replace("created a child thread", "created child thread")
         .replace("continued the child thread", "continued child thread")
         .replace("continued a child thread", "continued child thread")
@@ -160,7 +161,6 @@ fn normalized_operation_line(line: &str) -> String {
 fn operation_markers() -> impl Iterator<Item = &'static str> {
     "child thread created:|created child thread|created a replacement child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
 }
-
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
     if has_negated_thread_tool_reference(line, tool) {
         return false;
