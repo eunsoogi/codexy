@@ -127,7 +127,7 @@ fn is_prefix_negated(prefix: &str) -> bool {
     let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase();
     sentence_prefix.contains("must not")
         || sentence_prefix.contains("do not")
-        || sentence_prefix.contains("should not")
+        || ["should not", "but not", "and not", "or not"].iter().any(|phrase| sentence_prefix.contains(phrase))
 }
 
 fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: &str) -> bool {
@@ -140,13 +140,9 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
             marker_index + marker.len() + index
         });
     let sentence = instructions[sentence_start..sentence_end].to_ascii_lowercase();
-    let marker = marker.to_ascii_lowercase();
-    ["but not ", "and not ", "or not "]
-        .iter()
-        .any(|prefix| sentence.contains(&format!("{prefix}{marker}")))
-        || sentence
-            .split(|ch: char| !ch.is_ascii_alphanumeric())
-            .any(|word| matches!(word, "optional" | "permissive"))
+    sentence
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|word| matches!(word, "optional" | "permissive"))
         || sentence.contains("not required")
         || sentence.contains("not mandatory")
         || sentence.contains("may skip")
