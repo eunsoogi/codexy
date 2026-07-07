@@ -99,6 +99,7 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
     ) || local.ends_with(" false that")
         || local.starts_with("false positive")
         || local.starts_with("false-positive")
+        || has_route_not_used_clause(local)
 }
 
 fn has_post_destination_route_negation(suffix: &str) -> bool {
