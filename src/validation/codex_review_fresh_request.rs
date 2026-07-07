@@ -98,6 +98,7 @@ fn is_review_request_status_clause(clause: &str) -> bool {
 pub(super) fn request_subclauses(clause: &str) -> impl Iterator<Item = &str> {
     clause
         .split(" and ")
+        .flat_map(|part| part.split(" so "))
         .flat_map(|part| part.split(" then "))
         .flat_map(|part| part.split(" next action is to "))
 }
