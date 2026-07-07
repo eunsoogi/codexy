@@ -1,17 +1,12 @@
 use serde_json::Value;
 
-pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
+pub(super) fn check(pr_state: &Value) -> Option<String> {
     let thread = pr_state
         .get("reviewThreads")
         .and_then(|threads| threads.get("nodes"))
         .and_then(Value::as_array)?
         .iter()
-        .find(|thread| {
-            thread.get("isResolved").and_then(Value::as_bool) == Some(false)
-                && !super::review_thread_resolution::documents_accepted_no_change_rationale(
-                    handoff, thread,
-                )
-        })?;
+        .find(|thread| thread.get("isResolved").and_then(Value::as_bool) == Some(false))?;
     Some(format!(
         "unresolved review thread remains before PR-ready or merge-ready claims: {}; resolve fixed or accepted threads after current-head verification",
         thread_label(thread)

@@ -102,7 +102,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         }
         if let Some(error) = super::review_thread_evidence::check(threads) {
             errors.push(error);
-        } else if let Some(thread) = super::review_thread_readiness::check(handoff, pr_state) {
+        } else if let Some(thread) = super::review_thread_readiness::check(pr_state) {
             errors.push(format!("child handoff claims PR readiness but {thread}"));
         }
     }

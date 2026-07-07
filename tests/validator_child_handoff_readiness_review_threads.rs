@@ -3,14 +3,17 @@ use std::process::Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn validator_allows_accepted_no_change_rationale_for_pr_ready_handoff() -> TestResult {
+fn validator_rejects_accepted_no_change_rationale_until_thread_resolved() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Child handoff: PR ready for parent handoff. Accepted no-change rationale documented for thread PRRT_open.\n",
         &pr_state_with(
             r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_open","isResolved":false,"isOutdated":false,"path":"src/validation/child_handoff_readiness.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/226#discussion_r1"}]}}]}"###,
         ),
     )?;
-    assert_success(output);
+    assert_failure_contains(
+        output,
+        "unresolved review thread remains before PR-ready or merge-ready claims",
+    );
     Ok(())
 }
 
@@ -30,6 +33,20 @@ fn assert_success(output: std::process::Output) {
     assert!(
         output.status.success(),
         "unexpected stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn assert_failure_contains(output: std::process::Output, expected: &str) {
+    assert!(
+        !output.status.success(),
+        "validator should reject unresolved accepted no-change threads before readiness\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(expected),
+        "expected {expected:?} in stderr:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
 }

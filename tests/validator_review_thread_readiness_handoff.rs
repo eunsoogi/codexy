@@ -4,26 +4,34 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
-fn validator_allows_ready_handoff_with_accepted_no_change_rationale() -> TestResult {
-    for (handoff, pr_state) in [
+fn validator_rejects_ready_handoff_with_unresolved_accepted_no_change_thread() -> TestResult {
+    for (handoff, pr_state, expected_thread) in [
         (
             "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Codex review passed on the current head. PR is merge-ready.\n",
             unresolved_accepted_thread_ready_pr_state(),
+            "PRRT_kwDOExample",
         ),
         (
             "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Maintainer override: yes. PR is merge-ready.\n",
             unresolved_accepted_thread_override_pr_state(),
+            "PRRT_kwDOExample",
         ),
         (
             "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOOutdated. Maintainer override: yes. PR is merge-ready.\n",
             unresolved_accepted_outdated_thread_override_pr_state(),
+            "PRRT_kwDOOutdated",
         ),
     ] {
         let output = validate_handoff_with_pr_state(handoff, pr_state)?;
         assert!(
-            output.status.success(),
-            "validator should honor accepted no-change rationale before blocking readiness\nstdout:\n{}\nstderr:\n{}",
+            !output.status.success(),
+            "validator should reject readiness claims while accepted no-change threads remain unresolved\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains(expected_thread),
+            "unexpected stderr: {}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
