@@ -15,7 +15,8 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
-    let sentinel_errors = super::sentinel_handoff::check(handoff);
+    let sentinel_errors =
+        super::sentinel_handoff::check(handoff, string_field(&pr_state, "headRefOid"));
     if !sentinel_errors.is_empty() {
         return sentinel_errors;
     }

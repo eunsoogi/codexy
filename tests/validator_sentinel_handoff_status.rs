@@ -73,6 +73,7 @@ fn validator_rejects_sentinel_readiness_without_explicit_status() -> TestResult 
     for handoff in [
         "PR ready for parent handoff. Packaged Codexy Sentinel Lagrange reviewed exact head and current diff. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel evidence: reviewed exact head, no blockers listed. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS on old head abc1234. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -109,7 +110,7 @@ fn validator_accepts_reviewer_named_sentinel_pass() -> TestResult {
 #[test]
 fn validator_ignores_unrelated_pending_review_after_sentinel_pass() -> TestResult {
     accept_open_pr_handoff(
-        "Push-ready. Sentinel: PASS on current head. Codex review has not returned, so PR ready: no.\n",
+        "Push-ready. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Codex review has not returned, so PR ready: no.\n",
         "validator should not treat unrelated pending Codex review text as Sentinel UNOBSERVABLE",
     )
 }
@@ -142,7 +143,7 @@ fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
 #[test]
 fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
     accept_open_pr_handoff(
-        "PR ready for parent handoff. Sentinel: PASS, Euclid reviewed exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Sentinel: PASS, Euclid reviewed exact head 32b03a210b3defb2d29dd352283ea2488e60d893 and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "validator should accept explicit Sentinel PASS readiness evidence",
     )
 }
@@ -180,10 +181,9 @@ fn validator_accepts_unobservable_sentinel_when_handoff_stops_before_readiness()
 }
 
 #[test]
-fn validator_accepts_explicit_maintainer_fallback_for_unobservable_sentinel_readiness() -> TestResult
-{
+fn validator_accepts_approved_fallback_for_timed_out_sentinel_readiness() -> TestResult {
     accept_open_pr_handoff(
-        "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel timed out after bounded wait. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
         "validator should honor an explicit maintainer-approved fallback for unobservable Sentinel readiness",
     )
 }

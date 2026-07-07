@@ -8,40 +8,39 @@ const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before
 const FUTURE_STATUS_PREFIX_MARKERS: &str = "waiting for|wait for|awaiting|will rerun|will re-run|needs rerun|needs re-run|need rerun|need re-run|rerun required|re-run required";
 const STATUS_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|returned|return|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
 
-pub(super) fn check(handoff: &str) -> Vec<String> {
+pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
-    if !has_any(&text, READINESS_MARKERS) {
-        return Vec::new();
-    }
-    if !has_any(&text, SENTINEL_MARKERS) {
+    if !has_any(&text, READINESS_MARKERS) || !has_any(&text, SENTINEL_MARKERS) {
         return Vec::new();
     }
     let status = status_marker_starts(&text)
         .into_iter()
         .max_by_key(|(start, _)| *start)
         .map(|(_, status)| status);
+    let current_head_named = head_ref_oid
+        .map(str::trim)
+        .filter(|head| !head.is_empty())
+        .is_some_and(|head| text.contains(&head.to_ascii_lowercase()));
     match status {
+        Some(SentinelStatus::Block) | Some(SentinelStatus::Unobservable)
+            if has_any(&text, MAINTAINER_FALLBACK_APPROVAL_MARKERS) =>
+        {
+            Vec::new()
+        }
         Some(SentinelStatus::Block) => {
-            if has_any(&text, MAINTAINER_FALLBACK_APPROVAL_MARKERS) {
-                return Vec::new();
-            }
             vec!["Sentinel BLOCK verdict cannot satisfy PR readiness or push readiness".into()]
         }
-        Some(SentinelStatus::Unobservable) => {
-            if has_any(&text, MAINTAINER_FALLBACK_APPROVAL_MARKERS) {
-                return Vec::new();
-            }
-            vec![
-                "Sentinel UNOBSERVABLE or pending verdict cannot satisfy PR readiness or push readiness".into(),
-            ]
+        Some(SentinelStatus::Unobservable) => vec![
+            "Sentinel UNOBSERVABLE or pending verdict cannot satisfy PR readiness or push readiness"
+                .into(),
+        ],
+        Some(SentinelStatus::Pass) if current_head_named => Vec::new(),
+        Some(SentinelStatus::Pass) => {
+            vec!["Sentinel PASS readiness evidence must name the current PR head SHA".into()]
         }
-        Some(SentinelStatus::Pass) => Vec::new(),
-        None => {
-            vec![
-                "Sentinel readiness evidence must state PASS, BLOCK, or UNOBSERVABLE explicitly"
-                    .into(),
-            ]
-        }
+        None => vec![
+            "Sentinel readiness evidence must state PASS, BLOCK, or UNOBSERVABLE explicitly".into(),
+        ],
     }
 }
 
@@ -220,7 +219,7 @@ fn reviewer_name_context(text: &str) -> bool {
         .split(|character: char| !character.is_ascii_alphanumeric())
         .filter(|word| !word.is_empty())
         .collect();
-    !words.is_empty() && words.len() <= 4 && !words.iter().any(|word| status_noise_word(word))
+    words.is_empty() || words.len() <= 4 && !words.iter().any(|word| status_noise_word(word))
 }
 
 fn status_noise_word(word: &str) -> bool {
