@@ -7,6 +7,10 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if let Some(error) = pr_state_input_error(&pr_state) {
         return vec![error];
     }
+    let child_handoff_errors = super::child_handoff_readiness::check(handoff, &pr_state);
+    if !child_handoff_errors.is_empty() {
+        return child_handoff_errors;
+    }
     let compaction_errors = super::completion_handoff_compaction::check(handoff, &pr_state);
     if !compaction_errors.is_empty() {
         return compaction_errors;

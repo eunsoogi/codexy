@@ -66,6 +66,11 @@ complete.
   child thread. The parent thread may coordinate, but it MUST NOT merge until
   the child thread returns current verification or a documented non-change
   rationale.
+- Before accepting child handoffs that claim clean, synced, pushed, PR-ready,
+  or parent-handoff-ready state, the parent MUST verify current `git status`,
+  local head, remote ref, PR head, merge state, and unresolved review threads.
+  The parent MUST NOT accept handoff prose when those current surfaces
+  contradict it.
 - If a child-owned PR handoff or final-answer evidence mentions parent-authored
   implementation or review-response commits, MUST run
   `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`.
