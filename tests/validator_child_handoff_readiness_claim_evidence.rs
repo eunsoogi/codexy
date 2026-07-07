@@ -75,6 +75,20 @@ fn validator_rejects_bare_pr_ready_handoff_without_status_evidence() -> TestResu
 }
 
 #[test]
+fn validator_rejects_affirmative_ready_labels_without_child_marker() -> TestResult {
+    for handoff in ["PR-ready: yes.\n", "Merge-ready: yes.\n"] {
+        assert_rejects_child_handoff(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example\n M src/validation/child_handoff_readiness.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+            "current status is dirty",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_synced_yes_with_pushed_no() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: Synced: yes at 068dbb247b7755035223c91ee39f26830f3c1609. Pushed: no.\n",

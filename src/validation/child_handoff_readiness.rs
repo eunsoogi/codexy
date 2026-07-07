@@ -197,14 +197,26 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
 
 fn has_standalone_ready_line(text: &str) -> bool {
     text.lines().any(|line| {
+        let line = line
+            .trim()
+            .trim_start_matches(['-', '*'])
+            .trim()
+            .trim_end_matches('.');
         matches!(
-            line.trim()
-                .trim_start_matches(['-', '*'])
-                .trim()
-                .trim_end_matches('.'),
+            line,
             "pr-ready" | "pr ready" | "merge-ready" | "merge ready"
-        )
+        ) || has_affirmative_ready_label(line)
     })
+}
+
+fn has_affirmative_ready_label(line: &str) -> bool {
+    ["pr-ready", "pr ready", "merge-ready", "merge ready"]
+        .into_iter()
+        .any(|label| {
+            line.strip_prefix(label)
+                .and_then(|rest| rest.trim_start().strip_prefix(':'))
+                .is_some_and(|value| value.trim() == "yes")
+        })
 }
 
 fn unresolved_thread(pr_state: &Value) -> Option<String> {
