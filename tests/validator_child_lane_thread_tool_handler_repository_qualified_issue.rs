@@ -52,6 +52,21 @@ fn validator_allows_repository_qualified_tracking_issue_after_field_label()
 }
 
 #[test]
+fn validator_allows_markdown_link_github_issue_url_tracking_evidence()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(&tracking_issue_evidence(
+        "tracking issue: [dogfood issue](https://github.com/eunsoogi/codexy/issues/205)",
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator should accept Markdown link GitHub issue URLs as concrete tracking issue evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_slash_delimited_bare_tracking_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&tracking_issue_evidence("tracking issue: #205/#206"))?;

@@ -22,11 +22,11 @@ fn has_github_issue_url(clause: &str) -> bool {
         let trimmed = word.trim_matches(|character: char| {
             !character.is_ascii_alphanumeric() && !":/.#_-".contains(character)
         });
-        if !trimmed.starts_with("https://github.com/") && !trimmed.starts_with("http://github.com/")
-        {
+        let Some(url_start) = github_url_start(trimmed) else {
             return false;
-        }
-        let Some((_, issue_tail)) = trimmed.rsplit_once("/issues/") else {
+        };
+        let url = &trimmed[url_start..];
+        let Some((_, issue_tail)) = url.rsplit_once("/issues/") else {
             return false;
         };
         let digit_end = issue_tail
@@ -34,6 +34,12 @@ fn has_github_issue_url(clause: &str) -> bool {
             .unwrap_or(issue_tail.len());
         digit_end > 0 && is_issue_url_boundary(&issue_tail[digit_end..])
     })
+}
+
+fn github_url_start(candidate: &str) -> Option<usize> {
+    candidate
+        .find("https://github.com/")
+        .or_else(|| candidate.find("http://github.com/"))
 }
 
 fn has_repository_qualified_issue_reference(clause: &str) -> bool {

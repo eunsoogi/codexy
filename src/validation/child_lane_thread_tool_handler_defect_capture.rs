@@ -86,11 +86,42 @@ fn list_item_candidate_scope(list_items: &[&str], index: usize, header_scope: &s
             .take_while(|line| is_handoff_list_metadata_item(line))
             .map(|line| strip_list_prefix(line)),
     );
+    if let Some(shared_metadata) = shared_handoff_list_metadata(list_items, index) {
+        scoped.extend(shared_metadata.iter().map(|line| strip_list_prefix(line)));
+    }
+    let list_end = list_items
+        .iter()
+        .position(|line| !is_list_item(line))
+        .unwrap_or(list_items.len());
+    scoped.extend(
+        list_items[list_end..]
+            .iter()
+            .take_while(|line| is_unlisted_handoff_metadata_item(line))
+            .copied(),
+    );
     scoped.join("\n")
+}
+
+fn shared_handoff_list_metadata<'a>(list_items: &'a [&str], index: usize) -> Option<&'a [&'a str]> {
+    let list_end = list_items
+        .iter()
+        .position(|line| !is_list_item(line))
+        .unwrap_or(list_items.len());
+    let metadata_start = (index + 1..list_end).find(|candidate| {
+        list_items[*candidate..list_end].iter().all(|line| {
+            is_handoff_list_metadata_item(line) && !has_handler_marker(strip_list_prefix(line))
+        })
+    })?;
+    (metadata_start > index + 1).then_some(&list_items[metadata_start..list_end])
 }
 
 fn is_handoff_list_metadata_item(line: &str) -> bool {
     let line = strip_list_prefix(line).to_ascii_lowercase();
+    is_unlisted_handoff_metadata_item(&line)
+}
+
+fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
+    let line = line.to_ascii_lowercase();
     is_fallback_metadata_field(&line)
         || [
             "separate dogfood issue",

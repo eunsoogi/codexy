@@ -90,6 +90,30 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_shared_handoff_metadata_after_multiple_handler_items()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread: `No handler registered for tool: read_thread`
+- recorded runtime missing-handler evidence for codex_app.send_message_to_thread: `No handler registered for tool: send_message_to_thread`
+Fallback route: no fallback route was available
+Tracking issue: #205
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should apply shared handoff metadata after a handler list to every handler item\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_hyphenated_fallback_route_fields() -> Result<(), Box<dyn std::error::Error>> {
     for field in "Fallback-route|Fallback-path".split('|') {
         let output = run_ownership_validator(&format!(
