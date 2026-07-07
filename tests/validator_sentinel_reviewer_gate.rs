@@ -2,7 +2,6 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 mod support;
-
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
@@ -196,6 +195,8 @@ fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sen
 
 #[test]
 fn validator_cli_accepts_wrapped_approval_evidence_sentence() -> TestResult {
+    let output = validate_sentinel_edit(|sentinel| sentinel)?;
+    assert!(output.status.success(), "{}", stderr(&output));
     let output = validate_sentinel_replacement(
         "Every approval MUST reference the current diff or head, lane scope",
         "Every approval MUST reference the current diff or head,\n lane scope",
