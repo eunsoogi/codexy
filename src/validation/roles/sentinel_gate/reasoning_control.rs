@@ -10,7 +10,7 @@ const PARAGRAPH_MARKERS: &[&str] = &[
 const DISALLOWED_PATTERNS: &str = concat!(
     "absent reasoning control used or unavailable evidence|acceptable|allowed to disregard|allowed to ignore|aren't required|can be disregarded|can be ignored|can be skipped|can decide whether|can choose whether|can disregard|can ignore|can include|can omit|can reference|consider|considered|does not have to|encouraged|does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|choose not|for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave it out|leave out|left out|may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing reasoning control used or unavailable evidence|must attempt|must endeavor|must evaluate|must inspect|must make reasonable efforts|must never|must not|must-not|must prefer|must review|must strive|must try|mustn't|need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|required to evaluate|required to inspect|required to review|",
-    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only for|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except for|except if|except in|except when|reviewer's discretion|when applicable|when-applicable|when available|when feasible|when needed|when possible|whenever possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
+    "no reasoning control used or unavailable evidence|no longer mandatory|no longer necessary|no longer needed|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only for|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except for|except if|except in|except when|reviewer's discretion|when applicable|when-applicable|when available|when feasible|when needed|when possible|whenever possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
 
 pub(super) fn has_reasoning_control_paragraph(instructions: &str) -> bool {
@@ -54,6 +54,7 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
             .skip(1)
             .take(1)
             .any(|segment| contains_disallowed_context(segment))
+        || head_segments.iter().any(|segment| contains_scoped_opt_out(segment))
         || "if applicable, reference|when applicable, reference|where applicable, reference|as applicable, reference, if applicable|reference, when applicable|reference, where applicable|reference, as applicable|reference if applicable|reference when applicable|reference where applicable|reference as applicable"
             .split('|')
             .any(|pattern| contains_context_pattern(head, pattern))
@@ -94,24 +95,20 @@ fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
 }
 
 fn marker_context(text: &str, marker_start: usize) -> &str {
-    let bytes = text.as_bytes();
-    let mut start = marker_start;
-    while start > 0 && bytes[start - 1] != b'.' {
-        start -= 1;
-    }
-    let mut end = marker_start + EVIDENCE_MARKER.len();
-    while end < bytes.len() && bytes[end] != b'.' {
-        end += 1;
-    }
-    while let Some(next_start) = next_sentence_start(bytes, end) {
+    let start = text[..marker_start].rfind('.').map_or(0, |index| index + 1);
+    let mut end = text[marker_start + EVIDENCE_MARKER.len()..]
+        .find('.')
+        .map_or(text.len(), |index| {
+            marker_start + EVIDENCE_MARKER.len() + index
+        });
+    while let Some(next_start) = next_sentence_start(text.as_bytes(), end) {
         let next_sentence = &text[next_start..];
         if !has_evidence_followup(next_sentence) {
             break;
         }
-        end = next_start;
-        while end < bytes.len() && bytes[end] != b'.' {
-            end += 1;
-        }
+        end = text[next_start..]
+            .find('.')
+            .map_or(text.len(), |index| next_start + index);
     }
     text[start..end].trim()
 }
