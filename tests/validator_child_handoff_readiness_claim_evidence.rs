@@ -70,6 +70,18 @@ fn validator_rejects_synced_yes_with_pushed_no() -> TestResult {
     )
 }
 
+#[test]
+fn validator_allows_pushed_branch_no_blocker_handoff() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff: Pushed branch: no. Waiting on push before parent handoff.\n",
+        &pr_state_with(
+            r###""mergeStateStatus":"DIRTY","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example [ahead 1]","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+    )?;
+    assert!(output.status.success(), "blocker handoff should pass");
+    Ok(())
+}
+
 fn assert_rejects_child_handoff(handoff: &str, pr_state: &str, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
     assert!(

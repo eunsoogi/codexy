@@ -40,6 +40,7 @@ pub(super) fn synced(text: &str) -> bool {
 
 pub(super) fn pushed(text: &str) -> bool {
     has_any_affirmed(text, &["pushed", "remote/pr head match: yes"])
+        && !super::child_handoff_readiness_text::has_non_claim_phrase_label(text, "pushed branch")
 }
 
 pub(super) fn pr_ready(text: &str) -> bool {

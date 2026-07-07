@@ -94,7 +94,7 @@ pub(in crate::validation::hooks) fn output_with_timeout(
                 terminated_group = true;
             }
         }
-        if status.is_some() && stdout.is_none() && stderr.is_none() {
+        if status.is_some() {
             return Ok(Output {
                 status: status.unwrap_or_else(timeout_status),
                 stdout: stdout_data,
