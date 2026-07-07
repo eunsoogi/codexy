@@ -126,6 +126,30 @@ fn validator_cli_rejects_sentinel_with_optional_split_approval_marker() -> TestR
 }
 
 #[test]
+fn validator_cli_rejects_weakened_marker_inside_approval_sentence_with_external_copy() -> TestResult
+{
+    let output = validate_sentinel_edit(|sentinel| {
+        let external_markers = "\n\nAudit vocabulary: Every approval MUST reference the current diff or head, lane scope, touched implementation-file LOC evidence, verification commands and results, direct readback for structured files, reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk.";
+        sentinel
+            .replace(
+                "MUST block when negative tests are absent for validator, parser, guardrail, workflow-rule, or review-feedback fixes unless the lane proves why negative coverage is not applicable.",
+                &format!(
+                    "MUST block when negative tests are absent for validator, parser, guardrail, workflow-rule, or review-feedback fixes unless the lane proves why negative coverage is not applicable.{external_markers}"
+                ),
+            )
+            .replacen(
+                "direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable",
+                "direct reviewer passes performed, edge classes reviewed is optional, replayed review examples when applicable",
+                1,
+            )
+    })?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("edge classes reviewed"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sentence() -> TestResult
 {
     let output = validate_sentinel_replacement(
@@ -162,12 +186,16 @@ fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestR
 }
 
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
+    validate_sentinel_edit(|sentinel| sentinel.replace(needle, replacement))
+}
+
+fn validate_sentinel_edit(edit: impl FnOnce(String) -> String) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
     let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
     let sentinel = std::fs::read_to_string(&sentinel_path)?;
-    std::fs::write(&sentinel_path, sentinel.replace(needle, replacement))?;
+    std::fs::write(&sentinel_path, edit(sentinel))?;
     validator(&plugin_root)
 }
 

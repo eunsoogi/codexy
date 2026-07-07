@@ -97,7 +97,7 @@ fn missing_approval_evidence_markers(instructions: &str) -> Vec<&'static str> {
     let sentence = &instructions[approval_start..sentence_end];
     APPROVAL_EVIDENCE_MARKERS
         .iter()
-        .filter(|marker| !sentence.contains(**marker))
+        .filter(|marker| !has_positive_marker(sentence, marker))
         .copied()
         .collect()
 }
