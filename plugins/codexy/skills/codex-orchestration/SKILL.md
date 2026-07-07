@@ -41,25 +41,16 @@ MUST stop, classify, and only then MUST continue through the matching Codexy wor
 
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
 TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
-`plugins/codexy/agents/catalog.toml`. MUST keep one specialist agent per file.
+`plugins/codexy/agents/catalog.toml`; MUST keep one specialist agent per file.
 `plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
 specialist worker.
 
-Installed Codexy agents become native Codex `spawn_agent` roles only after the
-user's Codex config registers those packaged TOMLs through
-`[agents.<codexy-name>] config_file = "<installed-plugin>/agents/<codexy-name>.toml"`.
-MUST use `skills/codex-orchestration/scripts/register-codexy-agents` from the
-installed plugin to add or remove Codexy's managed config block safely. MUST NOT treat
+Installed Codexy agents become native Codex `spawn_agent` roles only after user
+config registers those TOMLs through `[agents.<codexy-name>] config_file =
+"<installed-plugin>/agents/<codexy-name>.toml"`. To register, MUST run
+`skills/codex-orchestration/scripts/register-codexy-agents` from the installed
+plugin and restart Codex or start a fresh session. MUST NOT treat
 `plugins/codexy/.codex/agents` as installed custom agents.
-
-To register Codexy agents from an installed plugin, MUST run:
-
-```sh
-skills/codex-orchestration/scripts/register-codexy-agents
-```
-
-Restart Codex or start a fresh session after registration before expecting new
-`spawn_agent` agent types to appear.
 
 ## Required Control Plane
 
