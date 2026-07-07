@@ -74,16 +74,9 @@ fn line_end(text: &str, line_start: usize) -> usize {
 }
 
 fn is_capture_related(line: &str) -> bool {
-    [
-        "dogfooding defect",
-        "tool-exposure defect",
-        "dogfooding/tool-exposure defect",
-        "handler",
-        "missing-handler",
-        "no handler registered",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
+    "dogfooding defect|tool-exposure defect|dogfooding/tool-exposure defect|handler|missing-handler|no handler registered"
+        .split('|')
+        .any(|marker| line.contains(marker))
 }
 
 fn is_unrelated_metadata_line(line: &str) -> bool {
@@ -121,14 +114,19 @@ fn is_same_lane_header_metadata_line(
             | "lane owner"
             | "child owner"
     ) || key.starts_with("lane ")
-        && current_lane.is_some_and(|current_lane| current_lane == key)
+        && current_lane
+            .as_ref()
+            .is_some_and(|current_lane| current_lane == &key)
         && next_nonempty_line(evidence, line_end)
             .is_some_and(|next| is_same_lane_header_field(next))
-        && same_lane_header_block_has_same_lane_marker(evidence, line_end)
+        && same_lane_header_block_has_same_lane_marker(evidence, line_end, current_lane.as_deref())
 }
 
 fn metadata_targets_other_lane(line: &str, current_lane: Option<&str>) -> bool {
     let normalized = line.to_ascii_lowercase();
+    if normalized.contains("same lane") {
+        return false;
+    }
     if ["another lane", "different lane", "other lane", "later lane"]
         .into_iter()
         .any(|marker| normalized.contains(marker))
@@ -137,16 +135,25 @@ fn metadata_targets_other_lane(line: &str, current_lane: Option<&str>) -> bool {
     }
     match (current_lane, normalized.find("lane ")) {
         (Some(current_lane), Some(start)) => {
-            let mentioned_lane = normalized[start..]
-                .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == ' '))
-                .next()
-                .unwrap_or_default()
-                .trim();
+            let mentioned_lane = mentioned_lane_key(&normalized[start..]);
             !mentioned_lane.is_empty() && mentioned_lane != current_lane
         }
         (None, Some(_)) => true,
         _ => false,
     }
+}
+
+fn mentioned_lane_key(mention: &str) -> &str {
+    let mention = mention.trim_start();
+    let Some(rest) = mention.strip_prefix("lane ") else {
+        return "";
+    };
+    let token_len = rest
+        .find(|ch: char| !ch.is_ascii_alphanumeric())
+        .unwrap_or(rest.len());
+    (token_len > 0)
+        .then_some(&mention[.."lane ".len() + token_len])
+        .unwrap_or("")
 }
 
 fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<String> {
@@ -191,18 +198,26 @@ fn is_same_lane_header_field(line: &str) -> bool {
     let Some((key, _)) = line.trim_start().split_once(':') else {
         return false;
     };
-    matches!(
-        metadata_key(key).as_str(),
-        "fallback route" | "tracking issue"
-    )
+    ["fallback route", "tracking issue"].contains(&metadata_key(key).as_str())
 }
 
-fn same_lane_header_block_has_same_lane_marker(evidence: &str, mut cursor: usize) -> bool {
+fn same_lane_header_block_has_same_lane_marker(
+    evidence: &str,
+    mut cursor: usize,
+    current_lane: Option<&str>,
+) -> bool {
     while cursor < evidence.len() {
         let start = cursor + usize::from(evidence.as_bytes()[cursor] == b'\n');
         let end = line_end(evidence, start);
         let line = &evidence[start..end];
-        if line.to_ascii_lowercase().contains("same lane") {
+        if line.to_ascii_lowercase().contains("same lane")
+            || current_lane.is_some_and(|current_lane| {
+                let normalized = line.to_ascii_lowercase();
+                normalized
+                    .match_indices("lane ")
+                    .any(|(start, _)| mentioned_lane_key(&normalized[start..]) == current_lane)
+            })
+        {
             return true;
         }
         if line.trim().is_empty() || is_capture_related(line) {
@@ -221,21 +236,14 @@ fn metadata_key(key: &str) -> String {
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
-    [
-        "captured",
-        "classified",
-        "recorded",
-        "reported",
-        "routed",
-        "tracked",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
+    "captured|classified|recorded|reported|routed|tracked"
+        .split('|')
+        .any(|marker| line.contains(marker))
 }
 
 fn is_handler_capture_line(line: &str) -> bool {
     is_affirmative_capture_line(line)
-        && ["handler", "missing-handler", "no handler registered"]
-            .into_iter()
+        && "handler|missing-handler|no handler registered"
+            .split('|')
             .any(|marker| line.contains(marker))
 }
