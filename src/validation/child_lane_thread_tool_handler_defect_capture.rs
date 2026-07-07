@@ -148,11 +148,17 @@ fn current_defect_clause_scope(line: &str) -> &str {
             let index = search_start + lower[search_start..].find(marker)?;
             let prefix = lower[..index].trim_end();
             let suffix = lower[index + marker.len()..].trim_start();
-            (matches!(prefix.as_bytes().last(), Some(b'.' | b';')) && suffix.starts_with(':'))
-                .then_some(index)
+            (is_defect_label_boundary(prefix) && suffix.starts_with(':')).then_some(index)
         })
         .min()
         .map_or(line, |next| &line[..next])
+}
+
+fn is_defect_label_boundary(prefix: &str) -> bool {
+    matches!(
+        prefix.chars().next_back(),
+        Some('.' | ';' | ',' | '-' | '\u{2013}' | '\u{2014}')
+    )
 }
 
 fn has_handler_handoff_fields(evidence: &str) -> bool {

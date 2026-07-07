@@ -131,3 +131,24 @@ Maintainer reassignment: none
     }
     Ok(())
 }
+
+#[test]
+fn validator_rejects_handoff_fields_from_comma_separated_unrelated_defect()
+-> Result<(), Box<dyn std::error::Error>> {
+    for separator in [",", " -"] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread{separator} Dogfooding defect: unrelated plugin issue recorded no fallback route was available; separate dogfood issue: #205.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should not use comma/dash-separated unrelated defect handoff fields: {separator}"
+        );
+    }
+    Ok(())
+}
