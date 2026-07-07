@@ -219,7 +219,7 @@ fn contains_required_negation(clause: &str) -> bool {
     let words = context_words(clause);
     words.iter().enumerate().any(|(index, word)| {
         *word == "required"
-            && (index.saturating_sub(8)..*index)
+            && (index.saturating_sub(8)..index)
                 .chain(index + 1..(index + 6).min(words.len()))
                 .any(|negation_index| is_required_negation(&words, negation_index))
     })
