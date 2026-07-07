@@ -203,10 +203,12 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
 fn has_standalone_ready_line(text: &str) -> bool {
     claims::standalone_ready_line(text)
         || text.lines().any(|line| {
+            let line = line.trim().trim_start_matches(['-', '*']).trim();
             let line = line
-                .trim()
-                .trim_start_matches(['-', '*'])
-                .trim()
+                .strip_prefix("[x]")
+                .or_else(|| line.strip_prefix("[X]"))
+                .map(str::trim_start)
+                .unwrap_or(line)
                 .trim_end_matches('.');
             has_affirmative_ready_label(line)
         })
