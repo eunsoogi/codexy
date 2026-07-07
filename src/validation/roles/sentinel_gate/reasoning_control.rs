@@ -12,7 +12,6 @@ const DISALLOWED_PATTERNS: &str = concat!(
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|choose not|for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave it out|leave out|left out|may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing reasoning control used or unavailable evidence|must attempt|must endeavor|must evaluate|must inspect|must make reasonable efforts|must never|must not|must-not|must prefer|must review|must strive|must try|mustn't|need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|required to evaluate|required to inspect|required to review|",
     "no reasoning control used or unavailable evidence|no longer mandatory|no longer necessary|no longer needed|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only for|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except for|except if|except in|except when|reviewer's discretion|when applicable|when-applicable|when available|when feasible|when needed|when possible|whenever possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
-
 pub(super) fn has_reasoning_control_paragraph(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     let Some(marker_start) = lower.find("reasoning control:") else {
@@ -25,7 +24,6 @@ pub(super) fn has_reasoning_control_paragraph(instructions: &str) -> bool {
         && !contains_disallowed_context(paragraph)
         && !contains_disallowed_paragraph_context(paragraph)
 }
-
 pub(super) fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     lower.match_indices(EVIDENCE_MARKER).any(|(start, _)| {
@@ -33,14 +31,12 @@ pub(super) fn has_affirmative_reasoning_control_evidence(instructions: &str) -> 
         contains_mandatory_context(context) && !contains_disallowed_marker_scoped_context(context)
     })
 }
-
 pub(super) fn has_negated_reasoning_control_evidence(instructions: &str) -> bool {
     let lower = instructions.to_ascii_lowercase();
     lower
         .match_indices(EVIDENCE_MARKER)
         .any(|(start, _)| contains_disallowed_marker_scoped_context(marker_context(&lower, start)))
 }
-
 fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let Some((head, tail)) = context.split_once(EVIDENCE_MARKER) else {
         return contains_disallowed_context(context);
@@ -187,11 +183,16 @@ fn contains_scoped_opt_out(clause: &str) -> bool {
     }) {
         return true;
     }
+    if "required if|required when|required whenever|required where|required unless|required provided"
+        .split('|')
+        .any(|pattern| contains_context_pattern(clause, pattern))
+    {
+        return true;
+    }
     ["except in", "except for", "only for"]
         .iter()
         .any(|pattern| contains_context_pattern(clause, pattern))
 }
-
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
     if pattern
         .chars()

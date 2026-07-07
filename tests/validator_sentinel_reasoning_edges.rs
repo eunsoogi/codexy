@@ -44,6 +44,20 @@ fn validator_cli_rejects_generic_evidence_opt_outs_after_marker() -> TestResult 
 }
 
 #[test]
+fn validator_cli_rejects_trailing_conditional_reasoning_opt_outs() -> TestResult {
+    for replacement in [
+        "reasoning control used or unavailable evidence, which is required if the reviewer can confirm it",
+        "reasoning control used or unavailable evidence is required when tools expose it",
+    ] {
+        assert_reasoning_evidence_rejected(validate_sentinel_replacement(
+            "reasoning control used or unavailable evidence",
+            replacement,
+        )?)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_handles_unicode_before_reasoning_marker() -> TestResult {
     let output = validate_sentinel_edit(|sentinel| {
         Ok(sentinel
