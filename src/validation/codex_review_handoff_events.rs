@@ -82,7 +82,7 @@ fn is_after_event(event: &ReviewEvent<'_>, baseline: &ReviewEvent<'_>) -> bool {
     matches!((event.timestamp, baseline.timestamp), (Some(event), Some(baseline)) if event > baseline)
 }
 fn event_clears_request(event: &ReviewEvent<'_>, request: &ReviewEvent<'_>) -> bool {
-    !request.has_head_evidence && event.has_head_evidence && event.matches_head
+    !request.has_head_evidence && event.has_head_evidence
         || request.has_head_evidence && (!request.matches_head || event.matches_head)
 }
 fn compare_event_order(left: &ReviewEvent<'_>, right: &ReviewEvent<'_>) -> std::cmp::Ordering {

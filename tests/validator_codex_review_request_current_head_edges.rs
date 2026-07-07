@@ -17,14 +17,14 @@ fn validator_rejects_fresh_request_with_unresolved_outdated_thread() -> TestResu
 }
 
 #[test]
-fn validator_rejects_fresh_request_when_headless_request_has_only_stale_output() -> TestResult {
+fn validator_allows_fresh_request_after_headless_request_has_stale_output() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Request exactly one fresh Codex review now.\n",
         pr_state_with_headless_request_and_later_stale_output(),
     )?;
-    assert_failure_contains(
+    assert_success(
         &output,
-        "current-head Codex review activity blocks fresh Codex review requests",
+        "validator should allow fresh review after an old headless request was cleared by stale Codex output",
     );
     Ok(())
 }
