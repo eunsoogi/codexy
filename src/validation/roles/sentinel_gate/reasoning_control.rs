@@ -10,7 +10,7 @@ const PARAGRAPH_MARKERS: &[&str] = &[
 const DISALLOWED_PATTERNS: &str = concat!(
     "absent reasoning control used or unavailable evidence|acceptable|allowed to disregard|allowed to ignore|aren't required|can be disregarded|can be ignored|can be skipped|can decide whether|can choose whether|can disregard|can ignore|can include|can omit|can reference|consider|considered|does not have to|encouraged|does not need|does not require|doesn't have to|doesn't need|doesn't require|if applicable|if-applicable|if available|if feasible|if needed|if possible|",
     "discretionary|do not have to|do not need|do not require|don't have to|don't need|don't require|reviewer discretion|choose not|for awareness only|forbidden|isn't needed|isn't necessary|isn't required|leave it out|leave out|left out|may be disregarded|may be ignored|may be skipped|may disregard|may ignore|may include|may omit|may reference|may skip|missing reasoning control used or unavailable evidence|must attempt|must endeavor|must evaluate|must inspect|must make reasonable efforts|must never|must not|must-not|must prefer|must review|must strive|must try|mustn't|need not|needn't|no need|no explicit reasoning control used or unavailable evidence|reasoning control used or unavailable evidence is absent|required to evaluate|required to inspect|required to review|",
-    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only for|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except for|except if|except in|except when|reviewer's discretion|when applicable|when-applicable|when available|when feasible|when needed|when possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
+    "no reasoning control used or unavailable evidence|no requirement|not have to|not a requirement|not binding|not compulsory|not expected|not mandatory|not obligatory|not needed|not necessary|omitted|omit|optional|best effort|best-effort|only for|only if requested|ought|permissive|permitted to disregard|permitted to ignore|prohibited|provided that|recommended|reviewer choice|should|should include|should reference|skip|skipped|suggested|subject to tool availability|unnecessary|unless|up to the reviewer|voluntary|waive|waived|waiver|advisable|as applicable|as-applicable|as appropriate|as needed|except for|except if|except in|except when|reviewer's discretion|when applicable|when-applicable|when available|when feasible|when needed|when possible|whenever possible|where applicable|where-applicable|where available|where needed|where possible|where practical|without reasoning control used or unavailable evidence",
 );
 
 pub(super) fn has_reasoning_control_paragraph(instructions: &str) -> bool {
@@ -180,10 +180,12 @@ fn contains_disallowed_paragraph_context(paragraph: &str) -> bool {
 }
 
 fn contains_scoped_opt_out(clause: &str) -> bool {
-    if context_words(clause)
-        .first()
-        .is_some_and(|word| matches!(*word, "if" | "when" | "where" | "unless" | "provided"))
-    {
+    if context_words(clause).first().is_some_and(|word| {
+        matches!(
+            *word,
+            "if" | "when" | "whenever" | "where" | "unless" | "provided"
+        )
+    }) {
         return true;
     }
     ["except in", "except for", "only for"]

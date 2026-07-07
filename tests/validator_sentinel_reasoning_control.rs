@@ -99,6 +99,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence only-for merge readiness",
         "reasoning control used or unavailable evidence if the reviewer can confirm it",
         "reasoning control used or unavailable evidence when the reviewer can confirm it",
+        "reasoning control used or unavailable evidence whenever possible",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
