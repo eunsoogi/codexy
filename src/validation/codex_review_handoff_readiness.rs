@@ -62,30 +62,32 @@ fn has_blocking_label_value(suffix: &str) -> bool {
     };
     let value = value.trim_start_matches([' ', '\t', '\n', '\r', '-', '*']);
     match label.trim() {
+        "" => has_blocking_status_value(value),
         "blocker" | "blockers" => {
             !starts_with_any(value, &["none", "no", "no blocker", "no blockers", "clear"])
         }
-        "status" => {
-            !starts_with_any(
-                value,
-                &["ready", "complete", "completed", "passed", "clean"],
-            ) && (has_negative_label_value(&format!(": {value}"))
-                || starts_with_any(
-                    value,
-                    &[
-                        "blocked",
-                        "blocking",
-                        "waiting",
-                        "pending",
-                        "unresolved",
-                        "incomplete",
-                        "not complete",
-                        "not yet complete",
-                    ],
-                ))
-        }
+        "status" => has_blocking_status_value(value),
         _ => false,
     }
+}
+fn has_blocking_status_value(value: &str) -> bool {
+    !starts_with_any(
+        value,
+        &["ready", "complete", "completed", "passed", "clean"],
+    ) && (has_negative_label_value(&format!(": {value}"))
+        || starts_with_any(
+            value,
+            &[
+                "blocked",
+                "blocking",
+                "waiting",
+                "pending",
+                "unresolved",
+                "incomplete",
+                "not complete",
+                "not yet complete",
+            ],
+        ))
 }
 fn starts_with_any(value: &str, phrases: &[&str]) -> bool {
     phrases
