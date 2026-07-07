@@ -62,7 +62,12 @@ fn validator_treats_no_blockers_as_readiness_claim() -> TestResult {
 
 #[test]
 fn validator_rejects_bare_pr_ready_handoff_without_status_evidence() -> TestResult {
-    for handoff in ["PR-ready.\n", "merge-ready.\n"] {
+    for handoff in [
+        "PR-ready.\n",
+        "merge-ready.\n",
+        "Ready to merge.\n",
+        "Ready for merge.\n",
+    ] {
         assert_rejects_child_handoff(
             handoff,
             &pr_state_with(
