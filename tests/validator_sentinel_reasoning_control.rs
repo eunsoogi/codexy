@@ -126,6 +126,11 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
+    let output = validate_sentinel_edit(|sentinel| {
+        Ok(format!("{sentinel}\nDo not record reasoning control used or unavailable evidence."))
+    })?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     Ok(())
 }
 #[test]
