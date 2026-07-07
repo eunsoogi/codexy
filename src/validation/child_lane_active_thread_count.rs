@@ -34,13 +34,27 @@ fn explicit_total(words: &[String]) -> Option<u64> {
 
 fn fallback_count(words: &[String]) -> Option<u64> {
     let first = words.first()?;
-    if words.iter().any(|word| word == "thread") && !first.chars().all(|c| c.is_ascii_digit()) {
+    if first.chars().all(|c| c.is_ascii_digit()) {
+        return first.parse().ok();
+    }
+    if let Some(count) = thread_id_entry_count(words) {
+        return Some(count);
+    }
+    if words.iter().any(|word| word == "thread") {
         return None;
     }
     words
         .iter()
         .find(|word| word.chars().all(|character| character.is_ascii_digit()))
         .and_then(|word| word.parse().ok())
+}
+
+fn thread_id_entry_count(words: &[String]) -> Option<u64> {
+    let count = words
+        .windows(2)
+        .filter(|window| window[0] == "thread" && window[1].chars().all(|c| c.is_ascii_digit()))
+        .count();
+    (count > 0).then_some(count as u64)
 }
 
 fn has_active_child_thread_key(words: &[String]) -> bool {

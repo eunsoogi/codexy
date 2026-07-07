@@ -198,6 +198,29 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_over_cap_thread_id_list_without_explicit_total()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: thread-101, thread-102, thread-103, thread-104, thread-105, thread-106
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should count thread-id ledger entries without requiring an explicit total"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("keep at most five active child Codex threads"),
+        "stderr should name over-cap thread-id ledger, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_total_label_after_thread_id_list() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for orchestration only; child routing required
