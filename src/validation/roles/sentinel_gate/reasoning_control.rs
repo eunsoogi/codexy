@@ -197,7 +197,7 @@ fn contains_scoped_opt_out(clause: &str) -> bool {
 
 fn contains_direct_pre_marker_negation(clause: &str) -> bool {
     let words = context_words(clause);
-    words.last() == Some(&"not") || words.windows(2).any(|window| window == ["but", "not"])
+    words.last() == Some(&"not") || words.windows(2).any(|window| matches!(window, ["but", "not"]))
 }
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
     if pattern
