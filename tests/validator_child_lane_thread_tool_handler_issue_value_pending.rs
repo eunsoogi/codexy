@@ -99,6 +99,11 @@ fn validator_rejects_pending_issue_values_after_reference() -> Result<(), Box<dy
         "tracking issue: #205 to be filed",
         "tracking issue: #205 should be filed",
         "tracking issue: #205 needs to be filed",
+        "tracking issue: #205 not opened yet",
+        "tracking issue: #205 will be opened",
+        "tracking issue: #205 to be opened",
+        "tracking issue: #205 should be opened",
+        "tracking issue: #205 needs to be opened",
     ] {
         let output = run_ownership_validator(&evidence_for(issue))?;
         assert!(

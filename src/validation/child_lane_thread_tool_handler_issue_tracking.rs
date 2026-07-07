@@ -41,7 +41,7 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
                 || normalized.contains(&format!("issue {auxiliary} not {verb}"))
                 || normalized.contains(&format!("issue {auxiliary} not yet {verb}"))
         })
-    }) || ["created", "filed"].into_iter().any(|verb| {
+    }) || ["created", "filed", "opened"].into_iter().any(|verb| {
         normalized.contains(&format!("issue not {verb}"))
             || normalized.contains(&format!("issue not yet {verb}"))
             || has_issue_reference_with_lifecycle_negation(&normalized, verb)
