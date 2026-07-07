@@ -111,6 +111,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "except reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence only when tools expose it",
         "reasoning control used or unavailable evidence. The reasoning-control evidence can be skipped",
+        "reasoning control used or unavailable evidence, although optional", "reasoning control used or unavailable evidence, optional",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -205,7 +206,6 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
     assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
     Ok(())
 }
-
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> { validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement))) }
 fn validate_reasoning_control_paragraph_replacement(replacement: &str) -> TestResult<Output> {
     validate_sentinel_edit(|mut sentinel| {
