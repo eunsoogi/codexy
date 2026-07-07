@@ -81,12 +81,15 @@ pub(super) fn active_capacity_errors(
                         .iter()
                         .any(|record| active_count_matches_owner(record, owner))
             });
-            let record_count = projected_count_from_records(&records);
-            projected_count = Some(match projected_count {
-                Some(_) if records.iter().any(|record| record.freed_capacity) => record_count,
-                Some(projected) => projected.max(record_count),
-                None => record_count,
-            });
+            if let Some(record_count) = projected_count_from_records(&records) {
+                projected_count = Some(match projected_count {
+                    Some(_) if records.iter().any(|record| record.freed_capacity) => record_count,
+                    Some(projected) => projected.max(record_count),
+                    None => record_count,
+                });
+            } else {
+                errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
+            }
         } else {
             errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
         }
@@ -195,8 +198,7 @@ fn fresh_counts_before_operation<'a>(
         })
         .collect()
 }
-
-fn projected_count_from_records(records: &[&ActiveCount]) -> u64 {
+fn projected_count_from_records(records: &[&ActiveCount]) -> Option<u64> {
     let mut latest_active = None;
     let mut latest_waiting = None;
     for record in records {
@@ -210,9 +212,7 @@ fn projected_count_from_records(records: &[&ActiveCount]) -> u64 {
             latest_active = Some(record.count);
         }
     }
-    latest_active
-        .unwrap_or(0_u64)
-        .saturating_add(latest_waiting.unwrap_or(0_u64))
+    latest_active.map(|active| active.saturating_add(latest_waiting.unwrap_or(0_u64)))
 }
 
 fn is_reuse_operation_line(line: &str) -> bool {
