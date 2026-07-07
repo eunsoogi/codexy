@@ -86,6 +86,7 @@ fn has_issue_reference_with_lifecycle_negation(clause: &str, verb: &str) -> bool
 }
 
 fn has_lifecycle_negation_prefix(after_reference: &str, verb: &str) -> bool {
+    let after_reference = trim_lifecycle_connector_prefix(after_reference);
     [
         format!("not {verb}"),
         format!("not yet {verb}"),
@@ -112,4 +113,23 @@ fn has_lifecycle_negation_prefix(after_reference: &str, verb: &str) -> bool {
                 rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
             })
     })
+}
+
+fn trim_lifecycle_connector_prefix(mut value: &str) -> &str {
+    loop {
+        let trimmed = value
+            .trim_start()
+            .trim_start_matches([',', ';', ':', '-', '\u{2013}', '\u{2014}'])
+            .trim_start();
+        let Some((connector, rest)) = trimmed.split_once(' ') else {
+            return trimmed;
+        };
+        if !["and", "but", "however", "though", "although", "yet"]
+            .into_iter()
+            .any(|allowed| connector == allowed)
+        {
+            return trimmed;
+        }
+        value = rest;
+    }
 }

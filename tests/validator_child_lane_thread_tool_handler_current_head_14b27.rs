@@ -59,6 +59,32 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_lane_prefixed_preceding_handoff_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
+Status: parent only inspected the PR state for routing.
+
+Lane B fallback route: parent sent the handoff to the child thread
+Lane B tracking issue: #205
+Lane B dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Lane B invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should include same-lane prefixed preceding handoff metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_current_tense_contracted_issue_negations()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
@@ -77,6 +103,30 @@ Maintainer reassignment: none
         assert!(
             !output.status.success(),
             "validator should reject current-tense contracted issue lifecycle negation: {issue}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_post_reference_issue_lifecycle_connectors()
+-> Result<(), Box<dyn std::error::Error>> {
+    for issue in [
+        "tracking issue: #205, but was not filed",
+        "tracking issue: #205 however not created",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; {issue}.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject issue lifecycle negation after connector words: {issue}"
         );
     }
     Ok(())

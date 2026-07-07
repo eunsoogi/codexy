@@ -132,7 +132,7 @@ pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize
             break;
         }
         if is_handoff_metadata_line(previous_line)
-            && lane_label_for_scope(evidence, 0, previous_start)
+            && handoff_metadata_lane(evidence, previous_start, previous_line)
                 .is_some_and(|lane| Some(lane.as_str()) != current_lane.as_deref())
         {
             break;
@@ -237,6 +237,10 @@ fn is_different_lane_line(line: &str, current_lane: Option<&str>) -> bool {
         return false;
     };
     current_lane.is_none_or(|current_lane| next_lane != current_lane)
+}
+
+fn handoff_metadata_lane(evidence: &str, line_start: usize, line: &str) -> Option<String> {
+    lane_label(line).or_else(|| lane_label_for_scope(evidence, 0, line_start))
 }
 
 fn lane_label(line: &str) -> Option<String> {
