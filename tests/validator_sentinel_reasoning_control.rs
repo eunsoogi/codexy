@@ -186,7 +186,6 @@ fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() ->
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestResult {
     let output = validate_sentinel_edit(|mut sentinel| {
@@ -247,6 +246,4 @@ fn validator(plugin_root: &Path) -> TestResult<Output> {
         .output()?)
 }
 
-fn stderr(output: &Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
-}
+fn stderr(output: &Output) -> String { String::from_utf8_lossy(&output.stderr).into_owned() }
