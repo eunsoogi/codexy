@@ -103,6 +103,10 @@ fn is_same_lane_header_metadata_line(
         return false;
     };
     let key = metadata_key(key);
+    let current_lane = current_lane_header_before(evidence, handler_start);
+    if metadata_targets_other_lane(line, current_lane.as_deref()) {
+        return false;
+    }
     matches!(
         key.as_str(),
         "issue"
@@ -116,11 +120,32 @@ fn is_same_lane_header_metadata_line(
             | "lane owner"
             | "child owner"
     ) || key.starts_with("lane ")
-        && current_lane_header_before(evidence, handler_start)
-            .is_some_and(|current_lane| current_lane == key)
+        && current_lane.is_some_and(|current_lane| current_lane == key)
         && next_nonempty_line(evidence, line_end)
             .is_some_and(|next| is_same_lane_header_field(next))
         && same_lane_header_block_has_same_lane_marker(evidence, line_end)
+}
+
+fn metadata_targets_other_lane(line: &str, current_lane: Option<&str>) -> bool {
+    let normalized = line.to_ascii_lowercase();
+    if ["another lane", "different lane", "other lane", "later lane"]
+        .into_iter()
+        .any(|marker| normalized.contains(marker))
+    {
+        return true;
+    }
+    match (current_lane, normalized.find("lane ")) {
+        (Some(current_lane), Some(start)) => {
+            let mentioned_lane = normalized[start..]
+                .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == ' '))
+                .next()
+                .unwrap_or_default()
+                .trim();
+            !mentioned_lane.is_empty() && mentioned_lane != current_lane
+        }
+        (None, Some(_)) => true,
+        _ => false,
+    }
 }
 
 fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<String> {
