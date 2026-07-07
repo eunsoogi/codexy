@@ -165,7 +165,7 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
 }
 
 fn marker_tail_has_conditional_waiver(tail: &str) -> bool {
-    let tail = tail.trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
+    let tail = tail.trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-' | ',' | ';'));
     let clause_end = tail.find([',', ';']).unwrap_or(tail.len());
     let clause = tail[..clause_end].trim_start();
     [
