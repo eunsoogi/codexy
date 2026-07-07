@@ -42,6 +42,22 @@ fn validator_rejects_fresh_request_when_current_head_request_has_only_stale_outp
     Ok(())
 }
 
+#[test]
+fn validator_treats_requesting_wording_as_fresh_codex_review_request() -> TestResult {
+    for handoff in [
+        "Requesting fresh Codex review now.\n",
+        "I'm requesting @codex review on the current head.\n",
+    ] {
+        let output =
+            validate_handoff_with_pr_state(handoff, pr_state_with_unresolved_outdated_thread())?;
+        assert_failure_contains(
+            &output,
+            "unresolved review thread blocks fresh Codex review requests",
+        );
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: String) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

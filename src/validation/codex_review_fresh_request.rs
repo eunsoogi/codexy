@@ -24,7 +24,8 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
     let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
-        && (contains_word(clause, "request") && !is_pull_request_noun_clause(clause)
+        && ((contains_word(clause, "request") || contains_word(clause, "requesting"))
+            && !is_pull_request_noun_clause(clause)
             || names_at_codex_review
                 && ["post", "comment", "send"]
                     .iter()
