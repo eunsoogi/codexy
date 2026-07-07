@@ -194,9 +194,14 @@ fn has_route_not_used_clause(clause: &str) -> bool {
         "isn't used",
         "did not use",
         "didn't use",
+        "unused",
     ]
     .into_iter()
-    .any(|marker| clause.contains(marker))
+    .any(|marker| {
+        clause
+            .find(marker)
+            .is_some_and(|index| has_phrase_boundaries(clause, index, marker))
+    })
 }
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
