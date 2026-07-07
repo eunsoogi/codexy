@@ -116,8 +116,15 @@ fn is_review_request_status_clause(clause: &str) -> bool {
 }
 
 pub(super) fn request_subclauses(clause: &str) -> impl Iterator<Item = &str> {
+    let and = if is_past_tense_codex_review_request_clause(clause)
+        && (clause.contains(" and waiting for review output") || clause.contains(" and has eyes"))
+    {
+        "\0"
+    } else {
+        " and "
+    };
     clause
-        .split(" and ")
+        .split(and)
         .flat_map(|part| part.split(" so "))
         .flat_map(|part| part.split(" then "))
         .flat_map(|part| part.split(" next action is to "))
