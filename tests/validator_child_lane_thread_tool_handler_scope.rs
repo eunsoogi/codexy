@@ -102,6 +102,29 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_markdown_lane_heading_cross_lane_borrowing()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+### Lane A
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+### Lane B
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; tracking issue: #205.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let Markdown Lane B defect evidence satisfy Lane A handler failure\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_same_lane_header_handoff_fields_before_defect()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

@@ -52,6 +52,7 @@ fn validator_accepts_concrete_tracking_issue_values_with_status_context()
         "tracking issue: #205 covers child thread not created",
         "- tracking issue: #205",
         "1. tracking issue: missing-handler exposure #205",
+        "tracking issue: missing handler exposure #205",
     ] {
         let output = run_ownership_validator(&evidence_for(issue))?;
         assert!(

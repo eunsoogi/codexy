@@ -236,7 +236,7 @@ fn is_different_lane_line(line: &str, current_lane: Option<&str>) -> bool {
 }
 
 fn lane_label(line: &str) -> Option<String> {
-    let trimmed = strip_list_prefix(line);
+    let trimmed = strip_markdown_heading_prefix(strip_list_prefix(line));
     let rest = trimmed
         .strip_prefix("Lane ")
         .or_else(|| trimmed.strip_prefix("lane "))?;
@@ -247,6 +247,16 @@ fn lane_label(line: &str) -> Option<String> {
         .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
     (!label.is_empty() && !label.eq_ignore_ascii_case("ownership"))
         .then(|| format!("lane {}", label.to_ascii_lowercase()))
+}
+
+fn strip_markdown_heading_prefix(line: &str) -> &str {
+    let trimmed = line.trim_start();
+    let marker_end = trimmed.bytes().take_while(|byte| *byte == b'#').count();
+    if marker_end > 0 && trimmed[marker_end..].starts_with(' ') {
+        trimmed[marker_end..].trim_start()
+    } else {
+        line
+    }
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
