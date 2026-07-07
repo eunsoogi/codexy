@@ -132,9 +132,11 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
         return line_thread == owner_thread;
     }
     !existing_owner.issue_ids.is_empty()
-        && line_issues
-            .iter()
-            .any(|line_issue| existing_owner.issue_ids.iter().any(|id| id == line_issue))
+        && existing_owner.issue_ids.iter().all(|owner_issue| {
+            line_issues
+                .iter()
+                .any(|line_issue| line_issue == owner_issue)
+        })
 }
 
 fn accepted_disposition_claim_offset(line: &str) -> Option<usize> {

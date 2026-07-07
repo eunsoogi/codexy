@@ -207,7 +207,7 @@ fn owner_lookup_for_operation(
 fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
     if !operation_owner.issue_ids.is_empty() {
         let line_issues = issue_ids(line);
-        return operation_owner.issue_ids.iter().any(|operation_issue| {
+        return operation_owner.issue_ids.iter().all(|operation_issue| {
             line_issues
                 .iter()
                 .any(|line_issue| line_issue == operation_issue)

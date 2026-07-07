@@ -28,8 +28,8 @@ Maintainer reassignment: none
         "validator should preserve and-joined found owner evidence on mixed lookup lines"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should require lookup evidence for every operation identifier, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -52,8 +52,8 @@ Maintainer reassignment: none
         "validator should preserve but-joined found owner evidence on mixed lookup lines"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should require lookup evidence for every operation identifier, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -76,8 +76,8 @@ Maintainer reassignment: none
         "validator should preserve bare-but joined found owner evidence"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should require lookup evidence for every operation identifier, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -100,8 +100,8 @@ Maintainer reassignment: none
         "validator should parse compact PR# owner lookup identifiers"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should require lookup evidence for every operation identifier, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -125,8 +125,8 @@ Maintainer reassignment: none
         "validator should keep and-joined PR ids on child-thread operations"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should require lookup evidence for every operation identifier, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

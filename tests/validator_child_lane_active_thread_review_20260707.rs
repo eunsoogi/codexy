@@ -98,9 +98,9 @@ Maintainer reassignment: none
     );
     assert!(
         String::from_utf8_lossy(&output.stderr).contains(
-            "replacement child Codex thread creation requires evidence that the old owner was stopped"
+            "new child Codex thread creation requires evidence that orchestration checked"
         ),
-        "stderr should require old-owner disposition, got:\n{}",
+        "stderr should require lookup evidence for every operation identifier, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

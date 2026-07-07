@@ -88,6 +88,53 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_issue_only_lookup_for_issue_pr_operation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-new for issue #269 / PR #300.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should require PR owner lookup evidence when the operation names a PR"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should name missing PR owner lookup evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_disposition_for_different_issue_segment()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269; Old owner disposition: issue #270 was stopped; Thread creation: created replacement child thread thread-new for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not credit an old-owner disposition for a different issue segment"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should name missing matching old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_same_line_disposition_before_replacement_operation()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

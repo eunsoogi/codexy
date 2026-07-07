@@ -10,9 +10,8 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
         .arg(&evidence_path)
         .output()?)
 }
-
 #[test]
-fn validator_allows_disposition_pr_match_when_issue_hash_is_also_present()
+fn validator_rejects_pr_only_lookup_when_issue_hash_is_also_present()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for orchestration only; child routing required
@@ -25,9 +24,12 @@ Maintainer reassignment: none
     )?;
 
     assert!(
-        output.status.success(),
-        "validator should match PR-scoped old-owner disposition when the disposition also mentions the linked issue\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
+        !output.status.success(),
+        "validator should require owner lookup coverage for each operation identifier"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should name missing issue owner lookup evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -240,8 +242,8 @@ Maintainer reassignment: none
         "validator should preserve the found PR owner when an operation mentions linked issue and PR"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should require reuse or old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
+        "stderr should require lookup evidence for every operation identifier, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
