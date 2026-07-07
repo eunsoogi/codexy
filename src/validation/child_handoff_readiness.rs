@@ -83,6 +83,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                 ));
             }
         }
+        if pr_state.get("isDraft").and_then(Value::as_bool) == Some(true) {
+            errors.push("child handoff claims PR readiness but PR is still draft".into());
+        }
         let Some(threads) = pr_state.get("reviewThreads") else {
             errors.push(
                 "child handoff claims PR readiness but reviewThreads.nodes PR state evidence is missing"

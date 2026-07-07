@@ -12,13 +12,23 @@ fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
 }
 #[test]
 fn validator_rejects_pr_ready_handoff_when_merge_state_is_not_clean() -> TestResult {
-    assert_rejects_child_handoff(
-        "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff.\n",
-        pr_state_with(
+    for (fields, needle) in [
+        (
             r#""mergeStateStatus":"DIRTY","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+            "mergeStateStatus",
         ),
-        "mergeStateStatus",
-    )
+        (
+            r###""isDraft":true,"mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            "draft",
+        ),
+    ] {
+        assert_rejects_child_handoff(
+            "Child handoff: branch clean and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. Merge-ready; parent can merge.\n",
+            pr_state_with(fields),
+            needle,
+        )?;
+    }
+    Ok(())
 }
 #[test]
 fn validator_rejects_pr_ready_handoff_with_unresolved_thread() -> TestResult {
@@ -217,18 +227,7 @@ fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -
 
 fn pr_state_with(fields: &str) -> String {
     format!(
-        r#"{{
-            "number":204,
-            "state":"OPEN",
-            "isDraft":false,
-            "reviewDecision":"APPROVED",
-            "latestReviews":[{{
-                "body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`",
-                "author":{{"login":"chatgpt-codex-connector"}},
-                "submittedAt":"2026-07-03T00:00:00Z"
-            }}],
-            {fields}
-        }}"#
+        r#"{{"number":204,"state":"OPEN","isDraft":false,"reviewDecision":"APPROVED","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`","author":{{"login":"chatgpt-codex-connector"}},"submittedAt":"2026-07-03T00:00:00Z"}}],{fields}}}"#
     )
 }
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
