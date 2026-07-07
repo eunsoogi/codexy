@@ -121,6 +121,12 @@ fn next_sentence_start(bytes: &[u8], clause_end: usize) -> Option<usize> {
 fn has_evidence_followup(sentence: &str) -> bool {
     let sentence = sentence.split('.').next().unwrap_or(sentence);
     let starts_with_followup = |candidate: &str| {
+        let candidate = candidate
+            .strip_prefix("although ")
+            .or_else(|| candidate.strip_prefix("though "))
+            .or_else(|| candidate.strip_prefix("but "))
+            .or_else(|| candidate.strip_prefix("however "))
+            .unwrap_or(candidate);
         EVIDENCE_FOLLOWUP_PREFIXES
             .split('|')
             .any(|prefix| candidate.starts_with(prefix))
