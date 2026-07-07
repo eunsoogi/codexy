@@ -45,7 +45,6 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let preamble = head_segments.first().copied().unwrap_or(head);
     let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
     if contains_disallowed_context(preamble)
-        || contains_direct_pre_marker_negation(scoped_head)
         || head_segments
             .iter()
             .rev()
@@ -176,28 +175,20 @@ fn contains_disallowed_paragraph_context(paragraph: &str) -> bool {
 }
 
 fn contains_scoped_opt_out(clause: &str) -> bool {
-    if context_words(clause).first().is_some_and(|word| {
-        matches!(
-            *word,
-            "if" | "when" | "whenever" | "where" | "unless" | "provided"
-        )
-    }) {
-        return true;
-    }
-    if "required if|required when|required whenever|required where|required unless|required provided|required only if|required only when|required only whenever|required only where|required only unless|required only provided"
-        .split('|')
-        .any(|pattern| contains_context_pattern(clause, pattern))
-    {
-        return true;
-    }
-    "except|except in|except for|only for|only if|only when"
-        .split('|')
-        .any(|pattern| contains_context_pattern(clause, pattern))
-}
-
-fn contains_direct_pre_marker_negation(clause: &str) -> bool {
     let words = context_words(clause);
-    words.last() == Some(&"not") || words.windows(2).any(|window| matches!(window, ["but", "not"]))
+    words.last() == Some(&"not")
+        || words.first().is_some_and(|word| {
+            matches!(
+                *word,
+                "if" | "when" | "whenever" | "where" | "unless" | "provided"
+            )
+        })
+        || "required if|required when|required whenever|required where|required unless|required provided|required only if|required only when|required only whenever|required only where|required only unless|required only provided"
+            .split('|')
+            .any(|pattern| contains_context_pattern(clause, pattern))
+        || "except|except in|except for|only for|only if|only when"
+            .split('|')
+            .any(|pattern| contains_context_pattern(clause, pattern))
 }
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
     if pattern
@@ -226,46 +217,24 @@ fn context_words(text: &str) -> Vec<&str> {
 
 fn contains_required_negation(clause: &str) -> bool {
     let words = context_words(clause);
-    for (index, word) in words.iter().enumerate() {
-        if *word != "required" {
-            continue;
+    words.iter().enumerate().any(|(index, word)| {
+        *word == "required"
+            && (index.saturating_sub(8)..*index)
+                .chain(index + 1..(index + 6).min(words.len()))
+                .any(|negation_index| is_required_negation(&words, negation_index))
+    })
+}
+
+fn is_required_negation(words: &[&str], index: usize) -> bool {
+    match words[index] {
+        "never" => true,
+        "not" => !words
+            .get(index + 1)
+            .is_some_and(|word| matches!(*word, "only" | "just" | "merely" | "simply")),
+        "isn" | "aren" | "wasn" | "weren" | "doesn" | "don" | "didn" | "needn" => {
+            words.get(index + 1) == Some(&"t")
         }
-        for negation_index in index.saturating_sub(8)..index {
-            match words[negation_index] {
-                "never" => return true,
-                "not" => {
-                    if words
-                        .get(negation_index + 1)
-                        .is_some_and(|word| matches!(*word, "only" | "just" | "merely" | "simply"))
-                    {
-                        continue;
-                    }
-                    return true;
-                }
-                "isn" | "aren" | "wasn" | "weren" | "doesn" | "don" | "didn" | "needn" => {
-                    if words.get(negation_index + 1) == Some(&"t") {
-                        return true;
-                    }
-                }
-                "no" if words.get(negation_index + 1) == Some(&"longer") => return true,
-                _ => {}
-            }
-        }
-        for negation_index in index + 1..(index + 6).min(words.len()) {
-            match words[negation_index] {
-                "never" => return true,
-                "not" => {
-                    if words
-                        .get(negation_index + 1)
-                        .is_some_and(|word| matches!(*word, "only" | "just" | "merely" | "simply"))
-                    {
-                        continue;
-                    }
-                    return true;
-                }
-                _ => {}
-            }
-        }
+        "no" => words.get(index + 1) == Some(&"longer"),
+        _ => false,
     }
-    false
 }
