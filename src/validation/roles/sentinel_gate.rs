@@ -140,9 +140,22 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
             marker_index + marker.len() + index
         });
     let sentence = instructions[sentence_start..sentence_end].to_ascii_lowercase();
-    sentence
-        .split(|ch: char| !ch.is_ascii_alphanumeric())
-        .any(|word| matches!(word, "optional" | "permissive"))
+    let marker = marker.to_ascii_lowercase();
+    let marker_start = sentence.find(&marker).unwrap_or(sentence.len());
+    let has_bare_negated_marker = {
+        let mut prefix_words = sentence[..marker_start]
+            .split(|ch: char| !ch.is_ascii_alphanumeric())
+            .filter(|word| !word.is_empty())
+            .rev();
+        matches!(
+            (prefix_words.next(), prefix_words.next()),
+            (Some("not"), Some("but" | "and" | "or"))
+        )
+    };
+    has_bare_negated_marker
+        || sentence
+            .split(|ch: char| !ch.is_ascii_alphanumeric())
+            .any(|word| matches!(word, "optional" | "permissive"))
         || sentence.contains("not required")
         || sentence.contains("not mandatory")
         || sentence.contains("may skip")
