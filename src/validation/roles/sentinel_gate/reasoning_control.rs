@@ -236,6 +236,11 @@ fn contains_required_negation(clause: &str) -> bool {
                     }
                     return true;
                 }
+                "isn" | "aren" | "wasn" | "weren" | "doesn" | "don" | "didn" | "needn" => {
+                    if words.get(negation_index + 1) == Some(&"t") {
+                        return true;
+                    }
+                }
                 "no" if words.get(negation_index + 1) == Some(&"longer") => return true,
                 _ => {}
             }
