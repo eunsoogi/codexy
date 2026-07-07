@@ -3,7 +3,7 @@ use super::child_lane_thread_tool_handler_defect_capture::{
     has_handler_marker_and_tool_name_in_defect_capture, has_handler_marker_in_defect_capture,
     has_negated_fallback_route_field,
 };
-use super::child_lane_thread_tool_handler_exact_error::has_exact_thread_tool_handler_error;
+use super::child_lane_thread_tool_handler_exact_error::placeholder_tools_have_exact_errors;
 use super::child_lane_thread_tool_handler_scope::{
     capture_end_before_unrelated_evidence, following_handoff_metadata_has,
     is_handoff_metadata_line, is_list_item, preceding_handoff_metadata_start,
@@ -29,7 +29,7 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
             handler_missing_placeholder(line, line_offset)
                 && has_thread_tool_name(placeholder_scope)
                 && !has_negated_handler_missing_claim(line, line_offset)
-                && !has_actionable_handler_placeholder_report(capture_scope)
+                && !has_actionable_handler_placeholder_report(placeholder_scope, capture_scope)
         })
 }
 const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
@@ -62,12 +62,12 @@ fn has_actionable_handler_defect_report(evidence: &str, tool: &str) -> bool {
         && !has_negated_fallback_route_field(evidence)
         && !has_absent_defect_capture(evidence)
 }
-fn has_actionable_handler_placeholder_report(evidence: &str) -> bool {
-    has_handler_marker_in_defect_capture(evidence)
-        && has_exact_thread_tool_handler_error(evidence)
-        && has_affirmative_defect_capture(evidence)
-        && !has_negated_fallback_route_field(evidence)
-        && !has_absent_defect_capture(evidence)
+fn has_actionable_handler_placeholder_report(placeholder_scope: &str, capture_scope: &str) -> bool {
+    has_handler_marker_in_defect_capture(capture_scope)
+        && placeholder_tools_have_exact_errors(placeholder_scope, capture_scope)
+        && has_affirmative_defect_capture(capture_scope)
+        && !has_negated_fallback_route_field(capture_scope)
+        && !has_absent_defect_capture(capture_scope)
 }
 fn has_defect_label(line: &str) -> bool {
     line.contains("dogfooding defect")

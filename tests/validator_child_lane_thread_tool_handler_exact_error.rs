@@ -34,3 +34,29 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_placeholder_tool_covered_by_other_exact_error()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
+Invocation evidence:
+- codex_app.read_thread failed with `No handler registered for tool: ...`.
+- codex_app.send_message_to_thread failed with `No handler registered for tool: send_message_to_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.send_message_to_thread; no fallback route was available; separate dogfood issue: #205.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject placeholder evidence for one tool even when another tool has an exact error"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

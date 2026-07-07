@@ -2,13 +2,23 @@ const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
 const NEGATED_HANDLER_MISSING_MARKERS: &str = "did not fail with|didn't fail with|does not fail with|do not fail with|not fail with|without failing with|did not produce|does not produce|no invocation produced|no thread tool invocation produced";
 
-pub(super) fn has_exact_thread_tool_handler_error(evidence: &str) -> bool {
+pub(super) fn placeholder_tools_have_exact_errors(
+    placeholder_scope: &str,
+    capture_scope: &str,
+) -> bool {
+    THREAD_TOOL_NAMES
+        .split('|')
+        .filter(|tool| has_tool_name(placeholder_scope, tool))
+        .all(|tool| has_exact_thread_tool_handler_error(capture_scope, tool))
+}
+
+fn has_exact_thread_tool_handler_error(evidence: &str, tool: &str) -> bool {
     evidence
         .match_indices(HANDLER_MISSING_MARKER)
         .any(|(start, _)| {
             let (line, line_start) = line_containing(evidence, start);
             let line_offset = start - line_start;
-            handler_missing_tool(line, line_offset).is_some()
+            handler_missing_tool(line, line_offset).is_some_and(|exact_tool| exact_tool == tool)
                 && !has_negated_handler_missing_claim(line, line_offset)
         })
 }
@@ -38,6 +48,10 @@ fn handler_tool_fragment(line: &str, start: usize) -> &str {
         .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '.'))
         .next()
         .unwrap_or_default()
+}
+
+fn has_tool_name(line: &str, tool: &str) -> bool {
+    line.contains(tool) || line.contains(&format!("codex_app.{tool}"))
 }
 
 fn has_negated_handler_missing_claim(line: &str, start: usize) -> bool {

@@ -25,7 +25,50 @@ fn has_negated_tracking_issue(clause: &str) -> bool {
     NEGATED_TRACKING_ISSUE_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
+        || has_false_tracking_issue_answer(clause)
         || has_negated_issue_lifecycle(clause)
+}
+
+fn has_false_tracking_issue_answer(clause: &str) -> bool {
+    issue_reference_tails(clause).any(|tail| {
+        let tail = tail
+            .trim_start_matches(|character: char| {
+                character.is_ascii_whitespace() || matches!(character, ')' | ']')
+            })
+            .trim_start();
+        ['?', ':', '='].into_iter().any(|separator| {
+            tail.strip_prefix(separator)
+                .map(str::trim_start)
+                .is_some_and(has_false_answer_value)
+        })
+    })
+}
+
+fn issue_reference_tails(clause: &str) -> impl Iterator<Item = &str> {
+    clause
+        .match_indices('#')
+        .filter_map(|(index, _)| tail_after_digits(&clause[index + 1..]))
+        .chain(
+            clause
+                .match_indices("/issues/")
+                .filter_map(|(index, marker)| tail_after_digits(&clause[index + marker.len()..])),
+        )
+}
+
+fn tail_after_digits(value: &str) -> Option<&str> {
+    let digit_end = value
+        .find(|character: char| !character.is_ascii_digit())
+        .unwrap_or(value.len());
+    (digit_end > 0).then_some(&value[digit_end..])
+}
+
+fn has_false_answer_value(value: &str) -> bool {
+    "no|false".split('|').any(|answer| {
+        value == answer
+            || value.strip_prefix(answer).is_some_and(|rest| {
+                rest.starts_with(|character: char| !character.is_ascii_alphanumeric())
+            })
+    })
 }
 
 fn has_negated_issue_lifecycle(clause: &str) -> bool {

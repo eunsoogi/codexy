@@ -105,3 +105,23 @@ Maintainer reassignment: none
     }
     Ok(())
 }
+
+#[test]
+fn validator_rejects_false_tracking_issue_answers() -> Result<(), Box<dyn std::error::Error>> {
+    for issue in ["Tracking issue: #205? no", "tracked by issue #205: false"] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; {issue}.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject false tracking issue answer: {issue}"
+        );
+    }
+    Ok(())
+}
