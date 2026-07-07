@@ -22,6 +22,28 @@ pub(super) fn has_review_request_context(line: &str) -> bool {
     })
 }
 
+pub(super) fn has_codex_review_request_context(line: &str) -> bool {
+    if has_follow_up_review_request_context(line) {
+        return true;
+    }
+
+    line.split([';', '.', '!', '?', ',']).any(|clause| {
+        let clause = clause.trim();
+        !has_negated_review_request_context(clause)
+            && !has_wait_only_review_output_context(clause)
+            && (has_any(
+                clause,
+                &[
+                    "@codex review",
+                    "request codex review",
+                    "request a codex review",
+                    "request fresh codex review",
+                    "request a fresh codex review",
+                ],
+            ) || has_request_codex_review_context(clause))
+    })
+}
+
 fn has_request_codex_review_context(line: &str) -> bool {
     line.contains("request") && (line.contains("codex review") || line.contains("@codex review"))
 }
