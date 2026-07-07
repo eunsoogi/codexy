@@ -132,10 +132,10 @@ fn is_prefix_negated(prefix: &str) -> bool {
 
 fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: &str) -> bool {
     let sentence_start = instructions[..marker_index]
-        .rfind(['.', '!', '?', '\n'])
+        .rfind(['.', '!', '?'])
         .map_or(0, |index| index + 1);
     let sentence_end = instructions[marker_index + marker.len()..]
-        .find(['.', '!', '?', '\n'])
+        .find(['.', '!', '?'])
         .map_or(instructions.len(), |index| {
             marker_index + marker.len() + index
         });
