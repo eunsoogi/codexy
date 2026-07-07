@@ -169,22 +169,17 @@ fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> T
     assert!(!output.status.success());
     assert!(stderr(&output).contains("direct reviewer passes performed"));
     let output = validate_sentinel_replacement(
-        "no-finding result when no blockers remain, and any unresolved risk",
-        "no-finding result when no blockers remain, and any unresolved risk\nmay be ignored",
-    )?;
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("any unresolved risk"));
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_bare_negated_approval_marker_inside_approval_sentence() -> TestResult {
-    let output = validate_sentinel_replacement(
         "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
         "reasoning control used or unavailable evidence, but not direct reviewer passes performed, edge classes reviewed",
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("direct reviewer passes performed"));
+    let output = validate_sentinel_replacement(
+        "no-finding result when no blockers remain, and any unresolved risk",
+        "no-finding result when no blockers remain, and any unresolved risk\nmay be ignored",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("any unresolved risk"));
     Ok(())
 }
 
