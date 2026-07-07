@@ -179,6 +179,17 @@ fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> T
 }
 
 #[test]
+fn validator_cli_rejects_wrapped_ignored_approval_marker_inside_approval_sentence() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "no-finding result when no blockers remain, and any unresolved risk",
+        "no-finding result when no blockers remain, and any unresolved risk\nmay be ignored",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("any unresolved risk"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sentence() -> TestResult
 {
     let output = validate_sentinel_replacement(
@@ -245,6 +256,4 @@ fn validator(plugin_root: &Path) -> TestResult<Output> {
         .output()?)
 }
 
-fn stderr(output: &Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
-}
+fn stderr(output: &Output) -> String { String::from_utf8_lossy(&output.stderr).into_owned() }
