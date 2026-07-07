@@ -43,7 +43,9 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     };
     let head_segments = head.split([',', ';']).map(str::trim).collect::<Vec<_>>();
     let preamble = head_segments.first().copied().unwrap_or(head);
+    let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
     if contains_disallowed_context(preamble)
+        || contains_direct_pre_marker_negation(scoped_head)
         || head_segments
             .iter()
             .rev()
@@ -57,7 +59,6 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     {
         return true;
     }
-    let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
     let sentence_end = tail.find('.').unwrap_or(tail.len());
     let sentence_tail = &tail[..sentence_end];
     if contains_scoped_opt_out(sentence_tail) {
@@ -193,6 +194,11 @@ fn contains_scoped_opt_out(clause: &str) -> bool {
         .split('|')
         .any(|pattern| contains_context_pattern(clause, pattern))
 }
+
+fn contains_direct_pre_marker_negation(clause: &str) -> bool {
+    let words = context_words(clause);
+    words.last() == Some(&"not") || words.windows(2).any(|window| window == ["but", "not"])
+}
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
     if pattern
         .chars()
@@ -242,6 +248,21 @@ fn contains_required_negation(clause: &str) -> bool {
                     }
                 }
                 "no" if words.get(negation_index + 1) == Some(&"longer") => return true,
+                _ => {}
+            }
+        }
+        for negation_index in index + 1..(index + 6).min(words.len()) {
+            match words[negation_index] {
+                "never" => return true,
+                "not" => {
+                    if words
+                        .get(negation_index + 1)
+                        .is_some_and(|word| matches!(*word, "only" | "just" | "merely" | "simply"))
+                    {
+                        continue;
+                    }
+                    return true;
+                }
                 _ => {}
             }
         }
