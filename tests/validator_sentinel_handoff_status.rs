@@ -50,7 +50,7 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel result: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel gate returned BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head; rerun Sentinel: PASS before push.\n",
-        "Parent can open PR next. Packaged Codexy Sentinel returned BLOCK but focused tests passed.\n",
+        "Parent can open PR next. Packaged Codexy Sentinel returned BLOCK but focused tests pass.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -93,7 +93,7 @@ fn validator_rejects_sentinel_readiness_without_explicit_status() -> TestResult 
 #[test]
 fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResult {
     accept_open_pr_handoff(
-        "PR ready for parent handoff. Initial Sentinel: BLOCK on earlier head; addressed with parser fixes. Rerun Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Initial Sentinel: BLOCK on earlier head; addressed with parser fixes. Rerun Sentinel: PASS after rerun on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "validator should accept current Sentinel PASS after superseded historical BLOCK evidence",
     )
 }
@@ -101,7 +101,7 @@ fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResul
 #[test]
 fn validator_accepts_reviewer_named_sentinel_pass() -> TestResult {
     accept_open_pr_handoff(
-        "PR ready for parent handoff. Packaged Codexy Sentinel Turing PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "validator should accept reviewer-named Sentinel PASS readiness evidence",
     )
 }
