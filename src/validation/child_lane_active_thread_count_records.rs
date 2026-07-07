@@ -167,9 +167,23 @@ fn thread_ids(line: &str) -> Vec<String> {
         token
             .strip_prefix("thread-")
             .is_some_and(|rest| !rest.is_empty())
+            || is_non_prefixed_codex_thread_id(token)
     })
     .map(str::to_owned)
     .collect()
+}
+
+fn is_non_prefixed_codex_thread_id(token: &str) -> bool {
+    !token.starts_with('#')
+        && !token.starts_with("thread-")
+        && token.len() >= 4
+        && token
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '-')
+        && token.chars().any(|character| character.is_ascii_digit())
+        && token
+            .chars()
+            .any(|character| character.is_ascii_alphabetic())
 }
 
 fn child_thread_freed_capacity(line: &str) -> bool {

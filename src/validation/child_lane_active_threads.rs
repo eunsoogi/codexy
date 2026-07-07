@@ -91,10 +91,7 @@ fn has_matching_old_owner_disposition_before(
             && previous_operation_position.is_none_or(|previous| position > previous)
             && (normalized_line.contains("old owner")
                 || normalized_line.contains("existing owner thread"))
-            && ["stopped", "unusable", "superseded"]
-                .into_iter()
-                .any(|marker| normalized_line.contains(marker))
-            && !has_negated_disposition_claim(line)
+            && has_accepted_disposition_claim(line)
             && disposition_matches_owner(line, existing_owner)
     })
 }
@@ -123,39 +120,22 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
             .any(|line_issue| existing_owner.issue_ids.iter().any(|id| id == line_issue))
 }
 
-fn has_negated_disposition_claim(line: &str) -> bool {
+fn has_accepted_disposition_claim(line: &str) -> bool {
     let words = line
         .to_ascii_lowercase()
         .split(|character: char| !character.is_ascii_alphanumeric())
         .filter(|part| !part.is_empty())
         .map(str::to_owned)
         .collect::<Vec<_>>();
-    if words.iter().enumerate().any(|(index, word)| {
-        matches!(word.as_str(), "not" | "never")
-            && words
+    words.iter().enumerate().any(|(index, word)| {
+        matches!(word.as_str(), "stopped" | "unusable" | "superseded")
+            && !words
                 .iter()
-                .skip(index + 1)
+                .take(index)
+                .rev()
                 .take(3)
-                .any(|word| matches!(word.as_str(), "stopped" | "unusable" | "superseded"))
-    }) {
-        return true;
-    }
-    [
-        "not stopped",
-        "not unusable",
-        "not superseded",
-        "was not stopped",
-        "was not unusable",
-        "was not superseded",
-        "wasn't stopped",
-        "wasn't unusable",
-        "wasn't superseded",
-        "wasnt stopped",
-        "wasnt unusable",
-        "wasnt superseded",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
+                .any(|word| matches!(word.as_str(), "not" | "never" | "wasnt"))
+    })
 }
 
 #[cfg(test)]
