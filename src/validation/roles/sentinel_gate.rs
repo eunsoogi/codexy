@@ -129,7 +129,7 @@ fn is_prefix_negated(prefix: &str) -> bool {
     let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase(); let sentence_prefix = sentence_prefix.trim_end();
     sentence_prefix.contains("must not")
         || sentence_prefix.contains("do not")
-        || ["should not", "but not", "and not", "or not"].iter().any(|phrase| sentence_prefix.contains(phrase)) || [" no", ", no", "no"].iter().any(|suffix| sentence_prefix.ends_with(suffix))
+        || ["should not", "but not", "and not", "or not"].iter().any(|phrase| sentence_prefix.contains(phrase)) || [" no", ", no", "no", " not", ", not", "not"].iter().any(|suffix| sentence_prefix.ends_with(suffix))
 }
 
 fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: &str) -> bool {
