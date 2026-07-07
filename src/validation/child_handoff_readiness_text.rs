@@ -6,6 +6,7 @@ pub(super) fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
         let end = start + phrase.len();
         if phrase_has_boundaries(text, start, end)
             && !is_locally_negated(&text[..start])
+            && !has_non_claim_heading_suffix(&text[end..])
             && !has_non_claim_label_value(&text[end..])
         {
             return true;
@@ -77,6 +78,17 @@ fn has_non_claim_label_value(suffix: &str) -> bool {
         ]
         .iter()
         .any(|phrase| label_value_starts_with(suffix, phrase))
+}
+
+fn has_non_claim_heading_suffix(suffix: &str) -> bool {
+    let suffix = suffix.trim_start_matches([' ', '\t']);
+    ["blocker", "blockers", "blocked", "pending", "waiting"]
+        .iter()
+        .any(|phrase| {
+            suffix
+                .strip_prefix(phrase)
+                .is_some_and(|rest| is_boundary(rest.chars().next()))
+        })
 }
 
 fn label_value_starts_with(suffix: &str, phrase: &str) -> bool {

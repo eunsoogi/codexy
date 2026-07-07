@@ -136,6 +136,28 @@ fn validator_allows_not_yet_readiness_blocker_labels() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_readiness_blocker_headings() -> TestResult {
+    for handoff in [
+        "Child handoff:\nPR readiness blockers:\n- Required proof is absent.\n",
+        "Child handoff:\nMerge readiness pending:\n- Required merge proof is absent.\n",
+        "Child handoff:\nReady for parent handoff blockers:\n- Current-head proof is absent.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"DIRTY","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example [ahead 1]","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+        )?;
+        assert!(
+            output.status.success(),
+            "blocker heading should not claim readiness for {handoff}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn assert_rejects_child_handoff(handoff: &str, pr_state: &str, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
     assert!(
