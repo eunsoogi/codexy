@@ -161,6 +161,20 @@ fn validator_cli_rejects_weakened_real_approval_sentence_after_external_copy() -
 }
 
 #[test]
+fn validator_cli_rejects_approval_marker_only_after_approval_sentence() -> TestResult {
+    let output = validate_sentinel_edit(|sentinel| {
+        let target = "direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable";
+        let anchor = "MUST block when negative tests are absent for validator, parser, guardrail, workflow-rule, or review-feedback fixes unless the lane proves why negative coverage is not applicable.";
+        sentinel
+            .replacen(target, "direct reviewer passes performed, replayed review examples when applicable", 1)
+            .replace(anchor, &format!("{anchor} Edge classes reviewed."))
+    })?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("edge classes reviewed"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> TestResult {
     let output = validate_sentinel_replacement(
         "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
@@ -168,11 +182,17 @@ fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> T
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("direct reviewer passes performed"));
-    for replacement in ["reasoning control used or unavailable evidence, but not direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, no direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, no\n direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, not direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed is waived, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed is not needed, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed. Direct reviewer passes performed may be skipped"] {
+    for replacement in ["reasoning control used or unavailable evidence, but not direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, no direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, no\n direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, not direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed is waived, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed is not needed, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed when applicable, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed. Direct reviewer passes performed may be skipped"] {
         let output = validate_sentinel_replacement("reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed", replacement)?;
         assert!(!output.status.success());
         assert!(stderr(&output).contains("direct reviewer passes performed"));
     }
+    let output = validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed if available",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("edge classes reviewed"));
     let output = validate_sentinel_replacement(
         "no-finding result when no blockers remain, and any unresolved risk",
         "no-finding result when no blockers remain, and any unresolved risk\nmay be ignored",
