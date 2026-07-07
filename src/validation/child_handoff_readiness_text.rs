@@ -5,6 +5,7 @@ pub(super) fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
         let start = offset + index;
         let end = start + phrase.len();
         if phrase_has_boundaries(text, start, end)
+            && !has_unchecked_checklist_marker_before(text, start)
             && !is_locally_negated(&text[..start])
             && !has_non_claim_heading_suffix(&text[end..])
             && !has_non_claim_label_value(&text[end..])
@@ -15,6 +16,11 @@ pub(super) fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
         rest = &text[offset..];
     }
     false
+}
+
+fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
+    let prefix = text[..start].trim_end_matches([' ', '\t']);
+    prefix.ends_with("- [ ]") || prefix.ends_with("* [ ]")
 }
 
 pub(super) fn has_non_claim_phrase_label(text: &str, phrase: &str) -> bool {

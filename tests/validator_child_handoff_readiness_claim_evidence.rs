@@ -107,6 +107,18 @@ fn validator_rejects_affirmative_ready_labels_without_child_marker() -> TestResu
 }
 
 #[test]
+fn validator_ignores_unchecked_ready_checklist_items() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Child handoff:\n- [ ] PR-ready after review.\nWaiting on review.\n",
+        &pr_state_with(
+            r###""mergeStateStatus":"DIRTY","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example [ahead 1]","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+        ),
+    )?;
+    assert!(output.status.success());
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_synced_yes_with_pushed_no() -> TestResult {
     for handoff in [
         "Child handoff: Synced: yes at 068dbb247b7755035223c91ee39f26830f3c1609. Pushed: no.\n",
