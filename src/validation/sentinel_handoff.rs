@@ -6,6 +6,8 @@ const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge r
 const COMPLETION_MARKERS: &str =
     "completed|finished|finalized|all set|done|complete|completes|finish|finalize";
 const MAINTAINER_FALLBACK_APPROVAL_MARKERS: &str = "maintainer explicitly approved fallback|maintainer explicitly approved a fallback|maintainer explicitly approved the fallback|maintainer approval: fallback approved|maintainer approval fallback approved";
+const FALLBACK_REJECTION_MARKERS: &str = "fallback required|approval required|required before|no maintainer approval|no maintainer response|not approved|previous fallback|prior fallback|old fallback|earlier fallback|superseded fallback|previous unobservable|prior unobservable|old unobservable|earlier unobservable|superseded unobservable|previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate";
+const HISTORICAL_STATUS_PREFIX_MARKERS: &str = "previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|initial sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|initial codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|initial reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate|initial reviewer-gate";
 const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before handoff|before merge|before parent handoff|before pr readiness|before merge readiness|before push readiness|required before|needed before|must pass before|needs to pass before|should pass before|planned after|after planned|planned rerun|planned review|planned pass|to be run|will be run";
 const FUTURE_STATUS_PREFIX_MARKERS: &str = "waiting for|wait for|awaiting|will rerun|will re-run|needs rerun|needs re-run|need rerun|need re-run|rerun required|re-run required";
 const STATUS_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|returned|return|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
@@ -24,6 +26,7 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
         .max_by_key(|(start, _)| *start);
     match status {
         Some((start, SentinelStatus::Unobservable)) if fallback_after(&text, start) => Vec::new(),
+        Some((start, SentinelStatus::Block)) if fallback_after(&text, start) => Vec::new(),
         Some((_, SentinelStatus::Block)) => {
             vec!["Sentinel BLOCK verdict cannot satisfy PR readiness or push readiness".into()]
         }
@@ -43,10 +46,7 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
 fn fallback_after(text: &str, start: usize) -> bool {
     let suffix = &text[start..];
     has_any(suffix, MAINTAINER_FALLBACK_APPROVAL_MARKERS)
-        && !has_any(
-            suffix,
-            "fallback required|approval required|required before|no maintainer approval|no maintainer response|not approved",
-        )
+        && !has_any(suffix, FALLBACK_REJECTION_MARKERS)
 }
 fn names_head(text: &str, start: usize, head_ref_oid: Option<&str>) -> bool {
     let Some(head) = head_ref_oid.map(str::trim).filter(|head| !head.is_empty()) else {
@@ -118,10 +118,10 @@ fn is_sentinel_status_context(text: &str, start: usize, phrase: &str) -> bool {
 fn has_future_status_context(text: &str, start: usize, phrase: &str) -> bool {
     let end = start + phrase.len();
     let (clause_start, clause_end) = clause_bounds(text, start);
-    let prefix = &text[last_status_context_boundary(&text[..start]).unwrap_or(clause_start)..start];
+    let prefix = &text[last_status_context_boundary(&text[..start]).unwrap_or(clause_start)..end];
     let suffix = &text[end..clause_end];
     has_any(prefix, FUTURE_STATUS_PREFIX_MARKERS)
-        || has_any(prefix, "previous|prior|old|earlier|superseded|initial")
+        || has_any(prefix, HISTORICAL_STATUS_PREFIX_MARKERS)
         || has_any(suffix, FUTURE_STATUS_CONTEXT_MARKERS)
         || prefix.trim_end().ends_with(" will")
 }
@@ -244,7 +244,6 @@ fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
 fn starts_with_boundary(rest: &str) -> bool {
     is_boundary(rest.chars().next())
 }
-
 fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())
 }
