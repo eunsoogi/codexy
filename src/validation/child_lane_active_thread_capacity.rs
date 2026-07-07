@@ -76,10 +76,9 @@ pub(super) fn active_capacity_errors(
         if !records.is_empty() {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
                 operation.replaces_existing_owner
-                    && records.iter().any(|record| record.freed_capacity)
                     && records
                         .iter()
-                        .any(|record| active_count_matches_owner(record, owner))
+                        .any(|record| record.replacement_counts_old_owner(owner))
             });
             if let Some(record_count) = projected_count_from_records(&records) {
                 projected_count = Some(match projected_count {
@@ -121,25 +120,6 @@ pub(super) struct ThreadOperation {
     pub(super) owner: ThreadOwner,
     reuses_existing_owner: bool,
     replaces_existing_owner: bool,
-}
-fn active_count_matches_owner(record: &ActiveCount, owner: &ThreadOwner) -> bool {
-    if let Some(owner_thread) = owner.thread_id.as_deref() {
-        if !record.thread_ids.is_empty() {
-            return record
-                .thread_ids
-                .iter()
-                .any(|thread_id| thread_id == owner_thread);
-        }
-        if let Some(record_thread) = record.owner.thread_id.as_deref() {
-            return record_thread == owner_thread;
-        }
-    }
-    !owner.issue_ids.is_empty()
-        && record
-            .owner
-            .issue_ids
-            .iter()
-            .any(|id| owner.issue_ids.contains(id))
 }
 fn is_child_thread_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);

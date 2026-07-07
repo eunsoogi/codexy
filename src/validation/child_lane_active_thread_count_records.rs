@@ -5,17 +5,17 @@ pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
 
 pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCount> {
     let mut records = Vec::new();
-    let mut freed_capacity = false;
+    let mut freed_capacity_owner = None;
     for (line_number, line) in evidence.lines().enumerate() {
         let (count_records, trailing_freed_capacity) =
-            active_count_records_for_line(line, line_number, freed_capacity);
+            active_count_records_for_line(line, line_number, freed_capacity_owner.clone());
         if count_records.is_empty() {
             if child_thread_freed_capacity(line) {
-                freed_capacity = true;
+                freed_capacity_owner = Some(ThreadOwner::from_line(line));
             }
         } else {
             records.extend(count_records);
-            freed_capacity = trailing_freed_capacity;
+            freed_capacity_owner = trailing_freed_capacity;
         }
     }
     records
@@ -24,30 +24,34 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
 fn active_count_records_for_line(
     line: &str,
     line_number: usize,
-    freed_capacity: bool,
-) -> (Vec<ActiveCount>, bool) {
+    freed_capacity_owner: Option<ThreadOwner>,
+) -> (Vec<ActiveCount>, Option<ThreadOwner>) {
     let mut records = Vec::new();
-    let mut freed_capacity = freed_capacity;
+    let mut freed_capacity_owner = freed_capacity_owner;
     for segment in line.split(';').flat_map(|segment| segment.split(". ")) {
-        let count_records =
-            active_count_records_for_segment(line, segment, line_number, freed_capacity);
+        let count_records = active_count_records_for_segment(
+            line,
+            segment,
+            line_number,
+            freed_capacity_owner.clone(),
+        );
         if count_records.is_empty() {
             if child_thread_freed_capacity(segment) {
-                freed_capacity = true;
+                freed_capacity_owner = Some(ThreadOwner::from_line(segment));
             }
         } else {
             records.extend(count_records);
-            freed_capacity = false;
+            freed_capacity_owner = None;
         }
     }
-    (records, freed_capacity)
+    (records, freed_capacity_owner)
 }
 
 fn active_count_records_for_segment(
     line: &str,
     segment: &str,
     line_number: usize,
-    freed_capacity: bool,
+    freed_capacity_owner: Option<ThreadOwner>,
 ) -> Vec<ActiveCount> {
     split_count_comma_clauses(segment)
         .into_iter()
@@ -58,7 +62,8 @@ fn active_count_records_for_segment(
                 kind: count_kind(segment),
                 line_number,
                 segment_number: segment_offset(line, segment),
-                freed_capacity,
+                freed_capacity: freed_capacity_owner.is_some(),
+                freed_capacity_owner: freed_capacity_owner.clone(),
                 owner: ThreadOwner::from_line(segment),
                 thread_ids: thread_ids(segment),
             })
@@ -137,12 +142,42 @@ pub(super) struct ActiveCount {
     pub(super) line_number: usize,
     pub(super) segment_number: usize,
     pub(super) freed_capacity: bool,
+    pub(super) freed_capacity_owner: Option<ThreadOwner>,
     kind: CountKind,
 }
 
 impl ActiveCount {
     pub(super) fn is_waiting(&self) -> bool {
         matches!(self.kind, CountKind::Waiting)
+    }
+
+    pub(super) fn replacement_counts_old_owner(&self, owner: &ThreadOwner) -> bool {
+        self.freed_capacity
+            && self
+                .freed_capacity_owner
+                .as_ref()
+                .is_some_and(|freed_owner| thread_owner_matches(freed_owner, owner))
+            && self.matches_owner(owner)
+    }
+
+    fn matches_owner(&self, owner: &ThreadOwner) -> bool {
+        if let Some(owner_thread) = owner.thread_id.as_deref() {
+            if !self.thread_ids.is_empty() {
+                return self
+                    .thread_ids
+                    .iter()
+                    .any(|thread_id| thread_id == owner_thread);
+            }
+            if let Some(record_thread) = self.owner.thread_id.as_deref() {
+                return record_thread == owner_thread;
+            }
+        }
+        !owner.issue_ids.is_empty()
+            && self
+                .owner
+                .issue_ids
+                .iter()
+                .any(|id| owner.issue_ids.contains(id))
     }
 }
 
@@ -184,6 +219,19 @@ fn is_non_prefixed_codex_thread_id(token: &str) -> bool {
         && token
             .chars()
             .any(|character| character.is_ascii_alphabetic())
+}
+
+fn thread_owner_matches(found: &ThreadOwner, expected: &ThreadOwner) -> bool {
+    if let (Some(found_thread), Some(expected_thread)) =
+        (found.thread_id.as_deref(), expected.thread_id.as_deref())
+    {
+        return found_thread == expected_thread;
+    }
+    !expected.issue_ids.is_empty()
+        && found
+            .issue_ids
+            .iter()
+            .any(|id| expected.issue_ids.contains(id))
 }
 
 fn child_thread_freed_capacity(line: &str) -> bool {

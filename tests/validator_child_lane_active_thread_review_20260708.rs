@@ -14,21 +14,46 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 #[test]
 fn validator_rejects_same_line_disposition_after_replacement_operation()
 -> Result<(), Box<dyn std::error::Error>> {
+    for disposition in [
+        "Old owner disposition: existing owner thread thread-old was stopped as unusable for issue #269.",
+        "Existing owner thread thread-old was stopped as unusable for issue #269.",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269; Thread creation: created replacement child thread thread-new for issue #269; {disposition}
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should not credit old-owner disposition that appears after replacement operation: {disposition}"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("old owner"),
+            "stderr should name missing pre-operation old-owner disposition, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_same_line_disposition_before_replacement_operation()
+-> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for orchestration only; child routing required
+Child thread thread-old stopped and freed replacement capacity.
 Active child Codex threads: 4
-Existing issue/PR owner check: existing owner thread thread-old found for issue #269; Thread creation: created replacement child thread thread-new for issue #269; Old owner disposition: existing owner thread thread-old was stopped as unusable for issue #269.
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269; Old owner disposition: existing owner thread thread-old was stopped as unusable for issue #269; Thread creation: created replacement child thread thread-new for issue #269.
 Maintainer reassignment: none
 "#,
     )?;
 
     assert!(
-        !output.status.success(),
-        "validator should not credit old-owner disposition that appears after replacement operation"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should name missing pre-operation old-owner disposition, got:\n{}",
+        output.status.success(),
+        "same-line old-owner disposition should count when it precedes replacement; stderr:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -52,6 +77,53 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stderr)
             .contains("keep at most five active child Codex threads"),
         "stderr should name over-cap non-prefixed ledger, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_counts_full_hyphenated_codex_thread_id_as_one_active_thread()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 019f3ce4-22b0-72f2-a864-db2fb127121e
+Existing issue/PR owner check: no existing owner thread found for issue #270.
+Thread creation: created child thread thread-270 for issue #270.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "one full Codex thread ID plus one new child is within the cap; stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_replacement_when_unrelated_thread_freed_capacity()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Child thread thread-other stopped and freed replacement capacity.
+Active child Codex threads: 5, including thread-old for issue #269, thread-extra for issue #270.
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269.
+Old owner disposition: existing owner thread thread-old was stopped as unusable for issue #269.
+Thread creation: created replacement child thread thread-new for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "replacement should not consume capacity freed by an unrelated thread"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity replacement, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

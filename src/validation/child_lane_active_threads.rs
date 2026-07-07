@@ -86,21 +86,16 @@ fn has_matching_old_owner_disposition_before(
 ) -> bool {
     evidence.lines().enumerate().any(|(line_number, line)| {
         let normalized_line = line.to_ascii_lowercase();
-        let position = (line_number, old_owner_disposition_offset(line));
+        let Some(disposition_offset) = accepted_disposition_claim_offset(line) else {
+            return false;
+        };
+        let position = (line_number, disposition_offset);
         position < operation_position
             && previous_operation_position.is_none_or(|previous| position > previous)
             && (normalized_line.contains("old owner")
                 || normalized_line.contains("existing owner thread"))
-            && has_accepted_disposition_claim(line)
             && disposition_matches_owner(line, existing_owner)
     })
-}
-
-fn old_owner_disposition_offset(line: &str) -> usize {
-    let line = line.to_ascii_lowercase();
-    line.find("old owner")
-        .or_else(|| line.find("existing owner thread"))
-        .unwrap_or(0)
 }
 
 fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -> bool {
@@ -120,22 +115,37 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
             .any(|line_issue| existing_owner.issue_ids.iter().any(|id| id == line_issue))
 }
 
-fn has_accepted_disposition_claim(line: &str) -> bool {
-    let words = line
-        .to_ascii_lowercase()
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|part| !part.is_empty())
-        .map(str::to_owned)
-        .collect::<Vec<_>>();
-    words.iter().enumerate().any(|(index, word)| {
-        matches!(word.as_str(), "stopped" | "unusable" | "superseded")
-            && !words
-                .iter()
-                .take(index)
-                .rev()
-                .take(3)
-                .any(|word| matches!(word.as_str(), "not" | "never" | "wasnt" | "wasn"))
-    })
+fn accepted_disposition_claim_offset(line: &str) -> Option<usize> {
+    let words = line_words_with_offsets(line);
+    words
+        .iter()
+        .enumerate()
+        .find_map(|(index, (offset, word))| {
+            (matches!(word.as_str(), "stopped" | "unusable" | "superseded")
+                && !words
+                    .iter()
+                    .take(index)
+                    .rev()
+                    .take(3)
+                    .any(|(_, word)| matches!(word.as_str(), "not" | "never" | "wasnt" | "wasn")))
+            .then_some(*offset)
+        })
+}
+
+fn line_words_with_offsets(line: &str) -> Vec<(usize, String)> {
+    let mut words = Vec::new();
+    let mut start = None;
+    for (index, character) in line.char_indices() {
+        if character.is_ascii_alphanumeric() {
+            start.get_or_insert(index);
+        } else if let Some(word_start) = start.take() {
+            words.push((word_start, line[word_start..index].to_ascii_lowercase()));
+        }
+    }
+    if let Some(word_start) = start {
+        words.push((word_start, line[word_start..].to_ascii_lowercase()));
+    }
+    words
 }
 
 #[cfg(test)]

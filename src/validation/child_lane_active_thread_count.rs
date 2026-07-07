@@ -3,7 +3,7 @@ pub(super) fn active_child_thread_count(line: &str) -> Option<u64> {
     if !has_active_child_thread_key(&key_words(key)) {
         return None;
     }
-    let words = key_words(value);
+    let words = value_words(value);
     explicit_total(&words).or_else(|| fallback_count(&words))
 }
 
@@ -53,7 +53,10 @@ fn thread_id_entry_count(words: &[String]) -> Option<u64> {
     let mut count = 0;
     let mut index = 0;
     while index < words.len() {
-        if words[index] == "thread"
+        if is_prefixed_thread_id(&words[index]) {
+            count += 1;
+            index += 1;
+        } else if words[index] == "thread"
             && words
                 .get(index + 1)
                 .is_some_and(|word| is_thread_id_suffix(word))
@@ -70,6 +73,22 @@ fn thread_id_entry_count(words: &[String]) -> Option<u64> {
     (count > 0).then_some(count as u64)
 }
 
+fn value_words(value: &str) -> Vec<String> {
+    value
+        .to_ascii_lowercase()
+        .split(|character: char| {
+            !(character.is_ascii_alphanumeric() || character == '-' || character == '#')
+        })
+        .filter(|part| !part.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+fn is_prefixed_thread_id(word: &str) -> bool {
+    word.strip_prefix("thread-")
+        .is_some_and(|rest| !rest.is_empty())
+}
+
 fn is_thread_id_suffix(word: &str) -> bool {
     !word.is_empty()
         && word.chars().all(|c| c.is_ascii_alphanumeric())
@@ -77,8 +96,12 @@ fn is_thread_id_suffix(word: &str) -> bool {
 }
 
 fn is_non_prefixed_codex_thread_id(word: &str) -> bool {
-    word.len() >= 4
-        && word.chars().all(|c| c.is_ascii_alphanumeric())
+    !word.starts_with('#')
+        && !word.starts_with("thread-")
+        && word.len() >= 4
+        && word
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '-')
         && word.chars().any(|c| c.is_ascii_digit())
         && word.chars().any(|c| c.is_ascii_alphabetic())
 }
