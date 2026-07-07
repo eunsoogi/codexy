@@ -26,6 +26,8 @@ fn active_count_records_for_line(
     freed_capacity: bool,
 ) -> Vec<ActiveCount> {
     line.split(';')
+        .flat_map(|segment| segment.split(". "))
+        .flat_map(split_count_comma_clauses)
         .filter_map(|segment| {
             let count = active_child_thread_count(segment)?;
             Some(ActiveCount {
@@ -38,6 +40,33 @@ fn active_count_records_for_line(
             })
         })
         .collect()
+}
+
+fn split_count_comma_clauses(segment: &str) -> Vec<&str> {
+    let lower = segment.to_ascii_lowercase();
+    let mut clauses = Vec::new();
+    let mut start = 0;
+    let mut cursor = 0;
+    while let Some(relative) = lower[cursor..].find(", ") {
+        let marker_start = cursor + relative;
+        let next_start = marker_start + ", ".len();
+        if starts_count_clause(lower[next_start..].trim_start()) {
+            clauses.push(&segment[start..marker_start]);
+            start = next_start;
+        }
+        cursor = next_start;
+    }
+    clauses.push(&segment[start..]);
+    clauses
+}
+
+fn starts_count_clause(clause: &str) -> bool {
+    let words = key_words(clause);
+    words.iter().any(|word| word == "child")
+        && words
+            .iter()
+            .any(|word| matches!(word.as_str(), "thread" | "threads"))
+        && (words.iter().any(|word| word == "active") || words.iter().any(|word| word == "waiting"))
 }
 
 pub(super) fn active_child_thread_count_errors(active_counts: &[ActiveCount]) -> Vec<String> {

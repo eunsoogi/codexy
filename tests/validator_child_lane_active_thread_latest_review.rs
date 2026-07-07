@@ -82,6 +82,29 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_comma_separated_active_waiting_child_thread_count_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3, Waiting child Codex threads: 3
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should aggregate comma-separated active and waiting child-thread counts"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("keep at most five active child Codex threads"),
+        "stderr should name comma-separated active/waiting over-capacity, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_replacement_when_count_names_different_thread_for_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
