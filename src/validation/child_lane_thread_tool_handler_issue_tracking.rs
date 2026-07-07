@@ -119,7 +119,7 @@ fn has_issue_reference_with_lifecycle_negation(clause: &str, verb: &str) -> bool
             character.is_ascii_whitespace()
                 || matches!(
                     character,
-                    ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';' | '('
+                    ':' | '=' | '-' | '\u{2013}' | '\u{2014}' | ',' | ';' | '(' | ')' | ']'
                 )
         });
         has_lifecycle_negation_prefix(after_reference, verb)
