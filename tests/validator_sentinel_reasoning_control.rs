@@ -104,6 +104,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence is required only when tools expose it",
         "reasoning control used or unavailable evidence isn't a requirement",
         "except reasoning control used or unavailable evidence",
+        "reasoning control used or unavailable evidence only when tools expose it",
+        "reasoning control used or unavailable evidence. The reasoning-control evidence can be skipped",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -124,7 +126,6 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
 #[test]
 fn validator_cli_rejects_weak_reasoning_control_evidence_preamble() -> TestResult {
     const EVIDENCE_PREAMBLE: &str = "Every approval MUST reference the current diff or head";
-
     for replacement in [
         "Every approval MUST try to reference the current diff or head",
         "Every approval MUST attempt to reference the current diff or head",
@@ -171,7 +172,6 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
     }
     Ok(())
 }
-
 #[test]
 fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() -> TestResult {
     for replacement in [

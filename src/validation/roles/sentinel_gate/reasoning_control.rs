@@ -1,6 +1,6 @@
 const EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
 const EVIDENCE_FOLLOWUP_PREFIXES: &str = "this |that |it |evidence|requirement";
-const EVIDENCE_FOLLOWUP_REFERENCES: &str = "this evidence|that evidence|the evidence|this requirement|that requirement|the requirement|this|that|it";
+const EVIDENCE_FOLLOWUP_REFERENCES: &str = "this evidence|that evidence|the evidence|reasoning control evidence|this requirement|that requirement|the requirement|this|that|it";
 const PARAGRAPH_MARKERS: &[&str] = &[
     "reasoning control:",
     "packaged sentinel definition must run with the highest available reasoning setting",
@@ -189,8 +189,8 @@ fn contains_scoped_opt_out(clause: &str) -> bool {
     {
         return true;
     }
-    ["except", "except in", "except for", "only for"]
-        .iter()
+    "except|except in|except for|only for|only if|only when"
+        .split('|')
         .any(|pattern| contains_context_pattern(clause, pattern))
 }
 fn contains_context_pattern(clause: &str, pattern: &str) -> bool {
