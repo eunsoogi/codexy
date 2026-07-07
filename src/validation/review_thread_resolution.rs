@@ -45,7 +45,7 @@ pub(super) fn claims_review_response(handoff: &str) -> bool {
             .any(|phrase| has_unnegated_action(segment, phrase))
     })
 }
-fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool {
+pub(super) fn documents_accepted_no_change_rationale(handoff: &str, thread: &Value) -> bool {
     let text = handoff.to_ascii_lowercase();
     [
         "accepted no-change rationale",

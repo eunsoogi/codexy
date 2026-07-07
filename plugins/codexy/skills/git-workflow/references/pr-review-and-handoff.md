@@ -193,6 +193,13 @@ If new commits are pushed after Codex review, request or wait for fresh review
 on the new head. MUST NOT send duplicate `@codex review` requests while an
 existing request already has `eyes` for the same PR head.
 
+Before requesting `@codex review`, MUST inspect PR review threads. If unresolved
+actionable review threads remain, MUST NOT request a fresh Codex review until the
+current head proves the thread fix and the thread is resolved, or an accepted
+no-change rationale is documented for the thread. Request exactly one fresh
+Codex review only when no current-head request or output exists and no unresolved
+actionable review thread blocks the request.
+
 ## Child-Owned Review Feedback
 
 The parent handoff MUST include PR number, latest head SHA, relevant comments
@@ -208,5 +215,6 @@ MUST verify that the current head addresses each completed review thread before
 resolving it in GitHub.
 
 Fixed or accepted review threads MUST be resolved in GitHub before the PR is
-merged. The parent MUST NOT resolve a thread merely because a child said it was
-fixed, a commit was pushed, or a fresh review was requested.
+claimed PR-ready, merge-ready, or merged. The parent MUST NOT resolve a thread
+merely because a child said it was fixed, a commit was pushed, or a fresh review
+was requested.
