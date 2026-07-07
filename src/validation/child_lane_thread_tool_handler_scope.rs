@@ -171,7 +171,7 @@ fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<Strin
 }
 
 fn is_lane_header_key(key: &str) -> bool {
-    key.starts_with("lane ") && !matches!(key, "lane owner")
+    key.starts_with("lane ") && !matches!(key, "lane owner" | "lane ownership")
 }
 
 fn next_nonempty_line(evidence: &str, mut cursor: usize) -> Option<&str> {
