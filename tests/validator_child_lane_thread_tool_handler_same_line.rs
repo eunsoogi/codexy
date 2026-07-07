@@ -80,6 +80,26 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_inline_same_lane_metadata_capture() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Lane A tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not classify inline Lane A metadata fields as lane headers\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_capture_that_negates_fallback_classification_and_reporting()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

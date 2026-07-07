@@ -3,9 +3,7 @@ pub(super) fn scope_start_until_blank(evidence: &str, line_start: usize) -> (usi
     let mut cursor = line_start;
     while cursor > 0 {
         let previous_end = cursor - 1;
-        let candidate_start = evidence[..previous_end]
-            .rfind('\n')
-            .map_or(0, |index| index + 1);
+        let candidate_start = evidence[..previous_end].rfind('\n').map_or(0, |i| i + 1);
         if evidence[candidate_start..previous_end].trim().is_empty() {
             return (previous_start, Some(candidate_start));
         }
@@ -20,9 +18,7 @@ pub(super) fn previous_nonempty_block_start(evidence: &str, block_end: usize) ->
     let mut cursor = block_end;
     while cursor > 0 {
         let previous_end = cursor - 1;
-        let candidate_start = evidence[..previous_end]
-            .rfind('\n')
-            .map_or(0, |index| index + 1);
+        let candidate_start = evidence[..previous_end].rfind('\n').map_or(0, |i| i + 1);
         if evidence[candidate_start..previous_end].trim().is_empty() {
             break;
         }
@@ -40,7 +36,12 @@ pub(super) fn capture_end_before_unrelated_evidence(
     let mut cursor = line_end(evidence, handler_start);
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     let mut saw_handler_capture = is_handler_capture_line(&evidence[capture_start..cursor]);
-    let current_lane = current_lane_header_before(evidence, handler_start);
+    let handler_line_start = evidence[..handler_start].rfind('\n').map_or(0, |i| i + 1);
+    let current_lane = current_lane_header_before(evidence, handler_line_start).or_else(|| {
+        let line = evidence[handler_line_start..cursor].to_ascii_lowercase();
+        let key = mentioned_lane_key(&line);
+        is_lane_header_key(key).then(|| key.to_string())
+    });
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
@@ -112,7 +113,7 @@ fn is_same_lane_header_metadata_line(
         || !matches!(key.as_str(), "issue" | "branch"));
     matches!(
         key.as_str(),
-        "fallback route" | "owner" | "lane owner" | "child owner"
+        "fallback route" | "fallback path" | "owner" | "lane owner" | "child owner"
     ) && !line.to_ascii_lowercase().contains("not used")
         || generic_same_lane_metadata
         || key.starts_with("lane ")
@@ -129,8 +130,8 @@ fn metadata_targets_other_lane(line: &str, current_lane: Option<&str>) -> bool {
     if normalized.contains("same lane") {
         return false;
     }
-    if ["another lane", "different lane", "other lane", "later lane"]
-        .into_iter()
+    if "another lane|different lane|other lane|later lane"
+        .split('|')
         .any(|marker| normalized.contains(marker))
     {
         return true;
@@ -161,9 +162,7 @@ fn mentioned_lane_key(mention: &str) -> &str {
 fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<String> {
     while cursor > 0 {
         let previous_end = cursor - 1;
-        let previous_start = evidence[..previous_end]
-            .rfind('\n')
-            .map_or(0, |index| index + 1);
+        let previous_start = evidence[..previous_end].rfind('\n').map_or(0, |i| i + 1);
         let line = evidence[previous_start..previous_end].trim_start();
         if line.trim().is_empty() {
             return None;
@@ -180,7 +179,10 @@ fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<Strin
 }
 
 fn is_lane_header_key(key: &str) -> bool {
-    key.starts_with("lane ") && !matches!(key, "lane owner" | "lane ownership")
+    let second_word = key.split_whitespace().nth(1).unwrap_or("");
+    !key.is_empty()
+        && mentioned_lane_key(key) == key
+        && !["owner", "ownership", "metadata"].contains(&second_word)
 }
 
 fn next_nonempty_line(evidence: &str, mut cursor: usize) -> Option<&str> {
@@ -197,10 +199,9 @@ fn next_nonempty_line(evidence: &str, mut cursor: usize) -> Option<&str> {
 }
 
 fn is_same_lane_header_field(line: &str) -> bool {
-    let Some((key, _)) = line.trim_start().split_once(':') else {
-        return false;
-    };
-    ["fallback route", "tracking issue"].contains(&metadata_key(key).as_str())
+    line.trim_start().split_once(':').is_some_and(|(key, _)| {
+        ["fallback route", "fallback path", "tracking issue"].contains(&metadata_key(key).as_str())
+    })
 }
 
 fn same_lane_header_block_has_same_lane_marker(
@@ -231,9 +232,7 @@ fn same_lane_header_block_has_same_lane_marker(
 }
 
 fn metadata_key(key: &str) -> String {
-    key.trim_start_matches(['-', '*'])
-        .trim()
-        .to_ascii_lowercase()
+    key.trim_matches([' ', '-', '*']).to_ascii_lowercase()
 }
 
 fn is_affirmative_capture_line(line: &str) -> bool {
