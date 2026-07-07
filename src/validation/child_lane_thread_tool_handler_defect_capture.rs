@@ -59,12 +59,22 @@ fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
         .rev()
         .find(|candidate| is_defect_capture_line(lines[*candidate]))
         .map_or(0, |candidate| candidate + 1);
-    let end = lines[index + 1..]
-        .iter()
-        .position(|line| is_defect_capture_line(line))
-        .map_or(lines.len(), |offset| index + 1 + offset);
-    let mut scoped = lines[start..end].to_vec();
+    let mut scoped = lines[start..=index].to_vec();
     scoped[index - start] = current_defect_clause_scope(lines[index]);
+    scoped.extend(
+        lines[index + 1..]
+            .iter()
+            .take_while(|line| {
+                is_unlisted_handoff_metadata_item(line) || is_handoff_list_metadata_item(line)
+            })
+            .map(|line| {
+                if is_handoff_list_metadata_item(line) {
+                    strip_list_prefix(line)
+                } else {
+                    line
+                }
+            }),
+    );
     scoped.join("\n")
 }
 
@@ -122,6 +132,7 @@ fn is_handoff_list_metadata_item(line: &str) -> bool {
 
 fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
     let line = line.to_ascii_lowercase();
+    let line = strip_lane_label_prefix(&line);
     is_fallback_metadata_field(&line)
         || [
             "separate dogfood issue",
@@ -134,6 +145,21 @@ fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
         ]
         .into_iter()
         .any(|field| line.starts_with(field))
+}
+
+fn strip_lane_label_prefix(line: &str) -> &str {
+    let Some(rest) = line.trim_start().strip_prefix("lane ") else {
+        return line;
+    };
+    let label_end = rest
+        .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .unwrap_or(rest.len());
+    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    if label.is_empty() {
+        return line;
+    }
+    rest[label_end..]
+        .trim_start_matches(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
 }
 
 fn current_defect_clause_scope(line: &str) -> &str {
