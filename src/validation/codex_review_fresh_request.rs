@@ -37,6 +37,8 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
                 .is_some_and(|action| action.trim_start().starts_with("@codex review"))
             || clause
                 .trim_start()
+                .strip_prefix("the ")
+                .unwrap_or_else(|| clause.trim_start())
                 .strip_prefix("next action is to ")
                 .is_some_and(|action| action.trim_start().starts_with("@codex review"))
             || clause.trim_start().starts_with("review request:"))
@@ -214,4 +216,16 @@ fn is_post_colon_request_action(action: &str) -> bool {
         || action.starts_with("send ")
         || action.starts_with("@codex review"))
         && is_review_request_clause(action)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_review_request_clause;
+
+    #[test]
+    fn recognizes_the_next_action_codex_review_request() {
+        assert!(is_review_request_clause(
+            "the next action is to @codex review now"
+        ));
+    }
 }
