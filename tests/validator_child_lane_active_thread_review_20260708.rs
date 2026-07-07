@@ -40,6 +40,54 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_unrelated_earlier_disposition_word_before_replacement()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Preflight note: prior child tooling was unusable; Existing issue/PR owner check: existing owner thread thread-old found for issue #269; Thread creation: created replacement child thread thread-new for issue #269; Old owner disposition: existing owner thread thread-old was stopped as unusable for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not anchor a later old-owner disposition to an unrelated earlier disposition word"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should name missing pre-operation old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_not_able_to_be_stopped_disposition() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269.
+Old owner disposition: existing owner thread thread-old was not able to be stopped for issue #269.
+Thread creation: created replacement child thread thread-new for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject negated not-able-to-be-stopped old-owner disposition"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should name missing accepted old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_same_line_disposition_before_replacement_operation()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

@@ -85,17 +85,39 @@ fn has_matching_old_owner_disposition_before(
     operation_position: (usize, usize),
 ) -> bool {
     evidence.lines().enumerate().any(|(line_number, line)| {
-        let normalized_line = line.to_ascii_lowercase();
-        let Some(disposition_offset) = accepted_disposition_claim_offset(line) else {
+        let Some(disposition_offset) = matching_old_owner_disposition_offset(line, existing_owner)
+        else {
             return false;
         };
         let position = (line_number, disposition_offset);
         position < operation_position
             && previous_operation_position.is_none_or(|previous| position > previous)
-            && (normalized_line.contains("old owner")
-                || normalized_line.contains("existing owner thread"))
-            && disposition_matches_owner(line, existing_owner)
     })
+}
+
+fn matching_old_owner_disposition_offset(
+    line: &str,
+    existing_owner: Option<&ThreadOwner>,
+) -> Option<usize> {
+    disposition_segments(line).find_map(|segment| {
+        let normalized_segment = segment.to_ascii_lowercase();
+        if !(normalized_segment.contains("old owner")
+            || normalized_segment.contains("existing owner thread"))
+            || !disposition_matches_owner(segment, existing_owner)
+        {
+            return None;
+        }
+        accepted_disposition_claim_offset(segment)
+            .map(|offset| segment_offset(line, segment) + offset)
+    })
+}
+
+fn disposition_segments(line: &str) -> impl Iterator<Item = &str> {
+    line.split(';').flat_map(|segment| segment.split(". "))
+}
+
+fn segment_offset(line: &str, segment: &str) -> usize {
+    segment.as_ptr() as usize - line.as_ptr() as usize
 }
 
 fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -> bool {
@@ -122,14 +144,19 @@ fn accepted_disposition_claim_offset(line: &str) -> Option<usize> {
         .enumerate()
         .find_map(|(index, (offset, word))| {
             (matches!(word.as_str(), "stopped" | "unusable" | "superseded")
-                && !words
-                    .iter()
-                    .take(index)
-                    .rev()
-                    .take(3)
-                    .any(|(_, word)| matches!(word.as_str(), "not" | "never" | "wasnt" | "wasn")))
+                && !disposition_claim_is_negated(&words, index))
             .then_some(*offset)
         })
+}
+
+fn disposition_claim_is_negated(words: &[(usize, String)], index: usize) -> bool {
+    words
+        .iter()
+        .take(index)
+        .rev()
+        .take_while(|(_, word)| word != "but")
+        .take(5)
+        .any(|(_, word)| matches!(word.as_str(), "not" | "never" | "wasnt" | "wasn"))
 }
 
 fn line_words_with_offsets(line: &str) -> Vec<(usize, String)> {
