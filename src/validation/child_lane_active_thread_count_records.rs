@@ -7,21 +7,37 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
     let mut records = Vec::new();
     let mut freed_capacity = false;
     for (line_number, line) in evidence.lines().enumerate() {
-        if let Some(count) = active_child_thread_count(line) {
-            records.push(ActiveCount {
-                count,
-                kind: count_kind(line),
-                line_number,
-                freed_capacity,
-                owner: ThreadOwner::from_line(line),
-                thread_ids: thread_ids(line),
-            });
+        let count_records = active_count_records_for_line(line, line_number, freed_capacity);
+        if count_records.is_empty() {
+            if child_thread_freed_capacity(line) {
+                freed_capacity = true;
+            }
+        } else {
+            records.extend(count_records);
             freed_capacity = false;
-        } else if child_thread_freed_capacity(line) {
-            freed_capacity = true;
         }
     }
     records
+}
+
+fn active_count_records_for_line(
+    line: &str,
+    line_number: usize,
+    freed_capacity: bool,
+) -> Vec<ActiveCount> {
+    line.split(';')
+        .filter_map(|segment| {
+            let count = active_child_thread_count(segment)?;
+            Some(ActiveCount {
+                count,
+                kind: count_kind(segment),
+                line_number,
+                freed_capacity,
+                owner: ThreadOwner::from_line(segment),
+                thread_ids: thread_ids(segment),
+            })
+        })
+        .collect()
 }
 
 pub(super) fn active_child_thread_count_errors(active_counts: &[ActiveCount]) -> Vec<String> {
