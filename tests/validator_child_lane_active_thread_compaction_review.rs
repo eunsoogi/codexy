@@ -76,3 +76,28 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_allows_trailing_same_line_removal_before_refreshed_count()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Existing issue/PR owner check: existing owner thread thread-269 found for issue #269.
+Thread resume: continued child thread thread-269 for issue #269.
+Active child Codex threads: 5; Child thread thread-old finished and was removed from the active ledger.
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #270.
+Thread creation: created child thread thread-270 for issue #270.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve trailing same-line removal before refreshed count\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

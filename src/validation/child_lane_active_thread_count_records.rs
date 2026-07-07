@@ -7,14 +7,15 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
     let mut records = Vec::new();
     let mut freed_capacity = false;
     for (line_number, line) in evidence.lines().enumerate() {
-        let count_records = active_count_records_for_line(line, line_number, freed_capacity);
+        let (count_records, trailing_freed_capacity) =
+            active_count_records_for_line(line, line_number, freed_capacity);
         if count_records.is_empty() {
             if child_thread_freed_capacity(line) {
                 freed_capacity = true;
             }
         } else {
             records.extend(count_records);
-            freed_capacity = false;
+            freed_capacity = trailing_freed_capacity;
         }
     }
     records
@@ -24,7 +25,7 @@ fn active_count_records_for_line(
     line: &str,
     line_number: usize,
     freed_capacity: bool,
-) -> Vec<ActiveCount> {
+) -> (Vec<ActiveCount>, bool) {
     let mut records = Vec::new();
     let mut freed_capacity = freed_capacity;
     for segment in line.split(';').flat_map(|segment| segment.split(". ")) {
@@ -39,7 +40,7 @@ fn active_count_records_for_line(
             freed_capacity = false;
         }
     }
-    records
+    (records, freed_capacity)
 }
 
 fn active_count_records_for_segment(
