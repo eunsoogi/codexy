@@ -47,7 +47,8 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
         let line_is_same_lane_header_metadata =
             is_same_lane_header_metadata_line(evidence, line_start, line_end, handler_start);
-        let line_is_handler_capture = is_handler_capture_line(line);
+        let line_is_handler_capture =
+            is_handler_capture_line(line) && !line_is_same_lane_header_metadata;
         let line_extends_capture =
             is_capture_related(line) && (!line_is_unrelated_metadata || line_is_handler_capture);
         if line.trim().is_empty()
@@ -160,13 +161,17 @@ fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<Strin
         }
         if let Some((key, _)) = line.split_once(':') {
             let key = metadata_key(key);
-            if key.starts_with("lane ") {
+            if is_lane_header_key(&key) {
                 return Some(key);
             }
         }
         cursor = previous_start;
     }
     None
+}
+
+fn is_lane_header_key(key: &str) -> bool {
+    key.starts_with("lane ") && !matches!(key, "lane owner")
 }
 
 fn next_nonempty_line(evidence: &str, mut cursor: usize) -> Option<&str> {
@@ -197,11 +202,11 @@ fn same_lane_header_block_has_same_lane_marker(evidence: &str, mut cursor: usize
         let start = cursor + usize::from(evidence.as_bytes()[cursor] == b'\n');
         let end = line_end(evidence, start);
         let line = &evidence[start..end];
-        if line.trim().is_empty() || is_capture_related(line) {
-            return false;
-        }
         if line.to_ascii_lowercase().contains("same lane") {
             return true;
+        }
+        if line.trim().is_empty() || is_capture_related(line) {
+            return false;
         }
         cursor = end;
     }
