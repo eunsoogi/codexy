@@ -230,7 +230,7 @@ fn has_explicit_no_route(clause: &str) -> bool {
 }
 
 fn has_negated_no_route_claim(clause: &str) -> bool {
-    const NEGATED_NO_ROUTE_CLAIMS: &str = "false that no fallback route|false that no alternate route|not true that no fallback route|not true that no alternate route|not the case that no fallback route|not the case that no alternate route";
+    const NEGATED_NO_ROUTE_CLAIMS: &str = "false that no fallback route|false that no fallback path|false that no alternate route|not true that no fallback route|not true that no fallback path|not true that no alternate route|not the case that no fallback route|not the case that no fallback path|not the case that no alternate route";
     NEGATED_NO_ROUTE_CLAIMS
         .split('|')
         .any(|marker| clause.contains(marker))
