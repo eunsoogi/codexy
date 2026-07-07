@@ -185,3 +185,52 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_conjunction_separated_active_waiting_counts_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3 and waiting child Codex threads: 3
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should split conjunction-separated active/waiting counts"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("keep at most five active child Codex threads"),
+        "stderr should name over-capacity active/waiting count, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_labeled_comma_child_thread_creations_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Existing issue/PR owner check: no existing owner thread found for issue #270.
+Thread creation: created child thread thread-269 for issue #269, Thread creation: created child thread thread-270 for issue #270.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should split labeled comma-separated child-thread operations"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity operation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

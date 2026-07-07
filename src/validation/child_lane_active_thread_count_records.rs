@@ -1,8 +1,6 @@
 use super::child_lane_active_thread_count::{active_child_thread_count, key_words};
 use super::child_lane_active_thread_evidence::ThreadOwner;
-
 pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
-
 pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCount> {
     let mut records = Vec::new();
     let mut freed_capacity_owner = None;
@@ -20,7 +18,6 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
     }
     records
 }
-
 fn active_count_records_for_line(
     line: &str,
     line_number: usize,
@@ -55,7 +52,10 @@ fn active_count_records_for_segment(
 ) -> Vec<ActiveCount> {
     let mut records = Vec::new();
     let mut freed_capacity_owner = freed_capacity_owner;
-    for segment in split_count_comma_clauses(segment) {
+    for segment in split_count_clauses(segment, ", ")
+        .into_iter()
+        .flat_map(|segment| split_count_clauses(segment, " and "))
+    {
         let Some(count) = active_child_thread_count(segment) else {
             if child_thread_freed_capacity(segment) {
                 freed_capacity_owner = Some(ThreadOwner::from_line(segment));
@@ -79,14 +79,14 @@ fn active_count_records_for_segment(
 fn segment_offset(line: &str, segment: &str) -> usize {
     segment.as_ptr() as usize - line.as_ptr() as usize
 }
-fn split_count_comma_clauses(segment: &str) -> Vec<&str> {
+fn split_count_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str> {
     let lower = segment.to_ascii_lowercase();
     let mut clauses = Vec::new();
     let mut start = 0;
     let mut cursor = 0;
-    while let Some(relative) = lower[cursor..].find(", ") {
+    while let Some(relative) = lower[cursor..].find(separator) {
         let marker_start = cursor + relative;
-        let next_start = marker_start + ", ".len();
+        let next_start = marker_start + separator.len();
         if starts_count_clause(lower[next_start..].trim_start()) {
             clauses.push(&segment[start..marker_start]);
             start = next_start;

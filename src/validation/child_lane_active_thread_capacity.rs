@@ -49,6 +49,10 @@ fn split_operation_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str
     clauses
 }
 fn starts_operation_clause(clause: &str) -> bool {
+    let clause = clause
+        .split_once(':')
+        .filter(|(label, _)| label.contains("thread") || label.contains("operation"))
+        .map_or(clause, |(_, rest)| rest.trim_start());
     operation_markers()
         .chain(["create_thread", "fork_thread", "send_message_to_thread"])
         .any(|marker| clause.starts_with(marker))
