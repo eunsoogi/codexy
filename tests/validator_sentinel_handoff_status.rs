@@ -1,5 +1,4 @@
 use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
@@ -37,12 +36,11 @@ fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: BLOCK, Carver found same-scope issue. Pushed: yes.\n",
-        "PR ready: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous unobservable Sentinel run. Pushed: yes.\n",
         "PR readiness: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "PR readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "Merge readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
@@ -74,7 +72,9 @@ fn validator_rejects_invalid_sentinel_readiness_evidence() -> TestResult {
         "PR ready for parent handoff. Pushed: yes.\n",
         "PR ready for parent handoff. Packaged Codexy Sentinel Lagrange reviewed exact head and current diff. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel evidence: reviewed exact head, no blockers listed. Pushed: yes.\n",
-        "Current PR head: 32b03a210b3defb2d29dd352283ea2488e60d893. PR ready for parent handoff. Sentinel: PASS on old head abc1234. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS on old SHA abc1234, current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS after planned rerun on current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS to be run on current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -143,7 +143,7 @@ fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
 #[test]
 fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
     accept_open_pr_handoff(
-        "PR ready for parent handoff. Sentinel: PASS, Euclid reviewed exact head 32b03a210b3defb2d29dd352283ea2488e60d893 and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
+        "PR ready for parent handoff. Sentinel: PASS, Euclid reviewed exact head 32b03a210b3defb2d29dd352283ea2488e60d893 as planned. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "validator should accept explicit Sentinel PASS readiness evidence",
     )
 }
@@ -192,7 +192,7 @@ fn validator_accepts_approved_fallback_for_timed_out_sentinel_readiness() -> Tes
 fn validator_rejects_unapproved_sentinel_fallback_requirement_as_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer-approved fallback required before readiness; no maintainer response yet. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer approved fallback required before readiness; no maintainer response yet. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback required before readiness; no maintainer approval yet. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
