@@ -58,10 +58,11 @@ fn token_with_prefix(line: &str, prefix: &str) -> Option<String> {
     })
     .find(|token| {
         token
+            .to_ascii_lowercase()
             .strip_prefix(prefix)
             .is_some_and(|rest| !rest.is_empty())
     })
-    .map(str::to_owned)
+    .map(str::to_ascii_lowercase)
 }
 
 fn thread_id_argument(line: &str) -> Option<String> {
@@ -128,9 +129,8 @@ fn issue_hash_tokens(line: &str) -> Vec<String> {
 }
 
 fn number_after_marker(line: &str, marker: &str) -> Option<String> {
-    let mut tokens = line.split(|character: char| {
-        !(character.is_ascii_alphanumeric() || character == '-' || character == '#')
-    });
+    let mut tokens =
+        line.split(|character: char| !(character.is_ascii_alphanumeric() || character == '-'));
     while let Some(token) = tokens.next() {
         if token.eq_ignore_ascii_case(marker) {
             if let Some(number) = tokens
