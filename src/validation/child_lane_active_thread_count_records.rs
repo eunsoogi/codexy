@@ -53,28 +53,32 @@ fn active_count_records_for_segment(
     line_number: usize,
     freed_capacity_owner: Option<ThreadOwner>,
 ) -> Vec<ActiveCount> {
-    split_count_comma_clauses(segment)
-        .into_iter()
-        .filter_map(|segment| {
-            let count = active_child_thread_count(segment)?;
-            Some(ActiveCount {
-                count,
-                kind: count_kind(segment),
-                line_number,
-                segment_number: segment_offset(line, segment),
-                freed_capacity: freed_capacity_owner.is_some(),
-                freed_capacity_owner: freed_capacity_owner.clone(),
-                owner: ThreadOwner::from_line(segment),
-                thread_ids: thread_ids(segment),
-            })
-        })
-        .collect()
+    let mut records = Vec::new();
+    let mut freed_capacity_owner = freed_capacity_owner;
+    for segment in split_count_comma_clauses(segment) {
+        let Some(count) = active_child_thread_count(segment) else {
+            if child_thread_freed_capacity(segment) {
+                freed_capacity_owner = Some(ThreadOwner::from_line(segment));
+            }
+            continue;
+        };
+        records.push(ActiveCount {
+            count,
+            kind: count_kind(segment),
+            line_number,
+            segment_number: segment_offset(line, segment),
+            freed_capacity: freed_capacity_owner.is_some(),
+            freed_capacity_owner: freed_capacity_owner.clone(),
+            owner: ThreadOwner::from_line(segment),
+            thread_ids: thread_ids(segment),
+        });
+        freed_capacity_owner = None;
+    }
+    records
 }
-
 fn segment_offset(line: &str, segment: &str) -> usize {
     segment.as_ptr() as usize - line.as_ptr() as usize
 }
-
 fn split_count_comma_clauses(segment: &str) -> Vec<&str> {
     let lower = segment.to_ascii_lowercase();
     let mut clauses = Vec::new();
@@ -92,7 +96,6 @@ fn split_count_comma_clauses(segment: &str) -> Vec<&str> {
     clauses.push(&segment[start..]);
     clauses
 }
-
 fn starts_count_clause(clause: &str) -> bool {
     let words = key_words(clause);
     words.iter().any(|word| word == "child")
@@ -101,7 +104,6 @@ fn starts_count_clause(clause: &str) -> bool {
             .any(|word| matches!(word.as_str(), "thread" | "threads"))
         && (words.iter().any(|word| word == "active") || words.iter().any(|word| word == "waiting"))
 }
-
 pub(super) fn active_child_thread_count_errors(active_counts: &[ActiveCount]) -> Vec<String> {
     let mut errors = active_counts
         .iter()
@@ -128,13 +130,11 @@ pub(super) fn active_child_thread_count_errors(active_counts: &[ActiveCount]) ->
     }
     errors
 }
-
 fn active_count_error(count: u64) -> String {
     format!(
         "orchestration evidence reports {count} active child Codex threads; keep at most five active child Codex threads before creating or resuming more"
     )
 }
-
 pub(super) struct ActiveCount {
     pub(super) count: u64,
     pub(super) owner: ThreadOwner,

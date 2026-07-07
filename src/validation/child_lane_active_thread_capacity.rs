@@ -123,7 +123,9 @@ pub(super) struct ThreadOperation {
 }
 fn is_child_thread_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
-    line.contains("child thread") && operation_markers().any(|marker| line.contains(marker))
+    line.contains("child thread")
+        && (operation_markers().any(|marker| line.contains(marker))
+            || has_passive_created_thread_id(&line))
         || ["create_thread", "fork_thread", "send_message_to_thread"]
             .into_iter()
             .any(|tool| is_thread_tool_invocation(&line, tool))
@@ -146,7 +148,16 @@ fn normalized_operation_line(line: &str) -> String {
         .replace("resumed a child thread", "resumed child thread")
 }
 fn operation_markers() -> impl Iterator<Item = &'static str> {
-    "child thread created:|created child thread|created a replacement child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
+    "child thread created:|created child thread|created a replacement child thread|created replacement child thread|continued child thread|forked child thread|forked a child thread|resumed child thread|started child thread|started a child thread".split('|')
+}
+fn has_passive_created_thread_id(line: &str) -> bool {
+    line.find("child thread").is_some_and(|index| {
+        let rest = &line[index + "child thread".len()..];
+        rest.split_whitespace()
+            .next()
+            .is_some_and(|token| token.starts_with("thread-"))
+            && (rest.contains(" created") || rest.contains(" was created"))
+    })
 }
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
     if has_negated_thread_tool_reference(line, tool) {

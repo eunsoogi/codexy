@@ -34,7 +34,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         .iter()
         .map(|lookup| match lookup {
             Some(OwnerLookup::Found(owner)) => Some(owner.clone()),
-            Some(OwnerLookup::NotFound) | None => None,
+            Some(OwnerLookup::NotFound(_)) | None => None,
         })
         .collect::<Vec<_>>();
     errors.extend(active_child_thread_count_errors(&active_counts));
