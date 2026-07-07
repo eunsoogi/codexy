@@ -40,7 +40,13 @@ fn validator_cli_rejects_generic_evidence_opt_outs_after_marker() -> TestResult 
     assert_reasoning_evidence_rejected(validate_sentinel_replacement(
         "reasoning control used or unavailable evidence, direct reviewer passes performed",
         "reasoning control used or unavailable evidence, but the reviewer need not supply evidence, direct reviewer passes performed",
-    )?)
+    )?)?;
+    assert_reasoning_evidence_rejected(validate_sentinel_edit(|sentinel| {
+        Ok(sentinel.replace(
+            "and any unresolved risk. MUST block",
+            "and any unresolved risk. The reviewer may omit evidence. MUST block",
+        ))
+    })?)
 }
 
 #[test]

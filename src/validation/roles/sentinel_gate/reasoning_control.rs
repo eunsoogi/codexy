@@ -1,6 +1,6 @@
 const EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
 const EVIDENCE_FOLLOWUP_PREFIXES: &str = "this |that |it |evidence|requirement";
-const EVIDENCE_FOLLOWUP_REFERENCES: &str = "this evidence|that evidence|the evidence|reasoning control evidence|this requirement|that requirement|the requirement|this|that|it";
+const EVIDENCE_FOLLOWUP_REFERENCES: &str = "this evidence|that evidence|the evidence|reasoning control evidence|evidence|this requirement|that requirement|the requirement|this|that|it";
 const PARAGRAPH_MARKERS: &[&str] = &[
     "reasoning control:",
     "packaged sentinel definition must run with the highest available reasoning setting",
