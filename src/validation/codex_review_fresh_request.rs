@@ -21,6 +21,7 @@ pub(super) fn claims(handoff: &str) -> bool {
 }
 
 pub(super) fn is_review_request_clause(clause: &str) -> bool {
+    let clause = clause.trim_start();
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
     let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
@@ -32,18 +33,16 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
                 && ["post", "comment", "send"]
                     .iter()
                     .any(|verb| contains_word(clause, verb))
-            || clause.trim().starts_with("@codex review")
+            || starts_at_codex_review(clause.trim())
             || clause
-                .trim_start()
                 .strip_prefix("next action:")
-                .is_some_and(|action| action.trim_start().starts_with("@codex review"))
+                .is_some_and(starts_at_codex_review)
             || clause
-                .trim_start()
                 .strip_prefix("the ")
-                .unwrap_or_else(|| clause.trim_start())
+                .unwrap_or(clause)
                 .strip_prefix("next action is to ")
-                .is_some_and(|action| action.trim_start().starts_with("@codex review"))
-            || clause.trim_start().starts_with("review request:"))
+                .is_some_and(starts_at_codex_review)
+            || clause.starts_with("review request:"))
         || clause.contains("request review from @codex")
         || clause.contains("request a review from @codex")
         || clause.contains("request @codex to review")
@@ -57,6 +56,12 @@ fn is_past_tense_codex_review_request_clause(clause: &str) -> bool {
             !after.starts_with("change")
         })
     })
+}
+
+fn starts_at_codex_review(text: &str) -> bool {
+    text.trim_start()
+        .trim_start_matches('`')
+        .starts_with("@codex review")
 }
 
 fn is_pull_request_noun_clause(clause: &str) -> bool {
@@ -97,22 +102,11 @@ fn is_review_request_status_clause(clause: &str) -> bool {
     {
         return true;
     }
+    const REQUEST_STATUSES: &str = "request is pending|request pending|request has eyes|request has eyes only|request already has eyes|request is waiting|request exists|request already exists|request: pending|request: has eyes|request: has eyes only";
     (clause.contains("@codex review request") || clause.contains("codex review request"))
-        && [
-            "request is pending",
-            "request pending",
-            "request has eyes",
-            "request has eyes only",
-            "request already has eyes",
-            "request is waiting",
-            "request exists",
-            "request already exists",
-            "request: pending",
-            "request: has eyes",
-            "request: has eyes only",
-        ]
-        .iter()
-        .any(|status| clause.contains(status))
+        && REQUEST_STATUSES
+            .split('|')
+            .any(|status| clause.contains(status))
 }
 
 pub(super) fn request_subclauses(clause: &str) -> impl Iterator<Item = &str> {
@@ -244,6 +238,6 @@ fn is_post_colon_request_action(action: &str) -> bool {
         || action.starts_with("post ")
         || action.starts_with("comment ")
         || action.starts_with("send ")
-        || action.starts_with("@codex review"))
+        || starts_at_codex_review(action))
         && is_review_request_clause(action)
 }

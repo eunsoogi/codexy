@@ -1,7 +1,6 @@
 use std::process::Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_thread() -> TestResult {
     for handoff in [
@@ -15,6 +14,7 @@ fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_threa
         "Next action: post @codex review on the current head.\n",
         "Next action: comment @codex review on the current head.\n",
         "Next action: @codex review.\n",
+        "Next action: `@codex review`.\n",
         "Next action is to @codex review now.\n",
         "Review request: @codex review current head.\n",
         "Next action: send @codex review on the current head.\n",
