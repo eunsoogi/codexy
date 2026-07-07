@@ -115,7 +115,7 @@ pub(super) fn active_child_thread_count_errors(active_counts: &[ActiveCount]) ->
             latest_active = None;
             latest_waiting = None;
         }
-        match record.kind {
+        match &record.kind {
             CountKind::Active => latest_active = Some(record.count),
             CountKind::Waiting => latest_waiting = Some(record.count),
         }
@@ -181,17 +181,18 @@ impl ActiveCount {
     }
 }
 
-#[derive(Clone, Copy)]
 enum CountKind {
     Active,
     Waiting,
 }
 
 fn count_kind(line: &str) -> CountKind {
-    line.split_once(':')
-        .map(|(key, _)| key_words(key))
-        .filter(|words| words.iter().any(|word| word == "waiting"))
-        .map_or(CountKind::Active, |_| CountKind::Waiting)
+    let words = key_words(line.split_once(':').map_or("", |(key, _)| key));
+    if words.iter().any(|word| word == "waiting") && !words.iter().any(|word| word == "active") {
+        CountKind::Waiting
+    } else {
+        CountKind::Active
+    }
 }
 
 fn thread_ids(line: &str) -> Vec<String> {
