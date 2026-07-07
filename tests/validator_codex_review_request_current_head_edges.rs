@@ -43,6 +43,19 @@ fn validator_rejects_fresh_request_when_current_head_request_has_only_stale_outp
 }
 
 #[test]
+fn validator_allows_fresh_request_after_stale_acknowledged_request_without_output() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Request exactly one fresh Codex review now.\n",
+        pr_state_with_stale_acknowledged_request_without_output(),
+    )?;
+    assert_success(
+        &output,
+        "validator should allow fresh review when the only acknowledged request belongs to an old head",
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_treats_requesting_wording_as_fresh_codex_review_request() -> TestResult {
     for handoff in [
         "Requesting fresh Codex review now.\n",
@@ -89,6 +102,15 @@ fn assert_failure_contains(output: &std::process::Output, needle: &str) {
     assert!(
         String::from_utf8_lossy(&output.stderr).contains(needle),
         "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn assert_success(output: &std::process::Output, message: &str) {
+    assert!(
+        output.status.success(),
+        "{message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
 }
@@ -147,4 +169,24 @@ fn pr_state_with_current_head_request_and_later_stale_output() -> String {
     pr_state["comments"][0]["commit"] =
         serde_json::json!({"oid": "32b03a210b3defb2d29dd352283ea2488e60d893"});
     pr_state.to_string()
+}
+
+fn pr_state_with_stale_acknowledged_request_without_output() -> String {
+    serde_json::json!({
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body": "@codex review",
+            "author": {"login": "eunsoogi"},
+            "createdAt": "2026-06-22T12:45:06Z",
+            "commit": {"oid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+            "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
+        }],
+        "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
+    })
+    .to_string()
 }

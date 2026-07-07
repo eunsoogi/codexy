@@ -24,6 +24,7 @@ pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Valu
         .iter()
         .enumerate()
         .filter(|(_, event)| matches!(event.kind, ReviewEventKind::CodexRequest))
+        .filter(|(_, event)| !event.has_head_evidence || event.matches_head)
         .max_by(|(_, left), (_, right)| compare_event_order(left, right))
         .map(|(index, _)| index)
     else {
