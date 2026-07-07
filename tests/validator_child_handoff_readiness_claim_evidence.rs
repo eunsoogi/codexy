@@ -45,6 +45,8 @@ fn validator_rejects_synced_pushed_handoff_with_pr_blockers() -> TestResult {
 fn validator_treats_no_blockers_as_readiness_claim() -> TestResult {
     for handoff in [
         "Child handoff: PR ready: no blockers.\n",
+        "Child handoff: parent can open PR next.\n",
+        "PR ready\n- no blockers\n",
         "Child handoff: parent-handoff-ready: yes.\n",
         "parent-handoff-ready: yes.\n",
         "Parent handoff ready: yes.\n",

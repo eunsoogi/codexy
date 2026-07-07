@@ -66,6 +66,7 @@ pub(super) fn pr_ready(text: &str) -> bool {
             "merge-readiness",
             "merge-ready",
             "merge ready",
+            "parent can open pr next",
             "parent can open pr next: yes",
             "parent can merge",
         ],
@@ -109,6 +110,7 @@ const STANDALONE_READY_PHRASES: &[&str] = &[
     "merge-readiness",
     "merge-ready",
     "merge ready",
+    "parent can open pr next",
     "parent can merge",
 ];
 
@@ -120,6 +122,9 @@ fn has_next_non_claim_bullet(lines: &[&str]) -> bool {
         .and_then(|line| line.strip_prefix(['-', '*']))
         .map(str::trim)
         .is_some_and(|line| {
+            if line.starts_with("no blockers") {
+                return false;
+            }
             [
                 "not ", "not-", "not_", "n/a", "na", "none", "no", "missing", "absent",
             ]
