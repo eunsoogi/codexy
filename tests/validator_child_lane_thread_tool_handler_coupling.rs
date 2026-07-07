@@ -37,3 +37,102 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_handler_list_item_borrowing_unrelated_handoff_fields()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread
+- unrelated plugin issue recorded no fallback route was available; separate dogfood issue: #205
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject handler list items that borrow handoff fields from unrelated later bullets\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_handler_list_item_with_following_handoff_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread: `No handler registered for tool: read_thread`
+Fallback route: no fallback route was available
+Tracking issue: #205
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept handler list items with following unbulleted handoff metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_shared_handoff_metadata_after_multiple_handler_items()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread: `No handler registered for tool: read_thread`
+- recorded runtime missing-handler evidence for codex_app.send_message_to_thread: `No handler registered for tool: send_message_to_thread`
+Fallback route: no fallback route was available
+Tracking issue: #205
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should apply shared handoff metadata after a handler list to every handler item\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_hyphenated_fallback_route_fields() -> Result<(), Box<dyn std::error::Error>> {
+    for field in "Fallback-route|Fallback-path".split('|') {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+{field}: parent posted the handoff in the child thread.
+Tracking issue: #205
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should accept a hyphenated {field} field\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}

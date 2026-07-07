@@ -137,6 +137,15 @@ Stop/blocker:
 - Missing classification evidence blocks branch/worktree setup, delegation,
   validation/QA, implementation, PR handling, review-response routing, merge
   work, release work, and PR-readiness claims.
+- Child lanes MUST emit the complete `Task classification:` block before
+  creating or switching to an implementation branch or worktree. Handoff
+  evidence MUST NOT report child-created branch/worktree setup before that
+  block; `scripts/validate-plugin-config --check-child-lane-ownership
+  --evidence-file <path>` catches this workflow defect. Issue #231 tracks the
+  exact dogfood evidence from issue #228: child branch
+  `codexy/228-reject-generic-reviewer-gate-sentinel-proof` was created
+  immediately after thread rename and before formal `$task-classification`
+  evidence.
 - Classification MUST happen before acting on or using the owner decision to
   edit files, set up branches or worktrees, delegate lanes, or route review
   feedback.
@@ -160,6 +169,8 @@ Stop/blocker:
 - Starting implementation first and classifying afterward.
 - Creating a branch or worktree before deciding whether the lane is
   parent-owned or child-owned.
+- Creating or switching to a child implementation branch or worktree after a
+  thread rename but before the complete `Task classification:` block.
 - Treating review response, merge, validation, release, and implementation as
   one generic task.
 - Letting a parent patch a child-owned implementation or review-response lane.

@@ -1,5 +1,5 @@
 pub(super) fn has_false_no_route_answer(clause: &str) -> bool {
-    const NO_ROUTE_MARKERS: &str = "no fallback route was available|no fallback route available|no alternate route was available|no alternate route available";
+    const NO_ROUTE_MARKERS: &str = "no fallback route was available|no fallback route available|no fallback path was available|no fallback path available|no alternate route was available|no alternate route available";
     NO_ROUTE_MARKERS
         .split('|')
         .filter_map(|marker| {

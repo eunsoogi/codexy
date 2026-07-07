@@ -45,6 +45,8 @@ fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::er
         "Fallback route: parent sent the handoff to the child thread was never used",
         "Fallback route: no - parent sent the handoff to the child thread",
         "Fallback route: no fallback route: parent sent the handoff to the child thread",
+        "Fallback route: no fallback path was available? no",
+        "Fallback route: no fallback path was available: false",
         "Fallback route: parent sent the handoff to the child thread, but it was not used",
         "Fallback route: parent sent the handoff to the child thread and it was not used",
         "Fallback route: parent sent the handoff to the child thread; however it was not used",
@@ -62,6 +64,7 @@ fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::er
         "Fallback route: parent posted the handoff in the child thread; delivery-failure",
         "Fallback route: parent delivered the message to the child owner, but the handoff failed to send",
         "Fallback route: parent sent the handoff to the child thread. the send failed",
+        "Fallback route: parent posted the handoff in the child thread, then failed",
         "Fallback route: parent sent the handoff to the child thread, and the route was not used",
         "Fallback route: parent sent the handoff to the child thread and then the route was not used",
         "Fallback route: parent sent the handoff to the child thread and then it was not used",
@@ -76,6 +79,25 @@ fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::er
         assert!(
             !output.status.success(),
             "validator should reject whole-event route negation: {route}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_accepts_orchestrator_fallback_route_events() -> Result<(), Box<dyn std::error::Error>>
+{
+    for route in [
+        "Fallback route: orchestrator posted the handoff in the child thread",
+        "Fallback route: orchestrator sent the message to the child owner",
+        "Fallback route: orchestrator delivered the feedback to the reviewer",
+    ] {
+        let output = run_ownership_validator(&evidence(route))?;
+        assert!(
+            output.status.success(),
+            "validator should accept orchestrator-authored fallback route evidence: {route}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
         );
     }
     Ok(())

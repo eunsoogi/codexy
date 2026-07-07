@@ -1,4 +1,5 @@
-mod process;
+pub(super) mod process;
+mod process_finish;
 
 use std::path::Path;
 use std::time::Duration;
@@ -23,19 +24,36 @@ const REQUIRED_SESSION_START_CONTEXT: &[&str] = &[
     "compacted or resumed context hygiene",
     "--check-completion-handoff",
     "repositoryLabels",
-    "codexy-readiness-guard.sh",
+    "codexy-issue-title-check.sh",
+    "codexy-pr-title-check.sh",
+    "codexy-pr-label-check.sh",
+    "codexy-merge-message-check.sh",
+    "--check-issue-title",
     "--check-pr-title",
     "--check-pr-labels",
     "--check-merge-message",
     "--expected-pr",
+    "target base",
+    "hook entrypoints",
+    "available fallback",
+    "separate dogfood defect",
 ];
 
 const REQUIRED_READINESS_CONTEXT: &[&str] = &[
     "PR label readiness enforcement (#210)",
+    "codexy-issue-title-check.sh",
+    "--check-issue-title",
     "--check-pr-labels",
+    "codexy-pr-title-check.sh",
+    "codexy-pr-label-check.sh",
+    "codexy-merge-message-check.sh",
     "--check-completion-handoff",
     "repositoryLabels",
     "PR title and merge subject enforcement (#206)",
+    "target base",
+    "hook entrypoints",
+    "available fallback",
+    "separate dogfood defect",
 ];
 
 pub(super) fn required_session_start_context() -> &'static [&'static str] {
@@ -59,6 +77,10 @@ pub(super) fn requirement_message(fragment: &str) -> &str {
         }
         "--check-pr-labels" => "must require PR label readiness guard",
         "PR label readiness enforcement (#210)" => "must require PR label readiness enforcement",
+        "target base" | "hook entrypoints" => "must require target-base hook entrypoint validation",
+        "available fallback" | "separate dogfood defect" => {
+            "must require hook fallback or mismatch defect routing"
+        }
         _ => "must include required context",
     }
 }
@@ -71,6 +93,7 @@ pub(super) fn emitted_session_start_context(
     let output = process::output_with_timeout(
         script_path,
         required_event,
+        &[required_event],
         Duration::from_secs(timeout_secs),
     )?;
     if !output.status.success() {

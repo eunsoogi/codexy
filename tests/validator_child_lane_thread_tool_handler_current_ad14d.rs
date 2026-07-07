@@ -46,6 +46,13 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; Dogfooding defect: unrelated plugin issue recorded no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+- unrelated plugin issue recorded no fallback route was available; separate dogfood issue: #205
+Maintainer reassignment: none
+"#,
     ] {
         let output = run_ownership_validator(evidence)?;
 
@@ -68,6 +75,9 @@ fn validator_rejects_parent_route_with_later_child_thread_check()
         "Fallback route: parent sent the handoff to the parent thread before checking in the child thread",
         "Fallback route: parent sent the handoff to the parent thread after checking in the child thread",
         "Fallback route: parent sent the handoff to the parent thread and subsequently checked in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread and later posted status in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread, later posted status in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread; later posted status in the child thread",
     ] {
         let output = run_ownership_validator(&evidence(route))?;
 

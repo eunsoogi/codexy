@@ -48,37 +48,19 @@ fn has_positive_destination(after_object: &str) -> bool {
 }
 
 fn direct_route_segment(after_object: &str) -> &str {
-    [
-        " and then ",
-        ", then ",
-        "; then ",
-        " then ",
-        " and later checked ",
-        ", later checked ",
-        "; later checked ",
-        " later checked ",
-        " before checking ",
-        ", before checking ",
-        "; before checking ",
-        " after checking ",
-        ", after checking ",
-        "; after checking ",
-        " and subsequently checked ",
-        ", subsequently checked ",
-        "; subsequently checked ",
-        " subsequently checked ",
-    ]
-    .into_iter()
-    .filter_map(|delimiter| {
-        after_object.find(delimiter).and_then(|index| {
-            let before = &after_object[..index];
-            let after = &after_object[index + delimiter.len()..];
-            (!has_invalid_route_followup(after)).then_some((index, before))
+    const DIRECT_ROUTE_DELIMITERS: &str = " and then |, then |; then | then | and later checked |, later checked |; later checked | later checked | and later sent |, later sent |; later sent | later sent | and later posted |, later posted |; later posted | later posted | and later delivered |, later delivered |; later delivered | later delivered | and later routed |, later routed |; later routed | later routed | before checking |, before checking |; before checking | after checking |, after checking |; after checking | and subsequently checked |, subsequently checked |; subsequently checked | subsequently checked ";
+    DIRECT_ROUTE_DELIMITERS
+        .split('|')
+        .filter_map(|delimiter| {
+            after_object.find(delimiter).and_then(|index| {
+                let before = &after_object[..index];
+                let after = &after_object[index + delimiter.len()..];
+                (!has_invalid_route_followup(after)).then_some((index, before))
+            })
         })
-    })
-    .min_by_key(|(index, _)| *index)
-    .map(|(_, before)| before)
-    .unwrap_or(after_object)
+        .min_by_key(|(index, _)| *index)
+        .map(|(_, before)| before)
+        .unwrap_or(after_object)
 }
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
@@ -114,6 +96,7 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         || local.ends_with(" false that")
         || local.starts_with("false positive")
         || local.starts_with("false-positive")
+        || has_route_not_used_clause(&local)
 }
 
 fn has_qualified_actor_negation(local: &str) -> bool {
@@ -184,6 +167,7 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
         .flat_map(|clause| clause.split(" although "))
         .flat_map(|clause| clause.split(" yet "))
         .flat_map(|clause| clause.split(" however "))
+        .flat_map(|clause| clause.strip_prefix("then ").into_iter().chain([clause]))
         .flat_map(|clause| clause.strip_prefix("and ").into_iter().chain([clause]))
         .flat_map(|clause| clause.strip_prefix("but ").into_iter().chain([clause]))
         .flat_map(|clause| clause.strip_prefix("although ").into_iter().chain([clause]))
@@ -201,6 +185,9 @@ fn has_failed_route_delivery_clause(clause: &str) -> bool {
     } else {
         clause
     };
+    if matches!(clause, "failed" | "failure" | "failures") {
+        return true;
+    }
     ["failed", "failure", "failures"]
         .into_iter()
         .any(|failure| contains_phrase(clause, failure))
@@ -227,9 +214,14 @@ fn has_failed_route_delivery_clause(clause: &str) -> bool {
 }
 
 fn has_failed_route_pronoun_clause(clause: &str) -> bool {
-    "it failed|that failed|this failed|the fallback failed"
-        .split('|')
-        .any(|marker| contains_phrase(clause, marker))
+    [
+        "it failed",
+        "that failed",
+        "this failed",
+        "the fallback failed",
+    ]
+    .into_iter()
+    .any(|marker| contains_phrase(clause, marker))
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {
@@ -240,9 +232,13 @@ fn has_route_not_used_clause(clause: &str) -> bool {
         "was never used",
         "never used",
         "wasn't used",
+        "isn't used",
+        "did not use",
+        "didn't use",
+        "unused",
     ]
     .into_iter()
-    .any(|marker| clause.contains(marker))
+    .any(|marker| contains_phrase(clause, marker))
 }
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {

@@ -49,7 +49,9 @@ fn starts_with_absent_issue_value(value: &str) -> bool {
         .split('|')
         .chain(PENDING_PREFIXES.split('|'))
         .any(|placeholder| {
-            if placeholder == "missing" && value.starts_with("missing-handler") {
+            if placeholder == "missing"
+                && (value.starts_with("missing-handler") || value.starts_with("missing handler"))
+            {
                 return false;
             }
             value == placeholder

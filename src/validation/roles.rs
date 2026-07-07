@@ -9,6 +9,8 @@ use crate::validation::{
     toml_array_strings,
 };
 
+mod sentinel_gate;
+
 const REQUIRED_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
 const MIN_DEVELOPER_INSTRUCTION_WORDS: usize = 20;
 const MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS: usize = 120;
@@ -211,6 +213,9 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
                 display_relative(path)
             ));
         }
+    }
+    if name == "codexy-sentinel" {
+        sentinel_gate::check(path, &agent, errors);
     }
 }
 

@@ -1,24 +1,28 @@
 use std::io::{ErrorKind, Read};
 use std::os::fd::AsRawFd;
-use std::os::unix::process::{CommandExt, ExitStatusExt};
+use std::os::unix::process::CommandExt;
 use std::path::Path;
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context as _, Result};
 
 use crate::paths::display_relative;
 
-const MAX_HOOK_OUTPUT_BYTES: usize = 1024 * 1024;
+use super::process_finish::{
+    finish_after_output_exceeded, finish_after_timeout, terminate_process_group,
+};
 
-pub(super) fn output_with_timeout(
+pub(super) const MAX_HOOK_OUTPUT_BYTES: usize = 1024 * 1024;
+pub(in crate::validation::hooks) fn output_with_timeout(
     script_path: &Path,
-    required_event: &str,
+    label: &str,
+    args: &[&str],
     timeout: Duration,
 ) -> Result<Output> {
     let mut command = Command::new(script_path);
     command
-        .arg(required_event)
+        .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);
@@ -49,7 +53,7 @@ pub(super) fn output_with_timeout(
                     stdout_data,
                     stderr_data,
                     script_path,
-                    required_event,
+                    label,
                     timeout,
                 );
             }
@@ -59,7 +63,7 @@ pub(super) fn output_with_timeout(
                     child_id,
                     stdout_data,
                     script_path,
-                    required_event,
+                    label,
                 );
             }
         }
@@ -73,7 +77,7 @@ pub(super) fn output_with_timeout(
                     stdout_data,
                     stderr_data,
                     script_path,
-                    required_event,
+                    label,
                     timeout,
                 );
             }
@@ -83,7 +87,7 @@ pub(super) fn output_with_timeout(
                     child_id,
                     stdout_data,
                     script_path,
-                    required_event,
+                    label,
                 );
             }
         }
@@ -94,9 +98,35 @@ pub(super) fn output_with_timeout(
                 terminated_group = true;
             }
         }
-        if status.is_some() && stdout.is_none() && stderr.is_none() {
+        if let Some(status) = status {
+            let drain_deadline = Instant::now() + Duration::from_millis(20);
+            let stdout_outcome = drain_until_closed(&mut stdout, &mut stdout_data, drain_deadline)?;
+            let stderr_outcome = drain_until_closed(&mut stderr, &mut stderr_data, drain_deadline)?;
+            terminate_process_group(child_id, libc::SIGKILL);
+            let kill_drain_deadline = Instant::now() + Duration::from_millis(100);
+            let kill_stdout_outcome =
+                drain_until_closed(&mut stdout, &mut stdout_data, kill_drain_deadline)?;
+            let kill_stderr_outcome =
+                drain_until_closed(&mut stderr, &mut stderr_data, kill_drain_deadline)?;
+            if [
+                stdout_outcome,
+                stderr_outcome,
+                kill_stdout_outcome,
+                kill_stderr_outcome,
+            ]
+            .into_iter()
+            .any(|outcome| matches!(outcome, ReadOutcome::OutputExceeded))
+            {
+                return finish_after_output_exceeded(
+                    &mut child,
+                    child_id,
+                    stdout_data,
+                    script_path,
+                    label,
+                );
+            }
             return Ok(Output {
-                status: status.unwrap_or_else(timeout_status),
+                status,
                 stdout: stdout_data,
                 stderr: stderr_data,
             });
@@ -109,7 +139,7 @@ pub(super) fn output_with_timeout(
                 stdout_data,
                 stderr_data,
                 script_path,
-                required_event,
+                label,
                 timeout,
             );
         }
@@ -117,63 +147,27 @@ pub(super) fn output_with_timeout(
     }
 }
 
+fn drain_until_closed<T: Read>(
+    stream: &mut Option<T>,
+    buffer: &mut Vec<u8>,
+    deadline: Instant,
+) -> Result<ReadOutcome> {
+    loop {
+        match read_available(stream, buffer, deadline)? {
+            ReadOutcome::Open if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            outcome => return Ok(outcome),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 enum ReadOutcome {
     Open,
     Closed,
     TimedOut,
     OutputExceeded,
-}
-
-fn finish_after_timeout(
-    child: &mut std::process::Child,
-    child_id: u32,
-    status: Option<ExitStatus>,
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
-    script_path: &Path,
-    required_event: &str,
-    timeout: Duration,
-) -> Result<Output> {
-    terminate_process_group(child_id, libc::SIGKILL);
-    if let Some(status) = status {
-        return Ok(Output {
-            status,
-            stdout,
-            stderr,
-        });
-    }
-    let _ = child.kill();
-    let _ = child.wait();
-    Ok(Output {
-        status: timeout_status(),
-        stdout,
-        stderr: timeout_stderr(script_path, required_event, timeout),
-    })
-}
-
-fn finish_after_output_exceeded(
-    child: &mut std::process::Child,
-    child_id: u32,
-    stdout: Vec<u8>,
-    script_path: &Path,
-    required_event: &str,
-) -> Result<Output> {
-    terminate_process_group(child_id, libc::SIGKILL);
-    let _ = child.kill();
-    let _ = child.wait();
-    Ok(Output {
-        status: timeout_status(),
-        stdout,
-        stderr: output_exceeded_stderr(script_path, required_event),
-    })
-}
-
-fn terminate_process_group(child_id: u32, signal: i32) {
-    let process_group = -(child_id as i32);
-    // SAFETY: kill(2) uses a process-group id from a spawned child; errors mean it already exited.
-    unsafe {
-        let _ = libc::kill(process_group, signal);
-    }
 }
 
 fn read_available<T: Read>(
@@ -225,26 +219,4 @@ where
             }
         }
     }
-}
-
-fn timeout_stderr(script_path: &Path, required_event: &str, timeout: Duration) -> Vec<u8> {
-    format!(
-        "{} {required_event} hook command timed out after {} second(s)",
-        display_relative(script_path),
-        timeout.as_secs()
-    )
-    .into_bytes()
-}
-
-fn output_exceeded_stderr(script_path: &Path, required_event: &str) -> Vec<u8> {
-    format!(
-        "{} {required_event} hook output exceeded {} byte limit",
-        display_relative(script_path),
-        MAX_HOOK_OUTPUT_BYTES
-    )
-    .into_bytes()
-}
-
-fn timeout_status() -> ExitStatus {
-    ExitStatus::from_raw(124 << 8)
 }

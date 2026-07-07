@@ -111,7 +111,7 @@ pr_state_file="${1:-}"
 pr_state_json=$(cat "$pr_state_file") || fail "could not read --pr-state-file"
 json_is_structurally_complete_object "$pr_state_json" ||
   fail "PR state malformed JSON evidence"
-pr_state_json=$(printf '%s' "$pr_state_json" | tr -d '\n\r')
+pr_state_json=$(printf '%s' "$pr_state_json" | LC_ALL=C tr -d '\n\r')
 pr_state_state=$(json_string_field_value "$pr_state_json" "state")
 [ -n "$pr_state_state" ] || fail "PR state missing state evidence"
 json_has_pr_identity "$pr_state_json" || fail "PR state missing repository identity evidence"

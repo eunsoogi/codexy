@@ -133,7 +133,7 @@ fn validator_allows_verification_completed_waiting_until_merge() -> TestResult {
 #[test]
 fn validator_preserves_eyes_only_codex_review_as_waiting() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Fresh @codex review requested for the current head and has eyes only. Waiting for review output; this lane is not blocked and not complete.\n",
+        "Fresh @codex review requested and waiting for review output. This lane is not blocked and not complete.\n",
         r#"{"number":174,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"REVIEW_REQUIRED"}"#,
     )?;
     assert_success(
