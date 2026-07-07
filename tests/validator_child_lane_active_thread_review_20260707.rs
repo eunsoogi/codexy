@@ -79,3 +79,73 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_plain_comma_mixed_owner_lookup_found_pr_owner()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3
+Existing issue/PR owner check: no existing owner thread found for issue #269, existing owner thread thread-300 found for PR #300.
+Thread creation: created child thread thread-269 for issue #269 / PR #300.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should treat comma-separated found PR owner as current owner evidence"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(
+            "replacement child Codex thread creation requires evidence that the old owner was stopped"
+        ),
+        "stderr should require old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_same_line_active_waiting_count_before_creation_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Active child Codex threads: 4, Waiting child Codex threads: 1; Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should include same-line waiting count before projecting creation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity child thread creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_same_line_owner_lookup_before_child_thread_creation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 3
+Existing issue/PR owner check: no existing owner thread found for issue #269; Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should honor same-line owner lookup before a child-thread operation\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

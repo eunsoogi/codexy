@@ -24,23 +24,33 @@ pub(super) fn matching_owner_lookup_before(
     evidence: &str,
     operation_owner: &ThreadOwner,
     operation_line_number: usize,
-    previous_operation_line: Option<usize>,
+    operation_segment_number: usize,
+    previous_operation_position: Option<(usize, usize)>,
 ) -> Option<OwnerLookup> {
     let mut latest = None;
     for (line_number, line) in evidence.lines().enumerate() {
-        if line_number < operation_line_number
-            && previous_operation_line.is_none_or(|previous| line_number > previous)
-            && !has_negated_owner_check_claim(line)
+        if line_number > operation_line_number || has_negated_owner_check_claim(line) {
+            continue;
+        }
+        if previous_operation_position.is_some_and(|previous| (line_number, usize::MAX) <= previous)
         {
-            if let Some(lookup) = owner_lookup_for_operation(line, operation_owner) {
-                if matches!(
-                    (&latest, &lookup),
-                    (Some(OwnerLookup::Found(_)), OwnerLookup::NotFound)
-                ) {
-                    continue;
-                }
-                latest = Some(lookup);
+            continue;
+        }
+        let lower_bound = previous_operation_position
+            .filter(|(previous_line, _)| *previous_line == line_number)
+            .map(|(_, previous_segment)| previous_segment);
+        let upper_bound =
+            (line_number == operation_line_number).then_some(operation_segment_number);
+        if let Some(lookup) =
+            owner_lookup_for_operation(line, operation_owner, lower_bound, upper_bound)
+        {
+            if matches!(
+                (&latest, &lookup),
+                (Some(OwnerLookup::Found(_)), OwnerLookup::NotFound)
+            ) {
+                continue;
             }
+            latest = Some(lookup);
         }
     }
     latest
@@ -159,27 +169,9 @@ fn normalized_owner_lookup_line(line: &str) -> String {
 
 fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
     let line = normalized_owner_lookup_line(line.as_ref());
-    line.contains("no existing owner thread found")
-        || line.contains("no existing issue owner thread found")
-        || line.contains("no existing pr owner thread found")
-        || line.contains("no existing issue/pr owner thread found")
-        || line.contains("no existing issue or pr owner thread found")
-        || line.contains("no existing owner thread was found")
-        || line.contains("no existing issue owner thread was found")
-        || line.contains("no existing pr owner thread was found")
-        || line.contains("no existing issue/pr owner thread was found")
-        || line.contains("no existing issue or pr owner thread was found")
-        || line.contains("found no existing owner thread")
-        || line.contains("found no existing issue owner thread")
-        || line.contains("found no existing pr owner thread")
-        || line.contains("found no existing issue/pr owner thread")
-        || line.contains("found no existing issue or pr owner thread")
-        || line.contains("existing owner thread not found")
-        || line.contains("existing issue owner thread not found")
-        || line.contains("existing pr owner thread not found")
-        || line.contains("existing issue/pr owner thread not found")
-        || line.contains("existing issue or pr owner thread not found")
-        || line.contains("owner thread not found")
+    "no existing owner thread found|no existing issue owner thread found|no existing pr owner thread found|no existing issue/pr owner thread found|no existing issue or pr owner thread found|no existing owner thread was found|no existing issue owner thread was found|no existing pr owner thread was found|no existing issue/pr owner thread was found|no existing issue or pr owner thread was found|found no existing owner thread|found no existing issue owner thread|found no existing pr owner thread|found no existing issue/pr owner thread|found no existing issue or pr owner thread|existing owner thread not found|existing issue owner thread not found|existing pr owner thread not found|existing issue/pr owner thread not found|existing issue or pr owner thread not found|owner thread not found"
+        .split('|')
+        .any(|marker| line.contains(marker))
         || (line.contains("none found")
             && (line.contains("owner check") || line.contains("owner thread")))
 }
@@ -191,13 +183,19 @@ fn owner_lookup(line: &str) -> Option<OwnerLookup> {
     line_contains_no_existing_owner_found(line).then_some(OwnerLookup::NotFound)
 }
 
-fn owner_lookup_for_operation(line: &str, operation_owner: &ThreadOwner) -> Option<OwnerLookup> {
+fn owner_lookup_for_operation(
+    line: &str,
+    operation_owner: &ThreadOwner,
+    lower_bound: Option<usize>,
+    upper_bound: Option<usize>,
+) -> Option<OwnerLookup> {
     let mut not_found = None;
-    for segment in owner_lookup_segments(line)
-        .into_iter()
-        .filter(|segment| lookup_matches_operation(segment, operation_owner))
-    {
-        match owner_lookup(&segment) {
+    for segment in owner_lookup_segments(line).into_iter().filter(|segment| {
+        lower_bound.is_none_or(|bound| segment.position > bound)
+            && upper_bound.is_none_or(|bound| segment.position < bound)
+            && lookup_matches_operation(segment.text, operation_owner)
+    }) {
+        match owner_lookup(segment.text) {
             Some(OwnerLookup::Found(owner)) => return Some(OwnerLookup::Found(owner)),
             Some(OwnerLookup::NotFound) => not_found = Some(OwnerLookup::NotFound),
             None => {}

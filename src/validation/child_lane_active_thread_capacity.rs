@@ -6,21 +6,22 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
         .lines()
         .enumerate()
         .flat_map(|(line_number, line)| {
-            operation_segments(line)
-                .enumerate()
-                .filter_map(move |(segment_number, line)| {
-                    (is_child_thread_operation_line(line) && !has_negated_operation_claim(line))
-                        .then(|| ThreadOperation {
-                            line_number,
-                            segment_number,
-                            reuses_existing_owner: is_reuse_operation_line(line),
-                            replaces_existing_owner: normalized_operation_line(line)
-                                .contains("replacement child thread"),
-                            owner: ThreadOwner::from_line(line),
-                        })
-                })
+            operation_segments(line).filter_map(move |segment| {
+                (is_child_thread_operation_line(segment) && !has_negated_operation_claim(segment))
+                    .then(|| ThreadOperation {
+                        line_number,
+                        segment_number: segment_offset(line, segment),
+                        reuses_existing_owner: is_reuse_operation_line(segment),
+                        replaces_existing_owner: normalized_operation_line(segment)
+                            .contains("replacement child thread"),
+                        owner: ThreadOwner::from_line(segment),
+                    })
+            })
         })
         .collect()
+}
+fn segment_offset(line: &str, segment: &str) -> usize {
+    segment.as_ptr() as usize - line.as_ptr() as usize
 }
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
@@ -113,7 +114,7 @@ pub(super) fn continues_existing_owner(
 
 pub(super) struct ThreadOperation {
     pub(super) line_number: usize,
-    segment_number: usize,
+    pub(super) segment_number: usize,
     pub(super) owner: ThreadOwner,
     reuses_existing_owner: bool,
     replaces_existing_owner: bool,

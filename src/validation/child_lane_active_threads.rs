@@ -13,19 +13,20 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let operations = child_thread_operations(evidence);
     let has_child_thread_operation = !operations.is_empty();
     let active_counts = active_child_thread_count_records(evidence);
-    let mut previous_operation_line = None;
+    let mut previous_operation_position = None;
     let owner_lookups = operations
         .iter()
         .map(|operation| {
-            let lookup_bound =
-                previous_operation_line.filter(|line| line != &operation.line_number);
+            let lookup_bound = previous_operation_position
+                .filter(|position| position != &(operation.line_number, operation.segment_number));
             let lookup = matching_owner_lookup_before(
                 evidence,
                 &operation.owner,
                 operation.line_number,
+                operation.segment_number,
                 lookup_bound,
             );
-            previous_operation_line = Some(operation.line_number);
+            previous_operation_position = Some((operation.line_number, operation.segment_number));
             lookup
         })
         .collect::<Vec<_>>();

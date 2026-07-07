@@ -28,20 +28,23 @@ fn active_count_records_for_line(
     line.split(';')
         .flat_map(|segment| segment.split(". "))
         .flat_map(split_count_comma_clauses)
-        .enumerate()
-        .filter_map(|(segment_number, segment)| {
+        .filter_map(|segment| {
             let count = active_child_thread_count(segment)?;
             Some(ActiveCount {
                 count,
                 kind: count_kind(segment),
                 line_number,
-                segment_number,
+                segment_number: segment_offset(line, segment),
                 freed_capacity,
                 owner: ThreadOwner::from_line(segment),
                 thread_ids: thread_ids(segment),
             })
         })
         .collect()
+}
+
+fn segment_offset(line: &str, segment: &str) -> usize {
+    segment.as_ptr() as usize - line.as_ptr() as usize
 }
 
 fn split_count_comma_clauses(segment: &str) -> Vec<&str> {
