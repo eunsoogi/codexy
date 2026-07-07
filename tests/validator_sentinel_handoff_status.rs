@@ -2,7 +2,6 @@ use std::{path::Path, process::Command};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
@@ -100,6 +99,22 @@ fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResul
 }
 
 #[test]
+fn validator_accepts_reviewer_named_sentinel_pass() -> TestResult {
+    accept_open_pr_handoff(
+        "PR ready for parent handoff. Packaged Codexy Sentinel Turing PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "validator should accept reviewer-named Sentinel PASS readiness evidence",
+    )
+}
+
+#[test]
+fn validator_ignores_unrelated_pending_review_after_sentinel_pass() -> TestResult {
+    accept_open_pr_handoff(
+        "Push-ready. Sentinel: PASS on current head. Codex review has not returned, so PR ready: no.\n",
+        "validator should not treat unrelated pending Codex review text as Sentinel UNOBSERVABLE",
+    )
+}
+
+#[test]
 fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
     for handoff in [
         "Push-ready. Sentinel timed out after bounded wait. Pushed: no. PR ready: no.\n",
@@ -130,6 +145,24 @@ fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel: PASS, Euclid reviewed exact head and current diff. Pushed: yes. Parent will handle review and merge gates; this lane is not complete until merge.\n",
         "validator should accept explicit Sentinel PASS readiness evidence",
     )
+}
+
+#[test]
+fn validator_rejects_current_block_before_hypothetical_future_pass() -> TestResult {
+    let handoff = "PR ready for parent handoff. Sentinel: BLOCK on current head; waiting for Sentinel: PASS after rerun.\n";
+    let output = validate_open_pr_handoff(handoff)?;
+    assert!(
+        !output.status.success(),
+        "validator should reject current Sentinel BLOCK despite a hypothetical future PASS\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Sentinel"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
 }
 
 #[test]
