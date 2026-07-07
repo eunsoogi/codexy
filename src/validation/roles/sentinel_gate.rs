@@ -96,7 +96,7 @@ fn missing_approval_evidence_markers(instructions: &str) -> Vec<&'static str> {
         return APPROVAL_EVIDENCE_MARKERS.to_vec();
     };
     let sentence_end = instructions[approval_start..]
-        .find(['.', '!', '?'])
+        .find("\n\n")
         .map_or(instructions.len(), |index| approval_start + index);
     let sentence = &instructions[approval_start..sentence_end];
     APPROVAL_EVIDENCE_MARKERS
@@ -107,22 +107,24 @@ fn missing_approval_evidence_markers(instructions: &str) -> Vec<&'static str> {
 }
 
 fn has_positive_marker(instructions: &str, marker: &str) -> bool {
+    let mut found_positive = false;
     let mut search_start = 0;
     while let Some(relative_index) = instructions[search_start..].find(marker) {
         let marker_index = search_start + relative_index;
-        if !is_prefix_negated(&instructions[..marker_index])
-            && !is_marker_sentence_weakened(instructions, marker_index, marker)
+        if is_prefix_negated(&instructions[..marker_index])
+            || is_marker_sentence_weakened(instructions, marker_index, marker)
         {
-            return true;
+            return false;
         }
+        found_positive = true;
         search_start = marker_index + marker.len();
     }
-    false
+    found_positive
 }
 
 fn is_prefix_negated(prefix: &str) -> bool {
     let sentence_start = prefix
-        .rfind(['.', '!', '?', '\n'])
+        .rfind(['.', '!', '?'])
         .map_or(0, |index| index + 1);
     let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase(); let sentence_prefix = sentence_prefix.trim_end();
     sentence_prefix.contains("must not")
