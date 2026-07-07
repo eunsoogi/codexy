@@ -100,13 +100,20 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
 }
 
 fn has_qualified_actor_negation(local: &str) -> bool {
-    const QUALIFIERS: &str =
-        "actual|assigned|authorized|correct|expected|intended|real|responsible|same|valid";
+    const QUALIFIERS: &str = "actual|assigned|authorized|correct|current|expected|intended|primary|proper|real|responsible|right|same|valid";
+    const PROOF_VERBS: &str = "confirm|document|establish|prove|show|verify";
     let tokens = local.split_whitespace().collect::<Vec<_>>();
     let Some(negation_index) = tokens.iter().rposition(|token| *token == "not") else {
         return false;
     };
-    let actor_prefix = strip_actor_article(&tokens[negation_index + 1..]);
+    let after_not = &tokens[negation_index + 1..];
+    if after_not
+        .first()
+        .is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb))
+    {
+        return true;
+    }
+    let actor_prefix = strip_actor_article(after_not);
     actor_prefix.is_empty()
         || actor_prefix
             .iter()

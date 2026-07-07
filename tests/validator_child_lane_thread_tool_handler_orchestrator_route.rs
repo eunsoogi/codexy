@@ -26,15 +26,18 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_orchestrator_authored_fallback_route() -> Result<(), Box<dyn std::error::Error>>
 {
-    let output = run_ownership_validator(&evidence(
+    for route in [
         "Fallback route: orchestrator posted the handoff in the child thread",
-    ))?;
-    assert!(
-        output.status.success(),
-        "validator should accept concrete orchestrator-authored fallback route evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Fallback route: handler did not respond, orchestrator posted the handoff in the child thread",
+    ] {
+        let output = run_ownership_validator(&evidence(route))?;
+        assert!(
+            output.status.success(),
+            "validator should accept concrete orchestrator-authored fallback route evidence: {route}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
@@ -65,9 +68,15 @@ fn validator_rejects_non_orchestrator_fallback_route() -> Result<(), Box<dyn std
         "Fallback route: handler failed, not / the orchestrator posted the handoff in the child thread",
         "Fallback route: handler failed, not the orchestrator posted the handoff in the child thread",
         "Fallback route: handler failed, not the actual orchestrator posted the handoff in the child thread",
+        "Fallback route: handler failed, not the current orchestrator posted the handoff in the child thread",
+        "Fallback route: handler failed, not the primary orchestrator posted the handoff in the child thread",
         "Fallback route: handler failed, not the real orchestrator posted the handoff in the child thread",
+        "Fallback route: handler failed, not the right orchestrator posted the handoff in the child thread",
         "Fallback route: handler failed, not-the orchestrator posted the handoff in the child thread",
         "Fallback route: handler failed, not-the actual orchestrator posted the handoff in the child thread",
+        "Fallback route: did not confirm the actual orchestrator posted the handoff in the child thread",
+        "Fallback route: did not prove the real orchestrator posted the handoff in the child thread",
+        "Fallback route: did not verify the right orchestrator posted the handoff in the child thread",
         "Fallback route: non/orchestrator posted the handoff in the child thread",
         "Fallback route: non \u{2013} orchestrator posted the handoff in the child thread",
         "Fallback route: non-orchestrator posted the handoff in the child thread",
