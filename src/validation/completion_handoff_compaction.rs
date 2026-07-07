@@ -54,6 +54,8 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if has_codex_review_request_context(&text) {
         if !has_pr_comments_and_reviews_evidence(pr_state) {
             errors.push("duplicate current-head Codex review request evidence missing: include freshly captured PR comments and reviews before planning @codex review".into());
+        } else if !has_current_head_oid_evidence(pr_state) {
+            errors.push("duplicate current-head Codex review request evidence incomplete: include headRefOid before planning @codex review".into());
         } else if has_codex_review_output(pr_state)
             || has_latest_eyes_request_without_later_codex_output(pr_state)
         {
@@ -66,6 +68,13 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 fn has_pr_comments_and_reviews_evidence(pr_state: &Value) -> bool {
     has_array_field(pr_state, "comments")
         && (has_array_field(pr_state, "reviews") || has_array_field(pr_state, "latestReviews"))
+}
+
+fn has_current_head_oid_evidence(pr_state: &Value) -> bool {
+    pr_state
+        .get("headRefOid")
+        .and_then(Value::as_str)
+        .is_some_and(|head| !head.trim().is_empty())
 }
 
 fn has_array_field(value: &Value, field: &str) -> bool {

@@ -26,7 +26,7 @@ fn validator_cli_rejects_unacknowledged_codex_review_request() -> TestResult {
     assert_rejected_with_stderr(
         &output,
         "validator should reject readiness while a Codex review request lacks current-head output",
-        "current-head Codex review output is required",
+        "unacknowledged Codex review request",
     );
     Ok(())
 }

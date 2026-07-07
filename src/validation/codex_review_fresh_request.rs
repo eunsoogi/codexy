@@ -1,8 +1,6 @@
 use serde_json::Value;
 
-use super::codex_review_handoff_events::{
-    has_codex_review_output, has_latest_eyes_request_without_later_codex_output,
-};
+use super::codex_review_handoff_events as events;
 
 pub(super) fn claims(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
@@ -23,6 +21,11 @@ pub(super) fn claims(handoff: &str) -> bool {
 
 pub(super) fn is_review_request_clause(clause: &str) -> bool {
     let clause = clause.trim_start();
+    if clause.contains("wait")
+        && (clause.contains("review output") || clause.contains("post output"))
+    {
+        return false;
+    }
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
     let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
@@ -68,10 +71,9 @@ fn is_split_waiting_status(line: &str, clause: &str) -> bool {
         })
 }
 
+#[rustfmt::skip]
 fn starts_at_codex_review(text: &str) -> bool {
-    text.trim_start()
-        .trim_start_matches(['`', '"', '\''])
-        .starts_with("@codex review")
+    text.trim_start().trim_start_matches(['`', '"', '\'']).starts_with("@codex review")
 }
 
 fn is_pull_request_noun_clause(clause: &str) -> bool {
@@ -149,11 +151,9 @@ fn contains_word(text: &str, word: &str) -> bool {
     false
 }
 
+#[rustfmt::skip]
 fn is_word_match(text: &str, start: usize, end: usize) -> bool {
-    let before = text[..start].chars().next_back();
-    let after = text[end..].chars().next();
-    before.is_none_or(|ch| !ch.is_ascii_alphanumeric())
-        && after.is_none_or(|ch| !ch.is_ascii_alphanumeric())
+    text[..start].chars().next_back().is_none_or(|ch| !ch.is_ascii_alphanumeric()) && text[end..].chars().next().is_none_or(|ch| !ch.is_ascii_alphanumeric())
 }
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
@@ -176,8 +176,8 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
             pr_number(pr_state)
         ));
     }
-    if has_latest_eyes_request_without_later_codex_output(pr_state)
-        || has_codex_review_output(pr_state)
+    if events::has_latest_eyes_request_without_later_codex_output(pr_state)
+        || events::has_codex_review_output(pr_state)
     {
         return Some(format!(
             "current-head Codex review activity blocks fresh Codex review requests: PR #{} already has current-head request/output evidence",

@@ -18,7 +18,7 @@ pub(super) fn has_review_request_context(line: &str) -> bool {
                     "request fresh codex review",
                     "request a fresh codex review",
                 ],
-            ) || has_request_codex_review_context(clause))
+            ) || has_actionable_codex_review_request_context(clause))
     })
 }
 
@@ -40,12 +40,22 @@ pub(super) fn has_codex_review_request_context(line: &str) -> bool {
                     "request fresh codex review",
                     "request a fresh codex review",
                 ],
-            ) || has_request_codex_review_context(clause))
+            ) || has_actionable_codex_review_request_context(clause))
     })
 }
 
-fn has_request_codex_review_context(line: &str) -> bool {
-    line.contains("request") && (line.contains("codex review") || line.contains("@codex review"))
+fn has_actionable_codex_review_request_context(line: &str) -> bool {
+    line.split([';', '.', '!', '?', ','])
+        .flat_map(super::super::codex_review_fresh_request::request_subclauses)
+        .map(str::trim)
+        .any(|clause| {
+            super::super::codex_review_fresh_request::is_review_request_clause(clause)
+                && !super::super::codex_review_fresh_request::has_negated_review_request(clause)
+                && !super::super::codex_review_fresh_request_text::is_connector_footer(clause)
+                && !super::super::codex_review_fresh_request_text::has_negative_request_status(
+                    clause,
+                )
+        })
 }
 
 fn has_follow_up_review_request_context(line: &str) -> bool {
@@ -91,7 +101,24 @@ fn has_implicit_follow_up_review_request_phrase(line: &str) -> bool {
             "request fresh review",
             "request a fresh review",
         ],
-    )
+    ) || has_negated_actionable_codex_review_request_context(line)
+}
+
+fn has_negated_actionable_codex_review_request_context(line: &str) -> bool {
+    (line.contains("codex review") || line.contains("@codex"))
+        && has_any(
+            line,
+            &[
+                "do not request",
+                "don't request",
+                "not request",
+                "will not request",
+                "won't request",
+                "must not request",
+                "without posting",
+                "without requesting",
+            ],
+        )
 }
 
 fn has_follow_up_request_phrase(line: &str) -> bool {
@@ -200,11 +227,6 @@ fn has_negated_review_request_context(line: &str) -> bool {
             "without @codex review request",
             "without codex review request",
             "without review request",
-            "do not request codex review",
-            "don't request codex review",
-            "not request codex review",
-            "will not request codex review",
-            "won't request codex review",
             "do not post @codex review",
             "don't post @codex review",
             "must not post @codex review",
@@ -218,21 +240,7 @@ fn has_negated_review_request_context(line: &str) -> bool {
             "will not post codex review",
             "won't post codex review",
         ],
-    ) || has_negated_request_codex_review_context(line)
-}
-
-fn has_negated_request_codex_review_context(line: &str) -> bool {
-    has_request_codex_review_context(line)
-        && has_any(
-            line,
-            &[
-                "do not request",
-                "don't request",
-                "not request",
-                "will not request",
-                "won't request",
-            ],
-        )
+    ) || has_negated_actionable_codex_review_request_context(line)
 }
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {
