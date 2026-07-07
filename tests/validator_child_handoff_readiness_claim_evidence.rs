@@ -46,6 +46,7 @@ fn validator_treats_no_blockers_as_readiness_claim() -> TestResult {
     for handoff in [
         "Child handoff: PR ready: no blockers.\n",
         "Child handoff: parent-handoff-ready: yes.\n",
+        "parent-handoff-ready: yes.\n",
         "Parent handoff ready: yes.\n",
     ] {
         assert_rejects_child_handoff(

@@ -4,6 +4,7 @@ pub(super) fn child_readiness(text: &str) -> bool {
         &[
             "child handoff",
             "parent handoff",
+            "parent-handoff-ready",
             "pr ready for parent handoff",
             "parent can open pr next: yes",
             "parent can merge",
