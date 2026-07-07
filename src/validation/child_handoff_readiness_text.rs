@@ -49,6 +49,8 @@ fn has_non_claim_label_value(suffix: &str) -> bool {
             "not currently confirmed",
             "not checked",
             "not run",
+            "not yet",
+            "not currently",
             "not clean",
             "not yet clean",
             "not currently clean",

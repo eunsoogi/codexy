@@ -83,6 +83,31 @@ fn validator_allows_pushed_branch_no_blocker_handoff() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_allows_not_yet_readiness_blocker_labels() -> TestResult {
+    for handoff in [
+        "Child handoff: Pushed: not yet. Waiting on push before parent handoff.\n",
+        "Child handoff: Synced: not yet. Waiting on branch sync before parent handoff.\n",
+        "Child handoff: PR-ready: not yet. Waiting on review before parent handoff.\n",
+        "Child handoff: Pushed: not currently. Waiting on push before parent handoff.\n",
+        "Child handoff: Synced: not currently. Waiting on branch sync before parent handoff.\n",
+        "Child handoff: PR-ready: not currently. Waiting on review before parent handoff.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"DIRTY","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example [ahead 1]","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+        )?;
+        assert!(
+            output.status.success(),
+            "blocker label should not claim readiness for {handoff}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn assert_rejects_child_handoff(handoff: &str, pr_state: &str, needle: &str) -> TestResult {
     let output = validate_handoff_with_pr_state(handoff, pr_state)?;
     assert!(

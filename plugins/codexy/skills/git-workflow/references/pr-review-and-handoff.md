@@ -13,9 +13,11 @@ repo=<repo>
 state_dir=$(mktemp -d)
 trap 'rm -rf "$state_dir"' EXIT
 gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
+head_ref="$(jq -r '.headRefName' "$state_dir/pr-state.base.json")"
+git fetch origin "$head_ref"
 git status --short --branch > "$state_dir/worktreeStatus.txt"
 git rev-parse HEAD > "$state_dir/localHeadOid.txt"
-git rev-parse "origin/$(jq -r '.headRefName' "$state_dir/pr-state.base.json")" > "$state_dir/remoteHeadOid.txt"
+git rev-parse "origin/$head_ref" > "$state_dir/remoteHeadOid.txt"
 default_branch="$(gh repo view "$owner/$repo" --json defaultBranchRef --jq '.defaultBranchRef.name')"
 closing_issue="$(
   jq -r '.body // ""

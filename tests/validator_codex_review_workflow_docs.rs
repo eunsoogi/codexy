@@ -65,6 +65,27 @@ fn pr_review_handoff_capture_includes_branch_status_evidence()
 }
 
 #[test]
+fn pr_review_handoff_capture_fetches_pr_head_before_remote_oid()
+-> Result<(), Box<dyn std::error::Error>> {
+    let reference = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/git-workflow/references/pr-review-and-handoff.md"),
+    )?;
+
+    let fetch_index = reference
+        .find("git fetch origin")
+        .ok_or("documented PR-state capture must fetch the PR head")?;
+    let remote_oid_index = reference
+        .find("remoteHeadOid.txt")
+        .ok_or("documented PR-state capture must record remoteHeadOid")?;
+    assert!(
+        fetch_index < remote_oid_index,
+        "documented PR-state capture must refresh origin/<headRefName> before recording remoteHeadOid"
+    );
+    Ok(())
+}
+
+#[test]
 fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
 -> Result<(), Box<dyn std::error::Error>> {
     let repo = tempfile::tempdir()?;
