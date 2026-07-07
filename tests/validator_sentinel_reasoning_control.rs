@@ -101,6 +101,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence if the reviewer can confirm it",
         "reasoning control used or unavailable evidence when the reviewer can confirm it",
         "reasoning control used or unavailable evidence whenever possible",
+        "reasoning control used or unavailable evidence is required only when tools expose it",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -204,7 +205,6 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
 fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
     validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement)))
 }
-
 fn validate_reasoning_control_paragraph_replacement(replacement: &str) -> TestResult<Output> {
     validate_sentinel_edit(|mut sentinel| {
         let start = sentinel

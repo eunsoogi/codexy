@@ -183,7 +183,7 @@ fn contains_scoped_opt_out(clause: &str) -> bool {
     }) {
         return true;
     }
-    if "required if|required when|required whenever|required where|required unless|required provided"
+    if "required if|required when|required whenever|required where|required unless|required provided|required only if|required only when|required only whenever|required only where|required only unless|required only provided"
         .split('|')
         .any(|pattern| contains_context_pattern(clause, pattern))
     {
