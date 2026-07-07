@@ -102,10 +102,8 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         }
         if let Some(error) = super::review_thread_evidence::check(threads) {
             errors.push(error);
-        } else if let Some(thread) = unresolved_thread(pr_state) {
-            errors.push(format!(
-                "child handoff claims PR readiness but unresolved review thread remains: {thread}"
-            ));
+        } else if let Some(thread) = super::review_thread_readiness::check(handoff, pr_state) {
+            errors.push(format!("child handoff claims PR readiness but {thread}"));
         }
     }
     errors
@@ -225,24 +223,13 @@ fn has_affirmative_ready_label(line: &str) -> bool {
 fn has_affirmative_yes_value(value: &str) -> bool {
     let value = value.trim();
     value == "yes"
-        || value
-            .strip_prefix("yes")
-            .and_then(|rest| rest.chars().next())
-            .is_some_and(|ch| !ch.is_ascii_alphanumeric())
+        || value.strip_prefix("yes").is_some_and(|rest| {
+            rest.as_bytes()
+                .first()
+                .is_some_and(|ch| !ch.is_ascii_alphanumeric())
+        })
 }
 
-fn unresolved_thread(pr_state: &Value) -> Option<String> {
-    let nodes = pr_state.get("reviewThreads")?.get("nodes")?.as_array()?;
-    nodes.iter().find_map(|thread| {
-        (thread.get("isResolved").and_then(Value::as_bool) == Some(false)).then(|| {
-            format!(
-                "{} at {}",
-                string_field(thread, "id").unwrap_or("unknown thread"),
-                string_field(thread, "path").unwrap_or("unknown path")
-            )
-        })
-    })
-}
 fn string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
 }

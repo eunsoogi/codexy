@@ -20,7 +20,20 @@ pub(super) fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
 
 fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
     let prefix = text[..start].trim_end_matches([' ', '\t']);
-    prefix.ends_with("- [ ]") || prefix.ends_with("* [ ]")
+    if prefix.ends_with("- [ ]") || prefix.ends_with("* [ ]") {
+        return true;
+    }
+    let marker = prefix
+        .rsplit_once('\n')
+        .map_or(prefix, |(_, line)| line)
+        .trim_end()
+        .strip_suffix("[ ]")
+        .map(str::trim_end);
+    marker.is_some_and(|marker| {
+        marker.strip_suffix(['.', ')']).is_some_and(|number| {
+            !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit())
+        })
+    })
 }
 
 pub(super) fn has_non_claim_phrase_label(text: &str, phrase: &str) -> bool {
@@ -46,7 +59,7 @@ fn has_non_claim_label_value(suffix: &str) -> bool {
     }) {
         return false;
     }
-    super::codex_review_handoff::has_negative_label_value(suffix)
+    super::codex_review_handoff_readiness::has_negative_label_value(suffix)
         || [
             "not verified",
             "not yet verified",

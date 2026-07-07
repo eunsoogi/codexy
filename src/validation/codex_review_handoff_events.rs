@@ -1,8 +1,11 @@
 use serde_json::Value;
-pub(super) fn has_unresolved_codex_review_thread(pr_state: &Value) -> bool {
+pub(super) fn has_unresolved_codex_review_thread(handoff: &str, pr_state: &Value) -> bool {
     iter_json_objects(pr_state).any(|item| {
         item.get("isResolved").and_then(Value::as_bool) == Some(false)
             && item.get("isOutdated").and_then(Value::as_bool) != Some(true)
+            && !super::review_thread_resolution::documents_accepted_no_change_rationale(
+                handoff, item,
+            )
             && (iter_json_objects(item).any(is_codex_connector_item)
                 || unresolved_thread_lacks_comment_identity(item))
     })

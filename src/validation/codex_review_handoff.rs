@@ -22,7 +22,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                 .into(),
         ];
     }
-    if claims_ready && has_unresolved_codex_review_thread(pr_state) {
+    if claims_ready && has_unresolved_codex_review_thread(handoff, pr_state) {
         return vec![format!(
             "unresolved Codex review thread blocks merge/readiness claims: PR #{}",
             pr_number(pr_state)
@@ -57,7 +57,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                 pr_number(pr_state)
             )];
         }
-        if let Some(error) = super::review_thread_readiness::check(pr_state) {
+        if let Some(error) = super::review_thread_readiness::check(handoff, pr_state) {
             return vec![format!("{error}: PR #{}", pr_number(pr_state))];
         }
     }
