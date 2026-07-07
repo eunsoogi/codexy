@@ -143,7 +143,45 @@ pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize
         capture_start = previous_start;
         cursor = previous_start;
     }
+    if capture_start != line_start && previous_line_is_defect_label(evidence, capture_start) {
+        return line_start;
+    }
     capture_start
+}
+
+fn previous_line_is_defect_label(evidence: &str, line_start: usize) -> bool {
+    let mut cursor = line_start;
+    while cursor > 0 {
+        let previous_end = cursor - 1;
+        let previous_start = evidence[..previous_end]
+            .rfind('\n')
+            .map_or(0, |index| index + 1);
+        let previous_line = &evidence[previous_start..previous_end];
+        if is_exact_handler_error_metadata_line(previous_line) {
+            cursor = previous_start;
+            continue;
+        }
+        return !has_absent_defect_capture(previous_line)
+            && [
+                "dogfooding defect",
+                "tool-exposure defect",
+                "dogfooding/tool-exposure defect",
+            ]
+            .into_iter()
+            .any(|marker| previous_line.contains(marker));
+    }
+    false
+}
+
+fn is_exact_handler_error_metadata_line(line: &str) -> bool {
+    let Some((key, value)) = line_key_value(line) else {
+        return false;
+    };
+    key.trim()
+        .eq_ignore_ascii_case("exact missing-handler error")
+        && value
+            .to_ascii_lowercase()
+            .contains("no handler registered for tool:")
 }
 pub(super) fn following_handoff_metadata_has(
     evidence: &str,

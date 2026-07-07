@@ -100,3 +100,50 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_later_handler_defect_without_own_handoff_fields()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Fallback route: no fallback route was available
+Tracking issue: #205
+Invocation evidence: codex_app.send_message_to_thread failed with `No handler registered for tool: send_message_to_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.send_message_to_thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let a later handler defect borrow route/issue fields from the previous defect"
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_later_handler_defect_borrowing_prior_exact_error_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread and codex_app.send_message_to_thread as available thread tools.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Exact missing-handler error: `No handler registered for tool: read_thread`.
+Fallback route: no fallback route was available
+Tracking issue: #205
+Invocation evidence: codex_app.send_message_to_thread failed with `No handler registered for tool: send_message_to_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.send_message_to_thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should keep exact-error and handoff metadata scoped to the prior defect"
+    );
+    Ok(())
+}

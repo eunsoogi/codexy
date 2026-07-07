@@ -55,10 +55,7 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     })
 }
 fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
-    let start = (0..index)
-        .rev()
-        .find(|candidate| is_defect_capture_line(lines[*candidate]))
-        .map_or(0, |candidate| candidate + 1);
+    let start = defect_scope_start(lines, index);
     let mut scoped = lines[start..=index].to_vec();
     scoped[index - start] = current_defect_clause_scope(lines[index]);
     scoped.extend(
@@ -81,13 +78,30 @@ fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
 }
 
 fn defect_header_candidate_scope(lines: &[&str], index: usize) -> String {
-    let start = (0..index)
-        .rev()
-        .find(|candidate| is_defect_capture_line(lines[*candidate]))
-        .map_or(0, |candidate| candidate + 1);
+    let start = defect_scope_start(lines, index);
     let mut scoped = lines[start..=index].to_vec();
     scoped[index - start] = current_defect_clause_scope(lines[index]);
     scoped.join("\n")
+}
+
+fn defect_scope_start(lines: &[&str], index: usize) -> usize {
+    let Some(previous_defect) = (0..index)
+        .rev()
+        .find(|candidate| is_defect_capture_line(lines[*candidate]))
+    else {
+        return 0;
+    };
+    let mut start = previous_defect + 1;
+    while start < index && is_defect_trailing_metadata(lines[start]) {
+        start += 1;
+    }
+    start
+}
+
+fn is_defect_trailing_metadata(line: &str) -> bool {
+    is_unlisted_handoff_metadata_item(line)
+        || is_handoff_list_metadata_item(line)
+        || is_exact_handler_error_metadata_item(line)
 }
 
 fn list_item_candidate_scope(list_items: &[&str], index: usize, header_scope: &str) -> String {
