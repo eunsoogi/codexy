@@ -14,8 +14,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_clean = claims::clean(&text);
     let claims_synced = claims::synced(&text);
     let claims_pushed = claims::pushed(&text);
-    let claims_current_pr_readiness =
-        claims_pr_ready || (claims_child_readiness && (claims_synced || claims_pushed));
+    let claims_bare_pr_ready = claims_pr_ready && has_standalone_ready_line(&text);
+    let claims_current_pr_readiness = claims_bare_pr_ready
+        || (claims_child_readiness && (claims_pr_ready || claims_synced || claims_pushed));
     let mut errors = Vec::new();
     errors.extend(
         negative_proof_labels(
@@ -29,7 +30,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
             format!("child handoff claims readiness but {label} proof is negative or non-claim")
         }),
     );
-    if !claims_child_readiness {
+    if !claims_child_readiness && !claims_current_pr_readiness {
         return errors;
     }
     if claims_clean || claims_current_pr_readiness {
@@ -192,6 +193,18 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
         "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not {}",
         mismatched.map_or("any comparable handoff head", String::as_str)
     ))
+}
+
+fn has_standalone_ready_line(text: &str) -> bool {
+    text.lines().any(|line| {
+        matches!(
+            line.trim()
+                .trim_start_matches(['-', '*'])
+                .trim()
+                .trim_end_matches('.'),
+            "pr-ready" | "pr ready" | "merge-ready" | "merge ready"
+        )
+    })
 }
 
 fn unresolved_thread(pr_state: &Value) -> Option<String> {

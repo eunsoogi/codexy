@@ -100,29 +100,36 @@ pub(in crate::validation::hooks) fn output_with_timeout(
         }
         if let Some(status) = status {
             let drain_deadline = Instant::now() + Duration::from_millis(20);
-            match read_available(&mut stdout, &mut stdout_data, drain_deadline)? {
-                ReadOutcome::Open | ReadOutcome::Closed | ReadOutcome::TimedOut => {}
-                ReadOutcome::OutputExceeded => {
-                    return finish_after_output_exceeded(
-                        &mut child,
-                        child_id,
-                        stdout_data,
-                        script_path,
-                        label,
-                    );
-                }
+            let stdout_outcome = drain_until_closed(&mut stdout, &mut stdout_data, drain_deadline)?;
+            let stderr_outcome = drain_until_closed(&mut stderr, &mut stderr_data, drain_deadline)?;
+            let mut kill_stdout_outcome = ReadOutcome::Closed;
+            let mut kill_stderr_outcome = ReadOutcome::Closed;
+            if matches!(stdout_outcome, ReadOutcome::Open | ReadOutcome::TimedOut)
+                || matches!(stderr_outcome, ReadOutcome::Open | ReadOutcome::TimedOut)
+            {
+                terminate_process_group(child_id, libc::SIGKILL);
+                let kill_drain_deadline = Instant::now() + Duration::from_millis(100);
+                kill_stdout_outcome =
+                    drain_until_closed(&mut stdout, &mut stdout_data, kill_drain_deadline)?;
+                kill_stderr_outcome =
+                    drain_until_closed(&mut stderr, &mut stderr_data, kill_drain_deadline)?;
             }
-            match read_available(&mut stderr, &mut stderr_data, drain_deadline)? {
-                ReadOutcome::Open | ReadOutcome::Closed | ReadOutcome::TimedOut => {}
-                ReadOutcome::OutputExceeded => {
-                    return finish_after_output_exceeded(
-                        &mut child,
-                        child_id,
-                        stdout_data,
-                        script_path,
-                        label,
-                    );
-                }
+            if [
+                stdout_outcome,
+                stderr_outcome,
+                kill_stdout_outcome,
+                kill_stderr_outcome,
+            ]
+            .into_iter()
+            .any(|outcome| matches!(outcome, ReadOutcome::OutputExceeded))
+            {
+                return finish_after_output_exceeded(
+                    &mut child,
+                    child_id,
+                    stdout_data,
+                    script_path,
+                    label,
+                );
             }
             return Ok(Output {
                 status,
@@ -146,6 +153,22 @@ pub(in crate::validation::hooks) fn output_with_timeout(
     }
 }
 
+fn drain_until_closed<T: Read>(
+    stream: &mut Option<T>,
+    buffer: &mut Vec<u8>,
+    deadline: Instant,
+) -> Result<ReadOutcome> {
+    loop {
+        match read_available(stream, buffer, deadline)? {
+            ReadOutcome::Open if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            outcome => return Ok(outcome),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 enum ReadOutcome {
     Open,
     Closed,

@@ -61,6 +61,20 @@ fn validator_treats_no_blockers_as_readiness_claim() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_bare_pr_ready_handoff_without_status_evidence() -> TestResult {
+    for handoff in ["PR-ready.\n", "merge-ready.\n"] {
+        assert_rejects_child_handoff(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+            "git status evidence is missing",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_synced_yes_with_pushed_no() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: Synced: yes at 068dbb247b7755035223c91ee39f26830f3c1609. Pushed: no.\n",
