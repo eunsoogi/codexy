@@ -175,11 +175,6 @@ fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> T
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("direct reviewer passes performed"));
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_wrapped_ignored_approval_marker_inside_approval_sentence() -> TestResult {
     let output = validate_sentinel_replacement(
         "no-finding result when no blockers remain, and any unresolved risk",
         "no-finding result when no blockers remain, and any unresolved risk\nmay be ignored",
@@ -225,9 +220,7 @@ fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestR
     Ok(())
 }
 
-fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
-    validate_sentinel_edit(|sentinel| sentinel.replace(needle, replacement))
-}
+fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> { validate_sentinel_edit(|sentinel| sentinel.replace(needle, replacement)) }
 
 fn validate_sentinel_edit(edit: impl FnOnce(String) -> String) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
