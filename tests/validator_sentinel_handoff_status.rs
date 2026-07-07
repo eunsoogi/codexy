@@ -43,7 +43,9 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous unobservable Sentinel run. Pushed: yes.\n",
         "PR readiness: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "PR readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
-        "Merge readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
+        "PR is ready. Sentinel: BLOCK on current head.\n",
+        "Completed. Sentinel: BLOCK on current head.\n",
+        "PR is ready. Sentinel: BLOCK on current head. Previous Sentinel: UNOBSERVABLE after bounded wait. Maintainer explicitly approved fallback for this previous unobservable Sentinel run.\n",
         "PR ready for parent handoff. Sentinel verdict: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel result: BLOCK. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel gate returned BLOCK. Pushed: yes.\n",
@@ -65,7 +67,6 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
     }
     Ok(())
 }
-
 #[test]
 fn validator_rejects_invalid_sentinel_readiness_evidence() -> TestResult {
     for handoff in [
@@ -98,7 +99,6 @@ fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResul
         "validator should accept current Sentinel PASS after superseded historical BLOCK evidence",
     )
 }
-
 #[test]
 fn validator_accepts_reviewer_named_sentinel_pass() -> TestResult {
     accept_open_pr_handoff(
@@ -106,7 +106,6 @@ fn validator_accepts_reviewer_named_sentinel_pass() -> TestResult {
         "validator should accept reviewer-named Sentinel PASS readiness evidence",
     )
 }
-
 #[test]
 fn validator_ignores_unrelated_pending_review_after_sentinel_pass() -> TestResult {
     accept_open_pr_handoff(
@@ -171,6 +170,7 @@ fn validator_accepts_unobservable_sentinel_when_handoff_stops_before_readiness()
     for handoff in [
         "Sentinel: UNOBSERVABLE after bounded waits. Pushed: no. PR ready: no. Parent decision required: yes. This lane is not ready for handoff.\n",
         "Sentinel: UNOBSERVABLE after bounded waits. Pushed: no.\nPR ready: no\nParent decision required: yes.\n",
+        "Sentinel: UNOBSERVABLE after bounded waits. We aren't ready for handoff.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

@@ -2,17 +2,21 @@ const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel|packaged reviewer gate|
 const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass|reviewer gate returned pass";
 const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate returned block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
-const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|ready for handoff|pr-ready|pr ready|pr-readiness|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|push-readiness|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
+const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|ready for handoff|pr-ready|pr ready|pr is ready|pr-readiness|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|pull request is ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|push-readiness|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
+const COMPLETION_MARKERS: &str =
+    "completed|finished|finalized|all set|done|complete|completes|finish|finalize";
 const MAINTAINER_FALLBACK_APPROVAL_MARKERS: &str = "maintainer explicitly approved fallback|maintainer explicitly approved a fallback|maintainer explicitly approved the fallback|maintainer approval: fallback approved|maintainer approval fallback approved";
 const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before handoff|before merge|before parent handoff|before pr readiness|before merge readiness|before push readiness|required before|needed before|must pass before|needs to pass before|should pass before|planned after|after planned|planned rerun|planned review|planned pass|to be run|will be run";
 const FUTURE_STATUS_PREFIX_MARKERS: &str = "waiting for|wait for|awaiting|will rerun|will re-run|needs rerun|needs re-run|need rerun|need re-run|rerun required|re-run required";
 const STATUS_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|returned|return|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
 pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
-    if !has_any(&text, READINESS_MARKERS) {
+    let claims_readiness = has_any(&text, READINESS_MARKERS);
+    let has_sentinel = has_any(&text, SENTINEL_MARKERS);
+    if !claims_readiness && !(has_any(&text, COMPLETION_MARKERS) && has_sentinel) {
         return Vec::new();
     }
-    if !has_any(&text, SENTINEL_MARKERS) {
+    if !has_sentinel {
         return vec!["Sentinel readiness evidence must be present".into()];
     }
     let status = status_marker_starts(&text)
@@ -114,9 +118,10 @@ fn is_sentinel_status_context(text: &str, start: usize, phrase: &str) -> bool {
 fn has_future_status_context(text: &str, start: usize, phrase: &str) -> bool {
     let end = start + phrase.len();
     let (clause_start, clause_end) = clause_bounds(text, start);
-    let prefix = &text[clause_start..start];
+    let prefix = &text[last_status_context_boundary(&text[..start]).unwrap_or(clause_start)..start];
     let suffix = &text[end..clause_end];
     has_any(prefix, FUTURE_STATUS_PREFIX_MARKERS)
+        || has_any(prefix, "previous|prior|old|earlier|superseded|initial")
         || has_any(suffix, FUTURE_STATUS_CONTEXT_MARKERS)
         || prefix.trim_end().ends_with(" will")
 }
@@ -155,7 +160,11 @@ fn has_negative_label_value(suffix: &str) -> bool {
         "not yet ready",
         "not currently ready",
         "isn't ready",
+        "isn't yet ready",
         "isn't currently ready",
+        "aren't ready",
+        "aren't yet ready",
+        "aren't currently ready",
         "not applicable",
         "n/a",
     ]
@@ -186,7 +195,7 @@ fn is_locally_negated(prefix: &str) -> bool {
         .any(|word| {
             matches!(
                 word,
-                "no" | "not" | "without" | "isn't" | "wasn't" | "hasn't"
+                "no" | "not" | "without" | "isn't" | "aren't" | "wasn't" | "hasn't"
             )
         })
 }
