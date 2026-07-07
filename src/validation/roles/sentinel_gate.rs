@@ -96,7 +96,7 @@ fn missing_approval_evidence_markers(instructions: &str) -> Vec<&'static str> {
         return APPROVAL_EVIDENCE_MARKERS.to_vec();
     };
     let sentence_end = instructions[approval_start..]
-        .find("\n\n")
+        .find(['.', '!', '?'])
         .map_or(instructions.len(), |index| approval_start + index);
     let sentence = &instructions[approval_start..sentence_end];
     APPROVAL_EVIDENCE_MARKERS
@@ -136,18 +136,20 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
     let sentence_start = instructions[..marker_index]
         .rfind(['.', '!', '?'])
         .map_or(0, |index| index + 1);
-    let sentence_end = instructions[marker_index + marker.len()..]
+    let marker_end = marker_index + marker.len();
+    let sentence_end = instructions[marker_end..]
         .find(['.', '!', '?'])
-        .map_or(instructions.len(), |index| {
-            marker_index + marker.len() + index
-        });
+        .map_or(instructions.len(), |index| marker_end + index);
     let sentence = instructions[sentence_start..sentence_end].to_ascii_lowercase();
+    let marker_tail_start = marker_index - sentence_start + marker.len();
+    let marker_tail = &sentence[marker_tail_start..];
     sentence
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .any(|word| matches!(word, "optional" | "permissive" | "waived"))
         || sentence.contains("not required")
         || sentence.contains("not mandatory")
         || sentence.contains("not needed")
+        || marker_tail_has_conditional_waiver(marker_tail)
         || sentence.contains("may skip")
         || sentence.contains("may omit")
         || sentence.contains("may ignore")
@@ -160,4 +162,26 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
         || sentence.contains("can be skipped")
         || sentence.contains("can be omitted")
         || sentence.contains("can be ignored")
+}
+
+fn marker_tail_has_conditional_waiver(tail: &str) -> bool {
+    let tail = tail.trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
+    let clause_end = tail.find([',', ';']).unwrap_or(tail.len());
+    let clause = tail[..clause_end].trim_start();
+    [
+        "if available",
+        "when available",
+        "if possible",
+        "when possible",
+        "if applicable",
+        "when applicable",
+        "as applicable",
+        "where applicable",
+        "if needed",
+        "when needed",
+        "as needed",
+        "where needed",
+    ]
+    .iter()
+    .any(|phrase| clause.starts_with(phrase))
 }
