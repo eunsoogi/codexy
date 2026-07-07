@@ -74,7 +74,7 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
             let segment = segment.trim_start();
             has_evidence_followup(segment)
                 || (contains_disallowed_context(segment)
-                    && references_reasoning_control_evidence(segment))
+                    && references_reasoning_evidence_requirement(segment))
         })
         .collect::<Vec<_>>()
         .join(" ");
@@ -153,9 +153,11 @@ fn contains_disallowed_context(clause: &str) -> bool {
         || contains_required_negation(clause)
 }
 
-fn references_reasoning_control_evidence(clause: &str) -> bool {
+fn references_reasoning_evidence_requirement(clause: &str) -> bool {
     contains_context_pattern(clause, "reasoning control")
         || contains_context_pattern(clause, "reasoning control evidence")
+        || (contains_context_pattern(clause, "reviewer")
+            && contains_context_pattern(clause, "evidence"))
 }
 
 fn contains_mandatory_context(clause: &str) -> bool {

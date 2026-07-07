@@ -36,6 +36,14 @@ fn validator_cli_rejects_pre_marker_reasoning_conditionals() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_generic_evidence_opt_outs_after_marker() -> TestResult {
+    assert_reasoning_evidence_rejected(validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence, direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, but the reviewer need not supply evidence, direct reviewer passes performed",
+    )?)
+}
+
+#[test]
 fn validator_cli_handles_unicode_before_reasoning_marker() -> TestResult {
     let output = validate_sentinel_edit(|sentinel| {
         Ok(sentinel
