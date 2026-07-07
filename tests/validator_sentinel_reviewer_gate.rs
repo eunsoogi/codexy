@@ -11,7 +11,6 @@ fn validator_cli_rejects_sentinel_without_xhigh_reasoning() -> TestResult {
         "model_reasoning_effort = \"xhigh\"",
         "model_reasoning_effort = \"high\"",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("codexy-sentinel model_reasoning_effort must be xhigh"));
     Ok(())
@@ -21,7 +20,6 @@ fn validator_cli_rejects_sentinel_without_xhigh_reasoning() -> TestResult {
 fn validator_cli_rejects_sentinel_without_specialized_review_passes() -> TestResult {
     let output =
         validate_sentinel_replacement("validator/parser edge-case pass", "edge-case pass")?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
     Ok(())
@@ -33,7 +31,6 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_marker() -> TestResu
         "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface does not expose or confirm reasoning controls, the reviewer evidence MUST record explicit unavailable evidence and MUST still state that the packaged Sentinel file declares xhigh.",
         "Reasoning controls are described by later evidence expectations.",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Reasoning control:"));
     Ok(())
@@ -45,7 +42,6 @@ fn validator_cli_rejects_sentinel_with_negated_specialized_review_passes() -> Te
         "Reviewer specialization: MUST split the review into named passes",
         "Reviewer specialization: MUST NOT split the review into named passes",
     )?;
-
     assert!(!output.status.success());
     assert!(
         stderr(&output)
@@ -60,7 +56,6 @@ fn validator_cli_rejects_sentinel_without_reasoning_unavailable_evidence_clause(
         "the reviewer evidence MUST record explicit unavailable evidence",
         "the reviewer evidence can omit unavailable evidence",
     )?;
-
     assert!(!output.status.success());
     assert!(
         stderr(&output).contains("the reviewer evidence MUST record explicit unavailable evidence")
@@ -130,18 +125,12 @@ fn validator_cli_rejects_weakened_marker_inside_approval_sentence_with_external_
 {
     let output = validate_sentinel_edit(|sentinel| {
         let external_markers = "\n\nAudit vocabulary: Every approval MUST reference the current diff or head, lane scope, touched implementation-file LOC evidence, verification commands and results, direct readback for structured files, reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk.";
-        sentinel
-            .replace(
-                "MUST block when negative tests are absent for validator, parser, guardrail, workflow-rule, or review-feedback fixes unless the lane proves why negative coverage is not applicable.",
-                &format!(
-                    "MUST block when negative tests are absent for validator, parser, guardrail, workflow-rule, or review-feedback fixes unless the lane proves why negative coverage is not applicable.{external_markers}"
-                ),
-            )
-            .replacen(
-                "direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable",
-                "direct reviewer passes performed, edge classes reviewed is optional, replayed review examples when applicable",
-                1,
-            )
+        let anchor = "MUST block when negative tests are absent for validator, parser, guardrail, workflow-rule, or review-feedback fixes unless the lane proves why negative coverage is not applicable.";
+        sentinel.replace(anchor, &format!("{anchor}{external_markers}")).replacen(
+            "direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable",
+            "direct reviewer passes performed, edge classes reviewed is optional, replayed review examples when applicable",
+            1,
+        )
     })?;
 
     assert!(!output.status.success());
@@ -175,6 +164,17 @@ fn validator_cli_rejects_weakened_real_approval_sentence_after_external_copy() -
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("edge classes reviewed"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed may be ignored, edge classes reviewed",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("direct reviewer passes performed"));
     Ok(())
 }
 
