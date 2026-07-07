@@ -109,10 +109,42 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
             | "it is false that"
             | "it is not true that"
             | "it is not the case that"
-    ) || local.ends_with(" non")
+    ) || has_qualified_actor_negation(&local)
+        || local.ends_with(" non")
         || local.ends_with(" false that")
         || local.starts_with("false positive")
         || local.starts_with("false-positive")
+}
+
+fn has_qualified_actor_negation(local: &str) -> bool {
+    let tokens = local.split_whitespace().collect::<Vec<_>>();
+    let Some(negation_index) = tokens.iter().rposition(|token| *token == "not") else {
+        return false;
+    };
+    let actor_prefix = strip_actor_article(&tokens[negation_index + 1..]);
+    actor_prefix.is_empty()
+        || actor_prefix.iter().all(|token| {
+            matches!(
+                *token,
+                "actual"
+                    | "assigned"
+                    | "authorized"
+                    | "correct"
+                    | "expected"
+                    | "intended"
+                    | "real"
+                    | "responsible"
+                    | "same"
+                    | "valid"
+            )
+        })
+}
+
+fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
+    match tokens.first().copied() {
+        Some("a" | "an" | "the") => &tokens[1..],
+        _ => tokens,
+    }
 }
 
 fn has_post_destination_route_negation(suffix: &str) -> bool {
