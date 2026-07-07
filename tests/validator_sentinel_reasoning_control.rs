@@ -44,6 +44,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence where practical",
         "Every approval MUST consider reasoning control used or unavailable evidence",
         "Every approval MUST decide whether to reference reasoning control used or unavailable evidence",
+        "Every approval MUST reference the current diff or head, lane scope, but is required not to reference reasoning control used or unavailable evidence",
         "Every approval MUST inspect reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence does not have to be supplied",
         "reasoning control used or unavailable evidence does not\nneed to be supplied",
@@ -196,7 +197,6 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
         sentinel.replace_range(start..end, "");
         Ok(sentinel)
     })?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
     Ok(())
