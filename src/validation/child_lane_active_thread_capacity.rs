@@ -145,12 +145,12 @@ fn is_child_thread_operation_line(line: &str) -> bool {
             .into_iter()
             .any(|tool| is_thread_tool_invocation(&line, tool))
 }
-
 fn normalized_operation_line(line: &str) -> String {
     line.to_ascii_lowercase()
         .replace("child-thread", "child thread")
         .replace("child codex app thread", "child thread")
         .replace("child codex thread", "child thread")
+        .replace("created a new child thread", "created child thread")
         .replace("created a child thread", "created child thread")
         .replace("continued the child thread", "continued child thread")
         .replace("continued a child thread", "continued child thread")
