@@ -69,16 +69,17 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
 }
 
 #[test]
-fn validator_rejects_sentinel_readiness_without_explicit_status() -> TestResult {
+fn validator_rejects_invalid_sentinel_readiness_evidence() -> TestResult {
     for handoff in [
+        "PR ready for parent handoff. Pushed: yes.\n",
         "PR ready for parent handoff. Packaged Codexy Sentinel Lagrange reviewed exact head and current diff. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel evidence: reviewed exact head, no blockers listed. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel: PASS on old head abc1234. Pushed: yes.\n",
+        "Current PR head: 32b03a210b3defb2d29dd352283ea2488e60d893. PR ready for parent handoff. Sentinel: PASS on old head abc1234. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
             !output.status.success(),
-            "validator should reject Sentinel readiness without explicit PASS, BLOCK, or UNOBSERVABLE status\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
+            "validator should reject missing, stale, or statusless Sentinel readiness evidence\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
@@ -90,7 +91,6 @@ fn validator_rejects_sentinel_readiness_without_explicit_status() -> TestResult 
     }
     Ok(())
 }
-
 #[test]
 fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResult {
     accept_open_pr_handoff(
