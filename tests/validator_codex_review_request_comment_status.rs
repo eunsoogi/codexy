@@ -22,6 +22,21 @@ fn validator_ignores_codex_review_comment_status_labels() -> TestResult {
 }
 
 #[test]
+fn validator_ignores_existing_codex_review_request_status() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Current-head @codex review request exists; waiting for output.\n",
+        current_head_request_pr_state(),
+    )?;
+    assert!(
+        output.status.success(),
+        "validator should not treat existing Codex review request status as a fresh review request\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_literal_at_codex_comment_request_detection() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Next action: comment @codex review on the current head.\n",
@@ -77,6 +92,24 @@ fn current_head_output_pr_state() -> &'static str {
             "author":{"login":"chatgpt-codex-connector"},
             "submittedAt":"2026-06-22T12:50:03Z",
             "commit":{"oid":"32b03a210b3defb2d29dd352283ea2488e60d893"}
+        }],
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
+    }"#
+}
+
+fn current_head_request_pr_state() -> &'static str {
+    r#"{
+        "number": 174,
+        "state": "OPEN",
+        "isDraft": false,
+        "mergeStateStatus": "CLEAN",
+        "reviewDecision": "REVIEW_REQUIRED",
+        "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "comments": [{
+            "body":"@codex review",
+            "author":{"login":"eunsoogi"},
+            "createdAt":"2026-06-22T12:45:06Z",
+            "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
         }],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
     }"#

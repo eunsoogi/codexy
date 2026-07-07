@@ -85,6 +85,8 @@ fn is_review_request_status_clause(clause: &str) -> bool {
             "request has eyes only",
             "request already has eyes",
             "request is waiting",
+            "request exists",
+            "request already exists",
             "request: pending",
             "request: has eyes",
             "request: has eyes only",
