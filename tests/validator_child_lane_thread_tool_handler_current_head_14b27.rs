@@ -12,21 +12,26 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 
 #[test]
 fn validator_rejects_pre_action_route_not_used_value() -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+    for route in [
+        "Fallback route: was not used, parent sent the handoff to the child thread",
+        "Fallback route: parent sent the handoff to the child thread, but it isn't used",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Fallback route: was not used, parent sent the handoff to the child thread
+{route}
 Tracking issue: #205
 Maintainer reassignment: none
 "#,
-    )?;
+        ))?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject route values that say the fallback was not used before naming a route"
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject route values that say the fallback was not used: {route}"
+        );
+    }
     Ok(())
 }
 
@@ -50,5 +55,29 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_current_tense_contracted_issue_negations()
+-> Result<(), Box<dyn std::error::Error>> {
+    for issue in [
+        "tracking issue: #205 isn't created",
+        "tracking issue: issue isn't filed for #205",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; {issue}.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject current-tense contracted issue lifecycle negation: {issue}"
+        );
+    }
     Ok(())
 }
