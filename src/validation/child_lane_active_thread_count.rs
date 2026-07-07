@@ -55,7 +55,12 @@ fn has_active_child_thread_key(words: &[String]) -> bool {
         && !words
             .windows(2)
             .any(|window| window[0] == "non" && window[1] == "active")
-        && !words
+        && (!words.iter().any(|word| {
+            matches!(
+                word.as_str(),
+                "subagent" | "subagents" | "specialist" | "specialists"
+            )
+        }) || words
             .iter()
-            .any(|word| matches!(word.as_str(), "subagent" | "specialist"))
+            .any(|word| matches!(word.as_str(), "exclude" | "excluding" | "excluded")))
 }

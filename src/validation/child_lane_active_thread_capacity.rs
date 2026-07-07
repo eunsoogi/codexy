@@ -156,7 +156,7 @@ fn normalized_operation_line(line: &str) -> String {
         .replace("created a child thread", "created child thread")
 }
 fn operation_markers() -> impl Iterator<Item = &'static str> {
-    "child thread created:|created child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
+    "child thread created:|created child thread|created a replacement child thread|created replacement child thread|continued child thread|forked child thread|resumed child thread|started child thread".split('|')
 }
 
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
