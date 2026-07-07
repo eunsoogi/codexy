@@ -148,3 +148,27 @@ Maintainer reassignment: none
     }
     Ok(())
 }
+
+#[test]
+fn validator_rejects_split_off_tracking_issue_negations() -> Result<(), Box<dyn std::error::Error>>
+{
+    for issue in [
+        "tracking issue: #205; not a tracking issue for this defect",
+        "tracking issue: #205. not a separate tracking issue for this defect",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; {issue}.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject split-off tracking issue negation: {issue}"
+        );
+    }
+    Ok(())
+}

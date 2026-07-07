@@ -3,13 +3,16 @@ use super::child_lane_thread_tool_handler_issue_value::has_placeholder_or_pendin
 
 pub(super) fn has_tracking_issue(evidence: &str) -> bool {
     const AFFIRMATIVE_MARKERS: &str = "separate dogfood issue|separate dogfooding issue|separate tracking issue|tracking issue|tracked in issue|tracked by issue|follow-up issue";
-    handoff_clauses(evidence).any(|clause| {
-        AFFIRMATIVE_MARKERS
-            .split('|')
-            .any(|marker| clause.contains(marker))
-            && has_issue_reference(clause)
-            && !has_negated_tracking_issue(clause)
-            && !has_placeholder_or_pending_value(clause)
+    evidence.lines().any(|line| {
+        !has_negated_tracking_issue(line)
+            && handoff_clauses(line).any(|clause| {
+                AFFIRMATIVE_MARKERS
+                    .split('|')
+                    .any(|marker| clause.contains(marker))
+                    && has_issue_reference(clause)
+                    && !has_negated_tracking_issue(clause)
+                    && !has_placeholder_or_pending_value(clause)
+            })
     })
 }
 
