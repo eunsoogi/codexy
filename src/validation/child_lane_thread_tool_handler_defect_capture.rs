@@ -168,6 +168,7 @@ fn has_handler_handoff_fields(evidence: &str) -> bool {
 
 fn is_fallback_metadata_field(line: &str) -> bool {
     [
+        "fallback route used:",
         "fallback route:",
         "fallback-route:",
         "fallback path:",
