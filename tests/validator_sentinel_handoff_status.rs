@@ -8,6 +8,7 @@ fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Pushed: yes.\n",
         "PR ready: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
+        "PR readiness: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "Merge readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR ready for parent handoff. Sentinel verdict: UNOBSERVABLE after bounded wait. Pushed: yes.\n",
@@ -40,6 +41,7 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: BLOCK, Carver found same-scope issue. Pushed: yes.\n",
         "PR ready: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
+        "PR readiness: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "PR readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "Merge readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "PR ready for parent handoff. Sentinel verdict: BLOCK. Pushed: yes.\n",
@@ -137,6 +139,15 @@ fn validator_accepts_unobservable_sentinel_when_handoff_stops_before_readiness()
         )?;
     }
     Ok(())
+}
+
+#[test]
+fn validator_accepts_explicit_maintainer_fallback_for_unobservable_sentinel_readiness() -> TestResult
+{
+    accept_open_pr_handoff(
+        "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
+        "validator should honor an explicit maintainer-approved fallback for unobservable Sentinel readiness",
+    )
 }
 
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {

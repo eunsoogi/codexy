@@ -2,7 +2,8 @@ const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel|packaged reviewer gate|
 const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass|reviewer gate returned pass";
 const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate returned block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
-const READINESS_MARKERS: &str = "merge-ready|merge ready|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|pr-ready|pr ready|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|ready to push|ready for push|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
+const READINESS_MARKERS: &str = "merge-ready|merge ready|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|pr-ready|pr ready|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
+const MAINTAINER_FALLBACK_APPROVAL_MARKERS: &str = "maintainer explicitly approved fallback|maintainer explicitly approved a fallback|maintainer explicitly approved the fallback|maintainer approved fallback|maintainer approved a fallback|maintainer approved the fallback|maintainer-approved fallback|maintainer-approved sentinel fallback|maintainer approval: fallback approved|maintainer approval fallback approved";
 
 pub(super) fn check(handoff: &str) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
@@ -14,9 +15,15 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     }
     match current_sentinel_status(&text) {
         Some(SentinelStatus::Block) => {
+            if has_maintainer_fallback_approval(&text) {
+                return Vec::new();
+            }
             vec!["Sentinel BLOCK verdict cannot satisfy PR readiness or push readiness".into()]
         }
         Some(SentinelStatus::Unobservable) => {
+            if has_maintainer_fallback_approval(&text) {
+                return Vec::new();
+            }
             vec![
                 "Sentinel UNOBSERVABLE or pending verdict cannot satisfy PR readiness or push readiness".into(),
             ]
@@ -41,6 +48,10 @@ fn has_any(text: &str, phrases: &str) -> bool {
     phrases
         .split('|')
         .any(|phrase| has_affirmed_phrase(text, phrase))
+}
+
+fn has_maintainer_fallback_approval(text: &str) -> bool {
+    has_any(text, MAINTAINER_FALLBACK_APPROVAL_MARKERS)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
