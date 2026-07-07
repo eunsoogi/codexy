@@ -178,6 +178,17 @@ fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> T
 }
 
 #[test]
+fn validator_cli_rejects_bare_negated_approval_marker_inside_approval_sentence() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, but not direct reviewer passes performed, edge classes reviewed",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("direct reviewer passes performed"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sentence() -> TestResult
 {
     let output = validate_sentinel_replacement(
