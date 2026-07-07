@@ -210,13 +210,11 @@ fn has_standalone_ready_line(text: &str) -> bool {
 }
 
 fn has_affirmative_ready_label(line: &str) -> bool {
-    ["pr-ready", "pr ready", "merge-ready", "merge ready"]
-        .into_iter()
-        .any(|label| {
-            line.strip_prefix(label)
-                .and_then(|rest| rest.trim_start().strip_prefix(':'))
-                .is_some_and(|value| value.trim() == "yes")
-        })
+    claims::ready_label_phrases().iter().any(|label| {
+        line.strip_prefix(label)
+            .and_then(|rest| rest.trim_start().strip_prefix(':'))
+            .is_some_and(|value| value.trim() == "yes")
+    })
 }
 
 fn unresolved_thread(pr_state: &Value) -> Option<String> {

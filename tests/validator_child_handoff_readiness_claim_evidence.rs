@@ -83,7 +83,12 @@ fn validator_rejects_bare_pr_ready_handoff_without_status_evidence() -> TestResu
 
 #[test]
 fn validator_rejects_affirmative_ready_labels_without_child_marker() -> TestResult {
-    for handoff in ["PR-ready: yes.\n", "Merge-ready: yes.\n"] {
+    for handoff in [
+        "PR-ready: yes.\n",
+        "Merge-ready: yes.\n",
+        "Pull request ready: yes.\n",
+        "Ready to merge: yes.\n",
+    ] {
         assert_rejects_child_handoff(
             handoff,
             &pr_state_with(

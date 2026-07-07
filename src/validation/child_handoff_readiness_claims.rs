@@ -85,6 +85,10 @@ pub(super) fn standalone_ready_line(text: &str) -> bool {
     })
 }
 
+pub(super) fn ready_label_phrases() -> &'static [&'static str] {
+    STANDALONE_READY_PHRASES
+}
+
 fn has_any_affirmed(text: &str, phrases: &[&str]) -> bool {
     phrases
         .iter()

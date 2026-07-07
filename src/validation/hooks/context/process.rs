@@ -102,18 +102,12 @@ pub(in crate::validation::hooks) fn output_with_timeout(
             let drain_deadline = Instant::now() + Duration::from_millis(20);
             let stdout_outcome = drain_until_closed(&mut stdout, &mut stdout_data, drain_deadline)?;
             let stderr_outcome = drain_until_closed(&mut stderr, &mut stderr_data, drain_deadline)?;
-            let mut kill_stdout_outcome = ReadOutcome::Closed;
-            let mut kill_stderr_outcome = ReadOutcome::Closed;
-            if matches!(stdout_outcome, ReadOutcome::Open | ReadOutcome::TimedOut)
-                || matches!(stderr_outcome, ReadOutcome::Open | ReadOutcome::TimedOut)
-            {
-                terminate_process_group(child_id, libc::SIGKILL);
-                let kill_drain_deadline = Instant::now() + Duration::from_millis(100);
-                kill_stdout_outcome =
-                    drain_until_closed(&mut stdout, &mut stdout_data, kill_drain_deadline)?;
-                kill_stderr_outcome =
-                    drain_until_closed(&mut stderr, &mut stderr_data, kill_drain_deadline)?;
-            }
+            terminate_process_group(child_id, libc::SIGKILL);
+            let kill_drain_deadline = Instant::now() + Duration::from_millis(100);
+            let kill_stdout_outcome =
+                drain_until_closed(&mut stdout, &mut stdout_data, kill_drain_deadline)?;
+            let kill_stderr_outcome =
+                drain_until_closed(&mut stderr, &mut stderr_data, kill_drain_deadline)?;
             if [
                 stdout_outcome,
                 stderr_outcome,

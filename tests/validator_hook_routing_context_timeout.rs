@@ -89,6 +89,43 @@ fn validator_cli_kills_lingering_background_descendants_before_return()
 }
 
 #[test]
+fn validator_cli_kills_redirected_background_descendants_before_return()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_plugin(&plugin_root)?;
+    let marker = format!("codexy-hook-redirected-descendant-{}", std::process::id());
+    let script_path = plugin_root.join("hooks/codexy-routing-context.sh");
+    std::fs::write(
+        &script_path,
+        format!(
+            "#!/bin/sh\nsh -c 'trap \"\" TERM HUP; : {}; exec 1<&- 2<&-; while :; do sleep 1; done' &\nprintf '%s\\n' '{}'\n",
+            marker,
+            session_start_context_json()
+        ),
+    )?;
+
+    let output = validate_hooks_with_deadline(&plugin_root, Duration::from_secs(6))?;
+    assert!(
+        output.status.success(),
+        "validator should accept valid hook output\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let pids = matching_pids(&marker)?;
+    for pid in &pids {
+        unsafe {
+            let _ = libc::kill(*pid, libc::SIGKILL);
+        }
+    }
+    assert!(
+        pids.is_empty(),
+        "validator returned while redirected hook descendants were still running: {pids:?}"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_bounds_continuous_hook_output() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
