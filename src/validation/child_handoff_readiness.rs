@@ -125,7 +125,7 @@ fn negative_proof_labels(
         (
             claims_pr_ready || claims_synced || claims_pushed,
             "pushed",
-            &["pushed", "remote/pr head match"][..],
+            &["pushed", "pushed branch", "remote/pr head match"][..],
         ),
         (
             claims_pr_ready,
@@ -141,6 +141,8 @@ fn negative_proof_labels(
                 "pr-readiness",
                 "ready for parent handoff",
                 "ready for handoff",
+                "parent-handoff-ready",
+                "parent handoff ready",
                 "parent can open pr next",
             ][..],
         ),

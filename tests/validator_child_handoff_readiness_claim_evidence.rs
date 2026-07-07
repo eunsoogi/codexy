@@ -97,13 +97,36 @@ fn validator_rejects_affirmative_ready_labels_without_child_marker() -> TestResu
 
 #[test]
 fn validator_rejects_synced_yes_with_pushed_no() -> TestResult {
-    assert_rejects_child_handoff(
+    for handoff in [
         "Child handoff: Synced: yes at 068dbb247b7755035223c91ee39f26830f3c1609. Pushed: no.\n",
-        &pr_state_with(
-            r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
-        ),
-        "pushed proof is negative or non-claim",
-    )
+        "Child handoff: Synced: yes at 068dbb247b7755035223c91ee39f26830f3c1609. Pushed branch: no.\n",
+    ] {
+        assert_rejects_child_handoff(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+            "pushed proof is negative or non-claim",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_pr_ready_with_negative_parent_handoff_label() -> TestResult {
+    for handoff in [
+        "Child handoff: PR-ready: yes. Parent-handoff-ready: no.\n",
+        "Child handoff: PR-ready: yes. Parent handoff ready: no.\n",
+    ] {
+        assert_rejects_child_handoff(
+            handoff,
+            &pr_state_with(
+                r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
+            ),
+            "PR-ready proof is negative or non-claim",
+        )?;
+    }
+    Ok(())
 }
 
 #[test]
