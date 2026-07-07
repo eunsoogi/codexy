@@ -69,7 +69,6 @@ fn validator_cli_rejects_sentinel_with_negated_no_finding_result_clause() -> Tes
         "edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
         "MUST NOT require edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
     Ok(())
@@ -81,7 +80,6 @@ fn validator_cli_rejects_sentinel_without_no_finding_result_suffix() -> TestResu
         "replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
         "replayed review examples when applicable",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
     Ok(())
@@ -93,7 +91,6 @@ fn validator_cli_rejects_sentinel_with_split_negated_approval_suffix() -> TestRe
         "edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
         "edge classes reviewed. MUST NOT require replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("codexy-sentinel reviewer gate contract"));
     Ok(())
@@ -105,7 +102,6 @@ fn validator_cli_rejects_sentinel_with_prefix_negated_approval_marker() -> TestR
         "Every approval MUST reference the current diff or head",
         "MUST NOT require that Every approval MUST reference the current diff or head",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Every approval MUST reference"));
     Ok(())
@@ -114,7 +110,6 @@ fn validator_cli_rejects_sentinel_with_prefix_negated_approval_marker() -> TestR
 #[test]
 fn validator_cli_rejects_sentinel_with_optional_split_approval_marker() -> TestResult {
     let output = validate_sentinel_replacement("lane scope", "lane scope is optional.")?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("lane scope"));
     Ok(())
@@ -132,7 +127,6 @@ fn validator_cli_rejects_weakened_marker_inside_approval_sentence_with_external_
             1,
         )
     })?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("edge classes reviewed"));
     Ok(())
@@ -161,7 +155,6 @@ fn validator_cli_rejects_weakened_real_approval_sentence_after_external_copy() -
         );
         sentinel
     })?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("edge classes reviewed"));
     Ok(())
@@ -191,7 +184,6 @@ fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sen
         "direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable",
         "direct reviewer passes performed, replayed review examples when applicable",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("edge classes reviewed"));
     Ok(())
@@ -203,7 +195,6 @@ fn validator_cli_accepts_wrapped_approval_evidence_sentence() -> TestResult {
         "Every approval MUST reference the current diff or head, lane scope",
         "Every approval MUST reference the current diff or head,\n lane scope",
     )?;
-
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
@@ -214,7 +205,6 @@ fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestR
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MAY skip replaying",
     )?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("repeated-Codex-feedback lanes"));
     Ok(())
