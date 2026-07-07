@@ -83,7 +83,7 @@ fn has_negated_issue_lifecycle(clause: &str) -> bool {
         .replace("didn't", "did not")
         .replace("won't", "will not");
     ["was", "has", "had", "is"].into_iter().any(|auxiliary| {
-        ["created", "filed"].into_iter().any(|verb| {
+        ["created", "filed", "opened"].into_iter().any(|verb| {
             normalized.contains(&format!("issue {auxiliary} not been {verb}"))
                 || normalized.contains(&format!("issue {auxiliary} not yet been {verb}"))
                 || normalized.contains(&format!("issue {auxiliary} not {verb}"))

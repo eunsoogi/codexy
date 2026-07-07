@@ -27,6 +27,7 @@ fn validator_rejects_absent_or_pending_tracking_issue_values()
     for issue in [
         "tracking issue not opened yet #205",
         "tracking issue: not opened yet #205",
+        "tracking issue: issue was not opened for #205",
         "tracking issue to be opened as #205",
         "follow-up issue should be filed as #205",
         "tracking issue needs to be filed as #205",
