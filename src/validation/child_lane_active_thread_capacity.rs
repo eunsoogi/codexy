@@ -24,6 +24,7 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
         .flat_map(|line| line.split(". "))
+        .flat_map(|line| line.split(", then "))
         .flat_map(split_operation_and_clauses)
 }
 
