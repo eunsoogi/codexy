@@ -105,6 +105,32 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_create_after_combined_active_waiting_count_reaches_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Waiting child Codex threads: 1
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Child thread created: thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should project from the combined active/waiting count before creating another child thread"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_replacement_when_count_names_different_thread_for_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

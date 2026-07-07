@@ -107,6 +107,12 @@ pub(super) struct ActiveCount {
     kind: CountKind,
 }
 
+impl ActiveCount {
+    pub(super) fn is_waiting(&self) -> bool {
+        matches!(self.kind, CountKind::Waiting)
+    }
+}
+
 #[derive(Clone, Copy)]
 enum CountKind {
     Active,

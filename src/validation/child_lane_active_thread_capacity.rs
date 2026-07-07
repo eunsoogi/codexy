@@ -70,14 +70,19 @@ pub(super) fn active_capacity_errors(
     for (operation, existing_owner) in operations.iter().zip(existing_owners) {
         let mut counted_replacement = false;
         let count_bound = previous_operation_line.filter(|line| line != &operation.line_number);
-        if let Some(record) = fresh_count_before_operation(active_counts, count_bound, operation) {
+        let records = fresh_counts_before_operation(active_counts, count_bound, operation);
+        if !records.is_empty() {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
-                operation.replaces_existing_owner && active_count_matches_owner(record, owner)
+                operation.replaces_existing_owner
+                    && records
+                        .iter()
+                        .any(|record| active_count_matches_owner(record, owner))
             });
+            let record_count = projected_count_from_records(&records);
             projected_count = Some(match projected_count {
-                Some(_) if record.freed_capacity => record.count,
-                Some(projected) => projected.max(record.count),
-                None => record.count,
+                Some(_) if records.iter().any(|record| record.freed_capacity) => record_count,
+                Some(projected) => projected.max(record_count),
+                None => record_count,
             });
         } else {
             errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
@@ -175,15 +180,38 @@ fn has_negated_thread_tool_reference(line: &str, tool: &str) -> bool {
     .any(|marker| line.contains(&marker))
 }
 
-fn fresh_count_before_operation<'a>(
+fn fresh_counts_before_operation<'a>(
     active_counts: &'a [ActiveCount],
     previous_operation_line: Option<usize>,
     operation: &ThreadOperation,
-) -> Option<&'a ActiveCount> {
-    active_counts.iter().rev().find(|record| {
-        record.line_number < operation.line_number
-            && previous_operation_line.is_none_or(|line_number| record.line_number > line_number)
-    })
+) -> Vec<&'a ActiveCount> {
+    active_counts
+        .iter()
+        .filter(|record| {
+            record.line_number < operation.line_number
+                && previous_operation_line
+                    .is_none_or(|line_number| record.line_number > line_number)
+        })
+        .collect()
+}
+
+fn projected_count_from_records(records: &[&ActiveCount]) -> u64 {
+    let mut latest_active = None;
+    let mut latest_waiting = None;
+    for record in records {
+        if record.freed_capacity {
+            latest_active = None;
+            latest_waiting = None;
+        }
+        if record.is_waiting() {
+            latest_waiting = Some(record.count);
+        } else {
+            latest_active = Some(record.count);
+        }
+    }
+    latest_active
+        .unwrap_or(0_u64)
+        .saturating_add(latest_waiting.unwrap_or(0_u64))
 }
 
 fn is_reuse_operation_line(line: &str) -> bool {
