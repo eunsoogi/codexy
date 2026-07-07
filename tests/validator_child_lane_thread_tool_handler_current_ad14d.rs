@@ -75,6 +75,9 @@ fn validator_rejects_parent_route_with_later_child_thread_check()
         "Fallback route: parent sent the handoff to the parent thread before checking in the child thread",
         "Fallback route: parent sent the handoff to the parent thread after checking in the child thread",
         "Fallback route: parent sent the handoff to the parent thread and subsequently checked in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread and later posted status in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread, later posted status in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread; later posted status in the child thread",
     ] {
         let output = run_ownership_validator(&evidence(route))?;
 

@@ -43,37 +43,19 @@ fn has_positive_destination(after_object: &str) -> bool {
 }
 
 fn direct_route_segment(after_object: &str) -> &str {
-    [
-        " and then ",
-        ", then ",
-        "; then ",
-        " then ",
-        " and later checked ",
-        ", later checked ",
-        "; later checked ",
-        " later checked ",
-        " before checking ",
-        ", before checking ",
-        "; before checking ",
-        " after checking ",
-        ", after checking ",
-        "; after checking ",
-        " and subsequently checked ",
-        ", subsequently checked ",
-        "; subsequently checked ",
-        " subsequently checked ",
-    ]
-    .into_iter()
-    .filter_map(|delimiter| {
-        after_object.find(delimiter).and_then(|index| {
-            let before = &after_object[..index];
-            let after = &after_object[index + delimiter.len()..];
-            (!has_invalid_route_followup(after)).then_some((index, before))
+    const DIRECT_ROUTE_DELIMITERS: &str = " and then |, then |; then | then | and later checked |, later checked |; later checked | later checked | and later sent |, later sent |; later sent | later sent | and later posted |, later posted |; later posted | later posted | and later delivered |, later delivered |; later delivered | later delivered | and later routed |, later routed |; later routed | later routed | before checking |, before checking |; before checking | after checking |, after checking |; after checking | and subsequently checked |, subsequently checked |; subsequently checked | subsequently checked ";
+    DIRECT_ROUTE_DELIMITERS
+        .split('|')
+        .filter_map(|delimiter| {
+            after_object.find(delimiter).and_then(|index| {
+                let before = &after_object[..index];
+                let after = &after_object[index + delimiter.len()..];
+                (!has_invalid_route_followup(after)).then_some((index, before))
+            })
         })
-    })
-    .min_by_key(|(index, _)| *index)
-    .map(|(_, before)| before)
-    .unwrap_or(after_object)
+        .min_by_key(|(index, _)| *index)
+        .map(|(_, before)| before)
+        .unwrap_or(after_object)
 }
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
