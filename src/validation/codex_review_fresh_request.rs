@@ -70,7 +70,7 @@ fn is_split_waiting_status(line: &str, clause: &str) -> bool {
 
 fn starts_at_codex_review(text: &str) -> bool {
     text.trim_start()
-        .trim_start_matches('`')
+        .trim_start_matches(['`', '"', '\''])
         .starts_with("@codex review")
 }
 

@@ -60,6 +60,7 @@ fn validator_treats_requesting_wording_as_fresh_codex_review_request() -> TestRe
     for handoff in [
         "Requesting fresh Codex review now.\n",
         "I'm requesting @codex review on the current head.\n",
+        "Next action: \"@codex review\".\n",
     ] {
         let output =
             validate_handoff_with_pr_state(handoff, pr_state_with_unresolved_outdated_thread())?;
