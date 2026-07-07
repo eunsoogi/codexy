@@ -40,15 +40,21 @@ fn validator_ignores_negated_pr_comments_before_fresh_codex_review() -> TestResu
 }
 #[test]
 fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Request exactly one fresh Codex review now.\n",
-        clean_pr_state_with_comment("@codex review"),
-    )?;
-    assert_failure_contains(
-        &output,
-        "validator should still reject a duplicate fresh request after a real @codex review comment\nstdout:\n{}\nstderr:\n{}",
-        "current-head Codex review activity blocks fresh Codex review requests",
-    );
+    for comment in [
+        "@codex review",
+        "Requested @codex review",
+        "@codex review requested",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            "Request exactly one fresh Codex review now.\n",
+            clean_pr_state_with_comment(comment),
+        )?;
+        assert_failure_contains(
+            &output,
+            "validator should still reject a duplicate fresh request after a real @codex review comment\ncomment: {comment}\nstdout:\n{}\nstderr:\n{}",
+            "current-head Codex review activity blocks fresh Codex review requests",
+        );
+    }
     Ok(())
 }
 #[test]

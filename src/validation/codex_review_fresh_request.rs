@@ -24,7 +24,9 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
     let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
-        && ((contains_word(clause, "request") || contains_word(clause, "requesting"))
+        && ((contains_word(clause, "request")
+            || contains_word(clause, "requesting")
+            || is_past_tense_codex_review_request_clause(clause))
             && !is_pull_request_noun_clause(clause)
             || names_at_codex_review
                 && ["post", "comment", "send"]
@@ -45,6 +47,16 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
         || clause.contains("request review from @codex")
         || clause.contains("request a review from @codex")
         || clause.contains("request @codex to review")
+}
+
+fn is_past_tense_codex_review_request_clause(clause: &str) -> bool {
+    const PHRASES: &str = "requested @codex review|requested codex review|@codex review requested|codex review requested";
+    PHRASES.split('|').any(|phrase| {
+        clause.find(phrase).is_some_and(|index| {
+            let after = clause[index + phrase.len()..].trim_start();
+            !after.starts_with("change")
+        })
+    })
 }
 
 fn is_pull_request_noun_clause(clause: &str) -> bool {
@@ -77,6 +89,14 @@ fn is_pull_request_noun_at(text: &str, request_start: usize) -> bool {
 }
 
 fn is_review_request_status_clause(clause: &str) -> bool {
+    const PAST_TENSE_STATUSES: &str = "has eyes|eyes only|waiting for review output|requested for the current head|requested for current head";
+    if is_past_tense_codex_review_request_clause(clause)
+        && PAST_TENSE_STATUSES
+            .split('|')
+            .any(|status| clause.contains(status))
+    {
+        return true;
+    }
     (clause.contains("@codex review request") || clause.contains("codex review request"))
         && [
             "request is pending",
@@ -207,7 +227,7 @@ pub(super) fn has_negated_review_request(clause: &str) -> bool {
     {
         return false;
     }
-    const PHRASES: &str = "do not request|don't request|do not post|don't post|do not comment|don't comment|do not send|don't send|before requesting|@codex review requested|codex review requested|requested a @codex review|requested a codex review|requested @codex review|requested codex review|no @codex review request|no codex review request|no current-head @codex review request|no current-head codex review request|no current-head request|no current head @codex review request|no current head codex review request|no current head request|no request|without @codex review request|without codex review request|without current-head @codex review request|without current-head codex review request|not request|without current-head request|without current head @codex review request|without current head codex review request|without current head request|without request|will not request|won't request|must not request|mustn't request|will not post|won't post|must not post|mustn't post|will not comment|won't comment|must not comment|mustn't comment|will not send|won't send|must not send|mustn't send|not ready to request|not yet ready to request|not currently ready to request|isn't ready to request|isn't yet ready to request|isn't currently ready to request|aren't ready to request|aren't yet ready to request|aren't currently ready to request";
+    const PHRASES: &str = "do not request|don't request|do not post|don't post|do not comment|don't comment|do not send|don't send|before requesting|not requested @codex review|not requested codex review|@codex review not requested|codex review not requested|no @codex review requested|no codex review requested|no @codex review request|no codex review request|no current-head @codex review request|no current-head codex review request|no current-head request|no current head @codex review request|no current head codex review request|no current head request|no request|without @codex review request|without codex review request|without current-head @codex review request|without current-head codex review request|not request|without current-head request|without current head @codex review request|without current head codex review request|without current head request|without request|will not request|won't request|must not request|mustn't request|will not post|won't post|must not post|mustn't post|will not comment|won't comment|must not comment|mustn't comment|will not send|won't send|must not send|mustn't send|not ready to request|not yet ready to request|not currently ready to request|isn't ready to request|isn't yet ready to request|isn't currently ready to request|aren't ready to request|aren't yet ready to request|aren't currently ready to request";
     PHRASES.split('|').any(|phrase| clause.contains(phrase))
 }
 
@@ -219,16 +239,4 @@ fn is_post_colon_request_action(action: &str) -> bool {
         || action.starts_with("send ")
         || action.starts_with("@codex review"))
         && is_review_request_clause(action)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_review_request_clause;
-
-    #[test]
-    fn recognizes_the_next_action_codex_review_request() {
-        assert!(is_review_request_clause(
-            "the next action is to @codex review now"
-        ));
-    }
 }

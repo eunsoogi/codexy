@@ -1,5 +1,4 @@
 use std::process::Command;
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
@@ -24,6 +23,8 @@ fn validator_rejects_fresh_codex_review_request_with_unresolved_actionable_threa
         "Next action: request @codex to review the current head.\n",
         "No current-head request exists and the next action is to @codex review now.\n",
         "No current-head request exists so request @codex review now.\n",
+        "Requested @codex review.\n",
+        "@codex review requested.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, unresolved_thread_pr_state())?;
         assert_failure_contains(
@@ -190,7 +191,6 @@ fn assert_failure_contains(output: &std::process::Output, message: &str, needle:
         String::from_utf8_lossy(&output.stderr)
     );
 }
-
 fn clean_thread_pr_state() -> &'static str {
     r#"{
         "number": 174,
