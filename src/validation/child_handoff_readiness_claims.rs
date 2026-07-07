@@ -76,12 +76,13 @@ pub(super) fn pr_ready(text: &str) -> bool {
 pub(super) fn standalone_ready_line(text: &str) -> bool {
     let lines: Vec<_> = text.lines().collect();
     lines.iter().enumerate().any(|(index, line)| {
-        let line = line.trim();
-        if line.starts_with(['-', '*']) {
+        let Some((line, is_bullet)) = standalone_line_text(line) else {
             return false;
-        }
+        };
         let line = line.trim_end_matches('.');
-        STANDALONE_READY_PHRASES.contains(&line) && !has_next_non_claim_bullet(&lines[index + 1..])
+        STANDALONE_READY_PHRASES.contains(&line)
+            && (!is_bullet || explicit_bullet_ready_phrase(line))
+            && !has_next_non_claim_bullet(&lines[index + 1..])
     })
 }
 
@@ -117,6 +118,29 @@ const STANDALONE_READY_PHRASES: &[&str] = &[
     "parent can open pr next",
     "parent can merge",
 ];
+
+fn standalone_line_text(line: &str) -> Option<(&str, bool)> {
+    let line = line.trim();
+    let Some(bullet) = line.strip_prefix(['-', '*']) else {
+        return Some((line, false));
+    };
+    let bullet = bullet.trim_start();
+    if bullet.starts_with("[ ]") {
+        return None;
+    }
+    Some((
+        bullet
+            .strip_prefix("[x]")
+            .or_else(|| bullet.strip_prefix("[X]"))
+            .map(str::trim_start)
+            .unwrap_or(bullet),
+        true,
+    ))
+}
+
+fn explicit_bullet_ready_phrase(line: &str) -> bool {
+    line.contains("pr") || line.contains("merge") || line.contains("pull request")
+}
 
 fn has_next_non_claim_bullet(lines: &[&str]) -> bool {
     lines

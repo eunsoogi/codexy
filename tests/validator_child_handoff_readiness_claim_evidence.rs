@@ -67,6 +67,8 @@ fn validator_rejects_bare_pr_ready_handoff_without_status_evidence() -> TestResu
     for handoff in [
         "PR-ready.\n",
         "merge-ready.\n",
+        "- PR-ready.\n",
+        "* merge-ready.\n",
         "Ready to merge.\n",
         "Ready for merge.\n",
     ] {
