@@ -157,10 +157,16 @@ fn has_concrete_fallback_route(clause: &str) -> bool {
 }
 
 fn extract_fallback_route_value(clause: &str) -> Option<&str> {
-    ["fallback route used:", "fallback route:", "fallback path:"]
-        .into_iter()
-        .find_map(|marker| clause.split_once(marker).map(|(_, value)| value))
-        .map(trim_at_next_metadata_field)
+    [
+        "fallback route used:",
+        "fallback-route:",
+        "fallback route:",
+        "fallback-path:",
+        "fallback path:",
+    ]
+    .into_iter()
+    .find_map(|marker| clause.split_once(marker).map(|(_, value)| value))
+    .map(trim_at_next_metadata_field)
 }
 
 fn trim_at_next_metadata_field(value: &str) -> &str {
