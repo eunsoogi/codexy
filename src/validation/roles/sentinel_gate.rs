@@ -88,7 +88,11 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
 }
 
 fn missing_approval_evidence_markers(instructions: &str) -> Vec<&'static str> {
-    let Some(approval_start) = instructions.find("Every approval MUST reference") else {
+    let contract_start = instructions.find("Evidence expectations:").unwrap_or(0);
+    let Some(approval_start) = instructions[contract_start..]
+        .find("Every approval MUST reference")
+        .map(|index| contract_start + index)
+    else {
         return APPROVAL_EVIDENCE_MARKERS.to_vec();
     };
     let sentence_end = instructions[approval_start..]

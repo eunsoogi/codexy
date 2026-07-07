@@ -150,6 +150,35 @@ fn validator_cli_rejects_weakened_marker_inside_approval_sentence_with_external_
 }
 
 #[test]
+fn validator_cli_rejects_weakened_real_approval_sentence_after_external_copy() -> TestResult {
+    let output = validate_sentinel_edit(|sentinel| {
+        let external_markers = "Audit vocabulary: Every approval MUST reference the current diff or head, lane scope, touched implementation-file LOC evidence, verification commands and results, direct readback for structured files, reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk.\n\nEvidence expectations:";
+        let target = "direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable";
+        let mut sentinel = sentinel
+            .replace("Evidence expectations:", external_markers)
+            .replace(
+                "touched implementation-file LOC evidence when applicable",
+                "touched implementation-file LOC evidence",
+            );
+        let first = sentinel.find(target).expect("external approval marker");
+        let second = first
+            + target.len()
+            + sentinel[first + target.len()..]
+                .find(target)
+                .expect("real approval marker");
+        sentinel.replace_range(
+            second..second + target.len(),
+            "direct reviewer passes performed, replayed review examples",
+        );
+        sentinel
+    })?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("edge classes reviewed"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sentence() -> TestResult
 {
     let output = validate_sentinel_replacement(
