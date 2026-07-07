@@ -10,7 +10,14 @@ completion or the default Codexy merge flow. MUST capture current PR state first
 pr=<pr>
 owner=<owner>
 repo=<repo>
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > pr-state.base.json
+state_dir=$(mktemp -d)
+trap 'rm -rf "$state_dir"' EXIT
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
+head_ref="$(jq -r '.headRefName' "$state_dir/pr-state.base.json")"
+git fetch origin "$head_ref"
+git status --short --branch > "$state_dir/worktreeStatus.txt"
+git rev-parse HEAD > "$state_dir/localHeadOid.txt"
+git rev-parse "origin/$head_ref" > "$state_dir/remoteHeadOid.txt"
 default_branch="$(gh repo view "$owner/$repo" --json defaultBranchRef --jq '.defaultBranchRef.name')"
 closing_issue="$(
   jq -r '.body // ""
@@ -18,16 +25,16 @@ closing_issue="$(
     | map(select((. | gsub("[[:space:]]"; "")) != ""))
     | last // ""
     | capture("^(Fixes|Closes|Resolves) #(?<number>[0-9]+)$").number? // empty' \
-    pr-state.base.json
+    "$state_dir/pr-state.base.json"
 )"
 if [ -n "$closing_issue" ] &&
-  [ "$(jq -r '.baseRefName // ""' pr-state.base.json)" != "$default_branch" ]; then
+  [ "$(jq -r '.baseRefName // ""' "$state_dir/pr-state.base.json")" != "$default_branch" ]; then
   gh issue view "$closing_issue" --repo "$owner/$repo" --json number,url,labels \
-    > pr-state.linkedIssue.json
+    > "$state_dir/linkedIssue.json"
   jq '{nodes:[{number,url,labels:{nodes:(.labels | map({name}))}}]}' \
-    pr-state.linkedIssue.json > pr-state.linkedIssueReferences.json
+    "$state_dir/linkedIssue.json" > "$state_dir/linkedIssueReferences.json"
 else
-  jq -n '{nodes:[]}' > pr-state.linkedIssueReferences.json
+  jq -n '{nodes:[]}' > "$state_dir/linkedIssueReferences.json"
 fi
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
@@ -44,7 +51,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.reviewThreads.pages.json
+}' > "$state_dir/reviewThreads.pages.json"
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -62,7 +69,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.comments.pages.json
+}' > "$state_dir/comments.pages.json"
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -74,28 +81,26 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.reviews.pages.json
+}' > "$state_dir/reviews.pages.json"
 jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
   | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
-  pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
+  "$state_dir/reviewThreads.pages.json" > "$state_dir/reviewThreads.json"
 jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
-  pr-state.comments.pages.json > pr-state.comments.json
+  "$state_dir/comments.pages.json" > "$state_dir/comments.json"
 jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
-  pr-state.reviews.pages.json > pr-state.reviews.json
+  "$state_dir/reviews.pages.json" > "$state_dir/reviews.json"
 jq '.[0].data.repository | {repositoryLabels: .labels, defaultBranchRef} + (.pullRequest | {labels, closingIssuesReferences})' \
-  pr-state.reviewThreads.pages.json > pr-state.labels.json
-jq --slurpfile reviewThreads pr-state.reviewThreads.json \
-  --slurpfile labels pr-state.labels.json \
-  --slurpfile linkedIssueReferences pr-state.linkedIssueReferences.json \
-  --slurpfile comments pr-state.comments.json \
-  --slurpfile reviews pr-state.reviews.json \
-  '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
-  pr-state.base.json > pr-state.json
-rm -f pr-state.base.json pr-state.reviewThreads.pages.json \
-  pr-state.reviewThreads.json pr-state.comments.pages.json \
-  pr-state.comments.json pr-state.reviews.pages.json \
-  pr-state.reviews.json pr-state.labels.json \
-  pr-state.linkedIssue.json pr-state.linkedIssueReferences.json
+  "$state_dir/reviewThreads.pages.json" > "$state_dir/labels.json"
+jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
+  --slurpfile labels "$state_dir/labels.json" \
+  --slurpfile linkedIssueReferences "$state_dir/linkedIssueReferences.json" \
+  --slurpfile comments "$state_dir/comments.json" \
+  --slurpfile reviews "$state_dir/reviews.json" \
+  --rawfile worktreeStatus "$state_dir/worktreeStatus.txt" \
+  --rawfile localHeadOid "$state_dir/localHeadOid.txt" \
+  --rawfile remoteHeadOid "$state_dir/remoteHeadOid.txt" \
+  '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, localHeadOid: ($localHeadOid | gsub("\n$"; "")), remoteHeadOid: ($remoteHeadOid | gsub("\n$"; "")), reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
+  "$state_dir/pr-state.base.json" > pr-state.json
 scripts/validate-plugin-config --check-completion-handoff \
   --handoff-file <report> \
   --pr-state-file pr-state.json
@@ -119,6 +124,13 @@ GitHub ignores closing keywords, the PR state file MUST include
 the PR state file MUST also include the repository label taxonomy as
 `repositoryLabels`; an unlabeled PR is not ready merely because handoff prose
 says no labels apply.
+For child handoffs that claim pushed or synced branch state, the PR state file
+MUST include the local `git status --short --branch` output as `worktreeStatus`;
+missing branch-status evidence blocks the handoff because stale local branches
+MUST NOT be ruled out without local branch-status evidence.
+For child handoffs that claim parent acceptance, merge evaluation, or PR
+readiness, the PR state file MUST include captured local `HEAD` as
+`localHeadOid` and the PR branch remote-tracking ref as `remoteHeadOid`.
 
 Before PR readiness, the owning lane MUST run the hard PR title hook with the
 exact GitHub PR title:
