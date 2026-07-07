@@ -86,6 +86,8 @@ fn validator_rejects_affirmative_ready_labels_without_child_marker() -> TestResu
     for handoff in [
         "PR-ready: yes.\n",
         "Merge-ready: yes.\n",
+        "PR-ready: yes, no blockers.\n",
+        "Merge-ready: yes; parent owns merge.\n",
         "Pull request ready: yes.\n",
         "Ready to merge: yes.\n",
     ] {

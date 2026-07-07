@@ -83,6 +83,8 @@ fn head_refs_after_markers(text: &str) -> Vec<String> {
             .split_once('=')
             .map_or((None, token), |(marker, value)| (Some(marker), value));
         let candidate = value.trim_matches(|ch: char| !ch.is_ascii_hexdigit());
+        let compact_candidate_looks_like_hash =
+            candidate.len() == 40 || candidate.chars().any(|ch| ch.is_ascii_digit());
         let follows_named_marker = matches!(
             previous.as_str(),
             "at" | "head" | "head:" | "sha" | "sha:" | "commit" | "commit:"
@@ -98,9 +100,10 @@ fn head_refs_after_markers(text: &str) -> Vec<String> {
                 )
             })
             .unwrap_or(false);
-        let follows_compact_pushed_marker = matches!(previous.as_str(), "pushed" | "pushed:")
-            || (matches!(previous.as_str(), "yes" | "yes:")
-                && matches!(before_previous.as_str(), "pushed" | "pushed:"));
+        let follows_compact_pushed_marker = compact_candidate_looks_like_hash
+            && (matches!(previous.as_str(), "pushed" | "pushed:")
+                || (matches!(previous.as_str(), "yes" | "yes:")
+                    && matches!(before_previous.as_str(), "pushed" | "pushed:")));
         let follows_head_match_marker = matches!(previous.as_str(), "yes" | "yes:")
             && matches!(before_previous.as_str(), "match" | "match:");
         let is_pr_head = matches!(before_previous.as_str(), "pr" | "request")

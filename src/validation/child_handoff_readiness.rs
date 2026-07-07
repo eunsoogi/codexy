@@ -213,8 +213,17 @@ fn has_affirmative_ready_label(line: &str) -> bool {
     claims::ready_label_phrases().iter().any(|label| {
         line.strip_prefix(label)
             .and_then(|rest| rest.trim_start().strip_prefix(':'))
-            .is_some_and(|value| value.trim() == "yes")
+            .is_some_and(has_affirmative_yes_value)
     })
+}
+
+fn has_affirmative_yes_value(value: &str) -> bool {
+    let value = value.trim();
+    value == "yes"
+        || value
+            .strip_prefix("yes")
+            .and_then(|rest| rest.chars().next())
+            .is_some_and(|ch| !ch.is_ascii_alphanumeric())
 }
 
 fn unresolved_thread(pr_state: &Value) -> Option<String> {
