@@ -50,11 +50,37 @@ fn fallback_count(words: &[String]) -> Option<u64> {
 }
 
 fn thread_id_entry_count(words: &[String]) -> Option<u64> {
-    let count = words
-        .windows(2)
-        .filter(|window| window[0] == "thread" && window[1].chars().all(|c| c.is_ascii_digit()))
-        .count();
+    let mut count = 0;
+    let mut index = 0;
+    while index < words.len() {
+        if words[index] == "thread"
+            && words
+                .get(index + 1)
+                .is_some_and(|word| is_thread_id_suffix(word))
+        {
+            count += 1;
+            index += 2;
+        } else {
+            if is_non_prefixed_codex_thread_id(&words[index]) {
+                count += 1;
+            }
+            index += 1;
+        }
+    }
     (count > 0).then_some(count as u64)
+}
+
+fn is_thread_id_suffix(word: &str) -> bool {
+    !word.is_empty()
+        && word.chars().all(|c| c.is_ascii_alphanumeric())
+        && word.chars().any(|c| c.is_ascii_digit())
+}
+
+fn is_non_prefixed_codex_thread_id(word: &str) -> bool {
+    word.len() >= 4
+        && word.chars().all(|c| c.is_ascii_alphanumeric())
+        && word.chars().any(|c| c.is_ascii_digit())
+        && word.chars().any(|c| c.is_ascii_alphabetic())
 }
 
 fn has_active_child_thread_key(words: &[String]) -> bool {
