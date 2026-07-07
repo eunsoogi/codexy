@@ -10,7 +10,10 @@ fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
         "PR ready: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR readiness: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
+        "PR-readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "Merge readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
+        "Merge-readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
+        "Ready for handoff. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR ready for parent handoff. Sentinel verdict: UNOBSERVABLE after bounded wait. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel pending after bounded wait. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel is delayed after bounded wait. Pushed: yes.\n",
@@ -101,6 +104,7 @@ fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
         "Push-ready. Sentinel timed out after bounded wait. Pushed: no. PR ready: no.\n",
         "Ready to push. Sentinel pending after bounded wait. Pushed: no. PR ready: no.\n",
         "Push readiness: yes. Sentinel produced no verdict after bounded wait. Pushed: no. PR ready: no.\n",
+        "Push-readiness: yes. Sentinel produced no verdict after bounded wait. Pushed: no. PR ready: no.\n",
         "Ready for push. Sentinel did not return PASS or BLOCK after bounded wait. Pushed: no. PR ready: no.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
