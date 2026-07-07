@@ -121,7 +121,10 @@ const STANDALONE_READY_PHRASES: &[&str] = &[
 
 fn standalone_line_text(line: &str) -> Option<(&str, bool)> {
     let line = line.trim();
-    let Some(bullet) = line.strip_prefix(['-', '*']) else {
+    let Some(bullet) = line
+        .strip_prefix(['-', '*'])
+        .or_else(|| strip_ordered_list_marker(line))
+    else {
         return Some((line, false));
     };
     let bullet = bullet.trim_start();
@@ -138,6 +141,14 @@ fn standalone_line_text(line: &str) -> Option<(&str, bool)> {
     ))
 }
 
+pub(super) fn strip_ordered_list_marker(line: &str) -> Option<&str> {
+    let (number, rest) = line.split_once(['.', ')'])?;
+    if number.is_empty() || !number.chars().all(|character| character.is_ascii_digit()) {
+        return None;
+    }
+    rest.strip_prefix(char::is_whitespace)
+}
+
 fn explicit_bullet_ready_phrase(line: &str) -> bool {
     line.contains("pr") || line.contains("merge") || line.contains("pull request")
 }
@@ -147,7 +158,10 @@ fn has_next_non_claim_bullet(lines: &[&str]) -> bool {
         .iter()
         .map(|line| line.trim())
         .find(|line| !line.is_empty())
-        .and_then(|line| line.strip_prefix(['-', '*']))
+        .and_then(|line| {
+            line.strip_prefix(['-', '*'])
+                .or_else(|| strip_ordered_list_marker(line))
+        })
         .map(str::trim)
         .is_some_and(|line| {
             if line.starts_with("no blockers") {

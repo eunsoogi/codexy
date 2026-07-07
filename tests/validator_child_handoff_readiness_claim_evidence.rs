@@ -69,6 +69,8 @@ fn validator_rejects_bare_pr_ready_handoff_without_status_evidence() -> TestResu
         "merge-ready.\n",
         "- PR-ready.\n",
         "* merge-ready.\n",
+        "1. PR-ready.\n",
+        "1) merge-ready.\n",
         "Ready to merge.\n",
         "Ready for merge.\n",
     ] {
@@ -221,7 +223,6 @@ fn assert_rejects_child_handoff(handoff: &str, pr_state: &str, needle: &str) -> 
     assert!(stderr.contains(needle), "unexpected stderr: {stderr}");
     Ok(())
 }
-
 fn pr_state_with(fields: &str) -> String {
     format!(
         r#"{{"number":204,"state":"OPEN","isDraft":false,"reviewDecision":"APPROVED","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`","author":{{"login":"chatgpt-codex-connector"}},"submittedAt":"2026-07-03T00:00:00Z"}}],{fields}}}"#

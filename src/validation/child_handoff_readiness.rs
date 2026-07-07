@@ -201,7 +201,12 @@ fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
 fn has_standalone_ready_line(text: &str) -> bool {
     claims::standalone_ready_line(text)
         || text.lines().any(|line| {
-            let line = line.trim().trim_start_matches(['-', '*']).trim();
+            let line = line.trim();
+            let line = line
+                .strip_prefix(['-', '*'])
+                .or_else(|| claims::strip_ordered_list_marker(line))
+                .map(str::trim_start)
+                .unwrap_or(line);
             let line = line
                 .strip_prefix("[x]")
                 .or_else(|| line.strip_prefix("[X]"))
