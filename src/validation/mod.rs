@@ -13,6 +13,7 @@ mod child_lane_ownership_subagent_format;
 mod child_lane_ownership_subagents;
 mod child_lane_thread_tool_handler_capture;
 mod child_lane_thread_tool_handler_defect_capture;
+mod child_lane_thread_tool_handler_exact_error;
 mod child_lane_thread_tool_handler_issue_reference;
 mod child_lane_thread_tool_handler_issue_tracking;
 mod child_lane_thread_tool_handler_issue_value;
