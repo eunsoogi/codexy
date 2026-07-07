@@ -2,6 +2,7 @@ pub(super) fn owner_lookup_segments(line: &str) -> Vec<String> {
     line.split(';')
         .flat_map(|segment| segment.split(". "))
         .flat_map(|segment| segment.split(", but "))
+        .flat_map(|segment| segment.split(" but "))
         .flat_map(split_owner_lookup_and_clauses)
         .map(|segment| segment.trim().to_owned())
         .collect()
