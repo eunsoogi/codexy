@@ -45,6 +45,8 @@ fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::er
         "Fallback route: parent sent the handoff to the child thread was never used",
         "Fallback route: no - parent sent the handoff to the child thread",
         "Fallback route: no fallback route: parent sent the handoff to the child thread",
+        "Fallback route: no fallback path was available? no",
+        "Fallback route: no fallback path was available: false",
         "Fallback route: parent sent the handoff to the child thread, but it was not used",
         "Fallback route: parent sent the handoff to the child thread and it was not used",
         "Fallback route: parent sent the handoff to the child thread; however it was not used",

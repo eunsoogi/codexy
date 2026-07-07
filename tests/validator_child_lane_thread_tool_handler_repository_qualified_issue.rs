@@ -103,6 +103,8 @@ fn validator_allows_punctuation_delimited_bare_tracking_issue_references()
 fn validator_rejects_malformed_repository_qualified_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
+        "tracking issue: https://github.com/issues/205",
+        "tracking issue: https://github.com/eunsoogi/issues/205",
         "tracking issue: eunsoogi/codexy#",
         "tracking issue: eunsoogi/codexy#205abc",
         "tracking issue: eunsoogi/#205",

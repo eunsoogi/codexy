@@ -26,9 +26,12 @@ fn has_github_issue_url(clause: &str) -> bool {
             return false;
         };
         let url = &trimmed[url_start..];
-        let Some((_, issue_tail)) = url.rsplit_once("/issues/") else {
+        let Some((repository_url, issue_tail)) = url.rsplit_once("/issues/") else {
             return false;
         };
+        if !has_github_owner_and_repo(repository_url) {
+            return false;
+        }
         let digit_end = issue_tail
             .find(|character: char| !character.is_ascii_digit())
             .unwrap_or(issue_tail.len());
@@ -40,6 +43,19 @@ fn github_url_start(candidate: &str) -> Option<usize> {
     candidate
         .find("https://github.com/")
         .or_else(|| candidate.find("http://github.com/"))
+}
+
+fn has_github_owner_and_repo(repository_url: &str) -> bool {
+    let Some(repository) = repository_url
+        .strip_prefix("https://github.com/")
+        .or_else(|| repository_url.strip_prefix("http://github.com/"))
+    else {
+        return false;
+    };
+    let Some((owner, repo)) = repository.rsplit_once('/') else {
+        return false;
+    };
+    is_repository_reference_segment(owner) && is_repository_reference_segment(repo)
 }
 
 fn has_repository_qualified_issue_reference(clause: &str) -> bool {
