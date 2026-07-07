@@ -71,6 +71,8 @@ fn validator_allows_current_head_request_status_without_fresh_request() -> TestR
         "Current-head @codex review request: pending.\n",
         "Current-head @codex review request: has eyes only.\n",
         "Current-head Codex review request is pending; waiting for output.\n",
+        "Fresh @codex review requested. Waiting for review output.\n",
+        "Fresh @codex review requested; waiting for review output.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, current_head_eyes_request_pr_state())?;
         assert_success(
@@ -222,7 +224,6 @@ fn unresolved_thread_pr_state() -> &'static str {
         }
     }"#
 }
-
 fn current_head_eyes_request_pr_state() -> &'static str {
     r#"{
         "number": 174,
@@ -240,7 +241,6 @@ fn current_head_eyes_request_pr_state() -> &'static str {
         "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
     }"#
 }
-
 fn missing_review_threads_pr_state() -> &'static str {
     r#"{"number":174,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"REVIEW_REQUIRED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#
 }

@@ -15,6 +15,7 @@ pub(super) fn claims(handoff: &str) -> bool {
                     && !super::codex_review_fresh_request_text::has_negative_request_status(clause)
                     && !super::codex_review_fresh_request_text::is_connector_footer(clause)
                     && !is_review_request_status_clause(clause)
+                    && !is_split_waiting_status(line, clause)
                     && is_review_request_clause(clause)
             })
     })
@@ -58,6 +59,15 @@ fn is_past_tense_codex_review_request_clause(clause: &str) -> bool {
     })
 }
 
+fn is_split_waiting_status(line: &str, clause: &str) -> bool {
+    const STATUSES: &str = "waiting for review output|has eyes|eyes only";
+    is_past_tense_codex_review_request_clause(clause)
+        && line.find(clause).is_some_and(|index| {
+            let rest = &line[index + clause.len()..];
+            STATUSES.split('|').any(|status| rest.contains(status))
+        })
+}
+
 fn starts_at_codex_review(text: &str) -> bool {
     text.trim_start()
         .trim_start_matches('`')
@@ -76,11 +86,11 @@ fn has_codex_review_request_action(clause: &str) -> bool {
     while let Some(index) = rest.find("request") {
         let start = offset + index;
         let end = start + "request".len();
-        if is_word_match(clause, start, end) && !is_pull_request_noun_at(clause, start) {
-            let after = &clause[end..];
-            if after.contains("codex review") || after.contains("@codex review") {
-                return true;
-            }
+        if is_word_match(clause, start, end)
+            && !is_pull_request_noun_at(clause, start)
+            && (clause[end..].contains("codex review") || clause[end..].contains("@codex review"))
+        {
+            return true;
         }
         offset = end;
         rest = &clause[offset..];
@@ -140,14 +150,10 @@ fn contains_word(text: &str, word: &str) -> bool {
 }
 
 fn is_word_match(text: &str, start: usize, end: usize) -> bool {
-    text[..start]
-        .chars()
-        .next_back()
-        .is_none_or(|ch| !ch.is_ascii_alphanumeric())
-        && text[end..]
-            .chars()
-            .next()
-            .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+    let before = text[..start].chars().next_back();
+    let after = text[end..].chars().next();
+    before.is_none_or(|ch| !ch.is_ascii_alphanumeric())
+        && after.is_none_or(|ch| !ch.is_ascii_alphanumeric())
 }
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
