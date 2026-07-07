@@ -58,6 +58,9 @@ pulling, and ordinary push.
 Issue titles MUST summarize the user-visible problem or needed work in plain
 prose. They MUST start with an uppercase letter and MUST NOT use Conventional
 Commit prefixes such as `feat(...)`.
+Before creating or updating an issue title, MUST validate the exact title with
+`plugins/codexy/hooks/codexy-issue-title-check.sh --issue-title "<title>"` or
+`scripts/validate-plugin-config --check-issue-title --issue-title "<title>"`.
 
 Issue bodies MUST include `## Problem`, `## Scope`,
 `## Acceptance Criteria`, and `## Verification`.
@@ -211,6 +214,8 @@ when domain intent is unclear, and MUST stage only resolved files.
   tools/evidence, and first allowed action.
 - Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
 - No unrelated files are staged; no force push or force-with-lease is used.
+- Issue title has been validated with `--check-issue-title` before issue
+  creation or title updates.
 - Verification covers touched surfaces, including `--check-touched-loc` when
   applicable.
 - Code-touching changes include Codexy `codegraph` findings and Codexy `lsp`

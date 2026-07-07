@@ -1,4 +1,13 @@
 mod agent_registration;
+mod child_handoff_readiness;
+mod child_handoff_readiness_claims;
+mod child_handoff_readiness_heads;
+mod child_handoff_readiness_status;
+mod child_handoff_readiness_text;
+mod child_lane_classification_boundaries;
+mod child_lane_classification_setup;
+mod child_lane_classification_setup_context;
+mod child_lane_owner_decision;
 mod child_lane_ownership;
 mod child_lane_ownership_fixes;
 mod child_lane_ownership_phrases;
@@ -12,9 +21,12 @@ mod child_lane_thread_tool_handler_defect_capture;
 mod child_lane_thread_tool_handler_scope;
 mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
+mod codex_review_fresh_request;
+mod codex_review_fresh_request_text;
 mod codex_review_handoff;
 mod codex_review_handoff_actionable;
 mod codex_review_handoff_events;
+mod codex_review_handoff_readiness;
 mod completion_handoff;
 mod completion_handoff_compaction;
 mod completion_handoff_waiting;
@@ -36,6 +48,7 @@ mod merge_message;
 mod prompt_yaml;
 mod release_publish_contract;
 mod review_thread_evidence;
+mod review_thread_readiness;
 mod review_thread_resolution;
 mod review_thread_waiting;
 mod review_thread_waiting_phrases;
@@ -60,6 +73,9 @@ pub enum Mode {
         message: String,
     },
     PrTitle {
+        title: String,
+    },
+    IssueTitle {
         title: String,
     },
     CompletionHandoff {
@@ -104,6 +120,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             message,
         } => merge_message::check(expected_issue, expected_pr, &message),
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
+        Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(&handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));

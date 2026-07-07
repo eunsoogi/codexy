@@ -40,6 +40,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
     let mut cursor = line_end(evidence, handler_start);
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     let mut saw_handler_capture = is_handler_capture_line(&evidence[capture_start..cursor]);
+    let current_lane = current_lane_header_before(evidence, handler_start);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
@@ -49,13 +50,15 @@ pub(super) fn capture_end_before_unrelated_evidence(
             is_same_lane_header_metadata_line(evidence, line_start, line_end, handler_start);
         let line_is_handler_capture =
             is_handler_capture_line(line) && !line_is_same_lane_header_metadata;
-        let line_extends_capture =
-            is_capture_related(line) && (!line_is_unrelated_metadata || line_is_handler_capture);
+        let line_targets_other_lane = metadata_targets_other_lane(line, current_lane.as_deref());
+        let line_extends_capture = is_capture_related(line)
+            && !line_targets_other_lane
+            && (!line_is_unrelated_metadata || line_is_handler_capture);
         if line.trim().is_empty()
             || saw_handler_capture && line_is_same_lane_header_metadata
             || saw_capture
                 && !line_extends_capture
-                && line_is_unrelated_metadata
+                && (line_is_unrelated_metadata || line_targets_other_lane)
                 && !line_is_same_lane_header_metadata
         {
             return line_start;
@@ -67,14 +70,12 @@ pub(super) fn capture_end_before_unrelated_evidence(
     evidence.len()
 }
 
-fn line_end(text: &str, line_start: usize) -> usize {
-    text[line_start..]
-        .find('\n')
-        .map_or(text.len(), |index| line_start + index)
+fn line_end(s: &str, i: usize) -> usize {
+    s[i..].find('\n').map_or(s.len(), |n| i + n)
 }
 
 fn is_capture_related(line: &str) -> bool {
-    "dogfooding defect|tool-exposure defect|dogfooding/tool-exposure defect|handler|missing-handler|no handler registered"
+    "dogfooding defect|tool-exposure defect|dogfooding/tool-exposure defect|handler|missing-handler|no handler registered|fallback route|fallback-route|fallback path|fallback-path"
         .split('|')
         .any(|marker| line.contains(marker))
 }
@@ -101,25 +102,26 @@ fn is_same_lane_header_metadata_line(
     if metadata_targets_other_lane(line, current_lane.as_deref()) {
         return false;
     }
+    let block_has_same_lane_marker =
+        same_lane_header_block_has_same_lane_marker(evidence, line_end, current_lane.as_deref());
+    let generic_same_lane_metadata = matches!(
+        key.as_str(),
+        "issue" | "pr" | "tracking issue" | "branch" | "head" | "worktree path"
+    ) && (current_lane.is_none()
+        || block_has_same_lane_marker
+        || !matches!(key.as_str(), "issue" | "branch"));
     matches!(
         key.as_str(),
-        "issue"
-            | "pr"
-            | "tracking issue"
-            | "branch"
-            | "head"
-            | "worktree path"
-            | "fallback route"
-            | "owner"
-            | "lane owner"
-            | "child owner"
-    ) || key.starts_with("lane ")
-        && current_lane
-            .as_ref()
-            .is_some_and(|current_lane| current_lane == &key)
-        && next_nonempty_line(evidence, line_end)
-            .is_some_and(|next| is_same_lane_header_field(next))
-        && same_lane_header_block_has_same_lane_marker(evidence, line_end, current_lane.as_deref())
+        "fallback route" | "owner" | "lane owner" | "child owner"
+    ) && !line.to_ascii_lowercase().contains("not used")
+        || generic_same_lane_metadata
+        || key.starts_with("lane ")
+            && current_lane
+                .as_ref()
+                .is_some_and(|current_lane| current_lane == &key)
+            && next_nonempty_line(evidence, line_end)
+                .is_some_and(|next| is_same_lane_header_field(next))
+            && block_has_same_lane_marker
 }
 
 fn metadata_targets_other_lane(line: &str, current_lane: Option<&str>) -> bool {
@@ -230,7 +232,6 @@ fn same_lane_header_block_has_same_lane_marker(
 
 fn metadata_key(key: &str) -> String {
     key.trim_start_matches(['-', '*'])
-        .trim_start()
         .trim()
         .to_ascii_lowercase()
 }

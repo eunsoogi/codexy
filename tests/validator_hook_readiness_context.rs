@@ -108,7 +108,7 @@ fn validator_cli_rejects_readiness_context_without_label_gate()
     set_readiness_script(
         &plugin_root,
         r#"#!/bin/sh
-printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"PR label readiness enforcement (#210) placeholder only"}}'
+printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"codexy-issue-title-check.sh --check-issue-title PR label readiness enforcement (#210) placeholder only"}}'
 "#,
     )?;
 

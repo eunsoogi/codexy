@@ -137,3 +137,27 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_generic_issue_metadata_before_later_lane_capture()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Issue: #999
+Branch: codexy/later-lane
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane B.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not borrow a later-lane capture through generic issue metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
