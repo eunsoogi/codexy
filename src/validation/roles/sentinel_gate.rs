@@ -16,7 +16,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
     "Every approval MUST reference the current diff or head",
     "lane scope",
-    "touched implementation-file LOC evidence",
+    "touched implementation-file LOC evidence when applicable",
     "verification commands and results",
     "direct readback for structured files",
     "reasoning control used or unavailable evidence",
@@ -30,7 +30,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
 const APPROVAL_EVIDENCE_MARKERS: &[&str] = &[
     "Every approval MUST reference the current diff or head",
     "lane scope",
-    "touched implementation-file LOC evidence",
+    "touched implementation-file LOC evidence when applicable",
     "verification commands and results",
     "direct readback for structured files",
     "reasoning control used or unavailable evidence",
