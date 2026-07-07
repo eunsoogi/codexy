@@ -25,9 +25,31 @@ fn active_count_records_for_line(
     line_number: usize,
     freed_capacity: bool,
 ) -> Vec<ActiveCount> {
-    line.split(';')
-        .flat_map(|segment| segment.split(". "))
-        .flat_map(split_count_comma_clauses)
+    let mut records = Vec::new();
+    let mut freed_capacity = freed_capacity;
+    for segment in line.split(';').flat_map(|segment| segment.split(". ")) {
+        let count_records =
+            active_count_records_for_segment(line, segment, line_number, freed_capacity);
+        if count_records.is_empty() {
+            if child_thread_freed_capacity(segment) {
+                freed_capacity = true;
+            }
+        } else {
+            records.extend(count_records);
+            freed_capacity = false;
+        }
+    }
+    records
+}
+
+fn active_count_records_for_segment(
+    line: &str,
+    segment: &str,
+    line_number: usize,
+    freed_capacity: bool,
+) -> Vec<ActiveCount> {
+    split_count_comma_clauses(segment)
+        .into_iter()
         .filter_map(|segment| {
             let count = active_child_thread_count(segment)?;
             Some(ActiveCount {
