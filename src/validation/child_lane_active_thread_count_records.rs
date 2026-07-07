@@ -83,6 +83,10 @@ pub(super) fn active_child_thread_count_errors(active_counts: &[ActiveCount]) ->
     let mut latest_active = None;
     let mut latest_waiting = None;
     for record in active_counts {
+        if record.freed_capacity {
+            latest_active = None;
+            latest_waiting = None;
+        }
         match record.kind {
             CountKind::Active => latest_active = Some(record.count),
             CountKind::Waiting => latest_waiting = Some(record.count),

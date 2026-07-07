@@ -149,3 +149,51 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_plain_comma_separated_child_thread_creations_over_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Existing issue/PR owner check: no existing owner thread found for issue #270.
+Thread creation: created child thread thread-269 for issue #269, created child thread thread-270 for issue #270.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should count each comma-separated child-thread creation"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity child thread creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_waiting_count_after_freed_capacity_before_refreshed_active_count()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Child thread thread-old finished and was removed from the active ledger.
+Waiting child Codex threads: 1
+Active child Codex threads: 4
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should reset stale active/waiting counts after freed capacity\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

@@ -26,18 +26,19 @@ fn segment_offset(line: &str, segment: &str) -> usize {
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
         .flat_map(|line| line.split(". "))
+        .flat_map(|line| split_operation_clauses(line, ", "))
         .flat_map(|line| line.split(", then "))
         .flat_map(|line| line.split(" then "))
-        .flat_map(split_operation_and_clauses)
+        .flat_map(|line| split_operation_clauses(line, " and "))
 }
-fn split_operation_and_clauses(segment: &str) -> Vec<&str> {
+fn split_operation_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str> {
     let lower = normalized_operation_line(segment);
     let mut clauses = Vec::new();
     let mut start = 0;
     let mut cursor = 0;
-    while let Some(relative) = lower[cursor..].find(" and ") {
+    while let Some(relative) = lower[cursor..].find(separator) {
         let marker_start = cursor + relative;
-        let next_start = marker_start + " and ".len();
+        let next_start = marker_start + separator.len();
         if starts_operation_clause(lower[next_start..].trim_start()) {
             clauses.push(&segment[start..marker_start]);
             start = next_start;
