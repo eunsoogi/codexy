@@ -24,7 +24,6 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
                 return !has_negated_handler_missing_claim(line, line_offset)
                     && !has_actionable_handler_defect_report(capture_scope, tool);
             }
-
             let placeholder_scope = handler_missing_placeholder_scope(evidence, line_start);
             handler_missing_placeholder(line, line_offset)
                 && has_thread_tool_name(placeholder_scope)
@@ -112,6 +111,7 @@ fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
             evidence[start..*next].contains('\n')
                 && !same_handler_list_group(evidence, line_start, *next)
                 && !same_defect_list_report(evidence, line_start, *next)
+                && !line_containing(evidence, *next).0.contains("exact")
         })
         .unwrap_or_else(|| capture_end_before_unrelated_evidence(evidence, capture_start, start));
     &evidence[capture_start..next_start]
