@@ -7,6 +7,8 @@ use std::{
 use crate::paths::display_relative;
 use crate::validation::{instruction_policy_text, load_json, prompt_yaml};
 
+mod child_thread_ledger;
+
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
     let Ok(surfaces) = instruction_surfaces(plugin_root) else {
@@ -39,6 +41,7 @@ fn check_surfaces(surfaces: Vec<PathBuf>, errors: &mut Vec<String>) {
                     instruction_policy_text::check_text(&path, &text, errors, false);
                 }
                 check_structured_prompts(&path, &text, errors);
+                child_thread_ledger::check(&path, &text, errors);
             }
             Err(error) => errors.push(format!(
                 "{} could not be read: {error}",

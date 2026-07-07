@@ -85,6 +85,31 @@ Restart Codex or start a fresh session after registration before expecting new
   If the report discusses addressed review feedback, the PR state evidence
   MUST include GraphQL `reviewThreads.nodes`.
 
+## Active Child Thread Ledger
+Orchestration MUST maintain a durable active/waiting child thread ledger for
+Codex app child threads across normal polling, compaction recovery, dreaming
+rehydration, and parent handoffs. Active child Codex app threads MUST be capped
+at 5. The orchestrator MUST count only active or waiting Codex app child threads
+against that cap. Packaged specialist subagents MUST NOT be counted as active
+child Codex app threads.
+Before creating a new child Codex app thread, orchestration MUST check the
+ledger and current issue/PR state for an existing issue/PR owner thread, and
+MUST reuse it when present instead of creating a duplicate owner.
+Blocked/rate-limited child lanes MUST be rechecked and continued through the
+existing owner thread when possible, with the blocker and next action kept
+current in the ledger.
+Each ledger entry MUST include issue/PR, thread id, status, owner state,
+blocker, latest evidence, and next action. Normal polling MUST refresh these
+fields from current thread, worktree, issue, PR, and review evidence. Compaction
+recovery and dreaming rehydration MUST rebuild the ledger before dispatching
+more child work or claiming no active child work remains. Completed child
+threads MUST be removed from the active/waiting ledger after current evidence
+proves completion, and the orchestrator MUST ensure completed child threads are
+archived/deleted where supported by the available tool surface. When
+archive/delete support is unavailable, it MUST record that unavailable-tool
+evidence and MUST still remove the completed lane from the active/waiting
+ledger.
+
 ## Multi-Agent And Reviewer Gate
 
 MUST use multi-agent dispatch for bounded specialist help inside the current thread

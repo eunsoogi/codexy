@@ -2,7 +2,6 @@
 set -efu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-repo_root=$(CDPATH= cd -- "$script_dir/../../.." && pwd)
 
 case "${1:-}" in
   UserPromptSubmit)
@@ -11,4 +10,4 @@ case "${1:-}" in
     ;;
 esac
 
-"$repo_root/scripts/validate-plugin-config" --check-issue-title "$@"
+"$script_dir/codexy-readiness-guard.sh" --check-issue-title "$@"

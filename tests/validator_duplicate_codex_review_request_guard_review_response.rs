@@ -28,7 +28,8 @@ fn validator_cli_rejects_latest_request_when_later_output_has_no_commit() -> Tes
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-05T10:40:00Z",
-                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999"
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviews":[{
                 "body":"Didn't find any major issues.",

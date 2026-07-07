@@ -9,7 +9,7 @@ fn validator_cli_allows_status_evidence_about_absent_review_request() -> TestRes
     let handoff = format!(
         "Post-compaction continuation readiness:\n\
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
-         Duplicate/no-active-work state: PR #262 is duplicate/no-active-work; no active Codex review request remains after current GitHub state re-check.\n\
+         Duplicate/no-active-work state: PR #262 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {GIT_PREFLIGHT}\n\
          Stop condition: do not merge; current-head Codex review output exists.\n\
@@ -70,7 +70,7 @@ fn validator_cli_ignores_nested_review_text_request_mentions() -> TestResult {
             }],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{
                 "id":"PRRT_nested",
-                "isResolved":false,
+                "isResolved":true,
                 "isOutdated":false,
                 "path":"src/validation/codex_review_handoff_events.rs",
                 "comments":{"nodes":[{
@@ -158,12 +158,16 @@ fn validator_cli_rejects_latest_request_when_first_later_output_is_stale() -> Te
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-05T10:30:00Z",
-                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799988"
+                "commit":{"oid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799988",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             },{
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-05T10:40:00Z",
-                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999"
+                "commit":{"oid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviews":[{
                 "body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",

@@ -28,7 +28,8 @@ fn validator_cli_rejects_single_current_head_request_followed_by_stale_output() 
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-05T10:40:00Z",
-                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999"
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviews":[{
                 "body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",

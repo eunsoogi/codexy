@@ -141,7 +141,8 @@ fn validator_cli_rejects_wait_only_codex_review_then_request_again() -> TestResu
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-06T01:18:12Z",
-                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
@@ -185,7 +186,8 @@ fn validator_cli_rejects_negated_stop_then_wait_only_request_again() -> TestResu
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-06T01:18:12Z",
-                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653"
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4888339653",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}

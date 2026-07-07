@@ -9,7 +9,7 @@ fn validator_cli_allows_human_ready_for_review_status_with_current_codex_output(
     let handoff = format!(
         "Post-compaction continuation readiness:\n\
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
-         Duplicate/no-active-work state: PR #262 is duplicate/no-active-work; no active Codex review request remains after current GitHub state re-check.\n\
+         Duplicate/no-active-work state: PR #262 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {GIT_PREFLIGHT}\n\
          Stop condition: PR is ready for review by the maintainer; do not merge.\n\

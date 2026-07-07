@@ -7,7 +7,9 @@ mod review_request_context;
 
 use serde_json::Value;
 
-use super::codex_review_handoff_events::has_pending_codex_review_request_or_current_head_output;
+use super::codex_review_handoff_events::{
+    has_codex_review_output, has_latest_eyes_request_without_later_codex_output,
+};
 use review_request_context::{has_codex_review_request_context, has_review_request_context};
 
 const COMPACTION_CONTEXT_PHRASES: &[&str] = &[
@@ -52,7 +54,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if has_codex_review_request_context(&text) {
         if !has_pr_comments_and_reviews_evidence(pr_state) {
             errors.push("duplicate current-head Codex review request evidence missing: include freshly captured PR comments and reviews before planning @codex review".into());
-        } else if has_pending_codex_review_request_or_current_head_output(pr_state) {
+        } else if has_codex_review_output(pr_state)
+            || has_latest_eyes_request_without_later_codex_output(pr_state)
+        {
             errors.push("duplicate current-head Codex review request blocked: re-read latest PR comments/reviews immediately before posting and do not post @codex review when a request or current-head output already exists".into());
         }
     }

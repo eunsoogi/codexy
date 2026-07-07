@@ -4,7 +4,6 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 const GIT_PREFLIGHT: &str = "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.";
-
 #[test]
 fn validator_cli_rejects_duplicate_current_head_codex_review_request_plan() -> TestResult {
     let handoff = valid_review_request_handoff(
@@ -22,12 +21,14 @@ fn validator_cli_rejects_duplicate_current_head_codex_review_request_plan() -> T
                 "body":"@codex review",
                 "url":"https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880788420",
                 "author":{"login":"eunsoogi"},
-                "createdAt":"2026-07-04T05:17:47Z"
+                "createdAt":"2026-07-04T05:17:47Z",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             },{
                 "body":"@codex review",
                 "url":"https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880788656",
                 "author":{"login":"eunsoogi"},
-                "createdAt":"2026-07-04T05:17:54Z"
+                "createdAt":"2026-07-04T05:17:54Z",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
@@ -156,7 +157,8 @@ fn validator_cli_rejects_pending_request_followed_by_stale_prior_head_output() -
                 "body":"@codex review",
                 "author":{"login":"eunsoogi"},
                 "createdAt":"2026-07-04T05:20:00Z",
-                "url":"https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880789999"
+                "url":"https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880789999",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
@@ -218,7 +220,6 @@ fn validator_cli_allows_negated_post_review_request_wait_handoff() -> TestResult
     );
     Ok(())
 }
-
 fn valid_review_request_handoff(duplicate_state: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
