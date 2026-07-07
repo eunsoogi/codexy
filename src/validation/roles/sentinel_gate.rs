@@ -92,7 +92,7 @@ fn missing_approval_evidence_markers(instructions: &str) -> Vec<&'static str> {
         return APPROVAL_EVIDENCE_MARKERS.to_vec();
     };
     let sentence_end = instructions[approval_start..]
-        .find(['.', '!', '?', '\n'])
+        .find(['.', '!', '?'])
         .map_or(instructions.len(), |index| approval_start + index);
     let sentence = &instructions[approval_start..sentence_end];
     APPROVAL_EVIDENCE_MARKERS

@@ -58,6 +58,17 @@ fn validator_cli_rejects_trailing_conditional_reasoning_opt_outs() -> TestResult
 }
 
 #[test]
+fn validator_cli_rejects_absent_followup_reasoning_waivers() -> TestResult {
+    let output = validate_sentinel_edit(|sentinel| {
+        Ok(sentinel.replace(
+            "and any unresolved risk. MUST block",
+            "and any unresolved risk. This evidence can be absent. MUST block",
+        ))
+    })?;
+    assert_reasoning_evidence_rejected(output)
+}
+
+#[test]
 fn validator_cli_handles_unicode_before_reasoning_marker() -> TestResult {
     let output = validate_sentinel_edit(|sentinel| {
         Ok(sentinel

@@ -139,6 +139,17 @@ fn validator_cli_rejects_sentinel_with_approval_marker_only_outside_approval_sen
 }
 
 #[test]
+fn validator_cli_accepts_wrapped_approval_evidence_sentence() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "Every approval MUST reference the current diff or head, lane scope",
+        "Every approval MUST reference the current diff or head,\n lane scope",
+    )?;
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
     let output = validate_sentinel_replacement(
         "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
