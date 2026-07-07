@@ -60,7 +60,7 @@ fn is_past_tense_codex_review_request_clause(clause: &str) -> bool {
 }
 
 fn is_split_waiting_status(line: &str, clause: &str) -> bool {
-    const STATUSES: &str = "waiting for review output|has eyes|eyes only";
+    const STATUSES: &str = "waiting for review output|waiting for output|has eyes|eyes only";
     is_past_tense_codex_review_request_clause(clause)
         && line.find(clause).is_some_and(|index| {
             let rest = &line[index + clause.len()..];

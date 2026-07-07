@@ -57,6 +57,20 @@ fn validator_preserves_actual_codex_review_comment_duplicate_guard() -> TestResu
     }
     Ok(())
 }
+
+#[test]
+fn validator_accepts_waiting_for_output_after_current_head_request() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Fresh @codex review requested; waiting for output.\n",
+        clean_pr_state_with_comment("@codex review"),
+    )?;
+    assert_success(
+        &output,
+        "validator should treat waiting-for-output wording as current-head request status\nstdout:\n{}\nstderr:\n{}",
+    );
+    Ok(())
+}
+
 #[test]
 fn validator_preserves_acknowledged_split_comment_duplicate_guard() -> TestResult {
     for comment in [
