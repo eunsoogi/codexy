@@ -134,7 +134,7 @@ fn has_accepted_disposition_claim(line: &str) -> bool {
                 .take(index)
                 .rev()
                 .take(3)
-                .any(|word| matches!(word.as_str(), "not" | "never" | "wasnt"))
+                .any(|word| matches!(word.as_str(), "not" | "never" | "wasnt" | "wasn"))
     })
 }
 
