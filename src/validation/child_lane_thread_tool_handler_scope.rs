@@ -36,12 +36,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
     let mut cursor = line_end(evidence, handler_start);
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     let mut saw_handler_capture = is_handler_capture_line(&evidence[capture_start..cursor]);
-    let handler_line_start = evidence[..handler_start].rfind('\n').map_or(0, |i| i + 1);
-    let current_lane = current_lane_header_before(evidence, handler_line_start).or_else(|| {
-        let line = evidence[handler_line_start..cursor].to_ascii_lowercase();
-        let key = mentioned_lane_key(&line);
-        is_lane_header_key(key).then(|| key.to_string())
-    });
+    let current_lane = current_lane_before(evidence, handler_start);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
@@ -74,7 +69,6 @@ pub(super) fn capture_end_before_unrelated_evidence(
 fn line_end(s: &str, i: usize) -> usize {
     s[i..].find('\n').map_or(s.len(), |n| i + n)
 }
-
 fn is_capture_related(line: &str) -> bool {
     "dogfooding defect|tool-exposure defect|dogfooding/tool-exposure defect|handler|missing-handler|no handler registered|fallback route|fallback-route|fallback path|fallback-path"
         .split('|')
@@ -82,12 +76,10 @@ fn is_capture_related(line: &str) -> bool {
 }
 
 fn is_unrelated_metadata_line(line: &str) -> bool {
-    let Some((key, _)) = line.trim_start().split_once(':') else {
-        return false;
-    };
-    !is_capture_related(&key.to_ascii_lowercase())
+    line.trim_start()
+        .split_once(':')
+        .is_some_and(|(key, _)| !is_capture_related(&key.to_ascii_lowercase()))
 }
-
 fn is_same_lane_header_metadata_line(
     evidence: &str,
     line_start: usize,
@@ -99,7 +91,7 @@ fn is_same_lane_header_metadata_line(
         return false;
     };
     let key = metadata_key(key);
-    let current_lane = current_lane_header_before(evidence, handler_start);
+    let current_lane = current_lane_before(evidence, handler_start);
     if metadata_targets_other_lane(line, current_lane.as_deref()) {
         return false;
     }
@@ -127,38 +119,47 @@ fn is_same_lane_header_metadata_line(
 
 fn metadata_targets_other_lane(line: &str, current_lane: Option<&str>) -> bool {
     let normalized = line.to_ascii_lowercase();
+    let mentioned_other_lane = normalized.match_indices("lane ").any(|(start, _)| {
+        let mentioned_lane = mentioned_lane_key(&normalized[start..]);
+        !mentioned_lane.is_empty()
+            && current_lane.is_none_or(|current_lane| mentioned_lane != current_lane)
+            && !normalized[..start].trim_end().ends_with("same")
+    });
+    if mentioned_other_lane {
+        return true;
+    }
     if normalized.contains("same lane") {
         return false;
     }
-    if "another lane|different lane|other lane|later lane"
-        .split('|')
-        .any(|marker| normalized.contains(marker))
+    if normalized.contains("another lane")
+        || normalized.contains("different lane")
+        || normalized.contains("other lane")
+        || normalized.contains("later lane")
     {
         return true;
     }
-    match (current_lane, normalized.find("lane ")) {
-        (Some(current_lane), Some(start)) => {
-            let mentioned_lane = mentioned_lane_key(&normalized[start..]);
-            !mentioned_lane.is_empty() && mentioned_lane != current_lane
-        }
-        (None, Some(_)) => true,
-        _ => false,
-    }
+    false
 }
-
 fn mentioned_lane_key(mention: &str) -> &str {
     let mention = mention.trim_start();
     let Some(rest) = mention.strip_prefix("lane ") else {
         return "";
     };
-    let token_len = rest
+    let n = rest
         .find(|ch: char| !ch.is_ascii_alphanumeric())
         .unwrap_or(rest.len());
-    (token_len > 0)
-        .then_some(&mention[.."lane ".len() + token_len])
-        .unwrap_or("")
+    (n != 0)
+        .then(|| &mention[.."lane ".len() + n])
+        .unwrap_or_default()
 }
-
+fn current_lane_before(evidence: &str, handler_start: usize) -> Option<String> {
+    let line_start = evidence[..handler_start].rfind('\n').map_or(0, |i| i + 1);
+    current_lane_header_before(evidence, line_start).or_else(|| {
+        let line = evidence[line_start..line_end(evidence, handler_start)].to_ascii_lowercase();
+        let key = mentioned_lane_key(&line);
+        is_lane_header_key(key).then(|| key.to_string())
+    })
+}
 fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<String> {
     while cursor > 0 {
         let previous_end = cursor - 1;
@@ -177,10 +178,9 @@ fn current_lane_header_before(evidence: &str, mut cursor: usize) -> Option<Strin
     }
     None
 }
-
 fn is_lane_header_key(key: &str) -> bool {
     let second_word = key.split_whitespace().nth(1).unwrap_or("");
-    !key.is_empty()
+    key.starts_with("lane ")
         && mentioned_lane_key(key) == key
         && !["owner", "ownership", "metadata"].contains(&second_word)
 }

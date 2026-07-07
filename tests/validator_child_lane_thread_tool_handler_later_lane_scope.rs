@@ -57,6 +57,26 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_uncaptured_handler_before_inline_later_lane_same_lane_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane B fallback route: parent captured tool exposure mismatch for the same lane.
+Tracking issue: #999
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject inline later-lane metadata before an unqualified capture"
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_uncaptured_handler_before_later_unlabeled_lane_metadata_and_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
