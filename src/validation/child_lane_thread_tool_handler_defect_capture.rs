@@ -65,7 +65,9 @@ fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
         lines[index + 1..]
             .iter()
             .take_while(|line| {
-                is_unlisted_handoff_metadata_item(line) || is_handoff_list_metadata_item(line)
+                is_unlisted_handoff_metadata_item(line)
+                    || is_handoff_list_metadata_item(line)
+                    || is_exact_handler_error_metadata_item(line)
             })
             .map(|line| {
                 if is_handoff_list_metadata_item(line) {
@@ -145,6 +147,13 @@ fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
         ]
         .into_iter()
         .any(|field| line.starts_with(field))
+}
+
+fn is_exact_handler_error_metadata_item(line: &str) -> bool {
+    let line = line.to_ascii_lowercase();
+    let line = strip_lane_label_prefix(&line);
+    line.starts_with("exact missing-handler error:")
+        && line.contains("no handler registered for tool:")
 }
 
 fn strip_lane_label_prefix(line: &str) -> &str {

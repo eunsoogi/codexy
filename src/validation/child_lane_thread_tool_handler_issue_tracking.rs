@@ -25,11 +25,33 @@ fn handoff_clauses(evidence: &str) -> impl Iterator<Item = &str> {
 
 fn has_negated_tracking_issue(clause: &str) -> bool {
     const NEGATED_TRACKING_ISSUE_MARKERS: &str = "no separate dogfood issue|no separate dogfooding issue|no issue,|no issue #|no separate issue|no issue was created|no issue created|no issue has been created|no issue filed|no issue was filed|no issue has been filed|no separate tracking issue|no tracking issue|no follow-up issue|no separate follow-up issue|issue evidence was not provided|tracking issue evidence was not provided|dogfood issue evidence was not provided|dogfooding issue evidence was not provided|follow-up issue evidence was not provided|not tracked by issue|not tracked by a separate issue|not tracked by separate issue|not tracked in issue|not tracked in a separate issue|not tracked in separate issue|not a tracking issue|not a separate tracking issue|not a dogfood issue|not a separate dogfood issue|not a dogfooding issue|not a separate dogfooding issue|not a follow-up issue|not a separate follow-up issue|without a separate dogfood issue|without a separate dogfooding issue|without a separate tracking issue|without tracking issue|without a follow-up issue|without follow-up issue";
+    let clause = without_optional_follow_up_waivers(clause);
     NEGATED_TRACKING_ISSUE_MARKERS
         .split('|')
         .any(|marker| clause.contains(marker))
-        || has_false_tracking_issue_answer(clause)
-        || has_negated_issue_lifecycle(clause)
+        || has_false_tracking_issue_answer(&clause)
+        || has_negated_issue_lifecycle(&clause)
+}
+
+fn without_optional_follow_up_waivers(clause: &str) -> String {
+    clause
+        .split(';')
+        .filter(|part| !is_optional_follow_up_waiver(part))
+        .collect::<Vec<_>>()
+        .join(";")
+}
+
+fn is_optional_follow_up_waiver(clause: &str) -> bool {
+    let clause = clause.trim().to_ascii_lowercase();
+    (clause.contains("no follow-up issue") || clause.contains("no separate follow-up issue"))
+        && [
+            "needed beyond that",
+            "required beyond that",
+            "needed beyond this",
+            "required beyond this",
+        ]
+        .into_iter()
+        .any(|marker| clause.contains(marker))
 }
 
 fn has_false_tracking_issue_answer(clause: &str) -> bool {
