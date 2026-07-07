@@ -14,26 +14,28 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 #[test]
 fn validator_does_not_treat_lane_owner_metadata_as_current_lane_header()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+    for metadata in ["Lane owner", "Lane owners"] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Lane A:
-Lane owner: child-owned
+{metadata}: child-owned
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
-    )?;
+        ))?;
 
-    assert!(
-        output.status.success(),
-        "validator should not classify lane-owner metadata as the current lane header\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            output.status.success(),
+            "validator should not classify {metadata} metadata as the current lane header\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
@@ -49,7 +51,7 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -75,7 +77,7 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -101,7 +103,7 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -126,7 +128,7 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Lane A:
 Fallback route: parent captured missing-handler evidence for the same lane.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -151,7 +153,7 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Lane A:
 Fallback path: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -176,7 +178,7 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Lane A:
 Fallback route: parent captured tool exposure for the same lane follow-up.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -201,7 +203,7 @@ Invocation evidence: codex_app.read_thread failed with `No handler registered fo
 Lane A:
 Fallback route: parent captured tool exposure in Lane A review thread.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;

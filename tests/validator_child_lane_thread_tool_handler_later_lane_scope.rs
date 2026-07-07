@@ -64,7 +64,7 @@ fn validator_rejects_uncaptured_handler_before_inline_later_lane_same_lane_metad
 Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Lane B fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #999
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;

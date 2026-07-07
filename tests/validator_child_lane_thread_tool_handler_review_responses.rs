@@ -18,7 +18,7 @@ fn validator_rejects_uncaptured_handler_missing_in_later_lane()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Lane A tool search: discovered codex_app.read_thread as an available thread tool.
 Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding defect: handler-missing tool-exposure defect recorded with both the discovered codex_app.read_thread surface and the runtime handler failure.
+Dogfooding defect: handler-missing tool-exposure defect recorded with both the discovered codex_app.read_thread surface and the runtime handler failure; no fallback route was available; separate dogfood issue: #205.
 Lane B tool search: discovered codex_app.send_message_to_thread as an available thread tool.
 Lane B invocation evidence: codex_app.send_message_to_thread failed with `No handler registered for tool: send_message_to_thread`.
 Lane B fallback: treated the failure as an unavailable-tool fallback and continued without recording a dogfooding defect.
@@ -45,7 +45,7 @@ fn validator_rejects_uncaptured_same_tool_handler_missing_in_later_lane()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Lane A tool search: discovered codex_app.read_thread as an available thread tool.
 Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding defect: handler-missing tool-exposure defect recorded with both the discovered codex_app.read_thread surface and the runtime handler failure.
+Dogfooding defect: handler-missing tool-exposure defect recorded with both the discovered codex_app.read_thread surface and the runtime handler failure; no fallback route was available; separate dogfood issue: #205.
 Lane B tool search: discovered codex_app.read_thread as an available thread tool.
 Lane B invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Lane B fallback: treated the failure as an unavailable-tool fallback and continued without recording a dogfooding defect.
@@ -86,7 +86,7 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_documented_missing_handler_defect_capture()
+fn validator_rejects_documented_missing_handler_defect_without_handoff_fields()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -98,10 +98,8 @@ Maintainer reassignment: none
     )?;
 
     assert!(
-        output.status.success(),
-        "validator should accept the documented runtime missing-handler defect wording\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        !output.status.success(),
+        "validator should reject minimal missing-handler defect evidence without fallback/no-route and tracking issue fields"
     );
     Ok(())
 }
@@ -112,7 +110,7 @@ fn validator_allows_inline_defect_capture_before_handler_marker()
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread with `No handler registered for tool: read_thread`; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -133,7 +131,7 @@ fn validator_allows_capture_that_negates_unavailable_fallback_reporting()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not captured as an ordinary unavailable-tool fallback.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not captured as an ordinary unavailable-tool fallback; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -154,7 +152,7 @@ fn validator_allows_capture_that_negates_unavailable_fallback_recording()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not recorded as an ordinary unavailable-tool fallback and without recording it as a normal fallback.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not recorded as an ordinary unavailable-tool fallback and without recording it as a normal fallback; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -199,7 +197,7 @@ fn validator_allows_multiline_handler_defect_capture() -> Result<(), Box<dyn std
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Dogfooding/tool-exposure defect:
 - Recorded discovered codex_app.read_thread as a callable thread tool.
-- Recorded runtime missing-handler evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+- Recorded runtime missing-handler evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;

@@ -18,7 +18,7 @@ fn validator_allows_one_defect_capture_for_same_line_handler_failures()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.list_threads and codex_app.list_projects as available thread tools.
 Invocation evidence: codex_app.list_threads failed with `No handler registered for tool: list_threads`; codex_app.list_projects failed with `No handler registered for tool: list_projects`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -65,7 +65,7 @@ Tool search: discovered codex_app.list_threads and codex_app.list_projects as av
 Invocation evidence:
 - codex_app.list_threads failed with `No handler registered for tool: list_threads`.
 - codex_app.list_projects failed with `No handler registered for tool: list_projects`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.list_threads and codex_app.list_projects; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -80,6 +80,39 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_lane_prefixed_handoff_fields_for_matching_lane_capture()
+-> Result<(), Box<dyn std::error::Error>> {
+    for evidence in [
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Lane A tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane A dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Lane A fallback route: no fallback route was available.
+Lane A tracking issue: #205.
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Lane A tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane A dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Lane A: Fallback route: no fallback route was available.
+Lane A: Tracking issue: #205.
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
+
+        assert!(
+            output.status.success(),
+            "validator should accept lane-prefixed fallback/tracking fields for the matching lane capture\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_allows_inline_handler_before_same_lane_metadata_block()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -89,12 +122,17 @@ Lane A invocation evidence: codex_app.read_thread failed with `No handler regist
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "validator should preserve same-lane metadata after an inline lane-prefixed handler\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
@@ -105,7 +143,7 @@ fn validator_allows_capture_that_negates_fallback_classification_and_reporting()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not classified as an ordinary unavailable-tool fallback and without reporting it as a fallback.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread, not classified as an ordinary unavailable-tool fallback and without reporting it as a fallback; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -237,5 +275,47 @@ Maintainer reassignment: none
         "stderr should name the missing handler evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+#[test]
+fn validator_rejects_metadata_bridged_earlier_lane_with_later_same_tool_capture()
+-> Result<(), Box<dyn std::error::Error>> {
+    for evidence in [
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Lane A:
+Fallback route: parent posted the handoff in the child thread.
+Tracking issue: #205.
+Lane B dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread after `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Fallback route: parent posted the handoff in the child thread.
+Tracking issue: #205.
+Lane B dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; separate dogfood issue: #205.
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Lane A tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A fallback route: parent posted the handoff in the child thread.
+Lane A tracking issue: #205.
+Lane B invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane B dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
+
+        assert!(
+            !output.status.success(),
+            "validator should not let handoff metadata bridge an earlier lane failure to a later same-tool defect"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+            "stderr should name the missing handler evidence, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }

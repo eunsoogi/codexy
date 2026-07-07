@@ -154,8 +154,8 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_explicit_no_fallback_route_available() -> Result<(), Box<dyn std::error::Error>>
-{
+fn validator_rejects_explicit_no_fallback_route_available_without_issue()
+-> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
@@ -167,8 +167,8 @@ Maintainer reassignment: none
     )?;
 
     assert!(
-        output.status.success(),
-        "validator should allow valid no-route evidence with captured handler defect\nstdout:\n{}\nstderr:\n{}",
+        !output.status.success(),
+        "validator should reject no-route evidence without separate tracking issue evidence\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -176,7 +176,8 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_without_fallback_route_available() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_without_fallback_route_available_without_issue()
+-> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
@@ -188,8 +189,8 @@ Maintainer reassignment: none
     )?;
 
     assert!(
-        output.status.success(),
-        "validator should allow valid without-a-fallback-route-available evidence\nstdout:\n{}\nstderr:\n{}",
+        !output.status.success(),
+        "validator should reject without-a-fallback-route evidence without separate tracking issue evidence\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
