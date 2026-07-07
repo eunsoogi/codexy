@@ -1,5 +1,4 @@
 use std::process::{Command, Output};
-
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");
@@ -10,7 +9,6 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
         .arg(&evidence_path)
         .output()?)
 }
-
 #[test]
 fn validator_rejects_article_separated_fork_start_operations_over_cap()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -40,7 +38,6 @@ Maintainer reassignment: none
     }
     Ok(())
 }
-
 #[test]
 fn validator_rejects_active_waiting_total_over_cap() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -62,7 +59,6 @@ Maintainer reassignment: none
     );
     Ok(())
 }
-
 #[test]
 fn validator_allows_creation_after_active_waiting_total_under_cap()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -83,7 +79,6 @@ Maintainer reassignment: none
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_passive_created_thread_id_over_cap() -> Result<(), Box<dyn std::error::Error>>
 {
@@ -113,7 +108,6 @@ Maintainer reassignment: none
     }
     Ok(())
 }
-
 #[test]
 fn validator_allows_split_issue_pr_no_owner_lookups() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -134,7 +128,6 @@ Maintainer reassignment: none
     );
     Ok(())
 }
-
 #[test]
 fn validator_allows_lower_count_after_comma_freed_capacity()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -158,7 +151,6 @@ Maintainer reassignment: none
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_replacement_after_unrelated_freed_capacity()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -185,7 +177,6 @@ Maintainer reassignment: none
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_conjunction_separated_active_waiting_counts_over_cap()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -208,7 +199,6 @@ Maintainer reassignment: none
     );
     Ok(())
 }
-
 #[test]
 fn validator_rejects_labeled_comma_child_thread_creations_over_cap()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -230,6 +220,28 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stderr)
             .contains("would exceed five active child Codex threads"),
         "stderr should name over-capacity operation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+#[test]
+fn validator_rejects_comma_separated_disposition_for_different_issue()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269, Old owner disposition: issue #270 was stopped, Thread creation: created replacement child thread thread-new for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not borrow owner identity across comma-separated disposition clauses"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should name missing matching old-owner disposition, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
