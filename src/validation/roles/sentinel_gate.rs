@@ -144,9 +144,10 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
     let sentence = instructions[sentence_start..sentence_end].to_ascii_lowercase();
     sentence
         .split(|ch: char| !ch.is_ascii_alphanumeric())
-        .any(|word| matches!(word, "optional" | "permissive"))
+        .any(|word| matches!(word, "optional" | "permissive" | "waived"))
         || sentence.contains("not required")
         || sentence.contains("not mandatory")
+        || sentence.contains("not needed")
         || sentence.contains("may skip")
         || sentence.contains("may omit")
         || sentence.contains("may ignore")
