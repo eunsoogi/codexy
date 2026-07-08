@@ -59,13 +59,13 @@ fn direct_route_segment(after_object: &str) -> &str {
             })
         })
         .min_by_key(|(index, _)| *index)
-        .map(|(_, before)| before)
-        .unwrap_or(after_object)
+        .map_or(after_object, |(_, before)| before)
 }
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
-    let prefix = value[..action_index]
-        .trim()
+    let raw_prefix = value[..action_index].trim_end();
+    let at_boundary = matches!(raw_prefix.as_bytes().last(), Some(b',' | b';' | b'.'));
+    let prefix = raw_prefix
         .trim_end_matches(|character: char| {
             character.is_ascii_whitespace() || ROUTE_PREFIX_TRIM_CHARACTERS.contains(&character)
         })
@@ -79,19 +79,10 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         .trim();
     let local = local.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
     let local = local.split_whitespace().collect::<Vec<_>>().join(" ");
-    matches!(
-        local.as_str(),
-        "no" | "non"
-            | "not"
-            | "not an"
-            | "not the"
-            | "false"
-            | "never"
-            | "unable"
-            | "it is false that"
-            | "it is not true that"
-            | "it is not the case that"
-    ) || has_qualified_actor_negation(&local)
+    "no|non|not|not an|not the|false|never|unable|it is false that|it is not true that|it is not the case that"
+        .split('|')
+        .any(|negation| local == negation)
+        || has_qualified_actor_negation(&local, at_boundary)
         || local.ends_with(" non")
         || local.ends_with(" false that")
         || local.starts_with("false positive")
@@ -99,23 +90,41 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         || has_route_not_used_clause(&local)
 }
 
-fn has_qualified_actor_negation(local: &str) -> bool {
-    const QUALIFIERS: &str = "actual|assigned|authorized|correct|current|expected|intended|primary|proper|real|responsible|right|same|valid";
+fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
     const PROOF_VERBS: &str = "confirm|document|establish|prove|show|verify";
     let tokens = local.split_whitespace().collect::<Vec<_>>();
-    let Some(negation_index) = tokens.iter().rposition(|token| *token == "not") else {
+    let Some(negation_index) = tokens
+        .iter()
+        .rposition(|token| *token == "not" || token.ends_with("n't"))
+    else {
         return false;
     };
-    let after_not = &tokens[negation_index + 1..];
+    let mut after_not = &tokens[negation_index + 1..];
+    while matches!(
+        after_not.first().copied(),
+        Some("actually" | "fully" | "really" | "truly")
+    ) {
+        after_not = &after_not[1..];
+    }
     if after_not
         .first()
         .is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb))
     {
-        return true;
+        let proof_subject = match after_not.get(1).copied() {
+            Some("if" | "that" | "whether") => &after_not[2..],
+            _ => &after_not[1..],
+        };
+        let actor_prefix = strip_actor_article(proof_subject);
+        return (!actor_prefix.is_empty() || !at_boundary)
+            && has_negated_actor_prefix(actor_prefix);
     }
-    let actor_prefix = strip_actor_article(after_not);
-    actor_prefix.is_empty()
-        || actor_prefix
+    has_negated_actor_prefix(strip_actor_article(after_not))
+}
+
+fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
+    const QUALIFIERS: &str = "actual|assigned|authorized|correct|current|expected|intended|primary|proper|real|responsible|right|same|valid";
+    tokens.is_empty()
+        || tokens
             .iter()
             .all(|token| QUALIFIERS.split('|').any(|qualifier| *token == qualifier))
 }
@@ -210,14 +219,10 @@ fn has_route_not_used_clause(clause: &str) -> bool {
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
     let end = start + phrase.len();
-    value[..start]
-        .chars()
-        .last()
-        .is_none_or(|character| !is_route_word_character(character))
-        && value[end..]
-            .chars()
-            .next()
-            .is_none_or(|character| !is_route_word_character(character))
+    let before = value[..start].chars().last();
+    let after = value[end..].chars().next();
+    before.is_none_or(|character| !is_route_word_character(character))
+        && after.is_none_or(|character| !is_route_word_character(character))
 }
 
 fn contains_phrase(value: &str, phrase: &str) -> bool {
