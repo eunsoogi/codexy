@@ -54,13 +54,15 @@ fn current_head_eyes_request_pr_state(body: &str) -> String {
         "state": "OPEN",
         "isDraft": false,
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate": "2026-06-22T12:44:00Z",
         "mergeStateStatus": "CLEAN",
         "reviewThreads": {{"pageInfo":{{"hasNextPage":false}},"nodes":[]}},
-        "comments": {{"nodes": [{{
+        "comments": [{{
             "body": "{body}",
             "createdAt": "2026-06-22T12:50:03Z",
             "reactionGroups": [{{"content":"EYES","users":{{"totalCount":1}}}}]
-        }}]}}
+        }}],
+        "reviews": []
     }}"#
     )
 }

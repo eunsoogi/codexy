@@ -9,6 +9,8 @@ fn validator_ignores_codex_review_comment_status_labels() -> TestResult {
         "Codex review comment: none.\n",
         "Codex review comments: none.\n",
         "Codex review comment status: no comments.\n",
+        "Fixed the Codex review comment.\n",
+        "Addressed the Codex review comments.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, current_head_output_pr_state())?;
         assert!(
@@ -86,6 +88,8 @@ fn current_head_output_pr_state() -> &'static str {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate":"2026-06-22T12:40:00Z",
+        "comments": [],
         "reviews": [{
             "body":"Review completed.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
             "state": "COMMENTED",

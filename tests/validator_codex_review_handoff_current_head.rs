@@ -145,7 +145,7 @@ fn assert_rejected_with_stderr(output: &std::process::Output, message: &str, exp
 }
 
 fn eyes_only_pr_state() -> &'static str {
-    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
+    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-1008","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
 }
 
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {

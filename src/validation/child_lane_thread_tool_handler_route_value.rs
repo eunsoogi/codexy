@@ -1,3 +1,8 @@
+const ROUTE_PREFIX_TRIM_CHARACTERS: [char; 13] = [
+    ',', ';', '.', ':', '_', '-', '/', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}',
+    '\u{2015}',
+];
+
 pub(super) fn has_substantive_route_value(value: &str) -> bool {
     let trimmed = value.trim();
     !trimmed.is_empty() && !trimmed.starts_with("not ") && has_affirmative_route_event(trimmed)
@@ -35,6 +40,7 @@ fn has_positive_destination(after_object: &str) -> bool {
             let suffix = &direct_segment[index + destination.len()..];
             has_phrase_boundaries(direct_segment, index, destination)
                 && !has_route_event_negation(prefix)
+                && !has_invalid_route_followup(prefix)
                 && !has_post_destination_route_negation(suffix)
                 && !"other than|rather than|instead of|except"
                     .split('|')
@@ -54,14 +60,22 @@ fn direct_route_segment(after_object: &str) -> &str {
             })
         })
         .min_by_key(|(index, _)| *index)
-        .map(|(_, before)| before)
-        .unwrap_or(after_object)
+        .map_or(after_object, |(_, before)| before)
 }
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
-    let prefix = value[..action_index]
-        .trim()
-        .trim_end_matches([',', ';', '.', '-'])
+    let raw_prefix = value[..action_index].trim_end();
+    if invalid_followup_before_later_route(raw_prefix) {
+        return false;
+    }
+    let at_boundary = raw_prefix
+        .chars()
+        .last()
+        .is_some_and(|character| ROUTE_PREFIX_TRIM_CHARACTERS.contains(&character));
+    let prefix = raw_prefix
+        .trim_end_matches(|character: char| {
+            character.is_ascii_whitespace() || ROUTE_PREFIX_TRIM_CHARACTERS.contains(&character)
+        })
         .trim();
     let local = prefix
         .rsplit([',', ';', '.'])
@@ -70,18 +84,59 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         .trim()
         .trim_end_matches(':')
         .trim();
-    matches!(
-        local,
-        "no" | "false"
-            | "never"
-            | "unable"
-            | "it is false that"
-            | "it is not true that"
-            | "it is not the case that"
-    ) || local.ends_with(" false that")
+    let local = local.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[4..], " ");
+    let local = local.split_whitespace().collect::<Vec<_>>().join(" ");
+    "no|non|not|not an|not the|false|never|unable|it is false that|it is not true that|it is not the case that"
+        .split('|')
+        .any(|negation| local == negation)
+        || has_qualified_actor_negation(&local, at_boundary)
+        || local.starts_with("nobody ")
+        || local.starts_with("neither ") && local.contains(" nor")
+        || local.ends_with(" non")
+        || local.ends_with(" false that")
         || local.starts_with("false positive")
         || local.starts_with("false-positive")
-        || has_route_not_used_clause(local)
+        || has_route_not_used_clause(&local)
+}
+
+#[rustfmt::skip]
+fn invalid_followup_before_later_route(prefix: &str) -> bool { let prefix = prefix.trim_end(); has_invalid_route_followup(prefix) && (prefix.ends_with('.') || prefix.ends_with(';') || prefix.ends_with(" and then")) }
+
+#[rustfmt::skip]
+fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
+    const PROOF_VERBS: &str = "confirm|document|establish|prove|show|verify";
+    let tokens = local.split_whitespace().collect::<Vec<_>>();
+    let Some(negation_index) = tokens.iter().rposition(|token| matches!(*token, "no" | "not") || token.ends_with("n't")) else { return false; };
+    let mut after_not = &tokens[negation_index + 1..];
+    while matches!(after_not.first().copied(), Some("actually" | "fully" | "really" | "truly")) { after_not = &after_not[1..]; }
+    if after_not.first().is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb)) {
+        let proof_subject = match after_not.get(1).copied() { Some("if" | "that" | "whether") => &after_not[2..], _ => &after_not[1..] };
+        let actor_prefix = strip_actor_article(proof_subject);
+        if actor_prefix.is_empty() { return !at_boundary || !has_handler_tool_negation_subject(&tokens[..negation_index]); }
+        return has_negated_actor_prefix(actor_prefix);
+    }
+    has_route_owner_absence(after_not) || has_negated_actor_prefix(strip_actor_article(after_not))
+}
+
+#[rustfmt::skip]
+fn has_handler_tool_negation_subject(tokens: &[&str]) -> bool { tokens.iter().rev().find(|token| !matches!(**token, "actually" | "can" | "could" | "did" | "does" | "do" | "fully" | "really" | "truly")).is_some_and(|token| matches!(*token, "handler" | "tool")) }
+
+#[rustfmt::skip]
+fn has_route_owner_absence(tokens: &[&str]) -> bool {
+    let tokens = strip_actor_article(tokens); match tokens { ["need" | "needed" | "use" | "used", rest @ ..] => has_route_owner_absence(rest), ["actual" | "assigned" | "authorized" | "correct" | "current" | "expected" | "intended" | "primary" | "proper" | "real" | "responsible" | "right" | "same" | "valid", rest @ ..] => has_route_owner_absence(rest), ["child", "thread", "tool", "handler" | "handlers", "are" | "is" | "was" | "were", "available" | "provided" | "registered", ..] => false, ["child", ..] | ["fallback", "route", ..] | ["fallback", "path", ..] | ["owner", ..] | ["route", "owner", ..] => true, _ => false }
+}
+
+fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
+    const QUALIFIERS: &str = "actual|assigned|authorized|correct|current|expected|intended|primary|proper|real|responsible|right|same|valid";
+    tokens.is_empty()
+        || tokens
+            .iter()
+            .all(|token| QUALIFIERS.split('|').any(|qualifier| *token == qualifier))
+}
+
+#[rustfmt::skip]
+fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
+    let mut tokens = tokens; while matches!(tokens.first().copied(), Some("a" | "an" | "any" | "from" | "member" | "of" | "one" | "single" | "the")) { tokens = &tokens[1..]; } tokens
 }
 
 fn has_post_destination_route_negation(suffix: &str) -> bool {
@@ -132,96 +187,61 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_failed_route_delivery_clause(clause: &str) -> bool {
+    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[4..], " ");
+    let clause = normalized_clause.as_str();
     if matches!(clause, "failed" | "failure" | "failures") {
         return true;
     }
     ["failed", "failure", "failures"]
         .into_iter()
-        .any(|failure| {
-            clause
-                .find(failure)
-                .is_some_and(|index| has_phrase_boundaries(clause, index, failure))
-        })
+        .any(|failure| contains_phrase(clause, failure))
         && (has_failed_route_pronoun_clause(clause)
-            || [
-                "send",
-                "sent",
-                "sending",
-                "post",
-                "posted",
-                "posting",
-                "deliver",
-                "delivered",
-                "delivery",
-                "route",
-                "routed",
-                "routing",
-                "handoff",
-                "message",
-                "feedback",
-            ]
-            .into_iter()
-            .any(|term| {
-                clause
-                    .find(term)
-                    .is_some_and(|index| has_phrase_boundaries(clause, index, term))
-            }))
+            || {
+                "send|sent|sending|post|posted|posting|deliver|delivered|delivery|route|routed|routing|handoff|message|feedback"
+                .split('|')
+                .any(|term| contains_phrase(clause, term))
+            })
 }
 
 fn has_failed_route_pronoun_clause(clause: &str) -> bool {
-    [
-        "it failed",
-        "that failed",
-        "this failed",
-        "the fallback failed",
-    ]
-    .into_iter()
-    .any(|marker| {
-        clause
-            .find(marker)
-            .is_some_and(|index| has_phrase_boundaries(clause, index, marker))
-    })
+    "it failed|that failed|this failed|the fallback failed"
+        .split('|')
+        .any(|marker| contains_phrase(clause, marker))
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {
-    [
-        "not used",
-        "was not used",
-        "was not actually used",
-        "was never used",
-        "never used",
-        "wasn't used",
-        "isn't used",
-        "did not use",
-        "didn't use",
-        "unused",
-    ]
-    .into_iter()
-    .any(|marker| {
-        clause
-            .find(marker)
-            .is_some_and(|index| has_phrase_boundaries(clause, index, marker))
-    })
+    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[4..], " ");
+    let clause = normalized_clause.as_str();
+    "not used|not actually used|was not used|was not actually used|was never used|never used|wasn't used|isn't used|did not use|didn't use|unused"
+        .split('|')
+        .any(|marker| contains_phrase(clause, marker))
+        || regex::Regex::new(r"(?:^|[^[:alnum:]])(?:(?:the\s+|that\s+|this\s+)?(?:fallback(?:\s+(?:route|path))?|route|path)|(?:the\s+)?(?:handoff|message|feedback|thread)|it|that|this)\s+(?:unused|ignored|skipped|(?:was|is|gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*(?:being\s+(?:(?:actually|ever)\s+)*)?(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:hasn't|haven't|hadn't)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:was|is)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)used|(?:wasn't|isn't)\s+(?:(?:actually|ever)\s+)*used|(?:did|does)\s+(?:(?:actually|ever)\s+)*not\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|(?:didn't|doesn't)\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|never\s+(?:(?:actually|ever)\s+)*(?:gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*used)(?:$|[^[:alnum:]])").ok().is_some_and(|route_not_used| route_not_used.is_match(clause))
 }
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
     let end = start + phrase.len();
-    value[..start]
-        .chars()
-        .last()
-        .is_none_or(|character| !character.is_ascii_alphanumeric())
-        && value[end..]
-            .chars()
-            .next()
-            .is_none_or(|character| !character.is_ascii_alphanumeric())
+    let before = value[..start].chars().last();
+    let after = value[end..].chars().next();
+    before.is_none_or(|character| !is_route_word_character(character))
+        && after.is_none_or(|character| !is_route_word_character(character))
+}
+
+fn contains_phrase(value: &str, phrase: &str) -> bool {
+    value
+        .find(phrase)
+        .is_some_and(|index| has_phrase_boundaries(value, index, phrase))
+}
+
+fn is_route_word_character(character: char) -> bool {
+    character.is_ascii_alphanumeric()
 }
 
 fn has_route_event_negation(text: &str) -> bool {
     text.split_whitespace().map(route_word_token).any(|token| {
-        matches!(
-            token,
-            "failed" | "no" | "not" | "never" | "unable" | "without" | "cannot"
-        ) || token.ends_with("n't")
+        "failed|no|not|never|unable|without|cannot"
+            .split('|')
+            .any(|negation| token == negation)
+            || token.ends_with("n't")
     })
 }
 

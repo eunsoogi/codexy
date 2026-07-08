@@ -1,8 +1,6 @@
 use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_allows_quoted_codex_review_boilerplate_in_readiness_handoff() -> TestResult {
     for footer in [
@@ -156,7 +154,6 @@ fn validator_rejects_real_review_requests_for_pull_request() -> TestResult {
     }
     Ok(())
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
@@ -186,6 +183,7 @@ fn unresolved_thread_pr_state() -> &'static str {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate":"2026-06-22T12:44:00Z", "comments": [], "reviews": [],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [{
                 "id": "PRRT_kwDOWaiting",
@@ -206,6 +204,7 @@ fn current_head_output_pr_state() -> &'static str {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate":"2026-06-22T12:44:00Z",
         "comments": [{
             "body": "@codex review",
             "author": {"login": "eunsoogi"},
@@ -231,6 +230,7 @@ fn stale_codex_activity_pr_state() -> &'static str {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "headRefCommittedDate":"2026-06-22T13:00:00Z",
         "comments": [{
             "body": "@codex review",
             "author": {"login": "eunsoogi"},
