@@ -43,6 +43,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     let mut saw_handler_defect_capture =
         is_handler_defect_capture_line(&evidence[capture_start..cursor]);
+    let mut pending_defect_capture = has_open_defect_capture(&evidence[capture_start..cursor]);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
@@ -50,10 +51,20 @@ pub(super) fn capture_end_before_unrelated_evidence(
         if is_different_lane_line(line, scope_lane.as_deref()) {
             return line_start;
         }
+        let line_names_different_lane = line_mentions_different_lane(line, scope_lane.as_deref());
+        if line_names_different_lane {
+            return line_start;
+        }
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line)
-            && (saw_handler_defect_capture || !is_excluded_lane_metadata_line(line));
+            && (saw_handler_defect_capture
+                || !is_excluded_lane_metadata_line(line)
+                || line_names_different_lane);
+        let line_has_handler_defect_capture = is_handler_defect_capture_line(line)
+            || pending_defect_capture
+                && is_handler_capture_line(line)
+                && !has_absent_defect_capture(line);
         let line_extends_capture = if is_handoff_metadata_line(line) {
-            true
+            !line_names_different_lane
         } else {
             is_capture_related(line)
                 && (!line_is_unrelated_metadata || is_handler_capture_line(line))
@@ -64,7 +75,8 @@ pub(super) fn capture_end_before_unrelated_evidence(
             return line_start;
         }
         saw_capture |= line_extends_capture;
-        saw_handler_defect_capture |= is_handler_defect_capture_line(line);
+        saw_handler_defect_capture |= line_has_handler_defect_capture;
+        pending_defect_capture |= has_open_defect_capture(line);
         cursor = line_end;
     }
     evidence.len()
@@ -109,6 +121,30 @@ fn is_excluded_lane_metadata_line(line: &str) -> bool {
     ]
     .iter()
     .any(|prefix| key.starts_with(prefix))
+}
+fn line_mentions_different_lane(line: &str, current_lane: Option<&str>) -> bool {
+    let normalized_line = line.to_ascii_lowercase();
+    if normalized_line.contains("another lane") || normalized_line.contains("later lane") {
+        return true;
+    }
+    let mut previous = "";
+    let mut words = line.split_whitespace();
+    while let Some(word) = words.next() {
+        let normalized = word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+        if normalized.eq_ignore_ascii_case("lane") && !previous.eq_ignore_ascii_case("same") {
+            let label = words
+                .next()
+                .unwrap_or_default()
+                .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+            if normalized_lane_label(label)
+                .is_some_and(|lane| current_lane.is_none_or(|current_lane| lane != current_lane))
+            {
+                return true;
+            }
+        }
+        previous = normalized;
+    }
+    false
 }
 pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
     let Some((key, _)) = line_key_value(line) else {
@@ -312,6 +348,10 @@ fn lane_label(line: &str) -> Option<String> {
         .next()
         .unwrap_or_default()
         .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    normalized_lane_label(label)
+}
+
+fn normalized_lane_label(label: &str) -> Option<String> {
     (!label.is_empty() && !is_excluded_lane_label(label))
         .then(|| format!("lane {}", label.to_ascii_lowercase()))
 }
@@ -345,6 +385,10 @@ fn is_handler_capture_line(line: &str) -> bool {
 
 fn is_handler_defect_capture_line(line: &str) -> bool {
     is_handler_capture_line(line) && has_defect_label(line) && !has_absent_defect_capture(line)
+}
+
+fn has_open_defect_capture(line: &str) -> bool {
+    has_defect_label(line) && !has_absent_defect_capture(line)
 }
 
 fn has_defect_label(line: &str) -> bool {
