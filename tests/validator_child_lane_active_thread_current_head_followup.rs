@@ -120,3 +120,53 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_resets_stale_waiting_when_active_line_refreshes_waiting_component()
+-> Result<(), Box<dyn std::error::Error>> {
+    for refreshed_count in [
+        "Active child Codex threads: 5, zero waiting",
+        "Active child Codex threads: 4, 1 waiting",
+        "Active child Codex threads: 4, 1 pending",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Waiting child Codex threads: 1
+{refreshed_count}
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should replace stale waiting counts for `{refreshed_count}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_projects_from_refreshed_active_waiting_value_without_stale_waiting()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Waiting child Codex threads: 1
+Active child Codex threads: 4, zero waiting
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Child thread created: thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should project creation from refreshed active/waiting value without stale waiting\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

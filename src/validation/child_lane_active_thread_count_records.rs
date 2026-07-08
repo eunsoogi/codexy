@@ -162,12 +162,12 @@ fn count_kind(line: &str) -> CountKind {
     let words = key_words(key);
     let has_active = words.iter().any(|word| word == "active");
     let has_waiting = words.iter().any(|word| word == "waiting");
+    let value_words = key_words(value);
+    let value_has_active = value_words.iter().any(|word| word == "active");
+    let value_has_waiting = value_words
+        .iter()
+        .any(|word| matches!(word.as_str(), "pending" | "waiting"));
     if has_active && has_waiting {
-        let value_words = key_words(value);
-        let value_has_active = value_words.iter().any(|word| word == "active");
-        let value_has_waiting = value_words
-            .iter()
-            .any(|word| matches!(word.as_str(), "pending" | "waiting"));
         if value_has_active != value_has_waiting {
             return if value_has_active {
                 CountKind::Active
@@ -175,6 +175,9 @@ fn count_kind(line: &str) -> CountKind {
                 CountKind::Waiting
             };
         }
+    }
+    if has_active && value_has_waiting || has_waiting && value_has_active {
+        return CountKind::Total;
     }
     match (has_active, has_waiting) {
         (true, true) => CountKind::Total,
