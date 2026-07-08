@@ -81,10 +81,11 @@ fn has_unnegated(text: &str, needle: &str) -> bool {
     let mut offset = 0;
     while let Some(index) = rest.find(needle) {
         let start = offset + index;
-        if !is_negated_match(&text[..start]) {
+        let end = start + needle.len();
+        if !is_negated_match(&text[..start]) && !is_post_negated_match(&text[end..]) {
             return true;
         }
-        offset = start + needle.len();
+        offset = end;
         rest = &text[offset..];
     }
     false
@@ -101,6 +102,30 @@ fn is_negated_match(prefix: &str) -> bool {
             "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
         )
     })
+}
+
+fn is_post_negated_match(suffix: &str) -> bool {
+    let local_end = suffix
+        .find(['\n', ',', ';'])
+        .or_else(|| suffix.find(". "))
+        .unwrap_or(suffix.len());
+    let local = suffix[..local_end].trim_start();
+    [
+        "is not",
+        "isn't",
+        "are not",
+        "aren't",
+        "was not",
+        "wasn't",
+        "were not",
+        "weren't",
+        "not needed",
+        "missing",
+        "does not exist",
+        "doesn't exist",
+    ]
+    .iter()
+    .any(|negation| local.starts_with(negation))
 }
 
 fn has_substantive_rationale(segment: &str) -> bool {
@@ -134,9 +159,13 @@ fn has_any(text: &str, needles: &[&str]) -> bool {
 
 fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
     let suffix = &text[start..];
-    [suffix.find('\n'), suffix.find(". ")]
-        .into_iter()
-        .flatten()
-        .min()
-        .map_or(text.len(), |index| start + index)
+    [
+        suffix.find("\n\n"),
+        suffix.find("\n#"),
+        suffix.find("\nreview "),
+    ]
+    .into_iter()
+    .flatten()
+    .min()
+    .map_or(text.len(), |index| start + index)
 }

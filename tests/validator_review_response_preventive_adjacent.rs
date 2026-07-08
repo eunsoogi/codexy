@@ -39,6 +39,20 @@ fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
 }
 
 #[test]
+fn validator_allows_preventive_adjacent_section_bullets() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head.\nPreventive adjacent review:\n- Focused regression coverage exercises adjacent parser variants in the touched helper family.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert_success(
+        &output,
+        "validator should scan preventive adjacent section bullets",
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_negated_preventive_adjacent_regression_coverage() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: no focused regression coverage for adjacent parser variants in the touched helper family.\n",
@@ -48,6 +62,27 @@ fn validator_rejects_negated_preventive_adjacent_regression_coverage() -> TestRe
     assert!(
         !output.status.success(),
         "validator should reject negated preventive adjacent coverage claims\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_post_negated_preventive_adjacent_coverage() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused regression coverage is not needed.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject post-negated preventive adjacent coverage claims\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
