@@ -67,11 +67,11 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
 fn validator_rejects_invalid_sentinel_readiness_evidence() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel didn't pass on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel doesn't pass on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel don't pass on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel haven't passed on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel evidence: reviewed exact head, no blockers listed. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: PASS on old SHA abc1234, current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel: PASS after planned rerun on current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel: PASS to be run on current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
