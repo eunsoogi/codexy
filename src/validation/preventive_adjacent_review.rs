@@ -4,7 +4,7 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     starts_with_true_blocker(trimmed)
         || starts_with_true_waiting(trimmed)
         || has_unresolved_thread_waiting_state(&text)
-        || has_any(
+        || has_unnegated_any(
             &text,
             &[
                 "blocked on",
@@ -13,6 +13,11 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "now blocked",
                 "goal blocked",
                 "work is blocked",
+            ],
+        )
+        || has_any(
+            &text,
+            &[
                 "this lane is not complete",
                 "lane is not complete",
                 "is not complete",
@@ -32,14 +37,12 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
 }
 
 fn starts_with_true_blocker(text: &str) -> bool {
-    (text.starts_with("blocked") || text.starts_with("blocker")) && !has_false_blocker_heading(text)
+    (text.starts_with("blocked") || text.starts_with("blocker")) && !has_false_heading_value(text)
 }
-
-fn has_false_blocker_heading(text: &str) -> bool {
+fn has_false_heading_value(text: &str) -> bool {
     text.split_once(':')
         .is_some_and(|(_, value)| has_false_blocked_or_waiting_value(value))
 }
-
 fn has_true_blocked_or_blocker_label(text: &str) -> bool {
     ["blocked:", "blocker:", "blockers:"]
         .iter()
@@ -52,10 +55,7 @@ fn has_true_label_value(text: &str, label: &str) -> bool {
 }
 
 fn starts_with_true_waiting(text: &str) -> bool {
-    text.starts_with("waiting")
-        && !text
-            .split_once(':')
-            .is_some_and(|(_, value)| has_false_blocked_or_waiting_value(value))
+    text.starts_with("waiting") && !has_false_heading_value(text)
 }
 
 fn has_false_blocked_or_waiting_value(value: &str) -> bool {
@@ -171,7 +171,8 @@ fn is_post_negated_match(suffix: &str) -> bool {
         .find(['\n', ',', ';'])
         .or_else(|| suffix.find(". "))
         .unwrap_or(suffix.len());
-    let local = suffix[..local_end].trim_start();
+    let local = suffix[..local_end]
+        .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
     [
         "is not",
         "isn't",
