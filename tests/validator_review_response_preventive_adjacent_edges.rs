@@ -30,15 +30,14 @@ fn validator_rejects_not_applicable_preventive_adjacent_claim() -> TestResult {
 
 #[test]
 fn validator_allows_preventive_adjacent_markdown_heading_with_blank_before_bullets() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed the Codex review comment and verified current head.\n## Preventive adjacent review\n\n- Focused regression coverage exercises adjacent parser variants in the touched helper family.\n",
-        resolved_review_thread_pr_state(),
-    )?;
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the helper family; unrelated risk note says historical fixture coverage was missing before this fix.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
 
-    assert_success(
-        &output,
-        "validator should scan preventive adjacent heading bodies after blank lines",
-    );
+        assert_success(&output, "validator should allow positive coverage");
+    }
     Ok(())
 }
 
@@ -124,6 +123,9 @@ fn validator_rejects_colon_labeled_post_negated_preventive_coverage() -> TestRes
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused regression coverage: not needed.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage covers the exact comment; adjacent parser variants were not tested.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; regression coverage not added.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; regression coverage is missing.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; nearby coverage check found regression coverage is missing for those variants.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage is missing for adjacent parser variants in the helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused tests not run.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused tests not executed.\n",
     ] {
