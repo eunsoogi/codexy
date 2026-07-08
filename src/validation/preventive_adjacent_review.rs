@@ -1,3 +1,8 @@
+use super::preventive_adjacent_review_sections::{
+    has_false_readiness_before_evidence, has_readiness_not_applicable_state,
+    preventive_adjacent_review_end,
+};
+
 pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     let trimmed = text.trim_start();
@@ -25,9 +30,11 @@ fn has_true_blocked_or_blocker_label(text: &str) -> bool {
 fn has_true_label_value(text: &str, label: &str) -> bool {
     text.match_indices(label).any(|(index, _)| {
         let has_boundary = index == 0 || !text.as_bytes()[index - 1].is_ascii_alphanumeric();
+        let value = &text[index + label.len()..];
         has_boundary
-            && !is_negated_match(&text[..index])
-            && !has_false_blocked_or_waiting_value(&text[index + label.len()..])
+            && !is_label_negated_match(&text[..index])
+            && !has_false_blocked_or_waiting_value(value)
+            && !is_stale_blocker_label_value(value)
     })
 }
 fn starts_with_true_waiting(text: &str) -> bool {
@@ -65,6 +72,22 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         || value.starts_with("no current blocker")
         || value.starts_with("no current waiting")
         || value.starts_with("no current issue")
+}
+fn is_stale_blocker_label_value(value: &str) -> bool {
+    let end = value.find('\n').unwrap_or(value.len());
+    let value = value[..end].trim();
+    has_any(value, &["previous", "previously", "historical", "earlier"])
+        && has_any(value, &["resolved", "cleared"])
+        && !has_any(
+            value,
+            &[
+                "now blocked",
+                "currently blocked",
+                "pending",
+                "still blocked",
+                "still waiting",
+            ],
+        )
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated_any(text, &["remains unresolved", "remain unresolved"])
@@ -128,11 +151,32 @@ fn has_unnegated(text: &str, needle: &str) -> bool {
     false
 }
 fn is_negated_match(prefix: &str) -> bool {
+    let sentence_start = prefix.rfind(['\n', '.']).map_or(0, |index| index + 1);
+    let sentence = prefix[sentence_start..].trim_end();
     let local_start = prefix
-        .rfind(['\n', ',', ';', ':'])
+        .rfind(['\n', ',', ';', ':', '.'])
         .map_or(0, |index| index + 1);
     let local = prefix[local_start..].trim_end();
-    local.split_ascii_whitespace().any(|word| {
+    let historical_context =
+        has_any(
+            sentence,
+            &["previous", "previously", "historical", "earlier"],
+        ) && !has_any(local, &["now", "current", "currently", "pending", "still"]);
+    let future_context = has_any(local, &["plan to", "planned to", "will ", "to run"]);
+    historical_context
+        || future_context
+        || local.split_ascii_whitespace().any(|word| {
+            matches!(
+                word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()),
+                "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none" | "was" | "were"
+            )
+        })
+}
+fn is_label_negated_match(prefix: &str) -> bool {
+    let local_start = prefix
+        .rfind(['\n', ',', ';', ':', '.'])
+        .map_or(0, |index| index + 1);
+    prefix[local_start..].split_ascii_whitespace().any(|word| {
         matches!(
             word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()),
             "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
@@ -151,7 +195,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
         || local.starts_with("s not ")
         || starts_with_pipe(
             local,
-            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing",
+            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
         )
 }
 fn has_substantive_rationale(segment: &str) -> bool {
@@ -189,47 +233,4 @@ fn starts_with_pipe(text: &str, needles: &str) -> bool {
 }
 fn has_unnegated_pipe(text: &str, needles: &str) -> bool {
     needles.split('|').any(|needle| has_unnegated(text, needle))
-}
-fn has_false_readiness_before_evidence(text: &str, start: usize) -> bool {
-    ["readiness:", "pr readiness:", "pr ready:"]
-        .iter()
-        .any(|label| {
-            text[..start].rfind(label).is_some_and(|index| {
-                let value = text[index + label.len()..start]
-                    .trim_start()
-                    .trim_start_matches(['-', '*'])
-                    .trim_start();
-                ["not ", "false", "isn't ready", "aren't ready"]
-                    .iter()
-                    .any(|state| value.starts_with(state))
-            })
-        })
-}
-fn has_readiness_not_applicable_state(text: &str) -> bool {
-    ["pr readiness:", "readiness:"].iter().any(|label| {
-        text.find(label).is_some_and(|index| {
-            ["not applicable", "isn't applicable", "aren't applicable"]
-                .iter()
-                .any(|state| text[index + label.len()..].trim_start().starts_with(state))
-        })
-    })
-}
-fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
-    let suffix = &text[start..];
-    let section_blank = suffix
-        .match_indices("\n\n")
-        .map(|(index, _)| index)
-        .find(|index| !is_preventive_adjacent_heading_blank(suffix, *index));
-    [section_blank, suffix.find("\n#"), suffix.find("\nreview ")]
-        .into_iter()
-        .flatten()
-        .min()
-        .map_or(text.len(), |index| start + index)
-}
-fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {
-    let heading = suffix[..index]
-        .trim()
-        .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'));
-    heading == "preventive adjacent review"
-        || heading.starts_with("preventive adjacent review evidence")
 }
