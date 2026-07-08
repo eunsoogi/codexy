@@ -25,6 +25,27 @@ fn validator_rejects_exact_comment_only_review_response_handoff() -> TestResult 
 }
 
 #[test]
+fn validator_rejects_exact_comment_only_handoff_with_negated_unresolved_threads() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the exact Codex review comment and verified current head. No review thread remains unresolved.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not treat negated unresolved-thread wording as incomplete evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the touched helper family.\n",

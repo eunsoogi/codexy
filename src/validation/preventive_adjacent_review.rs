@@ -4,6 +4,7 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     trimmed.starts_with("blocked")
         || trimmed.starts_with("blocker")
         || trimmed.starts_with("waiting")
+        || has_unresolved_thread_waiting_state(&text)
         || has_any(
             &text,
             &[
@@ -18,9 +19,10 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "this lane is not complete",
                 "lane is not complete",
                 "is not complete",
+                "is not currently complete",
                 "isn't complete",
                 "isn't yet complete",
-                "remains unresolved",
+                "not currently complete",
                 "not ready for handoff",
                 "not currently ready for handoff",
                 "aren't ready for handoff",
@@ -30,6 +32,32 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "aren't applicable",
                 "isn't applicable",
                 "waiting:",
+            ],
+        )
+}
+
+fn has_unresolved_thread_waiting_state(text: &str) -> bool {
+    has_unnegated(text, "remains unresolved")
+        && has_any(
+            text,
+            &[
+                "this lane is not complete",
+                "lane is not complete",
+                "is not complete",
+                "isn't complete",
+                "isn't yet complete",
+                "not ready for handoff",
+                "aren't ready for handoff",
+                "aren't yet ready for handoff",
+                "not currently ready for handoff",
+                "aren't currently ready for handoff",
+                "isn't currently ready for handoff",
+                "not applicable",
+                "isn't applicable",
+                "aren't applicable",
+                "waiting:",
+                "blocked:",
+                "blocker:",
             ],
         )
 }
