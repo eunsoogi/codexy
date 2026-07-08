@@ -1,10 +1,13 @@
 pub(super) fn active_child_thread_count(line: &str) -> Option<u64> {
     let (key, value) = line.split_once(':')?;
-    if !has_active_child_thread_key(&key_words(key)) {
+    let key_words = key_words(key);
+    if !has_active_child_thread_key(&key_words) {
         return None;
     }
     let words = value_words(value);
-    explicit_total(&words).or_else(|| fallback_count(&words))
+    explicit_total(&words)
+        .or_else(|| labeled_component_count(&key_words, &words))
+        .or_else(|| fallback_count(&words))
 }
 
 pub(super) fn key_words(key: &str) -> Vec<String> {
@@ -54,6 +57,106 @@ fn fallback_count(words: &[String]) -> Option<u64> {
         .iter()
         .find(|word| word.chars().all(|character| character.is_ascii_digit()))
         .and_then(|word| word.parse().ok())
+}
+
+fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64> {
+    let mut counts = [None, None, None];
+    let mut first_count_used = false;
+    for (index, word) in words.iter().enumerate() {
+        let Some(component) = component_index(word) else {
+            continue;
+        };
+        if counts[component].is_some() {
+            continue;
+        }
+        let Some((count, count_index)) = component_count(words, index) else {
+            continue;
+        };
+        counts[component] = Some(count);
+        first_count_used |= count_index == 0;
+    }
+    if counts.iter().all(Option::is_none) {
+        return None;
+    }
+    if let Some(first_count) = words.first().and_then(|word| count_word(word)) {
+        let key_has_active = key_words.iter().any(|word| word == "active");
+        let key_has_waiting = key_words.iter().any(|word| word == "waiting");
+        if !first_count_used && key_has_active && counts[0].is_none() {
+            counts[0] = Some(first_count);
+        } else if !first_count_used && key_has_waiting && counts[1].is_none() {
+            counts[1] = Some(first_count);
+        }
+    }
+    Some(counts.iter().flatten().copied().sum())
+}
+
+fn component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
+    let previous_count = index
+        .checked_sub(1)
+        .and_then(|previous| count_word(&words[previous]).map(|count| (count, previous)));
+    let previous_follows_component =
+        previous_count.is_some_and(|(_, previous)| count_follows_component(words, previous));
+    if previous_follows_component {
+        if let Some(count) = next_component_count(words, index) {
+            return Some(count);
+        }
+    }
+    previous_count
+        .or_else(|| previous_component_count(words, index))
+        .or_else(|| next_component_count(words, index))
+}
+
+fn count_follows_component(words: &[String], count_index: usize) -> bool {
+    for word in words[..count_index].iter().rev() {
+        if component_index(word).is_some() {
+            return true;
+        }
+        if count_word(word).is_some() {
+            return false;
+        }
+    }
+    false
+}
+
+fn previous_component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
+    for previous in (0..index).rev() {
+        if component_index(&words[previous]).is_some() {
+            break;
+        }
+        if let Some(count) = count_word(&words[previous]) {
+            return Some((count, previous));
+        }
+    }
+    None
+}
+
+fn next_component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
+    for (next, word) in words.iter().enumerate().skip(index + 1) {
+        if component_index(word).is_some() {
+            break;
+        }
+        if let Some(count) = count_word(word) {
+            return Some((count, next));
+        }
+    }
+    None
+}
+
+fn component_index(word: &str) -> Option<usize> {
+    match word {
+        "active" => Some(0),
+        "waiting" => Some(1),
+        "pending" => Some(2),
+        _ => None,
+    }
+}
+
+fn count_word(word: &str) -> Option<u64> {
+    match word {
+        "none" | "zero" => Some(0),
+        _ if word.chars().all(|character| character.is_ascii_digit()) => word.parse().ok(),
+        _ => None,
+    }
 }
 
 fn thread_id_entry_count(words: &[String]) -> Option<u64> {

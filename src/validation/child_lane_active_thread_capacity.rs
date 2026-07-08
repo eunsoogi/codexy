@@ -9,7 +9,7 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
                 (is_child_thread_operation_line(segment) && !has_negated_operation_claim(segment))
                     .then(|| ThreadOperation {
                         line_number,
-                        segment_number: segment_offset(line, segment),
+                        segment_number: segment.as_ptr() as usize - line.as_ptr() as usize,
                         reuses_existing_owner: is_reuse_operation_line(segment),
                         replaces_existing_owner: normalized_operation_line(segment)
                             .contains("replacement child thread"),
@@ -18,9 +18,6 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
             })
         })
         .collect()
-}
-fn segment_offset(line: &str, segment: &str) -> usize {
-    segment.as_ptr() as usize - line.as_ptr() as usize
 }
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
@@ -138,8 +135,9 @@ fn is_child_thread_operation_line(line: &str) -> bool {
 fn normalized_operation_line(line: &str) -> String {
     line.to_ascii_lowercase()
         .replace("child-thread", "child thread")
-        .replace("child codex app thread", "child thread")
-        .replace("child codex thread", "child thread")
+        .replace("codex app ", "")
+        .replace("codex ", "")
+        .replace("child thread request", "requested child thread")
         .replace("created a new child thread", "created child thread")
         .replace("created new child thread", "created child thread")
         .replace("created a child thread", "created child thread")
@@ -153,7 +151,7 @@ fn normalized_operation_line(line: &str) -> String {
         .replace("resumed a child thread", "resumed child thread")
 }
 fn operation_markers() -> impl Iterator<Item = &'static str> {
-    "child thread created:|created child thread|also created child thread|created a replacement child thread|created replacement child thread|also created replacement child thread|also created a replacement child thread|continued child thread|also continued child thread|forked child thread|forked a child thread|also forked child thread|resumed child thread|also resumed child thread|started child thread|started a child thread|also started child thread".split('|')
+    "child thread created:|created child thread|also created child thread|created a replacement child thread|created replacement child thread|also created replacement child thread|also created a replacement child thread|requested child thread|also requested child thread|continued child thread|also continued child thread|forked child thread|forked a child thread|also forked child thread|resumed child thread|also resumed child thread|started child thread|started a child thread|also started child thread".split('|')
 }
 fn has_passive_created_thread_id(line: &str) -> bool {
     line.find("child thread").is_some_and(|index| {
@@ -231,7 +229,7 @@ fn has_negated_operation_claim(line: &str) -> bool {
             .min()
     };
     let negation_position = |clause: &str| {
-        "did not call|did not continue|did not create|did not resume|didn't call|didn't continue|didn't create|didn't resume|do not call|do not continue|do not create|do not resume|must not call|must not continue|must not create|must not resume|not call|not continue|not create|not resume|no child thread|no child thread created|no child thread continued|no child thread resumed|without calling|without continuing|without creating|without resuming"
+        "did not call|did not continue|did not create|did not request|did not resume|didn't call|didn't continue|didn't create|didn't request|didn't resume|do not call|do not continue|do not create|do not request|do not resume|must not call|must not continue|must not create|must not request|must not resume|not call|not continue|not create|not request|not resume|no child thread|no child thread created|no child thread continued|no child thread request|no child thread resumed|no requested child thread|without calling|without continuing|without creating|without requesting|without resuming"
             .split('|')
             .filter_map(|marker| clause.find(marker))
             .min()
