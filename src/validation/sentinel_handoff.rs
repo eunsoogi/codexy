@@ -10,6 +10,7 @@ const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before
 const FUTURE_STATUS_PREFIX_MARKERS: &str = "waiting for|wait for|awaiting|will rerun|will re-run|needs rerun|needs re-run|need rerun|need re-run|rerun required|re-run required";
 const STATUS_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|returned|return|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
 const LOCAL_NEGATION_WORDS: &str = "no|not|without|never|isn't|aren't|wasn't|hasn't|haven't|didn't|doesn't|don't|can't|cannot|won't";
+const NEGATIVE_LABEL_VALUE_MARKERS: &str = "false|not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|isn't currently ready|aren't ready|aren't yet ready|aren't currently ready|not requested|isn't requested|aren't requested|not applicable|isn't applicable|aren't applicable|n/a";
 pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     let claims_readiness = has_any(&text, READINESS_MARKERS);
@@ -155,22 +156,9 @@ fn has_negative_label_value(suffix: &str) -> bool {
     if is_standalone_negative_no(value) {
         return true;
     }
-    [
-        "false",
-        "not ready",
-        "not yet ready",
-        "not currently ready",
-        "isn't ready",
-        "isn't yet ready",
-        "isn't currently ready",
-        "aren't ready",
-        "aren't yet ready",
-        "aren't currently ready",
-        "not applicable",
-        "n/a",
-    ]
-    .iter()
-    .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
+    NEGATIVE_LABEL_VALUE_MARKERS
+        .split('|')
+        .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
 }
 fn is_standalone_negative_no(value: &str) -> bool {
     let rest = value.strip_prefix("no");

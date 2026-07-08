@@ -15,6 +15,10 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
+    let codex_review_errors = super::codex_review_handoff::check(handoff, &pr_state);
+    if !codex_review_errors.is_empty() {
+        return codex_review_errors;
+    }
     let sentinel_errors =
         super::sentinel_handoff::check(handoff, string_field(&pr_state, "headRefOid"));
     if !sentinel_errors.is_empty() {
@@ -22,10 +26,6 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     }
     if let Some(error) = super::completion_handoff_waiting::check(handoff) {
         return vec![error];
-    }
-    let codex_review_errors = super::codex_review_handoff::check(handoff, &pr_state);
-    if !codex_review_errors.is_empty() {
-        return codex_review_errors;
     }
     if !is_open_pr(&pr_state) || !claims_completion(handoff) || states_explicit_deferral(handoff) {
         return Vec::new();
