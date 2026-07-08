@@ -49,6 +49,7 @@ fn validator_rejects_exact_comment_only_handoff_with_no_waiting_heading() -> Tes
         "Waiting: no. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: no waiting. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: none remaining. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting: none active. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: resolved. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: cleared. Review response: fixed the exact Codex review comment and verified current head.\n",
     ] {
@@ -78,6 +79,7 @@ fn validator_rejects_exact_comment_only_handoff_with_negated_blocker_phrase() ->
         "Not blocked on anything. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Review response: fixed the exact Codex review comment. Blocked on: none.\n",
         "Blockers: none remain. Review response: fixed the exact Codex review comment.\n",
+        "Blockers: none now. Review response: fixed the exact Codex review comment.\n",
         "Blockers: resolved. Review response: fixed the exact Codex review comment.\n",
         "Blockers: cleared. Review response: fixed the exact Codex review comment.\n",
         "Not blocked: tests are green. Review response: fixed the exact Codex review comment.\n",
@@ -121,6 +123,9 @@ fn validator_rejects_colon_labeled_post_negated_preventive_coverage() -> TestRes
     for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused regression coverage: not needed.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage covers the exact comment; adjacent parser variants were not tested.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; regression coverage not added.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused tests not run.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused tests not executed.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
 

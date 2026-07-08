@@ -35,7 +35,6 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
         )
         || has_true_blocked_or_blocker_label(&text)
 }
-
 fn starts_with_true_blocker(text: &str) -> bool {
     (text.starts_with("blocked") || text.starts_with("blocker")) && !has_false_heading_value(text)
 }
@@ -67,16 +66,17 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         .unwrap_or("");
     let rest = value[first.len()..].trim_start_matches([' ', '\t']);
     let terminal = rest.chars().next().is_none_or(|ch| ".;,\n\r".contains(ch));
-    (matches!(first, "none" | "no" | "false" | "n/a" | "na") && terminal)
+    let false_empty = matches!(first, "none" | "no" | "false" | "n/a" | "na")
+        && (terminal
+            || ["active", "currently", "now", "remain"]
+                .iter()
+                .any(|modifier| rest.starts_with(modifier)));
+    false_empty
+        || matches!(first, "resolved" | "cleared")
         || value.starts_with("not applicable")
         || value.starts_with("no blocker")
-        || value.starts_with("no current blocker")
         || value.starts_with("no waiting")
-        || value.starts_with("no current waiting")
-        || value.starts_with("none currently")
-        || value.starts_with("none remain")
-        || value.starts_with("resolved")
-        || value.starts_with("cleared")
+        || value.starts_with("no current ")
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated(text, "remains unresolved")
@@ -122,8 +122,8 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
             "focused regression coverage",
             "preventive regression coverage",
             "regression coverage",
-            "focused test",
             "focused tests",
+            "focused test",
         ],
     );
     let has_concrete_no_change_rationale =
@@ -171,9 +171,8 @@ fn is_post_negated_match(suffix: &str) -> bool {
     let local = suffix[..local_end]
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
     has_false_blocked_or_waiting_value(local)
-        || local.contains(" is missing")
-        || local.contains(" not tested")
-        || local.contains(" not covered")
+        || has_any(local, &[" is missing", " not tested", " not covered"])
+        || local.starts_with("s not ")
         || [
             "is not",
             "isn't",
@@ -183,7 +182,10 @@ fn is_post_negated_match(suffix: &str) -> bool {
             "wasn't",
             "were not",
             "weren't",
+            "not added",
             "not needed",
+            "not run",
+            "not executed",
             "missing",
             "does not exist",
             "doesn't exist",
@@ -218,7 +220,6 @@ fn has_substantive_rationale(segment: &str) -> bool {
 fn has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| text.contains(needle))
 }
-
 fn has_readiness_not_applicable_state(text: &str) -> bool {
     ["pr readiness:", "readiness:"].iter().any(|label| {
         text.find(label).is_some_and(|index| {
