@@ -101,7 +101,7 @@ fn has_implicit_follow_up_review_request_phrase(line: &str) -> bool {
             "request fresh review",
             "request a fresh review",
         ],
-    ) || has_negated_actionable_codex_review_request_context(line)
+    )
 }
 
 fn has_negated_actionable_codex_review_request_context(line: &str) -> bool {

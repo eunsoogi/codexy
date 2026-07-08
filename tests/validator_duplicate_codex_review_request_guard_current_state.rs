@@ -124,6 +124,35 @@ fn validator_cli_allows_without_posting_or_requesting_codex_review_status() -> T
     Ok(())
 }
 
+#[test]
+fn validator_cli_allows_wait_only_then_negated_codex_review_request() -> TestResult {
+    for action in [
+        "Next action: wait for @codex review output, then do not request @codex review.",
+        "Next action: poll for Codex review output, then continue without requesting @codex review.",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            &valid_non_request_handoff(
+                "Duplicate/no-active-work state: PR #262 has no-active-work after current GitHub state re-check.",
+                action,
+            ),
+            r#"{
+                "number":262,
+                "state":"OPEN",
+                "isDraft":false,
+                "mergeStateStatus":"CLEAN",
+                "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+                "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+            }"#,
+        )?;
+        assert!(
+            output.status.success(),
+            "validator should allow wait-only negated Codex review action: {action}\nstderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn valid_non_request_handoff(duplicate_state: &str, action: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
