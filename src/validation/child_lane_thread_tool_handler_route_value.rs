@@ -64,7 +64,10 @@ fn direct_route_segment(after_object: &str) -> &str {
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
     let raw_prefix = value[..action_index].trim_end();
-    let at_boundary = matches!(raw_prefix.as_bytes().last(), Some(b',' | b';' | b'.'));
+    let at_boundary = raw_prefix
+        .chars()
+        .last()
+        .is_some_and(|character| ROUTE_PREFIX_TRIM_CHARACTERS.contains(&character));
     let prefix = raw_prefix
         .trim_end_matches(|character: char| {
             character.is_ascii_whitespace() || ROUTE_PREFIX_TRIM_CHARACTERS.contains(&character)
@@ -184,13 +187,8 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_failed_route_delivery_clause(clause: &str) -> bool {
-    let normalized_clause;
-    let clause = if clause.contains(&ROUTE_PREFIX_TRIM_CHARACTERS[3..]) {
-        normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
-        normalized_clause.as_str()
-    } else {
-        clause
-    };
+    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
+    let clause = normalized_clause.as_str();
     if matches!(clause, "failed" | "failure" | "failures") {
         return true;
     }
@@ -212,9 +210,12 @@ fn has_failed_route_pronoun_clause(clause: &str) -> bool {
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {
-    "not used|was not used|was not actually used|was never used|never used|wasn't used|isn't used|did not use|didn't use|unused"
+    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
+    let clause = normalized_clause.as_str();
+    "not used|not actually used|was not used|was not actually used|was never used|never used|wasn't used|isn't used|did not use|didn't use|unused"
         .split('|')
         .any(|marker| contains_phrase(clause, marker))
+        || regex::Regex::new(r"(?:^|[^[:alnum:]])(?:the\s+|that\s+|this\s+)?(?:fallback(?:\s+(?:route|path))?|route|path)\s+(?:unused|ignored|skipped|(?:was|is|gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*(?:being\s+(?:(?:actually|ever)\s+)*)?(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:hasn't|haven't|hadn't)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:was|is)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)used|(?:wasn't|isn't)\s+(?:(?:actually|ever)\s+)*used|(?:did|does)\s+(?:(?:actually|ever)\s+)*not\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|(?:didn't|doesn't)\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|never\s+(?:(?:actually|ever)\s+)*(?:gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*used)(?:$|[^[:alnum:]])").ok().is_some_and(|route_not_used| route_not_used.is_match(clause))
 }
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
@@ -232,15 +233,15 @@ fn contains_phrase(value: &str, phrase: &str) -> bool {
 }
 
 fn is_route_word_character(character: char) -> bool {
-    character.is_ascii_alphanumeric() || ROUTE_PREFIX_TRIM_CHARACTERS[3..].contains(&character)
+    character.is_ascii_alphanumeric()
 }
 
 fn has_route_event_negation(text: &str) -> bool {
     text.split_whitespace().map(route_word_token).any(|token| {
-        matches!(
-            token,
-            "failed" | "no" | "not" | "never" | "unable" | "without" | "cannot"
-        ) || token.ends_with("n't")
+        "failed|no|not|never|unable|without|cannot"
+            .split('|')
+            .any(|negation| token == negation)
+            || token.ends_with("n't")
     })
 }
 

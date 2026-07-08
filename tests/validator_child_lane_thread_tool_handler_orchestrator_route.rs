@@ -34,6 +34,17 @@ fn validator_allows_orchestrator_authored_fallback_route() -> Result<(), Box<dyn
         "Fallback route: handler did not confirm readiness, orchestrator posted the handoff in the child thread",
         "Fallback route: handler did not actually verify, orchestrator posted the handoff in the child thread",
         "Fallback route: handler didn't verify, orchestrator posted the handoff in the child thread",
+        "Fallback route: handler did not verify - parent posted the handoff in the child thread",
+        "Fallback route: handler did not verify-parent posted the handoff in the child thread",
+        "Fallback route: handler did not verify / parent posted the handoff in the child thread",
+        "Fallback route: handler did not verify/parent posted the handoff in the child thread",
+        "Fallback route: handler did not verify _ parent posted the handoff in the child thread",
+        "Fallback route: handler did not verify_parent posted the handoff in the child thread",
+        "Fallback route: handler did not verify—parent posted the handoff in the child thread",
+        "Fallback route: handler ignored the prompt - parent posted the handoff in the child thread",
+        "Fallback route: handler skipped the prompt - parent posted the handoff in the child thread",
+        "Fallback route: parent posted the handoff in the child thread, but ignored unrelated lint warnings",
+        "Fallback route: parent posted the handoff in the child thread, but skipped unrelated optional cleanup",
     ] {
         let output = run_ownership_validator(&evidence(route))?;
         assert!(
