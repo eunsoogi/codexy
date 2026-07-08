@@ -33,10 +33,7 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
             || contains_word(clause, "requesting")
             || is_past_tense_codex_review_request_clause(clause))
             && !is_pull_request_noun_clause(clause)
-            || ["post", "comment", "send"]
-                .iter()
-                .any(|verb| contains_word(clause, verb))
-                && names_codex_review
+            || super::codex_review_fresh_request_action::has_codex_review_post_action(clause)
             || starts_at_codex_review(clause.trim())
             || clause
                 .strip_prefix("next action:")
@@ -102,10 +99,7 @@ fn has_review_request_action(clause: &str) -> bool {
     has_codex_review_request_action(clause)
         || has_codex_review_request_variant(clause)
         || starts_at_codex_review(clause)
-        || ["post", "comment", "send"].iter().any(|verb| {
-            clause.contains(&format!("{verb} @codex review"))
-                || clause.contains(&format!("{verb} codex review"))
-        })
+        || super::codex_review_fresh_request_action::has_codex_review_post_action(clause)
 }
 
 fn has_codex_review_request_variant(clause: &str) -> bool {
@@ -166,7 +160,7 @@ fn contains_word(text: &str, word: &str) -> bool {
 }
 
 #[rustfmt::skip]
-fn is_word_match(text: &str, start: usize, end: usize) -> bool {
+pub(super) fn is_word_match(text: &str, start: usize, end: usize) -> bool {
     text[..start].chars().next_back().is_none_or(|ch| !ch.is_ascii_alphanumeric()) && text[end..].chars().next().is_none_or(|ch| !ch.is_ascii_alphanumeric())
 }
 

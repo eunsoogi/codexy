@@ -120,18 +120,22 @@ fn validator_cli_allows_bare_wait_only_codex_review_handoff() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_wait_only_codex_review_then_request_again() -> TestResult {
-    let handoff = format!(
-        "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
-         Duplicate/no-active-work state: PR #262 is duplicate/no-active-work; waiting for current-head Codex review after current GitHub state re-check.\n\
-         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         {GIT_PREFLIGHT}\n\
-         Stop condition: leave PR open until Codex review arrives.\n\
-         Next action: wait for @codex review, then request again if needed.\n"
-    );
-    let output = validate_handoff_with_pr_state(
-        &handoff,
-        r#"{
+    for handoff in [
+        "Next action: wait for @codex review, then request again if needed.",
+        "Next action: wait for @codex review and request again if needed.",
+    ] {
+        let handoff = format!(
+            "Post-compaction continuation readiness:\n\
+             Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+             Duplicate/no-active-work state: PR #262 is duplicate/no-active-work; waiting for current-head Codex review after current GitHub state re-check.\n\
+             Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+             {GIT_PREFLIGHT}\n\
+             Stop condition: leave PR open until Codex review arrives.\n\
+             {handoff}\n"
+        );
+        let output = validate_handoff_with_pr_state(
+            &handoff,
+            r#"{
             "number":262,
             "state":"OPEN",
             "isDraft":false,
@@ -147,19 +151,20 @@ fn validator_cli_rejects_wait_only_codex_review_then_request_again() -> TestResu
             "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
-    )?;
-    assert!(
-        !output.status.success(),
-        "validator should reject wait-only wording followed by request-again intent\nstdout: {}\nstderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("duplicate current-head Codex review request blocked"),
-        "stderr should explain duplicate review request guard\nstderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        )?;
+        assert!(
+            !output.status.success(),
+            "validator should reject wait-only wording followed by request-again intent\nhandoff: {handoff}\nstdout: {}\nstderr: {}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("duplicate current-head Codex review request blocked"),
+            "stderr should explain duplicate review request guard\nstderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

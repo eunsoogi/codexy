@@ -69,7 +69,10 @@ fn has_follow_up_review_request_context(line: &str) -> bool {
 
 fn has_follow_up_review_request_context_in_sentence(sentence: &str) -> bool {
     let mut has_review_wait_context = false;
-    for clause in sentence.split([';', ',']) {
+    for clause in sentence
+        .split([';', ','])
+        .flat_map(super::super::codex_review_fresh_request::request_subclauses)
+    {
         let clause = clause.trim();
         if has_wait_only_review_output_context(clause) {
             has_review_wait_context = true;
@@ -243,6 +246,5 @@ fn has_negated_review_request_context(line: &str) -> bool {
     ) || has_negated_actionable_codex_review_request_context(line)
 }
 
-fn has_any(text: &str, phrases: &[&str]) -> bool {
-    phrases.iter().any(|phrase| text.contains(phrase))
-}
+#[rustfmt::skip]
+fn has_any(text: &str, phrases: &[&str]) -> bool { phrases.iter().any(|phrase| text.contains(phrase)) }
