@@ -196,7 +196,7 @@ fn validator_accepts_approved_fallback_for_timed_out_sentinel_readiness() -> Tes
 fn validator_rejects_unapproved_sentinel_fallback_requirement_as_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer-approved fallback required before readiness; no maintainer response yet. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback required before readiness; no maintainer approval yet. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for CI. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(

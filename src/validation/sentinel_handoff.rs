@@ -46,6 +46,7 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
 fn fallback_after(text: &str, start: usize) -> bool {
     let suffix = &text[start..];
     has_any(suffix, MAINTAINER_FALLBACK_APPROVAL_MARKERS)
+        && has_any(suffix, SENTINEL_MARKERS)
         && !has_any(suffix, FALLBACK_REJECTION_MARKERS)
 }
 fn names_head(text: &str, start: usize, head_ref_oid: Option<&str>) -> bool {
