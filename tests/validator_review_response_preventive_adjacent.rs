@@ -5,22 +5,26 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_exact_comment_only_review_response_handoff() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed the exact Codex review comment and verified current head.\n",
-        resolved_review_thread_pr_state(),
-    )?;
+        "Review-response lane: fixed the exact Codex comment and verified current head.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject exact-comment-only review-response handoff without preventive adjacent review evidence\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject exact-comment-only review-response handoff without preventive adjacent review evidence\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+            "unexpected stderr for handoff:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
@@ -59,6 +63,8 @@ fn validator_rejects_exact_comment_only_handoff_with_no_blockers_heading() -> Te
         "Blocked - none. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blocker? no. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blockers - none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blockers:\nReview response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting:\nReview response: fixed the exact Codex review comment and verified current head.\n",
         "Readiness: not complete.\nReview response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the helper family.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;

@@ -24,7 +24,7 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
     text.split_inclusive(['.', '\n', ';'])
         .filter(move |segment| {
             let has_context =
-                "codex review|codex feedback|review response|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions"
+                "codex review|codex feedback|review response|review-response|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions"
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();
@@ -40,6 +40,7 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
                 && ((has_context
                     && (output || segment.trim_end().ends_with(':') || trimmed.starts_with('#')))
                     || segment.contains("review response:")
+                    || segment.contains("review-response:")
                     || (section && (trimmed.starts_with('-') || trimmed.is_empty())));
             matches
         })
@@ -61,7 +62,7 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
         let clean_review_prefix = prefix.trim_end().ends_with("codex review passed,")
             && !text[start..].contains("review");
         if !clean_review_prefix
-            && !"review response: none|review feedback: none|reviewer feedback: none|review thread: none|review comments: none|reviewer comments: none|none from codex"
+            && !"review response: none|review-response: none|review feedback: none|reviewer feedback: none|review thread: none|review comments: none|reviewer comments: none|none from codex"
                 .split('|')
                 .any(|term| prefix.contains(term))
             && !"no review feedback was |no review feedback |no feedback was |no feedback |not "

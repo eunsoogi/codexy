@@ -1,4 +1,7 @@
 pub(super) fn has_false_blocked_or_waiting_value(value: &str) -> bool {
+    if empty_heading_before_next_section(value) {
+        return true;
+    }
     let value = value
         .trim_start()
         .trim_start_matches(':')
@@ -29,6 +32,25 @@ pub(super) fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         || value.starts_with("no current blocker")
         || value.starts_with("no current waiting")
         || value.starts_with("no current issue")
+}
+
+fn empty_heading_before_next_section(value: &str) -> bool {
+    let value = value.trim_start_matches([' ', '\t', ':']);
+    let Some(first) = value.chars().find(|ch| !matches!(ch, ' ' | '\t')) else {
+        return false;
+    };
+    if first != '\n' && first != '\r' {
+        return false;
+    }
+    let next = value
+        .lines()
+        .map(|line| line.trim_start().trim_matches(':'))
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or("");
+    starts_with_pipe(
+        next,
+        "review response:|review-response:|review-response lane:|preventive adjacent review|verification:|tests:|sentinel:",
+    )
 }
 
 pub(super) fn has_any(text: &str, needles: &[&str]) -> bool {
@@ -115,7 +137,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
         || local.starts_with("s not ")
         || starts_with_pipe(
             local,
-            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|did not|didn't|does not|doesn't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
+            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|do not|don't|did not|didn't|does not|doesn't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not inspected|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
         )
 }
 

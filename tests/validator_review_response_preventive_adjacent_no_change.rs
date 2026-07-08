@@ -29,6 +29,7 @@ fn validator_allows_no_change_rationale_with_code_and_coverage_surface() -> Test
     for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected code surface parse_review_threads and regression coverage validator_review_response_preventive_adjacent; invariants hold because sibling parser variants share the same boundary checks.\n",
         "Review response: fixed the Codex review comment and verified current head.\nPreventive adjacent review no-change rationale:\nFunctions: inspected parse_review_threads and sibling parser variants.\nTests: inspected validator_review_response_preventive_adjacent coverage.\nInvariants hold because sibling parser variants share the same boundary checks.\n",
+        "Review response: fixed the Codex review comment and verified current head.\n## Preventive adjacent review no-change rationale\n\nFunctions: inspected parse_review_threads and sibling parser variants.\nTests: inspected validator_review_response_preventive_adjacent coverage.\nInvariants hold because sibling parser variants share the same boundary checks.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert!(
@@ -54,6 +55,26 @@ fn validator_rejects_no_waiting_no_related_prose_without_preventive_review() -> 
         assert!(
             !output.status.success(),
             "validator should reject no-waiting/no-related prose without preventive review\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_no_change_rationale_with_uninspected_tests() -> TestResult {
+    for handoff in [
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads; tests not inspected; invariants hold because sibling parser variants share the same boundary checks.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads; tests were not inspected; invariants hold because sibling parser variants share the same boundary checks.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads; coverage not inspected; invariants hold because sibling parser variants share the same boundary checks.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should reject no-change rationales with uninspected test surface\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
             handoff,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)

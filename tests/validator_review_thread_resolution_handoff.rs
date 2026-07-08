@@ -105,20 +105,24 @@ fn validator_rejects_path_only_no_change_rationale_for_multiple_threads() -> Tes
 
 #[test]
 fn validator_rejects_review_response_handoff_without_review_thread_state() -> TestResult {
+    let handoff =
+        "Review-response lane: fixed and verified current head. PR ready for parent handoff.\n";
     let output = validate_handoff_with_pr_state(
-        "Review response: addressed and verified current head. PR ready for parent handoff.\n",
+        handoff,
         r#"{"number":133,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
     )?;
 
     assert!(
         !output.status.success(),
-        "validator should require reviewThreads.nodes evidence for review responses\nstdout:\n{}\nstderr:\n{}",
+        "validator should require reviewThreads.nodes evidence for review responses\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+        handoff,
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("reviewThreads.nodes"),
-        "unexpected stderr: {}",
+        "unexpected stderr for handoff:\n{}\nstderr:\n{}",
+        handoff,
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
