@@ -67,7 +67,7 @@ fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
             .iter()
             .take_while(|line| {
                 is_unlisted_handoff_metadata_item_for_lane(line, defect_lane.as_deref())
-                    || is_handoff_list_metadata_item(line)
+                    || is_handoff_list_metadata_item_for_lane(line, defect_lane.as_deref())
                     || is_exact_handler_error_metadata_item(line)
             })
             .map(|line| {
@@ -703,6 +703,19 @@ Tracking issue: #246"#;
         assert!(
             !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
             "Lane A list defect capture must not borrow bulleted Lane B fallback metadata"
+        );
+    }
+
+    #[test]
+    fn rejects_single_line_defect_bulleted_handoff_metadata_for_a_different_lane() {
+        let evidence = r#"Lane A:
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+- Fallback route: parent posted the handoff in the child thread for Lane B.
+- Tracking issue: #246"#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A single-line defect capture must not borrow bulleted Lane B fallback metadata"
         );
     }
 
