@@ -39,6 +39,26 @@ fn validator_allows_no_change_rationale_with_code_and_coverage_surface() -> Test
     Ok(())
 }
 
+#[test]
+fn validator_rejects_no_waiting_no_related_prose_without_preventive_review() -> TestResult {
+    for handoff in [
+        "Waiting: no child reroute was needed after the exact review fix.\nReview response: fixed the Codex review comment and verified current head.\n",
+        "Waiting: no related parser code was touched after the exact review fix.\nReview response: fixed the Codex review comment and verified current head.\n",
+        "Waiting: no adjacent helper changes were needed after the exact review fix.\nReview response: fixed the Codex review comment and verified current head.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should reject no-waiting/no-related prose without preventive review\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
