@@ -1,6 +1,7 @@
 use super::completion_handoff_pending_worktree_text::{
-    char_window_start, has_any, has_nearby_negation, has_terminal_false_value,
-    has_true_decision_value, is_markdown_list_item, phrase_has_boundaries,
+    char_window_start, has_any, has_false_bounded_search_evidence,
+    has_false_surfaced_thread_evidence, has_nearby_negation, has_terminal_false_value,
+    has_true_decision_value, is_markdown_list_item, ordinal_label, phrase_has_boundaries,
 };
 
 const PENDING_WORKTREE_STATE_ERROR: &str = "pending worktree ids must resolve to a surfaced thread, explicit setup failure, or bounded timeout state with safe retry/reassignment evidence";
@@ -25,7 +26,6 @@ pub(super) fn check(text: &str) -> Option<String> {
     }
     None
 }
-
 fn pending_worktree_mentions(text: &str) -> Vec<usize> {
     let mut matches = Vec::new();
     for phrase in [
@@ -59,7 +59,6 @@ fn pending_worktree_mentions(text: &str) -> Vec<usize> {
     matches.dedup();
     matches
 }
-
 fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
     let suffix = &text[start..];
     let boundary = suffix
@@ -91,8 +90,13 @@ fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
             let body = &text[body_start..start + boundary];
             let ordinal_starts: Vec<_> = starts
                 .iter()
-                .filter_map(|id_start| local_id_value(text, *id_start))
-                .filter_map(|id| find_word(body, &id).map(|index| body_start + index))
+                .enumerate()
+                .filter_map(|(index, id_start)| {
+                    let id = local_id_value(text, *id_start)?;
+                    find_word(body, &id)
+                        .or_else(|| ordinal_label(index).and_then(|word| find_word(body, word)))
+                        .map(|body_index| body_start + body_index)
+                })
                 .collect();
             if ordinal_starts.len() == starts.len() {
                 return ordinal_starts;
@@ -101,7 +105,6 @@ fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
     }
     starts
 }
-
 fn local_id_starts_in_following_list(text: &str, list_header_end: usize) -> Vec<usize> {
     let mut starts = Vec::new();
     let mut offset = list_header_end;
@@ -136,7 +139,6 @@ fn local_id_starts_in_following_list(text: &str, list_header_end: usize) -> Vec<
     }
     starts
 }
-
 fn grouped_body_separator(
     text: &str,
     sentence_start: usize,
@@ -155,7 +157,6 @@ fn grouped_body_separator(
         .map(|index| after_last_value + index)
         .filter(|index| *index >= sentence_start)
 }
-
 fn local_id_value(text: &str, start: usize) -> Option<String> {
     let value = text.get(start + "local:".len()..)?;
     let value: String = value
@@ -164,7 +165,6 @@ fn local_id_value(text: &str, start: usize) -> Option<String> {
         .collect();
     (!value.is_empty()).then_some(value)
 }
-
 fn find_word(text: &str, word: &str) -> Option<usize> {
     let mut rest = text;
     let mut offset = 0;
@@ -181,10 +181,12 @@ fn find_word(text: &str, word: &str) -> Option<usize> {
 }
 
 fn mentions_surfaced_pending_worktree_thread(text: &str) -> bool {
-    has_any(
-        text,
-        "surfaced thread id|observed thread id|resolved to thread|thread id",
-    ) && has_any(text, "active owner|active lane accounting state is active")
+    !has_false_surfaced_thread_evidence(text)
+        && has_any(
+            text,
+            "surfaced thread id|observed thread id|resolved to thread|thread id",
+        )
+        && has_any(text, "active owner|active lane accounting state is active")
 }
 
 fn mentions_failed_pending_worktree_setup(text: &str) -> bool {
@@ -211,10 +213,12 @@ fn mentions_bounded_pending_worktree_timeout(text: &str) -> bool {
 }
 
 fn mentions_bounded_search_evidence(text: &str) -> bool {
-    has_any(
-        text,
-        "searches by pending id|searches by pending worktree id|searched by pending id|searched by pending worktree id|list_threads searches by pending id|list_threads searches by pending worktree id",
-    ) && has_any(text, "branch")
+    !has_false_bounded_search_evidence(text)
+        && has_any(
+            text,
+            "searches by pending id|searches by pending worktree id|searched by pending id|searched by pending worktree id|list_threads searches by pending id|list_threads searches by pending worktree id",
+        )
+        && has_any(text, "branch")
         && has_any(text, "pr|pull request|issue")
         && has_any(text, "sha|commit")
         && has_any(

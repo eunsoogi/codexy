@@ -47,12 +47,15 @@ pub(super) fn has_true_decision_value(text: &str, label: &str) -> bool {
                     if has_explicit_false_value(remainder) {
                         continue;
                     }
+                    if has_unsafe_decision_remainder(remainder) {
+                        continue;
+                    }
                     return true;
                 }
             }
             if let Some(value) = suffix.strip_prefix([':', '=', '-', '?']) {
                 let value = value.trim_start();
-                if has_true_value(value) {
+                if has_true_value(value) && !has_unsafe_decision_remainder(value) {
                     return true;
                 }
             }
@@ -73,6 +76,39 @@ pub(super) fn is_markdown_list_item(line: &str) -> bool {
     }
     let digits = line.chars().take_while(|c| c.is_ascii_digit()).count();
     digits > 0 && line[digits..].starts_with(". ")
+}
+
+pub(super) fn ordinal_label(index: usize) -> Option<&'static str> {
+    ["first", "second", "third", "fourth", "fifth"]
+        .get(index)
+        .copied()
+}
+
+pub(super) fn has_false_surfaced_thread_evidence(text: &str) -> bool {
+    has_unnegated_phrase(text, "thread id did not surface", 16)
+        || has_unnegated_phrase(text, "thread did not surface", 16)
+        || has_unnegated_phrase(text, "no thread surfaced", 16)
+        || has_unnegated_phrase(text, "not surfaced", 16)
+        || has_unnegated_phrase(text, "not visible", 16)
+        || has_unnegated_phrase(text, "active owner: none", 16)
+        || has_unnegated_phrase(text, "active owner = none", 16)
+        || has_unnegated_phrase(text, "active owner: no", 16)
+        || has_unnegated_phrase(text, "owner thread unknown", 16)
+}
+
+pub(super) fn has_false_bounded_search_evidence(text: &str) -> bool {
+    has_unnegated_phrase(text, "not by branch", 16)
+        || has_unnegated_phrase(text, "not by pr", 16)
+        || has_unnegated_phrase(text, "not by pull request", 16)
+        || has_unnegated_phrase(text, "not by issue", 16)
+        || has_unnegated_phrase(text, "not by sha", 16)
+        || has_unnegated_phrase(text, "not by commit", 16)
+        || has_unnegated_phrase(text, "no branch search", 16)
+        || has_unnegated_phrase(text, "no pr search", 16)
+        || has_unnegated_phrase(text, "no sha search", 16)
+        || has_unnegated_phrase(text, "without branch search", 16)
+        || has_unnegated_phrase(text, "without pr search", 16)
+        || has_unnegated_phrase(text, "without sha search", 16)
 }
 
 pub(super) fn has_nearby_negation(prefix: &str) -> bool {
@@ -105,6 +141,16 @@ fn has_explicit_false_value(remainder: &str) -> bool {
         return false;
     };
     has_false_value(value.trim_start())
+}
+
+fn has_unsafe_decision_remainder(remainder: &str) -> bool {
+    has_unnegated_phrase(remainder, "unsafe to reassign", 16)
+        || has_unnegated_phrase(remainder, "unsafe to retry", 16)
+        || has_unnegated_phrase(remainder, "unsafe reassignment", 16)
+        || has_unnegated_phrase(remainder, "unsafe retry", 16)
+        || has_unnegated_phrase(remainder, "not safe to reassign", 16)
+        || has_unnegated_phrase(remainder, "not safe to retry", 16)
+        || has_unnegated_phrase(remainder, "duplicate owners", 16)
 }
 
 fn is_terminal_decision_remainder(remainder: &str) -> bool {
