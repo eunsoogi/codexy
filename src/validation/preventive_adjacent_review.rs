@@ -69,8 +69,8 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
     let false_modifier = ["active", "currently", "now", "remain"]
         .iter()
         .any(|modifier| rest.starts_with(modifier));
-    let false_empty =
-        matches!(first, "none" | "no" | "false" | "n/a" | "na") && (terminal || false_modifier);
+    let false_empty = matches!(first, "0" | "zero" | "none" | "no" | "false" | "n/a" | "na")
+        && (terminal || false_modifier);
     false_empty
         || matches!(first, "resolved" | "cleared")
         || value.starts_with("not applicable")

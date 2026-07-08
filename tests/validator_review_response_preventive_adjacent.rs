@@ -51,10 +51,11 @@ fn validator_rejects_exact_comment_only_handoff_with_no_blockers_heading() -> Te
         "Blockers: none. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blocker: none. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blocked: none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blockers: 0. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blockers: zero. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blockers: no blockers. Review response: fixed the exact Codex review comment and verified current head.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
-
         assert!(
             !output.status.success(),
             "validator should not treat no-blocker headings as incomplete evidence\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
@@ -78,7 +79,6 @@ fn validator_allows_real_blocker_state_without_preventive_adjacent_review() -> T
         "Blocker: upstream review-thread evidence is unavailable, so this review-response lane is not complete.\nReview response: fixed the exact Codex review comment.\n",
         resolved_review_thread_pr_state(),
     )?;
-
     assert_success(
         &output,
         "validator should still allow true blocker state evidence",
