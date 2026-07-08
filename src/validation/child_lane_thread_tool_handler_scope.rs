@@ -52,7 +52,11 @@ pub(super) fn capture_end_before_unrelated_evidence(
         if is_different_lane_line(line, scope_lane.as_deref()) {
             return line_start;
         }
-        let line_names_different_lane = line_mentions_different_lane(line, scope_lane.as_deref());
+        let line_opens_defect_capture = has_open_defect_capture(line);
+        let line_names_different_lane = line_mentions_different_lane(line, scope_lane.as_deref())
+            && !(scope_lane.is_none()
+                && line_opens_defect_capture
+                && !has_unnegated_different_lane_phrase(line));
         if line_names_different_lane {
             return line_start;
         }
@@ -77,7 +81,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
         }
         saw_capture |= line_extends_capture;
         saw_handler_defect_capture |= line_has_handler_defect_capture;
-        pending_defect_capture |= has_open_defect_capture(line);
+        pending_defect_capture |= line_opens_defect_capture;
         cursor = line_end;
     }
     evidence.len()
