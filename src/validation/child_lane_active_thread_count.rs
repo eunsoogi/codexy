@@ -34,6 +34,13 @@ fn explicit_total(words: &[String]) -> Option<u64> {
 
 fn fallback_count(words: &[String]) -> Option<u64> {
     let first = words.first()?;
+    if words
+        .first()
+        .is_some_and(|word| matches!(word.as_str(), "none" | "zero"))
+        && words.len() == 1
+    {
+        return Some(0);
+    }
     if first.chars().all(|c| c.is_ascii_digit()) {
         return first.parse().ok();
     }

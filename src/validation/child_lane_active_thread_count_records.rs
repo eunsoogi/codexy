@@ -43,7 +43,6 @@ fn active_count_records_for_line(
     }
     (records, freed_capacity_owner)
 }
-
 fn active_count_records_for_segment(
     line: &str,
     segment: &str,
@@ -114,12 +113,12 @@ pub(super) fn active_child_thread_count_errors(active_counts: &[ActiveCount]) ->
     let mut latest_waiting = None;
     for record in active_counts {
         if record.freed_capacity {
-            latest_active = None;
-            latest_waiting = None;
+            (latest_active, latest_waiting) = (None, None);
         }
         match &record.kind {
             CountKind::Active => latest_active = Some(record.count),
             CountKind::Waiting => latest_waiting = Some(record.count),
+            CountKind::Total => (latest_active, latest_waiting) = (None, None),
         }
         if let (Some(active), Some(waiting)) = (latest_active, latest_waiting) {
             let total = active.saturating_add(waiting);
@@ -143,14 +142,9 @@ pub(super) struct ActiveCount {
     pub(super) segment_number: usize,
     pub(super) freed_capacity: bool,
     pub(super) freed_capacity_owner: Option<ThreadOwner>,
-    kind: CountKind,
+    pub(super) kind: CountKind,
 }
-
 impl ActiveCount {
-    pub(super) fn is_waiting(&self) -> bool {
-        matches!(self.kind, CountKind::Waiting)
-    }
-
     pub(super) fn replacement_counts_old_owner(&self, owner: &ThreadOwner) -> bool {
         self.freed_capacity
             && self
@@ -159,7 +153,6 @@ impl ActiveCount {
                 .is_some_and(|freed_owner| thread_owner_matches(freed_owner, owner))
             && self.matches_owner(owner)
     }
-
     fn matches_owner(&self, owner: &ThreadOwner) -> bool {
         if let Some(owner_thread) = owner.thread_id.as_deref() {
             if !self.thread_ids.is_empty() {
@@ -180,21 +173,21 @@ impl ActiveCount {
                 .any(|id| owner.issue_ids.contains(id))
     }
 }
-
-enum CountKind {
+pub(super) enum CountKind {
     Active,
     Waiting,
+    Total,
 }
-
 fn count_kind(line: &str) -> CountKind {
     let words = key_words(line.split_once(':').map_or("", |(key, _)| key));
-    if words.iter().any(|word| word == "waiting") && !words.iter().any(|word| word == "active") {
-        CountKind::Waiting
-    } else {
-        CountKind::Active
+    let has_active = words.iter().any(|word| word == "active");
+    let has_waiting = words.iter().any(|word| word == "waiting");
+    match (has_active, has_waiting) {
+        (true, true) => CountKind::Total,
+        (_, true) => CountKind::Waiting,
+        _ => CountKind::Active,
     }
 }
-
 fn thread_ids(line: &str) -> Vec<String> {
     line.split(|character: char| {
         !(character.is_ascii_alphanumeric() || character == '-' || character == '#')
@@ -208,7 +201,6 @@ fn thread_ids(line: &str) -> Vec<String> {
     .map(str::to_owned)
     .collect()
 }
-
 fn is_non_prefixed_codex_thread_id(token: &str) -> bool {
     !token.starts_with('#')
         && !token.starts_with("thread-")
@@ -221,7 +213,6 @@ fn is_non_prefixed_codex_thread_id(token: &str) -> bool {
             .chars()
             .any(|character| character.is_ascii_alphabetic())
 }
-
 fn thread_owner_matches(found: &ThreadOwner, expected: &ThreadOwner) -> bool {
     if let (Some(found_thread), Some(expected_thread)) =
         (found.thread_id.as_deref(), expected.thread_id.as_deref())
@@ -234,7 +225,6 @@ fn thread_owner_matches(found: &ThreadOwner, expected: &ThreadOwner) -> bool {
             .iter()
             .any(|id| expected.issue_ids.contains(id))
 }
-
 fn child_thread_freed_capacity(line: &str) -> bool {
     let words = key_words(line);
     words.iter().any(|word| word == "child")

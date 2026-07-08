@@ -1,6 +1,6 @@
+use super::child_lane_active_thread_count_records::CountKind;
 use super::child_lane_active_thread_count_records::{ActiveCount, MAX_ACTIVE_CHILD_CODEX_THREADS};
 use super::child_lane_active_thread_evidence::ThreadOwner;
-
 pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
     evidence
         .lines()
@@ -117,7 +117,6 @@ pub(super) fn continues_existing_owner(
             existing_thread.is_some() && existing_thread == operation.owner.thread_id.as_deref()
         })
 }
-
 pub(super) struct ThreadOperation {
     pub(super) line_number: usize,
     pub(super) segment_number: usize,
@@ -182,7 +181,6 @@ fn has_negated_thread_tool_reference(line: &str, tool: &str) -> bool {
         .split('|')
     .any(|marker| line.contains(&marker))
 }
-
 fn fresh_counts_before_operation<'a>(
     active_counts: &'a [ActiveCount],
     previous_operation_position: Option<(usize, usize)>,
@@ -198,29 +196,31 @@ fn fresh_counts_before_operation<'a>(
         .collect()
 }
 fn projected_count_from_records(records: &[&ActiveCount]) -> Option<u64> {
-    let mut latest_active = None;
-    let mut latest_waiting = None;
+    let mut latest = (None, None, None);
     for record in records {
         if record.freed_capacity {
-            latest_active = None;
-            latest_waiting = None;
+            latest = (None, None, None);
         }
-        if record.is_waiting() {
-            latest_waiting = Some(record.count);
-        } else {
-            latest_active = Some(record.count);
+        match record.kind {
+            CountKind::Total => latest = (None, None, Some(record.count)),
+            CountKind::Waiting => latest.1 = Some(record.count),
+            CountKind::Active => latest.0 = Some(record.count),
+        }
+        if let (Some(active), Some(waiting)) = (latest.0, latest.1) {
+            latest.2 = Some(active.saturating_add(waiting));
+        } else if latest.2.is_none() && latest.0.is_some() {
+            let active = latest.0.unwrap_or(0_u64);
+            latest.2 = Some(active.saturating_add(latest.1.unwrap_or(0_u64)));
         }
     }
-    latest_active.map(|active| active.saturating_add(latest_waiting.unwrap_or(0_u64)))
+    latest.2
 }
-
 fn is_reuse_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
     "thread resume:|thread continuation:|continued child thread|resumed child thread|send_message_to_thread"
         .split('|')
         .any(|marker| line.contains(marker))
 }
-
 fn has_negated_operation_claim(line: &str) -> bool {
     let line = normalized_operation_line(line);
     let operation_position = |clause: &str| {
