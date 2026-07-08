@@ -1,5 +1,4 @@
-use super::child_lane_active_thread_count_records::CountKind;
-use super::child_lane_active_thread_count_records::{ActiveCount, MAX_ACTIVE_CHILD_CODEX_THREADS};
+use super::child_lane_active_thread_count_records::*;
 use super::child_lane_active_thread_evidence::ThreadOwner;
 pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
     evidence
@@ -27,6 +26,7 @@ fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
         .flat_map(|line| line.split(". "))
         .flat_map(|line| split_operation_clauses(line, ", "))
+        .flat_map(|line| split_operation_clauses(line, " but "))
         .flat_map(|line| line.split(", then "))
         .flat_map(|line| line.split(" then "))
         .flat_map(|line| split_operation_clauses(line, " and "))
@@ -57,6 +57,8 @@ fn starts_operation_clause(clause: &str) -> bool {
     operation_markers()
         .chain(["create_thread", "fork_thread", "send_message_to_thread"])
         .any(|marker| clause.starts_with(marker))
+        || (clause.starts_with("child thread") || clause.starts_with("no child thread"))
+            && has_passive_created_thread_id(clause)
         || ["called", "invoked", "executed", "ran", "used"]
             .into_iter()
             .any(|verb| {
@@ -75,9 +77,8 @@ pub(super) fn active_capacity_errors(
     let mut projected_count: Option<u64> = None;
     for (operation, existing_owner) in operations.iter().zip(existing_owners) {
         let mut counted_replacement = false;
-        let count_bound = previous_operation_position
-            .filter(|(line_number, _)| *line_number != operation.line_number);
-        let records = fresh_counts_before_operation(active_counts, count_bound, operation);
+        let records =
+            fresh_counts_before_operation(active_counts, previous_operation_position, operation);
         if !records.is_empty() {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
                 operation.replaces_existing_owner
@@ -94,7 +95,7 @@ pub(super) fn active_capacity_errors(
             } else {
                 errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
             }
-        } else {
+        } else if projected_count.is_none() {
             errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
         }
         if !continues_existing_owner(existing_owner.as_ref(), operation) && !counted_replacement {
@@ -152,14 +153,12 @@ fn normalized_operation_line(line: &str) -> String {
         .replace("resumed a child thread", "resumed child thread")
 }
 fn operation_markers() -> impl Iterator<Item = &'static str> {
-    "child thread created:|created child thread|created a replacement child thread|created replacement child thread|continued child thread|forked child thread|forked a child thread|resumed child thread|started child thread|started a child thread".split('|')
+    "child thread created:|created child thread|also created child thread|created a replacement child thread|created replacement child thread|also created replacement child thread|also created a replacement child thread|continued child thread|also continued child thread|forked child thread|forked a child thread|also forked child thread|resumed child thread|also resumed child thread|started child thread|started a child thread|also started child thread".split('|')
 }
 fn has_passive_created_thread_id(line: &str) -> bool {
     line.find("child thread").is_some_and(|index| {
         let rest = &line[index + "child thread".len()..];
-        rest.split_whitespace()
-            .next()
-            .is_some_and(|token| token.starts_with("thread-"))
+        ThreadOwner::from_line(line).thread_id.is_some()
             && (rest.contains(" created") || rest.contains(" was created"))
     })
 }
@@ -221,14 +220,18 @@ fn is_reuse_operation_line(line: &str) -> bool {
 }
 fn has_negated_operation_claim(line: &str) -> bool {
     let line = normalized_operation_line(line);
+    if line.contains("was not created") || line.contains("wasn't created") {
+        return true;
+    }
     let operation_position = |clause: &str| {
         operation_markers()
+            .chain(["child thread"])
             .chain(["create_thread", "fork_thread", "send_message_to_thread"])
             .filter_map(|marker| clause.find(marker))
             .min()
     };
     let negation_position = |clause: &str| {
-        "did not call|did not continue|did not create|did not resume|didn't call|didn't continue|didn't create|didn't resume|do not call|do not continue|do not create|do not resume|must not call|must not continue|must not create|must not resume|not call|not continue|not create|not resume|no child thread created|no child thread continued|no child thread resumed|without calling|without continuing|without creating|without resuming"
+        "did not call|did not continue|did not create|did not resume|didn't call|didn't continue|didn't create|didn't resume|do not call|do not continue|do not create|do not resume|must not call|must not continue|must not create|must not resume|not call|not continue|not create|not resume|no child thread|no child thread created|no child thread continued|no child thread resumed|without calling|without continuing|without creating|without resuming"
             .split('|')
             .filter_map(|marker| clause.find(marker))
             .min()
