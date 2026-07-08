@@ -197,7 +197,7 @@ fn validator_cli_rejects_latest_request_when_first_later_output_is_stale() -> Te
 #[test]
 fn validator_cli_allows_later_current_head_output_after_latest_request() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. Sentinel: PASS on current head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb. PR is merge-ready.\n",
         r#"{
             "number":262,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED",
             "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",

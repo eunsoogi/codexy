@@ -80,7 +80,7 @@ fn validator_rejects_invalid_sentinel_readiness_evidence() -> TestResult {
 #[test]
 fn validator_accepts_current_sentinel_pass_after_superseded_block() -> TestResult {
     accept_open_pr_handoff(
-        "PR ready for parent handoff. Initial Sentinel: BLOCK on earlier head; addressed with parser fixes. Rerun Sentinel: PASS after rerun on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Initial Sentinel: BLOCK on earlier head; addressed with parser fixes. Rerun Packaged Codexy Sentinel Turing: PASS after rerun on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "validator should accept current Sentinel PASS after superseded historical BLOCK evidence",
     )
 }
@@ -94,7 +94,7 @@ fn validator_accepts_reviewer_named_sentinel_pass() -> TestResult {
 #[test]
 fn validator_ignores_unrelated_pending_review_after_sentinel_pass() -> TestResult {
     accept_open_pr_handoff(
-        "Push-ready. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Codex review has not returned, so PR ready: no.\n",
+        "Push-ready. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Codex review has not returned, so PR ready: no.\n",
         "validator should not treat unrelated pending Codex review text as Sentinel UNOBSERVABLE",
     )
 }
@@ -125,7 +125,7 @@ fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
         "validator should accept explicit Sentinel PASS readiness evidence",
     )?;
     accept_open_pr_handoff(
-        "Previous reviewer feedback addressed and Sentinel PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR ready for parent handoff. Pushed: yes.\n",
+        "Previous reviewer feedback addressed and Packaged Codexy Sentinel Turing PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR ready for parent handoff. Pushed: yes.\n",
         "validator should not treat non-Sentinel previous context as stale PASS evidence",
     )
 }

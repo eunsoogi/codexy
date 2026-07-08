@@ -16,7 +16,7 @@ fn validator_allows_quoted_codex_review_boilerplate_in_readiness_handoff() -> Te
     ] {
         let output = validate_handoff_with_pr_state(
             &format!(
-                r#"Codex review completed. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready. Maintainer requested leave-open for handoff.
+                r#"Codex review completed. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready. Maintainer requested leave-open for handoff.
 
 Connector evidence:
 Reviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`
@@ -103,7 +103,7 @@ fn validator_allows_fresh_codex_review_request_after_stale_activity() -> TestRes
 #[test]
 fn validator_allows_pull_request_readiness_after_codex_review() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Pull request is ready after Codex review completed. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer requested leave-open for handoff.\n",
+        "Pull request is ready after Codex review completed. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer requested leave-open for handoff.\n",
         current_head_output_pr_state(),
     )?;
     assert!(

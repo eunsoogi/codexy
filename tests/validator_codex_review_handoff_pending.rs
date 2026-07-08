@@ -6,7 +6,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
 fn validator_cli_rejects_unacknowledged_codex_review_request() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",
@@ -117,7 +117,7 @@ fn validator_cli_rejects_unresolved_thread_with_null_author_identity() -> TestRe
 #[test]
 fn validator_cli_rejects_codex_readiness_without_head_ref_oid() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",
@@ -182,7 +182,7 @@ fn validator_cli_rejects_codex_readiness_with_blank_head_ref_oid() -> TestResult
 #[test]
 fn validator_cli_accepts_connector_output_with_review_request_footer() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",

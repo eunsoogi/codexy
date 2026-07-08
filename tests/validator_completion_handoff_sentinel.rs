@@ -21,9 +21,11 @@ fn validator_rejects_open_pr_completion_claims_even_with_sentinel_evidence() -> 
 fn validator_keeps_deferrals_and_readiness_distinct_from_completion() -> TestResult {
     for handoff in [
         format!(
-            "Maintainer requested no-merge; Sentinel: PASS on current head {HEAD}. Work is complete after PR #128.\n"
+            "Maintainer requested no-merge; Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. Work is complete after PR #128.\n"
         ),
-        format!("PR ready for parent handoff. Sentinel: PASS on current head {HEAD}.\n"),
+        format!(
+            "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS on current head {HEAD}.\n"
+        ),
     ] {
         accept_open_pr_handoff(&handoff)?;
     }

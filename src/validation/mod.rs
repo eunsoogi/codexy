@@ -65,6 +65,7 @@ mod roles_yaml;
 mod runtime;
 mod sentinel_handoff;
 mod sentinel_handoff_evidence;
+mod sentinel_handoff_reviewer;
 mod touched_loc;
 
 use std::path::Path;

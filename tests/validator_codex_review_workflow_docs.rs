@@ -124,7 +124,7 @@ fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
     let pr_state_path = state.path().join("pr-state.json");
     std::fs::write(
         &handoff_path,
-        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609.\n",
     )?;
     std::fs::write(
         &pr_state_path,

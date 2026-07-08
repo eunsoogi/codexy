@@ -2,8 +2,8 @@ use std::{path::Path, process::Command};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
-const READY_HANDOFF: &str = "Maintainer override: yes. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready after verification.\n";
-const EMPTY_TAXONOMY_HANDOFF: &str = "Maintainer override: yes. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready after verification. Labels considered: repository has no matching lane label.\n";
+const READY_HANDOFF: &str = "Maintainer override: yes. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready after verification.\n";
+const EMPTY_TAXONOMY_HANDOFF: &str = "Maintainer override: yes. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready after verification. Labels considered: repository has no matching lane label.\n";
 
 #[test]
 fn validator_rejects_readiness_without_pr_labels() -> TestResult {

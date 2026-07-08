@@ -36,11 +36,11 @@ fn validator_cli_rejects_completion_claim_with_open_pr() -> TestResult {
 fn validator_cli_allows_explicit_stop_condition_with_clean_open_pr() -> TestResult {
     for handoff in [
         "Draft PR #128 is open per the stop condition. Parent orchestrator will handle review and merge gates; this lane is not complete.\n",
-        "Maintainer requested push only; Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
-        "Maintainer requested draft only; Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
-        "Maintainer requested no-merge; Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
-        "Maintainer requested leave-open; Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
-        "Maintainer asked me to leave open no matter what. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
+        "Maintainer requested push only; Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
+        "Maintainer requested draft only; Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
+        "Maintainer requested no-merge; Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
+        "Maintainer requested leave-open; Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
+        "Maintainer asked me to leave open no matter what. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Work is complete after PR #128.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

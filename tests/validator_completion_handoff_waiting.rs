@@ -162,14 +162,14 @@ fn validator_cli_allows_missing_child_evidence_blocker() -> TestResult {
 fn validator_cli_allows_negated_blocker_waiting_state() -> TestResult {
     for handoff in [
         "Not a blocker: pending Codex review is still processing.\n",
-        "Previously blocked on @codex review; now Codex review passed, Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893, and PR is merge-ready.\n",
+        "Previously blocked on @codex review; now Codex review passed, Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893, and PR is merge-ready.\n",
         "Blockers: none\nWaiting: pending Codex review.\n",
         "Previous blocker resolved. Waiting: pending Codex review.\n",
         "Previous blocker was resolved. Waiting: pending @codex review.\n",
         "Blocked: no\nWaiting: pending Codex review.\n",
         "Blocked: no active blockers\nWaiting: pending Codex review.\n",
         "No current blockers. Waiting: pending Codex review is still processing.\n",
-        "Was blocked on @codex review; now Codex review passed, Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893, and PR is merge-ready.\n",
+        "Was blocked on @codex review; now Codex review passed, Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893, and PR is merge-ready.\n",
         "Blocked? no. Waiting: pending Codex review is still processing.\n",
         "Blocked = false. Waiting: pending @codex review.\n",
         "Blocked: no; Waiting: pending Codex review is still processing.\n",

@@ -175,7 +175,7 @@ fn validator_cli_rejects_negated_maintainer_override_with_eyes_only_review() -> 
 #[test]
 fn validator_cli_accepts_affirmative_maintainer_override() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Maintainer override: yes. Codex review passed. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
+        "Maintainer override: yes. Codex review passed. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         eyes_only_pr_state(),
     )?;
     assert!(
@@ -189,7 +189,7 @@ fn validator_cli_accepts_affirmative_maintainer_override() -> TestResult {
 #[test]
 fn validator_cli_accepts_later_completed_compact_codex_review() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. Sentinel: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",

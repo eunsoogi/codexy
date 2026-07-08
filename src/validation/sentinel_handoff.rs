@@ -7,11 +7,12 @@ const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge r
 const HISTORICAL_STATUS_PREFIX_MARKERS: &str = "previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|initial sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|initial codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|initial reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate|initial reviewer-gate";
 const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before handoff|before merge|before parent handoff|before pr readiness|before merge readiness|before push readiness|required before|needed before|must pass before|needs to pass before|should pass before|planned after|after planned|planned rerun|planned review|planned pass|to be run|will be run";
 const FUTURE_STATUS_PREFIX_MARKERS: &str = "waiting for|wait for|waiting on|wait on|awaiting|pending|will rerun|will re-run|needs rerun|needs re-run|need rerun|need re-run|rerun required|re-run required";
-const STATUS_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|returned|return|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
+const STATUS_NOISE_WORDS: &str =
+    "pass|passed|passes|block|blocked|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
 const LOCAL_NEGATION_WORDS: &str = "no|not|without|never|isn't|aren't|wasn't|hasn't|haven't|didn't|doesn't|don't|can't|cannot|won't";
 pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
-    let claims_readiness = has_any(&text, READINESS_MARKERS);
+    let claims_readiness = claims_readiness(&text);
     let claims_completion = super::completion_handoff::claims_completion(handoff);
     let has_sentinel = has_any(&text, SENTINEL_MARKERS);
     if !claims_readiness && !claims_completion {
@@ -54,17 +55,30 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
                 .into(),
         ],
         Some((start, SentinelStatus::Pass))
-            if super::sentinel_handoff_evidence::names_head(&text, start, head_ref_oid) =>
+            if !super::sentinel_handoff_evidence::names_head(&text, start, head_ref_oid) =>
         {
-            Vec::new()
-        }
-        Some((_, SentinelStatus::Pass)) => {
             vec!["Sentinel PASS readiness evidence must name the current PR head SHA".into()]
         }
+        Some((start, SentinelStatus::Pass))
+            if !super::sentinel_handoff_reviewer::pass_names_reviewer(&text, start) =>
+        {
+            vec!["Sentinel PASS readiness evidence must name the packaged Sentinel reviewer".into()]
+        }
+        Some((_, SentinelStatus::Pass)) => Vec::new(),
         None => vec![
             "Sentinel readiness evidence must state PASS, BLOCK, or UNOBSERVABLE explicitly".into(),
         ],
     }
+}
+fn claims_readiness(text: &str) -> bool {
+    has_any(text, READINESS_MARKERS) || child_handoff_claims_current_pr_readiness(text)
+}
+fn child_handoff_claims_current_pr_readiness(text: &str) -> bool {
+    let claims_child = super::child_handoff_readiness_claims::child_readiness(text);
+    claims_child
+        && (super::child_handoff_readiness_claims::pr_ready(text)
+            || super::child_handoff_readiness_claims::synced(text)
+            || super::child_handoff_readiness_claims::pushed(text))
 }
 pub(super) fn has_any(text: &str, phrases: &str) -> bool {
     phrases
