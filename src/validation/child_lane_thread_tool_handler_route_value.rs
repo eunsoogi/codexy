@@ -86,6 +86,8 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         .split('|')
         .any(|negation| local == negation)
         || has_qualified_actor_negation(&local, at_boundary)
+        || local.starts_with("nobody ")
+        || local.starts_with("neither ") && local.contains(" nor")
         || local.ends_with(" non")
         || local.ends_with(" false that")
         || local.starts_with("false positive")
@@ -98,7 +100,7 @@ fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
     let tokens = local.split_whitespace().collect::<Vec<_>>();
     let Some(negation_index) = tokens
         .iter()
-        .rposition(|token| *token == "not" || token.ends_with("n't"))
+        .rposition(|token| matches!(*token, "no" | "not") || token.ends_with("n't"))
     else {
         return false;
     };
@@ -132,11 +134,9 @@ fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
             .all(|token| QUALIFIERS.split('|').any(|qualifier| *token == qualifier))
 }
 
+#[rustfmt::skip]
 fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
-    match tokens.first().copied() {
-        Some("a" | "an" | "the") => &tokens[1..],
-        _ => tokens,
-    }
+    let mut tokens = tokens; while matches!(tokens.first().copied(), Some("a" | "an" | "any" | "from" | "member" | "of" | "one" | "single" | "the")) { tokens = &tokens[1..]; } tokens
 }
 
 fn has_post_destination_route_negation(suffix: &str) -> bool {
@@ -215,7 +215,7 @@ fn has_route_not_used_clause(clause: &str) -> bool {
     "not used|not actually used|was not used|was not actually used|was never used|never used|wasn't used|isn't used|did not use|didn't use|unused"
         .split('|')
         .any(|marker| contains_phrase(clause, marker))
-        || regex::Regex::new(r"(?:^|[^[:alnum:]])(?:(?:the\s+|that\s+|this\s+)?(?:fallback(?:\s+(?:route|path))?|route|path)|it|that|this)\s+(?:unused|ignored|skipped|(?:was|is|gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*(?:being\s+(?:(?:actually|ever)\s+)*)?(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:hasn't|haven't|hadn't)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:was|is)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)used|(?:wasn't|isn't)\s+(?:(?:actually|ever)\s+)*used|(?:did|does)\s+(?:(?:actually|ever)\s+)*not\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|(?:didn't|doesn't)\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|never\s+(?:(?:actually|ever)\s+)*(?:gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*used)(?:$|[^[:alnum:]])").ok().is_some_and(|route_not_used| route_not_used.is_match(clause))
+        || regex::Regex::new(r"(?:^|[^[:alnum:]])(?:(?:the\s+|that\s+|this\s+)?(?:fallback(?:\s+(?:route|path))?|route|path)|(?:the\s+)?(?:handoff|message|feedback|thread)|it|that|this)\s+(?:unused|ignored|skipped|(?:was|is|gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*(?:being\s+(?:(?:actually|ever)\s+)*)?(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*(?:ignored|skipped)|(?:has|have|had)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:hasn't|haven't|hadn't)\s+(?:(?:actually|ever)\s+)*(?:been|gotten)\s+(?:(?:actually|ever)\s+)*used|(?:was|is)\s+(?:(?:actually|ever)\s+)*(?:not\s+(?:(?:actually|ever)\s+)*|never\s+(?:(?:actually|ever)\s+)*)used|(?:wasn't|isn't)\s+(?:(?:actually|ever)\s+)*used|(?:did|does)\s+(?:(?:actually|ever)\s+)*not\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|(?:didn't|doesn't)\s+(?:(?:actually|ever)\s+)*(?:use|get\s+(?:(?:actually|ever)\s+)*used)|never\s+(?:(?:actually|ever)\s+)*(?:gets?|got|gotten)\s+(?:(?:actually|ever)\s+)*used)(?:$|[^[:alnum:]])").ok().is_some_and(|route_not_used| route_not_used.is_match(clause))
 }
 
 fn has_phrase_boundaries(value: &str, start: usize, phrase: &str) -> bool {
