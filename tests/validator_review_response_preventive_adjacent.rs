@@ -46,6 +46,47 @@ fn validator_rejects_exact_comment_only_handoff_with_negated_unresolved_threads(
 }
 
 #[test]
+fn validator_rejects_exact_comment_only_handoff_with_no_blockers_heading() -> TestResult {
+    for handoff in [
+        "Blockers: none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blocker: none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blocked: none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blockers: no blockers. Review response: fixed the exact Codex review comment and verified current head.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+
+        assert!(
+            !output.status.success(),
+            "validator should not treat no-blocker headings as incomplete evidence\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+            "unexpected stderr for handoff:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_real_blocker_state_without_preventive_adjacent_review() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Blocker: upstream review-thread evidence is unavailable, so this review-response lane is not complete.\nReview response: fixed the exact Codex review comment.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert_success(
+        &output,
+        "validator should still allow true blocker state evidence",
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the touched helper family.\n",

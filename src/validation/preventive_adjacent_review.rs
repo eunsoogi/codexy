@@ -1,21 +1,18 @@
 pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     let trimmed = text.trim_start();
-    trimmed.starts_with("blocked")
-        || trimmed.starts_with("blocker")
+    starts_with_true_blocker(trimmed)
         || trimmed.starts_with("waiting")
         || has_unresolved_thread_waiting_state(&text)
         || has_any(
             &text,
             &[
-                "blocked:",
                 "blocked on",
                 "blocked by",
                 "blocked due to",
                 "now blocked",
                 "goal blocked",
                 "work is blocked",
-                "blocker:",
                 "this lane is not complete",
                 "lane is not complete",
                 "is not complete",
@@ -34,6 +31,53 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "waiting:",
             ],
         )
+        || has_true_blocked_or_blocker_label(&text)
+}
+
+fn starts_with_true_blocker(text: &str) -> bool {
+    (text.starts_with("blocked") || text.starts_with("blocker")) && !has_false_blocker_heading(text)
+}
+
+fn has_false_blocker_heading(text: &str) -> bool {
+    let Some((_, value)) = text.split_once(':') else {
+        return false;
+    };
+    has_false_blocked_or_blocker_value(value)
+}
+
+fn has_true_blocked_or_blocker_label(text: &str) -> bool {
+    has_true_label_value(text, "blocked:")
+        || has_true_label_value(text, "blocker:")
+        || has_true_label_value(text, "blockers:")
+}
+
+fn has_true_label_value(text: &str, label: &str) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(label) {
+        let value_start = offset + index + label.len();
+        if !has_false_blocked_or_blocker_value(&text[value_start..]) {
+            return true;
+        }
+        offset = value_start;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn has_false_blocked_or_blocker_value(value: &str) -> bool {
+    let value = value.trim_start();
+    let first = value
+        .split(|ch: char| !matches!(ch, '/' | '0'..='9' | 'a'..='z'))
+        .next()
+        .unwrap_or("");
+    let rest = value[first.len()..].trim_start_matches([' ', '\t']);
+    let terminal = rest.chars().next().is_none_or(|ch| ".;,\n\r".contains(ch));
+    (matches!(first, "none" | "no" | "false" | "n/a" | "na") && terminal)
+        || value.starts_with("not applicable")
+        || value.starts_with("no blocker")
+        || value.starts_with("no current blocker")
+        || value.starts_with("none currently")
 }
 
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
@@ -56,10 +100,9 @@ fn has_unresolved_thread_waiting_state(text: &str) -> bool {
                 "isn't applicable",
                 "aren't applicable",
                 "waiting:",
-                "blocked:",
-                "blocker:",
             ],
         )
+        || has_true_blocked_or_blocker_label(text)
 }
 
 pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
