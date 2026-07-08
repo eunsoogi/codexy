@@ -170,3 +170,67 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_passive_started_forked_requested_child_threads_over_active_cap()
+-> Result<(), Box<dyn std::error::Error>> {
+    for operation in [
+        "Child thread started: thread-269 for issue #269.",
+        "Child thread forked: thread-269 for issue #269.",
+        "Child thread requested: thread-269 for issue #269.",
+        "Child thread thread-269 was started for issue #269.",
+        "Child thread thread-269 was forked for issue #269.",
+        "Child thread thread-269 was requested for issue #269.",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+{operation}
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should treat passive operation `{operation}` as a child-thread launch"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("would exceed five active child Codex threads"),
+            "stderr should name over-capacity passive operation `{operation}`, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_negated_passive_started_forked_requested_child_threads()
+-> Result<(), Box<dyn std::error::Error>> {
+    for operation in [
+        "Child thread thread-269 was not started for issue #269.",
+        "Child thread thread-269 was not forked for issue #269.",
+        "Child thread thread-269 was not requested for issue #269.",
+        "No child thread started: thread-269 for issue #269.",
+        "No child thread forked: thread-269 for issue #269.",
+        "No child thread requested: thread-269 for issue #269.",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+{operation}
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should ignore negated passive operation `{operation}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}

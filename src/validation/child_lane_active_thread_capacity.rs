@@ -155,13 +155,22 @@ fn operation_markers() -> impl Iterator<Item = &'static str> {
 }
 fn has_passive_created_thread_id(line: &str) -> bool {
     line.find("child thread").is_some_and(|index| {
-        let rest = &line[index + "child thread".len()..];
-        ThreadOwner::from_line(line).thread_id.is_some()
-            && (rest.contains(" created") || rest.contains(" was created"))
+        let rest = line[index + "child thread".len()..].trim_start();
+        let owner = ThreadOwner::from_line(line);
+        (owner.thread_id.is_some() || !owner.issue_ids.is_empty())
+            && ("created|forked:|requested:|started:"
+                .split('|')
+                .any(|marker| rest.starts_with(marker))
+                || "was created|was forked|was requested|was started"
+                    .split('|')
+                    .any(|marker| rest.contains(marker))
+                || rest.contains(" created")
+                    && !rest.contains("not created")
+                    && !rest.contains("n't created"))
     })
 }
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
-    if has_negated_thread_tool_reference(line, tool) {
+    if format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}").split('|').any(|marker| line.contains(&marker)) {
         return false;
     }
     line.match_indices(tool)
@@ -173,11 +182,6 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
             && !["tool search", "discovered", "available thread tool"]
                 .into_iter()
                 .any(|marker| line.contains(marker)))
-}
-fn has_negated_thread_tool_reference(line: &str, tool: &str) -> bool {
-    format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}")
-        .split('|')
-    .any(|marker| line.contains(&marker))
 }
 fn fresh_counts_before_operation<'a>(
     active_counts: &'a [ActiveCount],
@@ -218,9 +222,6 @@ fn is_reuse_operation_line(line: &str) -> bool {
 }
 fn has_negated_operation_claim(line: &str) -> bool {
     let line = normalized_operation_line(line);
-    if line.contains("was not created") || line.contains("wasn't created") {
-        return true;
-    }
     let operation_position = |clause: &str| {
         operation_markers()
             .chain(["child thread"])
@@ -229,7 +230,7 @@ fn has_negated_operation_claim(line: &str) -> bool {
             .min()
     };
     let negation_position = |clause: &str| {
-        "did not call|did not continue|did not create|did not request|did not resume|didn't call|didn't continue|didn't create|didn't request|didn't resume|do not call|do not continue|do not create|do not request|do not resume|must not call|must not continue|must not create|must not request|must not resume|not call|not continue|not create|not request|not resume|no child thread|no child thread created|no child thread continued|no child thread request|no child thread resumed|no requested child thread|without calling|without continuing|without creating|without requesting|without resuming"
+        "was not created|wasn't created|was not forked|wasn't forked|was not requested|wasn't requested|was not started|wasn't started|did not call|did not continue|did not create|did not request|did not resume|didn't call|didn't continue|didn't create|didn't request|didn't resume|do not call|do not continue|do not create|do not request|do not resume|must not call|must not continue|must not create|must not request|must not resume|not call|not continue|not create|not request|not resume|no child thread|no child thread created|no child thread continued|no child thread request|no child thread resumed|no requested child thread|without calling|without continuing|without creating|without requesting|without resuming"
             .split('|')
             .filter_map(|marker| clause.find(marker))
             .min()
