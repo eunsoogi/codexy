@@ -105,14 +105,14 @@ fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
     if after_not.first().is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb)) {
         let proof_subject = match after_not.get(1).copied() { Some("if" | "that" | "whether") => &after_not[2..], _ => &after_not[1..] };
         let actor_prefix = strip_actor_article(proof_subject);
-        if actor_prefix.is_empty() { return !at_boundary || !has_handler_tool_subject(&tokens[..negation_index]); }
+        if actor_prefix.is_empty() { return !at_boundary || !has_handler_tool_negation_subject(&tokens[..negation_index]); }
         return has_negated_actor_prefix(actor_prefix);
     }
     has_route_owner_absence(after_not) || has_negated_actor_prefix(strip_actor_article(after_not))
 }
 
 #[rustfmt::skip]
-fn has_handler_tool_subject(tokens: &[&str]) -> bool { tokens.iter().any(|token| matches!(*token, "handler" | "tool")) }
+fn has_handler_tool_negation_subject(tokens: &[&str]) -> bool { tokens.iter().rev().find(|token| !matches!(**token, "did" | "does" | "do")).is_some_and(|token| matches!(*token, "handler" | "tool")) }
 
 #[rustfmt::skip]
 fn has_route_owner_absence(tokens: &[&str]) -> bool {

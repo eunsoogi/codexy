@@ -112,6 +112,7 @@ fn validator_rejects_non_orchestrator_fallback_route() -> Result<(), Box<dyn std
         "Fallback route: did not verify whether any actual orchestrator posted the handoff in the child thread",
         "Fallback route: did not verify if one authorized orchestrator posted the handoff in the child thread",
         "Fallback route: did not verify if a single authorized orchestrator posted the handoff in the child thread",
+        "Fallback route: handler failed and we did not verify: parent posted the handoff in the child thread",
         "Fallback route: we did not verify: parent posted the handoff in the child thread",
         "Fallback route: we did not confirm; parent posted the handoff in the child thread",
         "Fallback route: we did not need a child owner; parent posted the handoff in the child thread",
