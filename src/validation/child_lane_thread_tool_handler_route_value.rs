@@ -1,5 +1,5 @@
-const ROUTE_PREFIX_TRIM_CHARACTERS: [char; 12] = [
-    ',', ';', '.', '_', '-', '/', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}',
+const ROUTE_PREFIX_TRIM_CHARACTERS: [char; 13] = [
+    ',', ';', '.', ':', '_', '-', '/', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}',
     '\u{2015}',
 ];
 
@@ -80,7 +80,7 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         .trim()
         .trim_end_matches(':')
         .trim();
-    let local = local.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
+    let local = local.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[4..], " ");
     let local = local.split_whitespace().collect::<Vec<_>>().join(" ");
     "no|non|not|not an|not the|false|never|unable|it is false that|it is not true that|it is not the case that"
         .split('|')
@@ -187,7 +187,7 @@ fn route_followup_clauses(suffix: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_failed_route_delivery_clause(clause: &str) -> bool {
-    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
+    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[4..], " ");
     let clause = normalized_clause.as_str();
     if matches!(clause, "failed" | "failure" | "failures") {
         return true;
@@ -210,7 +210,7 @@ fn has_failed_route_pronoun_clause(clause: &str) -> bool {
 }
 
 fn has_route_not_used_clause(clause: &str) -> bool {
-    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[3..], " ");
+    let normalized_clause = clause.replace(&ROUTE_PREFIX_TRIM_CHARACTERS[4..], " ");
     let clause = normalized_clause.as_str();
     "not used|not actually used|was not used|was not actually used|was never used|never used|wasn't used|isn't used|did not use|didn't use|unused"
         .split('|')

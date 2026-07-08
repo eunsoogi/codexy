@@ -31,6 +31,7 @@ fn validator_allows_orchestrator_authored_fallback_route() -> Result<(), Box<dyn
         "Fallback route: handler did not respond, orchestrator posted the handoff in the child thread",
         "Fallback route: handler did not verify. Orchestrator posted the handoff in the child thread",
         "Fallback route: handler did not verify, orchestrator posted the handoff in the child thread",
+        "Fallback route: handler did not verify: parent posted the handoff in the child thread",
         "Fallback route: handler did not confirm readiness, orchestrator posted the handoff in the child thread",
         "Fallback route: handler did not actually verify, orchestrator posted the handoff in the child thread",
         "Fallback route: handler didn't verify, orchestrator posted the handoff in the child thread",
