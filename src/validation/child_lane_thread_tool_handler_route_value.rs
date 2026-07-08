@@ -112,11 +112,11 @@ fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
 }
 
 #[rustfmt::skip]
-fn has_handler_tool_negation_subject(tokens: &[&str]) -> bool { tokens.iter().rev().find(|token| !matches!(**token, "did" | "does" | "do")).is_some_and(|token| matches!(*token, "handler" | "tool")) }
+fn has_handler_tool_negation_subject(tokens: &[&str]) -> bool { tokens.iter().rev().find(|token| !matches!(**token, "actually" | "can" | "could" | "did" | "does" | "do" | "fully" | "really" | "truly")).is_some_and(|token| matches!(*token, "handler" | "tool")) }
 
 #[rustfmt::skip]
 fn has_route_owner_absence(tokens: &[&str]) -> bool {
-    let tokens = strip_actor_article(tokens); match tokens { ["need" | "needed" | "use" | "used", rest @ ..] => has_route_owner_absence(rest), ["actual" | "assigned" | "authorized" | "correct" | "current" | "expected" | "intended" | "primary" | "proper" | "real" | "responsible" | "right" | "same" | "valid", rest @ ..] => has_route_owner_absence(rest), ["child", "thread", "tool", "handler", "was" | "is", "available" | "provided" | "registered", ..] => false, ["child", ..] | ["fallback", "route", ..] | ["fallback", "path", ..] | ["owner", ..] | ["route", "owner", ..] => true, _ => false }
+    let tokens = strip_actor_article(tokens); match tokens { ["need" | "needed" | "use" | "used", rest @ ..] => has_route_owner_absence(rest), ["actual" | "assigned" | "authorized" | "correct" | "current" | "expected" | "intended" | "primary" | "proper" | "real" | "responsible" | "right" | "same" | "valid", rest @ ..] => has_route_owner_absence(rest), ["child", "thread", "tool", "handler" | "handlers", "are" | "is" | "was" | "were", "available" | "provided" | "registered", ..] => false, ["child", ..] | ["fallback", "route", ..] | ["fallback", "path", ..] | ["owner", ..] | ["route", "owner", ..] => true, _ => false }
 }
 
 fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
