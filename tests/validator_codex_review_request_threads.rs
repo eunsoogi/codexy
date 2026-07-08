@@ -144,7 +144,7 @@ fn validator_allows_no_request_status_with_negated_next_action() -> TestResult {
 #[test]
 fn validator_allows_fresh_codex_review_request_with_accepted_no_change_rationale() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Accepted no-change rationale documented for thread PRRT_kwDOWaiting. Preventive adjacent review no-change rationale: inspected functions review_thread_resolution::check and tests validator_codex_review_request_threads; invariants hold because unresolved thread handling still blocks exact-comment-only readiness. Request exactly one fresh Codex review now.\n",
+        "Accepted no-change rationale documented for thread PRRT_kwDOWaiting. Preventive adjacent review no-change rationale: inspected functions review_thread_resolution::check and tests validator_codex_review_request_threads; invariants hold because sibling unresolved-thread workflow variants still block exact-comment-only readiness. Request exactly one fresh Codex review now.\n",
         unresolved_thread_pr_state(),
     )?;
     assert_success(

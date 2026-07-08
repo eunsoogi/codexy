@@ -2,7 +2,7 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     let trimmed = text.trim_start();
     starts_with_true_blocker(trimmed)
-        || trimmed.starts_with("waiting")
+        || starts_with_true_waiting(trimmed)
         || has_unresolved_thread_waiting_state(&text)
         || has_any(
             &text,
@@ -26,7 +26,6 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "aren't yet ready for handoff",
                 "aren't currently ready for handoff",
                 "isn't currently ready for handoff",
-                "waiting:",
             ],
         )
         || has_true_blocked_or_blocker_label(&text)
@@ -38,7 +37,7 @@ fn starts_with_true_blocker(text: &str) -> bool {
 
 fn has_false_blocker_heading(text: &str) -> bool {
     text.split_once(':')
-        .is_some_and(|(_, value)| has_false_blocked_or_blocker_value(value))
+        .is_some_and(|(_, value)| has_false_blocked_or_waiting_value(value))
 }
 
 fn has_true_blocked_or_blocker_label(text: &str) -> bool {
@@ -49,10 +48,17 @@ fn has_true_blocked_or_blocker_label(text: &str) -> bool {
 
 fn has_true_label_value(text: &str, label: &str) -> bool {
     text.match_indices(label)
-        .any(|(index, _)| !has_false_blocked_or_blocker_value(&text[index + label.len()..]))
+        .any(|(index, _)| !has_false_blocked_or_waiting_value(&text[index + label.len()..]))
 }
 
-fn has_false_blocked_or_blocker_value(value: &str) -> bool {
+fn starts_with_true_waiting(text: &str) -> bool {
+    text.starts_with("waiting")
+        && !text
+            .split_once(':')
+            .is_some_and(|(_, value)| has_false_blocked_or_waiting_value(value))
+}
+
+fn has_false_blocked_or_waiting_value(value: &str) -> bool {
     let value = value.trim_start();
     let first = value
         .split(|ch: char| !matches!(ch, '/' | '0'..='9' | 'a'..='z'))
@@ -64,6 +70,8 @@ fn has_false_blocked_or_blocker_value(value: &str) -> bool {
         || value.starts_with("not applicable")
         || value.starts_with("no blocker")
         || value.starts_with("no current blocker")
+        || value.starts_with("no waiting")
+        || value.starts_with("no current waiting")
         || value.starts_with("none currently")
 }
 
@@ -83,9 +91,9 @@ fn has_unresolved_thread_waiting_state(text: &str) -> bool {
                 "not currently ready for handoff",
                 "aren't currently ready for handoff",
                 "isn't currently ready for handoff",
-                "waiting:",
             ],
-        ) || has_readiness_not_applicable_state(text))
+        ) || has_readiness_not_applicable_state(text)
+            || has_true_label_value(text, "waiting:"))
         || has_true_blocked_or_blocker_label(text)
 }
 
@@ -103,7 +111,6 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
             "helper family",
             "parser variant",
             "workflow variant",
-            "invariant",
             "sibling",
         ],
     );

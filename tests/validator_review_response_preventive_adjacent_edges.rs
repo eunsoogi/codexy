@@ -42,6 +42,67 @@ fn validator_allows_preventive_adjacent_markdown_heading_with_blank_before_bulle
     Ok(())
 }
 
+#[test]
+fn validator_rejects_exact_comment_only_handoff_with_no_waiting_heading() -> TestResult {
+    for handoff in [
+        "Waiting: none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting: no. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting: no waiting. Review response: fixed the exact Codex review comment and verified current head.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+
+        assert!(
+            !output.status.success(),
+            "validator should not treat no-waiting headings as incomplete evidence\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+            "unexpected stderr for handoff:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_real_waiting_state_without_preventive_adjacent_review() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Waiting: upstream review-thread evidence is unavailable, so this review-response lane is not complete.\nReview response: fixed the exact Codex review comment.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert_success(
+        &output,
+        "validator should still allow true waiting state evidence",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_no_change_rationale_without_adjacent_subject() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions foo and tests bar; invariants hold because the exact branch is unchanged.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should require adjacent evidence beyond invariant wording\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
