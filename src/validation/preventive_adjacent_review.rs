@@ -126,6 +126,11 @@ fn has_exact_comment_only_coverage(unit: &str) -> bool {
             "only the exact codex review comment",
             "only exact comment",
             "only exact review comment",
+            "the exact comment only",
+            "the exact review comment only",
+            "the exact codex review comment only",
+            "exact comment only",
+            "exact review comment only",
             "exact-comment-only",
         ],
     )

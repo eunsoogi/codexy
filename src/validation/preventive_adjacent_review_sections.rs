@@ -45,6 +45,9 @@ pub(super) fn preventive_adjacent_review_end(text: &str, start: usize) -> usize 
 fn plain_handoff_section_boundary(suffix: &str) -> Option<usize> {
     suffix.match_indices('\n').find_map(|(index, _)| {
         let line = suffix[index + 1..].trim_start();
+        if line.starts_with("tests:") && is_preventive_no_change_label(suffix, index) {
+            return None;
+        }
         [
             "verification:",
             "tests:",
@@ -57,6 +60,17 @@ fn plain_handoff_section_boundary(suffix: &str) -> Option<usize> {
         .any(|label| line.starts_with(label))
         .then_some(index)
     })
+}
+
+fn is_preventive_no_change_label(suffix: &str, index: usize) -> bool {
+    suffix[..index]
+        .rsplit("\n\n")
+        .next()
+        .is_some_and(|section| {
+            section.contains("preventive adjacent review")
+                && (section.contains("no-change rationale")
+                    || section.contains("no change rationale"))
+        })
 }
 
 fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {

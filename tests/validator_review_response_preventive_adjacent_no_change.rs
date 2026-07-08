@@ -26,16 +26,19 @@ fn validator_rejects_no_change_rationale_missing_code_or_test_surface() -> TestR
 
 #[test]
 fn validator_allows_no_change_rationale_with_code_and_coverage_surface() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected code surface parse_review_threads and regression coverage validator_review_response_preventive_adjacent; invariants hold because sibling parser variants share the same boundary checks.\n",
-        resolved_review_thread_pr_state(),
-    )?;
-    assert!(
-        output.status.success(),
-        "validator should allow concrete code plus coverage rationale\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Review response: fixed the Codex review comment and verified current head.\nPreventive adjacent review no-change rationale:\nFunctions: inspected parse_review_threads and sibling parser variants.\nTests: inspected validator_review_response_preventive_adjacent coverage.\nInvariants hold because sibling parser variants share the same boundary checks.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert!(
+            output.status.success(),
+            "validator should allow concrete code plus coverage rationale\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
