@@ -137,25 +137,25 @@ fn validator_rejects_negated_preventive_adjacent_regression_coverage() -> TestRe
 
 #[test]
 fn validator_rejects_post_negated_preventive_adjacent_coverage() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused regression coverage is not needed.\n",
-        resolved_review_thread_pr_state(),
-    )?;
-
-    assert!(
-        !output.status.success(),
-        "validator should reject post-negated preventive adjacent coverage claims\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage for adjacent parser variants is missing.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should reject post-negated coverage\nhandoff:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
-
 #[test]
 fn validator_allows_preventive_adjacent_no_change_rationale() -> TestResult {
     let output = validate_handoff_with_pr_state(

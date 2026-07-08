@@ -164,7 +164,6 @@ fn is_negated_match(prefix: &str) -> bool {
         )
     })
 }
-
 fn is_post_negated_match(suffix: &str) -> bool {
     let local_end = suffix
         .find(['\n', ',', ';'])
@@ -173,6 +172,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
     let local = suffix[..local_end]
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
     has_false_blocked_or_waiting_value(local)
+        || local.contains(" is missing")
         || [
             "is not",
             "isn't",
