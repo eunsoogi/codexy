@@ -1,5 +1,6 @@
 use super::child_lane_thread_tool_handler_issue_tracking::has_tracking_issue;
 use super::child_lane_thread_tool_handler_issue_value::has_placeholder_or_pending_value;
+use super::child_lane_thread_tool_handler_lane_mentions::has_unnegated_different_lane_phrase;
 use super::child_lane_thread_tool_handler_no_route::has_false_no_route_answer;
 use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
@@ -251,9 +252,7 @@ fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) ->
 }
 
 fn names_later_lane_handoff(line: &str, lane: Option<&str>) -> bool {
-    let lower = line.to_ascii_lowercase();
-    lower.contains("another lane")
-        || lower.contains("later lane")
+    has_unnegated_different_lane_phrase(line)
         || mentioned_lane(line, lane)
             .is_some_and(|mentioned| lane.is_some_and(|lane| !mentioned.eq_ignore_ascii_case(lane)))
 }

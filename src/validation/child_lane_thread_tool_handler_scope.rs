@@ -1,4 +1,5 @@
 use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
+use super::child_lane_thread_tool_handler_lane_mentions::has_unnegated_different_lane_phrase;
 
 pub(super) fn scope_start_until_blank(evidence: &str, line_start: usize) -> (usize, Option<usize>) {
     let mut previous_start = line_start;
@@ -123,8 +124,7 @@ fn is_excluded_lane_metadata_line(line: &str) -> bool {
     .any(|prefix| key.starts_with(prefix))
 }
 fn line_mentions_different_lane(line: &str, current_lane: Option<&str>) -> bool {
-    let normalized_line = line.to_ascii_lowercase();
-    if normalized_line.contains("another lane") || normalized_line.contains("later lane") {
+    if has_unnegated_different_lane_phrase(line) {
         return true;
     }
     let mut previous = "";
