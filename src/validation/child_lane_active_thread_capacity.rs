@@ -154,19 +154,17 @@ fn operation_markers() -> impl Iterator<Item = &'static str> {
     "child thread created:|created child thread|also created child thread|created a replacement child thread|created replacement child thread|also created replacement child thread|also created a replacement child thread|requested child thread|also requested child thread|continued child thread|also continued child thread|forked child thread|forked a child thread|also forked child thread|resumed child thread|also resumed child thread|started child thread|started a child thread|also started child thread".split('|')
 }
 fn has_passive_created_thread_id(line: &str) -> bool {
-    line.find("child thread").is_some_and(|index| {
-        let rest = line[index + "child thread".len()..].trim_start();
-        let owner = ThreadOwner::from_line(line);
-        (owner.thread_id.is_some() || !owner.issue_ids.is_empty())
-            && ["created", "forked", "requested", "started"]
-                .into_iter()
-                .any(|verb| has_passive_launch_verb(rest, verb))
-    })
+    let owner = ThreadOwner::from_line(line);
+    line.contains("child thread")
+        && (owner.thread_id.is_some() || !owner.issue_ids.is_empty())
+        && ["created", "forked", "requested", "started"]
+            .into_iter()
+            .any(|verb| has_passive_launch_verb(line, verb))
 }
 fn has_passive_launch_verb(rest: &str, verb: &str) -> bool {
     (rest.starts_with(verb) || rest.contains(&format!(" {verb}")))
-        && ["not ", "n't ", "not yet ", "not been ", "n't been "]
-            .into_iter()
+        && "not |n't |not yet |not been |n't been |not yet been |n't yet been "
+            .split('|')
             .all(|negation| !rest.contains(&format!("{negation}{verb}")))
 }
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
