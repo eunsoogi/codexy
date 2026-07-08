@@ -73,6 +73,7 @@ fn validator_rejects_exact_comment_only_handoff_with_negated_blocker_phrase() ->
     for handoff in [
         "Review response: fixed the exact Codex review comment and verified current head; not blocked on anything.\n",
         "Not blocked on anything. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Review response: fixed the exact Codex review comment. Blocked on: none.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
 

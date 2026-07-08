@@ -53,7 +53,6 @@ fn has_true_label_value(text: &str, label: &str) -> bool {
     text.match_indices(label)
         .any(|(index, _)| !has_false_blocked_or_waiting_value(&text[index + label.len()..]))
 }
-
 fn starts_with_true_waiting(text: &str) -> bool {
     text.starts_with("waiting") && !has_false_heading_value(text)
 }
@@ -173,22 +172,23 @@ fn is_post_negated_match(suffix: &str) -> bool {
         .unwrap_or(suffix.len());
     let local = suffix[..local_end]
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
-    [
-        "is not",
-        "isn't",
-        "are not",
-        "aren't",
-        "was not",
-        "wasn't",
-        "were not",
-        "weren't",
-        "not needed",
-        "missing",
-        "does not exist",
-        "doesn't exist",
-    ]
-    .iter()
-    .any(|negation| local.starts_with(negation))
+    has_false_blocked_or_waiting_value(local)
+        || [
+            "is not",
+            "isn't",
+            "are not",
+            "aren't",
+            "was not",
+            "wasn't",
+            "were not",
+            "weren't",
+            "not needed",
+            "missing",
+            "does not exist",
+            "doesn't exist",
+        ]
+        .iter()
+        .any(|negation| local.starts_with(negation))
 }
 
 fn has_substantive_rationale(segment: &str) -> bool {
