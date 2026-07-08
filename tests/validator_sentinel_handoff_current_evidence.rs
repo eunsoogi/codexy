@@ -33,6 +33,9 @@ fn validator_accepts_current_head_fallback_approval() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this Sentinel run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel timed out after bounded wait on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this timed-out Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel pending after bounded wait on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel pending verdict on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel waiting for verdict on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -41,6 +44,30 @@ fn validator_accepts_current_head_fallback_approval() -> TestResult {
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_parent_merge_readiness_with_blocking_sentinel() -> TestResult {
+    for handoff in [
+        "Child handoff: branch clean and pushed at 32b03a210b3defb2d29dd352283ea2488e60d893. Parent can merge. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893.\n",
+        "Child handoff: branch clean and pushed at 32b03a210b3defb2d29dd352283ea2488e60d893. Parent handoff ready. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893.\n",
+        "Child handoff: branch clean and pushed at 32b03a210b3defb2d29dd352283ea2488e60d893. Parent-handoff-ready. Sentinel: UNOBSERVABLE after bounded wait on current head 32b03a210b3defb2d29dd352283ea2488e60d893.\n",
+    ] {
+        assert_rejects_without_appended_readiness(handoff, "Sentinel")?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_future_waiting_sentinel_pass_after_current_block() -> TestResult {
+    for handoff in [
+        "PR ready for parent handoff. Sentinel: BLOCK on current head; waiting on Sentinel: PASS after rerun on current head 32b03a210b3defb2d29dd352283ea2488e60d893.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head; pending Sentinel: PASS after rerun on current head 32b03a210b3defb2d29dd352283ea2488e60d893.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head; waiting on the reviewer gate returned PASS after rerun on current head 32b03a210b3defb2d29dd352283ea2488e60d893.\n",
+    ] {
+        assert_rejects(handoff, "Sentinel")?;
     }
     Ok(())
 }
