@@ -89,6 +89,10 @@ fn validator_rejects_whole_event_route_negations() -> Result<(), Box<dyn std::er
         "Fallback route: parent sent the handoff to the child thread and then the route was not used",
         "Fallback route: parent sent the handoff to the child thread and then it was not used",
         "Fallback route: parent sent the handoff to the child thread and then that route was not used",
+        "Fallback route: parent sent the handoff to the parent thread and then the route was ignored in the child thread",
+        "Fallback route: parent sent the handoff to the parent thread and then the route was skipped in the child thread",
+        "Fallback route: parent posted the message to the parent thread and then the fallback route was ignored in the child thread",
+        "Fallback route: orchestrator delivered the feedback to the parent thread and then that path was skipped in the child thread",
         "Fallback route: parent sent the handoff to the child thread; however the route was not used",
         "Fallback route: parent sent the handoff to the child thread, although the route was not used",
         "Fallback route: parent sent the handoff to the child thread, yet the route was not used",
@@ -195,6 +199,9 @@ fn validator_accepts_orchestrator_fallback_route_events() -> Result<(), Box<dyn 
         "Fallback route: orchestrator posted the handoff in the child thread",
         "Fallback route: orchestrator sent the message to the child owner",
         "Fallback route: orchestrator delivered the feedback to the reviewer",
+        "Fallback route: parent sent the handoff to the parent thread and then the route was ignored in the child thread. Parent sent the handoff to the child thread",
+        "Fallback route: parent sent the handoff to the parent thread and then the route was ignored in the child thread and then parent sent the handoff to the child thread",
+        "Fallback route: parent sent the handoff to the parent thread and then the route was ignored in the child thread; parent sent the handoff to the child thread",
     ] {
         let output = run_ownership_validator(&evidence(route))?;
         assert!(

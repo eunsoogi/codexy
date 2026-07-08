@@ -40,6 +40,7 @@ fn has_positive_destination(after_object: &str) -> bool {
             let suffix = &direct_segment[index + destination.len()..];
             has_phrase_boundaries(direct_segment, index, destination)
                 && !has_route_event_negation(prefix)
+                && !has_invalid_route_followup(prefix)
                 && !has_post_destination_route_negation(suffix)
                 && !"other than|rather than|instead of|except"
                     .split('|')
@@ -64,6 +65,9 @@ fn direct_route_segment(after_object: &str) -> &str {
 
 fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
     let raw_prefix = value[..action_index].trim_end();
+    if invalid_followup_before_later_route(raw_prefix) {
+        return false;
+    }
     let at_boundary = raw_prefix
         .chars()
         .last()
@@ -94,6 +98,9 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         || local.starts_with("false-positive")
         || has_route_not_used_clause(&local)
 }
+
+#[rustfmt::skip]
+fn invalid_followup_before_later_route(prefix: &str) -> bool { let prefix = prefix.trim_end(); has_invalid_route_followup(prefix) && (prefix.ends_with('.') || prefix.ends_with(';') || prefix.ends_with(" and then")) }
 
 #[rustfmt::skip]
 fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
