@@ -61,6 +61,7 @@ fn validator_cli_ignores_nested_review_text_request_mentions() -> TestResult {
             "isDraft":false,
             "mergeStateStatus":"CLEAN",
             "headRefOid":"9ca76685a9f4a1f041ee6ef2e846876897ee3009",
+            "headRefCommittedDate":"2026-07-05T08:00:00Z",
             "comments":[],
             "reviews":[{
                 "body":"please request @codex review after this lands",

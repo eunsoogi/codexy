@@ -156,41 +156,24 @@ fn is_word_match(text: &str, start: usize, end: usize) -> bool {
     text[..start].chars().next_back().is_none_or(|ch| !ch.is_ascii_alphanumeric()) && text[end..].chars().next().is_none_or(|ch| !ch.is_ascii_alphanumeric())
 }
 
+#[rustfmt::skip]
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
-    if !claims(handoff) {
-        return None;
-    }
-    if let Some(error) = review_thread_evidence_error(pr_state) {
-        return Some(format!(
-            "{error} before fresh Codex review requests: PR #{}",
-            pr_number(pr_state)
-        ));
-    }
-    if pr_state
-        .get("headRefOid")
-        .and_then(Value::as_str)
-        .is_none_or(|head| head.trim().is_empty())
-    {
-        return Some(format!(
-            "incomplete headRefOid PR state evidence before fresh Codex review requests: PR #{}",
-            pr_number(pr_state)
-        ));
-    }
-    if events::has_latest_eyes_request_without_later_codex_output(pr_state)
-        || events::has_codex_review_output(pr_state)
-    {
-        return Some(format!(
-            "current-head Codex review activity blocks fresh Codex review requests: PR #{} already has current-head request/output evidence",
-            pr_number(pr_state)
-        ));
-    }
-    if has_blocking_unresolved_thread(handoff, pr_state) {
-        return Some(format!(
-            "unresolved review thread blocks fresh Codex review requests: PR #{} must resolve or document accepted no-change rationale before requesting another @codex review",
-            pr_number(pr_state)
-        ));
-    }
+    if !claims(handoff) { return None; }
+    if let Some(error) = review_thread_evidence_error(pr_state) { return Some(format!("{error} before fresh Codex review requests: PR #{}", pr_number(pr_state))); }
+    if missing_text(pr_state, "headRefOid") { return Some(format!("incomplete headRefOid PR state evidence before fresh Codex review requests: PR #{}", pr_number(pr_state))); }
+    if missing_text(pr_state, "headRefCommittedDate") { return Some(format!("incomplete headRefCommittedDate PR state evidence before fresh Codex review requests: PR #{}", pr_number(pr_state))); }
+    if !has_pr_comments_and_reviews_evidence(pr_state) { return Some(format!("fresh Codex review request evidence missing: include freshly captured PR comments and reviews before requesting @codex review on PR #{}", pr_number(pr_state))); }
+    if events::has_latest_eyes_request_without_later_codex_output(pr_state) || events::has_codex_review_output(pr_state) { return Some(format!("current-head Codex review activity blocks fresh Codex review requests: PR #{} already has current-head request/output evidence", pr_number(pr_state))); }
+    if has_blocking_unresolved_thread(handoff, pr_state) { return Some(format!("unresolved review thread blocks fresh Codex review requests: PR #{} must resolve or document accepted no-change rationale before requesting another @codex review", pr_number(pr_state))); }
     None
+}
+#[rustfmt::skip]
+fn missing_text(pr_state: &Value, field: &str) -> bool {
+    pr_state.get(field).and_then(Value::as_str).is_none_or(|text| text.trim().is_empty())
+}
+#[rustfmt::skip]
+fn has_pr_comments_and_reviews_evidence(pr_state: &Value) -> bool {
+    pr_state.get("comments").is_some_and(Value::is_array) && (pr_state.get("reviews").is_some_and(Value::is_array) || pr_state.get("latestReviews").is_some_and(Value::is_array))
 }
 
 pub(super) fn review_thread_evidence_error(pr_state: &Value) -> Option<String> {
