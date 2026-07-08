@@ -136,7 +136,7 @@ fn line_mentions_different_lane(line: &str, current_lane: Option<&str>) -> bool 
                 .next()
                 .unwrap_or_default()
                 .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-            if normalized_lane_label(label)
+            if normalized_lane_mention_label(label, previous)
                 .is_some_and(|lane| current_lane.is_none_or(|current_lane| lane != current_lane))
             {
                 return true;
@@ -356,6 +356,15 @@ fn normalized_lane_label(label: &str) -> Option<String> {
         .then(|| format!("lane {}", label.to_ascii_lowercase()))
 }
 
+fn normalized_lane_mention_label(label: &str, previous: &str) -> Option<String> {
+    let explicit_lowercase_context =
+        previous.eq_ignore_ascii_case("for") || previous.eq_ignore_ascii_case("in");
+    (is_lane_label_token(label)
+        && !is_excluded_lane_label(label)
+        && (explicit_lowercase_context || !is_lowercase_lane_label_token(label)))
+    .then(|| format!("lane {}", label.to_ascii_lowercase()))
+}
+
 fn is_lane_label_token(label: &str) -> bool {
     !label.is_empty()
         && (label.bytes().all(|byte| byte.is_ascii_digit())
@@ -363,7 +372,18 @@ fn is_lane_label_token(label: &str) -> bool {
             || label
                 .bytes()
                 .next()
-                .is_some_and(|byte| byte.is_ascii_uppercase()))
+                .is_some_and(|byte| byte.is_ascii_uppercase())
+            || is_lowercase_lane_label_token(label))
+}
+
+fn is_lowercase_lane_label_token(label: &str) -> bool {
+    label
+        .bytes()
+        .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+        && !matches!(
+            label,
+            "context" | "handoff" | "metadata" | "review" | "setup" | "thread" | "workflow"
+        )
 }
 
 fn is_excluded_lane_label(label: &str) -> bool {

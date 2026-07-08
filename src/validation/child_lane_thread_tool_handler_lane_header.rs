@@ -15,7 +15,10 @@ pub(super) fn include_preceding_lane_header(evidence: &str, start: usize) -> usi
 
 fn is_lane_header(line: &str) -> bool {
     let line = line.trim();
-    let Some(rest) = line.strip_prefix("lane ") else {
+    let Some(rest) = line
+        .strip_prefix("lane ")
+        .or_else(|| line.strip_prefix("Lane "))
+    else {
         return false;
     };
     let label = rest.trim_end_matches(':').trim();

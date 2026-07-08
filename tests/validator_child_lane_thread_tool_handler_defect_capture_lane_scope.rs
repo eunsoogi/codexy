@@ -184,6 +184,31 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_capitalized_multi_letter_lane_header_metadata_borrowing()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane alpha:
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread.
+- Fallback route: no fallback route was available for Lane beta.
+- Tracking issue: #246 in Lane beta review thread.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let capitalized Lane alpha header evidence borrow Lane beta metadata\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_inline_multi_letter_lane_metadata_borrowing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
