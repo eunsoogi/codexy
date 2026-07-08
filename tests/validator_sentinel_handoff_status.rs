@@ -31,7 +31,7 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous Sentinel run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous reviewer gate run. Pushed: yes.\n",
         "PR is ready. Sentinel: BLOCK on current head.\n",
-        "Completed. Sentinel: BLOCK on current head.\n",
+        "PR is ready. Sentinel: BLOCK on current head.\n",
         "PR is ready. Sentinel: BLOCK on current head. Previous Sentinel: UNOBSERVABLE after bounded wait. Maintainer explicitly approved fallback for this previous unobservable Sentinel run.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head; rerun Sentinel: PASS before push.\n",
     ] {

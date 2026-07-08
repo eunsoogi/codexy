@@ -26,15 +26,7 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !codex_review_errors.is_empty() {
         return codex_review_errors;
     }
-    let has_sentinel = super::sentinel_handoff::has_any(
-        &handoff.to_ascii_lowercase(),
-        super::sentinel_handoff::SENTINEL_MARKERS,
-    );
-    if is_open_pr(&pr_state)
-        && claims_completion(handoff)
-        && !states_explicit_deferral(handoff)
-        && !has_sentinel
-    {
+    if is_open_pr(&pr_state) && claims_completion(handoff) && !states_explicit_deferral(handoff) {
         return vec![format!(
             "opening a PR is not completion: PR #{} is still open; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
             pr_number(&pr_state)
