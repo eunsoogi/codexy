@@ -53,6 +53,9 @@ pub(super) fn capture_end_before_unrelated_evidence(
             return line_start;
         }
         let line_opens_defect_capture = has_open_defect_capture(line);
+        let line_matches_upcoming_defect_lane = scope_lane.is_none()
+            && is_lane_scoped_defect_preface_metadata_line(line)
+            && metadata_line_matches_upcoming_defect_lane(evidence, line_end, line);
         let line_names_different_lane = line_mentions_different_lane(line, scope_lane.as_deref())
             && !(scope_lane.is_none()
                 && line_opens_defect_capture
@@ -64,9 +67,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
                 && !has_absent_defect_capture(line)
                 && !has_unnegated_different_lane_phrase(line)
                 && !defect_line_mentions_other_lane(line))
-            && !(scope_lane.is_none()
-                && is_handoff_metadata_line(line)
-                && metadata_line_matches_upcoming_defect_lane(evidence, line_end, line));
+            && !line_matches_upcoming_defect_lane;
         if line_names_different_lane {
             return line_start;
         }
@@ -78,12 +79,13 @@ pub(super) fn capture_end_before_unrelated_evidence(
             || pending_defect_capture
                 && is_handler_capture_line(line)
                 && !has_absent_defect_capture(line);
-        let line_extends_capture = if is_handoff_metadata_line(line) {
-            !line_names_different_lane
-        } else {
-            is_capture_related(line)
-                && (!line_is_unrelated_metadata || is_handler_capture_line(line))
-        };
+        let line_extends_capture =
+            if is_handoff_metadata_line(line) || line_matches_upcoming_defect_lane {
+                !line_names_different_lane
+            } else {
+                is_capture_related(line)
+                    && (!line_is_unrelated_metadata || is_handler_capture_line(line))
+            };
         if line.trim().is_empty()
             || saw_capture && !line_extends_capture && line_is_unrelated_metadata
         {
@@ -188,7 +190,8 @@ fn metadata_line_matches_upcoming_defect_lane(
         {
             return true;
         }
-        if !is_handoff_metadata_line(next_line) && !is_capture_related(next_line) {
+        if !is_lane_scoped_defect_preface_metadata_line(next_line) && !is_capture_related(next_line)
+        {
             return false;
         }
         cursor = next_end;
@@ -267,6 +270,28 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
             | "follow-up issue"
     )
 }
+
+fn is_lane_scoped_defect_preface_metadata_line(line: &str) -> bool {
+    if is_handoff_metadata_line(line) {
+        return true;
+    }
+    let Some((key, _)) = line_key_value(line) else {
+        return false;
+    };
+    matches!(
+        key.to_ascii_lowercase().trim(),
+        "pending worktree"
+            | "pending worktree id"
+            | "pending worktree ids"
+            | "child thread"
+            | "child thread id"
+            | "child thread ids"
+            | "thread"
+            | "thread id"
+            | "thread ids"
+    )
+}
+
 pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize) -> usize {
     let mut capture_start = line_start;
     let mut cursor = line_start;
@@ -484,7 +509,8 @@ fn is_lowercase_lane_label_token(label: &str) -> bool {
 }
 
 fn is_excluded_lane_label(label: &str) -> bool {
-    ["owner", "owners", "ownership", "metadata"].contains(&label.to_ascii_lowercase().as_str())
+    ["owner", "owners", "ownership", "metadata", "type"]
+        .contains(&label.to_ascii_lowercase().as_str())
 }
 
 fn strip_markdown_heading_prefix(line: &str) -> &str {

@@ -62,7 +62,13 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_markdown_lane_headings_before_handoff_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
-    for heading in ["## Lane A", "### Lane A", "#### Lane A:"] {
+    for heading in [
+        "## Lane A",
+        "### Lane A",
+        "#### Lane A:",
+        "  ### Lane A.",
+        "#### Lane A -",
+    ] {
         let output = run_ownership_validator(&format!(
             r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 {heading}
