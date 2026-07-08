@@ -26,8 +26,6 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "aren't yet ready for handoff",
                 "aren't currently ready for handoff",
                 "isn't currently ready for handoff",
-                "aren't applicable",
-                "isn't applicable",
                 "waiting:",
             ],
         )
@@ -39,30 +37,19 @@ fn starts_with_true_blocker(text: &str) -> bool {
 }
 
 fn has_false_blocker_heading(text: &str) -> bool {
-    let Some((_, value)) = text.split_once(':') else {
-        return false;
-    };
-    has_false_blocked_or_blocker_value(value)
+    text.split_once(':')
+        .is_some_and(|(_, value)| has_false_blocked_or_blocker_value(value))
 }
 
 fn has_true_blocked_or_blocker_label(text: &str) -> bool {
-    has_true_label_value(text, "blocked:")
-        || has_true_label_value(text, "blocker:")
-        || has_true_label_value(text, "blockers:")
+    ["blocked:", "blocker:", "blockers:"]
+        .iter()
+        .any(|label| has_true_label_value(text, label))
 }
 
 fn has_true_label_value(text: &str, label: &str) -> bool {
-    let mut rest = text;
-    let mut offset = 0;
-    while let Some(index) = rest.find(label) {
-        let value_start = offset + index + label.len();
-        if !has_false_blocked_or_blocker_value(&text[value_start..]) {
-            return true;
-        }
-        offset = value_start;
-        rest = &text[offset..];
-    }
-    false
+    text.match_indices(label)
+        .any(|(index, _)| !has_false_blocked_or_blocker_value(&text[index + label.len()..]))
 }
 
 fn has_false_blocked_or_blocker_value(value: &str) -> bool {
@@ -82,7 +69,7 @@ fn has_false_blocked_or_blocker_value(value: &str) -> bool {
 
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated(text, "remains unresolved")
-        && has_any(
+        && (has_any(
             text,
             &[
                 "this lane is not complete",
@@ -96,12 +83,9 @@ fn has_unresolved_thread_waiting_state(text: &str) -> bool {
                 "not currently ready for handoff",
                 "aren't currently ready for handoff",
                 "isn't currently ready for handoff",
-                "not applicable",
-                "isn't applicable",
-                "aren't applicable",
                 "waiting:",
             ],
-        )
+        ) || has_readiness_not_applicable_state(text))
         || has_true_blocked_or_blocker_label(text)
 }
 
@@ -228,15 +212,31 @@ fn has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| text.contains(needle))
 }
 
+fn has_readiness_not_applicable_state(text: &str) -> bool {
+    ["pr readiness:", "readiness:"].iter().any(|label| {
+        text.find(label).is_some_and(|index| {
+            ["not applicable", "isn't applicable", "aren't applicable"]
+                .iter()
+                .any(|state| text[index + label.len()..].trim_start().starts_with(state))
+        })
+    })
+}
+
 fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
     let suffix = &text[start..];
-    [
-        suffix.find("\n\n"),
-        suffix.find("\n#"),
-        suffix.find("\nreview "),
-    ]
-    .into_iter()
-    .flatten()
-    .min()
-    .map_or(text.len(), |index| start + index)
+    let section_blank = suffix
+        .match_indices("\n\n")
+        .map(|(index, _)| index)
+        .find(|index| !is_preventive_adjacent_heading_blank(suffix, *index));
+    [section_blank, suffix.find("\n#"), suffix.find("\nreview ")]
+        .into_iter()
+        .flatten()
+        .min()
+        .map_or(text.len(), |index| start + index)
+}
+
+fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {
+    suffix[..index]
+        .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'))
+        == "preventive adjacent review"
 }
