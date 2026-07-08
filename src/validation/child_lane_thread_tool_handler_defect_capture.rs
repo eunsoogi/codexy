@@ -56,7 +56,7 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
 }
 fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
     let start = defect_scope_start(lines, index);
-    let defect_lane = prefixed_lane_label(lines[index]);
+    let defect_lane = defect_lane_label(lines, start, index);
     let mut scoped = lines[start..=index].to_vec();
     scoped[index - start] = current_defect_clause_scope(lines[index]);
     scoped.extend(
@@ -156,7 +156,7 @@ fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) ->
     let Some(line) = strip_lane_label_prefix_for_lane(&line, lane) else {
         return false;
     };
-    is_fallback_metadata_field(&line) && !names_later_lane_handoff(&line)
+    is_fallback_metadata_field(&line) && !names_later_lane_handoff(&line, lane)
         || [
             "separate dogfood issue",
             "separate dogfooding issue",
@@ -170,8 +170,10 @@ fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) ->
         .any(|field| line.starts_with(field))
 }
 
-fn names_later_lane_handoff(line: &str) -> bool {
-    line.contains("another lane") || line.contains("later lane") || line.contains("for lane ")
+fn names_later_lane_handoff(line: &str, lane: Option<&str>) -> bool {
+    line.contains("another lane")
+        || line.contains("later lane")
+        || mentioned_lane(line).is_some_and(|mentioned| lane.is_some_and(|lane| mentioned != lane))
 }
 
 fn is_exact_handler_error_metadata_item(line: &str) -> bool {
@@ -214,6 +216,33 @@ fn prefixed_lane_label(line: &str) -> Option<String> {
         .unwrap_or(rest.len());
     let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
     (!label.is_empty()).then(|| label.to_string())
+}
+
+fn defect_lane_label(lines: &[&str], start: usize, index: usize) -> Option<String> {
+    prefixed_lane_label(lines[index]).or_else(|| {
+        lines[start..index]
+            .iter()
+            .rev()
+            .find_map(|line| lane_header_label(line))
+    })
+}
+
+fn lane_header_label(line: &str) -> Option<String> {
+    let line = line.trim_start().to_ascii_lowercase();
+    let rest = line.strip_prefix("lane ")?;
+    let label = rest.trim_end_matches(':').trim();
+    (!label.is_empty() && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+        .then(|| label.to_string())
+}
+
+fn mentioned_lane(line: &str) -> Option<&str> {
+    let lane_start = line.find("for lane ")? + "for lane ".len();
+    let label = line[lane_start..]
+        .split(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .next()
+        .unwrap_or_default()
+        .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    (!label.is_empty()).then_some(label)
 }
 
 fn current_defect_clause_scope(line: &str) -> &str {
