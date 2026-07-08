@@ -8,6 +8,7 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     let trimmed = text.trim_start();
     starts_with_true_blocker(trimmed)
         || starts_with_true_waiting(trimmed)
+        || has_true_label_value(&text, "waiting:")
         || has_unresolved_thread_waiting_state(&text)
         || has_unnegated_pipe(
             &text,
