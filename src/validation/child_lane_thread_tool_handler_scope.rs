@@ -57,7 +57,10 @@ pub(super) fn capture_end_before_unrelated_evidence(
             && !(scope_lane.is_none()
                 && line_opens_defect_capture
                 && !has_unnegated_different_lane_phrase(line)
-                && !defect_line_mentions_other_lane(line));
+                && !defect_line_mentions_other_lane(line))
+            && !(scope_lane.is_none()
+                && is_handoff_metadata_line(line)
+                && metadata_line_matches_upcoming_defect_lane(evidence, line_end, line));
         if line_names_different_lane {
             return line_start;
         }
@@ -143,6 +146,43 @@ fn defect_line_mentions_other_lane(line: &str) -> bool {
         return false;
     };
     lanes.iter().skip(1).any(|lane| lane != defect_lane)
+}
+
+fn metadata_line_matches_upcoming_defect_lane(
+    evidence: &str,
+    metadata_line_end: usize,
+    line: &str,
+) -> bool {
+    let lanes = lane_mention_labels(line);
+    let Some(metadata_lane) = lanes.first() else {
+        return false;
+    };
+    if lanes.iter().skip(1).any(|lane| lane != metadata_lane) {
+        return false;
+    }
+
+    let mut cursor = metadata_line_end;
+    while cursor < evidence.len() {
+        let next_start = cursor + 1;
+        let next_end = line_end(evidence, next_start);
+        let next_line = &evidence[next_start..next_end];
+        if next_line.trim().is_empty() || is_different_lane_line(next_line, Some(metadata_lane)) {
+            return false;
+        }
+        if is_handler_defect_capture_line(next_line) {
+            let defect_lanes = lane_mention_labels(next_line);
+            return defect_lanes.first() == Some(metadata_lane)
+                && !defect_lanes
+                    .iter()
+                    .skip(1)
+                    .any(|lane| lane != metadata_lane);
+        }
+        if !is_handoff_metadata_line(next_line) && !is_capture_related(next_line) {
+            return false;
+        }
+        cursor = next_end;
+    }
+    false
 }
 
 fn lane_mention_labels(line: &str) -> Vec<String> {

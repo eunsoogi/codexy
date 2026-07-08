@@ -118,7 +118,7 @@ fn is_handoff_metadata_item_for_different_lane(line: &str, lane: Option<&str>) -
     let Some(lane) = lane else {
         return false;
     };
-    let line = if is_handoff_list_metadata_item(line) {
+    let line = if is_list_item(line) {
         strip_list_prefix(line)
     } else {
         line
