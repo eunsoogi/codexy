@@ -12,9 +12,9 @@ const LOCAL_NEGATION_WORDS: &str = "no|not|without|never|isn't|aren't|wasn't|has
 pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     let claims_readiness = has_any(&text, READINESS_MARKERS);
+    let claims_completion = super::completion_handoff::claims_completion(handoff);
     let has_sentinel = has_any(&text, SENTINEL_MARKERS);
-    if !claims_readiness && !(super::completion_handoff::claims_completion(handoff) && has_sentinel)
-    {
+    if !claims_readiness && !claims_completion {
         return Vec::new();
     }
     if !has_sentinel {
@@ -25,14 +25,26 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
         .max_by_key(|(start, _)| *start);
     match status {
         Some((start, SentinelStatus::Unobservable))
-            if super::sentinel_handoff_evidence::fallback_after(&text, start) =>
+            if super::sentinel_handoff_evidence::fallback_after(&text, start)
+                && super::sentinel_handoff_evidence::names_head(&text, start, head_ref_oid) =>
         {
             Vec::new()
         }
         Some((start, SentinelStatus::Block))
-            if super::sentinel_handoff_evidence::fallback_after(&text, start) =>
+            if super::sentinel_handoff_evidence::fallback_after(&text, start)
+                && super::sentinel_handoff_evidence::names_head(&text, start, head_ref_oid) =>
         {
             Vec::new()
+        }
+        Some((start, SentinelStatus::Unobservable))
+            if super::sentinel_handoff_evidence::fallback_after(&text, start) =>
+        {
+            vec!["Sentinel fallback readiness evidence must name the current PR head SHA".into()]
+        }
+        Some((start, SentinelStatus::Block))
+            if super::sentinel_handoff_evidence::fallback_after(&text, start) =>
+        {
+            vec!["Sentinel fallback readiness evidence must name the current PR head SHA".into()]
         }
         Some((_, SentinelStatus::Block)) => {
             vec!["Sentinel BLOCK verdict cannot satisfy PR readiness or push readiness".into()]
@@ -133,7 +145,10 @@ pub(super) fn affirmed_phrase_starts<'a>(
             rest = &text[offset..];
             if phrase_has_boundaries(text, start, end)
                 && !is_locally_negated(&text[..start])
-                && !super::sentinel_handoff_evidence::has_negative_label_value(&text[end..])
+                && !super::sentinel_handoff_evidence::has_non_claim_phrase_context(
+                    &text[..start],
+                    &text[end..],
+                )
             {
                 return Some(start);
             }

@@ -7,6 +7,10 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if let Some(error) = pr_state_input_error(&pr_state) {
         return vec![error];
     }
+    let child_handoff_errors = super::child_handoff_readiness::check(handoff, &pr_state);
+    if !child_handoff_errors.is_empty() {
+        return child_handoff_errors;
+    }
     let compaction_errors = super::completion_handoff_compaction::check(handoff, &pr_state);
     if !compaction_errors.is_empty() {
         return compaction_errors;
@@ -15,25 +19,33 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
+    if let Some(error) = super::completion_handoff_waiting::check(handoff) {
+        return vec![error];
+    }
     let codex_review_errors = super::codex_review_handoff::check(handoff, &pr_state);
     if !codex_review_errors.is_empty() {
         return codex_review_errors;
+    }
+    let has_sentinel = super::sentinel_handoff::has_any(
+        &handoff.to_ascii_lowercase(),
+        super::sentinel_handoff::SENTINEL_MARKERS,
+    );
+    if is_open_pr(&pr_state)
+        && claims_completion(handoff)
+        && !states_explicit_deferral(handoff)
+        && !has_sentinel
+    {
+        return vec![format!(
+            "opening a PR is not completion: PR #{} is still open; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
+            pr_number(&pr_state)
+        )];
     }
     let sentinel_errors =
         super::sentinel_handoff::check(handoff, string_field(&pr_state, "headRefOid"));
     if !sentinel_errors.is_empty() {
         return sentinel_errors;
     }
-    if let Some(error) = super::completion_handoff_waiting::check(handoff) {
-        return vec![error];
-    }
-    if !is_open_pr(&pr_state) || !claims_completion(handoff) || states_explicit_deferral(handoff) {
-        return Vec::new();
-    }
-    vec![format!(
-        "opening a PR is not completion: PR #{} is still open; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
-        pr_number(&pr_state)
-    )]
+    Vec::new()
 }
 fn is_open_pr(pr_state: &Value) -> bool {
     string_field(pr_state, "state").is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))

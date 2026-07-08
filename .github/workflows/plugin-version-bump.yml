@@ -53,7 +53,7 @@ jobs:
           fi
           branch="codexy/version-${VERSION}"
           git switch -c "${branch}"
-          git add .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json
+          git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json
           if [ -f package.json ]; then
             git add package.json
           fi

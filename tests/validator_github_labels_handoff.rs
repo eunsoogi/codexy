@@ -81,7 +81,7 @@ fn validator_rejects_readiness_without_issue_labels() -> TestResult {
 fn validator_accepts_readiness_with_codexy_lane_labels() -> TestResult {
     let output = validate_handoff_with_pr_state(
         READY_HANDOFF,
-        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[{"name":"bug"},{"name":"review"}],"closingIssuesReferences":[{"number":180,"labels":[{"name":"workflow"},{"name":"urgent"}]}]}"#,
+        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[{"name":"bug"},{"name":"review"}],"closingIssuesReferences":[{"number":180,"labels":[{"name":"workflow"},{"name":"urgent"}]}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )?;
 
     assert_accepted(&output, "repository-specific labels should accept");
@@ -92,7 +92,7 @@ fn validator_accepts_readiness_with_codexy_lane_labels() -> TestResult {
 fn validator_accepts_graphql_label_nodes() -> TestResult {
     let output = validate_handoff_with_pr_state(
         READY_HANDOFF,
-        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":{"nodes":[{"name":"bug"},{"name":"review"}]},"closingIssuesReferences":{"nodes":[{"number":180,"labels":{"nodes":[{"name":"workflow"},{"name":"urgent"}]}}]}}"#,
+        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":{"nodes":[{"name":"bug"},{"name":"review"}]},"closingIssuesReferences":{"nodes":[{"number":180,"labels":{"nodes":[{"name":"workflow"},{"name":"urgent"}]}}]},"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )?;
 
     assert_accepted(&output, "GraphQL nodes label evidence should accept");
@@ -115,7 +115,7 @@ fn validator_rejects_label_consideration_without_captured_repository_taxonomy() 
 fn validator_accepts_codexy_readiness_with_empty_captured_repository_taxonomy() -> TestResult {
     let output = validate_handoff_with_pr_state(
         EMPTY_TAXONOMY_HANDOFF,
-        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[],"closingIssuesReferences":[{"number":180,"labels":[]}]}"#,
+        r#"{"number":185,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/180-require-github-labels","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":[],"closingIssuesReferences":[{"number":180,"labels":[]}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )?;
 
     assert_accepted(&output, "empty captured repository taxonomy should accept");
@@ -164,7 +164,7 @@ fn validator_rejects_stale_applied_label_claim_without_state_labels() -> TestRes
 fn validator_accepts_user_repo_without_codexy_label_taxonomy() -> TestResult {
     let output = validate_handoff_with_pr_state(
         READY_HANDOFF,
-        r#"{"number":7,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"feature/customer-report","repository":"example/user-app","labels":[],"closingIssuesReferences":[{"number":3,"labels":[]}]}"#,
+        r#"{"number":7,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"feature/customer-report","repository":"example/user-app","labels":[],"closingIssuesReferences":[{"number":3,"labels":[]}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )?;
 
     assert!(
@@ -180,7 +180,7 @@ fn validator_accepts_user_repo_without_codexy_label_taxonomy() -> TestResult {
 fn validator_accepts_user_repo_with_codexy_in_name() -> TestResult {
     let output = validate_handoff_with_pr_state(
         READY_HANDOFF,
-        r#"{"number":7,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/local-helper","repository":"example/codexy-helper","labels":[],"closingIssuesReferences":[{"number":3,"labels":[]}]}"#,
+        r#"{"number":7,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","headRefName":"codexy/local-helper","repository":"example/codexy-helper","labels":[],"closingIssuesReferences":[{"number":3,"labels":[]}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#,
     )?;
 
     assert!(

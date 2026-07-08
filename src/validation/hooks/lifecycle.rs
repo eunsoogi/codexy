@@ -11,13 +11,24 @@ use super::lifecycle_probe;
 pub(super) const PURPOSE_PR_TITLE_CHECK: u8 = 1 << 2;
 pub(super) const PURPOSE_PR_LABEL_CHECK: u8 = 1 << 3;
 pub(super) const PURPOSE_MERGE_MESSAGE_CHECK: u8 = 1 << 4;
+pub(super) const PURPOSE_ISSUE_TITLE_CHECK: u8 = 1 << 5;
 
 const READINESS_EVENT: &str = "UserPromptSubmit";
+pub(super) const ISSUE_TITLE_SCRIPT: &str = "hooks/codexy-issue-title-check.sh";
 pub(super) const PR_TITLE_SCRIPT: &str = "hooks/codexy-pr-title-check.sh";
 pub(super) const PR_LABEL_SCRIPT: &str = "hooks/codexy-pr-label-check.sh";
 pub(super) const MERGE_MESSAGE_SCRIPT: &str = "hooks/codexy-merge-message-check.sh";
 
 const HARD_HOOKS: &[HardHook] = &[
+    HardHook {
+        script: ISSUE_TITLE_SCRIPT,
+        purpose: PURPOSE_ISSUE_TITLE_CHECK,
+        fragments: &[
+            "hard issue title check",
+            "codexy-issue-title-check.sh --issue-title",
+            "MUST NOT use Conventional Commit prefixes",
+        ],
+    },
     HardHook {
         script: PR_TITLE_SCRIPT,
         purpose: PURPOSE_PR_TITLE_CHECK,
@@ -79,6 +90,9 @@ pub(super) fn check_hard_hook(
 
 pub(super) fn missing_hard_hook_message(missing_purpose: u8) -> Option<&'static str> {
     match missing_purpose {
+        PURPOSE_ISSUE_TITLE_CHECK => {
+            Some("UserPromptSubmit hook command must run hooks/codexy-issue-title-check.sh")
+        }
         PURPOSE_PR_TITLE_CHECK => {
             Some("UserPromptSubmit hook command must run hooks/codexy-pr-title-check.sh")
         }

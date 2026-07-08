@@ -64,6 +64,107 @@ pub(super) fn has_negative_label_value(suffix: &str) -> bool {
     starts_with_negative_value(value)
 }
 
+pub(super) fn has_non_claim_phrase_context(prefix: &str, suffix: &str) -> bool {
+    has_unchecked_checklist_marker_before(prefix)
+        || has_non_claim_heading_suffix(suffix)
+        || has_non_claim_label_value(suffix)
+}
+
+fn has_unchecked_checklist_marker_before(prefix: &str) -> bool {
+    let prefix = prefix.trim_end_matches([' ', '\t']);
+    if prefix.ends_with("- [ ]") || prefix.ends_with("* [ ]") {
+        return true;
+    }
+    let marker = prefix
+        .rsplit_once('\n')
+        .map_or(prefix, |(_, line)| line)
+        .trim_end()
+        .strip_suffix("[ ]")
+        .map(str::trim_end);
+    marker.is_some_and(|marker| {
+        marker.strip_suffix(['.', ')']).is_some_and(|number| {
+            !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit())
+        })
+    })
+}
+
+fn has_non_claim_heading_suffix(suffix: &str) -> bool {
+    let suffix = suffix.trim_start_matches([' ', '\t']);
+    if suffix
+        .strip_prefix("status")
+        .is_some_and(|rest| is_boundary(rest.chars().next()) && has_non_claim_label_value(rest))
+    {
+        return true;
+    }
+    ["blocker", "blockers", "blocked", "pending", "waiting"]
+        .iter()
+        .any(|phrase| {
+            suffix
+                .strip_prefix(phrase)
+                .is_some_and(|rest| is_boundary(rest.chars().next()))
+        })
+        || has_non_claim_next_line(suffix)
+}
+
+fn has_non_claim_next_line(suffix: &str) -> bool {
+    let Some(rest) = suffix.strip_prefix('\n') else {
+        return false;
+    };
+    let line = rest.lines().next().unwrap_or_default().trim_start();
+    let item = line
+        .strip_prefix("- ")
+        .or_else(|| line.strip_prefix("* "))
+        .unwrap_or(line);
+    let item = item
+        .split_once(['.', ')'])
+        .filter(|(number, _)| !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit()))
+        .map_or(item, |(_, rest)| rest)
+        .trim_start();
+    [
+        "missing", "absent", "pending", "waiting", "blocked", "blocker",
+    ]
+    .iter()
+    .any(|phrase| {
+        item.strip_prefix(phrase)
+            .is_some_and(|rest| is_boundary(rest.chars().next()))
+    })
+}
+
+fn has_non_claim_label_value(suffix: &str) -> bool {
+    if label_value(suffix).is_some_and(|value| {
+        value
+            .strip_prefix("no blockers")
+            .is_some_and(|rest| is_boundary(rest.chars().next()))
+    }) {
+        return false;
+    }
+    has_negative_label_value(suffix)
+        || [
+            "not yet",
+            "not currently",
+            "unchecked",
+            "missing",
+            "unknown",
+            "pending",
+            "blocked",
+            "waiting",
+            "deferred",
+            "none",
+            "no",
+        ]
+        .iter()
+        .any(|phrase| label_value_starts_with(suffix, phrase))
+}
+
+fn label_value_starts_with(suffix: &str, phrase: &str) -> bool {
+    let Some(value) = label_value(suffix) else {
+        return false;
+    };
+    value
+        .strip_prefix(phrase)
+        .is_some_and(|rest| is_boundary(rest.chars().next()))
+}
+
 fn starts_with_negative_value(value: &str) -> bool {
     let value = value.trim_start_matches([' ', '\t', '\n', '\r', '-', '*']);
     if is_standalone_negative_no(value) {

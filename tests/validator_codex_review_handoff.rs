@@ -211,7 +211,7 @@ fn validator_cli_accepts_later_completed_compact_codex_review() -> TestResult {
 }
 
 fn eyes_only_pr_state() -> &'static str {
-    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
+    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#
 }
 
 fn assert_rejected_eyes_only(output: &std::process::Output, message: &str) {
