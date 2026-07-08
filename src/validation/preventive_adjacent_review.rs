@@ -118,13 +118,13 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
     );
     let has_focused_coverage = has_unnegated_any(
         segment,
-        &["regression coverage", "regression tests", "focused test"],
+        &["regression coverage", "regression tests", "focused tests"],
     );
     let has_concrete_no_change_rationale = (has_adjacent_subject
         || has_any(segment, &["none of the sibling", "none of the adjacent"]))
         && has_unnegated_any(segment, &["no-change rationale", "no change rationale"])
         && has_unnegated(segment, "inspected")
-        && (has_unnegated(segment, "function") || has_unnegated(segment, "test"))
+        && has_unnegated_any(segment, &["function", "functions", "test", "tests"])
         && has_unnegated_any(segment, &["invariants hold", "invariant holds"])
         && has_substantive_rationale(segment);
     (has_adjacent_subject && has_focused_coverage) || has_concrete_no_change_rationale
@@ -138,7 +138,9 @@ fn has_unnegated(text: &str, needle: &str) -> bool {
     while let Some(index) = rest.find(needle) {
         let start = offset + index;
         let end = start + needle.len();
-        if !is_negated_match(&text[..start]) && !is_post_negated_match(&text[end..]) {
+        let bounded = (start == 0 || !text.as_bytes()[start - 1].is_ascii_alphanumeric())
+            && (end == text.len() || !text.as_bytes()[end].is_ascii_alphanumeric());
+        if bounded && !is_negated_match(&text[..start]) && !is_post_negated_match(&text[end..]) {
             return true;
         }
         offset = end;
@@ -178,7 +180,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
             "were not",
             "weren't",
             "is missing",
-            "s are missing",
+            "are missing",
             "remains missing",
             "remain missing",
             "still missing",
@@ -229,7 +231,6 @@ fn has_readiness_not_applicable_state(text: &str) -> bool {
         })
     })
 }
-
 fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
     let suffix = &text[start..];
     let section_blank = suffix
@@ -242,9 +243,8 @@ fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
         .min()
         .map_or(text.len(), |index| start + index)
 }
-
 fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {
-    suffix[..index]
-        .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'))
-        == "preventive adjacent review"
+    let heading = suffix[..index]
+        .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'));
+    heading == "preventive adjacent review" || heading.starts_with("preventive adjacent review ")
 }
