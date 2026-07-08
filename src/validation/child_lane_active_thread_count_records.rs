@@ -7,12 +7,8 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
     let mut freed = None;
     for (line_number, line) in evidence.lines().enumerate() {
         let (count_records, trailing) = records_for_line(line, line_number, freed.clone());
-        if count_records.is_empty() && freed_capacity(line) {
-            freed = Some(ThreadOwner::from_line(line));
-        } else if !count_records.is_empty() {
-            records.extend(count_records);
-            freed = trailing;
-        }
+        records.extend(count_records);
+        freed = trailing;
     }
     records
 }
@@ -22,12 +18,8 @@ fn records_for_line(line: &str, line_number: usize, freed: Option<ThreadOwner>) 
     for segment in line.split(';').flat_map(|segment| segment.split(". ")) {
         let (count_records, trailing) =
             records_for_segment(line, segment, line_number, freed.clone());
-        if count_records.is_empty() && freed_capacity(segment) {
-            freed = Some(ThreadOwner::from_line(segment));
-        } else if !count_records.is_empty() {
-            records.extend(count_records);
-            freed = trailing;
-        }
+        records.extend(count_records);
+        freed = trailing;
     }
     (records, freed)
 }
