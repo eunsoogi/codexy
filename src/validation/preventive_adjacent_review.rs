@@ -31,10 +31,13 @@ fn has_true_label_value(text: &str, label: &str) -> bool {
     })
 }
 fn starts_with_true_waiting(text: &str) -> bool {
-    text.starts_with("waiting") && !has_false_heading_value(text)
+    text.strip_prefix("waiting")
+        .is_some_and(|value| !has_false_blocked_or_waiting_value(value))
 }
 fn has_false_blocked_or_waiting_value(value: &str) -> bool {
     let value = value
+        .trim_start()
+        .trim_start_matches(':')
         .trim_start()
         .trim_start_matches(['-', '*'])
         .trim_start();
@@ -51,6 +54,8 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         && (terminal || false_modifier);
     false_empty
         || matches!(first, "resolved" | "cleared")
+        || value.starts_with("on nothing")
+        || value.starts_with("on no ")
         || value.starts_with("not applicable")
         || value.starts_with("no blocker")
         || value.starts_with("no waiting")
@@ -144,30 +149,10 @@ fn is_post_negated_match(suffix: &str) -> bool {
     has_false_blocked_or_waiting_value(local)
         || has_any(local, &[" is missing", " not tested", " not covered"])
         || local.starts_with("s not ")
-        || [
-            "is not",
-            "isn't",
-            "are not",
-            "aren't",
-            "was not",
-            "wasn't",
-            "were not",
-            "weren't",
-            "is missing",
-            "are missing",
-            "remains missing",
-            "remain missing",
-            "still missing",
-            "not added",
-            "not needed",
-            "not run",
-            "not executed",
-            "missing",
-            "does not exist",
-            "doesn't exist",
-        ]
-        .iter()
-        .any(|negation| local.starts_with(negation))
+        || starts_with_pipe(
+            local,
+            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing",
+        )
 }
 fn has_substantive_rationale(segment: &str) -> bool {
     let Some((_, rationale)) = segment.rsplit_once("because") else {
@@ -198,6 +183,9 @@ fn has_any(text: &str, needles: &[&str]) -> bool {
 }
 fn has_pipe_any(text: &str, needles: &str) -> bool {
     needles.split('|').any(|needle| text.contains(needle))
+}
+fn starts_with_pipe(text: &str, needles: &str) -> bool {
+    needles.split('|').any(|needle| text.starts_with(needle))
 }
 fn has_unnegated_pipe(text: &str, needles: &str) -> bool {
     needles.split('|').any(|needle| has_unnegated(text, needle))

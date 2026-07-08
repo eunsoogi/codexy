@@ -42,6 +42,7 @@ fn validator_allows_no_change_rationale_with_code_and_coverage_surface() -> Test
 #[test]
 fn validator_rejects_no_waiting_no_related_prose_without_preventive_review() -> TestResult {
     for handoff in [
+        "Waiting on nothing after the exact review fix.\nReview response: fixed the Codex review comment and verified current head.\n",
         "Waiting: no child reroute was needed after the exact review fix.\nReview response: fixed the Codex review comment and verified current head.\n",
         "Waiting: no related parser code was touched after the exact review fix.\nReview response: fixed the Codex review comment and verified current head.\n",
         "Waiting: no adjacent helper changes were needed after the exact review fix.\nReview response: fixed the Codex review comment and verified current head.\n",
@@ -50,6 +51,27 @@ fn validator_rejects_no_waiting_no_related_prose_without_preventive_review() -> 
         assert!(
             !output.status.success(),
             "validator should reject no-waiting/no-related prose without preventive review\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_failed_preventive_coverage_claims() -> TestResult {
+    for handoff in [
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression tests failed for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused tests are failing for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage was blocked for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: no passing regression tests cover adjacent parser variants in the helper family.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should reject failed preventive coverage claims\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
             handoff,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
