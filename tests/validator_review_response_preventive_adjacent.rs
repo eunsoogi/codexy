@@ -39,6 +39,27 @@ fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_negated_preventive_adjacent_regression_coverage() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: no focused regression coverage for adjacent parser variants in the touched helper family.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject negated preventive adjacent coverage claims\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_preventive_adjacent_no_change_rationale() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads and tests validator_review_response_preventive_adjacent; invariants hold because sibling parser variants share the same boundary checks.\n",
@@ -48,6 +69,27 @@ fn validator_allows_preventive_adjacent_no_change_rationale() -> TestResult {
     assert_success(
         &output,
         "validator should allow concrete preventive no-change rationale",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_not_applicable_preventive_adjacent_no_change_rationale() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads and tests validator_review_response_preventive_adjacent; invariants hold because not applicable.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject not-applicable preventive no-change rationale\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
 }

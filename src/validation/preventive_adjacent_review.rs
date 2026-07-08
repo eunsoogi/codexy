@@ -40,7 +40,7 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
         return false;
     };
     let segment = &text[start..preventive_adjacent_review_end(&text, start)];
-    let has_adjacent_subject = has_any(
+    let has_adjacent_subject = has_unnegated_any(
         segment,
         &[
             "adjacent gap",
@@ -52,7 +52,7 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
             "sibling",
         ],
     );
-    let has_focused_coverage = has_any(
+    let has_focused_coverage = has_unnegated_any(
         segment,
         &[
             "focused regression coverage",
@@ -63,12 +63,69 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
         ],
     );
     let has_concrete_no_change_rationale =
-        has_any(segment, &["no-change rationale", "no change rationale"])
+        has_unnegated_any(segment, &["no-change rationale", "no change rationale"])
             && segment.contains("inspected")
             && (segment.contains("function") || segment.contains("test"))
-            && has_any(segment, &["invariants hold", "invariant holds"]);
+            && has_any(segment, &["invariants hold", "invariant holds"])
+            && has_substantive_rationale(segment);
 
     has_adjacent_subject && (has_focused_coverage || has_concrete_no_change_rationale)
+}
+
+fn has_unnegated_any(text: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| has_unnegated(text, needle))
+}
+
+fn has_unnegated(text: &str, needle: &str) -> bool {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(needle) {
+        let start = offset + index;
+        if !is_negated_match(&text[..start]) {
+            return true;
+        }
+        offset = start + needle.len();
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn is_negated_match(prefix: &str) -> bool {
+    let local_start = prefix
+        .rfind(['\n', ',', ';', ':'])
+        .map_or(0, |index| index + 1);
+    let local = prefix[local_start..].trim_end();
+    local.split_ascii_whitespace().any(|word| {
+        matches!(
+            word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()),
+            "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
+        )
+    })
+}
+
+fn has_substantive_rationale(segment: &str) -> bool {
+    let Some((_, rationale)) = segment.rsplit_once("because") else {
+        return false;
+    };
+    let rationale = rationale
+        .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '.' | ',' | ';' | ':'));
+    !rationale.is_empty()
+        && !has_any(
+            rationale,
+            &[
+                "not applicable",
+                "not-applicable",
+                "n/a",
+                "none",
+                "no change needed",
+                "not needed",
+                "does not apply",
+                "doesn't apply",
+                "out of scope",
+                "irrelevant",
+                "not relevant",
+            ],
+        )
 }
 
 fn has_any(text: &str, needles: &[&str]) -> bool {
