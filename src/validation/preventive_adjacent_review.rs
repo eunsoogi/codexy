@@ -88,11 +88,15 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
         segment,
         "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
     );
-    let has_code_surface =
-        has_unnegated_pipe(segment, "function|functions|code surface|code surfaces");
-    let has_test_surface = has_unnegated_pipe(
+    let has_code_surface = has_named_inspected_surface(
+        segment,
+        "function|functions|code surface|code surfaces|file|files",
+        "test|tests|coverage|regression coverage|regression tests|focused tests",
+    );
+    let has_test_surface = has_named_inspected_surface(
         segment,
         "test|tests|coverage|regression coverage|regression tests|focused tests",
+        "function|functions|code surface|code surfaces|file|files",
     );
     let has_concrete_no_change_rationale = (has_adjacent_subject
         || has_any(segment, &["none of the sibling", "none of the adjacent"]))
@@ -106,7 +110,7 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
 }
 fn has_focused_adjacent_coverage(segment: &str) -> bool {
     segment
-        .split_inclusive(['.', '\n'])
+        .split_inclusive(['.', '\n', ';'])
         .any(|unit| {
             has_unnegated_pipe(
                 unit,
@@ -134,6 +138,57 @@ fn has_exact_comment_only_coverage(unit: &str) -> bool {
             "exact-comment-only",
         ],
     )
+}
+fn has_named_inspected_surface(segment: &str, surface_terms: &str, stop_terms: &str) -> bool {
+    segment.split_inclusive(['.', '\n', ';']).any(|unit| {
+        has_unnegated(unit, "inspected")
+            && has_unnegated_pipe(unit, surface_terms)
+            && has_specific_surface_name_after_surface(unit, surface_terms, stop_terms)
+    })
+}
+fn has_specific_surface_name_after_surface(
+    unit: &str,
+    surface_terms: &str,
+    stop_terms: &str,
+) -> bool {
+    surface_terms.split('|').any(|surface| {
+        find_word(unit, surface).is_some_and(|surface_start| {
+            let window_start = surface_start + surface.len();
+            let window_end = stop_terms
+                .split('|')
+                .filter_map(|stop| find_word(&unit[window_start..], stop))
+                .min()
+                .map_or(unit.len(), |offset| window_start + offset);
+            has_specific_surface_name(&unit[window_start..window_end])
+        })
+    })
+}
+fn find_word(text: &str, needle: &str) -> Option<usize> {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(needle) {
+        let start = offset + index;
+        let end = start + needle.len();
+        let bounded = (start == 0 || !text.as_bytes()[start - 1].is_ascii_alphanumeric())
+            && (end == text.len() || !text.as_bytes()[end].is_ascii_alphanumeric());
+        if bounded {
+            return Some(start);
+        }
+        offset = end;
+        rest = &text[offset..];
+    }
+    None
+}
+fn has_specific_surface_name(text: &str) -> bool {
+    text.split_ascii_whitespace().any(|word| {
+        let clean = word.trim_matches(|ch: char| {
+            !(ch.is_ascii_alphanumeric() || matches!(ch, '_' | ':' | '/' | '.'))
+        });
+        clean.contains('_')
+            || clean.contains("::")
+            || clean.ends_with(".rs")
+            || (clean.contains('/') && (clean.contains('_') || clean.contains(".rs")))
+    })
 }
 fn has_substantive_rationale(segment: &str) -> bool {
     let Some((_, rationale)) = segment.rsplit_once("because") else {

@@ -10,6 +10,9 @@ fn validator_rejects_no_change_rationale_missing_code_or_test_surface() -> TestR
     for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads; invariants hold because sibling parser variants share the same boundary checks.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected tests validator_review_response_preventive_adjacent; invariants hold because sibling parser variants share the same boundary checks.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions and tests; invariants hold because sibling parser variants share the same boundary checks.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads and tests; invariants hold because sibling parser variants share the same boundary checks.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions and tests validator_review_response_preventive_adjacent; invariants hold because sibling parser variants share the same boundary checks.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert!(
@@ -19,8 +22,23 @@ fn validator_rejects_no_change_rationale_missing_code_or_test_surface() -> TestR
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
-        assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_semicolon_separated_adjacent_coverage() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused tests cover the exact comment only; regression coverage exercises adjacent parser variants in the helper family.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should allow semicolon-separated adjacent coverage\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
@@ -61,6 +79,58 @@ fn validator_rejects_no_waiting_no_related_prose_without_preventive_review() -> 
         );
         assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_bullet_feedback_after_empty_waiting_or_blockers() -> TestResult {
+    for handoff in [
+        "Waiting:\nReview feedback:\n- fixed the exact Codex review comment and verified current head.\n",
+        "Blockers:\nCodex feedback:\n- handled the exact Codex review comment and verified current head.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator should not treat empty waiting/blocker headings as incomplete evidence\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_adverbial_coverage_omission() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused tests intentionally omit adjacent parser variants in the helper family.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject omitted adjacent coverage even with an adverb\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_borrowed_preventive_evidence_from_feedback_sections() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head.\nPreventive adjacent review: no focused regression coverage was added.\nCodex feedback: regression coverage exercises adjacent parser variants in the helper family.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not borrow preventive evidence from later feedback sections\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
     Ok(())
 }
 

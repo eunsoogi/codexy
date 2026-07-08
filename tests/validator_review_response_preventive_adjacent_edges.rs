@@ -53,6 +53,8 @@ fn validator_rejects_exact_comment_only_handoff_with_no_waiting_heading() -> Tes
         "Waiting: none active. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: resolved. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: cleared. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting:\nReview feedback: fixed the exact Codex review comment and verified current head.\n",
+        "Blockers:\nCodex feedback: handled the exact Codex review comment and verified current head.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert!(
@@ -140,6 +142,9 @@ fn validator_rejects_colon_labeled_post_negated_preventive_coverage() -> TestRes
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression tests do not cover the exact comment; adjacent parser variants in the helper family were inspected manually.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused tests don't exercise adjacent parser variants in the helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage does not cover adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused tests omit adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression tests skip adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage excludes adjacent parser variants in the helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage covers only the exact comment. Adjacent parser variants in the helper family were inspected manually.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused tests cover only the exact comment; adjacent parser variants in the helper family were inspected manually.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused tests cover the exact comment only; adjacent parser variants in the helper family were inspected manually.\n",
