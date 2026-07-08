@@ -41,6 +41,8 @@ pub(super) fn capture_end_before_unrelated_evidence(
     let scope_lane = lane_label_for_scope(evidence, capture_start, cursor)
         .or_else(|| lane_label_for_current_scope(evidence, handler_start, cursor));
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
+    let mut saw_handler_defect_capture =
+        is_handler_defect_capture_line(&evidence[capture_start..cursor]);
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
@@ -48,7 +50,8 @@ pub(super) fn capture_end_before_unrelated_evidence(
         if is_different_lane_line(line, scope_lane.as_deref()) {
             return line_start;
         }
-        let line_is_unrelated_metadata = is_unrelated_metadata_line(line);
+        let line_is_unrelated_metadata = is_unrelated_metadata_line(line)
+            && (saw_handler_defect_capture || !is_excluded_lane_metadata_line(line));
         let line_extends_capture = if is_handoff_metadata_line(line) {
             true
         } else {
@@ -61,6 +64,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
             return line_start;
         }
         saw_capture |= line_extends_capture;
+        saw_handler_defect_capture |= is_handler_defect_capture_line(line);
         cursor = line_end;
     }
     evidence.len()
@@ -91,6 +95,20 @@ fn is_unrelated_metadata_line(line: &str) -> bool {
         return false;
     };
     !is_capture_related(&key.to_ascii_lowercase())
+}
+fn is_excluded_lane_metadata_line(line: &str) -> bool {
+    let Some((key, _)) = line_key_value(line) else {
+        return false;
+    };
+    let key = key.trim_start().to_ascii_lowercase();
+    [
+        "lane owner",
+        "lane owners",
+        "lane ownership",
+        "lane metadata",
+    ]
+    .iter()
+    .any(|prefix| key.starts_with(prefix))
 }
 pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
     let Some((key, _)) = line_key_value(line) else {
@@ -323,4 +341,14 @@ fn is_handler_capture_line(line: &str) -> bool {
         && ["handler", "missing-handler", "no handler registered"]
             .into_iter()
             .any(|marker| line.contains(marker))
+}
+
+fn is_handler_defect_capture_line(line: &str) -> bool {
+    is_handler_capture_line(line) && has_defect_label(line) && !has_absent_defect_capture(line)
+}
+
+fn has_defect_label(line: &str) -> bool {
+    line.contains("dogfooding defect")
+        || line.contains("tool-exposure defect")
+        || line.contains("dogfooding/tool-exposure defect")
 }

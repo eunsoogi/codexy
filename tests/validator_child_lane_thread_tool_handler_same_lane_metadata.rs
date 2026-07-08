@@ -19,8 +19,8 @@ fn validator_does_not_treat_lane_owner_metadata_as_current_lane_header()
             r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Lane A:
+Reported invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 {metadata}: child-owned
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
@@ -46,8 +46,8 @@ fn validator_does_not_treat_lane_ownership_metadata_as_current_lane_header()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Lane A:
-Lane ownership: child-owned
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane ownership: child-owned
 Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
