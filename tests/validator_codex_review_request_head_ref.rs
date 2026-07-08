@@ -38,6 +38,9 @@ fn validator_rejects_fresh_codex_review_request_without_fresh_pr_activity() -> T
         "Send Codex review, waiting for review output.\n",
         "Request @codex review and poll for review output.\n",
         "Request @codex review while waiting for review output.\n",
+        "Request review from @codex while waiting for review output.\n",
+        "Request a review from @codex while waiting for review output.\n",
+        "Request @codex to review while waiting for review output.\n",
         "Post @codex review, waiting for review output.\n",
     ] {
         let output = validate_handoff_with_pr_state(

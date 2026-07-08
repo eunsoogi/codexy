@@ -47,9 +47,7 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
                 .strip_prefix("next action is to ")
                 .is_some_and(starts_at_codex_review)
             || clause.starts_with("review request:"))
-        || clause.contains("request review from @codex")
-        || clause.contains("request a review from @codex")
-        || clause.contains("request @codex to review")
+        || has_codex_review_request_variant(clause)
 }
 
 fn is_past_tense_codex_review_request_clause(clause: &str) -> bool {
@@ -100,9 +98,20 @@ fn has_codex_review_request_action(clause: &str) -> bool {
     false
 }
 
-#[rustfmt::skip]
 fn has_review_request_action(clause: &str) -> bool {
-    has_codex_review_request_action(clause) || starts_at_codex_review(clause) || ["post", "comment", "send"].iter().any(|verb| clause.contains(&format!("{verb} @codex review")) || clause.contains(&format!("{verb} codex review")))
+    has_codex_review_request_action(clause)
+        || has_codex_review_request_variant(clause)
+        || starts_at_codex_review(clause)
+        || ["post", "comment", "send"].iter().any(|verb| {
+            clause.contains(&format!("{verb} @codex review"))
+                || clause.contains(&format!("{verb} codex review"))
+        })
+}
+
+fn has_codex_review_request_variant(clause: &str) -> bool {
+    clause.contains("request review from @codex")
+        || clause.contains("request a review from @codex")
+        || clause.contains("request @codex to review")
 }
 
 fn is_pull_request_noun_at(text: &str, request_start: usize) -> bool {
