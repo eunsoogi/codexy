@@ -53,6 +53,7 @@ mod mcp_runtime;
 mod merge_message;
 mod preventive_adjacent_review;
 mod preventive_adjacent_review_sections;
+mod preventive_adjacent_review_text;
 mod prompt_yaml;
 mod release_publish_contract;
 mod review_response_claim;

@@ -2,6 +2,10 @@ use super::preventive_adjacent_review_sections::{
     has_false_readiness_before_evidence, has_readiness_not_applicable_state,
     preventive_adjacent_review_end,
 };
+use super::preventive_adjacent_review_text::{
+    has_any, has_false_blocked_or_waiting_value, has_pipe_any, has_unnegated, has_unnegated_any,
+    has_unnegated_pipe, is_label_negated_match,
+};
 
 pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
@@ -17,11 +21,15 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
         || has_true_blocked_or_blocker_label(&text)
 }
 fn starts_with_true_blocker(text: &str) -> bool {
-    (text.starts_with("blocked") || text.starts_with("blocker")) && !has_false_heading_value(text)
-}
-fn has_false_heading_value(text: &str) -> bool {
-    text.split_once(':')
-        .is_some_and(|(_, value)| has_false_blocked_or_waiting_value(value))
+    ["blockers", "blocked", "blocker"].iter().any(|prefix| {
+        text.strip_prefix(prefix).is_some_and(|value| {
+            value
+                .chars()
+                .next()
+                .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+                && !has_false_blocked_or_waiting_value(value)
+        })
+    })
 }
 fn has_true_blocked_or_blocker_label(text: &str) -> bool {
     ["blocked:", "blocker:", "blockers:"]
@@ -41,38 +49,6 @@ fn has_true_label_value(text: &str, label: &str) -> bool {
 fn starts_with_true_waiting(text: &str) -> bool {
     text.strip_prefix("waiting")
         .is_some_and(|value| !has_false_blocked_or_waiting_value(value))
-}
-fn has_false_blocked_or_waiting_value(value: &str) -> bool {
-    let value = value
-        .trim_start()
-        .trim_start_matches(':')
-        .trim_start()
-        .trim_start_matches(['-', '*'])
-        .trim_start();
-    let first = value
-        .split(|ch: char| !matches!(ch, '/' | '0'..='9' | 'a'..='z'))
-        .next()
-        .unwrap_or("");
-    let rest = value[first.len()..].trim_start_matches([' ', '\t']);
-    let terminal = rest.chars().next().is_none_or(|ch| ".;,\n\r".contains(ch));
-    let false_modifier = ["active", "currently", "now", "remain"]
-        .iter()
-        .any(|modifier| rest.starts_with(modifier));
-    let false_empty = matches!(first, "0" | "zero" | "none" | "no" | "false" | "n/a" | "na")
-        && (terminal || false_modifier);
-    false_empty
-        || matches!(first, "resolved" | "cleared")
-        || value.starts_with("on nothing")
-        || value.starts_with("on no ")
-        || value.starts_with("not applicable")
-        || value.starts_with("no blocker")
-        || value.starts_with("no waiting")
-        || value.starts_with("no child")
-        || value.starts_with("no related")
-        || value.starts_with("no adjacent")
-        || value.starts_with("no current blocker")
-        || value.starts_with("no current waiting")
-        || value.starts_with("no current issue")
 }
 fn is_stale_blocker_label_value(value: &str) -> bool {
     let end = value.find('\n').unwrap_or(value.len());
@@ -112,10 +88,6 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
         segment,
         "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
     );
-    let has_focused_coverage = has_unnegated_pipe(
-        segment,
-        "regression coverage|regression tests|focused tests",
-    );
     let has_code_surface =
         has_unnegated_pipe(segment, "function|functions|code surface|code surfaces");
     let has_test_surface = has_unnegated_pipe(
@@ -130,78 +102,33 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
         && has_test_surface
         && has_unnegated_any(segment, &["invariants hold", "invariant holds"])
         && has_substantive_rationale(segment);
-    (has_adjacent_subject && has_focused_coverage) || has_concrete_no_change_rationale
+    has_focused_adjacent_coverage(segment) || has_concrete_no_change_rationale
 }
-fn has_unnegated_any(text: &str, needles: &[&str]) -> bool {
-    needles.iter().any(|needle| has_unnegated(text, needle))
-}
-fn has_unnegated(text: &str, needle: &str) -> bool {
-    let mut rest = text;
-    let mut offset = 0;
-    while let Some(index) = rest.find(needle) {
-        let start = offset + index;
-        let end = start + needle.len();
-        let bounded = (start == 0 || !text.as_bytes()[start - 1].is_ascii_alphanumeric())
-            && (end == text.len() || !text.as_bytes()[end].is_ascii_alphanumeric());
-        if bounded
-            && !is_negated_match(&text[..start], needle)
-            && !is_post_negated_match(&text[end..])
-        {
-            return true;
-        }
-        offset = end;
-        rest = &text[offset..];
-    }
-    false
-}
-fn is_negated_match(prefix: &str, needle: &str) -> bool {
-    let sentence_start = prefix.rfind(['\n', '.']).map_or(0, |index| index + 1);
-    let sentence = prefix[sentence_start..].trim_end();
-    let local_start = prefix
-        .rfind(['\n', ',', ';', ':', '.'])
-        .map_or(0, |index| index + 1);
-    let local = prefix[local_start..].trim_end();
-    let historical_context =
-        has_any(
-            sentence,
-            &["previous", "previously", "historical", "earlier"],
-        ) && !has_any(local, &["now", "current", "currently", "pending", "still"]);
-    let future_context = has_any(local, &["plan to", "planned to", "will ", "to run"]);
-    historical_context
-        || future_context
-        || local.split_ascii_whitespace().any(|word| {
-            let word = word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-            matches!(
-                word,
-                "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
-            ) || matches!(word, "was" | "were") && needle.contains("blocked")
+fn has_focused_adjacent_coverage(segment: &str) -> bool {
+    segment
+        .split_inclusive(['.', '\n'])
+        .any(|unit| {
+            has_unnegated_pipe(
+                unit,
+                "regression coverage|regression tests|focused tests",
+            ) && has_unnegated_pipe(
+                unit,
+                "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
+            ) && !has_exact_comment_only_coverage(unit)
         })
 }
-fn is_label_negated_match(prefix: &str) -> bool {
-    let local_start = prefix
-        .rfind(['\n', ',', ';', ':', '.'])
-        .map_or(0, |index| index + 1);
-    prefix[local_start..].split_ascii_whitespace().any(|word| {
-        matches!(
-            word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()),
-            "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
-        )
-    })
-}
-fn is_post_negated_match(suffix: &str) -> bool {
-    let local_end = suffix
-        .find(['\n', ',', ';'])
-        .or_else(|| suffix.find(". "))
-        .unwrap_or(suffix.len());
-    let local = suffix[..local_end]
-        .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
-    has_false_blocked_or_waiting_value(local)
-        || has_any(local, &[" is missing", " not tested", " not covered"])
-        || local.starts_with("s not ")
-        || starts_with_pipe(
-            local,
-            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
-        )
+fn has_exact_comment_only_coverage(unit: &str) -> bool {
+    has_unnegated_any(
+        unit,
+        &[
+            "only the exact comment",
+            "only the exact review comment",
+            "only the exact codex review comment",
+            "only exact comment",
+            "only exact review comment",
+            "exact-comment-only",
+        ],
+    )
 }
 fn has_substantive_rationale(segment: &str) -> bool {
     let Some((_, rationale)) = segment.rsplit_once("because") else {
@@ -226,16 +153,4 @@ fn has_substantive_rationale(segment: &str) -> bool {
                 "not relevant",
             ],
         )
-}
-fn has_any(text: &str, needles: &[&str]) -> bool {
-    needles.iter().any(|needle| text.contains(needle))
-}
-fn has_pipe_any(text: &str, needles: &str) -> bool {
-    needles.split('|').any(|needle| text.contains(needle))
-}
-fn starts_with_pipe(text: &str, needles: &str) -> bool {
-    needles.split('|').any(|needle| text.starts_with(needle))
-}
-fn has_unnegated_pipe(text: &str, needles: &str) -> bool {
-    needles.split('|').any(|needle| has_unnegated(text, needle))
 }

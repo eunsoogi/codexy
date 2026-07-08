@@ -55,6 +55,10 @@ fn validator_rejects_exact_comment_only_handoff_with_no_blockers_heading() -> Te
         "Blockers: zero. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blockers:\n- none\nReview response: fixed the exact Codex review comment and verified current head.\n",
         "Blockers: no blockers. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blocked? no. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blocked - none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blocker? no. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blockers - none. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Readiness: not complete.\nReview response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the helper family.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
