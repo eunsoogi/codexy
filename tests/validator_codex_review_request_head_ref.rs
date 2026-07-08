@@ -30,9 +30,19 @@ fn validator_rejects_fresh_codex_review_request_without_head_ref_oid() -> TestRe
 
 #[test]
 fn validator_rejects_fresh_codex_review_request_without_fresh_pr_activity() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Request exactly one fresh Codex review now.\n",
-        r#"{
+        "Post @codex review and wait for review output.\n",
+        "Post Codex review and wait for review output.\n",
+        "Comment Codex review while waiting for review output.\n",
+        "Send Codex review, waiting for review output.\n",
+        "Request @codex review and poll for review output.\n",
+        "Request @codex review while waiting for review output.\n",
+        "Post @codex review, waiting for review output.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            handoff,
+            r#"{
             "number": 174,
             "state": "OPEN",
             "isDraft": false,
@@ -42,8 +52,9 @@ fn validator_rejects_fresh_codex_review_request_without_fresh_pr_activity() -> T
             "headRefCommittedDate": "2026-07-05T10:39:00Z",
             "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
         }"#,
-    )?;
-    assert_rejected_contains(&output, "freshly captured PR comments and reviews");
+        )?;
+        assert_rejected_contains(&output, "freshly captured PR comments and reviews");
+    }
     Ok(())
 }
 

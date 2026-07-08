@@ -23,20 +23,20 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
     let clause = clause.trim_start();
     if clause.contains("wait")
         && (clause.contains("review output") || clause.contains("post output"))
+        && !has_review_request_action(clause)
     {
         return false;
     }
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
-    let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
         && ((contains_word(clause, "request")
             || contains_word(clause, "requesting")
             || is_past_tense_codex_review_request_clause(clause))
             && !is_pull_request_noun_clause(clause)
-            || names_at_codex_review
-                && ["post", "comment", "send"]
-                    .iter()
-                    .any(|verb| contains_word(clause, verb))
+            || ["post", "comment", "send"]
+                .iter()
+                .any(|verb| contains_word(clause, verb))
+                && names_codex_review
             || starts_at_codex_review(clause.trim())
             || clause
                 .strip_prefix("next action:")
@@ -98,6 +98,11 @@ fn has_codex_review_request_action(clause: &str) -> bool {
         rest = &clause[offset..];
     }
     false
+}
+
+#[rustfmt::skip]
+fn has_review_request_action(clause: &str) -> bool {
+    has_codex_review_request_action(clause) || starts_at_codex_review(clause) || ["post", "comment", "send"].iter().any(|verb| clause.contains(&format!("{verb} @codex review")) || clause.contains(&format!("{verb} codex review")))
 }
 
 fn is_pull_request_noun_at(text: &str, request_start: usize) -> bool {
