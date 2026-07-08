@@ -30,11 +30,33 @@ pub(super) fn preventive_adjacent_review_end(text: &str, start: usize) -> usize 
         .match_indices("\n\n")
         .map(|(index, _)| index)
         .find(|index| !is_preventive_adjacent_heading_blank(suffix, *index));
-    [section_blank, suffix.find("\n#"), suffix.find("\nreview ")]
-        .into_iter()
-        .flatten()
-        .min()
-        .map_or(text.len(), |index| start + index)
+    [
+        section_blank,
+        suffix.find("\n#"),
+        suffix.find("\nreview "),
+        plain_handoff_section_boundary(suffix),
+    ]
+    .into_iter()
+    .flatten()
+    .min()
+    .map_or(text.len(), |index| start + index)
+}
+
+fn plain_handoff_section_boundary(suffix: &str) -> Option<usize> {
+    suffix.match_indices('\n').find_map(|(index, _)| {
+        let line = suffix[index + 1..].trim_start();
+        [
+            "verification:",
+            "tests:",
+            "not run:",
+            "blockers:",
+            "waiting:",
+            "sentinel:",
+        ]
+        .iter()
+        .any(|label| line.starts_with(label))
+        .then_some(index)
+    })
 }
 
 fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {

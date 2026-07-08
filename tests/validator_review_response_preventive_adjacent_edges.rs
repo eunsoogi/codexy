@@ -122,6 +122,7 @@ fn validator_allows_real_waiting_state_without_preventive_adjacent_review() -> T
 fn validator_rejects_colon_labeled_post_negated_preventive_coverage() -> TestResult {
     for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused regression coverage: not needed.\n",
+        "Review response: fixed the Codex review comment and verified current head.\nPreventive adjacent review: adjacent parser variants inspected; no focused regression coverage was added.\nVerification: regression coverage suite passed.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage covers the exact comment; adjacent parser variants were not tested.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; regression coverage not added.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; regression coverage is missing.\n",
@@ -140,10 +141,10 @@ fn validator_rejects_colon_labeled_post_negated_preventive_coverage() -> TestRes
             handoff,
             String::from_utf8_lossy(&output.stderr)
         );
+        let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
-            "unexpected stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
+            stderr.contains("preventive adjacent review"),
+            "unexpected stderr: {stderr}"
         );
     }
     Ok(())
@@ -228,23 +229,6 @@ fn resolved_review_thread_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {"pageInfo":{"hasNextPage":false},
-            "nodes": [
-                {
-                    "id": "PRRT_kwDOResolved",
-                    "isResolved": true,
-                    "isOutdated": false,
-                    "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {
-                        "nodes": [
-                            {
-                                "url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r3",
-                                "body": "Please fix this exact parser branch."
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
     }"#
 }

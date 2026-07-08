@@ -90,14 +90,17 @@ fn validator_allows_real_blocker_state_without_preventive_adjacent_review() -> T
 }
 #[test]
 fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression tests exercise adjacent parser variants in the touched helper family.\n",
-        resolved_review_thread_pr_state(),
-    )?;
-    assert_success(
-        &output,
-        "validator should allow preventive adjacent coverage",
-    );
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression tests were added for adjacent parser variants in the touched helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage was added for adjacent parser variants in the touched helper family.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_success(
+            &output,
+            "validator should allow preventive adjacent coverage",
+        );
+    }
     Ok(())
 }
 
@@ -228,23 +231,6 @@ fn resolved_review_thread_pr_state() -> &'static str {
         "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
-        "reviewThreads": {"pageInfo":{"hasNextPage":false},
-            "nodes": [
-                {
-                    "id": "PRRT_kwDOResolved",
-                    "isResolved": true,
-                    "isOutdated": false,
-                    "path": "src/validation/review_thread_resolution.rs",
-                    "comments": {
-                        "nodes": [
-                            {
-                                "url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r3",
-                                "body": "Please fix this exact parser branch."
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
+        "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
     }"#
 }

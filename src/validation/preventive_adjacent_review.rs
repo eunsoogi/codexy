@@ -142,7 +142,10 @@ fn has_unnegated(text: &str, needle: &str) -> bool {
         let end = start + needle.len();
         let bounded = (start == 0 || !text.as_bytes()[start - 1].is_ascii_alphanumeric())
             && (end == text.len() || !text.as_bytes()[end].is_ascii_alphanumeric());
-        if bounded && !is_negated_match(&text[..start]) && !is_post_negated_match(&text[end..]) {
+        if bounded
+            && !is_negated_match(&text[..start], needle)
+            && !is_post_negated_match(&text[end..])
+        {
             return true;
         }
         offset = end;
@@ -150,7 +153,7 @@ fn has_unnegated(text: &str, needle: &str) -> bool {
     }
     false
 }
-fn is_negated_match(prefix: &str) -> bool {
+fn is_negated_match(prefix: &str, needle: &str) -> bool {
     let sentence_start = prefix.rfind(['\n', '.']).map_or(0, |index| index + 1);
     let sentence = prefix[sentence_start..].trim_end();
     let local_start = prefix
@@ -166,10 +169,11 @@ fn is_negated_match(prefix: &str) -> bool {
     historical_context
         || future_context
         || local.split_ascii_whitespace().any(|word| {
+            let word = word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
             matches!(
-                word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()),
-                "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none" | "was" | "were"
-            )
+                word,
+                "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
+            ) || matches!(word, "was" | "were") && needle.contains("blocked")
         })
 }
 fn is_label_negated_match(prefix: &str) -> bool {
