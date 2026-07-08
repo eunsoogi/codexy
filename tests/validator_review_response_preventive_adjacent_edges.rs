@@ -7,10 +7,10 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_rejects_not_applicable_preventive_adjacent_claim() -> TestResult {
     for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review isn't applicable.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review was not performed.\n\n- Focused regression coverage exercises adjacent parser variants in the touched helper family.\n",
         "PR readiness: not applicable. Review response: fixed the Codex review comment and verified current head.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
-
         assert!(
             !output.status.success(),
             "validator should reject not-applicable claims without real waiting evidence\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",

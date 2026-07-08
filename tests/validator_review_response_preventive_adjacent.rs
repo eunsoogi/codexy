@@ -72,20 +72,20 @@ fn validator_rejects_exact_comment_only_handoff_with_no_blockers_heading() -> Te
     }
     Ok(())
 }
-
 #[test]
 fn validator_allows_real_blocker_state_without_preventive_adjacent_review() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Blocker: upstream review-thread evidence is unavailable, so this review-response lane is not complete.\nReview response: fixed the exact Codex review comment.\n",
-        resolved_review_thread_pr_state(),
-    )?;
-    assert_success(
-        &output,
-        "validator should still allow true blocker state evidence",
-    );
+        "Blocked: no current review yet. Review response: fixed the exact Codex review comment.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_success(
+            &output,
+            "validator should allow true blocker state evidence",
+        );
+    }
     Ok(())
 }
-
 #[test]
 fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
     let output = validate_handoff_with_pr_state(

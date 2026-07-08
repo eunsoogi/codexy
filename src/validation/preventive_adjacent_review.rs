@@ -15,23 +15,9 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "work is blocked",
             ],
         )
-        || has_any(
+        || has_pipe_any(
             &text,
-            &[
-                "this lane is not complete",
-                "lane is not complete",
-                "is not complete",
-                "is not currently complete",
-                "isn't complete",
-                "isn't yet complete",
-                "not currently complete",
-                "not ready for handoff",
-                "not currently ready for handoff",
-                "aren't ready for handoff",
-                "aren't yet ready for handoff",
-                "aren't currently ready for handoff",
-                "isn't currently ready for handoff",
-            ],
+            "this lane is not complete|lane is not complete|is not complete|is not currently complete|isn't complete|isn't yet complete|not currently complete|not ready for handoff|not currently ready for handoff|aren't ready for handoff|aren't yet ready for handoff|aren't currently ready for handoff|isn't currently ready for handoff",
         )
         || has_true_blocked_or_blocker_label(&text)
 }
@@ -76,25 +62,15 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         || value.starts_with("not applicable")
         || value.starts_with("no blocker")
         || value.starts_with("no waiting")
-        || value.starts_with("no current ")
+        || value.starts_with("no current blocker")
+        || value.starts_with("no current waiting")
+        || value.starts_with("no current issue")
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated(text, "remains unresolved")
-        && (has_any(
+        && (has_pipe_any(
             text,
-            &[
-                "this lane is not complete",
-                "lane is not complete",
-                "is not complete",
-                "isn't complete",
-                "isn't yet complete",
-                "not ready for handoff",
-                "aren't ready for handoff",
-                "aren't yet ready for handoff",
-                "not currently ready for handoff",
-                "aren't currently ready for handoff",
-                "isn't currently ready for handoff",
-            ],
+            "this lane is not complete|lane is not complete|is not complete|isn't complete|isn't yet complete|not ready for handoff|aren't ready for handoff|aren't yet ready for handoff|not currently ready for handoff|aren't currently ready for handoff|isn't currently ready for handoff",
         ) || has_readiness_not_applicable_state(text)
             || has_true_label_value(text, "waiting:"))
         || has_true_blocked_or_blocker_label(text)
@@ -222,6 +198,9 @@ fn has_substantive_rationale(segment: &str) -> bool {
 fn has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| text.contains(needle))
 }
+fn has_pipe_any(text: &str, needles: &str) -> bool {
+    needles.split('|').any(|needle| text.contains(needle))
+}
 fn has_readiness_not_applicable_state(text: &str) -> bool {
     ["pr readiness:", "readiness:"].iter().any(|label| {
         text.find(label).is_some_and(|index| {
@@ -244,7 +223,15 @@ fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
         .map_or(text.len(), |index| start + index)
 }
 fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {
-    let heading = suffix[..index]
+    let raw = suffix[..index].trim();
+    let heading = raw
         .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'));
-    heading == "preventive adjacent review" || heading.starts_with("preventive adjacent review ")
+    (raw.starts_with('#')
+        || raw.ends_with(':')
+        || matches!(
+            heading,
+            "preventive adjacent review" | "preventive adjacent review evidence"
+        ))
+        && (heading == "preventive adjacent review"
+            || heading.starts_with("preventive adjacent review evidence"))
 }
