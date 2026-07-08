@@ -14,7 +14,7 @@ pub(super) fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         .unwrap_or("");
     let rest = value[first.len()..].trim_start_matches([' ', '\t']);
     let terminal = rest.chars().next().is_none_or(|ch| ".;,\n\r".contains(ch));
-    let false_modifier = ["active", "currently", "now", "remain"]
+    let false_modifier = ["active", "currently", "now", "pending", "remain"]
         .iter()
         .any(|modifier| rest.starts_with(modifier));
     let false_empty = matches!(first, "0" | "zero" | "none" | "no" | "false" | "n/a" | "na")
@@ -44,7 +44,12 @@ fn empty_heading_before_next_section(value: &str) -> bool {
     }
     let next = value
         .lines()
-        .map(|line| line.trim_start().trim_matches(':'))
+        .map(|line| {
+            line.trim_start()
+                .trim_start_matches(['-', '*', '+'])
+                .trim_start()
+                .trim_matches(':')
+        })
         .find(|line| !line.trim().is_empty())
         .unwrap_or("");
     starts_with_pipe(
@@ -120,7 +125,7 @@ fn is_negated_match(prefix: &str, needle: &str) -> bool {
             let word = word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
             matches!(
                 word,
-                "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
+                "0" | "zero" | "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
             ) || matches!(word, "was" | "were") && needle.contains("blocked")
         })
 }
