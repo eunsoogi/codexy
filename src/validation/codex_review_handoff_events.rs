@@ -58,9 +58,9 @@ fn review_events(pr_state: &Value, require_head_match: bool) -> Vec<ReviewEvent<
             let matches_head = codex_item_matches_head(item, head)
                 || matches!(kind, ReviewEventKind::CodexRequest)
                     && !has_head_evidence
-                    && event_timestamp(item)
-                        .zip(head_date)
-                        .is_some_and(|(created, head_date)| created >= head_date);
+                    && event_timestamp(item).is_some_and(|created| {
+                        head_date.is_none_or(|head_date| created >= head_date)
+                    });
             Some(ReviewEvent {
                 kind,
                 matches_head,

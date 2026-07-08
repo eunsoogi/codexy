@@ -55,6 +55,56 @@ fn validator_cli_rejects_single_current_head_request_followed_by_stale_output() 
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_request_with_stale_output_without_head_commit_date() -> TestResult {
+    let handoff = format!(
+        "Post-compaction continuation readiness:\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Duplicate/no-active-work state: PR #262 has no duplicate lane after current GitHub state re-check.\n\
+         Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
+         {GIT_PREFLIGHT}\n\
+         Stop condition: no merge; request at most one current-head Codex review.\n\
+         Next action: request Codex review on current head.\n"
+    );
+    let output = validate_handoff_with_pr_state(
+        &handoff,
+        r#"{
+            "number":262,
+            "state":"OPEN",
+            "isDraft":false,
+            "mergeStateStatus":"CLEAN",
+            "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "comments":[{
+                "body":"@codex review",
+                "author":{"login":"eunsoogi"},
+                "createdAt":"2026-07-05T10:40:00Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/262#issuecomment-4884799999",
+                "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
+            }],
+            "reviews":[{
+                "body":"Didn't find any major issues.\n\nReviewed commit: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
+                "author":{"login":"chatgpt-codex-connector"},
+                "submittedAt":"2026-07-05T10:41:00Z",
+                "commit":{"oid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+            }],
+            "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+        }"#,
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator should keep request pending when headRefCommittedDate is missing and later output is stale\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("duplicate current-head Codex review request"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(
     handoff: &str,
     pr_state: &str,
