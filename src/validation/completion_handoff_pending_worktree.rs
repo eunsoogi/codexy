@@ -1,6 +1,6 @@
 use super::completion_handoff_pending_worktree_text::{
     char_window_start, has_any, has_nearby_negation, has_terminal_false_value,
-    has_true_decision_value, phrase_has_boundaries,
+    has_true_decision_value, is_markdown_list_item, phrase_has_boundaries,
 };
 
 const PENDING_WORKTREE_STATE_ERROR: &str = "pending worktree ids must resolve to a surfaced thread, explicit setup failure, or bounded timeout state with safe retry/reassignment evidence";
@@ -82,8 +82,11 @@ fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
         offset = value_end;
         rest = &text[offset..start + boundary];
     }
+    if starts.is_empty() {
+        return local_id_starts_in_following_list(text, start + boundary);
+    }
     if starts.len() > 1 {
-        if let Some(colon) = grouped_body_separator(text, start, &starts) {
+        if let Some(colon) = grouped_body_separator(text, start, start + boundary, &starts) {
             let body_start = colon + 1;
             let body = &text[body_start..start + boundary];
             let ordinal_starts: Vec<_> = starts
@@ -99,11 +102,54 @@ fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
     starts
 }
 
-fn grouped_body_separator(text: &str, sentence_start: usize, starts: &[usize]) -> Option<usize> {
+fn local_id_starts_in_following_list(text: &str, list_header_end: usize) -> Vec<usize> {
+    let mut starts = Vec::new();
+    let mut offset = list_header_end;
+    let mut rest = &text[list_header_end..];
+    if rest.starts_with('\n') {
+        offset += 1;
+        rest = &text[offset..];
+    } else {
+        return starts;
+    }
+    for line in rest.split_inclusive('\n') {
+        let line_without_newline = line.trim_end_matches('\n');
+        let trimmed = line_without_newline.trim_start();
+        if !is_markdown_list_item(trimmed) {
+            break;
+        }
+        let line_indent = line_without_newline.len() - trimmed.len();
+        let line_start = offset + line_indent;
+        let mut item_rest = trimmed;
+        let mut item_offset = line_start;
+        while let Some(index) = item_rest.find("local:") {
+            let id_start = item_offset + index;
+            starts.push(id_start);
+            let value_end = local_id_value(text, id_start)
+                .map_or(id_start + "local:".len(), |value| {
+                    id_start + "local:".len() + value.len()
+                });
+            item_offset = value_end;
+            item_rest = &text[item_offset..offset + line_without_newline.len()];
+        }
+        offset += line.len();
+    }
+    starts
+}
+
+fn grouped_body_separator(
+    text: &str,
+    sentence_start: usize,
+    sentence_end: usize,
+    starts: &[usize],
+) -> Option<usize> {
     let last_start = *starts.last()?;
     let last_value = local_id_value(text, last_start)?;
     let after_last_value = last_start + "local:".len() + last_value.len();
-    let sentence = &text[after_last_value..];
+    if after_last_value >= sentence_end {
+        return None;
+    }
+    let sentence = &text[after_last_value..sentence_end];
     sentence
         .find(':')
         .map(|index| after_last_value + index)

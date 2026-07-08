@@ -67,6 +67,14 @@ pub(super) fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> boo
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
 
+pub(super) fn is_markdown_list_item(line: &str) -> bool {
+    if line.starts_with("- ") || line.starts_with("* ") || line.starts_with("+ ") {
+        return true;
+    }
+    let digits = line.chars().take_while(|c| c.is_ascii_digit()).count();
+    digits > 0 && line[digits..].starts_with(". ")
+}
+
 pub(super) fn has_nearby_negation(prefix: &str) -> bool {
     "no|no known|no longer|non|non-|not|not a|not an|isn't|is not|hasn't|without"
         .split('|')
