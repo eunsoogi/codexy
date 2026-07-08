@@ -4,16 +4,9 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
     starts_with_true_blocker(trimmed)
         || starts_with_true_waiting(trimmed)
         || has_unresolved_thread_waiting_state(&text)
-        || has_unnegated_any(
+        || has_unnegated_pipe(
             &text,
-            &[
-                "blocked on",
-                "blocked by",
-                "blocked due to",
-                "now blocked",
-                "goal blocked",
-                "work is blocked",
-            ],
+            "blocked on|blocked by|blocked due to|now blocked|goal blocked|work is blocked",
         )
         || has_true_blocked_or_blocker_label(&text)
 }
@@ -83,26 +76,26 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
         return false;
     }
     let segment = &text[start..preventive_adjacent_review_end(&text, start)];
-    let has_adjacent_subject = has_unnegated_any(
+    let has_adjacent_subject = has_unnegated_pipe(
         segment,
-        &[
-            "adjacent gap",
-            "adjacent parser",
-            "helper family",
-            "parser variant",
-            "workflow variant",
-            "sibling",
-        ],
+        "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
     );
-    let has_focused_coverage = has_unnegated_any(
+    let has_focused_coverage = has_unnegated_pipe(
         segment,
-        &["regression coverage", "regression tests", "focused tests"],
+        "regression coverage|regression tests|focused tests",
+    );
+    let has_code_surface =
+        has_unnegated_pipe(segment, "function|functions|code surface|code surfaces");
+    let has_test_surface = has_unnegated_pipe(
+        segment,
+        "test|tests|coverage|regression coverage|regression tests|focused tests",
     );
     let has_concrete_no_change_rationale = (has_adjacent_subject
         || has_any(segment, &["none of the sibling", "none of the adjacent"]))
         && has_unnegated_any(segment, &["no-change rationale", "no change rationale"])
         && has_unnegated(segment, "inspected")
-        && has_unnegated_any(segment, &["function", "functions", "test", "tests"])
+        && has_code_surface
+        && has_test_surface
         && has_unnegated_any(segment, &["invariants hold", "invariant holds"])
         && has_substantive_rationale(segment);
     (has_adjacent_subject && has_focused_coverage) || has_concrete_no_change_rationale
@@ -202,6 +195,9 @@ fn has_any(text: &str, needles: &[&str]) -> bool {
 }
 fn has_pipe_any(text: &str, needles: &str) -> bool {
     needles.split('|').any(|needle| text.contains(needle))
+}
+fn has_unnegated_pipe(text: &str, needles: &str) -> bool {
+    needles.split('|').any(|needle| has_unnegated(text, needle))
 }
 fn has_false_readiness_before_evidence(text: &str, start: usize) -> bool {
     ["readiness:", "pr readiness:", "pr ready:"]
