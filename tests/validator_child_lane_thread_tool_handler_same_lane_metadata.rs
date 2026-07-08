@@ -52,6 +52,7 @@ Lane A:
 Fallback route: parent captured tool exposure mismatch for the same lane.
 Tracking issue: #246
 Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
+Lane metadata: no dogfooding defect for unrelated LSP evidence.
 Maintainer reassignment: none
 "#,
     )?;

@@ -252,6 +252,9 @@ fn strip_lane_label_prefix(key: &str) -> &str {
     if label.is_empty() {
         return key;
     }
+    if is_excluded_lane_label(label) {
+        return key;
+    }
     rest[label_end..].trim_start_matches(|ch: char| ch.is_whitespace() || ch == '-' || ch == '.')
 }
 
@@ -291,10 +294,12 @@ fn lane_label(line: &str) -> Option<String> {
         .next()
         .unwrap_or_default()
         .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-    (!label.is_empty()
-        && !["owner", "owners", "ownership", "metadata"]
-            .contains(&label.to_ascii_lowercase().as_str()))
-    .then(|| format!("lane {}", label.to_ascii_lowercase()))
+    (!label.is_empty() && !is_excluded_lane_label(label))
+        .then(|| format!("lane {}", label.to_ascii_lowercase()))
+}
+
+fn is_excluded_lane_label(label: &str) -> bool {
+    ["owner", "owners", "ownership", "metadata"].contains(&label.to_ascii_lowercase().as_str())
 }
 
 fn strip_markdown_heading_prefix(line: &str) -> &str {
