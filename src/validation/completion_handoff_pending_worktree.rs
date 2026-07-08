@@ -1,7 +1,8 @@
 use super::completion_handoff_pending_worktree_text::{
-    char_window_start, has_any, has_false_bounded_search_evidence,
+    char_window_start, find_word, has_any, has_false_bounded_search_evidence,
     has_false_surfaced_thread_evidence, has_nearby_negation, has_terminal_false_value,
-    has_true_decision_value, is_markdown_list_item, ordinal_label, phrase_has_boundaries,
+    has_true_decision_value, is_markdown_list_item, local_id_value, ordinal_label,
+    phrase_has_boundaries,
 };
 
 const PENDING_WORKTREE_STATE_ERROR: &str = "pending worktree ids must resolve to a surfaced thread, explicit setup failure, or bounded timeout state with safe retry/reassignment evidence";
@@ -57,6 +58,15 @@ fn pending_worktree_mentions(text: &str) -> Vec<usize> {
     }
     matches.sort_unstable();
     matches.dedup();
+    let mut seen_ids = Vec::new();
+    matches.retain(|start| {
+        local_id_value(text, *start).is_none_or(|id| {
+            !seen_ids.contains(&id) && {
+                seen_ids.push(id);
+                true
+            }
+        })
+    });
     matches
 }
 fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
@@ -157,29 +167,6 @@ fn grouped_body_separator(
         .map(|index| after_last_value + index)
         .filter(|index| *index >= sentence_start)
 }
-fn local_id_value(text: &str, start: usize) -> Option<String> {
-    let value = text.get(start + "local:".len()..)?;
-    let value: String = value
-        .chars()
-        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
-        .collect();
-    (!value.is_empty()).then_some(value)
-}
-fn find_word(text: &str, word: &str) -> Option<usize> {
-    let mut rest = text;
-    let mut offset = 0;
-    while let Some(index) = rest.find(word) {
-        let start = offset + index;
-        let end = start + word.len();
-        if phrase_has_boundaries(text, start, end) {
-            return Some(start);
-        }
-        offset = end;
-        rest = &text[offset..];
-    }
-    None
-}
-
 fn mentions_surfaced_pending_worktree_thread(text: &str) -> bool {
     !has_false_surfaced_thread_evidence(text)
         && has_any(

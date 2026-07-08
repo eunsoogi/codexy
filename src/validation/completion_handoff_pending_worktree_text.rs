@@ -84,6 +84,30 @@ pub(super) fn ordinal_label(index: usize) -> Option<&'static str> {
         .copied()
 }
 
+pub(super) fn local_id_value(text: &str, start: usize) -> Option<String> {
+    let value = text.get(start..)?.strip_prefix("local:")?;
+    let value: String = value
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .collect();
+    (!value.is_empty()).then_some(value)
+}
+
+pub(super) fn find_word(text: &str, word: &str) -> Option<usize> {
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(word) {
+        let start = offset + index;
+        let end = start + word.len();
+        if phrase_has_boundaries(text, start, end) {
+            return Some(start);
+        }
+        offset = end;
+        rest = &text[offset..];
+    }
+    None
+}
+
 pub(super) fn has_false_surfaced_thread_evidence(text: &str) -> bool {
     has_unnegated_phrase(text, "thread id did not surface", 16)
         || has_unnegated_phrase(text, "thread did not surface", 16)
@@ -94,6 +118,9 @@ pub(super) fn has_false_surfaced_thread_evidence(text: &str) -> bool {
         || has_unnegated_phrase(text, "active owner = none", 16)
         || has_unnegated_phrase(text, "active owner: no", 16)
         || has_unnegated_phrase(text, "owner thread unknown", 16)
+        || has_unnegated_phrase(text, "remains unresolved", 16)
+        || has_unnegated_phrase(text, "still unresolved", 16)
+        || has_unnegated_phrase(text, "is unresolved", 16)
 }
 
 pub(super) fn has_false_bounded_search_evidence(text: &str) -> bool {
