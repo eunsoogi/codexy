@@ -4,6 +4,7 @@ use super::child_lane_thread_tool_handler_defect_capture::{
     has_negated_fallback_route_field,
 };
 use super::child_lane_thread_tool_handler_exact_error::placeholder_tools_have_exact_errors;
+use super::child_lane_thread_tool_handler_lane_header::include_preceding_lane_header;
 use super::child_lane_thread_tool_handler_scope::{
     capture_end_before_unrelated_evidence, following_handoff_metadata_has,
     is_handoff_metadata_line, is_list_item, preceding_handoff_metadata_start,
@@ -163,13 +164,12 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
     let current_line_end = line_end(evidence, line_start);
     let current_trimmed = evidence[line_start..current_line_end].trim_start();
     if !is_list_item(current_trimmed) {
-        if following_handoff_metadata_has(evidence, line_start, |line| {
+        let starts_at_handoff = following_handoff_metadata_has(evidence, line_start, |line| {
             has_defect_label(line) && !has_absent_defect_capture(line)
-        }) {
-            return preceding_handoff_metadata_start(evidence, line_start);
-        }
-        if has_defect_label(current_trimmed) {
-            return preceding_handoff_metadata_start(evidence, line_start);
+        }) || has_defect_label(current_trimmed);
+        if starts_at_handoff {
+            let start = preceding_handoff_metadata_start(evidence, line_start);
+            return include_preceding_lane_header(evidence, start);
         }
         let mut cursor = line_start;
         while cursor > 0 {
@@ -187,7 +187,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
             }
             cursor = previous_start;
         }
-        return line_start;
+        return include_preceding_lane_header(evidence, line_start);
     }
     let mut capture_start = line_start;
     let mut cursor = line_start;

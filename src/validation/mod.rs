@@ -22,6 +22,7 @@ mod child_lane_thread_tool_handler_exact_error;
 mod child_lane_thread_tool_handler_issue_reference;
 mod child_lane_thread_tool_handler_issue_tracking;
 mod child_lane_thread_tool_handler_issue_value;
+mod child_lane_thread_tool_handler_lane_header;
 mod child_lane_thread_tool_handler_no_route;
 mod child_lane_thread_tool_handler_route_value;
 mod child_lane_thread_tool_handler_scope;
