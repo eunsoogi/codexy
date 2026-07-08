@@ -61,7 +61,10 @@ fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
     let start = defect_scope_start(lines, index);
     let defect_lane = defect_lane_label(lines, start, index);
     let mut scoped = preceding_defect_scope_lines(lines, start, index, defect_lane.as_deref());
-    scoped.push(current_defect_clause_scope(lines[index]));
+    scoped.push(current_defect_clause_scope_for_lane(
+        lines[index],
+        defect_lane.as_deref(),
+    ));
     scoped.extend(
         lines[index + 1..]
             .iter()
@@ -127,7 +130,7 @@ fn is_handoff_metadata_item_for_different_lane(line: &str, lane: Option<&str>) -
 fn defect_header_candidate_scope(lines: &[&str], index: usize, lane: Option<&str>) -> String {
     let start = defect_scope_start(lines, index);
     let mut scoped = preceding_defect_scope_lines(lines, start, index, lane);
-    scoped.push(current_defect_clause_scope(lines[index]));
+    scoped.push(current_defect_clause_scope_for_lane(lines[index], lane));
     scoped.join("\n")
 }
 
@@ -418,6 +421,17 @@ fn lowercase_lane_label_token(label: &str) -> bool {
         )
 }
 
+fn current_defect_clause_scope_for_lane<'a>(line: &'a str, lane: Option<&str>) -> &'a str {
+    let mentioned_lane;
+    let lane = if lane.is_some() {
+        lane
+    } else {
+        mentioned_lane = mentioned_lane_label(line);
+        mentioned_lane.as_deref()
+    };
+    trim_at_other_lane_handoff_clause(current_defect_clause_scope(line), lane)
+}
+
 fn current_defect_clause_scope(line: &str) -> &str {
     let Some(defect_start) = line.find("defect") else {
         return line;
@@ -434,6 +448,21 @@ fn current_defect_clause_scope(line: &str) -> &str {
         })
         .min()
         .map_or(line, |next| &line[..next])
+}
+
+fn trim_at_other_lane_handoff_clause<'a>(line: &'a str, lane: Option<&str>) -> &'a str {
+    let mut search_start = 0;
+    while let Some(offset) = line[search_start..].find(';') {
+        let separator = search_start + offset;
+        let clause = line[separator + 1..].trim_start();
+        if is_unlisted_handoff_metadata_item(clause)
+            && !is_unlisted_handoff_metadata_item_for_lane(clause, lane)
+        {
+            return line[..separator].trim_end();
+        }
+        search_start = separator + 1;
+    }
+    line
 }
 
 fn is_defect_label_boundary(prefix: &str) -> bool {

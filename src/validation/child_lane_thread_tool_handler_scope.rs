@@ -56,7 +56,8 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line_names_different_lane = line_mentions_different_lane(line, scope_lane.as_deref())
             && !(scope_lane.is_none()
                 && line_opens_defect_capture
-                && !has_unnegated_different_lane_phrase(line));
+                && !has_unnegated_different_lane_phrase(line)
+                && !defect_line_mentions_other_lane(line));
         if line_names_different_lane {
             return line_start;
         }
@@ -131,6 +132,21 @@ fn line_mentions_different_lane(line: &str, current_lane: Option<&str>) -> bool 
     if has_unnegated_different_lane_phrase(line) {
         return true;
     }
+    lane_mention_labels(line)
+        .into_iter()
+        .any(|lane| current_lane.is_none_or(|current_lane| lane != current_lane))
+}
+
+fn defect_line_mentions_other_lane(line: &str) -> bool {
+    let lanes = lane_mention_labels(line);
+    let Some(defect_lane) = lanes.first() else {
+        return false;
+    };
+    lanes.iter().skip(1).any(|lane| lane != defect_lane)
+}
+
+fn lane_mention_labels(line: &str) -> Vec<String> {
+    let mut labels = Vec::new();
     let mut previous = "";
     let mut words = line.split_whitespace();
     while let Some(word) = words.next() {
@@ -140,15 +156,13 @@ fn line_mentions_different_lane(line: &str, current_lane: Option<&str>) -> bool 
                 .next()
                 .unwrap_or_default()
                 .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-            if normalized_lane_mention_label(label, previous)
-                .is_some_and(|lane| current_lane.is_none_or(|current_lane| lane != current_lane))
-            {
-                return true;
+            if let Some(lane) = normalized_lane_mention_label(label, previous) {
+                labels.push(lane);
             }
         }
         previous = normalized;
     }
-    false
+    labels
 }
 pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
     let Some((key, _)) = line_key_value(line) else {
