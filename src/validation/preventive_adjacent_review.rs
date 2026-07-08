@@ -66,11 +66,11 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         .unwrap_or("");
     let rest = value[first.len()..].trim_start_matches([' ', '\t']);
     let terminal = rest.chars().next().is_none_or(|ch| ".;,\n\r".contains(ch));
-    let false_empty = matches!(first, "none" | "no" | "false" | "n/a" | "na")
-        && (terminal
-            || ["active", "currently", "now", "remain"]
-                .iter()
-                .any(|modifier| rest.starts_with(modifier)));
+    let false_modifier = ["active", "currently", "now", "remain"]
+        .iter()
+        .any(|modifier| rest.starts_with(modifier));
+    let false_empty =
+        matches!(first, "none" | "no" | "false" | "n/a" | "na") && (terminal || false_modifier);
     false_empty
         || matches!(first, "resolved" | "cleared")
         || value.starts_with("not applicable")
@@ -118,21 +118,16 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
     );
     let has_focused_coverage = has_unnegated_any(
         segment,
-        &[
-            "focused regression coverage",
-            "preventive regression coverage",
-            "regression coverage",
-            "focused tests",
-            "focused test",
-        ],
+        &["regression coverage", "regression tests", "focused test"],
     );
-    let has_concrete_no_change_rationale =
-        has_unnegated_any(segment, &["no-change rationale", "no change rationale"])
-            && has_unnegated(segment, "inspected")
-            && (has_unnegated(segment, "function") || has_unnegated(segment, "test"))
-            && has_unnegated_any(segment, &["invariants hold", "invariant holds"])
-            && has_substantive_rationale(segment);
-    has_adjacent_subject && (has_focused_coverage || has_concrete_no_change_rationale)
+    let has_concrete_no_change_rationale = (has_adjacent_subject
+        || has_any(segment, &["none of the sibling", "none of the adjacent"]))
+        && has_unnegated_any(segment, &["no-change rationale", "no change rationale"])
+        && has_unnegated(segment, "inspected")
+        && (has_unnegated(segment, "function") || has_unnegated(segment, "test"))
+        && has_unnegated_any(segment, &["invariants hold", "invariant holds"])
+        && has_substantive_rationale(segment);
+    (has_adjacent_subject && has_focused_coverage) || has_concrete_no_change_rationale
 }
 fn has_unnegated_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| has_unnegated(text, needle))
@@ -200,13 +195,13 @@ fn has_substantive_rationale(segment: &str) -> bool {
     let rationale = rationale
         .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '.' | ',' | ';' | ':'));
     !rationale.is_empty()
+        && rationale != "none"
         && !has_any(
             rationale,
             &[
                 "not applicable",
                 "not-applicable",
                 "n/a",
-                "none",
                 "no change needed",
                 "not needed",
                 "does not apply",

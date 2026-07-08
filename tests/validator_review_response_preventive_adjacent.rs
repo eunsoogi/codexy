@@ -89,7 +89,7 @@ fn validator_allows_real_blocker_state_without_preventive_adjacent_review() -> T
 #[test]
 fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the touched helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression tests exercise adjacent parser variants in the touched helper family.\n",
         resolved_review_thread_pr_state(),
     )?;
 
@@ -159,7 +159,7 @@ fn validator_rejects_post_negated_preventive_adjacent_coverage() -> TestResult {
 #[test]
 fn validator_allows_preventive_adjacent_no_change_rationale() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads and tests validator_review_response_preventive_adjacent; invariants hold because sibling parser variants share the same boundary checks.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: inspected functions parse_review_threads and tests validator_review_response_preventive_adjacent; invariants hold because none of the sibling parser variants bypass this boundary.\n",
         resolved_review_thread_pr_state(),
     )?;
 
