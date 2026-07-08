@@ -48,6 +48,7 @@ fn validator_rejects_exact_comment_only_handoff_with_no_waiting_heading() -> Tes
         "Waiting: none. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: no. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: no waiting. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting: none remaining. Review response: fixed the exact Codex review comment and verified current head.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
 
@@ -74,6 +75,7 @@ fn validator_rejects_exact_comment_only_handoff_with_negated_blocker_phrase() ->
         "Review response: fixed the exact Codex review comment and verified current head; not blocked on anything.\n",
         "Not blocked on anything. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Review response: fixed the exact Codex review comment. Blocked on: none.\n",
+        "Blockers: none remain. Review response: fixed the exact Codex review comment.\n",
         "Not blocked: tests are green. Review response: fixed the exact Codex review comment.\n",
         "Unblocked: review fix applied. Review response: fixed the exact Codex review comment.\n",
     ] {
@@ -141,6 +143,27 @@ fn validator_rejects_no_change_rationale_without_adjacent_subject() -> TestResul
     assert!(
         !output.status.success(),
         "validator should require adjacent evidence beyond invariant wording\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_negated_no_change_rationale_inspection_claims() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale: not inspected functions parse_review_threads and tests validator_review_response_preventive_adjacent; invariants hold because sibling parser variants share the same boundary checks.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject negated no-change inspection claims\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

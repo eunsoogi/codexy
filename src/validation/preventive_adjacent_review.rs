@@ -74,6 +74,7 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         || value.starts_with("no waiting")
         || value.starts_with("no current waiting")
         || value.starts_with("none currently")
+        || value.starts_with("none remain")
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated(text, "remains unresolved")
@@ -125,14 +126,12 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
     );
     let has_concrete_no_change_rationale =
         has_unnegated_any(segment, &["no-change rationale", "no change rationale"])
-            && segment.contains("inspected")
-            && (segment.contains("function") || segment.contains("test"))
-            && has_any(segment, &["invariants hold", "invariant holds"])
+            && has_unnegated(segment, "inspected")
+            && (has_unnegated(segment, "function") || has_unnegated(segment, "test"))
+            && has_unnegated_any(segment, &["invariants hold", "invariant holds"])
             && has_substantive_rationale(segment);
-
     has_adjacent_subject && (has_focused_coverage || has_concrete_no_change_rationale)
 }
-
 fn has_unnegated_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| has_unnegated(text, needle))
 }
