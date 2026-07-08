@@ -26,6 +26,7 @@ fn names_codex_review_target(target: &str) -> bool {
         .strip_prefix("a ")
         .or_else(|| target.strip_prefix("an "))
         .or_else(|| target.strip_prefix("the "))
-        .unwrap_or(target);
+        .unwrap_or(target)
+        .trim_start_matches(['"', '\'', '`']);
     target.starts_with("@codex review") || target.starts_with("codex review")
 }
