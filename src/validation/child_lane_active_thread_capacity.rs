@@ -32,14 +32,15 @@ fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
         .flat_map(|line| split_operation_clauses(line, " and "))
 }
 fn split_operation_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str> {
-    let lower = normalized_operation_line(segment);
+    let lower = segment.to_ascii_lowercase();
     let mut clauses = Vec::new();
     let mut start = 0;
     let mut cursor = 0;
     while let Some(relative) = lower[cursor..].find(separator) {
         let marker_start = cursor + relative;
         let next_start = marker_start + separator.len();
-        if starts_operation_clause(lower[next_start..].trim_start()) {
+        let next_clause = normalized_operation_line(lower[next_start..].trim_start());
+        if starts_operation_clause(&next_clause) {
             clauses.push(&segment[start..marker_start]);
             start = next_start;
         }
@@ -75,7 +76,7 @@ pub(super) fn active_capacity_errors(
     for (operation, existing_owner) in operations.iter().zip(existing_owners) {
         let mut counted_replacement = false;
         let count_bound = previous_operation_position
-            .filter(|position| position != &(operation.line_number, operation.segment_number));
+            .filter(|(line_number, _)| *line_number != operation.line_number);
         let records = fresh_counts_before_operation(active_counts, count_bound, operation);
         if !records.is_empty() {
             counted_replacement = existing_owner.as_ref().is_some_and(|owner| {
@@ -206,10 +207,7 @@ fn projected_count_from_records(records: &[&ActiveCount]) -> Option<u64> {
             CountKind::Waiting => latest.1 = Some(record.count),
             CountKind::Active => latest.0 = Some(record.count),
         }
-        if let (Some(active), Some(waiting)) = (latest.0, latest.1) {
-            latest.2 = Some(active.saturating_add(waiting));
-        } else if latest.2.is_none() && latest.0.is_some() {
-            let active = latest.0.unwrap_or(0_u64);
+        if let Some(active) = latest.0 {
             latest.2 = Some(active.saturating_add(latest.1.unwrap_or(0_u64)));
         }
     }

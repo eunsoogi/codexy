@@ -143,7 +143,9 @@ fn number_after_marker(line: &str, marker: &str) -> Option<String> {
             if let Some(number) = tokens
                 .next()
                 .and_then(|next| next.strip_prefix('#').or(Some(next)))
-                .filter(|next| next.chars().all(|character| character.is_ascii_digit()))
+                .filter(|next| {
+                    !next.is_empty() && next.chars().all(|character| character.is_ascii_digit())
+                })
             {
                 return Some(format!("#{number}"));
             }
@@ -158,8 +160,7 @@ fn line_contains_existing_owner_found(line: &str) -> bool {
         && !line_contains_no_existing_owner_found(line)
 }
 fn normalized_owner_lookup_line(line: &str) -> String {
-    line.to_ascii_lowercase()
-        .replace("owner-thread", "owner thread")
+    line.to_ascii_lowercase().replace('-', " ")
 }
 fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
     let line = normalized_owner_lookup_line(line.as_ref());

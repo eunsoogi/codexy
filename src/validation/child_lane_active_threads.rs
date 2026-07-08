@@ -1,5 +1,5 @@
 use super::child_lane_active_thread_capacity::{
-    active_capacity_errors, child_thread_operations, continues_existing_owner,
+    ThreadOperation, active_capacity_errors, child_thread_operations, continues_existing_owner,
 };
 use super::child_lane_active_thread_count_records::{
     active_child_thread_count_errors, active_child_thread_count_records,
@@ -13,12 +13,15 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let operations = child_thread_operations(evidence);
     let has_child_thread_operation = !operations.is_empty();
     let active_counts = active_child_thread_count_records(evidence);
-    let mut previous_operation_position = None;
+    let mut previous_operation: Option<&ThreadOperation> = None;
     let owner_lookups = operations
         .iter()
         .map(|operation| {
-            let lookup_bound = previous_operation_position
-                .filter(|position| position != &(operation.line_number, operation.segment_number));
+            let lookup_bound = previous_operation.and_then(|previous| {
+                (previous.line_number != operation.line_number
+                    || shares_issue_id(&previous.owner, &operation.owner))
+                .then_some((previous.line_number, previous.segment_number))
+            });
             let lookup = matching_owner_lookup_before(
                 evidence,
                 &operation.owner,
@@ -26,7 +29,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 operation.segment_number,
                 lookup_bound,
             );
-            previous_operation_position = Some((operation.line_number, operation.segment_number));
+            previous_operation = Some(operation);
             lookup
         })
         .collect::<Vec<_>>();
@@ -58,11 +61,13 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 let Some(OwnerLookup::Found(existing_owner)) = lookup else {
                     return false;
                 };
-                let previous_operation_position = index.checked_sub(1).map(|previous| {
-                    (
+                let previous_operation_position = index.checked_sub(1).and_then(|previous| {
+                    (operations[previous].line_number != operation.line_number
+                        || shares_issue_id(&operations[previous].owner, &operation.owner))
+                    .then_some((
                         operations[previous].line_number,
                         operations[previous].segment_number,
-                    )
+                    ))
                 });
                 !continues_existing_owner(Some(existing_owner), operation)
                     && !has_matching_old_owner_disposition_before(
@@ -76,6 +81,14 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         errors.push("replacement child Codex thread creation requires evidence that the old owner was stopped, unusable, or explicitly superseded".to_owned());
     }
     errors
+}
+
+fn shares_issue_id(left: &ThreadOwner, right: &ThreadOwner) -> bool {
+    !left.issue_ids.is_empty()
+        && left
+            .issue_ids
+            .iter()
+            .any(|issue_id| right.issue_ids.contains(issue_id))
 }
 
 fn has_matching_old_owner_disposition_before(
