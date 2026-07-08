@@ -452,17 +452,30 @@ fn current_defect_clause_scope(line: &str) -> &str {
 
 fn trim_at_other_lane_handoff_clause<'a>(line: &'a str, lane: Option<&str>) -> &'a str {
     let mut search_start = 0;
-    while let Some(offset) = line[search_start..].find(';') {
-        let separator = search_start + offset;
-        let clause = line[separator + 1..].trim_start();
+    while let Some((separator, delimiter_len)) = next_handoff_clause_separator(line, search_start) {
+        let clause = line[separator + delimiter_len..].trim_start();
         if is_unlisted_handoff_metadata_item(clause)
             && !is_unlisted_handoff_metadata_item_for_lane(clause, lane)
         {
             return line[..separator].trim_end();
         }
-        search_start = separator + 1;
+        search_start = separator + delimiter_len;
     }
     line
+}
+
+fn next_handoff_clause_separator(line: &str, search_start: usize) -> Option<(usize, usize)> {
+    let semicolon = line[search_start..]
+        .find(';')
+        .map(|offset| (search_start + offset, 1));
+    let period = line[search_start..]
+        .find(". ")
+        .map(|offset| (search_start + offset, 2));
+
+    [semicolon, period]
+        .into_iter()
+        .flatten()
+        .min_by_key(|(index, _)| *index)
 }
 
 fn is_defect_label_boundary(prefix: &str) -> bool {

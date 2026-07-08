@@ -345,6 +345,30 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_explicit_lane_defect_with_period_separated_other_lane_handoff_fields()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A. Lane B fallback route: no fallback route was available. Separate dogfood issue: #205.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let an explicit Lane A defect borrow period-separated Lane B handoff fields"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("No handler registered"),
+        "stderr should name the missing handler evidence, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_allows_explicit_lane_defect_with_same_line_same_lane_handoff_fields()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -359,6 +383,27 @@ Maintainer reassignment: none
     assert!(
         output.status.success(),
         "validator should accept same-line same-lane handoff fields for the explicit Lane A defect\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_explicit_lane_defect_with_period_separated_same_lane_handoff_fields()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A. Lane A fallback route: no fallback route was available. Separate dogfood issue: #205.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should accept period-separated same-lane handoff fields for the explicit Lane A defect\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
