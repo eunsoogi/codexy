@@ -158,16 +158,17 @@ fn has_passive_created_thread_id(line: &str) -> bool {
         let rest = line[index + "child thread".len()..].trim_start();
         let owner = ThreadOwner::from_line(line);
         (owner.thread_id.is_some() || !owner.issue_ids.is_empty())
-            && ("created|forked:|requested:|started:"
-                .split('|')
-                .any(|marker| rest.starts_with(marker))
-                || "was created|was forked|was requested|was started"
-                    .split('|')
-                    .any(|marker| rest.contains(marker))
-                || rest.contains(" created")
-                    && !rest.contains("not created")
-                    && !rest.contains("n't created"))
+            && ["created", "forked", "requested", "started"]
+                .into_iter()
+                .any(|verb| has_passive_launch_verb(rest, verb))
     })
+}
+fn has_passive_launch_verb(rest: &str, verb: &str) -> bool {
+    (rest.starts_with(verb)
+        || rest.starts_with(&format!("{verb}:"))
+        || rest.contains(&format!(" {verb}")))
+        && !rest.contains(&format!("not {verb}"))
+        && !rest.contains(&format!("n't {verb}"))
 }
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
     if format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}").split('|').any(|marker| line.contains(&marker)) {

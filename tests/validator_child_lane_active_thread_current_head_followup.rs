@@ -181,6 +181,12 @@ fn validator_rejects_passive_started_forked_requested_child_threads_over_active_
         "Child thread thread-269 was started for issue #269.",
         "Child thread thread-269 was forked for issue #269.",
         "Child thread thread-269 was requested for issue #269.",
+        "Child thread thread-269 started for issue #269.",
+        "Child thread thread-269 forked for issue #269.",
+        "Child thread thread-269 requested for issue #269.",
+        "Child thread started for issue #269.",
+        "Child thread forked for issue #269.",
+        "Child thread requested for issue #269.",
     ] {
         let output = run_ownership_validator(&format!(
             r#"Owner decision: parent-owned for orchestration only; child routing required
@@ -212,6 +218,9 @@ fn validator_ignores_negated_passive_started_forked_requested_child_threads()
         "Child thread thread-269 was not started for issue #269.",
         "Child thread thread-269 was not forked for issue #269.",
         "Child thread thread-269 was not requested for issue #269.",
+        "Child thread thread-269 not started for issue #269.",
+        "Child thread thread-269 not forked for issue #269.",
+        "Child thread thread-269 not requested for issue #269.",
         "No child thread started: thread-269 for issue #269.",
         "No child thread forked: thread-269 for issue #269.",
         "No child thread requested: thread-269 for issue #269.",
