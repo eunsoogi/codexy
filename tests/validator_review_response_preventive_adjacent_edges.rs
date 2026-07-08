@@ -49,6 +49,8 @@ fn validator_rejects_exact_comment_only_handoff_with_no_waiting_heading() -> Tes
         "Waiting: no. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: no waiting. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: none remaining. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting: resolved. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting: cleared. Review response: fixed the exact Codex review comment and verified current head.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
 
@@ -76,6 +78,8 @@ fn validator_rejects_exact_comment_only_handoff_with_negated_blocker_phrase() ->
         "Not blocked on anything. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Review response: fixed the exact Codex review comment. Blocked on: none.\n",
         "Blockers: none remain. Review response: fixed the exact Codex review comment.\n",
+        "Blockers: resolved. Review response: fixed the exact Codex review comment.\n",
+        "Blockers: cleared. Review response: fixed the exact Codex review comment.\n",
         "Not blocked: tests are green. Review response: fixed the exact Codex review comment.\n",
         "Unblocked: review fix applied. Review response: fixed the exact Codex review comment.\n",
     ] {
@@ -114,22 +118,24 @@ fn validator_allows_real_waiting_state_without_preventive_adjacent_review() -> T
 
 #[test]
 fn validator_rejects_colon_labeled_post_negated_preventive_coverage() -> TestResult {
-    let output = validate_handoff_with_pr_state(
+    for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused regression coverage: not needed.\n",
-        resolved_review_thread_pr_state(),
-    )?;
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage covers the exact comment; adjacent parser variants were not tested.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
 
-    assert!(
-        !output.status.success(),
-        "validator should reject colon-labeled post-negated preventive coverage\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            !output.status.success(),
+            "validator should reject post-negated preventive coverage\nhandoff:\n{}\nstderr:\n{}",
+            handoff,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

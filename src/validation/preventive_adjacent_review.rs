@@ -75,6 +75,8 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         || value.starts_with("no current waiting")
         || value.starts_with("none currently")
         || value.starts_with("none remain")
+        || value.starts_with("resolved")
+        || value.starts_with("cleared")
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated(text, "remains unresolved")
@@ -135,7 +137,6 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
 fn has_unnegated_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| has_unnegated(text, needle))
 }
-
 fn has_unnegated(text: &str, needle: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;
@@ -150,7 +151,6 @@ fn has_unnegated(text: &str, needle: &str) -> bool {
     }
     false
 }
-
 fn is_negated_match(prefix: &str) -> bool {
     let local_start = prefix
         .rfind(['\n', ',', ';', ':'])
@@ -172,6 +172,8 @@ fn is_post_negated_match(suffix: &str) -> bool {
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
     has_false_blocked_or_waiting_value(local)
         || local.contains(" is missing")
+        || local.contains(" not tested")
+        || local.contains(" not covered")
         || [
             "is not",
             "isn't",
@@ -189,7 +191,6 @@ fn is_post_negated_match(suffix: &str) -> bool {
         .iter()
         .any(|negation| local.starts_with(negation))
 }
-
 fn has_substantive_rationale(segment: &str) -> bool {
     let Some((_, rationale)) = segment.rsplit_once("because") else {
         return false;
@@ -214,7 +215,6 @@ fn has_substantive_rationale(segment: &str) -> bool {
             ],
         )
 }
-
 fn has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| text.contains(needle))
 }
