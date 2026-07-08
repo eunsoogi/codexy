@@ -14,15 +14,25 @@ pub(super) fn include_preceding_lane_header(evidence: &str, start: usize) -> usi
 }
 
 fn is_lane_header(line: &str) -> bool {
-    let line = line.trim();
+    let trimmed = line.trim();
+    let line = strip_markdown_heading_prefix(trimmed).trim();
     let Some(rest) = line
         .strip_prefix("lane ")
         .or_else(|| line.strip_prefix("Lane "))
     else {
         return false;
     };
-    let label = rest.trim_end_matches(':').trim();
-    line.ends_with(':')
+    let label = rest.trim_end_matches([':', '.']).trim();
+    (trimmed != line || line.ends_with(':'))
         && !label.is_empty()
         && label.bytes().all(|byte| byte.is_ascii_alphanumeric())
+}
+
+fn strip_markdown_heading_prefix(line: &str) -> &str {
+    let marker_end = line.bytes().take_while(|byte| *byte == b'#').count();
+    if marker_end > 0 && line[marker_end..].starts_with(' ') {
+        line[marker_end..].trim_start()
+    } else {
+        line
+    }
 }

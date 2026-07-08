@@ -59,6 +59,12 @@ pub(super) fn capture_end_before_unrelated_evidence(
                 && !has_unnegated_different_lane_phrase(line)
                 && !defect_line_mentions_other_lane(line))
             && !(scope_lane.is_none()
+                && pending_defect_capture
+                && is_handler_capture_line(line)
+                && !has_absent_defect_capture(line)
+                && !has_unnegated_different_lane_phrase(line)
+                && !defect_line_mentions_other_lane(line))
+            && !(scope_lane.is_none()
                 && is_handoff_metadata_line(line)
                 && metadata_line_matches_upcoming_defect_lane(evidence, line_end, line));
         if line_names_different_lane {
@@ -177,10 +183,43 @@ fn metadata_line_matches_upcoming_defect_lane(
                     .skip(1)
                     .any(|lane| lane != metadata_lane);
         }
+        if has_open_defect_capture(next_line)
+            && list_capture_matches_metadata_lane(evidence, next_end, metadata_lane)
+        {
+            return true;
+        }
         if !is_handoff_metadata_line(next_line) && !is_capture_related(next_line) {
             return false;
         }
         cursor = next_end;
+    }
+    false
+}
+
+fn list_capture_matches_metadata_lane(
+    evidence: &str,
+    defect_header_end: usize,
+    metadata_lane: &str,
+) -> bool {
+    let mut cursor = defect_header_end;
+    while cursor < evidence.len() {
+        let item_start = cursor + 1;
+        let item_end = line_end(evidence, item_start);
+        let item = &evidence[item_start..item_end];
+        if item.trim().is_empty() || !is_list_item(item) {
+            return false;
+        }
+        let item_lanes = lane_mention_labels(item);
+        if item_lanes.iter().any(|lane| lane != metadata_lane) {
+            return false;
+        }
+        if item_lanes.first().is_some_and(|lane| lane == metadata_lane)
+            && is_handler_capture_line(item)
+            && !has_absent_defect_capture(item)
+        {
+            return true;
+        }
+        cursor = item_end;
     }
     false
 }
