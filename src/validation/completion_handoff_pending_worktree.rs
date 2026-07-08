@@ -1,6 +1,6 @@
 use super::completion_handoff_pending_worktree_text::{
-    char_window_start, has_any, has_false_value, has_nearby_negation, has_true_decision_value,
-    phrase_has_boundaries,
+    char_window_start, has_any, has_nearby_negation, has_terminal_false_value,
+    has_true_decision_value, phrase_has_boundaries,
 };
 
 const PENDING_WORKTREE_STATE_ERROR: &str = "pending worktree ids must resolve to a surfaced thread, explicit setup failure, or bounded timeout state with safe retry/reassignment evidence";
@@ -178,10 +178,7 @@ fn mentions_bounded_search_evidence(text: &str) -> bool {
 }
 
 fn mentions_affirmative_safe_retry(text: &str) -> bool {
-    has_any(
-        text,
-        "safe retry/reassignment is allowed|safe retry/reassignment allowed|safe retry is allowed|safe retry allowed|safe reassignment is allowed|safe reassignment allowed|retry/reassignment is allowed|retry/reassignment allowed",
-    ) || has_true_decision_value(text, "safe retry/reassignment")
+    has_true_decision_value(text, "safe retry/reassignment")
         || has_true_decision_value(text, "safe retry")
         || has_true_decision_value(text, "safe reassignment")
         || has_true_decision_value(text, "retry/reassignment")
@@ -196,5 +193,5 @@ fn has_false_pending_value(suffix: &str) -> bool {
         return false;
     }
     let value = value[separator.len_utf8()..].trim_start();
-    has_false_value(value)
+    has_terminal_false_value(value)
 }

@@ -22,10 +22,18 @@ fn validator_cli_rejects_unresolved_pending_worktree_ids() -> TestResult {
         "pending worktree ids local:first and local:second: local:first surfaced thread id 019f-child with active owner; local:second remains unresolved.\n",
         "pendingWorktreeId local:first failed setup with fatal invalid reference. pendingWorktreeId local:second has no surfaced thread yet.\n",
         "pendingWorktreeId local:first reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment is allowed. pendingWorktreeId local:second remains unresolved.\n",
+        "pendingWorktreeId: no thread surfaced after searches.\n",
+        "pendingWorktreeId: none found after searches.\n",
+        "pendingWorktreeId: not surfaced after bounded wait.\n",
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment: no.\n",
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe reassignment: false.\n",
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; retry/reassignment: not applicable.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry allowed: no.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment allowed: false.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; retry/reassignment allowed: not applicable.\n",
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry is not allowed.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; not safe to retry.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; unsafe to reassign.\n",
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; unsafe retry/reassignment would duplicate owners.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;

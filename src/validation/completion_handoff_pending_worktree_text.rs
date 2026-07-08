@@ -10,6 +10,16 @@ pub(super) fn has_false_value(value: &str) -> bool {
         .any(|word| value.strip_prefix(word).is_some_and(starts_with_boundary))
 }
 
+pub(super) fn has_terminal_false_value(value: &str) -> bool {
+    "none|null|nil|false|no|n/a|n-a|na|not applicable|not-applicable|empty|missing|absent"
+        .split('|')
+        .any(|word| {
+            value
+                .strip_prefix(word)
+                .is_some_and(is_terminal_decision_remainder)
+        })
+}
+
 pub(super) fn has_true_decision_value(text: &str, label: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;
@@ -29,11 +39,16 @@ pub(super) fn has_true_decision_value(text: &str, label: &str) -> bool {
                 rest = &text[offset..];
                 continue;
             }
-            if ["is allowed", "allowed", "is safe", "safe"]
-                .iter()
-                .any(|value| suffix.strip_prefix(value).is_some_and(starts_with_boundary))
-            {
-                return true;
+            for value in ["is allowed", "allowed", "is safe", "safe"] {
+                if let Some(remainder) = suffix
+                    .strip_prefix(value)
+                    .filter(|remainder| starts_with_boundary(remainder))
+                {
+                    if has_explicit_false_value(remainder) {
+                        continue;
+                    }
+                    return true;
+                }
             }
             if let Some(value) = suffix.strip_prefix([':', '=', '-', '?']) {
                 let value = value.trim_start();
@@ -74,6 +89,29 @@ fn has_true_value(value: &str) -> bool {
 
 fn starts_with_boundary(rest: &str) -> bool {
     is_boundary(rest.chars().next())
+}
+
+fn has_explicit_false_value(remainder: &str) -> bool {
+    let remainder = remainder.trim_start_matches([' ', '\t']);
+    let Some(value) = remainder.strip_prefix([':', '=', '-', '?']) else {
+        return false;
+    };
+    has_false_value(value.trim_start())
+}
+
+fn is_terminal_decision_remainder(remainder: &str) -> bool {
+    let mut chars = remainder.chars();
+    let Some(first) = chars.next() else {
+        return true;
+    };
+    if first == '\n' || first == '\r' || matches!(first, ',' | '.' | ';') {
+        return true;
+    }
+    if first != ' ' && first != '\t' {
+        return false;
+    }
+    let remainder = remainder.trim_start_matches([' ', '\t']);
+    remainder.is_empty() || remainder.starts_with(['\n', '\r', ',', '.', ';'])
 }
 
 fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
