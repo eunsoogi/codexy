@@ -95,35 +95,28 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         || has_route_not_used_clause(&local)
 }
 
+#[rustfmt::skip]
 fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
     const PROOF_VERBS: &str = "confirm|document|establish|prove|show|verify";
     let tokens = local.split_whitespace().collect::<Vec<_>>();
-    let Some(negation_index) = tokens
-        .iter()
-        .rposition(|token| matches!(*token, "no" | "not") || token.ends_with("n't"))
-    else {
-        return false;
-    };
+    let Some(negation_index) = tokens.iter().rposition(|token| matches!(*token, "no" | "not") || token.ends_with("n't")) else { return false; };
     let mut after_not = &tokens[negation_index + 1..];
-    while matches!(
-        after_not.first().copied(),
-        Some("actually" | "fully" | "really" | "truly")
-    ) {
-        after_not = &after_not[1..];
-    }
-    if after_not
-        .first()
-        .is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb))
-    {
-        let proof_subject = match after_not.get(1).copied() {
-            Some("if" | "that" | "whether") => &after_not[2..],
-            _ => &after_not[1..],
-        };
+    while matches!(after_not.first().copied(), Some("actually" | "fully" | "really" | "truly")) { after_not = &after_not[1..]; }
+    if after_not.first().is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb)) {
+        let proof_subject = match after_not.get(1).copied() { Some("if" | "that" | "whether") => &after_not[2..], _ => &after_not[1..] };
         let actor_prefix = strip_actor_article(proof_subject);
-        return (!actor_prefix.is_empty() || !at_boundary)
-            && has_negated_actor_prefix(actor_prefix);
+        if actor_prefix.is_empty() { return !at_boundary || !has_handler_tool_subject(&tokens[..negation_index]); }
+        return has_negated_actor_prefix(actor_prefix);
     }
-    has_negated_actor_prefix(strip_actor_article(after_not))
+    has_route_owner_absence(after_not) || has_negated_actor_prefix(strip_actor_article(after_not))
+}
+
+#[rustfmt::skip]
+fn has_handler_tool_subject(tokens: &[&str]) -> bool { tokens.iter().any(|token| matches!(*token, "handler" | "tool")) }
+
+#[rustfmt::skip]
+fn has_route_owner_absence(tokens: &[&str]) -> bool {
+    let tokens = strip_actor_article(tokens); match tokens { ["need" | "needed" | "use" | "used", rest @ ..] => has_route_owner_absence(rest), ["child", "owner", ..] | ["child", "thread", ..] | ["fallback", "route", ..] | ["fallback", "path", ..] | ["owner", ..] | ["route", "owner", ..] => true, _ => false }
 }
 
 fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
