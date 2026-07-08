@@ -7,10 +7,9 @@ pub(super) fn has_unresolved_codex_review_thread(pr_state: &Value) -> bool {
                 || unresolved_thread_lacks_comment_identity(item))
     })
 }
+#[rustfmt::skip]
 pub(super) fn has_codex_review_output(pr_state: &Value) -> bool {
-    review_events(pr_state, true)
-        .iter()
-        .any(|event| matches!(event.kind, ReviewEventKind::CodexOutput))
+    review_events(pr_state, true).iter().any(|event| matches!(event.kind, ReviewEventKind::CodexOutput))
 }
 pub(super) fn has_codex_review_activity(pr_state: &Value) -> bool {
     iter_json_objects(pr_state).any(|item| {
@@ -41,24 +40,31 @@ pub(super) fn has_latest_eyes_request_without_later_codex_output(pr_state: &Valu
 }
 fn review_events(pr_state: &Value, require_head_match: bool) -> Vec<ReviewEvent<'_>> {
     let head = text_field(pr_state, "headRefOid");
+    let head_date = text_field(pr_state, "headRefCommittedDate");
     iter_json_objects(pr_state)
         .enumerate()
         .filter_map(|(order, item)| {
-            let matches_head = codex_item_matches_head(item, head);
+            let has_head_evidence = codex_item_reviewed_oid(item).is_some();
             let kind = if is_codex_review_request(item) {
                 ReviewEventKind::CodexRequest
             } else if is_codex_connector_item(item)
                 && is_review_output_signal(item)
-                && (!require_head_match || matches_head)
+                && (!require_head_match || codex_item_matches_head(item, head))
             {
                 ReviewEventKind::CodexOutput
             } else {
                 return None;
             };
+            let matches_head = codex_item_matches_head(item, head)
+                || matches!(kind, ReviewEventKind::CodexRequest)
+                    && !has_head_evidence
+                    && event_timestamp(item).is_some_and(|created| {
+                        head_date.is_none_or(|head_date| created >= head_date)
+                    });
             Some(ReviewEvent {
                 kind,
                 matches_head,
-                has_head_evidence: codex_item_reviewed_oid(item).is_some(),
+                has_head_evidence,
                 timestamp: event_timestamp(item),
                 order,
             })
@@ -82,8 +88,8 @@ fn is_after_event(event: &ReviewEvent<'_>, baseline: &ReviewEvent<'_>) -> bool {
     matches!((event.timestamp, baseline.timestamp), (Some(event), Some(baseline)) if event > baseline)
 }
 fn event_clears_request(event: &ReviewEvent<'_>, request: &ReviewEvent<'_>) -> bool {
-    !request.has_head_evidence && event.has_head_evidence
-        || request.has_head_evidence && (!request.matches_head || event.matches_head)
+    (!request.has_head_evidence && event.has_head_evidence || request.has_head_evidence)
+        && (!request.matches_head || event.matches_head)
 }
 fn compare_event_order(left: &ReviewEvent<'_>, right: &ReviewEvent<'_>) -> std::cmp::Ordering {
     match (left.timestamp, right.timestamp) {
@@ -111,17 +117,23 @@ fn has_comment_identity(comment: &Value) -> bool {
     ["author", "user", "performed_via_github_app"]
         .iter()
         .filter_map(|field| comment.get(*field))
-        .any(has_concrete_identity)
-}
-fn has_concrete_identity(value: &Value) -> bool {
-    text_field(value, "login")
-        .or_else(|| text_field(value, "slug"))
-        .is_some_and(|identity| !identity.trim().is_empty())
+        .any(|value| {
+            text_field(value, "login")
+                .or_else(|| text_field(value, "slug"))
+                .is_some_and(|identity| !identity.trim().is_empty())
+        })
 }
 fn is_codex_review_request(item: &Value) -> bool {
     !is_codex_connector_item(item)
-        && has_eyes_reaction(item)
+        && is_pr_issue_comment_item(item)
         && text_field(item, "body").is_some_and(has_actionable_codex_review_request_text)
+}
+fn is_pr_issue_comment_item(item: &Value) -> bool {
+    ["url", "html_url"]
+        .iter()
+        .filter_map(|field| text_field(item, field))
+        .any(|url| url.contains("#issuecomment-"))
+        || has_eyes_reaction(item)
 }
 fn has_eyes_reaction(item: &Value) -> bool {
     item.get("reactionGroups")
@@ -135,19 +147,18 @@ fn has_eyes_reaction(item: &Value) -> bool {
                         .is_some_and(|count| count > 0)
             })
         })
-        || has_rest_eyes_reaction(item)
-}
-fn has_rest_eyes_reaction(item: &Value) -> bool {
-    match item.get("reactions") {
-        Some(Value::Array(reactions)) => reactions
-            .iter()
-            .any(|reaction| text_field(reaction, "content") == Some("eyes")),
-        Some(Value::Object(reactions)) => reactions
-            .get("eyes")
-            .and_then(Value::as_u64)
-            .is_some_and(|count| count > 0),
-        _ => false,
-    }
+        || item
+            .get("reactions")
+            .is_some_and(|reactions| match reactions {
+                Value::Array(items) => items
+                    .iter()
+                    .any(|reaction| text_field(reaction, "content") == Some("eyes")),
+                Value::Object(map) => map
+                    .get("eyes")
+                    .and_then(Value::as_u64)
+                    .is_some_and(|n| n > 0),
+                _ => false,
+            })
 }
 fn has_actionable_codex_review_request_text(body: &str) -> bool {
     body.to_ascii_lowercase()
@@ -184,12 +195,9 @@ fn codex_item_reviewed_oid(item: &Value) -> Option<&str> {
         .filter(|oid| is_commit_oid(oid))
         .or_else(|| text_field(item, "body").and_then(reviewed_commit))
 }
+#[rustfmt::skip]
 fn reviewed_commit(text: &str) -> Option<&str> {
-    text.split("Reviewed commit")
-        .nth(1)?
-        .split('`')
-        .nth(1)
-        .filter(|oid| is_commit_oid(oid))
+    text.split("Reviewed commit").nth(1)?.split('`').nth(1).filter(|oid| is_commit_oid(oid))
 }
 fn is_commit_oid(oid: &str) -> bool {
     (7..=40).contains(&oid.len()) && oid.bytes().all(|byte| byte.is_ascii_hexdigit())
@@ -236,12 +244,7 @@ fn is_review_progress_text(text: &str) -> bool {
 fn text_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
 }
+#[rustfmt::skip]
 fn iter_json_objects(value: &Value) -> Box<dyn Iterator<Item = &Value> + '_> {
-    match value {
-        Value::Object(map) => Box::new(
-            std::iter::once(value).chain(map.values().flat_map(|value| iter_json_objects(value))),
-        ),
-        Value::Array(items) => Box::new(items.iter().flat_map(|value| iter_json_objects(value))),
-        _ => Box::new(std::iter::empty()),
-    }
+    match value { Value::Object(map) => Box::new(std::iter::once(value).chain(map.values().flat_map(|value| iter_json_objects(value)))), Value::Array(items) => Box::new(items.iter().flat_map(|value| iter_json_objects(value))), _ => Box::new(std::iter::empty()) }
 }

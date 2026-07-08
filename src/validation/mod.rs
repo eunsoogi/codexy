@@ -28,6 +28,7 @@ mod child_lane_thread_tool_handler_scope;
 mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
 mod codex_review_fresh_request;
+mod codex_review_fresh_request_action;
 mod codex_review_fresh_request_text;
 mod codex_review_handoff;
 mod codex_review_handoff_actionable;

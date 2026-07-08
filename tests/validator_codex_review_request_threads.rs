@@ -195,24 +195,22 @@ fn assert_failure_contains(output: &std::process::Output, message: &str, needle:
 }
 fn clean_thread_pr_state() -> &'static str {
     r#"{
-        "number": 174,
-        "state": "OPEN",
-        "isDraft": false,
+        "number": 174, "state": "OPEN", "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate":"2026-06-22T12:44:00Z", "comments": [], "reviews": [],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
     }"#
 }
 
 fn unresolved_thread_pr_state() -> &'static str {
     r#"{
-        "number": 174,
-        "state": "OPEN",
-        "isDraft": false,
+        "number": 174, "state": "OPEN", "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate":"2026-06-22T12:44:00Z", "comments": [], "reviews": [],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [{
                 "id": "PRRT_kwDOWaiting",
@@ -226,18 +224,17 @@ fn unresolved_thread_pr_state() -> &'static str {
 }
 fn current_head_eyes_request_pr_state() -> &'static str {
     r#"{
-        "number": 174,
-        "state": "OPEN",
-        "isDraft": false,
+        "number": 174, "state": "OPEN", "isDraft": false,
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate":"2026-06-22T12:44:00Z",
         "comments": [{
             "body": "@codex review",
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
             "reactionGroups": [{"content":"EYES","users":{"totalCount":1}}]
-        }],
+        }], "reviews": [],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
     }"#
 }

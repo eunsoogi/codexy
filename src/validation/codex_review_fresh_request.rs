@@ -1,8 +1,6 @@
 use serde_json::Value;
 
-use super::codex_review_handoff_events::{
-    has_codex_review_output, has_latest_eyes_request_without_later_codex_output,
-};
+use super::codex_review_handoff_events as events;
 
 pub(super) fn claims(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
@@ -23,17 +21,19 @@ pub(super) fn claims(handoff: &str) -> bool {
 
 pub(super) fn is_review_request_clause(clause: &str) -> bool {
     let clause = clause.trim_start();
+    if clause.contains("wait")
+        && (clause.contains("review output") || clause.contains("post output"))
+        && !has_review_request_action(clause)
+    {
+        return false;
+    }
     let names_codex_review = clause.contains("codex review") || clause.contains("@codex review");
-    let names_at_codex_review = clause.contains("@codex review");
     names_codex_review
         && ((contains_word(clause, "request")
             || contains_word(clause, "requesting")
             || is_past_tense_codex_review_request_clause(clause))
             && !is_pull_request_noun_clause(clause)
-            || names_at_codex_review
-                && ["post", "comment", "send"]
-                    .iter()
-                    .any(|verb| contains_word(clause, verb))
+            || super::codex_review_fresh_request_action::has_codex_review_post_action(clause)
             || starts_at_codex_review(clause.trim())
             || clause
                 .strip_prefix("next action:")
@@ -44,9 +44,7 @@ pub(super) fn is_review_request_clause(clause: &str) -> bool {
                 .strip_prefix("next action is to ")
                 .is_some_and(starts_at_codex_review)
             || clause.starts_with("review request:"))
-        || clause.contains("request review from @codex")
-        || clause.contains("request a review from @codex")
-        || clause.contains("request @codex to review")
+        || has_codex_review_request_variant(clause)
 }
 
 fn is_past_tense_codex_review_request_clause(clause: &str) -> bool {
@@ -68,10 +66,9 @@ fn is_split_waiting_status(line: &str, clause: &str) -> bool {
         })
 }
 
+#[rustfmt::skip]
 fn starts_at_codex_review(text: &str) -> bool {
-    text.trim_start()
-        .trim_start_matches(['`', '"', '\''])
-        .starts_with("@codex review")
+    text.trim_start().trim_start_matches(['`', '"', '\'']).starts_with("@codex review")
 }
 
 fn is_pull_request_noun_clause(clause: &str) -> bool {
@@ -96,6 +93,19 @@ fn has_codex_review_request_action(clause: &str) -> bool {
         rest = &clause[offset..];
     }
     false
+}
+
+fn has_review_request_action(clause: &str) -> bool {
+    has_codex_review_request_action(clause)
+        || has_codex_review_request_variant(clause)
+        || starts_at_codex_review(clause)
+        || super::codex_review_fresh_request_action::has_codex_review_post_action(clause)
+}
+
+fn has_codex_review_request_variant(clause: &str) -> bool {
+    clause.contains("request review from @codex")
+        || clause.contains("request a review from @codex")
+        || clause.contains("request @codex to review")
 }
 
 fn is_pull_request_noun_at(text: &str, request_start: usize) -> bool {
@@ -149,48 +159,29 @@ fn contains_word(text: &str, word: &str) -> bool {
     false
 }
 
-fn is_word_match(text: &str, start: usize, end: usize) -> bool {
-    let before = text[..start].chars().next_back();
-    let after = text[end..].chars().next();
-    before.is_none_or(|ch| !ch.is_ascii_alphanumeric())
-        && after.is_none_or(|ch| !ch.is_ascii_alphanumeric())
+#[rustfmt::skip]
+pub(super) fn is_word_match(text: &str, start: usize, end: usize) -> bool {
+    text[..start].chars().next_back().is_none_or(|ch| !ch.is_ascii_alphanumeric()) && text[end..].chars().next().is_none_or(|ch| !ch.is_ascii_alphanumeric())
 }
 
+#[rustfmt::skip]
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Option<String> {
-    if !claims(handoff) {
-        return None;
-    }
-    if let Some(error) = review_thread_evidence_error(pr_state) {
-        return Some(format!(
-            "{error} before fresh Codex review requests: PR #{}",
-            pr_number(pr_state)
-        ));
-    }
-    if pr_state
-        .get("headRefOid")
-        .and_then(Value::as_str)
-        .is_none_or(|head| head.trim().is_empty())
-    {
-        return Some(format!(
-            "incomplete headRefOid PR state evidence before fresh Codex review requests: PR #{}",
-            pr_number(pr_state)
-        ));
-    }
-    if has_latest_eyes_request_without_later_codex_output(pr_state)
-        || has_codex_review_output(pr_state)
-    {
-        return Some(format!(
-            "current-head Codex review activity blocks fresh Codex review requests: PR #{} already has current-head request/output evidence",
-            pr_number(pr_state)
-        ));
-    }
-    if has_blocking_unresolved_thread(handoff, pr_state) {
-        return Some(format!(
-            "unresolved review thread blocks fresh Codex review requests: PR #{} must resolve or document accepted no-change rationale before requesting another @codex review",
-            pr_number(pr_state)
-        ));
-    }
+    if !claims(handoff) { return None; }
+    if let Some(error) = review_thread_evidence_error(pr_state) { return Some(format!("{error} before fresh Codex review requests: PR #{}", pr_number(pr_state))); }
+    if missing_text(pr_state, "headRefOid") { return Some(format!("incomplete headRefOid PR state evidence before fresh Codex review requests: PR #{}", pr_number(pr_state))); }
+    if missing_text(pr_state, "headRefCommittedDate") { return Some(format!("incomplete headRefCommittedDate PR state evidence before fresh Codex review requests: PR #{}", pr_number(pr_state))); }
+    if !has_pr_comments_and_reviews_evidence(pr_state) { return Some(format!("fresh Codex review request evidence missing: include freshly captured PR comments and reviews before requesting @codex review on PR #{}", pr_number(pr_state))); }
+    if events::has_latest_eyes_request_without_later_codex_output(pr_state) || events::has_codex_review_output(pr_state) { return Some(format!("current-head Codex review activity blocks fresh Codex review requests: PR #{} already has current-head request/output evidence", pr_number(pr_state))); }
+    if has_blocking_unresolved_thread(handoff, pr_state) { return Some(format!("unresolved review thread blocks fresh Codex review requests: PR #{} must resolve or document accepted no-change rationale before requesting another @codex review", pr_number(pr_state))); }
     None
+}
+#[rustfmt::skip]
+fn missing_text(pr_state: &Value, field: &str) -> bool {
+    pr_state.get(field).and_then(Value::as_str).is_none_or(|text| text.trim().is_empty())
+}
+#[rustfmt::skip]
+fn has_pr_comments_and_reviews_evidence(pr_state: &Value) -> bool {
+    pr_state.get("comments").is_some_and(Value::is_array) && (pr_state.get("reviews").is_some_and(Value::is_array) || pr_state.get("latestReviews").is_some_and(Value::is_array))
 }
 
 pub(super) fn review_thread_evidence_error(pr_state: &Value) -> Option<String> {
