@@ -17,6 +17,16 @@ fn validator_cli_rejects_unresolved_pending_worktree_ids() -> TestResult {
         "create_thread returned pendingWorktreeId local:edge. Worktree setup is missing.\n",
         "create_thread returned pendingWorktreeId local:edge. Worktree setup missing, no actionable error surfaced.\n",
         "create_thread returned pendingWorktreeId local:edge. Thread setup failed because branch creation is still pending.\n",
+        "pendingWorktreeId local:first surfaced thread id 019f-child with active owner. pendingWorktreeId local:second is still not visible.\n",
+        "pending worktree ids local:first and local:second: first surfaced thread id 019f-child with active owner; second remains unresolved.\n",
+        "pending worktree ids local:first and local:second: local:first surfaced thread id 019f-child with active owner; local:second remains unresolved.\n",
+        "pendingWorktreeId local:first failed setup with fatal invalid reference. pendingWorktreeId local:second has no surfaced thread yet.\n",
+        "pendingWorktreeId local:first reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment is allowed. pendingWorktreeId local:second remains unresolved.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment: no.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe reassignment: false.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; retry/reassignment: not applicable.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry is not allowed.\n",
+        "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; unsafe retry/reassignment would duplicate owners.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -40,6 +50,17 @@ fn validator_cli_allows_resolved_pending_worktree_ids() -> TestResult {
         "create_thread returned pendingWorktreeId local:3ae71d60-490a-41e3-a9b3-b76c36f47186. Surfaced thread id 019f-child was observed and active lane accounting state is active.\n",
         "Pending worktree id local:88841d87-c470-48b5-9df6-b168eb049339 reached bounded timeout state after list_threads searches by pending id, branch, PR, SHA, and review-thread id; active lane accounting state is not-surfaced-after-bounded-wait and safe retry/reassignment is allowed.\n",
         "Pending worktree id local:88841d87-c470-48b5-9df6-b168eb049339 failed setup with fatal invalid reference; active lane accounting state is failed and retry requires corrected base ref.\n",
+        "pendingWorktreeId local:first surfaced thread id 019f-child with active owner. pendingWorktreeId local:second failed setup with fatal invalid reference.\n",
+        "pendingWorktreeId local:first reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment is allowed. pendingWorktreeId local:second surfaced thread id 019f-child-2 with active owner.\n",
+        "pending worktree ids local:first surfaced thread id 019f-child with active owner; local:second failed setup with fatal invalid reference.\n",
+        "pending worktree ids local:first and local:second: first surfaced thread id 019f-child with active owner; second failed setup with fatal invalid reference.\n",
+        "pending worktree ids local:first and local:second: local:first surfaced thread id 019f-child with active owner; local:second failed setup with fatal invalid reference.\n",
+        "pending worktree ids local:first and local:second: local:first reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment is allowed; local:second failed setup with fatal invalid reference.\n",
+        "pendingWorktreeId: none\nNo pending worktree setup remains.\n",
+        "pendingWorktreeId: null\nNo pending worktree setup remains.\n",
+        "pendingWorktreeId: no\nNo pending worktree setup remains.\n",
+        "pending worktree id = n/a\nNo pending worktree setup remains.\n",
+        "pendingWorktreeId: n-a\nNo pending worktree setup remains.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
