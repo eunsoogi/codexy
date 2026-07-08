@@ -164,11 +164,10 @@ fn has_passive_created_thread_id(line: &str) -> bool {
     })
 }
 fn has_passive_launch_verb(rest: &str, verb: &str) -> bool {
-    (rest.starts_with(verb)
-        || rest.starts_with(&format!("{verb}:"))
-        || rest.contains(&format!(" {verb}")))
-        && !rest.contains(&format!("not {verb}"))
-        && !rest.contains(&format!("n't {verb}"))
+    (rest.starts_with(verb) || rest.contains(&format!(" {verb}")))
+        && ["not ", "n't ", "not yet ", "not been ", "n't been "]
+            .into_iter()
+            .all(|negation| !rest.contains(&format!("{negation}{verb}")))
 }
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
     if format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}").split('|').any(|marker| line.contains(&marker)) {
