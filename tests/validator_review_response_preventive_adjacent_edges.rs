@@ -44,6 +44,7 @@ fn validator_allows_preventive_adjacent_markdown_heading_with_blank_before_bulle
 fn validator_rejects_exact_comment_only_handoff_with_no_waiting_heading() -> TestResult {
     for handoff in [
         "Waiting: none. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Waiting:\n- none\nReview response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: 0. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: zero. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Waiting: no. Review response: fixed the exact Codex review comment and verified current head.\n",
@@ -54,7 +55,6 @@ fn validator_rejects_exact_comment_only_handoff_with_no_waiting_heading() -> Tes
         "Waiting: cleared. Review response: fixed the exact Codex review comment and verified current head.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
-
         assert!(
             !output.status.success(),
             "validator should not treat no-waiting headings as incomplete evidence\nhandoff:\n{}\nstdout:\n{}\nstderr:\n{}",

@@ -53,7 +53,9 @@ fn validator_rejects_exact_comment_only_handoff_with_no_blockers_heading() -> Te
         "Blocked: none. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blockers: 0. Review response: fixed the exact Codex review comment and verified current head.\n",
         "Blockers: zero. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Blockers:\n- none\nReview response: fixed the exact Codex review comment and verified current head.\n",
         "Blockers: no blockers. Review response: fixed the exact Codex review comment and verified current head.\n",
+        "Readiness: not complete.\nReview response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the helper family.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert!(
@@ -92,7 +94,6 @@ fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression tests exercise adjacent parser variants in the touched helper family.\n",
         resolved_review_thread_pr_state(),
     )?;
-
     assert_success(
         &output,
         "validator should allow preventive adjacent coverage",
@@ -190,7 +191,6 @@ fn validator_rejects_not_applicable_preventive_adjacent_no_change_rationale() ->
     );
     Ok(())
 }
-
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

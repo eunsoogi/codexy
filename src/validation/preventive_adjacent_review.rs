@@ -15,10 +15,6 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
                 "work is blocked",
             ],
         )
-        || has_pipe_any(
-            &text,
-            "this lane is not complete|lane is not complete|is not complete|is not currently complete|isn't complete|isn't yet complete|not currently complete|not ready for handoff|not currently ready for handoff|aren't ready for handoff|aren't yet ready for handoff|aren't currently ready for handoff|isn't currently ready for handoff",
-        )
         || has_true_blocked_or_blocker_label(&text)
 }
 fn starts_with_true_blocker(text: &str) -> bool {
@@ -45,7 +41,10 @@ fn starts_with_true_waiting(text: &str) -> bool {
     text.starts_with("waiting") && !has_false_heading_value(text)
 }
 fn has_false_blocked_or_waiting_value(value: &str) -> bool {
-    let value = value.trim_start();
+    let value = value
+        .trim_start()
+        .trim_start_matches(['-', '*'])
+        .trim_start();
     let first = value
         .split(|ch: char| !matches!(ch, '/' | '0'..='9' | 'a'..='z'))
         .next()
@@ -67,10 +66,10 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         || value.starts_with("no current issue")
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
-    has_unnegated(text, "remains unresolved")
+    has_unnegated_any(text, &["remains unresolved", "remain unresolved"])
         && (has_pipe_any(
             text,
-            "this lane is not complete|lane is not complete|is not complete|isn't complete|isn't yet complete|not ready for handoff|aren't ready for handoff|aren't yet ready for handoff|not currently ready for handoff|aren't currently ready for handoff|isn't currently ready for handoff",
+            "this lane is not complete|lane is not complete|is not complete|isn't complete|isn't yet complete|not currently complete|not ready for handoff|aren't ready for handoff|aren't yet ready for handoff|not currently ready for handoff|aren't currently ready for handoff|isn't currently ready for handoff",
         ) || has_readiness_not_applicable_state(text)
             || has_true_label_value(text, "waiting:"))
         || has_true_blocked_or_blocker_label(text)
@@ -80,6 +79,9 @@ pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
     let Some(start) = text.find("preventive adjacent review") else {
         return false;
     };
+    if has_false_readiness_before_evidence(&text, start) {
+        return false;
+    }
     let segment = &text[start..preventive_adjacent_review_end(&text, start)];
     let has_adjacent_subject = has_unnegated_any(
         segment,
@@ -201,6 +203,21 @@ fn has_any(text: &str, needles: &[&str]) -> bool {
 fn has_pipe_any(text: &str, needles: &str) -> bool {
     needles.split('|').any(|needle| text.contains(needle))
 }
+fn has_false_readiness_before_evidence(text: &str, start: usize) -> bool {
+    ["readiness:", "pr readiness:", "pr ready:"]
+        .iter()
+        .any(|label| {
+            text[..start].rfind(label).is_some_and(|index| {
+                let value = text[index + label.len()..start]
+                    .trim_start()
+                    .trim_start_matches(['-', '*'])
+                    .trim_start();
+                ["not ", "false", "isn't ready", "aren't ready"]
+                    .iter()
+                    .any(|state| value.starts_with(state))
+            })
+        })
+}
 fn has_readiness_not_applicable_state(text: &str) -> bool {
     ["pr readiness:", "readiness:"].iter().any(|label| {
         text.find(label).is_some_and(|index| {
@@ -223,15 +240,9 @@ fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
         .map_or(text.len(), |index| start + index)
 }
 fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {
-    let raw = suffix[..index].trim();
-    let heading = raw
+    let heading = suffix[..index]
+        .trim()
         .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'));
-    (raw.starts_with('#')
-        || raw.ends_with(':')
-        || matches!(
-            heading,
-            "preventive adjacent review" | "preventive adjacent review evidence"
-        ))
-        && (heading == "preventive adjacent review"
-            || heading.starts_with("preventive adjacent review evidence"))
+    heading == "preventive adjacent review"
+        || heading.starts_with("preventive adjacent review evidence")
 }
