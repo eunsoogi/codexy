@@ -1,64 +1,51 @@
 use super::child_lane_active_thread_count::{active_child_thread_count, key_words};
 use super::child_lane_active_thread_evidence::ThreadOwner;
 pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
+type CountRecords = (Vec<ActiveCount>, Option<ThreadOwner>);
 pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCount> {
     let mut records = Vec::new();
-    let mut freed_capacity_owner = None;
+    let mut freed = None;
     for (line_number, line) in evidence.lines().enumerate() {
-        let (count_records, trailing_freed_capacity) =
-            active_count_records_for_line(line, line_number, freed_capacity_owner.clone());
-        if count_records.is_empty() {
-            if child_thread_freed_capacity(line) {
-                freed_capacity_owner = Some(ThreadOwner::from_line(line));
-            }
-        } else {
+        let (count_records, trailing) = records_for_line(line, line_number, freed.clone());
+        if count_records.is_empty() && freed_capacity(line) {
+            freed = Some(ThreadOwner::from_line(line));
+        } else if !count_records.is_empty() {
             records.extend(count_records);
-            freed_capacity_owner = trailing_freed_capacity;
+            freed = trailing;
         }
     }
     records
 }
-fn active_count_records_for_line(
-    line: &str,
-    line_number: usize,
-    freed_capacity_owner: Option<ThreadOwner>,
-) -> (Vec<ActiveCount>, Option<ThreadOwner>) {
+fn records_for_line(line: &str, line_number: usize, freed: Option<ThreadOwner>) -> CountRecords {
     let mut records = Vec::new();
-    let mut freed_capacity_owner = freed_capacity_owner;
+    let mut freed = freed;
     for segment in line.split(';').flat_map(|segment| segment.split(". ")) {
-        let count_records = active_count_records_for_segment(
-            line,
-            segment,
-            line_number,
-            freed_capacity_owner.clone(),
-        );
-        if count_records.is_empty() {
-            if child_thread_freed_capacity(segment) {
-                freed_capacity_owner = Some(ThreadOwner::from_line(segment));
-            }
-        } else {
+        let (count_records, trailing) =
+            records_for_segment(line, segment, line_number, freed.clone());
+        if count_records.is_empty() && freed_capacity(segment) {
+            freed = Some(ThreadOwner::from_line(segment));
+        } else if !count_records.is_empty() {
             records.extend(count_records);
-            freed_capacity_owner = None;
+            freed = trailing;
         }
     }
-    (records, freed_capacity_owner)
+    (records, freed)
 }
-fn active_count_records_for_segment(
+fn records_for_segment(
     line: &str,
     segment: &str,
     line_number: usize,
-    freed_capacity_owner: Option<ThreadOwner>,
-) -> Vec<ActiveCount> {
+    freed: Option<ThreadOwner>,
+) -> CountRecords {
     let mut records = Vec::new();
-    let mut freed_capacity_owner = freed_capacity_owner;
+    let mut freed = freed;
     for segment in split_count_clauses(segment, ", ")
         .into_iter()
         .flat_map(|segment| split_count_clauses(segment, " and "))
     {
+        let trailing = freed_capacity(segment).then(|| ThreadOwner::from_line(segment));
         let Some(count) = active_child_thread_count(segment) else {
-            if child_thread_freed_capacity(segment) {
-                freed_capacity_owner = Some(ThreadOwner::from_line(segment));
-            }
+            freed = trailing.or(freed);
             continue;
         };
         records.push(ActiveCount {
@@ -66,14 +53,14 @@ fn active_count_records_for_segment(
             kind: count_kind(segment),
             line_number,
             segment_number: segment_offset(line, segment),
-            freed_capacity: freed_capacity_owner.is_some(),
-            freed_capacity_owner: freed_capacity_owner.clone(),
+            freed_capacity: freed.is_some(),
+            freed_capacity_owner: freed.clone(),
             owner: ThreadOwner::from_line(segment),
             thread_ids: thread_ids(segment),
         });
-        freed_capacity_owner = None;
+        freed = trailing;
     }
-    records
+    (records, freed)
 }
 fn segment_offset(line: &str, segment: &str) -> usize {
     segment.as_ptr() as usize - line.as_ptr() as usize
@@ -225,16 +212,29 @@ fn thread_owner_matches(found: &ThreadOwner, expected: &ThreadOwner) -> bool {
             .iter()
             .any(|id| expected.issue_ids.contains(id))
 }
-fn child_thread_freed_capacity(line: &str) -> bool {
-    let words = key_words(line);
-    words.iter().any(|word| word == "child")
-        && words
-            .iter()
-            .any(|word| matches!(word.as_str(), "thread" | "threads"))
-        && ["finished", "stopped", "removed"]
-            .into_iter()
+fn freed_capacity(line: &str) -> bool {
+    let claim = freed_capacity_claim_text(line);
+    let words = key_words(claim);
+    let owner = ThreadOwner::from_line(claim);
+    let subject = words.iter().position(|word| !word_in(word, "a|an|the"));
+    let completion = words
+        .iter()
+        .position(|word| word_in(word, "archived|completed|finished|merged|removed|stopped"));
+    matches!((subject, completion), (Some(subject), Some(completion)) if subject <= completion
+        && !words[subject..completion].iter().any(|word| word_in(word, "proof|review|test|tests|verification|evidence"))
+        && ((!owner.issue_ids.is_empty() && word_in(&words[subject], "issue|pr|pull|request|merge"))
+            || (owner.thread_id.is_some() && word_in(&words[subject], "thread|threads"))
+            || (words[subject] == "child" && words.get(subject + 1).is_some_and(|word| word == "thread" || word == "threads"))))
+        && !"not|no|inactive"
+            .split('|')
             .any(|marker| words.iter().any(|word| word == marker))
-        && !["not", "no", "inactive"]
-            .into_iter()
-            .any(|marker| words.iter().any(|word| word == marker))
+}
+fn word_in(word: &str, values: &str) -> bool {
+    values.split('|').any(|value| word == value)
+}
+fn freed_capacity_claim_text(line: &str) -> &str {
+    line.split_once(':')
+        .filter(|(label, _)| starts_count_clause(label))
+        .and_then(|(_, rest)| rest.split_once(',').map(|(_, trailing)| trailing))
+        .unwrap_or(line)
 }
