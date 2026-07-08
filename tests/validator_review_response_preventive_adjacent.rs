@@ -98,6 +98,7 @@ fn validator_allows_preventive_adjacent_regression_coverage() -> TestResult {
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression tests exercise adjacent parser variants in the touched helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression tests were added for adjacent parser variants in the touched helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage was added for adjacent parser variants in the touched helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head.\nPreventive adjacent review:\nTests: focused regression coverage exercises adjacent parser variants in the touched helper family.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_success(

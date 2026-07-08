@@ -115,7 +115,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
         || local.starts_with("s not ")
         || starts_with_pipe(
             local,
-            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
+            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|did not|didn't|does not|doesn't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not run|not executed|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
         )
 }
 
