@@ -1,12 +1,11 @@
-use super::child_lane_active_thread_capacity::{
-    ThreadOperation, active_capacity_errors, child_thread_operations, continues_existing_owner,
-};
+use super::child_lane_active_thread_capacity::{active_capacity_errors, continues_existing_owner};
 use super::child_lane_active_thread_count_records::{
     active_child_thread_count_errors, active_child_thread_count_records,
 };
 use super::child_lane_active_thread_evidence::{
     OwnerLookup, ThreadOwner, issue_ids, matching_owner_lookup_before, thread_id,
 };
+use super::child_lane_active_thread_operations::{ThreadOperation, child_thread_operations};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let mut errors = Vec::new();
