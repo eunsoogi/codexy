@@ -67,7 +67,7 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
 fn validator_rejects_invalid_sentinel_readiness_evidence() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Pushed: yes.\n",
-        "PR ready for parent handoff. Packaged Codexy Sentinel Lagrange reviewed exact head and current diff. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel didn't pass on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel evidence: reviewed exact head, no blockers listed. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: PASS on old SHA abc1234, current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: PASS after planned rerun on current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
@@ -169,7 +169,7 @@ fn validator_rejects_current_block_before_hypothetical_future_pass() -> TestResu
 fn validator_accepts_unobservable_sentinel_when_handoff_stops_before_readiness() -> TestResult {
     for handoff in [
         "Sentinel: UNOBSERVABLE after bounded waits. Pushed: no. PR ready: no. Parent decision required: yes. This lane is not ready for handoff.\n",
-        "Sentinel: UNOBSERVABLE after bounded waits. Pushed: no.\nPR ready: no\nParent decision required: yes.\n",
+        "Verification completed. Sentinel: UNOBSERVABLE after bounded waits. PR ready: no.\n",
         "Sentinel: UNOBSERVABLE after bounded waits. We aren't ready for handoff.\n",
     ] {
         accept_open_pr_handoff(
