@@ -48,7 +48,7 @@ pub(super) fn names_head(text: &str, start: usize, head_ref_oid: Option<&str>) -
 fn has_negative_answer(text: &str) -> bool {
     has_negative_label_value(text)
         || text
-            .split(['?', ':'])
+            .split(['?', ':', '-', '='])
             .skip(1)
             .any(starts_with_negative_value)
 }

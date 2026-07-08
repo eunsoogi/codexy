@@ -28,6 +28,12 @@ fn validator_rejects_child_handoff_readiness_with_blocked_sentinel() -> TestResu
         format!(
             "Child handoff: branch clean, synced, and pushed at {HEAD}. Sentinel: UNOBSERVABLE after bounded wait on current head {HEAD}.\n"
         ),
+        format!(
+            "Child handoff: Clean: yes. Synced: yes. Pushed: yes at {HEAD}. Sentinel: BLOCK on current head {HEAD}.\n"
+        ),
+        format!(
+            "Child handoff: branch clean and pushed at {HEAD}. Parent can merge. Sentinel: UNOBSERVABLE after bounded wait on current head {HEAD}.\n"
+        ),
     ] {
         assert_rejects_sentinel_handoff(&handoff)?;
     }

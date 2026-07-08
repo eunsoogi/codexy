@@ -31,7 +31,6 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous Sentinel run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous reviewer gate run. Pushed: yes.\n",
         "PR is ready. Sentinel: BLOCK on current head.\n",
-        "PR is ready. Sentinel: BLOCK on current head.\n",
         "PR is ready. Sentinel: BLOCK on current head. Previous Sentinel: UNOBSERVABLE after bounded wait. Maintainer explicitly approved fallback for this previous unobservable Sentinel run.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head; rerun Sentinel: PASS before push.\n",
     ] {
@@ -186,6 +185,8 @@ fn validator_rejects_unapproved_sentinel_fallback_requirement_as_readiness() -> 
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for CI. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for CI because the Sentinel run was blocked. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for this Sentinel run? no. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this Sentinel run - no. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded wait on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this Sentinel run = no. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer approval: fallback approved for this Sentinel run? no. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer approval: fallback approved for this Sentinel run? Pushed: yes.\n",
     ] {
