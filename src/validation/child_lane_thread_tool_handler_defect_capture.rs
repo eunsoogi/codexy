@@ -56,13 +56,14 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
 }
 fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
     let start = defect_scope_start(lines, index);
+    let defect_lane = prefixed_lane_label(lines[index]);
     let mut scoped = lines[start..=index].to_vec();
     scoped[index - start] = current_defect_clause_scope(lines[index]);
     scoped.extend(
         lines[index + 1..]
             .iter()
             .take_while(|line| {
-                is_unlisted_handoff_metadata_item(line)
+                is_unlisted_handoff_metadata_item_for_lane(line, defect_lane.as_deref())
                     || is_handoff_list_metadata_item(line)
                     || is_exact_handler_error_metadata_item(line)
             })
@@ -147,9 +148,15 @@ fn is_handoff_list_metadata_item(line: &str) -> bool {
 }
 
 fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
+    is_unlisted_handoff_metadata_item_for_lane(line, None)
+}
+
+fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) -> bool {
     let line = line.to_ascii_lowercase();
-    let line = strip_lane_label_prefix(&line);
-    is_fallback_metadata_field(&line)
+    let Some(line) = strip_lane_label_prefix_for_lane(&line, lane) else {
+        return false;
+    };
+    is_fallback_metadata_field(&line) && !names_later_lane_handoff(&line)
         || [
             "separate dogfood issue",
             "separate dogfooding issue",
@@ -163,6 +170,10 @@ fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
         .any(|field| line.starts_with(field))
 }
 
+fn names_later_lane_handoff(line: &str) -> bool {
+    line.contains("another lane") || line.contains("later lane") || line.contains("for lane ")
+}
+
 fn is_exact_handler_error_metadata_item(line: &str) -> bool {
     let line = line.to_ascii_lowercase();
     let line = strip_lane_label_prefix(&line);
@@ -171,18 +182,38 @@ fn is_exact_handler_error_metadata_item(line: &str) -> bool {
 }
 
 fn strip_lane_label_prefix(line: &str) -> &str {
+    strip_lane_label_prefix_for_lane(line, None).unwrap_or(line)
+}
+
+fn strip_lane_label_prefix_for_lane<'a>(line: &'a str, lane: Option<&str>) -> Option<&'a str> {
     let Some(rest) = line.trim_start().strip_prefix("lane ") else {
-        return line;
+        return Some(line);
     };
     let label_end = rest
         .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
         .unwrap_or(rest.len());
     let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
     if label.is_empty() {
-        return line;
+        return Some(line);
     }
-    rest[label_end..]
-        .trim_start_matches(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+    if lane.is_some_and(|lane| lane != label) {
+        return None;
+    }
+    Some(
+        rest[label_end..].trim_start_matches(|ch: char| {
+            ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.'
+        }),
+    )
+}
+
+fn prefixed_lane_label(line: &str) -> Option<String> {
+    let line = line.trim_start().to_ascii_lowercase();
+    let rest = line.strip_prefix("lane ")?;
+    let label_end = rest
+        .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .unwrap_or(rest.len());
+    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    (!label.is_empty()).then(|| label.to_string())
 }
 
 fn current_defect_clause_scope(line: &str) -> &str {

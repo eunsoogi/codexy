@@ -79,7 +79,7 @@ Lane A:
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
 {field}: parent captured tool exposure mismatch for {qualifier}.
 Tracking issue: #246
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; separate dogfood issue: #205.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
         ))?;
@@ -91,5 +91,29 @@ Maintainer reassignment: none
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_generic_lane_nouns_in_same_lane_handoff_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Fallback route: parent posted the handoff in the child lane thread.
+Tracking issue: #246
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A; no fallback route was available; separate dogfood issue: #205.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should not parse generic child lane thread wording as a different lane label\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }

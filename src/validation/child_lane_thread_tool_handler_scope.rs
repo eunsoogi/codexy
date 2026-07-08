@@ -352,8 +352,18 @@ fn lane_label(line: &str) -> Option<String> {
 }
 
 fn normalized_lane_label(label: &str) -> Option<String> {
-    (!label.is_empty() && !is_excluded_lane_label(label))
+    (is_lane_label_token(label) && !is_excluded_lane_label(label))
         .then(|| format!("lane {}", label.to_ascii_lowercase()))
+}
+
+fn is_lane_label_token(label: &str) -> bool {
+    !label.is_empty()
+        && (label.bytes().all(|byte| byte.is_ascii_digit())
+            || label.len() == 1 && label.bytes().all(|byte| byte.is_ascii_alphabetic())
+            || label
+                .bytes()
+                .next()
+                .is_some_and(|byte| byte.is_ascii_uppercase()))
 }
 
 fn is_excluded_lane_label(label: &str) -> bool {
