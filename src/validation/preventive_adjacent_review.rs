@@ -48,15 +48,17 @@ fn has_true_blocked_or_blocker_label(text: &str) -> bool {
         .iter()
         .any(|label| has_true_label_value(text, label))
 }
-
 fn has_true_label_value(text: &str, label: &str) -> bool {
-    text.match_indices(label)
-        .any(|(index, _)| !has_false_blocked_or_waiting_value(&text[index + label.len()..]))
+    text.match_indices(label).any(|(index, _)| {
+        let has_boundary = index == 0 || !text.as_bytes()[index - 1].is_ascii_alphanumeric();
+        has_boundary
+            && !is_negated_match(&text[..index])
+            && !has_false_blocked_or_waiting_value(&text[index + label.len()..])
+    })
 }
 fn starts_with_true_waiting(text: &str) -> bool {
     text.starts_with("waiting") && !has_false_heading_value(text)
 }
-
 fn has_false_blocked_or_waiting_value(value: &str) -> bool {
     let value = value.trim_start();
     let first = value
@@ -73,7 +75,6 @@ fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         || value.starts_with("no current waiting")
         || value.starts_with("none currently")
 }
-
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated(text, "remains unresolved")
         && (has_any(
@@ -95,7 +96,6 @@ fn has_unresolved_thread_waiting_state(text: &str) -> bool {
             || has_true_label_value(text, "waiting:"))
         || has_true_blocked_or_blocker_label(text)
 }
-
 pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     let Some(start) = text.find("preventive adjacent review") else {
