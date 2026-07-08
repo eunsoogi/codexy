@@ -126,6 +126,7 @@ fn validator_rejects_colon_labeled_post_negated_preventive_coverage() -> TestRes
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; regression coverage is missing.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; nearby coverage check found regression coverage is missing for those variants.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage is missing for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused tests are missing.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused tests not run.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: adjacent parser variants in the helper family; focused tests not executed.\n",
     ] {

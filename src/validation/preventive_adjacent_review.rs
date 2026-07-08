@@ -178,7 +178,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
             "were not",
             "weren't",
             "is missing",
-            "was missing",
+            "s are missing",
             "remains missing",
             "remain missing",
             "still missing",
