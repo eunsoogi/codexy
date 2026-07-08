@@ -70,11 +70,20 @@ fn is_preventive_adjacent_section_label(suffix: &str, index: usize) -> bool {
 }
 
 fn is_preventive_adjacent_section(section: &str) -> bool {
-    let section = section.trim_start();
-    section.starts_with("preventive adjacent review:")
-        || section.starts_with("preventive adjacent review evidence")
-        || section.starts_with("preventive adjacent review no-change rationale")
-        || section.starts_with("preventive adjacent review no change rationale")
+    let first_line = section
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or("");
+    let heading = first_line
+        .trim()
+        .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'));
+    heading == "preventive adjacent review"
+        || first_line
+            .trim_start()
+            .starts_with("preventive adjacent review:")
+        || heading.starts_with("preventive adjacent review evidence")
+        || heading.starts_with("preventive adjacent review no-change rationale")
+        || heading.starts_with("preventive adjacent review no change rationale")
 }
 
 fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {
