@@ -1,16 +1,14 @@
-const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel|packaged reviewer gate|reviewer gate";
+pub(super) const SENTINEL_MARKERS: &str =
+    "sentinel|codexy-sentinel|packaged reviewer gate|reviewer gate";
 const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass|reviewer gate returned pass";
 const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate returned block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
 const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|ready for handoff|pr-ready|pr ready|pr is ready|pr-readiness|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|pull request is ready|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|push-readiness|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
-const MAINTAINER_FALLBACK_APPROVAL_MARKERS: &str = "maintainer explicitly approved fallback|maintainer explicitly approved a fallback|maintainer explicitly approved the fallback|maintainer approval: fallback approved|maintainer approval fallback approved";
-const FALLBACK_REJECTION_MARKERS: &str = "fallback required|approval required|required before|no maintainer approval|no maintainer response|not approved|previous fallback|prior fallback|old fallback|earlier fallback|superseded fallback|previous unobservable|prior unobservable|old unobservable|earlier unobservable|superseded unobservable|previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate";
 const HISTORICAL_STATUS_PREFIX_MARKERS: &str = "previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|initial sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|initial codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|initial reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate|initial reviewer-gate";
 const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before handoff|before merge|before parent handoff|before pr readiness|before merge readiness|before push readiness|required before|needed before|must pass before|needs to pass before|should pass before|planned after|after planned|planned rerun|planned review|planned pass|to be run|will be run";
 const FUTURE_STATUS_PREFIX_MARKERS: &str = "waiting for|wait for|awaiting|will rerun|will re-run|needs rerun|needs re-run|need rerun|need re-run|rerun required|re-run required";
 const STATUS_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|returned|return|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
 const LOCAL_NEGATION_WORDS: &str = "no|not|without|never|isn't|aren't|wasn't|hasn't|haven't|didn't|doesn't|don't|can't|cannot|won't";
-const NEGATIVE_LABEL_VALUE_MARKERS: &str = "false|not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|isn't currently ready|aren't ready|aren't yet ready|aren't currently ready|not requested|isn't requested|aren't requested|not applicable|isn't applicable|aren't applicable|n/a";
 pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     let claims_readiness = has_any(&text, READINESS_MARKERS);
@@ -26,8 +24,16 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
         .into_iter()
         .max_by_key(|(start, _)| *start);
     match status {
-        Some((start, SentinelStatus::Unobservable)) if fallback_after(&text, start) => Vec::new(),
-        Some((start, SentinelStatus::Block)) if fallback_after(&text, start) => Vec::new(),
+        Some((start, SentinelStatus::Unobservable))
+            if super::sentinel_handoff_evidence::fallback_after(&text, start) =>
+        {
+            Vec::new()
+        }
+        Some((start, SentinelStatus::Block))
+            if super::sentinel_handoff_evidence::fallback_after(&text, start) =>
+        {
+            Vec::new()
+        }
         Some((_, SentinelStatus::Block)) => {
             vec!["Sentinel BLOCK verdict cannot satisfy PR readiness or push readiness".into()]
         }
@@ -35,7 +41,11 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
             "Sentinel UNOBSERVABLE or pending verdict cannot satisfy PR readiness or push readiness"
                 .into(),
         ],
-        Some((start, SentinelStatus::Pass)) if names_head(&text, start, head_ref_oid) => Vec::new(),
+        Some((start, SentinelStatus::Pass))
+            if super::sentinel_handoff_evidence::names_head(&text, start, head_ref_oid) =>
+        {
+            Vec::new()
+        }
         Some((_, SentinelStatus::Pass)) => {
             vec!["Sentinel PASS readiness evidence must name the current PR head SHA".into()]
         }
@@ -44,28 +54,10 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
         ],
     }
 }
-fn fallback_after(text: &str, start: usize) -> bool {
-    let suffix = &text[start..];
-    has_any(suffix, MAINTAINER_FALLBACK_APPROVAL_MARKERS)
-        && has_any(suffix, SENTINEL_MARKERS)
-        && !has_any(suffix, FALLBACK_REJECTION_MARKERS)
-}
-fn names_head(text: &str, start: usize, head_ref_oid: Option<&str>) -> bool {
-    let Some(head) = head_ref_oid.map(str::trim).filter(|head| !head.is_empty()) else {
-        return false;
-    };
-    let bounds = clause_bounds(text, start);
-    let evidence = &text[bounds.0..bounds.1];
-    evidence.contains(&head.to_ascii_lowercase())
-        && !has_any(
-            evidence,
-            "old head|earlier head|previous head|prior head|stale head|old commit|previous commit|prior commit|stale commit|old sha|previous sha|prior sha|stale sha|old oid|previous oid|prior oid|stale oid",
-        )
-}
-fn has_any(text: &str, phrases: &str) -> bool {
+pub(super) fn has_any(text: &str, phrases: &str) -> bool {
     phrases
         .split('|')
-        .any(|phrase| has_affirmed_phrase(text, phrase))
+        .any(|phrase| affirmed_phrase_starts(text, phrase).next().is_some())
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SentinelStatus {
@@ -127,7 +119,10 @@ fn has_future_status_context(text: &str, start: usize, phrase: &str) -> bool {
         || has_any(suffix, FUTURE_STATUS_CONTEXT_MARKERS)
         || prefix.trim_end().ends_with(" will")
 }
-fn affirmed_phrase_starts<'a>(text: &'a str, phrase: &'a str) -> impl Iterator<Item = usize> + 'a {
+pub(super) fn affirmed_phrase_starts<'a>(
+    text: &'a str,
+    phrase: &'a str,
+) -> impl Iterator<Item = usize> + 'a {
     let mut rest = text;
     let mut offset = 0;
     std::iter::from_fn(move || {
@@ -138,41 +133,13 @@ fn affirmed_phrase_starts<'a>(text: &'a str, phrase: &'a str) -> impl Iterator<I
             rest = &text[offset..];
             if phrase_has_boundaries(text, start, end)
                 && !is_locally_negated(&text[..start])
-                && !has_negative_label_value(&text[end..])
+                && !super::sentinel_handoff_evidence::has_negative_label_value(&text[end..])
             {
                 return Some(start);
             }
         }
         None
     })
-}
-fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
-    affirmed_phrase_starts(text, phrase).next().is_some()
-}
-fn has_negative_label_value(suffix: &str) -> bool {
-    let Some(value) = label_value(suffix) else {
-        return false;
-    };
-    if is_standalone_negative_no(value) {
-        return true;
-    }
-    NEGATIVE_LABEL_VALUE_MARKERS
-        .split('|')
-        .any(|phrase| value.strip_prefix(phrase).is_some_and(starts_with_boundary))
-}
-fn is_standalone_negative_no(value: &str) -> bool {
-    let rest = value.strip_prefix("no");
-    rest.is_some_and(|rest| {
-        let rest = rest.trim_start_matches([' ', '\t']);
-        rest.is_empty() || rest.starts_with(['.', ',', ';', '!', '?', '\n', '\r'])
-    })
-}
-fn label_value(suffix: &str) -> Option<&str> {
-    let suffix = suffix.trim_start_matches([' ', '\t']);
-    let value = suffix
-        .strip_prefix(':')
-        .or_else(|| suffix.strip_prefix('?'))?;
-    Some(value.trim_start_matches([' ', '\t', '\n', '\r', '-', '*']))
 }
 fn is_locally_negated(prefix: &str) -> bool {
     let clause = &prefix[last_clause_boundary(prefix).unwrap_or(0)..];
@@ -190,9 +157,6 @@ fn is_locally_negated(prefix: &str) -> bool {
 fn last_clause_boundary(text: &str) -> Option<usize> {
     text.rfind(['.', '!', '?', ';', ':', ',', '\n'])
         .map(|index| index + 1)
-}
-fn next_clause_boundary(text: &str) -> Option<usize> {
-    text.find(['.', '!', '?', ';', '\n'])
 }
 fn last_status_context_boundary(text: &str) -> Option<usize> {
     text.rfind(['.', '!', '?', ';', '\n'])
@@ -213,15 +177,17 @@ fn reviewer_name_context(text: &str) -> bool {
         .split(|character: char| !character.is_ascii_alphanumeric())
         .filter(|word| !word.is_empty())
         .collect();
-    words.is_empty() || words.len() <= 4 && !words.iter().any(|word| status_noise_word(word))
+    words.is_empty()
+        || words.len() <= 4
+            && !words
+                .iter()
+                .any(|word| STATUS_NOISE_WORDS.split('|').any(|noise| *word == noise))
 }
-fn status_noise_word(word: &str) -> bool {
-    STATUS_NOISE_WORDS.split('|').any(|noise| word == noise)
-}
-fn clause_bounds(text: &str, start: usize) -> (usize, usize) {
+pub(super) fn clause_bounds(text: &str, start: usize) -> (usize, usize) {
     let clause_start = last_clause_boundary(&text[..start]).unwrap_or(0);
     let suffix = &text[start..];
-    let clause_end = next_clause_boundary(suffix)
+    let clause_end = suffix
+        .find(['.', '!', '?', ';', '\n'])
         .map(|offset| start + offset)
         .unwrap_or(text.len());
     (clause_start, clause_end)
@@ -229,9 +195,6 @@ fn clause_bounds(text: &str, start: usize) -> (usize, usize) {
 fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
     is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
 }
-fn starts_with_boundary(rest: &str) -> bool {
-    is_boundary(rest.chars().next())
-}
-fn is_boundary(character: Option<char>) -> bool {
+pub(super) fn is_boundary(character: Option<char>) -> bool {
     character.is_none_or(|character| !character.is_ascii_alphanumeric())
 }

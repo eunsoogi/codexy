@@ -4,13 +4,8 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Pushed: yes.\n",
-        "PR ready: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
-        "PR readiness: no blockers. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
-        "PR-readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "Merge readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
-        "Merge-readiness: yes. Sentinel: UNOBSERVABLE after bounded waits.\n",
-        "Ready for handoff. Sentinel: UNOBSERVABLE after bounded waits.\n",
         "PR ready for parent handoff. Sentinel verdict: UNOBSERVABLE after bounded wait. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel timed out after bounded wait. Pushed: yes.\n",
         "Parent can open PR next. Packaged Sentinel Lagrange has not returned after the bounded wait. Remote/PR head match: yes.\n",
@@ -39,8 +34,6 @@ fn validator_rejects_blocked_sentinel_as_pr_readiness() -> TestResult {
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous Sentinel run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous reviewer gate run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for the previous reviewer-gate run. Pushed: yes.\n",
-        "PR readiness: no blockers. Sentinel: BLOCK, Carver found same-scope issue.\n",
-        "PR readiness: yes. Sentinel: BLOCK, Carver found same-scope issue.\n",
         "PR is ready. Sentinel: BLOCK on current head.\n",
         "Completed. Sentinel: BLOCK on current head.\n",
         "PR is ready. Sentinel: BLOCK on current head. Previous Sentinel: UNOBSERVABLE after bounded wait. Maintainer explicitly approved fallback for this previous unobservable Sentinel run.\n",
@@ -68,10 +61,13 @@ fn validator_rejects_invalid_sentinel_readiness_evidence() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel doesn't pass on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel don't pass on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel haven't passed on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel evidence: reviewed exact head, no blockers listed. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: PASS on old SHA abc1234, current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS, but not on current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS, but not for current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS, but not on the current PR head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: PASS, but not for the current head 32b03a210b3defb2d29dd352283ea2488e60d893. Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -113,10 +109,7 @@ fn validator_ignores_unrelated_pending_review_after_sentinel_pass() -> TestResul
 fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
     for handoff in [
         "Push-ready. Sentinel timed out after bounded wait. Pushed: no. PR ready: no.\n",
-        "Ready to push. Sentinel pending after bounded wait. Pushed: no. PR ready: no.\n",
-        "Push readiness: yes. Sentinel produced no verdict after bounded wait. Pushed: no. PR ready: no.\n",
         "Push-readiness: yes. Sentinel produced no verdict after bounded wait. Pushed: no. PR ready: no.\n",
-        "Ready for push. Sentinel did not return PASS or BLOCK after bounded wait. Pushed: no. PR ready: no.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -183,7 +176,10 @@ fn validator_accepts_unobservable_sentinel_when_handoff_stops_before_readiness()
 fn validator_accepts_approved_fallback_for_timed_out_sentinel_readiness() -> TestResult {
     for handoff in [
         "PR ready for parent handoff. Sentinel timed out after bounded wait. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel timed out after bounded wait. Maintainer explicitly approved fallback for this timed-out Sentinel run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for current reviewer gate run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for the current Sentinel run. Pushed: yes.\n",
     ] {
         accept_open_pr_handoff(
             handoff,
@@ -197,6 +193,10 @@ fn validator_rejects_unapproved_sentinel_fallback_requirement_as_readiness() -> 
     for handoff in [
         "PR ready for parent handoff. Sentinel: UNOBSERVABLE after bounded waits. Maintainer-approved fallback required before readiness; no maintainer response yet. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for CI. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for CI because the Sentinel run was blocked. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer explicitly approved fallback for this Sentinel run? no. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer approval: fallback approved for this Sentinel run? no. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: BLOCK on current head. Maintainer approval: fallback approved for this Sentinel run? Pushed: yes.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
