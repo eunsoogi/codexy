@@ -36,8 +36,11 @@ fn validator_rejects_bulleted_review_feedback_after_empty_status_heading() -> Te
         "Waiting:\n+ Review feedback: fixed the exact Codex review comment.\n",
         "Blockers:\n+ Codex feedback: handled the exact Codex review comment.\n",
         "Waiting:\nVerification:\ncargo test passed.\nReview response: fixed the exact Codex review comment.\n",
+        "Waiting:\nVerification: cargo test passed.\nReview response: fixed the exact Codex review comment.\n",
         "Blockers:\nTests:\ncargo test passed.\nReview response: fixed the exact Codex review comment.\n",
+        "Blockers:\nTests: cargo test passed.\nReview response: fixed the exact Codex review comment.\n",
         "Waiting:\nSentinel:\nno blockers.\nReview response: fixed the exact Codex review comment.\n",
+        "Waiting:\nSentinel: no blockers.\nReview response: fixed the exact Codex review comment.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_rejects_preventive_adjacent(&output, handoff);
