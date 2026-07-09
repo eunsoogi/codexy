@@ -27,6 +27,18 @@ pub(super) fn has_quoted_terminal_false_value(value: &str) -> bool {
         })
 }
 
+pub(super) fn pending_label_value_after_separator(suffix: &str) -> Option<&str> {
+    let mut value = suffix.trim_start();
+    if let Some(after_quote) = value.strip_prefix('"') {
+        value = after_quote.trim_start();
+    }
+    let separator = value.chars().next()?;
+    if !matches!(separator, ':' | '=' | '-' | '?') {
+        return None;
+    }
+    Some(value[separator.len_utf8()..].trim_start())
+}
+
 fn is_terminal_json_decision_remainder(remainder: &str) -> bool {
     let Some(remainder) = remainder.strip_prefix('"') else {
         return false;

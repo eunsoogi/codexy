@@ -69,6 +69,9 @@ fn validator_cli_rejects_unresolved_pending_worktree_ids() -> TestResult {
         r#"create_thread result: {"pendingWorktreeId": "local:json-real"}.
 No surfaced thread or failed setup evidence yet.
 "#,
+        r#"create_thread result: {"pendingWorktreeId":"local:json-tight"}.
+No surfaced thread or failed setup evidence yet.
+"#,
         r#"create_thread result: {"pendingWorktreeId": "local:json-first"}.
 pendingWorktreeId local:json-first surfaced thread id 019f-child with active owner.
 create_thread result: {"pendingWorktreeId": "local:json-second"}.
@@ -122,6 +125,9 @@ fn validator_cli_allows_resolved_pending_worktree_ids() -> TestResult {
 No pending worktree setup remains.
 "#,
         r#"create_thread result: {"pendingWorktreeId": "none"}
+No pending worktree setup remains.
+"#,
+        r#"create_thread result: {"pendingWorktreeId":"none"}
 No pending worktree setup remains.
 "#,
         r#"create_thread result: {"pendingWorktreeId": "null"}
