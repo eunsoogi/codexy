@@ -39,6 +39,37 @@ pub(super) fn pending_label_value_after_separator(suffix: &str) -> Option<&str> 
     Some(value[separator.len_utf8()..].trim_start())
 }
 
+pub(super) fn has_non_review_thread_id_evidence(text: &str) -> bool {
+    let phrase = "thread id";
+    let mut rest = text;
+    let mut offset = 0;
+    while let Some(index) = rest.find(phrase) {
+        let start = offset + index;
+        let end = start + phrase.len();
+        if has_phrase_boundaries(text, start, end) && !is_review_thread_prefix(&text[..start]) {
+            return true;
+        }
+        offset = end;
+        rest = &text[offset..];
+    }
+    false
+}
+
+fn has_phrase_boundaries(text: &str, start: usize, end: usize) -> bool {
+    text[..start]
+        .chars()
+        .next_back()
+        .is_none_or(|character| !character.is_ascii_alphanumeric())
+        && text[end..]
+            .chars()
+            .next()
+            .is_none_or(|character| !character.is_ascii_alphanumeric())
+}
+
+fn is_review_thread_prefix(prefix: &str) -> bool {
+    prefix.ends_with("review ") || prefix.trim_end().ends_with("review-")
+}
+
 fn is_terminal_json_decision_remainder(remainder: &str) -> bool {
     let Some(remainder) = remainder.strip_prefix('"') else {
         return false;

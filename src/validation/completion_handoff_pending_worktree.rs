@@ -1,7 +1,7 @@
 use super::completion_handoff_pending_worktree_labels::has_false_actionable_error_evidence;
 use super::completion_handoff_pending_worktree_segments::{
-    bounded_search_evidence_text, colon_starts_lifecycle_entry, has_quoted_terminal_false_value,
-    pending_label_value_after_separator,
+    bounded_search_evidence_text, colon_starts_lifecycle_entry, has_non_review_thread_id_evidence,
+    has_quoted_terminal_false_value, pending_label_value_after_separator,
 };
 use super::completion_handoff_pending_worktree_text::{
     char_window_start, find_word, has_any, has_false_bounded_search_evidence,
@@ -176,10 +176,10 @@ fn grouped_body_separator(
 }
 fn mentions_surfaced_pending_worktree_thread(text: &str) -> bool {
     !has_false_surfaced_thread_evidence(text)
-        && has_any(
+        && (has_any(
             text,
-            "surfaced thread id|observed thread id|resolved to thread|thread id",
-        )
+            "surfaced thread id|observed thread id|resolved to thread",
+        ) || has_non_review_thread_id_evidence(text))
         && has_any(text, "active owner|active lane accounting state is active")
 }
 
@@ -191,7 +191,7 @@ fn mentions_failed_pending_worktree_setup(text: &str) -> bool {
         )
         && has_any(
             text,
-            "actionable error|fatal|invalid reference|does not exist|missing|corrected base ref",
+            "actionable error|fatal|invalid reference|does not exist|corrected base ref",
         )
 }
 
