@@ -23,6 +23,9 @@ pub(super) fn has_negated_owner_check_claim(line: &str) -> bool {
     if [
         "not run",
         "not checked",
+        "did not check",
+        "didn't check",
+        "didnt check",
         "without checking",
         "no existing owner thread evidence",
         "no existing evidence",

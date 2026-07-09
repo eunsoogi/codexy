@@ -128,15 +128,22 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
     if format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}").split('|').any(|marker| line.contains(&marker)) {
         return false;
     }
+    if is_thread_tool_discovery_context(line) {
+        return false;
+    }
     line.match_indices(tool)
         .any(|(index, _)| line[index + tool.len()..].trim_start().starts_with('('))
         || (["called", "invoked", "executed", "ran", "used"]
             .into_iter()
             .any(|word| line.contains(word))
             && line.contains(tool)
-            && !["tool search", "discovered", "available thread tool"]
-                .into_iter()
-                .any(|marker| line.contains(marker)))
+            && !is_thread_tool_discovery_context(line))
+}
+
+fn is_thread_tool_discovery_context(line: &str) -> bool {
+    ["tool search", "discovered", "available thread tool"]
+        .into_iter()
+        .any(|marker| line.contains(marker))
 }
 
 fn is_reuse_operation_line(line: &str) -> bool {
