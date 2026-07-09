@@ -3,8 +3,9 @@ use super::preventive_adjacent_review_sections::{
     preventive_adjacent_review_end,
 };
 use super::preventive_adjacent_review_text::{
-    has_any, has_false_blocked_or_waiting_value, has_pipe_any, has_unnegated, has_unnegated_any,
-    has_unnegated_pipe, is_label_negated_match,
+    has_any, has_current_blocker_phrase, has_false_blocked_or_waiting_value, has_pipe_any,
+    has_unnegated, has_unnegated_any, has_unnegated_pipe, is_label_negated_match,
+    is_stale_blocker_label_value,
 };
 
 pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
@@ -14,10 +15,7 @@ pub(super) fn documents_incomplete_or_blocked_state(handoff: &str) -> bool {
         || starts_with_true_waiting(trimmed)
         || has_true_label_value(&text, "waiting:")
         || has_unresolved_thread_waiting_state(&text)
-        || has_unnegated_pipe(
-            &text,
-            "blocked on|blocked by|blocked due to|now blocked|goal blocked|work is blocked",
-        )
+        || has_current_blocker_phrase(&text)
         || has_true_blocked_or_blocker_label(&text)
 }
 fn starts_with_true_blocker(text: &str) -> bool {
@@ -51,30 +49,6 @@ fn starts_with_true_waiting(text: &str) -> bool {
     text.strip_prefix("waiting").is_some_and(|value| {
         !has_false_blocked_or_waiting_value(value) && !is_stale_blocker_label_value(value)
     })
-}
-fn is_stale_blocker_label_value(value: &str) -> bool {
-    let end = value.find('\n').unwrap_or(value.len());
-    let value = value[..end].trim();
-    if has_any(value, &["pending"]) {
-        return has_any(value, &["previously", "historical", "earlier"])
-            && has_any(value, &["resolved", "cleared"])
-            && !has_current_pending_marker(value);
-    }
-    has_any(value, &["previous", "previously", "historical", "earlier"])
-        && has_any(value, &["resolved", "cleared"])
-        && !has_pipe_any(
-            value,
-            "now blocked|currently blocked|currently pending|pending now|still blocked|still pending|still waiting",
-        )
-}
-fn has_current_pending_marker(value: &str) -> bool {
-    "now blocked|currently blocked|current pending|currently pending|pending now|still blocked|still pending|still waiting"
-        .split('|')
-        .any(|marker| {
-            value
-                .match_indices(marker)
-                .any(|(index, _)| !is_label_negated_match(&value[..index]))
-        })
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated_any(text, &["remains unresolved", "remain unresolved"])

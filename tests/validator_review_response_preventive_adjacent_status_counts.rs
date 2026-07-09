@@ -146,6 +146,9 @@ fn validator_rejects_historical_waiting_labels_without_preventive_review() -> Te
         "Waiting: pending Codex review earlier, resolved. Review response: fixed the exact Codex review comment.\n",
         "Blocker: pending CI previously, cleared. Review response: fixed the exact Codex review comment.\n",
         "Waiting: pending Codex review previously resolved; not currently pending. Review response: fixed the exact Codex review comment.\n",
+        "Review response: fixed the exact Codex review comment. Blocked on CI earlier, now resolved.\n",
+        "Review response: fixed the exact Codex review comment. Blocked by review fixtures previously, now cleared.\n",
+        "Review response: fixed the exact Codex review comment. Blocked due to cargo earlier, now resolved.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_rejects_preventive_adjacent(&output, handoff);
@@ -163,6 +166,22 @@ fn validator_allows_current_pending_waiting_after_stale_pending_context() -> Tes
     assert!(
         output.status.success(),
         "validator should preserve current pending waiting labels\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_current_free_text_blocker_without_preventive_review() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Review response: fixed the exact Codex review comment. Blocked on current maintainer confirmation before handoff.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve current free-text blocker phrases\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );

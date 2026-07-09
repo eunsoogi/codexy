@@ -75,6 +75,52 @@ pub(super) fn has_pipe_any(text: &str, needles: &str) -> bool {
     needles.split('|').any(|needle| text.contains(needle))
 }
 
+pub(super) fn has_current_blocker_phrase(text: &str) -> bool {
+    "blocked on|blocked by|blocked due to|now blocked|goal blocked|work is blocked"
+        .split('|')
+        .any(|phrase| {
+            text.match_indices(phrase).any(|(index, _)| {
+                !is_label_negated_match(&text[..index])
+                    && !has_false_blocked_or_waiting_value(&text[index + phrase.len()..])
+                    && !is_stale_blocker_label_value(blocker_phrase_context(text, index))
+            })
+        })
+}
+
+fn blocker_phrase_context(text: &str, index: usize) -> &str {
+    let start = text[..index].rfind(['\n', '.']).map_or(0, |i| i + 1);
+    let end = text[index..]
+        .find('\n')
+        .map_or(text.len(), |offset| index + offset);
+    &text[start..end]
+}
+
+pub(super) fn is_stale_blocker_label_value(value: &str) -> bool {
+    let end = value.find('\n').unwrap_or(value.len());
+    let value = value[..end].trim();
+    if has_any(value, &["pending"]) {
+        return has_any(value, &["previously", "historical", "earlier"])
+            && has_any(value, &["resolved", "cleared"])
+            && !has_current_pending_marker(value);
+    }
+    has_any(value, &["previous", "previously", "historical", "earlier"])
+        && has_any(value, &["resolved", "cleared"])
+        && !has_pipe_any(
+            value,
+            "now blocked|currently blocked|currently pending|pending now|still blocked|still pending|still waiting",
+        )
+}
+
+fn has_current_pending_marker(value: &str) -> bool {
+    "now blocked|currently blocked|current pending|currently pending|pending now|still blocked|still pending|still waiting"
+        .split('|')
+        .any(|marker| {
+            value
+                .match_indices(marker)
+                .any(|(index, _)| !is_label_negated_match(&value[..index]))
+        })
+}
+
 pub(super) fn has_unnegated_pipe(text: &str, needles: &str) -> bool {
     needles.split('|').any(|needle| has_unnegated(text, needle))
 }
