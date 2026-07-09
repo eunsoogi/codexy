@@ -101,9 +101,11 @@ fn split_labeled_note_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a 
     while let Some(relative) = lower[cursor..].find(separator) {
         let marker_start = cursor + relative;
         let next_start = marker_start + separator.len();
-        if lower[next_start..]
+        let next_clause = lower[next_start..].trim_start();
+        if next_clause
             .split_once(':')
             .is_some_and(|(label, _)| !label.contains("owner"))
+            || starts_non_lookup_owner_clause(next_clause)
         {
             clauses.push(&segment[start..marker_start]);
             start = next_start;
@@ -112,6 +114,12 @@ fn split_labeled_note_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a 
     }
     clauses.push(&segment[start..]);
     clauses
+}
+
+fn starts_non_lookup_owner_clause(clause: &str) -> bool {
+    clause.starts_with("old owner")
+        || clause.starts_with("disposition:")
+        || clause.starts_with("thread creation:")
 }
 
 fn starts_owner_lookup_clause(clause: &str) -> bool {

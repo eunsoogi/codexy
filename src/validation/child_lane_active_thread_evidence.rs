@@ -44,7 +44,10 @@ pub(super) fn matching_owner_lookup_before(
             owner_lookup_for_operation(line, operation_owner, lower_bound, upper_bound)
         {
             match lookup {
-                OwnerLookup::Found(owner) => latest = Some(OwnerLookup::Found(owner)),
+                OwnerLookup::Found(owner) => {
+                    not_found_ids.retain(|id| !owner.issue_ids.contains(id));
+                    latest = Some(OwnerLookup::Found(owner));
+                }
                 OwnerLookup::NotFound(ids) => {
                     not_found_ids.extend(ids);
                     if !operation_owner.issue_ids.is_empty()

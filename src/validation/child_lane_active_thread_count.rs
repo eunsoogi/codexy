@@ -32,7 +32,6 @@ fn explicit_total(words: &[String]) -> Option<u64> {
             })
         })
 }
-
 fn fallback_count(words: &[String]) -> Option<u64> {
     let first = words.first()?;
     if words
@@ -148,7 +147,7 @@ fn next_component_count(words: &[String], index: usize) -> Option<(u64, usize)> 
 fn component_index(word: &str) -> Option<usize> {
     match word {
         "active" => Some(0),
-        "blocked" | "passive" | "waiting" => Some(1),
+        "blocked" | "passive" | "rate-limited" | "waiting" => Some(1),
         "pending" => Some(2),
         _ => None,
     }
@@ -191,6 +190,7 @@ fn thread_id_entry_count(words: &[String]) -> Option<u64> {
 fn value_words(value: &str) -> Vec<String> {
     value
         .to_ascii_lowercase()
+        .replace("rate limited", "rate-limited")
         .split(|character: char| {
             !(character.is_ascii_alphanumeric() || character == '-' || character == '#')
         })

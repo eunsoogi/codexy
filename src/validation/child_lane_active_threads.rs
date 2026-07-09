@@ -169,7 +169,7 @@ fn disposition_matches_owner(line: &str, existing_owner: Option<&ThreadOwner>) -
         return line_thread == owner_thread;
     }
     !existing_owner.issue_ids.is_empty()
-        && existing_owner.issue_ids.iter().all(|owner_issue| {
+        && existing_owner.issue_ids.iter().any(|owner_issue| {
             line_issues
                 .iter()
                 .any(|line_issue| line_issue == owner_issue)
