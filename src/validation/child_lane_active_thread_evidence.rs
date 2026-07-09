@@ -220,7 +220,7 @@ fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
     operation_owner
         .issue_ids
         .iter()
-        .all(|id| line_issues.contains(id))
+        .any(|id| line_issues.contains(id))
 }
 fn lookup_matches_any_operation_id(line: &str, operation_owner: &ThreadOwner) -> bool {
     if !operation_owner.issue_ids.is_empty() {

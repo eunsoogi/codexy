@@ -29,8 +29,8 @@ Maintainer reassignment: none
         "validator should preserve a found PR owner across a later linked-issue NotFound lookup"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
-        "stderr should require lookup evidence for every operation identifier, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should require reuse or old-owner disposition, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -132,8 +132,8 @@ Maintainer reassignment: none
         "validator should preserve period-separated found owner evidence on mixed lookup lines"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("existing issue/PR owner thread"),
-        "stderr should require lookup evidence for every operation identifier, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should require reuse or old-owner disposition, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

@@ -141,6 +141,7 @@ fn split_disposition_comma_clauses(segment: &str) -> Vec<&str> {
         let next_clause = lower[next_start..].trim_start();
         if next_clause.starts_with("old owner")
             || next_clause.starts_with("existing owner thread")
+            || next_clause.starts_with("disposition:")
             || next_clause.starts_with("thread creation:")
         {
             clauses.push(&segment[start..marker_start]);

@@ -97,10 +97,8 @@ Maintainer reassignment: none
         "validator should treat comma-separated found PR owner as current owner evidence"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains(
-            "new child Codex thread creation requires evidence that orchestration checked"
-        ),
-        "stderr should require lookup evidence for every operation identifier, got:\n{}",
+        String::from_utf8_lossy(&output.stderr).contains("old owner"),
+        "stderr should require reuse or old-owner disposition, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

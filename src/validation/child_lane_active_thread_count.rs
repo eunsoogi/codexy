@@ -96,7 +96,9 @@ fn component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
         .and_then(|previous| count_word(&words[previous]).map(|count| (count, previous)));
     let previous_follows_component =
         previous_count.is_some_and(|(_, previous)| count_follows_component(words, previous));
-    if previous_follows_component {
+    let previous_is_key_count = component_index(&words[index]) != Some(0)
+        && previous_count.is_some_and(|(_, previous)| previous == 0);
+    if previous_follows_component || previous_is_key_count {
         if let Some(count) = next_component_count(words, index) {
             return Some(count);
         }
