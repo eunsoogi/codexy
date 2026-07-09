@@ -45,14 +45,20 @@ pub(super) fn capture_end_before_unrelated_evidence(
     let mut saw_handler_defect_capture =
         is_handler_defect_capture_line(&evidence[capture_start..cursor]);
     let mut pending_defect_capture = has_open_defect_capture(&evidence[capture_start..cursor]);
+    let mut saw_unscoped_handoff_metadata = false;
     while cursor < evidence.len() {
         let line_start = cursor + 1;
         let line_end = line_end(evidence, line_start);
         let line = &evidence[line_start..line_end];
-        if is_different_lane_line(line, scope_lane.as_deref()) {
+        let line_opens_defect_capture = has_open_defect_capture(line);
+        let line_is_unscoped_lane_prefixed_defect_capture = scope_lane.is_none()
+            && !saw_unscoped_handoff_metadata
+            && is_handler_defect_capture_line(line);
+        if is_different_lane_line(line, scope_lane.as_deref())
+            && !line_is_unscoped_lane_prefixed_defect_capture
+        {
             return line_start;
         }
-        let line_opens_defect_capture = has_open_defect_capture(line);
         let line_matches_upcoming_defect_lane = scope_lane.is_none()
             && is_lane_scoped_defect_preface_metadata_line(line)
             && metadata_line_matches_upcoming_defect_lane(evidence, line_end, line);
@@ -94,6 +100,9 @@ pub(super) fn capture_end_before_unrelated_evidence(
         saw_capture |= line_extends_capture;
         saw_handler_defect_capture |= line_has_handler_defect_capture;
         pending_defect_capture |= line_opens_defect_capture;
+        saw_unscoped_handoff_metadata |= is_handoff_metadata_line(line)
+            && lane_mention_labels(line).is_empty()
+            && !line_matches_upcoming_defect_lane;
         cursor = line_end;
     }
     evidence.len()
