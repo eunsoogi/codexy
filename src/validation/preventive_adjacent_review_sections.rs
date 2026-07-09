@@ -40,6 +40,24 @@ pub(super) fn has_readiness_not_applicable_state(text: &str) -> bool {
         })
 }
 
+pub(super) fn blocks_preventive_adjacent_segment(text: &str, start: usize, segment: &str) -> bool {
+    has_false_readiness_before_evidence(text, start)
+        || has_negative_preventive_adjacent_claim(segment)
+}
+
+fn has_negative_preventive_adjacent_claim(segment: &str) -> bool {
+    [
+        "not performed",
+        "was not performed",
+        "wasn't performed",
+        "not applicable",
+        "isn't applicable",
+        "aren't applicable",
+    ]
+    .iter()
+    .any(|state| segment.contains(state))
+}
+
 pub(super) fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
     let suffix = &text[start..];
     let section_blank = suffix

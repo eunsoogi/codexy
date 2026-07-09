@@ -1,5 +1,5 @@
 use super::preventive_adjacent_review_sections::{
-    has_false_readiness_before_evidence, has_readiness_not_applicable_state,
+    blocks_preventive_adjacent_segment, has_readiness_not_applicable_state,
     preventive_adjacent_review_end,
 };
 use super::preventive_adjacent_review_text::{
@@ -87,13 +87,18 @@ fn has_unresolved_thread_waiting_state(text: &str) -> bool {
 }
 pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    let Some(start) = text.find("preventive adjacent review") else {
-        return false;
-    };
-    if has_false_readiness_before_evidence(&text, start) {
-        return false;
+    for (start, _) in text.match_indices("preventive adjacent review") {
+        let segment = &text[start..preventive_adjacent_review_end(&text, start)];
+        if blocks_preventive_adjacent_segment(&text, start, segment) {
+            return false;
+        }
+        if documents_preventive_adjacent_segment(segment) {
+            return true;
+        }
     }
-    let segment = &text[start..preventive_adjacent_review_end(&text, start)];
+    false
+}
+fn documents_preventive_adjacent_segment(segment: &str) -> bool {
     let has_adjacent_subject = has_unnegated_pipe(
         segment,
         "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
@@ -142,8 +147,12 @@ fn has_executed_coverage_claim(unit: &str) -> bool {
 fn has_requirement_template_context(unit: &str) -> bool {
     has_unnegated_pipe(
         unit,
-        "can|could|may|might|must|should|would|required|requirement|checklist|template|needs to|need to",
-    )
+        "can|could|may|might|must|should|would|requirement|checklist|template|needs to|need to",
+    ) || (has_unnegated(unit, "required")
+        && !has_unnegated_pipe(
+            unit,
+            "passed|ran|was run|were run|executed|was executed|were executed|added|was added|were added|validated|checked",
+        ))
 }
 fn has_exact_comment_only_coverage(unit: &str) -> bool {
     has_unnegated_any(

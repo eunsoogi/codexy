@@ -52,6 +52,9 @@ fn validator_rejects_requirement_templates_as_preventive_evidence() -> TestResul
         "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused regression tests should cover adjacent parser variants in the helper family.\n",
         "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: regression coverage needs to cover adjacent parser variants in the helper family.\n",
         "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused tests should run for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review checklist: checked regression coverage covers adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review template checked: regression coverage covers adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review requirement: checked regression coverage covers adjacent parser variants in the helper family.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_rejects_preventive_adjacent(&output, handoff);
@@ -66,6 +69,47 @@ fn validator_rejects_modal_preventive_coverage_claims() -> TestResult {
         "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused regression tests could cover adjacent parser variants in the helper family.\n",
         "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: regression coverage may cover adjacent parser variants in the helper family.\n",
         "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused tests might exercise adjacent parser variants in the helper family.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_rejects_preventive_adjacent(&output, handoff);
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_executed_required_preventive_coverage() -> TestResult {
+    for handoff in [
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: required regression tests passed for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: required focused tests ran for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: required regression coverage was executed for adjacent parser variants in the helper family.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_success(&output, "validator should allow executed required coverage");
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_later_preventive_evidence_sections() -> TestResult {
+    for handoff in [
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review evidence below.\n\n## Preventive adjacent review\nFocused regression coverage exercises adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review evidence below.\n\nPreventive adjacent review:\nTests: focused regression coverage exercises adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review summary follows later.\n\nPreventive adjacent review evidence:\n- Focused regression coverage exercises adjacent parser variants in the helper family.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_success(
+            &output,
+            "validator should scan later preventive evidence sections",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_contradictory_later_preventive_sections() -> TestResult {
+    for handoff in [
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review was not performed.\n\n## Preventive adjacent review\nFocused regression coverage exercises adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review isn't applicable.\n\n## Preventive adjacent review\nFocused regression coverage exercises adjacent parser variants in the helper family.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_rejects_preventive_adjacent(&output, handoff);
@@ -136,6 +180,15 @@ fn assert_rejects_preventive_adjacent(output: &std::process::Output, handoff: &s
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(String::from_utf8_lossy(&output.stderr).contains("preventive adjacent review"));
+}
+
+fn assert_success(output: &std::process::Output, message: &str) {
+    assert!(
+        output.status.success(),
+        "{message}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 fn resolved_review_thread_pr_state() -> &'static str {
