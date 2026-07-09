@@ -144,6 +144,30 @@ pub(super) fn has_nearby_negation(prefix: &str) -> bool {
         .any(|phrase| prefix.trim_end().ends_with(phrase))
 }
 
+pub(super) fn has_negated_pending_return(text: &str, start: usize, end: usize) -> bool {
+    let prefix = &text[char_window_start(text, start, 32)..start].trim_end();
+    let suffix = text[end..].trim_start();
+    [
+        "did not return a",
+        "did not return any",
+        "did not return",
+        "returned no",
+        "created no",
+        "without returning a",
+        "without returning any",
+    ]
+    .iter()
+    .any(|phrase| prefix.ends_with(phrase))
+        || [
+            "was not returned",
+            "was never returned",
+            "never returned",
+            "not returned",
+        ]
+        .iter()
+        .any(|phrase| suffix.starts_with(phrase))
+}
+
 pub(super) fn char_window_start(text: &str, end: usize, window: usize) -> usize {
     text[..end]
         .char_indices()

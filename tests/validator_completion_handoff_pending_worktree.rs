@@ -91,6 +91,12 @@ fn validator_cli_allows_resolved_pending_worktree_ids() -> TestResult {
         "pendingWorktreeId: no\nNo pending worktree setup remains.\n",
         "pending worktree id = n/a\nNo pending worktree setup remains.\n",
         "pendingWorktreeId: n-a\nNo pending worktree setup remains.\n",
+        "create_thread did not return a pendingWorktreeId.\nNo pending worktree setup remains.\n",
+        "create_thread did not return any pendingWorktreeId.\nNo pending worktree setup remains.\n",
+        "create_thread returned no pendingWorktreeId.\nNo pending worktree setup remains.\n",
+        "create_thread ran without returning a pendingWorktreeId.\nNo pending worktree setup remains.\n",
+        "No pendingWorktreeId was returned by create_thread.\nNo pending worktree setup remains.\n",
+        "pendingWorktreeId was not returned by create_thread.\nNo pending worktree setup remains.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

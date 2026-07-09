@@ -1,8 +1,8 @@
 use super::completion_handoff_pending_worktree_text::{
     char_window_start, find_word, has_any, has_false_bounded_search_evidence,
-    has_false_surfaced_thread_evidence, has_nearby_negation, has_terminal_false_value,
-    has_true_decision_value, is_markdown_list_item, local_id_value, ordinal_label,
-    phrase_has_boundaries,
+    has_false_surfaced_thread_evidence, has_nearby_negation, has_negated_pending_return,
+    has_terminal_false_value, has_true_decision_value, is_markdown_list_item, local_id_value,
+    ordinal_label, phrase_has_boundaries,
 };
 
 const PENDING_WORKTREE_STATE_ERROR: &str = "pending worktree ids must resolve to a surfaced thread, explicit setup failure, or bounded timeout state with safe retry/reassignment evidence";
@@ -43,6 +43,7 @@ fn pending_worktree_mentions(text: &str) -> Vec<usize> {
             let end = start + phrase.len();
             if phrase_has_boundaries(text, start, end)
                 && !has_nearby_negation(&text[char_window_start(text, start, 16)..start])
+                && !has_negated_pending_return(text, start, end)
                 && !has_false_pending_value(&text[end..])
             {
                 let id_starts = local_id_starts_before_outcome(text, end);
