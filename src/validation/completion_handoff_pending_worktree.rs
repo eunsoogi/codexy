@@ -81,10 +81,7 @@ fn pending_worktree_mentions(text: &str) -> Vec<usize> {
 }
 fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
     let suffix = &text[start..];
-    let boundary = suffix
-        .find('\n')
-        .or_else(|| suffix.find('.'))
-        .unwrap_or(suffix.len());
+    let boundary = suffix.find(['\n', '.']).unwrap_or(suffix.len());
     let header = &suffix[..boundary];
     let mut starts = Vec::new();
     let mut rest = header;

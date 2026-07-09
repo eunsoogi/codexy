@@ -112,6 +112,7 @@ fn validator_cli_allows_resolved_pending_worktree_ids() -> TestResult {
         "Pending worktree id local:edge setup failed because branch ref does not exist.\n",
         "Pending worktree id local:edge. Thread id 019f-child surfaced; active owner Alice.\n",
         "create_thread returned pendingWorktreeId local:abc.\npendingWorktreeId local:abc surfaced thread id 019f-child with active owner.\n",
+        "pendingWorktreeId local:abc surfaced thread id 019f-child with active owner. Reference local:cache\n",
         "create_thread returned pendingWorktreeId local:abc.\npendingWorktreeId local:abc failed setup with fatal invalid reference.\n",
         "pendingWorktreeId local:first surfaced thread id 019f-child with active owner. pendingWorktreeId local:second failed setup with fatal invalid reference.\n",
         "pendingWorktreeId local:first reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment is allowed. pendingWorktreeId local:second surfaced thread id 019f-child-2 with active owner.\n",
