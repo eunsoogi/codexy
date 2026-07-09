@@ -9,7 +9,6 @@ pub(super) fn active_child_thread_count(line: &str) -> Option<u64> {
         .or_else(|| labeled_component_count(&key_words, &words))
         .or_else(|| fallback_count(&words))
 }
-
 pub(super) fn key_words(key: &str) -> Vec<String> {
     key.to_ascii_lowercase()
         .split(|character: char| !character.is_ascii_alphanumeric())
@@ -17,7 +16,6 @@ pub(super) fn key_words(key: &str) -> Vec<String> {
         .map(str::to_owned)
         .collect()
 }
-
 fn explicit_total(words: &[String]) -> Option<u64> {
     words
         .windows(2)
@@ -62,6 +60,8 @@ fn fallback_count(words: &[String]) -> Option<u64> {
 fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64> {
     let mut counts = [None, None, None];
     let mut first_count_used = false;
+    let key_has_active = key_words.iter().any(|word| word == "active");
+    let key_has_waiting = key_words.iter().any(|word| word == "waiting");
     for (index, word) in words.iter().enumerate() {
         let Some(component) = component_index(word) else {
             continue;
@@ -79,13 +79,14 @@ fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64
         return None;
     }
     if let Some(first_count) = words.first().and_then(|word| count_word(word)) {
-        let key_has_active = key_words.iter().any(|word| word == "active");
-        let key_has_waiting = key_words.iter().any(|word| word == "waiting");
         if !first_count_used && key_has_active && counts[0].is_none() {
             counts[0] = Some(first_count);
         } else if !first_count_used && key_has_waiting && counts[1].is_none() {
             counts[1] = Some(first_count);
         }
+    }
+    if key_has_active && counts[0].is_none() {
+        counts[0] = thread_id_entry_count(words);
     }
     Some(counts.iter().flatten().copied().sum())
 }
@@ -147,7 +148,7 @@ fn next_component_count(words: &[String], index: usize) -> Option<(u64, usize)> 
 fn component_index(word: &str) -> Option<usize> {
     match word {
         "active" => Some(0),
-        "waiting" => Some(1),
+        "blocked" | "passive" | "waiting" => Some(1),
         "pending" => Some(2),
         _ => None,
     }
