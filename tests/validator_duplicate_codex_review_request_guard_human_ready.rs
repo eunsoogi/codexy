@@ -12,6 +12,7 @@ fn validator_cli_allows_human_ready_for_review_status_with_current_codex_output(
          Duplicate/no-active-work state: PR #262 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {GIT_PREFLIGHT}\n\
+         Packaged Codexy Sentinel Turing: PASS on current head 1a8a18330c904a1f5621c9110431277ad8366ebc.\n\
          Stop condition: PR is ready for review by the maintainer; do not merge.\n\
          Next action: hand off the ready-for-review status to the maintainer.\n"
     );

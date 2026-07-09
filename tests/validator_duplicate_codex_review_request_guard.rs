@@ -60,7 +60,7 @@ fn validator_cli_allows_first_current_head_codex_review_request_plan() -> TestRe
             "state":"OPEN",
             "isDraft":false,
             "mergeStateStatus":"CLEAN",
-            "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
+            "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893", "headRefCommittedDate":"2026-07-04T05:16:00Z",
             "comments":[],
             "reviews":[],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
@@ -87,7 +87,7 @@ fn validator_cli_ignores_review_request_text_in_pr_body() -> TestResult {
             "state":"OPEN",
             "isDraft":false,
             "mergeStateStatus":"CLEAN",
-            "headRefOid":"7ebdf2512e64df8345cd0ee4876d8950c801c465",
+            "headRefOid":"7ebdf2512e64df8345cd0ee4876d8950c801c465", "headRefCommittedDate":"2026-07-05T02:40:00Z",
             "body":"This PR documents the `@codex review` duplicate guard.",
             "comments":[{
                 "body":"To use Codex here, create an environment for this repo.",
@@ -120,7 +120,7 @@ fn validator_cli_allows_review_request_after_stale_prior_head_output() -> TestRe
             "state":"OPEN",
             "isDraft":false,
             "mergeStateStatus":"CLEAN",
-            "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "headRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "headRefCommittedDate":"2026-07-04T05:20:00Z",
             "comments":[],
             "reviews":[],
             "latestReviews":[{

@@ -97,6 +97,10 @@ complete.
   generic role names, parent-only
   readthroughs, stale reviewer output, or external review passes are not
   substitutes for this gate.
+- Packaged Sentinel evidence MUST state `PASS`, `BLOCK`, or `UNOBSERVABLE`
+  with the reviewer name and exact head. `BLOCK` and `UNOBSERVABLE` MUST NOT
+  satisfy PR readiness, push readiness, parent acceptance, or completion unless
+  a maintainer explicitly approves a fallback.
 - MUST re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, MUST verify
   the child reported actual goal-tool usage or an unavailable-goal-tool
