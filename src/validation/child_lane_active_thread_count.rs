@@ -174,7 +174,9 @@ fn thread_id_entry_count(words: &[String]) -> Option<u64> {
             count += 1;
             index += 2;
         } else {
-            if is_non_prefixed_codex_thread_id(&words[index]) {
+            if is_non_prefixed_codex_thread_id(&words[index])
+                && !is_non_thread_id_context(words, index)
+            {
                 count += 1;
             }
             index += 1;
@@ -214,6 +216,12 @@ fn is_non_prefixed_codex_thread_id(word: &str) -> bool {
             .all(|character| character.is_ascii_alphanumeric() || character == '-')
         && word.chars().any(|c| c.is_ascii_digit())
         && word.chars().any(|c| c.is_ascii_alphabetic())
+}
+
+fn is_non_thread_id_context(words: &[String], index: usize) -> bool {
+    words
+        .get(index.saturating_sub(1))
+        .is_some_and(|word| matches!(word.as_str(), "branch" | "worktree" | "path"))
 }
 
 fn has_active_child_thread_key(words: &[String]) -> bool {

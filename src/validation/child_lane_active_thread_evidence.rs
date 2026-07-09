@@ -1,4 +1,6 @@
-use super::child_lane_active_thread_owner_lookup_segments::owner_lookup_segments;
+use super::child_lane_active_thread_owner_lookup_segments::{
+    has_negated_owner_check_claim, owner_lookup_segments,
+};
 #[derive(Clone, Debug)]
 pub(super) struct ThreadOwner {
     pub(super) thread_id: Option<String>,
@@ -26,7 +28,7 @@ pub(super) fn matching_owner_lookup_before(
     let mut latest = None;
     let mut not_found_ids = Vec::new();
     for (line_number, line) in evidence.lines().enumerate() {
-        if line_number > operation_line_number || has_negated_owner_check_claim(line) {
+        if line_number > operation_line_number {
             continue;
         }
         if previous_operation_position.is_some_and(|previous| (line_number, usize::MAX) <= previous)
@@ -184,11 +186,18 @@ fn owner_lookup_for_operation(
 ) -> Option<OwnerLookup> {
     let mut not_found_ids = Vec::new();
     let mut partial_found = false;
+    let mut negated_lookup = false;
     for segment in owner_lookup_segments(line).into_iter().filter(|segment| {
         lower_bound.is_none_or(|bound| segment.position > bound)
             && upper_bound.is_none_or(|bound| segment.position < bound)
-            && lookup_matches_any_operation_id(segment.text, operation_owner)
     }) {
+        if has_negated_owner_check_claim(segment.text) && is_owner_lookup_context(segment.text) {
+            negated_lookup = true;
+            continue;
+        }
+        if negated_lookup || !lookup_matches_any_operation_id(segment.text, operation_owner) {
+            continue;
+        }
         match owner_lookup(segment.text) {
             Some(OwnerLookup::Found(owner))
                 if lookup_matches_operation(segment.text, operation_owner) =>
@@ -201,6 +210,10 @@ fn owner_lookup_for_operation(
         }
     }
     (!partial_found && !not_found_ids.is_empty()).then_some(OwnerLookup::NotFound(not_found_ids))
+}
+fn is_owner_lookup_context(line: &str) -> bool {
+    let line = normalized_owner_lookup_line(line);
+    line.contains("owner check") || line.contains("owner thread")
 }
 fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
     let line_issues = issue_ids(line);
@@ -225,26 +238,4 @@ fn lookup_matches_any_operation_id(line: &str, operation_owner: &ThreadOwner) ->
         && thread_id(line)
             .as_deref()
             .is_some_and(|line_thread| line_thread == operation_thread)
-}
-fn has_negated_owner_check_claim(line: &str) -> bool {
-    let line = normalized_owner_lookup_line(line);
-    if [
-        "not run",
-        "not checked",
-        "without checking",
-        "no existing owner thread evidence",
-        "no existing evidence",
-        "without evidence",
-        "no evidence",
-        "missing evidence",
-    ]
-    .into_iter()
-    .any(|marker| line.contains(marker))
-    {
-        return true;
-    }
-    ["not found", "none found", "without owner"]
-        .into_iter()
-        .any(|marker| line.contains(marker))
-        && !line_contains_no_existing_owner_found(line)
 }
