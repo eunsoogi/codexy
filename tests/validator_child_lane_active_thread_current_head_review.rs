@@ -134,3 +134,25 @@ Maintainer reassignment: none
     }
     Ok(())
 }
+
+#[test]
+fn validator_coalesces_tool_call_and_created_event_for_same_child_thread()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread tool: create_thread(thread_id="thread-269") for issue #269.
+Child thread created: thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should count equivalent tool-call and created-event records as one launch\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

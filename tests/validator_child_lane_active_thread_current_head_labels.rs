@@ -85,6 +85,35 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_resets_stale_waiting_with_blocked_alias_refresh()
+-> Result<(), Box<dyn std::error::Error>> {
+    for refreshed_count in [
+        "Active child Codex threads: 4, 0 blocked",
+        "Active child Codex threads: 4, zero passive",
+        "Active child Codex threads: 4, 0 rate-limited",
+        "Active child Codex threads: 4, zero rate limited",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Waiting child Codex threads: 1
+{refreshed_count}
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should reset stale waiting state for `{refreshed_count}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_new_owner_after_found_lookup_clears_stale_no_owner_id()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

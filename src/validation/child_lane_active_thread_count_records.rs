@@ -168,7 +168,11 @@ fn count_kind(line: &str) -> CountKind {
     let value_has_active = value_words.iter().any(|word| word == "active");
     let value_has_waiting = value_words
         .iter()
-        .any(|word| matches!(word.as_str(), "pending" | "waiting"));
+        .any(|word| matches!(word.as_str(), "blocked" | "passive" | "pending" | "waiting"))
+        || value
+            .to_ascii_lowercase()
+            .replace("rate limited", "rate-limited")
+            .contains("rate-limited");
     if has_active && has_waiting {
         if value_has_active != value_has_waiting {
             return if value_has_active {

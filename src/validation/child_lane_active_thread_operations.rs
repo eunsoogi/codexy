@@ -1,12 +1,11 @@
 use super::child_lane_active_thread_evidence::ThreadOwner;
-
 pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
-    evidence
+    let mut operations = evidence
         .lines()
         .enumerate()
         .flat_map(|(line_number, line)| {
             operation_segments(line).filter_map(move |segment| {
-                (is_child_thread_operation_line(segment) && !has_negated_operation_claim(segment))
+                (is_child_thread_operation_line(segment) && !operation_claim_is_negated(segment))
                     .then(|| ThreadOperation {
                         line_number,
                         segment_number: segment.as_ptr() as usize - line.as_ptr() as usize,
@@ -17,9 +16,10 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
                     })
             })
         })
-        .collect()
+        .collect::<Vec<_>>();
+    operations.dedup_by(|right, left| duplicate_operation_record(left, right));
+    operations
 }
-
 pub(super) struct ThreadOperation {
     pub(super) line_number: usize,
     pub(super) segment_number: usize,
@@ -27,7 +27,6 @@ pub(super) struct ThreadOperation {
     pub(super) reuses_existing_owner: bool,
     pub(super) replaces_existing_owner: bool,
 }
-
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
         .flat_map(|line| line.split(". "))
@@ -39,7 +38,6 @@ fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
         .flat_map(|line| line.split(" then "))
         .flat_map(|line| split_operation_clauses(line, " and "))
 }
-
 fn split_operation_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str> {
     let lower = segment.to_ascii_lowercase();
     let mut clauses = Vec::new();
@@ -58,7 +56,6 @@ fn split_operation_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str
     clauses.push(&segment[start..]);
     clauses
 }
-
 fn starts_operation_clause(clause: &str) -> bool {
     let clause = clause
         .split_once(':')
@@ -75,21 +72,18 @@ fn starts_operation_clause(clause: &str) -> bool {
                     .any(|tool| clause.starts_with(&format!("{verb} {tool}")))
             })
 }
-
 fn operation_clause_tool_markers() -> impl Iterator<Item = &'static str> {
     "create_thread|fork_thread|send_message_to_thread|codex_app.create_thread|codex_app.fork_thread|codex_app.send_message_to_thread".split('|')
 }
-
 fn is_child_thread_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
-    line.contains("child thread")
+    (line.contains("child thread")
         && (operation_markers().any(|marker| line.contains(marker))
-            || has_passive_created_thread_id(&line))
+            || has_passive_created_thread_id(&line)))
         || ["create_thread", "fork_thread", "send_message_to_thread"]
             .into_iter()
             .any(|tool| is_thread_tool_invocation(&line, tool))
 }
-
 fn normalized_operation_line(line: &str) -> String {
     line.to_ascii_lowercase()
         .replace("child-thread", "child thread")
@@ -108,11 +102,9 @@ fn normalized_operation_line(line: &str) -> String {
         .replace("resumed the child thread", "resumed child thread")
         .replace("resumed a child thread", "resumed child thread")
 }
-
 fn operation_markers() -> impl Iterator<Item = &'static str> {
     "child thread created:|created child thread|also created child thread|created a replacement child thread|created replacement child thread|also created replacement child thread|also created a replacement child thread|requested child thread|also requested child thread|continued child thread|also continued child thread|forked child thread|forked a child thread|also forked child thread|resumed child thread|also resumed child thread|started child thread|started a child thread|also started child thread".split('|')
 }
-
 fn has_passive_created_thread_id(line: &str) -> bool {
     let owner = ThreadOwner::from_line(line);
     line.contains("child thread")
@@ -121,14 +113,12 @@ fn has_passive_created_thread_id(line: &str) -> bool {
             .into_iter()
             .any(|verb| has_passive_launch_verb(line, verb))
 }
-
 fn has_passive_launch_verb(rest: &str, verb: &str) -> bool {
     (rest.starts_with(verb) || rest.contains(&format!(" {verb}")))
         && "not |n't |not yet |not been |n't been |not yet been |n't yet been "
             .split('|')
             .all(|negation| !rest.contains(&format!("{negation}{verb}")))
 }
-
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
     if has_negated_thread_tool_call(line, tool) || has_negated_thread_tool_use(line, tool) {
         return false;
@@ -147,25 +137,18 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
             && (!is_thread_tool_discovery_context(line)
                 || has_actual_thread_tool_invocation_context(line, tool)))
 }
-
 fn has_negated_thread_tool_use(line: &str, tool: &str) -> bool {
     format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}")
         .split('|')
         .any(|marker| line.contains(&marker))
 }
-
 fn has_negated_thread_tool_call(line: &str, tool: &str) -> bool {
     [tool.to_owned(), format!("codex_app.{tool}")]
         .into_iter()
         .any(|name| {
-            [
-                format!("{name} was not called"),
-                format!("{name} wasn't called"),
-                format!("{name} is not called"),
-                format!("{name} not called"),
-            ]
-            .into_iter()
-            .any(|marker| line.contains(&marker))
+            "was not called|wasn't called|is not called|not called"
+                .split('|')
+                .any(|suffix| line.contains(&format!("{name} {suffix}")))
                 || line.match_indices(&format!("{name}(")).any(|(index, _)| {
                     let suffix = &line[index + name.len()..];
                     suffix.contains(") was not called")
@@ -174,13 +157,11 @@ fn has_negated_thread_tool_call(line: &str, tool: &str) -> bool {
                 })
         })
 }
-
 fn is_thread_tool_discovery_context(line: &str) -> bool {
     ["tool search", "discovered", "available thread tool"]
         .into_iter()
         .any(|marker| line.contains(marker))
 }
-
 fn has_actual_thread_tool_invocation_context(line: &str, tool: &str) -> bool {
     let qualified_tool = format!("codex_app.{tool}");
     ["called", "invoked", "executed", "ran", "used"]
@@ -194,15 +175,13 @@ fn has_actual_thread_tool_invocation_context(line: &str, tool: &str) -> bool {
                 || line.contains(&format!("{verb} {qualified_tool}("))
         })
 }
-
 fn is_reuse_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
     "thread resume:|thread continuation:|continued child thread|resumed child thread|send_message_to_thread"
         .split('|')
         .any(|marker| line.contains(marker))
 }
-
-fn has_negated_operation_claim(line: &str) -> bool {
+fn operation_claim_is_negated(line: &str) -> bool {
     let line = normalized_operation_line(line);
     let operation_position = |clause: &str| {
         operation_markers()
@@ -222,13 +201,9 @@ fn has_negated_operation_claim(line: &str) -> bool {
     for clause in line.split(';').flat_map(|clause| clause.split(". ")) {
         if let Some(operation) = operation_position(clause) {
             if clause.contains("requested child thread")
-                && [
-                    "has not yet been made",
-                    "hasn't yet been made",
-                    "not yet been made",
-                ]
-                .into_iter()
-                .any(|marker| clause.contains(marker))
+                && "has not yet been made|hasn't yet been made|not yet been made"
+                    .split('|')
+                    .any(|marker| clause.contains(marker))
             {
                 has_negated_operation = true;
                 continue;
@@ -240,4 +215,28 @@ fn has_negated_operation_claim(line: &str) -> bool {
         }
     }
     has_negated_operation && !has_unnegated_operation
+}
+fn duplicate_operation_record(left: &ThreadOperation, right: &ThreadOperation) -> bool {
+    if left.reuses_existing_owner
+        || right.reuses_existing_owner
+        || left.replaces_existing_owner
+        || right.replaces_existing_owner
+    {
+        return false;
+    }
+    match (
+        left.owner.thread_id.as_deref(),
+        right.owner.thread_id.as_deref(),
+    ) {
+        (Some(left), Some(right)) => left == right,
+        _ => {
+            (left.owner.thread_id.is_some() || right.owner.thread_id.is_some())
+                && !left.owner.issue_ids.is_empty()
+                && left
+                    .owner
+                    .issue_ids
+                    .iter()
+                    .any(|issue_id| right.owner.issue_ids.contains(issue_id))
+        }
+    }
 }
