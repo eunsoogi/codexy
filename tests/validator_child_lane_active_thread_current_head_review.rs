@@ -86,3 +86,51 @@ Maintainer reassignment: none
     }
     Ok(())
 }
+
+#[test]
+fn validator_counts_real_thread_tool_after_skipped_call_clause()
+-> Result<(), Box<dyn std::error::Error>> {
+    for evidence in [
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Thread tools: create_thread was not called before owner check, so create_thread(thread_id="thread-269") for issue #269.
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Thread tools: codex_app.create_thread was not called before owner check, so codex_app.create_thread(thread_id="thread-269") for issue #269.
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Thread tools: create_thread was not used before owner check, then used create_thread for issue #269.
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Thread tools: create_thread was not called before owner check; create_thread(thread_id="thread-269") for issue #269.
+Maintainer reassignment: none
+"#,
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 5
+Thread tools: create_thread was not called before owner check, then create_thread(thread_id="thread-269") for issue #269.
+Maintainer reassignment: none
+"#,
+    ] {
+        let output = run_ownership_validator(evidence)?;
+
+        assert!(
+            !output.status.success(),
+            "validator should count the real later thread-tool invocation for evidence:\n{evidence}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("would exceed five active child Codex threads"),
+            "stderr should name over-capacity real invocation, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}

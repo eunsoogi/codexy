@@ -31,6 +31,8 @@ pub(super) struct ThreadOperation {
 fn operation_segments(line: &str) -> impl Iterator<Item = &str> {
     line.split(';')
         .flat_map(|line| line.split(". "))
+        .flat_map(|line| split_operation_clauses(line, ", so "))
+        .flat_map(|line| split_operation_clauses(line, " so "))
         .flat_map(|line| split_operation_clauses(line, ", "))
         .flat_map(|line| split_operation_clauses(line, " but "))
         .flat_map(|line| line.split(", then "))
@@ -63,16 +65,19 @@ fn starts_operation_clause(clause: &str) -> bool {
         .filter(|(label, _)| label.contains("thread") || label.contains("operation"))
         .map_or(clause, |(_, rest)| rest.trim_start());
     operation_markers()
-        .chain(["create_thread", "fork_thread", "send_message_to_thread"])
+        .chain(operation_clause_tool_markers())
         .any(|marker| clause.starts_with(marker))
         || has_passive_created_thread_id(clause)
         || ["called", "invoked", "executed", "ran", "used"]
             .into_iter()
             .any(|verb| {
-                ["create_thread", "fork_thread", "send_message_to_thread"]
-                    .into_iter()
+                operation_clause_tool_markers()
                     .any(|tool| clause.starts_with(&format!("{verb} {tool}")))
             })
+}
+
+fn operation_clause_tool_markers() -> impl Iterator<Item = &'static str> {
+    "create_thread|fork_thread|send_message_to_thread|codex_app.create_thread|codex_app.fork_thread|codex_app.send_message_to_thread".split('|')
 }
 
 fn is_child_thread_operation_line(line: &str) -> bool {
