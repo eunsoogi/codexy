@@ -41,3 +41,27 @@ Maintainer reassignment: none
     }
     Ok(())
 }
+
+#[test]
+fn validator_rejects_preceding_fallback_metadata_with_later_different_lane_mention()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
+Fallback route: no fallback route was available for Lane A and in Lane B review thread.
+Tracking issue: #246
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should reject metadata that mentions Lane A first but later scopes the same fallback to Lane B\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

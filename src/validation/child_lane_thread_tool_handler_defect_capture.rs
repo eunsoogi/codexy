@@ -368,23 +368,35 @@ fn strip_markdown_heading_prefix(line: &str) -> &str {
 
 fn mentioned_lane<'a>(line: &'a str, lane: Option<&str>) -> Option<&'a str> {
     let lower = line.to_ascii_lowercase();
-    [
+    let mut first_match = None;
+    for marker in [
         "for lane ",
         "in lane ",
         "assigned to lane ",
         "targeting lane ",
-    ]
-    .into_iter()
-    .find_map(|marker| mentioned_lane_after(line, &lower, marker, lane))
+    ] {
+        let mut search_start = 0;
+        while let Some(offset) = lower[search_start..].find(marker) {
+            let marker_start = search_start + offset;
+            if let Some(label) = mentioned_lane_after(line, &lower, marker, marker_start, lane) {
+                if lane.is_some_and(|lane| !label.eq_ignore_ascii_case(lane)) {
+                    return Some(label);
+                }
+                first_match.get_or_insert(label);
+            }
+            search_start = marker_start + marker.len();
+        }
+    }
+    first_match
 }
 
 fn mentioned_lane_after<'a>(
     line: &'a str,
     lower: &str,
     marker: &str,
+    marker_start: usize,
     lane: Option<&str>,
 ) -> Option<&'a str> {
-    let marker_start = lower.find(marker)?;
     if is_negated_lane_marker(&lower, marker_start) {
         return None;
     }
