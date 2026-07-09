@@ -20,6 +20,12 @@ fn validator_rejects_exact_comment_only_handoff_with_no_pending_blockers() -> Te
     for handoff in [
         "Blockers: no pending blockers. Review response: fixed the exact Codex review comment.\n",
         "Waiting: no pending waiting. Review response: fixed the exact Codex review comment.\n",
+        "Blockers: no open blockers. Review response: fixed the exact Codex review comment.\n",
+        "Waiting: no open waiting. Review response: fixed the exact Codex review comment.\n",
+        "Blockers: no unresolved blockers. Review response: fixed the exact Codex review comment.\n",
+        "Waiting: no unresolved waiting. Review response: fixed the exact Codex review comment.\n",
+        "Blockers: no remaining blockers. Review response: fixed the exact Codex review comment.\n",
+        "Waiting: no remaining waiting. Review response: fixed the exact Codex review comment.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_rejects_preventive_adjacent(&output, handoff);

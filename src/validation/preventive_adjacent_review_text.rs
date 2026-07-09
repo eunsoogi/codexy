@@ -14,9 +14,18 @@ pub(super) fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         .unwrap_or("");
     let rest = value[first.len()..].trim_start_matches([' ', '\t']);
     let terminal = rest.chars().next().is_none_or(|ch| ".;,\n\r".contains(ch));
-    let false_modifier = ["active", "currently", "now", "pending", "remain"]
-        .iter()
-        .any(|modifier| rest.starts_with(modifier));
+    let false_modifier = [
+        "active",
+        "currently",
+        "now",
+        "open",
+        "pending",
+        "remain",
+        "remaining",
+        "unresolved",
+    ]
+    .iter()
+    .any(|modifier| rest.starts_with(modifier));
     let false_empty = matches!(first, "0" | "zero" | "none" | "no" | "false" | "n/a" | "na")
         && (terminal || false_modifier);
     false_empty
