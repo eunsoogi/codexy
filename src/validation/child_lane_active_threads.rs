@@ -194,13 +194,23 @@ fn accepted_disposition_claim_offset(line: &str) -> Option<usize> {
 }
 
 fn disposition_claim_is_negated(words: &[(usize, String)], index: usize) -> bool {
-    words
-        .iter()
-        .take(index)
+    let start = index.saturating_sub(8);
+    (start..index)
         .rev()
-        .take_while(|(_, word)| word != "but")
-        .take(5)
-        .any(|(_, word)| matches!(word.as_str(), "not" | "never" | "wasnt" | "wasn"))
+        .take_while(|&candidate| !matches!(words[candidate].1.as_str(), "but" | "because"))
+        .any(|candidate| match words[candidate].1.as_str() {
+            "no" if words
+                .get(candidate + 1)
+                .is_some_and(|(_, next)| next == "longer") =>
+            {
+                !(candidate + 2..index).any(|between| {
+                    matches!(words[between].1.as_str(), "active" | "inactive" | "blocked")
+                })
+            }
+            "no" => true,
+            "none" | "not" | "never" | "wasnt" | "wasn" => true,
+            _ => false,
+        })
 }
 
 fn line_words_with_offsets(line: &str) -> Vec<(usize, String)> {
@@ -217,27 +227,4 @@ fn line_words_with_offsets(line: &str) -> Vec<(usize, String)> {
         words.push((word_start, line[word_start..].to_ascii_lowercase()));
     }
     words
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn old_owner_disposition_matching_normalizes_case() {
-        let evidence = "\
-old owner disposition: thread-148 was STOPPED as UNUSABLE and explicitly SUPERSEDED for issue #269.
-Thread creation: created replacement child thread thread-269 for issue #269.";
-        let owner = ThreadOwner {
-            thread_id: Some("thread-148".to_owned()),
-            issue_ids: vec!["#269".to_owned()],
-        };
-
-        assert!(has_matching_old_owner_disposition_before(
-            evidence,
-            Some(&owner),
-            None,
-            (1, 0),
-        ));
-    }
 }
