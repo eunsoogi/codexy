@@ -14,7 +14,13 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 #[test]
 fn validator_rejects_preceding_fallback_metadata_scoped_to_other_lane_phrases()
 -> Result<(), Box<dyn std::error::Error>> {
-    for phrase in ["another lane", "later lane", "other lane", "Lane B"] {
+    for phrase in [
+        "another lane",
+        "different lane",
+        "later lane",
+        "other lane",
+        "Lane B",
+    ] {
         let route_scope = if phrase == "Lane B" {
             "for Lane B".to_string()
         } else {
