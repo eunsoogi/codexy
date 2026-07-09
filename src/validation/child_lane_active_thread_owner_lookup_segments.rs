@@ -53,7 +53,9 @@ fn line_contains_no_existing_owner_found(line: impl AsRef<str>) -> bool {
     "no existing owner thread found|no existing issue owner thread found|no existing pr owner thread found|no existing issue/pr owner thread found|no existing issue or pr owner thread found|no existing owner thread was found|no existing issue owner thread was found|no existing pr owner thread was found|no existing issue/pr owner thread was found|no existing issue or pr owner thread was found|found no existing owner thread|found no existing issue owner thread|found no existing pr owner thread|found no existing issue/pr owner thread|found no existing issue or pr owner thread|existing owner thread not found|existing issue owner thread not found|existing pr owner thread not found|existing issue/pr owner thread not found|existing issue or pr owner thread not found|owner thread not found"
         .split('|')
         .any(|marker| line.contains(marker))
-        || (line.contains("none found")
+        || ((line.contains("none found")
+            || line.contains("found none")
+            || line.contains("found: none"))
             && (line.contains("owner check") || line.contains("owner thread")))
 }
 
@@ -119,7 +121,11 @@ fn starts_owner_lookup_clause(clause: &str) -> bool {
         "existing pr owner thread",
         "existing issue/pr owner thread",
         "existing issue or pr owner thread",
+        "existing owner check:",
+        "existing issue/pr owner check:",
         "owner check:",
+        "issue/pr owner check:",
+        "pr owner check:",
         "no existing owner thread",
         "no existing issue owner thread",
         "no existing pr owner thread",

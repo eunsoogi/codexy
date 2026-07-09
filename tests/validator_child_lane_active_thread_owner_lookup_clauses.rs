@@ -38,24 +38,32 @@ Maintainer reassignment: none
 #[test]
 fn validator_rejects_new_owner_when_repeated_and_label_finds_linked_pr_owner()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for orchestration only; child routing required
+    for label in [
+        "owner check",
+        "issue/PR owner check",
+        "existing issue/PR owner check",
+        "existing owner check",
+        "PR owner check",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
 Active child Codex threads: 4
-Existing issue/PR owner check: no existing owner thread found for issue #269 and owner check: existing owner thread thread-300 found for PR #300.
+Existing issue/PR owner check: no existing owner thread found for issue #269 and {label}: existing owner thread thread-300 found for PR #300.
 Thread creation: created child thread thread-new for issue #269 / PR #300.
 Maintainer reassignment: none
-"#,
-    )?;
+"#
+        ))?;
 
-    assert!(
-        !output.status.success(),
-        "validator should split repeated owner-check labels after and"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("old owner"),
-        "stderr should require reuse or old-owner disposition, got:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        assert!(
+            !output.status.success(),
+            "validator should split repeated owner-check label `{label}` after and"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("old owner"),
+            "stderr should require reuse or old-owner disposition, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 

@@ -55,8 +55,14 @@ pub(super) fn continues_existing_owner(
     existing_owner
         .filter(|_| operation.reuses_existing_owner)
         .is_some_and(|existing_owner| {
-            let existing_thread = existing_owner.thread_id.as_deref();
-            existing_thread.is_some() && existing_thread == operation.owner.thread_id.as_deref()
+            if let Some(operation_thread) = operation.owner.thread_id.as_deref() {
+                return existing_owner.thread_id.as_deref() == Some(operation_thread);
+            }
+            !operation.owner.issue_ids.is_empty()
+                && existing_owner
+                    .issue_ids
+                    .iter()
+                    .any(|id| operation.owner.issue_ids.contains(id))
         })
 }
 fn fresh_counts_before_operation<'a>(
