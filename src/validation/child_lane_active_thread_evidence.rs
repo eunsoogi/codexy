@@ -219,6 +219,12 @@ fn is_owner_lookup_context(line: &str) -> bool {
     line.contains("owner check") || line.contains("owner thread")
 }
 fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
+    if operation_owner.issue_ids.is_empty() {
+        return operation_owner
+            .thread_id
+            .as_deref()
+            .is_some_and(|operation_thread| thread_id(line).as_deref() == Some(operation_thread));
+    }
     let line_issues = issue_ids(line);
     operation_owner
         .issue_ids

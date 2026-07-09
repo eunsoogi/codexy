@@ -125,6 +125,9 @@ fn has_passive_launch_verb(rest: &str, verb: &str) -> bool {
 }
 
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
+    if has_negated_thread_tool_call(line, tool) {
+        return false;
+    }
     if format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}").split('|').any(|marker| line.contains(&marker)) {
         return false;
     }
@@ -141,6 +144,27 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
             && line.contains(tool)
             && (!is_thread_tool_discovery_context(line)
                 || has_actual_thread_tool_invocation_context(line, tool)))
+}
+
+fn has_negated_thread_tool_call(line: &str, tool: &str) -> bool {
+    [tool.to_owned(), format!("codex_app.{tool}")]
+        .into_iter()
+        .any(|name| {
+            [
+                format!("{name} was not called"),
+                format!("{name} wasn't called"),
+                format!("{name} is not called"),
+                format!("{name} not called"),
+            ]
+            .into_iter()
+            .any(|marker| line.contains(&marker))
+                || line.match_indices(&format!("{name}(")).any(|(index, _)| {
+                    let suffix = &line[index + name.len()..];
+                    suffix.contains(") was not called")
+                        || suffix.contains(") wasn't called")
+                        || suffix.contains(") is not called")
+                })
+        })
 }
 
 fn is_thread_tool_discovery_context(line: &str) -> bool {

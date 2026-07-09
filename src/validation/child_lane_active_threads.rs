@@ -17,9 +17,8 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         .iter()
         .map(|operation| {
             let lookup_bound = previous_operation.and_then(|previous| {
-                (previous.line_number != operation.line_number
-                    || shares_issue_id(&previous.owner, &operation.owner))
-                .then_some((previous.line_number, previous.segment_number))
+                shares_owner_id(&previous.owner, &operation.owner)
+                    .then_some((previous.line_number, previous.segment_number))
             });
             let lookup = matching_owner_lookup_before(
                 evidence,
@@ -61,9 +60,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                     return false;
                 };
                 let previous_operation_position = index.checked_sub(1).and_then(|previous| {
-                    (operations[previous].line_number != operation.line_number
-                        || shares_issue_id(&operations[previous].owner, &operation.owner))
-                    .then_some((
+                    shares_owner_id(&operations[previous].owner, &operation.owner).then_some((
                         operations[previous].line_number,
                         operations[previous].segment_number,
                     ))
@@ -88,6 +85,14 @@ fn shares_issue_id(left: &ThreadOwner, right: &ThreadOwner) -> bool {
             .issue_ids
             .iter()
             .any(|issue_id| right.issue_ids.contains(issue_id))
+}
+
+fn shares_owner_id(left: &ThreadOwner, right: &ThreadOwner) -> bool {
+    shares_issue_id(left, right)
+        || left
+            .thread_id
+            .as_deref()
+            .is_some_and(|thread_id| right.thread_id.as_deref() == Some(thread_id))
 }
 
 fn has_matching_old_owner_disposition_before(
