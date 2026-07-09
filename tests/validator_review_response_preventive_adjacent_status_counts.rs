@@ -42,6 +42,56 @@ fn validator_rejects_bulleted_review_feedback_after_empty_status_heading() -> Te
     Ok(())
 }
 
+#[test]
+fn validator_rejects_requirement_templates_as_preventive_evidence() -> TestResult {
+    for handoff in [
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review evidence: include focused preventive regression coverage for any adjacent gap found.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: child handoff must include regression coverage for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: required focused regression tests cover adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review checklist: regression coverage covers adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused regression tests should cover adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: regression coverage needs to cover adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused tests should run for adjacent parser variants in the helper family.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_rejects_preventive_adjacent(&output, handoff);
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_historical_waiting_labels_without_preventive_review() -> TestResult {
+    for handoff in [
+        "Waiting: pending Codex review earlier, now resolved. Review response: fixed the exact Codex review comment.\n",
+        "Waiting: pending child reroute previously, now cleared. Review response: fixed the exact Codex review comment.\n",
+        "Blocked: pending CI earlier, now resolved. Review response: fixed the exact Codex review comment.\n",
+        "Blocker: pending CI previously, now cleared. Review response: fixed the exact Codex review comment.\n",
+        "Waiting: pending Codex review earlier, resolved. Review response: fixed the exact Codex review comment.\n",
+        "Blocker: pending CI previously, cleared. Review response: fixed the exact Codex review comment.\n",
+        "Waiting: pending Codex review previously resolved; not currently pending. Review response: fixed the exact Codex review comment.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_rejects_preventive_adjacent(&output, handoff);
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_current_pending_waiting_after_stale_pending_context() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Waiting: pending Codex review previously resolved; current pending maintainer confirmation. Review response: fixed the exact Codex review comment.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve current pending waiting labels\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

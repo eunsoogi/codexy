@@ -28,6 +28,7 @@ fn starts_with_true_blocker(text: &str) -> bool {
                 .next()
                 .is_none_or(|ch| !ch.is_ascii_alphanumeric())
                 && !has_false_blocked_or_waiting_value(value)
+                && !is_stale_blocker_label_value(value)
         })
     })
 }
@@ -47,24 +48,33 @@ fn has_true_label_value(text: &str, label: &str) -> bool {
     })
 }
 fn starts_with_true_waiting(text: &str) -> bool {
-    text.strip_prefix("waiting")
-        .is_some_and(|value| !has_false_blocked_or_waiting_value(value))
+    text.strip_prefix("waiting").is_some_and(|value| {
+        !has_false_blocked_or_waiting_value(value) && !is_stale_blocker_label_value(value)
+    })
 }
 fn is_stale_blocker_label_value(value: &str) -> bool {
     let end = value.find('\n').unwrap_or(value.len());
     let value = value[..end].trim();
+    if has_any(value, &["pending"]) {
+        return has_any(value, &["previously", "historical", "earlier"])
+            && has_any(value, &["resolved", "cleared"])
+            && !has_current_pending_marker(value);
+    }
     has_any(value, &["previous", "previously", "historical", "earlier"])
         && has_any(value, &["resolved", "cleared"])
-        && !has_any(
+        && !has_pipe_any(
             value,
-            &[
-                "now blocked",
-                "currently blocked",
-                "pending",
-                "still blocked",
-                "still waiting",
-            ],
+            "now blocked|currently blocked|currently pending|pending now|still blocked|still pending|still waiting",
         )
+}
+fn has_current_pending_marker(value: &str) -> bool {
+    "now blocked|currently blocked|current pending|currently pending|pending now|still blocked|still pending|still waiting"
+        .split('|')
+        .any(|marker| {
+            value
+                .match_indices(marker)
+                .any(|(index, _)| !is_label_negated_match(&value[..index]))
+        })
 }
 fn has_unresolved_thread_waiting_state(text: &str) -> bool {
     has_unnegated_any(text, &["remains unresolved", "remain unresolved"])
@@ -118,8 +128,22 @@ fn has_focused_adjacent_coverage(segment: &str) -> bool {
             ) && has_unnegated_pipe(
                 unit,
                 "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
-            ) && !has_exact_comment_only_coverage(unit)
+            ) && has_executed_coverage_claim(unit)
+                && !has_exact_comment_only_coverage(unit)
         })
+}
+fn has_executed_coverage_claim(unit: &str) -> bool {
+    !has_requirement_template_context(unit)
+        && has_unnegated_pipe(
+            unit,
+            "cover|covers|covered|exercise|exercises|exercised|run|ran|executed|passed|added|validate|validates|validated|check|checks|checked",
+        )
+}
+fn has_requirement_template_context(unit: &str) -> bool {
+    has_unnegated_pipe(
+        unit,
+        "must|should|required|requirement|checklist|template|needs to|need to",
+    )
 }
 fn has_exact_comment_only_coverage(unit: &str) -> bool {
     has_unnegated_any(
