@@ -1,5 +1,7 @@
 pub(super) fn has_unnegated_different_lane_phrase(line: &str) -> bool {
-    has_unnegated_phrase(line, "another", "lane") || has_unnegated_phrase(line, "later", "lane")
+    ["another", "later", "other"]
+        .into_iter()
+        .any(|first| has_unnegated_phrase(line, first, "lane"))
 }
 
 fn has_unnegated_phrase(line: &str, first: &str, second: &str) -> bool {

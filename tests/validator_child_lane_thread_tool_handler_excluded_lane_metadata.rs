@@ -70,6 +70,7 @@ fn validator_rejects_handoff_metadata_that_names_a_later_lane()
         ("Fallback route", "Lane B"),
         ("Fallback path", "Lane B"),
         ("Fallback route", "another lane"),
+        ("Fallback route", "other lane"),
         ("Fallback path", "later lane"),
     ] {
         let output = run_ownership_validator(&format!(
