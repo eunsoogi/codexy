@@ -23,6 +23,9 @@ pub(super) fn has_terminal_false_value(value: &str) -> bool {
 }
 
 pub(super) fn has_true_decision_value(text: &str, label: &str) -> bool {
+    if has_unsafe_decision_remainder(text) {
+        return false;
+    }
     let mut rest = text;
     let mut offset = 0;
     while let Some(index) = rest.find(label) {
@@ -49,15 +52,12 @@ pub(super) fn has_true_decision_value(text: &str, label: &str) -> bool {
                     if has_explicit_false_value(remainder) {
                         continue;
                     }
-                    if has_unsafe_decision_remainder(remainder) {
-                        continue;
-                    }
                     return true;
                 }
             }
             if let Some(value) = suffix.strip_prefix([':', '=', '-', '?']) {
                 let value = value.trim_start();
-                if has_true_value(value) && !has_unsafe_decision_remainder(value) {
+                if has_true_value(value) {
                     return true;
                 }
             }

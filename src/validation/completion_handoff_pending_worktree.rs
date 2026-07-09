@@ -37,9 +37,9 @@ fn pending_worktree_mentions(text: &str) -> Vec<usize> {
     let mut matches = Vec::new();
     for phrase in [
         "pendingworktreeids",
+        "pending worktree ids",
         "pendingworktreeid",
         "pending worktree id",
-        "pending worktree ids",
         "pending worktree identifier",
         "pending worktree identifiers",
     ] {
