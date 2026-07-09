@@ -2,6 +2,8 @@ use super::completion_handoff_pending_worktree_text::{has_false_value, phrase_ha
 
 pub(super) fn has_false_actionable_error_evidence(text: &str) -> bool {
     has_false_label_value(text, "actionable error")
+        || find_phrase(text, "actionable details missing")
+        || find_phrase(text, "missing actionable details")
         || has_false_label_phrase(text, "actionable error")
         || find_phrase(text, "missing actionable error")
 }
@@ -15,7 +17,7 @@ pub(super) fn has_false_label_value(text: &str, label: &str) -> bool {
         if phrase_has_boundaries(text, start, end) {
             let suffix = text[end..].trim_start();
             if let Some(value) = suffix.strip_prefix([':', '=', '-', '?']) {
-                if has_false_value(value.trim_start()) {
+                if has_false_value(unquote_scalar(value.trim_start())) {
                     return true;
                 }
             }
@@ -48,6 +50,13 @@ pub(super) fn has_false_label_phrase(text: &str, label: &str) -> bool {
         rest = &text[offset..];
     }
     false
+}
+
+fn unquote_scalar(value: &str) -> &str {
+    value
+        .strip_prefix('"')
+        .and_then(|value| value.split_once('"').map(|(value, _)| value))
+        .unwrap_or(value)
 }
 
 fn find_phrase(text: &str, phrase: &str) -> bool {

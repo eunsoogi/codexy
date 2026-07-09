@@ -189,10 +189,14 @@ fn mentions_failed_pending_worktree_setup(text: &str) -> bool {
             text,
             "failed setup|setup failed|explicit failed setup state|active lane accounting state is failed",
         )
-        && has_any(
-            text,
-            "actionable error|fatal|invalid reference|does not exist|corrected base ref",
-        )
+        && mentions_actionable_setup_failure_detail(text)
+}
+
+fn mentions_actionable_setup_failure_detail(text: &str) -> bool {
+    has_any(
+        text,
+        "actionable error|fatal|invalid reference|does not exist|corrected base ref",
+    )
 }
 
 fn mentions_bounded_pending_worktree_timeout(text: &str) -> bool {
