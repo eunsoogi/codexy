@@ -132,12 +132,18 @@ fn local_id_starts_in_following_list(text: &str, list_header_end: usize) -> Vec<
     } else {
         return starts;
     }
+    let mut saw_list_item = false;
     for line in rest.split_inclusive('\n') {
         let line_without_newline = line.trim_end_matches('\n');
         let trimmed = line_without_newline.trim_start();
+        if trimmed.is_empty() && !saw_list_item {
+            offset += line.len();
+            continue;
+        }
         if !is_markdown_list_item(trimmed) {
             break;
         }
+        saw_list_item = true;
         let line_indent = line_without_newline.len() - trimmed.len();
         let line_start = offset + line_indent;
         let mut item_rest = trimmed;
@@ -156,7 +162,6 @@ fn local_id_starts_in_following_list(text: &str, list_header_end: usize) -> Vec<
     }
     starts
 }
-
 fn grouped_body_separator(
     text: &str,
     sentence_start: usize,
