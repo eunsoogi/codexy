@@ -350,9 +350,14 @@ fn lane_header_label(line: &str) -> Option<String> {
 
 fn mentioned_lane<'a>(line: &'a str, lane: Option<&str>) -> Option<&'a str> {
     let lower = line.to_ascii_lowercase();
-    ["for lane ", "in lane "]
-        .into_iter()
-        .find_map(|marker| mentioned_lane_after(line, &lower, marker, lane))
+    [
+        "for lane ",
+        "in lane ",
+        "assigned to lane ",
+        "targeting lane ",
+    ]
+    .into_iter()
+    .find_map(|marker| mentioned_lane_after(line, &lower, marker, lane))
 }
 
 fn mentioned_lane_after<'a>(
@@ -361,7 +366,11 @@ fn mentioned_lane_after<'a>(
     marker: &str,
     lane: Option<&str>,
 ) -> Option<&'a str> {
-    let lane_start = lower.find(marker)? + marker.len();
+    let marker_start = lower.find(marker)?;
+    if is_negated_lane_marker(&lower, marker_start) {
+        return None;
+    }
+    let lane_start = marker_start + marker.len();
     let label = line[lane_start..]
         .split(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
         .next()
@@ -375,8 +384,19 @@ fn mentioned_lane_after<'a>(
 
 fn mentioned_lane_label(line: &str) -> Option<String> {
     let lower = line.to_ascii_lowercase();
-    ["for lane ", "in lane "].into_iter().find_map(|marker| {
-        let lane_start = lower.find(marker)? + marker.len();
+    [
+        "for lane ",
+        "in lane ",
+        "assigned to lane ",
+        "targeting lane ",
+    ]
+    .into_iter()
+    .find_map(|marker| {
+        let marker_start = lower.find(marker)?;
+        if is_negated_lane_marker(&lower, marker_start) {
+            return None;
+        }
+        let lane_start = marker_start + marker.len();
         let label = line[lane_start..]
             .split(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
             .next()
@@ -387,6 +407,14 @@ fn mentioned_lane_label(line: &str) -> Option<String> {
             || lowercase_lane_label_token(label))
         .then(|| label.to_ascii_lowercase())
     })
+}
+
+fn is_negated_lane_marker(lower: &str, marker_start: usize) -> bool {
+    lower[..marker_start]
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .next_back()
+        .is_some_and(|token| matches!(token, "not" | "never" | "without"))
 }
 
 fn is_lane_label_token(label: &str) -> bool {

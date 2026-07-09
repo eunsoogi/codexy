@@ -247,22 +247,70 @@ fn list_capture_matches_metadata_lane(
 
 fn lane_mention_labels(line: &str) -> Vec<String> {
     let mut labels = Vec::new();
-    let mut previous = "";
-    let mut words = line.split_whitespace();
-    while let Some(word) = words.next() {
-        let normalized = word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-        if normalized.eq_ignore_ascii_case("lane") && !previous.eq_ignore_ascii_case("same") {
-            let label = words
-                .next()
-                .unwrap_or_default()
-                .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-            if let Some(lane) = normalized_lane_mention_label(label, previous) {
+    let tokens = line
+        .split_whitespace()
+        .map(|word| word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    for (index, token) in tokens.iter().enumerate() {
+        let previous = index.checked_sub(1).map_or("", |previous| tokens[previous]);
+        if token.eq_ignore_ascii_case("lane")
+            && !previous.eq_ignore_ascii_case("same")
+            && !is_negated_explicit_lane_mention(&tokens, index)
+        {
+            let context = explicit_lane_mention_context(&tokens, index).unwrap_or(previous);
+            let label = tokens.get(index + 1).copied().unwrap_or_default();
+            if let Some(lane) = normalized_lane_mention_label(label, context) {
                 labels.push(lane);
             }
         }
-        previous = normalized;
     }
     labels
+}
+
+fn explicit_lane_mention_context<'a>(tokens: &'a [&str], lane_index: usize) -> Option<&'a str> {
+    let previous = tokens.get(lane_index.checked_sub(1)?)?;
+    if previous.eq_ignore_ascii_case("targeting") {
+        return Some("in");
+    }
+    if previous.eq_ignore_ascii_case("to")
+        && lane_index >= 2
+        && tokens[lane_index - 2].eq_ignore_ascii_case("assigned")
+    {
+        return Some("in");
+    }
+    None
+}
+
+fn is_negated_explicit_lane_mention(tokens: &[&str], lane_index: usize) -> bool {
+    if lane_index == 0 {
+        return false;
+    }
+    let previous = tokens[lane_index - 1].to_ascii_lowercase();
+    let before_previous = lane_index
+        .checked_sub(2)
+        .map(|index| tokens[index].to_ascii_lowercase());
+    let before_before_previous = lane_index
+        .checked_sub(3)
+        .map(|index| tokens[index].to_ascii_lowercase());
+
+    matches!(previous.as_str(), "for" | "in")
+        && before_previous
+            .as_deref()
+            .is_some_and(is_lane_mention_negation)
+        || previous == "to"
+            && before_previous.as_deref() == Some("assigned")
+            && before_before_previous
+                .as_deref()
+                .is_some_and(is_lane_mention_negation)
+        || previous == "targeting"
+            && before_previous
+                .as_deref()
+                .is_some_and(is_lane_mention_negation)
+}
+
+fn is_lane_mention_negation(token: &str) -> bool {
+    matches!(token, "not" | "never" | "without")
 }
 pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
     let Some((key, _)) = line_key_value(line) else {
