@@ -32,7 +32,7 @@ pub(super) fn active_capacity_errors(
             errors.push("new or resumed child Codex thread operations require evidence of the active child Codex thread count before the operation".to_owned());
         }
         if !continues_existing_owner(existing_owner.as_ref(), operation) && !counted_replacement {
-            projected_count = Some(projected_count.unwrap_or(0).saturating_add(1));
+            projected_count = increment_projected_count(projected_count);
         }
         if projected_count.is_some_and(|count| count > MAX_ACTIVE_CHILD_CODEX_THREADS) {
             errors.push("new or resumed child Codex thread operation would exceed five active child Codex threads".to_owned());
@@ -40,6 +40,9 @@ pub(super) fn active_capacity_errors(
         previous_operation_position = Some((operation.line_number, operation.segment_number));
     }
     errors
+}
+fn increment_projected_count(projected_count: Option<u64>) -> Option<u64> {
+    Some(projected_count.unwrap_or(0).saturating_add(1))
 }
 fn current_replacement_count_record<'a>(records: &[&'a ActiveCount]) -> Option<&'a ActiveCount> {
     records
