@@ -110,6 +110,9 @@ fn validator_rejects_contradictory_later_preventive_sections() -> TestResult {
     for handoff in [
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review was not performed.\n\n## Preventive adjacent review\nFocused regression coverage exercises adjacent parser variants in the helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review isn't applicable.\n\n## Preventive adjacent review\nFocused regression coverage exercises adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: focused regression coverage exercises adjacent parser variants in the helper family.\n\n## Preventive adjacent review\nPreventive adjacent review was not performed.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review no-change rationale:\nFunctions: parser_variant_guard\nTests: validator_review_response_preventive_adjacent_edges\nInvariants hold because sibling parser variants share the same boundary checks.\n\n## Preventive adjacent review\nNot applicable.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review evidence:\n- Focused regression coverage exercises adjacent parser variants in the helper family.\n\nPreventive adjacent review isn't applicable.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_rejects_preventive_adjacent(&output, handoff);

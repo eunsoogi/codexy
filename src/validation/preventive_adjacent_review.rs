@@ -87,16 +87,15 @@ fn has_unresolved_thread_waiting_state(text: &str) -> bool {
 }
 pub(super) fn documents_preventive_adjacent_review(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
+    let mut documents_review = false;
     for (start, _) in text.match_indices("preventive adjacent review") {
         let segment = &text[start..preventive_adjacent_review_end(&text, start)];
         if blocks_preventive_adjacent_segment(&text, start, segment) {
             return false;
         }
-        if documents_preventive_adjacent_segment(segment) {
-            return true;
-        }
+        documents_review |= documents_preventive_adjacent_segment(segment);
     }
-    false
+    documents_review
 }
 fn documents_preventive_adjacent_segment(segment: &str) -> bool {
     let has_adjacent_subject = has_unnegated_pipe(
