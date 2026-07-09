@@ -204,6 +204,17 @@ fn list_capture_matches_metadata_lane(
     defect_header_end: usize,
     metadata_lane: &str,
 ) -> bool {
+    let header_start = evidence[..defect_header_end]
+        .rfind('\n')
+        .map_or(0, |index| index + 1);
+    let header_lanes = lane_mention_labels(&evidence[header_start..defect_header_end]);
+    let header_matches_metadata_lane = header_lanes.first().is_some_and(|lane| {
+        lane == metadata_lane
+            && !header_lanes
+                .iter()
+                .skip(1)
+                .any(|lane| lane != metadata_lane)
+    });
     let mut cursor = defect_header_end;
     while cursor < evidence.len() {
         let item_start = cursor + 1;
@@ -217,6 +228,13 @@ fn list_capture_matches_metadata_lane(
             return false;
         }
         if item_lanes.first().is_some_and(|lane| lane == metadata_lane)
+            && is_handler_capture_line(item)
+            && !has_absent_defect_capture(item)
+        {
+            return true;
+        }
+        if item_lanes.is_empty()
+            && header_matches_metadata_lane
             && is_handler_capture_line(item)
             && !has_absent_defect_capture(item)
         {
