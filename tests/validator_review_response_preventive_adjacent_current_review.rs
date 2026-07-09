@@ -46,6 +46,47 @@ fn validator_allows_preventive_coverage_before_follow_up_labels() -> TestResult 
     Ok(())
 }
 
+#[test]
+fn validator_rejects_uncovered_adjacent_coverage_checks() -> TestResult {
+    for handoff in [
+        "Review response: fixed the exact Codex review comment. Preventive adjacent review: regression coverage checks show adjacent parser variants in the helper family are uncovered.\n",
+        "Review response: fixed the exact Codex review comment. Preventive adjacent review: focused tests checked adjacent parser variants in the helper family; adjacent variants remain uncovered.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_rejects_preventive_adjacent(&output, handoff);
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_positive_adjacent_coverage_checks() -> TestResult {
+    for handoff in [
+        "Review response: fixed the exact Codex review comment. Preventive adjacent review: regression coverage checks passed for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment. Preventive adjacent review: focused tests checked adjacent parser variants in the helper family and passed.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_success(
+            &output,
+            "validator should allow positive adjacent coverage checks",
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_current_blocker_after_historical_label_context() -> TestResult {
+    let output = validate_handoff_with_pr_state(
+        "Blockers: previous CI failure resolved; current blocker is maintainer approval. Review response: fixed the exact Codex review comment.\n",
+        resolved_review_thread_pr_state(),
+    )?;
+
+    assert_success(
+        &output,
+        "validator should preserve current blocker labels after historical context",
+    );
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

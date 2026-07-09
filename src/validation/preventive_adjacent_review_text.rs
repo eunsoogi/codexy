@@ -112,12 +112,12 @@ pub(super) fn is_stale_blocker_label_value(value: &str) -> bool {
         && has_any(value, &["resolved", "cleared"])
         && !has_pipe_any(
             value,
-            "now blocked|currently blocked|currently pending|pending now|still blocked|still pending|still waiting",
+            "now blocked|currently blocked|current blocker|current blockers|current waiting|currently pending|pending now|still blocked|still pending|still waiting",
         )
 }
 
 fn has_current_pending_marker(value: &str) -> bool {
-    "now blocked|currently blocked|current pending|currently pending|pending now|still blocked|still pending|still waiting"
+    "now blocked|currently blocked|current blocker|current blockers|current pending|current waiting|currently pending|pending now|still blocked|still pending|still waiting"
         .split('|')
         .any(|marker| {
             value
@@ -228,7 +228,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
         || local.starts_with("s not ")
         || starts_with_pipe(
             local,
-            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|do not|don't|did not|didn't|does not|doesn't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not inspected|not run|not executed|not covered|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|omit|omits|omitted|skip|skips|skipped|exclude|excludes|excluded|lack|lacks|lacked|without|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
+            "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|do not|don't|did not|didn't|does not|doesn't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not inspected|not run|not executed|not covered|is uncovered|are uncovered|uncovered|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|omit|omits|omitted|skip|skips|skipped|exclude|excludes|excluded|lack|lacks|lacked|without|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
         )
 }
 

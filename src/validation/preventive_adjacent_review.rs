@@ -76,6 +76,9 @@ fn documents_preventive_adjacent_segment(segment: &str) -> bool {
         segment,
         "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
     );
+    if has_adjacent_subject && has_negative_coverage_outcome(segment) {
+        return false;
+    }
     let has_code_surface = has_named_inspected_surface(
         segment,
         "function|functions|code surface|code surfaces|file|files",
@@ -108,7 +111,20 @@ fn has_focused_adjacent_coverage(segment: &str) -> bool {
                 "adjacent gap|adjacent parser|helper family|parser variant|workflow variant|sibling",
             ) && has_executed_coverage_claim(unit)
                 && !has_exact_comment_only_coverage(unit)
+                && !has_negative_coverage_outcome(unit)
         })
+}
+fn has_negative_coverage_outcome(unit: &str) -> bool {
+    has_unnegated_any(
+        unit,
+        &[
+            "uncovered",
+            "not covered",
+            "no coverage",
+            "coverage missing",
+            "missing coverage",
+        ],
+    )
 }
 fn has_executed_coverage_claim(unit: &str) -> bool {
     !has_requirement_template_context(unit)
