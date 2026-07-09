@@ -9,10 +9,12 @@ pub(super) fn freed_capacity(line: &str) -> bool {
     let Some(subject) = words.iter().position(|word| !word_in(word, "a|an|the")) else {
         return false;
     };
-    let Some(completion) = words
-        .iter()
-        .position(|word| word_in(word, "archived|completed|finished|merged|removed|stopped"))
-    else {
+    let Some(completion) = words.iter().position(|word| {
+        word_in(
+            word,
+            "archived|completed|deleted|finished|merged|removed|stopped",
+        )
+    }) else {
         return false;
     };
     let Some(capacity_subject) = capacity_subject_index(&words, subject, completion, &owner) else {
@@ -20,7 +22,8 @@ pub(super) fn freed_capacity(line: &str) -> bool {
     };
     let claim_start = subject.min(completion).min(capacity_subject);
     let claim_end = subject.max(completion).max(capacity_subject);
-    !words[claim_start..claim_end]
+    let proof_scan_end = (claim_end + 2).min(words.len().saturating_sub(1));
+    !words[claim_start..=proof_scan_end]
         .iter()
         .any(|word| word_in(word, "proof|review|test|tests|verification|evidence"))
         && "not|no|inactive".split('|').all(|marker| {

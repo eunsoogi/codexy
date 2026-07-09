@@ -12,14 +12,11 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let operations = child_thread_operations(evidence);
     let has_child_thread_operation = !operations.is_empty();
     let active_counts = active_child_thread_count_records(evidence);
-    let mut previous_operation: Option<&ThreadOperation> = None;
     let owner_lookups = operations
         .iter()
-        .map(|operation| {
-            let lookup_bound = previous_operation.and_then(|previous| {
-                shares_owner_id(&previous.owner, &operation.owner)
-                    .then_some((previous.line_number, previous.segment_number))
-            });
+        .enumerate()
+        .map(|(index, operation)| {
+            let lookup_bound = last_matching_operation(&operations[..index], operation);
             let lookup = matching_owner_lookup_before(
                 evidence,
                 &operation.owner,
@@ -27,7 +24,6 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 operation.segment_number,
                 lookup_bound,
             );
-            previous_operation = Some(operation);
             lookup
         })
         .collect::<Vec<_>>();
@@ -59,12 +55,8 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 let Some(OwnerLookup::Found(existing_owner)) = lookup else {
                     return false;
                 };
-                let previous_operation_position = index.checked_sub(1).and_then(|previous| {
-                    shares_owner_id(&operations[previous].owner, &operation.owner).then_some((
-                        operations[previous].line_number,
-                        operations[previous].segment_number,
-                    ))
-                });
+                let previous_operation_position =
+                    last_matching_operation(&operations[..index], operation);
                 !continues_existing_owner(Some(existing_owner), operation)
                     && !has_matching_old_owner_disposition_before(
                         evidence,
@@ -93,6 +85,16 @@ fn shares_owner_id(left: &ThreadOwner, right: &ThreadOwner) -> bool {
             .thread_id
             .as_deref()
             .is_some_and(|thread_id| right.thread_id.as_deref() == Some(thread_id))
+}
+
+fn last_matching_operation(
+    previous_operations: &[ThreadOperation],
+    operation: &ThreadOperation,
+) -> Option<(usize, usize)> {
+    previous_operations.iter().rev().find_map(|previous| {
+        shares_owner_id(&previous.owner, &operation.owner)
+            .then_some((previous.line_number, previous.segment_number))
+    })
 }
 
 fn has_matching_old_owner_disposition_before(
@@ -197,7 +199,7 @@ fn disposition_claim_is_negated(words: &[(usize, String)], index: usize) -> bool
     let start = index.saturating_sub(8);
     (start..index)
         .rev()
-        .take_while(|&candidate| !matches!(words[candidate].1.as_str(), "but" | "because"))
+        .take_while(|&candidate| !matches!(words[candidate].1.as_str(), "and" | "but" | "because"))
         .any(|candidate| match words[candidate].1.as_str() {
             "no" if words
                 .get(candidate + 1)
@@ -208,7 +210,12 @@ fn disposition_claim_is_negated(words: &[(usize, String)], index: usize) -> bool
                 })
             }
             "no" => true,
-            "none" | "not" | "never" | "wasnt" | "wasn" => true,
+            "cannot" | "cant" | "couldnt" | "didnt" | "doesnt" | "hasnt" | "none" | "not"
+            | "never" | "shouldnt" | "wasnt" | "wouldnt" => true,
+            "can" | "couldn" | "didn" | "doesn" | "hasn" | "isn" | "shouldn" | "wasn"
+            | "wouldn" => words
+                .get(candidate + 1)
+                .is_some_and(|(_, next)| next == "t"),
             _ => false,
         })
 }

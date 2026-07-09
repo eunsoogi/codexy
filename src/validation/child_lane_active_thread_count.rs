@@ -34,15 +34,21 @@ fn explicit_total(words: &[String]) -> Option<u64> {
 }
 fn fallback_count(words: &[String]) -> Option<u64> {
     let first = words.first()?;
-    if words
-        .first()
-        .is_some_and(|word| matches!(word.as_str(), "none" | "zero"))
-        && words.len() == 1
-    {
+    if matches!(first.as_str(), "none" | "zero") && words.len() == 1 {
         return Some(0);
     }
     if first.chars().all(|c| c.is_ascii_digit()) {
-        return first.parse().ok();
+        let starts_list = words.get(1).is_some_and(|word| {
+            is_prefixed_thread_id(word)
+                || is_non_prefixed_codex_thread_id(word)
+                || (word == "thread"
+                    && words
+                        .get(2)
+                        .is_some_and(|suffix| is_thread_id_suffix(suffix)))
+        });
+        return thread_id_entry_count(words)
+            .filter(|count| *count > 1 && starts_list)
+            .or_else(|| first.parse().ok());
     }
     if let Some(count) = thread_id_entry_count(words) {
         return Some(count);
@@ -55,7 +61,6 @@ fn fallback_count(words: &[String]) -> Option<u64> {
         .find(|word| word.chars().all(|character| character.is_ascii_digit()))
         .and_then(|word| word.parse().ok())
 }
-
 fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64> {
     let mut counts = [None, None, None];
     let mut first_count_used = false;
@@ -89,7 +94,6 @@ fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64
     }
     Some(counts.iter().flatten().copied().sum())
 }
-
 fn component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
     let previous_count = index
         .checked_sub(1)
@@ -107,7 +111,6 @@ fn component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
         .or_else(|| previous_component_count(words, index))
         .or_else(|| next_component_count(words, index))
 }
-
 fn count_follows_component(words: &[String], count_index: usize) -> bool {
     for word in words[..count_index].iter().rev() {
         if component_index(word).is_some() {
@@ -119,7 +122,6 @@ fn count_follows_component(words: &[String], count_index: usize) -> bool {
     }
     false
 }
-
 fn previous_component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
     for previous in (0..index).rev() {
         if component_index(&words[previous]).is_some() {
@@ -131,7 +133,6 @@ fn previous_component_count(words: &[String], index: usize) -> Option<(u64, usiz
     }
     None
 }
-
 fn next_component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
     for (next, word) in words.iter().enumerate().skip(index + 1) {
         if component_index(word).is_some() {
@@ -143,7 +144,6 @@ fn next_component_count(words: &[String], index: usize) -> Option<(u64, usize)> 
     }
     None
 }
-
 fn component_index(word: &str) -> Option<usize> {
     match word {
         "active" => Some(0),
@@ -152,7 +152,6 @@ fn component_index(word: &str) -> Option<usize> {
         _ => None,
     }
 }
-
 fn count_word(word: &str) -> Option<u64> {
     match word {
         "none" | "zero" => Some(0),
@@ -160,7 +159,6 @@ fn count_word(word: &str) -> Option<u64> {
         _ => None,
     }
 }
-
 fn thread_id_entry_count(words: &[String]) -> Option<u64> {
     let mut count = 0;
     let mut index = 0;
@@ -186,7 +184,6 @@ fn thread_id_entry_count(words: &[String]) -> Option<u64> {
     }
     (count > 0).then_some(count as u64)
 }
-
 fn value_words(value: &str) -> Vec<String> {
     value
         .to_ascii_lowercase()
@@ -198,18 +195,15 @@ fn value_words(value: &str) -> Vec<String> {
         .map(str::to_owned)
         .collect()
 }
-
 fn is_prefixed_thread_id(word: &str) -> bool {
     word.strip_prefix("thread-")
         .is_some_and(|rest| !rest.is_empty())
 }
-
 fn is_thread_id_suffix(word: &str) -> bool {
     !word.is_empty()
         && word.chars().all(|c| c.is_ascii_alphanumeric())
         && word.chars().any(|c| c.is_ascii_digit())
 }
-
 fn is_non_prefixed_codex_thread_id(word: &str) -> bool {
     !word.starts_with('#')
         && !word.starts_with("thread-")
@@ -220,13 +214,11 @@ fn is_non_prefixed_codex_thread_id(word: &str) -> bool {
         && word.chars().any(|c| c.is_ascii_digit())
         && word.chars().any(|c| c.is_ascii_alphabetic())
 }
-
 fn is_non_thread_id_context(words: &[String], index: usize) -> bool {
     words
         .get(index.saturating_sub(1))
         .is_some_and(|word| matches!(word.as_str(), "branch" | "worktree" | "path"))
 }
-
 fn has_active_child_thread_key(words: &[String]) -> bool {
     words
         .iter()

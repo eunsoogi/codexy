@@ -140,6 +140,35 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_treats_deleted_child_thread_as_freed_capacity()
+-> Result<(), Box<dyn std::error::Error>> {
+    for completion in [
+        "Child thread thread-268 deleted after completion; Active child Codex threads: 4",
+        "Deleted child thread thread-268 after completion; Active child Codex threads: 4",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #268.
+Thread creation: created child thread thread-268 for issue #268.
+{completion}
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should treat deleted child thread wording as freed capacity for `{completion}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_creation_after_generic_completion_text_after_count()
 -> Result<(), Box<dyn std::error::Error>> {
     for completion in [
@@ -152,6 +181,8 @@ fn validator_rejects_creation_after_generic_completion_text_after_count()
         "child thread verification completed",
         "review for child thread thread-old completed",
         "tests for child thread thread-old completed",
+        "Issue #269 completed tests",
+        "Thread thread-r1 completed review",
     ] {
         let output = run_ownership_validator(&format!(
             r#"Owner decision: parent-owned for orchestration only; child routing required

@@ -137,3 +137,63 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_counts_numbered_same_line_thread_ids_before_ordinals()
+-> Result<(), Box<dyn std::error::Error>> {
+    for ledger in [
+        "Active child Codex threads: 1. thread-101, 2. thread-102, 3. thread-103, 4. thread-104, 5. thread-105",
+        "Active child Codex threads: 1) thread-a1, 2) thread-b2, 3) thread-c3, 4) thread-d4, 5) thread-e5, 6) thread-f6",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+{ledger}
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should count numbered thread IDs before the first ordinal for `{ledger}`"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("would exceed five active child Codex threads"),
+            "stderr should name over-capacity creation, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_preserves_explicit_leading_total_before_numbered_examples()
+-> Result<(), Box<dyn std::error::Error>> {
+    for ledger in [
+        "Active child Codex threads: 5, including 1. thread-old for issue #269, 2. thread-extra for issue #270.",
+        "Active child Codex threads: 5 thread IDs include 1. thread-old for issue #269, 2. thread-extra for issue #270.",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+{ledger}
+Existing issue/PR owner check: no existing owner thread found for issue #271.
+Thread creation: created child thread thread-new for issue #271.
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should not let numbered examples override an explicit leading total for `{ledger}`"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("would exceed five active child Codex threads"),
+            "stderr should name over-capacity creation, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}

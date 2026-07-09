@@ -92,6 +92,36 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_apostrophe_and_cannot_negated_dispositions()
+-> Result<(), Box<dyn std::error::Error>> {
+    for disposition in [
+        "existing owner thread thread-old isn't stopped for issue #269",
+        "existing owner thread thread-old cannot be stopped for issue #269",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269.
+Old owner disposition: {disposition}.
+Thread creation: created replacement child thread thread-new for issue #269.
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            !output.status.success(),
+            "validator should reject negated disposition `{disposition}`"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("old owner"),
+            "stderr should name missing old-owner disposition evidence, got:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_affirmative_old_owner_disposition() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for orchestration only; child routing required
@@ -109,6 +139,33 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_accepts_affirmative_disposition_after_and_boundary()
+-> Result<(), Box<dyn std::error::Error>> {
+    for disposition in [
+        "existing owner thread thread-old was not stopped and was unusable for issue #269",
+        "existing owner thread thread-old was not blocked and was stopped for issue #269",
+    ] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269.
+Old owner disposition: {disposition}.
+Thread creation: created replacement child thread thread-new for issue #269.
+Maintainer reassignment: none
+"#
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "validator should accept affirmative disposition after and boundary for `{disposition}`\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
