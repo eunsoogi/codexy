@@ -41,6 +41,21 @@ fn validator_rejects_child_handoff_readiness_with_blocked_sentinel() -> TestResu
 }
 
 #[test]
+fn validator_rejects_codex_review_readiness_with_blocked_sentinel() -> TestResult {
+    for handoff in [
+        format!(
+            "Codex review passed on the current head. Sentinel: BLOCK on current head {HEAD}.\n"
+        ),
+        format!(
+            "Codex review approved on the current head. Sentinel: UNOBSERVABLE after bounded wait on current head {HEAD}.\n"
+        ),
+    ] {
+        assert_rejects_sentinel_handoff(&handoff)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_reviewer_named_returned_pass() -> TestResult {
     let handoff = format!(
         "PR ready for parent handoff. Packaged Codexy Sentinel Turing returned PASS on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"

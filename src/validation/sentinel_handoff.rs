@@ -71,7 +71,9 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     }
 }
 fn claims_readiness(text: &str) -> bool {
-    has_any(text, READINESS_MARKERS) || child_handoff_claims_current_pr_readiness(text)
+    has_any(text, READINESS_MARKERS)
+        || child_handoff_claims_current_pr_readiness(text)
+        || super::codex_review_handoff_readiness::claims_completion(text)
 }
 fn child_handoff_claims_current_pr_readiness(text: &str) -> bool {
     let claims_child = super::child_handoff_readiness_claims::child_readiness(text);
