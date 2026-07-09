@@ -24,6 +24,31 @@ fn validator_allows_contracted_requested_label_negations_before_waiting_evidence
 }
 
 #[test]
+fn validator_allows_not_requested_readiness_label_before_unfixed_thread_waiting() -> TestResult {
+    for label in [
+        "PR readiness: isn't requested",
+        "PR readiness: not requested",
+        "PR ready: not requested",
+        "PR ready: not applicable",
+        "PR ready: false",
+        "Readiness: isn't requested",
+        "Readiness: not requested",
+    ] {
+        let output = validate_handoff_with_pr_state(
+            &format!(
+                "{label}. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet.\n"
+            ),
+            mixed_review_thread_pr_state(),
+        )?;
+        assert_success(
+            &output,
+            "validator should treat not-requested readiness labels as waiting evidence",
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_affirmative_requested_readiness_label_with_waiting_thread() -> TestResult {
     let output = validate_handoff_with_pr_state(
         "PR readiness: requested. Review response: fixed PRRT_kwDOFixed. Thread PRRT_kwDOWaiting remains unresolved because it is not fixed or accepted yet.\n",

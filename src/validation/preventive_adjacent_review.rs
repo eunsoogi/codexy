@@ -142,7 +142,7 @@ fn has_executed_coverage_claim(unit: &str) -> bool {
 fn has_requirement_template_context(unit: &str) -> bool {
     has_unnegated_pipe(
         unit,
-        "must|should|required|requirement|checklist|template|needs to|need to",
+        "can|could|may|might|must|should|would|required|requirement|checklist|template|needs to|need to",
     )
 }
 fn has_exact_comment_only_coverage(unit: &str) -> bool {

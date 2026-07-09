@@ -60,6 +60,20 @@ fn validator_rejects_requirement_templates_as_preventive_evidence() -> TestResul
 }
 
 #[test]
+fn validator_rejects_modal_preventive_coverage_claims() -> TestResult {
+    for handoff in [
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused regression tests can cover adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused regression tests could cover adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: regression coverage may cover adjacent parser variants in the helper family.\n",
+        "Review response: fixed the exact Codex review comment and verified current head. Preventive adjacent review: focused tests might exercise adjacent parser variants in the helper family.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_rejects_preventive_adjacent(&output, handoff);
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_historical_waiting_labels_without_preventive_review() -> TestResult {
     for handoff in [
         "Waiting: pending Codex review earlier, now resolved. Review response: fixed the exact Codex review comment.\n",

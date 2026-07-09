@@ -15,13 +15,29 @@ pub(super) fn has_false_readiness_before_evidence(text: &str, start: usize) -> b
 }
 
 pub(super) fn has_readiness_not_applicable_state(text: &str) -> bool {
-    ["pr readiness:", "readiness:"].iter().any(|label| {
-        text.find(label).is_some_and(|index| {
-            ["not applicable", "isn't applicable", "aren't applicable"]
+    ["pr readiness:", "readiness:", "pr ready:"]
+        .iter()
+        .any(|label| {
+            text.find(label).is_some_and(|index| {
+                [
+                    "false",
+                    "not ready",
+                    "not currently ready",
+                    "isn't ready",
+                    "isn't currently ready",
+                    "aren't ready",
+                    "aren't currently ready",
+                    "not applicable",
+                    "isn't applicable",
+                    "aren't applicable",
+                    "not requested",
+                    "isn't requested",
+                    "aren't requested",
+                ]
                 .iter()
                 .any(|state| text[index + label.len()..].trim_start().starts_with(state))
+            })
         })
-    })
 }
 
 pub(super) fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
