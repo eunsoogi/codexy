@@ -66,6 +66,14 @@ fn validator_cli_rejects_unresolved_pending_worktree_ids() -> TestResult {
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; not safe to retry.\n",
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; unsafe to reassign.\n",
         "pendingWorktreeId local:edge reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; unsafe retry/reassignment would duplicate owners.\n",
+        r#"create_thread result: {"pendingWorktreeId": "local:json-real"}.
+No surfaced thread or failed setup evidence yet.
+"#,
+        r#"create_thread result: {"pendingWorktreeId": "local:json-first"}.
+pendingWorktreeId local:json-first surfaced thread id 019f-child with active owner.
+create_thread result: {"pendingWorktreeId": "local:json-second"}.
+pendingWorktreeId local:json-second remains unresolved.
+"#,
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(
@@ -110,6 +118,24 @@ fn validator_cli_allows_resolved_pending_worktree_ids() -> TestResult {
         "pendingWorktreeId: no\nNo pending worktree setup remains.\n",
         "pending worktree id = n/a\nNo pending worktree setup remains.\n",
         "pendingWorktreeId: n-a\nNo pending worktree setup remains.\n",
+        r#"create_thread result: {"pendingWorktreeId": null}
+No pending worktree setup remains.
+"#,
+        r#"create_thread result: {"pendingWorktreeId": "none"}
+No pending worktree setup remains.
+"#,
+        r#"create_thread result: {"pendingWorktreeId": "null"}
+No pending worktree setup remains.
+"#,
+        r#"create_thread result: {"pendingWorktreeId": "n/a"}
+No pending worktree setup remains.
+"#,
+        r#"create_thread result: {"pendingWorktreeId": "n-a"}
+No pending worktree setup remains.
+"#,
+        r#"create_thread result: {"pendingWorktreeId": "local:json-real"}
+pendingWorktreeId local:json-real failed setup with fatal invalid reference.
+"#,
         "create_thread did not return a pendingWorktreeId.\nNo pending worktree setup remains.\n",
         "create_thread did not return any pendingWorktreeId.\nNo pending worktree setup remains.\n",
         "create_thread returned no pendingWorktreeId.\nNo pending worktree setup remains.\n",

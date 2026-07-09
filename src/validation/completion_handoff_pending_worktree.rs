@@ -1,6 +1,6 @@
 use super::completion_handoff_pending_worktree_labels::has_false_actionable_error_evidence;
 use super::completion_handoff_pending_worktree_segments::{
-    bounded_search_evidence_text, colon_starts_lifecycle_entry,
+    bounded_search_evidence_text, colon_starts_lifecycle_entry, has_quoted_terminal_false_value,
 };
 use super::completion_handoff_pending_worktree_text::{
     char_window_start, find_word, has_any, has_false_bounded_search_evidence,
@@ -233,7 +233,10 @@ fn mentions_affirmative_safe_retry(text: &str) -> bool {
 }
 
 fn has_false_pending_value(suffix: &str) -> bool {
-    let value = suffix.trim_start();
+    let mut value = suffix.trim_start();
+    if let Some(after_quote) = value.strip_prefix('"') {
+        value = after_quote.trim_start();
+    }
     let Some(separator) = value.chars().next() else {
         return false;
     };
@@ -241,5 +244,5 @@ fn has_false_pending_value(suffix: &str) -> bool {
         return false;
     }
     let value = value[separator.len_utf8()..].trim_start();
-    has_terminal_false_value(value)
+    has_terminal_false_value(value) || has_quoted_terminal_false_value(value)
 }

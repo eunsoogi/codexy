@@ -217,14 +217,14 @@ fn is_terminal_decision_remainder(remainder: &str) -> bool {
     let Some(first) = chars.next() else {
         return true;
     };
-    if first == '\n' || first == '\r' || matches!(first, ',' | '.' | ';') {
+    if first == '\n' || first == '\r' || matches!(first, ',' | '.' | ';' | '}') {
         return true;
     }
     if first != ' ' && first != '\t' {
         return false;
     }
     let remainder = remainder.trim_start_matches([' ', '\t']);
-    remainder.is_empty() || remainder.starts_with(['\n', '\r', ',', '.', ';'])
+    remainder.is_empty() || remainder.starts_with(['\n', '\r', ',', '.', ';', '}'])
 }
 
 fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {

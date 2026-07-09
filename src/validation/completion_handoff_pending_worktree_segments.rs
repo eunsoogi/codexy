@@ -13,3 +13,24 @@ pub(super) fn colon_starts_lifecycle_entry(text: &str, colon: usize) -> bool {
 pub(super) fn bounded_search_evidence_text(text: &str) -> &str {
     text.split("metadata:").next().unwrap_or(text)
 }
+
+pub(super) fn has_quoted_terminal_false_value(value: &str) -> bool {
+    let Some(value) = value.strip_prefix('"') else {
+        return false;
+    };
+    "none|null|nil|false|no|n/a|n-a|na|not applicable|not-applicable|empty|missing|absent"
+        .split('|')
+        .any(|word| {
+            value
+                .strip_prefix(word)
+                .is_some_and(is_terminal_json_decision_remainder)
+        })
+}
+
+fn is_terminal_json_decision_remainder(remainder: &str) -> bool {
+    let Some(remainder) = remainder.strip_prefix('"') else {
+        return false;
+    };
+    let remainder = remainder.trim_start_matches([' ', '\t']);
+    remainder.is_empty() || remainder.starts_with(['\n', '\r', ',', '.', ';', '}'])
+}
