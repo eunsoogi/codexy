@@ -123,8 +123,14 @@ fn is_handoff_metadata_item_for_different_lane(line: &str, lane: Option<&str>) -
     } else {
         line
     };
-    is_unlisted_handoff_metadata_item(line)
-        && !is_unlisted_handoff_metadata_item_for_lane(line, Some(lane))
+    let line_lower = line.to_ascii_lowercase();
+    let Some(field_line) = strip_lane_label_prefix_for_lane(&line_lower, None) else {
+        return false;
+    };
+    let Some(scope_line) = strip_lane_label_prefix_for_lane_preserving_case(line, None) else {
+        return false;
+    };
+    is_handoff_metadata_field_line(field_line) && names_later_lane_handoff(scope_line, Some(lane))
 }
 
 fn defect_header_candidate_scope(lines: &[&str], index: usize, lane: Option<&str>) -> String {
@@ -239,7 +245,11 @@ fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) ->
     let Some(scope_line) = strip_lane_label_prefix_for_lane_preserving_case(line, lane) else {
         return false;
     };
-    (is_fallback_metadata_field(field_line)
+    is_handoff_metadata_field_line(field_line) && !names_later_lane_handoff(scope_line, lane)
+}
+
+fn is_handoff_metadata_field_line(line: &str) -> bool {
+    is_fallback_metadata_field(line)
         || [
             "separate dogfood issue",
             "separate dogfooding issue",
@@ -250,8 +260,7 @@ fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) ->
             "follow-up issue",
         ]
         .into_iter()
-        .any(|field| field_line.starts_with(field)))
-        && !names_later_lane_handoff(scope_line, lane)
+        .any(|field| line.starts_with(field))
 }
 
 fn names_later_lane_handoff(line: &str, lane: Option<&str>) -> bool {
