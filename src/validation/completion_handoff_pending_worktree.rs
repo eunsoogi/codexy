@@ -1,4 +1,7 @@
 use super::completion_handoff_pending_worktree_labels::has_false_actionable_error_evidence;
+use super::completion_handoff_pending_worktree_segments::{
+    bounded_search_evidence_text, colon_starts_lifecycle_entry,
+};
 use super::completion_handoff_pending_worktree_text::{
     char_window_start, find_word, has_any, has_false_bounded_search_evidence,
     has_false_surfaced_thread_evidence, has_nearby_negation, has_negated_pending_return,
@@ -87,7 +90,7 @@ fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
         let value_end = local_id_value(text, id_start).map_or(id_start + "local:".len(), |value| {
             id_start + "local:".len() + value.len()
         });
-        if text[value_end..].starts_with(':') {
+        if text[value_end..].starts_with(':') && !colon_starts_lifecycle_entry(text, value_end) {
             break;
         }
         offset = value_end;
@@ -151,6 +154,7 @@ fn local_id_starts_in_following_list(text: &str, list_header_end: usize) -> Vec<
     }
     starts
 }
+
 fn grouped_body_separator(
     text: &str,
     sentence_start: usize,
@@ -204,16 +208,17 @@ fn mentions_bounded_pending_worktree_timeout(text: &str) -> bool {
 }
 
 fn mentions_bounded_search_evidence(text: &str) -> bool {
-    !has_false_bounded_search_evidence(text)
+    let evidence = bounded_search_evidence_text(text);
+    !has_false_bounded_search_evidence(evidence)
         && has_any(
-            text,
+            evidence,
             "searches by pending id|searches by pending worktree id|searched by pending id|searched by pending worktree id|list_threads searches by pending id|list_threads searches by pending worktree id",
         )
-        && has_any(text, "branch")
-        && has_any(text, "pr|pull request|issue")
-        && has_any(text, "sha|commit")
+        && has_any(evidence, "branch")
+        && has_any(evidence, "pr|pull request|issue")
+        && has_any(evidence, "sha|commit")
         && has_any(
-            text,
+            evidence,
             "review-thread id|review thread id|available review-thread id|available review thread id|no review-thread id available|no review thread id available",
         )
 }

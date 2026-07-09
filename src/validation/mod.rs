@@ -38,6 +38,7 @@ mod completion_handoff;
 mod completion_handoff_compaction;
 mod completion_handoff_pending_worktree;
 mod completion_handoff_pending_worktree_labels;
+mod completion_handoff_pending_worktree_segments;
 mod completion_handoff_pending_worktree_text;
 mod completion_handoff_waiting;
 mod conventional_commit;
