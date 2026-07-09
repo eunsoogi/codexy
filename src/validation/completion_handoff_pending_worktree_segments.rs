@@ -11,7 +11,29 @@ pub(super) fn colon_starts_lifecycle_entry(text: &str, colon: usize) -> bool {
 }
 
 pub(super) fn bounded_search_evidence_text(text: &str) -> &str {
-    text.split("metadata:").next().unwrap_or(text)
+    match text.split_once("metadata:") {
+        Some((before, after)) if !contains_search_evidence(after) => before,
+        _ => text,
+    }
+}
+
+pub(super) fn bare_pending_mention_has_state(suffix: &str) -> bool {
+    let boundary = suffix
+        .find('\n')
+        .or_else(|| suffix.find('.'))
+        .unwrap_or(suffix.len());
+    let sentence = &suffix[..boundary];
+    has_any(
+        sentence,
+        "failed setup|setup failed|surfaced thread id|thread id|bounded timeout|bounded wait|remains unresolved|still unresolved|not visible|not surfaced|no thread surfaced|did not surface|none found|returned pendingworktreeid",
+    )
+}
+
+fn contains_search_evidence(text: &str) -> bool {
+    has_any(
+        text,
+        "searches by pending id|searches by pending worktree id|searched by pending id|searched by pending worktree id|list_threads searches by pending id|list_threads searches by pending worktree id",
+    )
 }
 
 pub(super) fn has_quoted_terminal_false_value(value: &str) -> bool {

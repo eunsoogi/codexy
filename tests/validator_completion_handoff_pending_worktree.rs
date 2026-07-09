@@ -39,6 +39,7 @@ fn validator_cli_rejects_unresolved_pending_worktree_ids() -> TestResult {
         "pendingWorktreeId local:abc surfaced thread id 019f-child with active owner. pendingWorktreeId local:abc remains unresolved.\n",
         "pendingWorktreeId failed setup with fatal invalid reference. pendingWorktreeId remains unresolved.\n",
         "pending worktree ids local:first and local:second: first surfaced thread id 019f-child with active owner; second remains unresolved.\n",
+        "pendingWorktreeIds: local:first surfaced thread id 019f-child with active owner; local:second remains unresolved.\n",
         "pending worktree ids local:first and local:second: local:first surfaced thread id 019f-child with active owner; local:second remains unresolved.\n",
         "pending worktree ids local:first: failed setup with fatal invalid reference; local:second: remains unresolved.\n",
         "pending worktree ids local:first: surfaced thread id 019f-child with active owner; local:second: remains unresolved.\n",
@@ -118,6 +119,7 @@ fn validator_cli_allows_resolved_pending_worktree_ids() -> TestResult {
         "pending worktree ids local:first and local:second: first surfaced thread id 019f-child with active owner; second failed setup with fatal invalid reference.\n",
         "pending worktree ids local:3ae71d60 and local:88841d87: first surfaced thread id 019f-child with active owner; second failed setup with fatal invalid reference.\n",
         "pending worktree ids local:first and local:second: local:first surfaced thread id 019f-child with active owner; local:second failed setup with fatal invalid reference.\n",
+        "pendingWorktreeIds: local:first surfaced thread id 019f-child with active owner; local:second failed setup with fatal invalid reference.\n",
         "pending worktree ids local:first: failed setup with fatal invalid reference; local:second: surfaced thread id 019f-child with active owner.\n",
         "pending worktree ids local:first and local:second: local:first reached bounded timeout after list_threads searches by pending id, branch, PR, SHA, and review-thread id; safe retry/reassignment is allowed; local:second failed setup with fatal invalid reference.\n",
         "pending worktree ids:\n- local:first surfaced thread id 019f-child with active owner.\n- local:second failed setup with fatal invalid reference.\n",
@@ -155,6 +157,8 @@ pendingWorktreeId local:json-real failed setup with fatal invalid reference.
         "create_thread ran without returning a pendingWorktreeId.\nNo pending worktree setup remains.\n",
         "No pendingWorktreeId was returned by create_thread.\nNo pending worktree setup remains.\n",
         "pendingWorktreeId was not returned by create_thread.\nNo pending worktree setup remains.\n",
+        "Updated pendingWorktreeId validation and pending worktree id parser coverage.\nNo pending worktree setup remains.\n",
+        "pendingWorktreeId local:edge reached bounded timeout. Metadata: list_threads searches by pending id, branch, PR, SHA, and no review-thread id available; safe retry/reassignment is allowed.\n",
     ] {
         accept_open_pr_handoff(
             handoff,

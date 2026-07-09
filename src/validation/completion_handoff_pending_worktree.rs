@@ -1,7 +1,8 @@
 use super::completion_handoff_pending_worktree_labels::has_false_actionable_error_evidence;
 use super::completion_handoff_pending_worktree_segments::{
-    bounded_search_evidence_text, colon_starts_lifecycle_entry, has_non_review_thread_id_evidence,
-    has_quoted_terminal_false_value, pending_label_value_after_separator,
+    bare_pending_mention_has_state, bounded_search_evidence_text, colon_starts_lifecycle_entry,
+    has_non_review_thread_id_evidence, has_quoted_terminal_false_value,
+    pending_label_value_after_separator,
 };
 use super::completion_handoff_pending_worktree_text::{
     char_window_start, find_word, has_any, has_false_bounded_search_evidence,
@@ -35,6 +36,7 @@ pub(super) fn check(text: &str) -> Option<String> {
 fn pending_worktree_mentions(text: &str) -> Vec<usize> {
     let mut matches = Vec::new();
     for phrase in [
+        "pendingworktreeids",
         "pendingworktreeid",
         "pending worktree id",
         "pending worktree ids",
@@ -53,7 +55,9 @@ fn pending_worktree_mentions(text: &str) -> Vec<usize> {
             {
                 let id_starts = local_id_starts_before_outcome(text, end);
                 if id_starts.is_empty() {
-                    matches.push(start);
+                    if bare_pending_mention_has_state(&text[end..]) {
+                        matches.push(start);
+                    }
                 } else {
                     matches.extend(id_starts);
                 }
