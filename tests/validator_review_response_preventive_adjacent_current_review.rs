@@ -87,6 +87,33 @@ fn validator_allows_current_blocker_after_historical_label_context() -> TestResu
     Ok(())
 }
 
+#[test]
+fn validator_rejects_prepositional_no_blocker_labels() -> TestResult {
+    for handoff in [
+        "Blocked on: none. Review response: fixed the exact Codex review comment.\n",
+        "Blocked by: none. Review response: fixed the exact Codex review comment.\n",
+        "Blocked due to: no open blockers. Review response: fixed the exact Codex review comment.\n",
+        "Waiting on: none. Review response: fixed the exact Codex review comment.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_rejects_preventive_adjacent(&output, handoff);
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_empty_status_headings_before_review_response() -> TestResult {
+    for handoff in [
+        "Waiting:\nStatus: current head verified.\nReview response: fixed the exact Codex review comment.\n",
+        "Blockers:\nFollow-ups: none.\nReview response: fixed the exact Codex review comment.\n",
+        "Waiting:\nFollow-up: no remaining action.\nReview response: fixed the exact Codex review comment.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
+        assert_rejects_preventive_adjacent(&output, handoff);
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

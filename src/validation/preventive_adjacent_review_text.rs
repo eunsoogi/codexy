@@ -2,6 +2,17 @@ pub(super) fn has_false_blocked_or_waiting_value(value: &str) -> bool {
     if empty_heading_before_next_section(value) {
         return true;
     }
+    let value = value.trim_start();
+    let value = ["due to", "on", "by"]
+        .iter()
+        .find_map(|prefix| {
+            value.strip_prefix(prefix).filter(|rest| {
+                rest.chars()
+                    .next()
+                    .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+            })
+        })
+        .unwrap_or(value);
     let value = value
         .trim_start()
         .trim_start_matches(':')
@@ -14,24 +25,16 @@ pub(super) fn has_false_blocked_or_waiting_value(value: &str) -> bool {
         .unwrap_or("");
     let rest = value[first.len()..].trim_start_matches([' ', '\t']);
     let terminal = rest.chars().next().is_none_or(|ch| ".;,\n\r".contains(ch));
-    let false_modifier = [
-        "active",
-        "currently",
-        "now",
-        "open",
-        "pending",
-        "remain",
-        "remaining",
-        "unresolved",
-    ]
-    .iter()
-    .any(|modifier| rest.starts_with(modifier));
-    let false_empty = matches!(first, "0" | "zero" | "none" | "no" | "false" | "n/a" | "na")
-        && (terminal || false_modifier);
+    let false_modifier = "active|currently|now|open|pending|remain|remaining|unresolved"
+        .split('|')
+        .any(|modifier| rest.starts_with(modifier));
+    let false_empty = matches!(
+        first,
+        "0" | "zero" | "none" | "nothing" | "no" | "false" | "n/a" | "na"
+    ) && (terminal || false_modifier);
     false_empty
         || matches!(first, "resolved" | "cleared")
-        || value.starts_with("on nothing")
-        || value.starts_with("on no ")
+        || value.starts_with("nothing")
         || value.starts_with("not applicable")
         || value.starts_with("no blocker")
         || value.starts_with("no waiting")
@@ -63,7 +66,7 @@ fn empty_heading_before_next_section(value: &str) -> bool {
         .unwrap_or("");
     starts_with_pipe(
         next,
-        "codex review|codex feedback|review response|review-response|review-response lane|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions|preventive adjacent review|verification|tests|sentinel",
+        "codex review|codex feedback|review response|review-response|review-response lane|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions|preventive adjacent review|verification|tests|sentinel|status|follow-up|follow-ups",
     )
 }
 
