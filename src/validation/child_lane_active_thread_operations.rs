@@ -125,10 +125,7 @@ fn has_passive_launch_verb(rest: &str, verb: &str) -> bool {
 }
 
 fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
-    if has_negated_thread_tool_call(line, tool) {
-        return false;
-    }
-    if format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}").split('|').any(|marker| line.contains(&marker)) {
+    if has_negated_thread_tool_call(line, tool) || has_negated_thread_tool_use(line, tool) {
         return false;
     }
     if is_thread_tool_discovery_context(line)
@@ -144,6 +141,12 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
             && line.contains(tool)
             && (!is_thread_tool_discovery_context(line)
                 || has_actual_thread_tool_invocation_context(line, tool)))
+}
+
+fn has_negated_thread_tool_use(line: &str, tool: &str) -> bool {
+    format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}")
+        .split('|')
+        .any(|marker| line.contains(&marker))
 }
 
 fn has_negated_thread_tool_call(line: &str, tool: &str) -> bool {

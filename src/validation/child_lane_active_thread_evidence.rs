@@ -203,7 +203,7 @@ fn owner_lookup_for_operation(
         }
         match owner_lookup(segment.text) {
             Some(OwnerLookup::Found(owner))
-                if lookup_matches_operation(segment.text, operation_owner) =>
+                if lookup_matches_owner(segment.text, operation_owner) =>
             {
                 return Some(OwnerLookup::Found(owner));
             }
@@ -218,7 +218,7 @@ fn is_owner_lookup_context(line: &str) -> bool {
     let line = normalized_owner_lookup_line(line);
     line.contains("owner check") || line.contains("owner thread")
 }
-fn lookup_matches_operation(line: &str, operation_owner: &ThreadOwner) -> bool {
+fn lookup_matches_owner(line: &str, operation_owner: &ThreadOwner) -> bool {
     if operation_owner.issue_ids.is_empty() {
         return operation_owner
             .thread_id
