@@ -1,3 +1,4 @@
+use super::completion_handoff_pending_worktree_labels::has_false_actionable_error_evidence;
 use super::completion_handoff_pending_worktree_text::{
     char_window_start, find_word, has_any, has_false_bounded_search_evidence,
     has_false_surfaced_thread_evidence, has_nearby_negation, has_negated_pending_return,
@@ -178,13 +179,15 @@ fn mentions_surfaced_pending_worktree_thread(text: &str) -> bool {
 }
 
 fn mentions_failed_pending_worktree_setup(text: &str) -> bool {
-    has_any(
-        text,
-        "failed setup|setup failed|explicit failed setup state|active lane accounting state is failed",
-    ) && has_any(
-        text,
-        "actionable error|fatal|invalid reference|does not exist|missing|corrected base ref",
-    )
+    !has_false_actionable_error_evidence(text)
+        && has_any(
+            text,
+            "failed setup|setup failed|explicit failed setup state|active lane accounting state is failed",
+        )
+        && has_any(
+            text,
+            "actionable error|fatal|invalid reference|does not exist|missing|corrected base ref",
+        )
 }
 
 fn mentions_bounded_pending_worktree_timeout(text: &str) -> bool {
@@ -217,9 +220,11 @@ fn mentions_bounded_search_evidence(text: &str) -> bool {
 
 fn mentions_affirmative_safe_retry(text: &str) -> bool {
     has_true_decision_value(text, "safe retry/reassignment")
+        || has_true_decision_value(text, "safe retry or reassignment")
         || has_true_decision_value(text, "safe retry")
         || has_true_decision_value(text, "safe reassignment")
         || has_true_decision_value(text, "retry/reassignment")
+        || has_true_decision_value(text, "retry or reassignment")
 }
 
 fn has_false_pending_value(suffix: &str) -> bool {

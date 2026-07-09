@@ -1,3 +1,5 @@
+use super::completion_handoff_pending_worktree_labels::has_false_label_value;
+
 pub(super) fn has_any(text: &str, phrases: &str) -> bool {
     phrases
         .split('|')
@@ -110,6 +112,10 @@ pub(super) fn find_word(text: &str, word: &str) -> Option<usize> {
 
 pub(super) fn has_false_surfaced_thread_evidence(text: &str) -> bool {
     has_unnegated_phrase(text, "thread id did not surface", 16)
+        || has_false_label_value(text, "thread id")
+        || has_false_label_value(text, "surfaced thread id")
+        || has_false_label_value(text, "observed thread id")
+        || has_false_label_value(text, "resolved to thread")
         || has_unnegated_phrase(text, "thread did not surface", 16)
         || has_unnegated_phrase(text, "no thread surfaced", 16)
         || has_unnegated_phrase(text, "not surfaced", 16)
