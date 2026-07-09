@@ -68,7 +68,7 @@ pub(super) fn has_non_review_thread_id_evidence(text: &str) -> bool {
     while let Some(index) = rest.find(phrase) {
         let start = offset + index;
         let end = start + phrase.len();
-        if has_phrase_boundaries(text, start, end) && !is_review_thread_prefix(&text[..start]) {
+        if has_phrase_boundaries(text, start, end) && !is_unrelated_thread_prefix(&text[..start]) {
             return true;
         }
         offset = end;
@@ -88,8 +88,12 @@ fn has_phrase_boundaries(text: &str, start: usize, end: usize) -> bool {
             .is_none_or(|character| !character.is_ascii_alphanumeric())
 }
 
-fn is_review_thread_prefix(prefix: &str) -> bool {
-    prefix.ends_with("review ") || prefix.trim_end().ends_with("review-")
+fn is_unrelated_thread_prefix(prefix: &str) -> bool {
+    let prefix = prefix.trim_end();
+    prefix.ends_with("review-")
+        || prefix.ends_with("review")
+        || prefix.ends_with("parent")
+        || prefix.ends_with("owner")
 }
 
 fn is_terminal_json_decision_remainder(remainder: &str) -> bool {

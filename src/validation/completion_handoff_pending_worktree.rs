@@ -93,7 +93,9 @@ fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
         let value_end = local_id_value(text, id_start).map_or(id_start + "local:".len(), |value| {
             id_start + "local:".len() + value.len()
         });
-        if text[value_end..].starts_with(':') && !colon_starts_lifecycle_entry(text, value_end) {
+        if text[value_end..].starts_with(':')
+            && (starts.len() > 1 || !colon_starts_lifecycle_entry(text, value_end))
+        {
             break;
         }
         offset = value_end;
@@ -189,7 +191,6 @@ fn mentions_surfaced_pending_worktree_thread(text: &str) -> bool {
         ) || has_non_review_thread_id_evidence(text))
         && has_any(text, "active owner|active lane accounting state is active")
 }
-
 fn mentions_failed_pending_worktree_setup(text: &str) -> bool {
     !has_false_actionable_error_evidence(text)
         && has_any(

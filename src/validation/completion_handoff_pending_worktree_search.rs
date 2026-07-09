@@ -15,7 +15,8 @@ pub(super) fn has_search_dimension(text: &str, dimensions: &str) -> bool {
                 let clause_end = text[clause_start..]
                     .find(['.', ';', '\n'])
                     .map_or(text.len(), |end| clause_start + end);
-                if has_any(&text[clause_start..clause_end], dimensions) {
+                let clause = &text[clause_start..clause_end];
+                if has_any(clause, dimensions) && !has_negated_dimension(clause, dimensions) {
                     return true;
                 }
             }
@@ -24,4 +25,13 @@ pub(super) fn has_search_dimension(text: &str, dimensions: &str) -> bool {
         }
     }
     false
+}
+
+fn has_negated_dimension(clause: &str, dimensions: &str) -> bool {
+    dimensions.split('|').any(|dimension| {
+        has_any(
+            clause,
+            &format!("without searching {dimension}|without {dimension}|not searching {dimension}"),
+        )
+    })
 }
