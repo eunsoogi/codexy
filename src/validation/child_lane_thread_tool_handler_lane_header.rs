@@ -28,7 +28,7 @@ fn lane_header_label(line: &str) -> Option<String> {
     else {
         return None;
     };
-    let label = rest.trim_end_matches([':', '.']).trim();
+    let label = rest.trim_end_matches([':', '.', '-']).trim();
     ((trimmed != line || line.ends_with(':'))
         && !label.is_empty()
         && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
@@ -47,6 +47,9 @@ fn block_has_conflicting_lane_label(evidence: &str, start: usize, header_label: 
         }
         if line_starts_with_lane_label(line).is_some_and(|label| label != header_label) {
             return true;
+        }
+        if has_defect_label(line) {
+            return false;
         }
         if line_end == evidence.len() {
             return false;
@@ -68,6 +71,13 @@ fn line_starts_with_lane_label(line: &str) -> Option<String> {
         .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
     (!label.is_empty() && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
         .then(|| format!("lane {}", label.to_ascii_lowercase()))
+}
+
+fn has_defect_label(line: &str) -> bool {
+    let line = line.to_ascii_lowercase();
+    line.contains("dogfooding defect")
+        || line.contains("tool-exposure defect")
+        || line.contains("dogfooding/tool-exposure defect")
 }
 
 fn strip_markdown_heading_prefix(line: &str) -> &str {
