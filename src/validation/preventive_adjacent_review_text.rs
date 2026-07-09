@@ -80,11 +80,16 @@ pub(super) fn has_current_blocker_phrase(text: &str) -> bool {
         .split('|')
         .any(|phrase| {
             text.match_indices(phrase).any(|(index, _)| {
-                !is_label_negated_match(&text[..index])
+                starts_at_word_boundary(text, index)
+                    && !is_label_negated_match(&text[..index])
                     && !has_false_blocked_or_waiting_value(&text[index + phrase.len()..])
                     && !is_stale_blocker_label_value(blocker_phrase_context(text, index))
             })
         })
+}
+
+fn starts_at_word_boundary(text: &str, index: usize) -> bool {
+    index == 0 || !text.as_bytes()[index - 1].is_ascii_alphanumeric()
 }
 
 fn blocker_phrase_context(text: &str, index: usize) -> &str {
