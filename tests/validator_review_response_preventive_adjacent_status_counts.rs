@@ -35,6 +35,9 @@ fn validator_rejects_bulleted_review_feedback_after_empty_status_heading() -> Te
         "Waiting:\n- Review response: fixed the exact Codex review comment.\n",
         "Waiting:\n+ Review feedback: fixed the exact Codex review comment.\n",
         "Blockers:\n+ Codex feedback: handled the exact Codex review comment.\n",
+        "Waiting:\nVerification:\ncargo test passed.\nReview response: fixed the exact Codex review comment.\n",
+        "Blockers:\nTests:\ncargo test passed.\nReview response: fixed the exact Codex review comment.\n",
+        "Waiting:\nSentinel:\nno blockers.\nReview response: fixed the exact Codex review comment.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_rejects_preventive_adjacent(&output, handoff);
@@ -82,6 +85,7 @@ fn validator_allows_executed_required_preventive_coverage() -> TestResult {
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: required regression tests passed for adjacent parser variants in the helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: required focused tests ran for adjacent parser variants in the helper family.\n",
         "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: required regression coverage was executed for adjacent parser variants in the helper family.\n",
+        "Review response: fixed the Codex review comment and verified current head. Preventive adjacent review: regression coverage exercises not applicable readiness labels across adjacent parser variants in the helper family.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, resolved_review_thread_pr_state())?;
         assert_success(&output, "validator should allow executed required coverage");

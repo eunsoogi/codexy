@@ -54,7 +54,7 @@ fn empty_heading_before_next_section(value: &str) -> bool {
         .unwrap_or("");
     starts_with_pipe(
         next,
-        "codex review|codex feedback|review response|review-response|review-response lane|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions|preventive adjacent review|verification:|tests:|sentinel:",
+        "codex review|codex feedback|review response|review-response|review-response lane|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions|preventive adjacent review|verification|tests|sentinel",
     )
 }
 
@@ -119,15 +119,23 @@ fn is_negated_match(prefix: &str, needle: &str) -> bool {
             &["previous", "previously", "historical", "earlier"],
         ) && !has_any(local, &["now", "current", "currently", "pending", "still"]);
     let future_context = has_any(local, &["plan to", "planned to", "will ", "to run"]);
-    historical_context
-        || future_context
-        || local.split_ascii_whitespace().any(|word| {
-            let word = word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-            matches!(
-                word,
-                "0" | "zero" | "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
-            ) || matches!(word, "was" | "were") && needle.contains("blocked")
-        })
+    historical_context || future_context || has_negation_word(local, needle)
+}
+
+fn has_negation_word(local: &str, needle: &str) -> bool {
+    let words = local
+        .split_ascii_whitespace()
+        .map(|word| word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()))
+        .collect::<Vec<_>>();
+    words.iter().enumerate().any(|(index, word)| {
+        if *word == "not" && words.get(index + 1) == Some(&"applicable") {
+            return false;
+        }
+        matches!(
+            *word,
+            "0" | "zero" | "no" | "not" | "without" | "missing" | "lacks" | "lack" | "none"
+        ) || matches!(*word, "was" | "were") && needle.contains("blocked")
+    })
 }
 
 fn is_post_negated_match(suffix: &str) -> bool {
@@ -137,7 +145,7 @@ fn is_post_negated_match(suffix: &str) -> bool {
         .unwrap_or(suffix.len());
     let local = suffix[..local_end]
         .trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-'));
-    has_false_blocked_or_waiting_value(local)
+    has_false_blocked_or_waiting_value(local) && !is_not_applicable_domain_value(local)
         || has_any(local, &[" is missing", " not tested", " not covered"])
         || local.split_ascii_whitespace().any(|word| {
             matches!(
@@ -162,6 +170,10 @@ fn is_post_negated_match(suffix: &str) -> bool {
             local,
             "is not|isn't|are not|aren't|was not|wasn't|were not|weren't|do not|don't|did not|didn't|does not|doesn't|is missing|are missing|remains missing|remain missing|still missing|not added|not needed|not inspected|not run|not executed|not covered|missing|does not exist|doesn't exist|failed|is failing|are failing|was failing|were failing|is blocked|are blocked|was blocked|were blocked|blocked|incomplete|not passing|no passing|omit|omits|omitted|skip|skips|skipped|exclude|excludes|excluded|lack|lacks|lacked|without|is planned|are planned|was planned|were planned|planned|will run|will be run|will cover|will be added|will be executed|to run|to be run|to cover|later",
         )
+}
+
+fn is_not_applicable_domain_value(local: &str) -> bool {
+    local.starts_with("not applicable ") && has_any(local, &["label", "case", "branch", "state"])
 }
 
 fn starts_with_pipe(text: &str, needles: &str) -> bool {

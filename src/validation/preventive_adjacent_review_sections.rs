@@ -46,16 +46,21 @@ pub(super) fn blocks_preventive_adjacent_segment(text: &str, start: usize, segme
 }
 
 fn has_negative_preventive_adjacent_claim(segment: &str) -> bool {
-    [
-        "not performed",
-        "was not performed",
-        "wasn't performed",
-        "not applicable",
-        "isn't applicable",
-        "aren't applicable",
-    ]
-    .iter()
-    .any(|state| segment.contains(state))
+    ["not performed", "was not performed", "wasn't performed"]
+        .iter()
+        .any(|state| segment.contains(state))
+        || ["not applicable", "isn't applicable", "aren't applicable"]
+            .iter()
+            .any(|state| has_applicability_claim(segment, state))
+}
+
+fn has_applicability_claim(segment: &str, state: &str) -> bool {
+    segment.match_indices(state).any(|(index, _)| {
+        let prefix = &segment[..index];
+        let local_start = prefix.rfind(['\n', '.', ';', ':']).map_or(0, |i| i + 1);
+        let local = prefix[local_start..].trim();
+        local.is_empty() || local == "preventive adjacent review"
+    })
 }
 
 pub(super) fn preventive_adjacent_review_end(text: &str, start: usize) -> usize {
