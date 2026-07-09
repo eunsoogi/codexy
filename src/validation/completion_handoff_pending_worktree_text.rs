@@ -201,7 +201,6 @@ fn has_explicit_false_value(remainder: &str) -> bool {
     };
     has_false_value(value.trim_start())
 }
-
 fn has_unsafe_decision_remainder(remainder: &str) -> bool {
     has_unnegated_phrase(remainder, "unsafe to reassign", 16)
         || has_unnegated_phrase(remainder, "unsafe to retry", 16)
@@ -209,7 +208,8 @@ fn has_unsafe_decision_remainder(remainder: &str) -> bool {
         || has_unnegated_phrase(remainder, "unsafe retry", 16)
         || has_unnegated_phrase(remainder, "not safe to reassign", 16)
         || has_unnegated_phrase(remainder, "not safe to retry", 16)
-        || has_unnegated_phrase(remainder, "duplicate owners", 16)
+        || (!has_false_label_value(remainder, "duplicate owners")
+            && has_unnegated_phrase(remainder, "duplicate owners", 16))
 }
 
 fn is_terminal_decision_remainder(remainder: &str) -> bool {

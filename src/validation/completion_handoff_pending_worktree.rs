@@ -1,4 +1,5 @@
 use super::completion_handoff_pending_worktree_labels::has_false_actionable_error_evidence;
+use super::completion_handoff_pending_worktree_search::has_search_dimension;
 use super::completion_handoff_pending_worktree_segments::{
     bare_pending_mention_has_state, bounded_search_evidence_text, colon_starts_lifecycle_entry,
     has_non_review_thread_id_evidence, has_quoted_terminal_false_value,
@@ -221,17 +222,15 @@ fn mentions_bounded_pending_worktree_timeout(text: &str) -> bool {
 fn mentions_bounded_search_evidence(text: &str) -> bool {
     let evidence = bounded_search_evidence_text(text);
     !has_false_bounded_search_evidence(evidence)
-        && has_any(
-            evidence,
-            "searches by pending id|searches by pending worktree id|searched by pending id|searched by pending worktree id|list_threads searches by pending id|list_threads searches by pending worktree id",
-        )
-        && has_any(evidence, "branch")
-        && has_any(evidence, "pr|pull request|issue")
-        && has_any(evidence, "sha|commit")
-        && has_any(
-            evidence,
-            "review-thread id|review thread id|available review-thread id|available review thread id|no review-thread id available|no review thread id available",
-        )
+        && has_search_dimension(evidence, "pending id|pending worktree id")
+        && has_search_dimension(evidence, "branch")
+        && has_search_dimension(evidence, "pr|pull request|issue")
+        && has_search_dimension(evidence, "sha|commit")
+        && (has_search_dimension(evidence, "review-thread id|review thread id")
+            || has_any(
+                evidence,
+                "no review-thread id available|no review thread id available",
+            ))
 }
 
 fn mentions_affirmative_safe_retry(text: &str) -> bool {
