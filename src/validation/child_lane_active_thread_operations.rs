@@ -128,7 +128,9 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
     if format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}").split('|').any(|marker| line.contains(&marker)) {
         return false;
     }
-    if is_thread_tool_discovery_context(line) {
+    if is_thread_tool_discovery_context(line)
+        && !has_actual_thread_tool_invocation_context(line, tool)
+    {
         return false;
     }
     line.match_indices(tool)
@@ -137,13 +139,28 @@ fn is_thread_tool_invocation(line: &str, tool: &str) -> bool {
             .into_iter()
             .any(|word| line.contains(word))
             && line.contains(tool)
-            && !is_thread_tool_discovery_context(line))
+            && (!is_thread_tool_discovery_context(line)
+                || has_actual_thread_tool_invocation_context(line, tool)))
 }
 
 fn is_thread_tool_discovery_context(line: &str) -> bool {
     ["tool search", "discovered", "available thread tool"]
         .into_iter()
         .any(|marker| line.contains(marker))
+}
+
+fn has_actual_thread_tool_invocation_context(line: &str, tool: &str) -> bool {
+    let qualified_tool = format!("codex_app.{tool}");
+    ["called", "invoked", "executed", "ran", "used"]
+        .into_iter()
+        .any(|verb| {
+            line.contains(&format!("{verb} {tool}"))
+                || line.contains(&format!("{verb} {qualified_tool}"))
+        })
+        || ["so", "then"].into_iter().any(|verb| {
+            line.contains(&format!("{verb} {tool}("))
+                || line.contains(&format!("{verb} {qualified_tool}("))
+        })
 }
 
 fn is_reuse_operation_line(line: &str) -> bool {

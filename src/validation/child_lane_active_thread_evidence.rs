@@ -46,16 +46,14 @@ pub(super) fn matching_owner_lookup_before(
             match lookup {
                 OwnerLookup::Found(owner) => latest = Some(OwnerLookup::Found(owner)),
                 OwnerLookup::NotFound(ids) => {
-                    if !matches!(latest, Some(OwnerLookup::Found(_))) {
-                        not_found_ids.extend(ids);
-                        if !operation_owner.issue_ids.is_empty()
-                            && operation_owner
-                                .issue_ids
-                                .iter()
-                                .all(|id| not_found_ids.contains(id))
-                        {
-                            latest = Some(OwnerLookup::NotFound(not_found_ids.clone()));
-                        }
+                    not_found_ids.extend(ids);
+                    if !operation_owner.issue_ids.is_empty()
+                        && operation_owner
+                            .issue_ids
+                            .iter()
+                            .all(|id| not_found_ids.contains(id))
+                    {
+                        latest = Some(OwnerLookup::NotFound(not_found_ids.clone()));
                     }
                 }
             }

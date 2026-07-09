@@ -210,3 +210,26 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_uses_latest_owner_lookup_for_same_issue_after_disposition()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: existing owner thread thread-old found for issue #269.
+Child thread thread-old stopped and freed replacement capacity.
+Active child Codex threads: 3
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-new for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should use the later same-issue owner lookup after old-owner disposition, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

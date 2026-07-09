@@ -1,5 +1,6 @@
 use super::child_lane_active_thread_count::{active_child_thread_count, key_words};
 use super::child_lane_active_thread_evidence::ThreadOwner;
+use super::child_lane_active_thread_freed_capacity::freed_capacity;
 pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
 type CountRecords = (Vec<ActiveCount>, Option<ThreadOwner>);
 pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCount> {
@@ -74,7 +75,7 @@ fn split_count_clauses<'a>(segment: &'a str, separator: &str) -> Vec<&'a str> {
     clauses.push(&segment[start..]);
     clauses
 }
-fn starts_count_clause(clause: &str) -> bool {
+pub(super) fn starts_count_clause(clause: &str) -> bool {
     let words = key_words(clause);
     words.iter().any(|word| word == "child")
         && words
@@ -221,30 +222,4 @@ fn thread_owner_matches(found: &ThreadOwner, expected: &ThreadOwner) -> bool {
             .issue_ids
             .iter()
             .any(|id| expected.issue_ids.contains(id))
-}
-fn freed_capacity(line: &str) -> bool {
-    let claim = freed_capacity_claim_text(line);
-    let words = key_words(claim);
-    let owner = ThreadOwner::from_line(claim);
-    let subject = words.iter().position(|word| !word_in(word, "a|an|the"));
-    let completion = words
-        .iter()
-        .position(|word| word_in(word, "archived|completed|finished|merged|removed|stopped"));
-    matches!((subject, completion), (Some(subject), Some(completion)) if subject <= completion
-        && !words[subject..completion].iter().any(|word| word_in(word, "proof|review|test|tests|verification|evidence"))
-        && ((!owner.issue_ids.is_empty() && word_in(&words[subject], "issue|pr|pull|request|merge"))
-            || (owner.thread_id.is_some() && word_in(&words[subject], "thread|threads"))
-            || (words[subject] == "child" && words.get(subject + 1).is_some_and(|word| word == "thread" || word == "threads"))))
-        && !"not|no|inactive"
-            .split('|')
-            .any(|marker| words.iter().any(|word| word == marker))
-}
-fn word_in(word: &str, values: &str) -> bool {
-    values.split('|').any(|value| word == value)
-}
-fn freed_capacity_claim_text(line: &str) -> &str {
-    line.split_once(':')
-        .filter(|(label, _)| starts_count_clause(label))
-        .and_then(|(_, rest)| rest.split_once(',').map(|(_, trailing)| trailing))
-        .unwrap_or(line)
 }
