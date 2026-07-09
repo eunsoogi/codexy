@@ -56,6 +56,21 @@ fn validator_rejects_codex_review_readiness_with_blocked_sentinel() -> TestResul
 }
 
 #[test]
+fn validator_rejects_modal_future_sentinel_pass_after_block() -> TestResult {
+    for handoff in [
+        format!(
+            "PR ready for parent handoff. Sentinel: BLOCK on current head. Packaged Codexy Sentinel Turing will return PASS on current head {HEAD} after rerun.\n"
+        ),
+        format!(
+            "PR ready for parent handoff. Sentinel: BLOCK on current head. Packaged Codexy Sentinel Turing is expected to PASS on current head {HEAD} after rerun.\n"
+        ),
+    ] {
+        assert_rejects_sentinel_handoff(&handoff)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_reviewer_named_returned_pass() -> TestResult {
     let handoff = format!(
         "PR ready for parent handoff. Packaged Codexy Sentinel Turing returned PASS on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
