@@ -112,3 +112,28 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_counts_numbered_same_line_thread_ids_with_labeled_waiting()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 1. thread-101, 2. thread-102, 3. thread-103, 4. thread-104, 5. thread-105, zero waiting
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should count numbered same-line thread IDs before a labeled waiting count"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name over-capacity creation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

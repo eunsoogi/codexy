@@ -1,4 +1,5 @@
 use super::child_lane_active_thread_count::{active_child_thread_count, key_words};
+use super::child_lane_active_thread_count_segments::split_period_clauses;
 use super::child_lane_active_thread_evidence::ThreadOwner;
 use super::child_lane_active_thread_freed_capacity::freed_capacity;
 pub(super) const MAX_ACTIVE_CHILD_CODEX_THREADS: u64 = 5;
@@ -16,7 +17,7 @@ pub(super) fn active_child_thread_count_records(evidence: &str) -> Vec<ActiveCou
 fn records_for_line(line: &str, line_number: usize, freed: Option<ThreadOwner>) -> CountRecords {
     let mut records = Vec::new();
     let mut freed = freed;
-    for segment in line.split(';').flat_map(|segment| segment.split(". ")) {
+    for segment in line.split(';').flat_map(split_period_clauses) {
         let (count_records, trailing) =
             records_for_segment(line, segment, line_number, freed.clone());
         records.extend(count_records);

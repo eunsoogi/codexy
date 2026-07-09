@@ -78,15 +78,15 @@ fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64
     if counts.iter().all(Option::is_none) {
         return None;
     }
+    if key_has_active && counts[0].is_none() {
+        counts[0] = thread_id_entry_count(words);
+    }
     if let Some(first_count) = words.first().and_then(|word| count_word(word)) {
         if !first_count_used && key_has_active && counts[0].is_none() {
             counts[0] = Some(first_count);
         } else if !first_count_used && key_has_waiting && counts[1].is_none() {
             counts[1] = Some(first_count);
         }
-    }
-    if key_has_active && counts[0].is_none() {
-        counts[0] = thread_id_entry_count(words);
     }
     Some(counts.iter().flatten().copied().sum())
 }

@@ -7,6 +7,7 @@ mod child_handoff_readiness_text;
 mod child_lane_active_thread_capacity;
 mod child_lane_active_thread_count;
 mod child_lane_active_thread_count_records;
+mod child_lane_active_thread_count_segments;
 mod child_lane_active_thread_evidence;
 mod child_lane_active_thread_freed_capacity;
 mod child_lane_active_thread_operations;

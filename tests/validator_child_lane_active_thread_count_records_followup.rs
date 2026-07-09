@@ -117,6 +117,29 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_preserves_verb_first_removed_thread_as_freed_capacity()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #268.
+Thread creation: created child thread thread-268 for issue #268.
+Removed child thread thread-101 from the active ledger; Active child Codex threads: 4
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should treat verb-first removal claims as freed capacity, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_creation_after_generic_completion_text_after_count()
 -> Result<(), Box<dyn std::error::Error>> {
     for completion in [

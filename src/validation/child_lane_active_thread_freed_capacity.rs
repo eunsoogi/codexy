@@ -15,16 +15,35 @@ pub(super) fn freed_capacity(line: &str) -> bool {
     else {
         return false;
     };
-    subject <= completion
-        && !words[subject..completion]
-            .iter()
-            .any(|word| word_in(word, "proof|review|test|tests|verification|evidence"))
-        && is_capacity_subject(&words, subject, &owner)
+    let Some(capacity_subject) = capacity_subject_index(&words, subject, completion, &owner) else {
+        return false;
+    };
+    let claim_start = subject.min(completion).min(capacity_subject);
+    let claim_end = subject.max(completion).max(capacity_subject);
+    !words[claim_start..claim_end]
+        .iter()
+        .any(|word| word_in(word, "proof|review|test|tests|verification|evidence"))
         && "not|no|inactive".split('|').all(|marker| {
-            !words[subject..=completion]
+            !words[claim_start..=claim_end]
                 .iter()
                 .any(|word| word == marker)
         })
+}
+
+fn capacity_subject_index(
+    words: &[String],
+    subject: usize,
+    completion: usize,
+    owner: &ThreadOwner,
+) -> Option<usize> {
+    if subject <= completion && is_capacity_subject(words, subject, owner) {
+        return Some(subject);
+    }
+    words
+        .iter()
+        .enumerate()
+        .skip(completion + 1)
+        .find_map(|(index, _)| is_capacity_subject(words, index, owner).then_some(index))
 }
 
 fn is_capacity_subject(words: &[String], subject: usize, owner: &ThreadOwner) -> bool {

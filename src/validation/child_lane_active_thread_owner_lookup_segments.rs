@@ -119,6 +119,7 @@ fn starts_owner_lookup_clause(clause: &str) -> bool {
         "existing pr owner thread",
         "existing issue/pr owner thread",
         "existing issue or pr owner thread",
+        "owner check:",
         "no existing owner thread",
         "no existing issue owner thread",
         "no existing pr owner thread",
