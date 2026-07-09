@@ -63,7 +63,7 @@ pub(super) fn preventive_adjacent_review_end(text: &str, start: usize) -> usize 
     let section_blank = suffix
         .match_indices("\n\n")
         .map(|(index, _)| index)
-        .find(|index| !is_preventive_adjacent_heading_blank(suffix, *index));
+        .find(|index| !is_preventive_adjacent_section(&suffix[..*index]));
     [
         section_blank,
         suffix.find("\n#"),
@@ -124,16 +124,6 @@ fn is_preventive_adjacent_section(section: &str) -> bool {
         || first_line
             .trim_start()
             .starts_with("preventive adjacent review:")
-        || heading.starts_with("preventive adjacent review evidence")
-        || heading.starts_with("preventive adjacent review no-change rationale")
-        || heading.starts_with("preventive adjacent review no change rationale")
-}
-
-fn is_preventive_adjacent_heading_blank(suffix: &str, index: usize) -> bool {
-    let heading = suffix[..index]
-        .trim()
-        .trim_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '#' | ':' | '-' | '.'));
-    heading == "preventive adjacent review"
         || heading.starts_with("preventive adjacent review evidence")
         || heading.starts_with("preventive adjacent review no-change rationale")
         || heading.starts_with("preventive adjacent review no change rationale")
