@@ -350,11 +350,20 @@ fn defect_lane_label(lines: &[&str], start: usize, index: usize) -> Option<Strin
 }
 
 fn lane_header_label(line: &str) -> Option<String> {
-    let line = line.trim_start().to_ascii_lowercase();
+    let line = strip_markdown_heading_prefix(line.trim_start()).to_ascii_lowercase();
     let rest = line.strip_prefix("lane ")?;
-    let label = rest.trim_end_matches(':').trim();
+    let label = rest.trim_end_matches([':', '.', '-']).trim();
     (!label.is_empty() && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
         .then(|| label.to_string())
+}
+
+fn strip_markdown_heading_prefix(line: &str) -> &str {
+    let marker_end = line.bytes().take_while(|byte| *byte == b'#').count();
+    if marker_end > 0 && line[marker_end..].starts_with(' ') {
+        line[marker_end..].trim_start()
+    } else {
+        line
+    }
 }
 
 fn mentioned_lane<'a>(line: &'a str, lane: Option<&str>) -> Option<&'a str> {
@@ -822,6 +831,19 @@ Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for c
         assert!(
             !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
             "Lane A defect capture must not borrow bulleted preceding metadata for another lane"
+        );
+    }
+
+    #[test]
+    fn rejects_markdown_lane_header_preceding_handoff_metadata_for_a_different_lane() {
+        let evidence = r#"### Lane A
+Fallback route: no fallback route was available for Lane B.
+Tracking issue: #246 in Lane B.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread."#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Markdown Lane A defect capture must not borrow preceding Lane B metadata"
         );
     }
 }
