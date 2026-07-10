@@ -97,7 +97,7 @@ fn reject_recursive_delegation_permission(
         let action = has_unnegated_delegation_action(&clause);
         (inherited_child_permission
             || has_unnegated_permission(&clause)
-            || has_unnegated_mandatory_delegation_action(&clause))
+            || has_unnegated_mandatory_delegation_action(&clause, allow_canonical_child_delegation))
             && action
     });
     if permits_recursion {
@@ -158,14 +158,18 @@ fn has_unnegated_delegation_action(clause: &str) -> bool {
     })
 }
 
-fn has_unnegated_mandatory_delegation_action(clause: &str) -> bool {
+fn has_unnegated_mandatory_delegation_action(
+    clause: &str,
+    allow_root_child_thread_creation: bool,
+) -> bool {
     ["spawn", "delegate", "create"].into_iter().any(|action| {
         clause.match_indices(action).any(|(index, _)| {
             let prefix = clause[..index]
                 .rsplit_once(" but ")
                 .map_or(&clause[..index], |(_, contrast)| contrast);
             let suffix = &clause[index..];
-            let creates_child_thread = action == "create"
+            let creates_child_thread = allow_root_child_thread_creation
+                && action == "create"
                 && clause.contains("orchestrator")
                 && suffix.contains("child thread");
             has_unnegated_mandatory_permission(prefix)

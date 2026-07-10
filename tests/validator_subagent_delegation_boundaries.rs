@@ -23,6 +23,7 @@ fn validator_rejects_recursive_actions_after_unrelated_negations() -> TestResult
     for permission in [
         "MUST spawn validator_edge_pass and workflow_ownership_pass as additional helpers.",
         "MUST create a child thread.",
+        "A Sentinel acting as orchestrator MUST create a child thread.",
         "MUST immediately spawn another helper.",
         "MUST spawn another Sentinel.",
         "MUST delegate work to another specialist.",
