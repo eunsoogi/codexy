@@ -46,7 +46,7 @@ pub(crate) fn assert_wrapper_refreshes_cached_runtime_when_plugin_release_change
         "1.0.1",
     );
 
-    set_plugin_release(&fixture.plugin_root, "1.0.1", "1.0.2")?;
+    set_plugin_release(&fixture.plugin_root, "1.0.2")?;
     let second_root = temp.path().join("release-two");
     let second_package = create_runtime_package(&second_root, server, "1.0.2")?;
     let second_bin = create_fake_curl_bin(&second_root, &second_package)?;
@@ -137,11 +137,14 @@ pub(super) fn wrapper_command(
 
 fn set_plugin_release(
     plugin_root: &std::path::Path,
-    current: &str,
     next: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let manifest_path = plugin_root.join(".codex-plugin/plugin.json");
     let manifest = std::fs::read_to_string(&manifest_path)?;
+    let current = serde_json::from_str::<Value>(&manifest)?["version"]
+        .as_str()
+        .ok_or("plugin fixture version is missing")?
+        .to_owned();
     let current_field = format!("\"version\": \"{current}\"");
     if !manifest.contains(&current_field) {
         return Err(format!("plugin fixture version {current} not found").into());
