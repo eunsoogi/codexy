@@ -5,7 +5,9 @@ use std::{
 
 use serde_json::{Value, json};
 
-use super::{WrapperFixture, make_executable, release_version};
+use super::{
+    WrapperFixture, make_executable, release_cache_fixture::set_plugin_release, release_version,
+};
 
 pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_refresh(
     server: &str,
@@ -14,12 +16,15 @@ pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_re
     let fixture = WrapperFixture::new(temp.path())?;
     let cache = temp.path().join("runtime-cache");
     install_unversioned_cached_runtime(&cache, server)?;
-    let release = create_runtime_package(temp.path(), server, "1.0.1")?;
+    let release_version = release_version::current_plugin_release(&fixture.plugin_root)?;
+    let release = create_runtime_package(temp.path(), server, &release_version)?;
     let fake_bin = create_fake_curl_bin(temp.path(), &release)?;
 
     let output = run_wrapper_help(&fixture, server, &cache, &fake_bin)?;
     assert!(
-        output.contains(&format!("fake-packaged 1.0.1 codexy-mcp-{server} --help")),
+        output.contains(&format!(
+            "fake-packaged {release_version} codexy-mcp-{server} --help"
+        )),
         "unversioned cache must not bypass the active release package, got {output:?}"
     );
     assert!(
@@ -65,7 +70,7 @@ pub(crate) fn assert_wrapper_refreshes_cached_runtime_when_plugin_release_change
     Ok(())
 }
 
-fn assert_server_info(response: Value, server: &str, version: &str) {
+pub(super) fn assert_server_info(response: Value, server: &str, version: &str) {
     assert_eq!(
         response["result"]["serverInfo"]["name"],
         format!("codexy-{server}")
@@ -73,7 +78,7 @@ fn assert_server_info(response: Value, server: &str, version: &str) {
     assert_eq!(response["result"]["serverInfo"]["version"], version);
 }
 
-fn initialize_wrapper(
+pub(super) fn initialize_wrapper(
     fixture: &WrapperFixture,
     server: &str,
     cache: &std::path::Path,
@@ -137,38 +142,35 @@ pub(super) fn wrapper_command(
     command
 }
 
-fn set_plugin_release(
-    plugin_root: &std::path::Path,
-    current: &str,
-    next: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let manifest_path = plugin_root.join(".codex-plugin/plugin.json");
-    let manifest = std::fs::read_to_string(&manifest_path)?;
-    let current_field = format!("\"version\": \"{current}\"");
-    if !manifest.contains(&current_field) {
-        return Err(format!("plugin fixture version {current} not found").into());
-    }
-    std::fs::write(
-        manifest_path,
-        manifest.replacen(&current_field, &format!("\"version\": \"{next}\""), 1),
-    )?;
-    Ok(())
-}
-
 pub(super) fn create_runtime_package(
     root: &std::path::Path,
     server: &str,
     version: &str,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    create_runtime_package_with_release(root, server, version, version)
+}
+
+pub(super) fn create_runtime_package_with_release(
+    root: &std::path::Path,
+    server: &str,
+    runtime_version: &str,
+    package_release: &str,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let runtime = format!("codexy-mcp-{server}");
     let package_root = root.join("package-root");
     let runtime_dir = package_root.join("plugins/codexy/runtime");
+    let manifest_dir = package_root.join("plugins/codexy/.codex-plugin");
     std::fs::create_dir_all(&runtime_dir)?;
+    std::fs::create_dir_all(&manifest_dir)?;
+    std::fs::write(
+        manifest_dir.join("plugin.json"),
+        format!(r#"{{"name":"codexy","version":"{package_release}"}}"#),
+    )?;
     let binary = runtime_dir.join(format!("{runtime}-darwin-arm64.bin"));
     std::fs::write(
         &binary,
         format!(
-            "#!/bin/sh\nset -eu\nif [ \"${{1:-}}\" = --help ]; then echo fake-packaged {version} {runtime} \"$@\"; exit 0; fi\nIFS= read -r _ || exit 0\nprintf '%s\\n' '{{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{{\"serverInfo\":{{\"name\":\"codexy-{server}\",\"version\":\"{version}\"}}}}}}'\n"
+            "#!/bin/sh\nset -eu\nif [ \"${{1:-}}\" = --help ]; then echo fake-packaged {runtime_version} {runtime} \"$@\"; exit 0; fi\nIFS= read -r _ || exit 0\nprintf '%s\\n' '{{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{{\"serverInfo\":{{\"name\":\"codexy-{server}\",\"version\":\"{runtime_version}\"}}}}}}'\n"
         ),
     )?;
     make_executable(&binary)?;

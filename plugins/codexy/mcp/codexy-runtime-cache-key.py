@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Build versioned cache keys for packaged Codexy MCP runtimes."""
+"""Build versioned cache keys and compare package releases for MCP runtimes.
+
+Implicit release and artifact packages must match the installed plugin release.
+Explicit package-source overrides use a separate cache key and intentionally skip
+that comparison so callers can test or pin a package independently.
+"""
 
 from __future__ import annotations
 
@@ -33,6 +38,22 @@ def plugin_release(manifest_path: str, package_override: str) -> str:
 
 
 def main(arguments: list[str]) -> int:
+    if len(arguments) == 3 and arguments[0] == "--compare-release":
+        _, expected_manifest, observed_manifest = arguments
+        try:
+            expected = plugin_release(expected_manifest, "0")
+        except (OSError, ValueError, json.JSONDecodeError):
+            print("runtime package release mismatch: expected valid plugin release, observed missing or invalid")
+            return 1
+        try:
+            observed = plugin_release(observed_manifest, "0")
+        except (OSError, ValueError, json.JSONDecodeError):
+            print(f"runtime package release mismatch: expected {expected}, observed missing or invalid")
+            return 1
+        if expected != observed:
+            print(f"runtime package release mismatch: expected {expected}, observed {observed}")
+            return 1
+        return 0
     if len(arguments) != 8:
         return 2
     manifest_path, package_override, *identity = arguments

@@ -10,12 +10,22 @@ pub(super) fn install_cached_runtime(
     server: &str,
     fake_version: &str,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    install_runtime(
+    let runtime = install_runtime(
         cache,
         v2_runtime_cache_key(repository, runtime_ref, platform, server)?,
         server,
         fake_version,
-    )
+    )?;
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/.codex-plugin/plugin.json"),
+        runtime
+            .parent()
+            .and_then(std::path::Path::parent)
+            .ok_or("cached runtime has no cache root")?
+            .join("plugin.json"),
+    )?;
+    Ok(runtime)
 }
 
 pub(super) fn install_v1_cached_runtime(
