@@ -60,6 +60,8 @@ fn validator_rejects_role_that_permits_recursive_delegation() -> TestResult {
         "CAN spawn a helper after mapping the repository.",
         "MAY delegate work to a helper after mapping the repository.",
         "Allowed actions: spawn helper tasks after mapping the repository.",
+        "A helper is allowed to spawn another helper after mapping the repository.",
+        "Allowed actions: spawn helper tasks, but MUST NOT merge.",
         "Permitted to delegate to a reviewer thread after mapping the repository.",
     ] {
         let temp = tempfile::tempdir()?;
@@ -83,31 +85,6 @@ fn validator_rejects_role_that_permits_recursive_delegation() -> TestResult {
             "{permission}"
         );
     }
-    Ok(())
-}
-
-#[test]
-fn validator_allows_negated_role_delegation_prohibition() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let role_path = plugin_root.join("agents/codexy-cartographer.toml");
-    let role = std::fs::read_to_string(&role_path)?;
-    std::fs::write(
-        &role_path,
-        role.replacen(
-            "\n\"\"\"",
-            "\nMAY NOT spawn a helper after mapping the repository.\n\"\"\"",
-            1,
-        ),
-    )?;
-
-    let output = validator(&plugin_root)?;
-
-    assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 

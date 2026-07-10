@@ -114,14 +114,26 @@ fn has_unnegated_permission(clause: &str) -> bool {
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     words.iter().enumerate().any(|(index, word)| match *word {
-        "may" | "can" => words.get(index + 1).is_none_or(|next| *next != "not"),
-        "allowed" => words.get(index + 1) == Some(&"actions") && !words.contains(&"not"),
-        "permitted" => {
-            words
-                .get(index + 1)
-                .is_some_and(|next| matches!(*next, "to" | "actions"))
-                && !words.contains(&"not")
-        }
+        "may" | "can" => words
+            .get(index + 1)
+            .is_none_or(|next| !matches!(*next, "not" | "never")),
+        "allowed" => words
+            .get(index + 1)
+            .is_some_and(|next| matches!(*next, "actions" | "to")),
+        "permitted" => words
+            .get(index + 1)
+            .is_some_and(|next| matches!(*next, "to" | "actions")),
         _ => false,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::has_unnegated_permission;
+
+    #[test]
+    fn negated_permission_modals_are_not_permissions() {
+        assert!(!has_unnegated_permission("may not spawn another helper"));
+        assert!(!has_unnegated_permission("may never spawn another helper"));
+    }
 }
