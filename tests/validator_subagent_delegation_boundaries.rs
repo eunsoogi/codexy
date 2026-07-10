@@ -88,17 +88,23 @@ fn validator_allows_orchestrator_child_thread_creation() -> TestResult {
 }
 
 #[test]
-fn validator_rejects_sentinel_child_thread_creation_in_orchestration() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = fixture(&temp)?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    let mut skill = std::fs::read_to_string(&skill_path)?;
-    skill.push_str("\nA Sentinel acting as orchestrator MUST create a child thread.\n");
-    std::fs::write(skill_path, skill)?;
-    assert_recursion_rejected(
-        validator(&plugin_root)?,
-        "Sentinel orchestration child thread",
-    );
+fn validator_rejects_nonroot_child_thread_creation_in_orchestration() -> TestResult {
+    for instruction in [
+        "A Sentinel acting as orchestrator MUST create a child thread.",
+        "A Sentinel MUST create a child thread while the root orchestrator waits.",
+        "A helper MUST create a child thread; the root orchestrator records the result.",
+        "A Sentinel MUST create a child thread for the root orchestrator.",
+        "A Sentinel working for the root orchestrator MUST create a child thread.",
+        "A Sentinel and the root orchestrator MUST create a child thread.",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = fixture(&temp)?;
+        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let mut skill = std::fs::read_to_string(&skill_path)?;
+        skill.push_str(&format!("\n{instruction}\n"));
+        std::fs::write(skill_path, skill)?;
+        assert_recursion_rejected(validator(&plugin_root)?, instruction);
+    }
     Ok(())
 }
 
