@@ -26,6 +26,8 @@ fn validator_cli_rejects_pre_marker_reasoning_conditionals() -> TestResult {
         "Every approval MUST, when the reviewer can confirm it, reference reasoning control used or unavailable evidence",
         "Every approval MUST, if the reviewer can confirm it, reference reasoning control used or unavailable evidence",
         "Every approval MUST, whenever feasible, reference reasoning control used or unavailable evidence",
+        "Every approval MUST when the reviewer can confirm it reference reasoning control used or unavailable evidence",
+        "Every approval MUST if the reviewer can confirm it reference reasoning control used or unavailable evidence",
     ] {
         assert_reasoning_evidence_rejected(validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",

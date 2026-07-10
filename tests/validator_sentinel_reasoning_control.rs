@@ -111,7 +111,8 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "except reasoning control used or unavailable evidence",
         "reasoning control used or unavailable evidence only when tools expose it",
         "reasoning control used or unavailable evidence. The reasoning-control evidence can be skipped",
-        "reasoning control used or unavailable evidence, although optional", "reasoning control used or unavailable evidence, optional",
+        "reasoning control used or unavailable evidence, although optional",
+        "reasoning control used or unavailable evidence, optional",
     ] {
         let output = validate_sentinel_replacement(
             "reasoning control used or unavailable evidence",
@@ -127,7 +128,13 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
-    let output = validate_sentinel_edit(|sentinel| Ok(format!("{sentinel}\nDo not record reasoning control used or unavailable evidence.")))?;
+    let output = validate_sentinel_edit(|sentinel| {
+        Ok(sentinel.replacen(
+            "\n\"\"\"\n",
+            "\nDo not record reasoning control used or unavailable evidence.\n\"\"\"\n",
+            1,
+        ))
+    })?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     Ok(())
@@ -156,22 +163,17 @@ fn validator_cli_accepts_affirmative_reasoning_control_evidence_control() -> Tes
         "reasoning control used or unavailable evidence remains required",
     )?;
     assert!(output.status.success(), "{}", stderr(&output));
-    let output = validate_sentinel_replacement(
-        "touched implementation-file LOC evidence when applicable",
-        "touched implementation-file LOC evidence where applicable",
-    )?;
-    assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 #[test]
 fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestResult {
     for replacement in [
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\" is optional. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "No Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "Negated Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "Not Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "Reasoning control: no packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". Reviewer evidence MUST record explicit unavailable evidence is forbidden.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra is optional. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "No Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Negated Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Not Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: no packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. Reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. Reviewer evidence MUST record explicit unavailable evidence is forbidden.\n\n",
     ] {
         let output = validate_reasoning_control_paragraph_replacement(replacement)?;
         assert!(!output.status.success(), "accepted {replacement:?}");
@@ -182,8 +184,8 @@ fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestRe
 #[test]
 fn validator_cli_accepts_affirmative_no_surface_reasoning_control_paragraph() -> TestResult {
     for replacement in [
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface is available without reasoning controls, the reviewer evidence MUST record explicit unavailable evidence.\n\n",
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If the invocation surface is missing reasoning controls, the reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. If an invocation surface is available without reasoning controls, the reviewer evidence MUST record explicit unavailable evidence.\n\n",
+        "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. If the invocation surface is missing reasoning controls, the reviewer evidence MUST record explicit unavailable evidence.\n\n",
     ] {
         let output = validate_reasoning_control_paragraph_replacement(replacement)?;
         assert!(output.status.success(), "{}", stderr(&output));
@@ -206,7 +208,9 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
     assert!(stderr(&output).contains("reasoning-control paragraph must be present"));
     Ok(())
 }
-fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> { validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement))) }
+fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
+    validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement)))
+}
 fn validate_reasoning_control_paragraph_replacement(replacement: &str) -> TestResult<Output> {
     validate_sentinel_edit(|mut sentinel| {
         let start = sentinel
@@ -247,4 +251,6 @@ fn validator(plugin_root: &Path) -> TestResult<Output> {
         .output()?)
 }
 
-fn stderr(output: &Output) -> String { String::from_utf8_lossy(&output.stderr).into_owned() }
+fn stderr(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}

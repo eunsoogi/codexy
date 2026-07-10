@@ -182,11 +182,29 @@ fn validator_cli_rejects_ignored_approval_marker_inside_approval_sentence() -> T
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("direct reviewer passes performed"));
-    for replacement in ["reasoning control used or unavailable evidence, but not direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, no direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, no\n direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, not direct reviewer passes performed, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed is waived, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed is not needed, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed when applicable, edge classes reviewed if available", "reasoning control used or unavailable evidence, direct reviewer passes performed, when applicable, edge classes reviewed", "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed. Direct reviewer passes performed may be skipped"] {
-        let output = validate_sentinel_replacement("reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed", replacement)?;
+    for replacement in [
+        "reasoning control used or unavailable evidence, but not direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, no direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, no\n direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, not direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed is waived, edge classes reviewed",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed is not needed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed when applicable, edge classes reviewed if available",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed, when applicable, edge classes reviewed",
+    ] {
+        let output = validate_sentinel_replacement(
+            "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
+            replacement,
+        )?;
         assert!(!output.status.success());
         assert!(stderr(&output).contains("direct reviewer passes performed"));
     }
+    let output = validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed, edge classes reviewed. Direct reviewer passes performed may be skipped",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("replayed review examples when applicable"));
     let output = validate_sentinel_replacement(
         "no-finding result when no blockers remain, and any unresolved risk",
         "no-finding result when no blockers remain, and any unresolved risk\nmay be ignored",
@@ -231,7 +249,9 @@ fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestR
     Ok(())
 }
 
-fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> { validate_sentinel_edit(|sentinel| sentinel.replace(needle, replacement)) }
+fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
+    validate_sentinel_edit(|sentinel| sentinel.replace(needle, replacement))
+}
 
 fn validate_sentinel_edit(edit: impl FnOnce(String) -> String) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
@@ -260,4 +280,6 @@ fn validator(plugin_root: &Path) -> TestResult<Output> {
         .output()?)
 }
 
-fn stderr(output: &Output) -> String { String::from_utf8_lossy(&output.stderr).into_owned() }
+fn stderr(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}

@@ -3,8 +3,8 @@ const EVIDENCE_FOLLOWUP_PREFIXES: &str = "this |that |it |evidence|requirement";
 const EVIDENCE_FOLLOWUP_REFERENCES: &str = "this evidence|that evidence|the evidence|reasoning control evidence|evidence|this requirement|that requirement|the requirement|this|that|it";
 const PARAGRAPH_MARKERS: &[&str] = &[
     "reasoning control:",
-    "packaged sentinel definition must run with the highest available reasoning setting",
-    "model_reasoning_effort = \"xhigh\"",
+    "packaged sentinel definition must use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\"",
+    "it must not claim or require max or ultra",
     "reviewer evidence must record explicit unavailable evidence",
 ];
 const DISALLOWED_PATTERNS: &str = concat!(
@@ -18,10 +18,12 @@ pub(super) fn has_reasoning_control_paragraph(instructions: &str) -> bool {
         return false;
     };
     let paragraph = reasoning_control_paragraph(&lower, marker_start);
+    let paragraph_without_model_cap =
+        paragraph.replace("it must not claim or require max or ultra", "");
     PARAGRAPH_MARKERS
         .iter()
         .all(|marker| paragraph.contains(marker))
-        && !contains_disallowed_context(paragraph)
+        && !contains_disallowed_context(&paragraph_without_model_cap)
         && !contains_disallowed_paragraph_context(paragraph)
 }
 pub(super) fn has_affirmative_reasoning_control_evidence(instructions: &str) -> bool {
@@ -182,7 +184,25 @@ fn contains_disallowed_paragraph_context(paragraph: &str) -> bool {
 
 fn contains_scoped_opt_out(clause: &str) -> bool {
     let words = context_words(clause);
+    let inline_condition = words
+        .iter()
+        .position(|word| {
+            matches!(
+                *word,
+                "if" | "when" | "whenever" | "where" | "unless" | "provided"
+            )
+        })
+        .is_some_and(|index| {
+            index > 0
+                && words[..index]
+                    .iter()
+                    .any(|word| matches!(*word, "must" | "required"))
+                && words[index + 1..]
+                    .iter()
+                    .any(|word| matches!(*word, "reference" | "record"))
+        });
     words.last() == Some(&"not")
+        || inline_condition
         || words.first().is_some_and(|word| {
             matches!(
                 *word,
