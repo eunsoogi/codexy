@@ -45,11 +45,10 @@ TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
 `plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
 specialist worker.
 
-Installed Codexy agents become native Codex `spawn_agent` roles only after user
-config registers those TOMLs through `[agents.<codexy-name>] config_file =
-"<installed-plugin>/agents/<codexy-name>.toml"`. To register, MUST run
-`skills/codex-orchestration/scripts/register-codexy-agents` from the installed
-plugin and restart Codex or start a fresh session. MUST NOT treat
+Installed Codexy specialists require the stable registration bridge and an
+independent schema/invocation preflight. MUST read
+`references/agent-registration.md` before registering, updating, uninstalling,
+diagnosing, or invoking a packaged specialist. MUST NOT treat
 `plugins/codexy/.codex/agents` as installed custom agents.
 
 ## Required Control Plane
@@ -144,9 +143,9 @@ insufficient. Situational routing is:
   atomic unit before handoff, PR readiness, completion, or parent acceptance.
 
 If `spawn_agent` supports the Codexy role, invoke specialists by exact agent
-type, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.")`,
-`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.")`, or
-`spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.")`.
+type with no or bounded history, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.", fork_turns="none")`,
+`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.", fork_turns="3")`, or
+`spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.", fork_turns="none")`.
 
 If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST report
 that the Codexy agents have not been registered in the active Codex config and

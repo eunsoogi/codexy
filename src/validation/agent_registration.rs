@@ -14,6 +14,16 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         ));
         return errors;
     }
+    let support = script
+        .parent()
+        .expect("registration script parent")
+        .join("agent_registration_support.py");
+    if !support.is_file() {
+        errors.push(format!(
+            "{} must exist for safe Codexy agent registration lifecycle checks",
+            display_relative(&support)
+        ));
+    }
     #[cfg(unix)]
     if script
         .metadata()
