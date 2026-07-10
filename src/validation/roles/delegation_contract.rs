@@ -134,9 +134,10 @@ fn has_unnegated_delegation_action(clause: &str) -> bool {
     ["spawn", "delegate", "create"].into_iter().any(|action| {
         clause.match_indices(action).any(|(index, _)| {
             let prefix = &clause[..index];
-            let negated = ["must not", "may not", "may never", "not allowed to"]
-                .into_iter()
-                .any(|marker| prefix.contains(marker));
+            let action_prefix = prefix
+                .rsplit_once(" but ")
+                .map_or(prefix, |(_, contrast)| contrast);
+            let negated = has_action_negation(action_prefix);
             let suffix = &clause[index..];
             let target = ["agent", "helper", "reviewer", "task", "thread"]
                 .into_iter()
@@ -144,6 +145,27 @@ fn has_unnegated_delegation_action(clause: &str) -> bool {
             !negated && target
         })
     })
+}
+
+fn has_action_negation(prefix: &str) -> bool {
+    let words = prefix
+        .split(|character: char| !character.is_ascii_alphabetic())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let Some(index) = words
+        .iter()
+        .rposition(|word| matches!(*word, "may" | "can" | "must" | "allowed" | "permitted"))
+    else {
+        return false;
+    };
+    match words[index] {
+        "may" | "can" => words
+            .get(index + 1)
+            .is_some_and(|next| matches!(*next, "not" | "never")),
+        "must" => words.get(index + 1) == Some(&"not"),
+        "allowed" | "permitted" => words.get(index.wrapping_sub(1)) == Some(&"not"),
+        _ => false,
+    }
 }
 
 fn normalize_instruction_text(text: &str) -> String {
@@ -179,6 +201,30 @@ mod tests {
         ));
         assert!(!has_unnegated_delegation_action(
             "allowed actions: map files, but a helper may not, under any circumstances, spawn another helper",
+        ));
+        assert!(!has_unnegated_delegation_action(
+            "a helper may never, even during recovery, create another reviewer task",
+        ));
+        assert!(!has_unnegated_delegation_action(
+            "a helper is not allowed, under this contract, to delegate work to another reviewer",
+        ));
+        assert!(!has_unnegated_delegation_action(
+            "every helper must not spawn, delegate to, or create any additional agent",
+        ));
+        assert!(has_unnegated_delegation_action(
+            "must not merge, but may spawn another helper",
+        ));
+        assert!(has_unnegated_delegation_action(
+            "a helper may not edit files, but may spawn another helper",
+        ));
+        assert!(has_unnegated_delegation_action(
+            "allowed actions: must not edit files, but spawn another helper",
+        ));
+        assert!(has_unnegated_delegation_action(
+            "permitted actions: must not merge, but create reviewer tasks",
+        ));
+        assert!(has_unnegated_delegation_action(
+            "a helper is not allowed to merge, but is allowed to spawn another helper",
         ));
     }
 }

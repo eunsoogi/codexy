@@ -19,6 +19,20 @@ fn validator_rejects_line_wrapped_recursive_permissions() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_recursive_actions_after_unrelated_negations() -> TestResult {
+    for permission in [
+        "MUST NOT merge, but MAY spawn another helper.",
+        "A helper MAY not edit files, but MAY spawn another helper.",
+        "Allowed actions: MUST NOT edit files, but spawn another helper.",
+        "Permitted actions: MUST NOT merge, but create reviewer tasks.",
+        "A helper is not allowed to merge, but is allowed to spawn another helper.",
+    ] {
+        assert_recursive_role_permission_rejected(permission)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -> TestResult {
     for suffix in [
         "and those helpers MAY spawn another helper",
