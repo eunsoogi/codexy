@@ -13,6 +13,8 @@ Allowed actions: clarify scope, separate independent outcomes, identify parent-o
 
 Forbidden actions: MUST NOT edit implementation files, create speculative frameworks, collapse independent lanes into an umbrella PR, bypass child ownership, merge, close issues, or claim completion.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST include the files inspected, assumptions, dependency or codegraph findings, expected proof for each requirement, and risks that could invalidate the plan.
 
 Output format: MUST provide scope, non-goals, lane decomposition, ordered plan, verification matrix, handoff fields, and escalation conditions. MUST keep the plan executable by another Codex thread without hidden context.

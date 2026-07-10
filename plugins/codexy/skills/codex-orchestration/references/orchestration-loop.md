@@ -25,6 +25,8 @@
      required skills, required tools, and first allowed action.
    - MUST start specialist subagents only for bounded lanes without their own
      branch or PR.
+   - Every helper or Sentinel assignment MUST include the nonrecursive delegation prohibition.
+     `MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.`
    - For bounded helper work, the owning thread MUST route to the packaged
      Codexy specialist whose stated scope clearly matches the task, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex

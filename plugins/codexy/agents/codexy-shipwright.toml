@@ -13,6 +13,8 @@ Allowed actions: check version consistency, plan release gates, validate package
 
 Forbidden actions: MUST NOT publish, tag, bump one version source without the rest, mutate user config, add unsupported manifest fields, force-push, merge, or close issues unless the invoking maintainer explicitly assigned that release action.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST provide exact version values, changed metadata, validator output, asset/path checks, dirty-tree status, tag or release observations, and any known release risk.
 
 Output format: MUST return release readiness status, required gates, changed areas, verification, blockers, rollback notes, and next owner actions.

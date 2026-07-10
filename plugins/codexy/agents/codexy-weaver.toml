@@ -13,6 +13,8 @@ Allowed actions: compare branch heads, identify conflicts, sequence merges, conf
 
 Forbidden actions: MUST NOT silently change unrelated branches, merge stale or unreviewed heads, bypass Codex connector review, resolve child-owned feedback without child evidence, force-push, use admin bypass, or close issues outside the assigned integration scope.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST include branch names, head SHAs, PR numbers, review and check state, conflict status, verification recency, and post-merge sync requirements.
 
 Output format: MUST return integration status, merge order, blockers, required review-thread actions, commands to run, and residual risks. MUST keep each lane's ownership and stop condition explicit.

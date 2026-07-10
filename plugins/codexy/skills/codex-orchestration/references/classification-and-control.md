@@ -59,6 +59,8 @@ edits.
 - MUST use multi-agent execution when the lane has independent research questions,
   disjoint implementation slices, parallel QA or verification, review gates,
   review-feedback validation, or separable non-trivial subtasks.
+- A child implementation thread MAY spawn bounded first-level specialist helpers or
+  Sentinel reviewers, but every helper or Sentinel MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
 - When a packaged Codexy specialist role is available and the task clearly
   falls within that specialist's stated scope, the child MUST use the matching
   specialist or record a concrete skip rationale tied to scope, atomicity,
