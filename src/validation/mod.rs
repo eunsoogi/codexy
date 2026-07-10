@@ -1,4 +1,15 @@
+mod agent_model_contract;
 mod agent_registration;
+mod agent_registration_catalog;
+mod child_handoff_readiness;
+mod child_handoff_readiness_claims;
+mod child_handoff_readiness_heads;
+mod child_handoff_readiness_status;
+mod child_handoff_readiness_text;
+mod child_lane_classification_boundaries;
+mod child_lane_classification_setup;
+mod child_lane_classification_setup_context;
+mod child_lane_owner_decision;
 mod child_lane_ownership;
 mod child_lane_ownership_fixes;
 mod child_lane_ownership_phrases;
@@ -9,14 +20,29 @@ mod child_lane_ownership_subagent_format;
 mod child_lane_ownership_subagents;
 mod child_lane_thread_tool_handler_capture;
 mod child_lane_thread_tool_handler_defect_capture;
+mod child_lane_thread_tool_handler_exact_error;
+mod child_lane_thread_tool_handler_issue_reference;
+mod child_lane_thread_tool_handler_issue_tracking;
+mod child_lane_thread_tool_handler_issue_value;
+mod child_lane_thread_tool_handler_no_route;
+mod child_lane_thread_tool_handler_route_value;
 mod child_lane_thread_tool_handler_scope;
 mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
+mod codex_review_fresh_request;
+mod codex_review_fresh_request_action;
+mod codex_review_fresh_request_text;
 mod codex_review_handoff;
 mod codex_review_handoff_actionable;
 mod codex_review_handoff_events;
+mod codex_review_handoff_readiness;
 mod completion_handoff;
 mod completion_handoff_compaction;
+mod completion_handoff_pending_worktree;
+mod completion_handoff_pending_worktree_labels;
+mod completion_handoff_pending_worktree_search;
+mod completion_handoff_pending_worktree_segments;
+mod completion_handoff_pending_worktree_text;
 mod completion_handoff_waiting;
 mod conventional_commit;
 mod custom_agent_mcp;
@@ -36,6 +62,7 @@ mod merge_message;
 mod prompt_yaml;
 mod release_publish_contract;
 mod review_thread_evidence;
+mod review_thread_readiness;
 mod review_thread_resolution;
 mod review_thread_waiting;
 mod review_thread_waiting_phrases;
@@ -44,6 +71,8 @@ mod roles;
 mod roles_yaml;
 mod runtime;
 mod sentinel_handoff;
+mod sentinel_handoff_evidence;
+mod sentinel_handoff_reviewer;
 mod touched_loc;
 
 use std::path::Path;
@@ -61,6 +90,9 @@ pub enum Mode {
         message: String,
     },
     PrTitle {
+        title: String,
+    },
+    IssueTitle {
         title: String,
     },
     CompletionHandoff {
@@ -105,6 +137,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             message,
         } => merge_message::check(expected_issue, expected_pr, &message),
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
+        Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(&handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));

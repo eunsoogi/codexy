@@ -1,6 +1,6 @@
 name = "codexy-warden"
 description = "Use for workflows, shell commands, credentials, remote MCP endpoints, untrusted input, and repository permissions."
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 developer_instructions = """
 MUST act as Codexy's Security Reviewer specialist.

@@ -7,32 +7,26 @@ fail() {
 }
 is_ident() {
   case "$1" in
-    "" | *[!abcdefghijklmnopqrstuvwxyz0123456789-]*)
-      return 1
-      ;;
+    "" | *[!abcdefghijklmnopqrstuvwxyz0123456789-]*) return 1 ;;
   esac
 }
 is_scope() {
   case "$1" in
-    "" | *[!abcdefghijklmnopqrstuvwxyz0123456789_/-]*)
-      return 1
-      ;;
+    "" | *[!abcdefghijklmnopqrstuvwxyz0123456789_/-]*) return 1 ;;
   esac
 }
 check_conventional_subject() {
   subject="$1"
   case "$subject" in
-    *": "*) ;;
-    *) return 1 ;;
+    *": "*) ;; *) return 1 ;;
   esac
   prefix=${subject%%: *}
   summary=${subject#*: }
   case "$summary" in
-    *[![:space:]]*) ;;
-    *) return 1 ;;
+    *[![:space:]]*) ;; *) return 1 ;;
   esac
   case "$prefix" in
-    *!) prefix=${prefix%!} ;;
+    *!) prefix=${prefix%!} ;; *) ;;
   esac
   case "$prefix" in
     *"("*")")
@@ -41,12 +35,9 @@ check_conventional_subject() {
       scope=${scope%)}
       is_ident "$commit_type" && is_scope "$scope"
       ;;
-    *)
-      is_ident "$prefix"
-      ;;
+    *) is_ident "$prefix" ;;
   esac
 }
-
 is_closing_keyword() {
   keyword=${1%:}
   keyword=$(printf '%s' "$keyword" | tr '[:upper:]' '[:lower:]')
@@ -58,14 +49,11 @@ is_closing_keyword() {
 is_issue_number() {
   case "$1" in
     "" | *[!0123456789]*) return 1 ;;
-    *) return 0 ;;
   esac
 }
-
 is_owner_repo_reference() {
   case "$1" in
-    */*) ;;
-    *) return 1 ;;
+    */*) ;; *) return 1 ;;
   esac
   owner=${1%%/*}
   repo=${1#*/}
@@ -81,8 +69,7 @@ is_closing_issue_reference() {
   candidate="$1"
   while :; do
     case "$candidate" in
-      *, | *.) candidate=${candidate%?} ;;
-      *) break ;;
+      *, | *.) candidate=${candidate%?} ;; *) break ;;
     esac
   done
   case "$candidate" in
@@ -161,17 +148,17 @@ check_pr_labels() {
   guard_dir=${0%/*}
   "$guard_dir/codexy-readiness-guard-pr-labels.sh" "$pr_state_file"
 }
-
 event="${1:-}"
 case "$event" in
   UserPromptSubmit)
-    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy readiness guard: before PR readiness, run hooks/codexy-readiness-guard.sh --check-pr-title with the exact PR title and hooks/codexy-readiness-guard.sh --check-pr-labels --pr-state-file pr-state.json with captured repositoryLabels. Before merge readiness, run hooks/codexy-readiness-guard.sh --check-merge-message --expected-pr PR_NUMBER with the explicit squash merge message; for issue-backed PRs whose merge body must end in Fixes #ISSUE_NUMBER, add --expected-issue ISSUE_NUMBER."}}'
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy readiness guard: before creating a GitHub issue, run hooks/codexy-readiness-guard.sh --check-issue-title --issue-title \"ISSUE_TITLE\" with the exact issue title. Before PR readiness, run hooks/codexy-readiness-guard.sh --check-pr-title with the exact PR title and hooks/codexy-readiness-guard.sh --check-pr-labels --pr-state-file pr-state.json with captured repositoryLabels. Before merge readiness, run hooks/codexy-readiness-guard.sh --check-merge-message --expected-pr PR_NUMBER with the explicit squash merge message; for issue-backed PRs whose merge body must end in Fixes #ISSUE_NUMBER, add --expected-issue ISSUE_NUMBER."}}'
     exit 0
     ;;
 esac
 
 mode=""
 pr_title=""
+issue_title=""
 expected_issue=""
 expected_pr=""
 merge_message=""
@@ -181,11 +168,16 @@ pr_state_file=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --check-pr-title) mode="pr-title" ;;
+    --check-issue-title) mode="issue-title" ;;
     --check-pr-labels) mode="pr-labels" ;;
     --check-merge-message) mode="merge-message" ;;
     --pr-title)
       [ "$#" -ge 2 ] || fail "--pr-title requires a value"
       shift; pr_title="$1"
+      ;;
+    --issue-title)
+      [ "$#" -ge 2 ] || fail "--issue-title requires a value"
+      shift; issue_title="$1"
       ;;
     --expected-pr)
       [ "$#" -ge 2 ] || fail "--expected-pr requires a value"
@@ -215,9 +207,19 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$mode" in
-  pr-title)
+pr-title)
     [ -n "$pr_title" ] || fail "--pr-title is required"
     check_conventional_subject "$pr_title" || fail "PR title must use Conventional Commit style"
+    ;;
+  issue-title)
+    [ -n "$issue_title" ] || fail "--issue-title is required"
+    lc_issue_title=$(printf '%s' "$issue_title" | tr '[:upper:]' '[:lower:]')
+    check_conventional_subject "$lc_issue_title" && fail "issue title must not use Conventional Commit style"
+    issue_prefix=$(printf '%s\n' "$lc_issue_title" | awk '{ print $1; exit }')
+    issue_token=$issue_prefix
+    case "$issue_prefix" in *:*) issue_prefix=${issue_prefix%%:*} ;; esac; while :; do case "$issue_prefix" in *:) issue_prefix=${issue_prefix%:} ;; *) break ;; esac; done
+    case "$issue_token" in *"("*")" | *! | *:*) check_conventional_subject "$issue_prefix: issue" && fail "issue title must not use Conventional Commit style" ;; esac
+    case "$issue_title" in [ABCDEFGHIJKLMNOPQRSTUVWXYZ]*) ;; *) fail "issue title must start with an uppercase descriptive title" ;; esac
     ;;
   pr-labels)
     check_pr_labels
@@ -225,9 +227,7 @@ case "$mode" in
   merge-message)
     [ -n "$expected_pr" ] || fail "--expected-pr is required"
     case "$expected_pr" in
-      "" | *[!0123456789]*)
-        fail "--expected-pr must be numeric"
-        ;;
+      "" | *[!0123456789]*) fail "--expected-pr must be numeric" ;;
     esac
     case "$expected_issue" in
       "" | *[!0123456789]*)
@@ -243,7 +243,7 @@ case "$mode" in
     check_merge_message
     ;;
   *)
-    fail "--check-pr-title, --check-pr-labels, or --check-merge-message is required"
+    fail "--check-issue-title, --check-pr-title, --check-pr-labels, or --check-merge-message is required"
     ;;
 esac
 

@@ -10,13 +10,40 @@ completion or the default Codexy merge flow. MUST capture current PR state first
 pr=<pr>
 owner=<owner>
 repo=<repo>
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > pr-state.base.json
+state_dir=$(mktemp -d)
+trap 'rm -rf "$state_dir"' EXIT
+gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
+head_ref="$(jq -r '.headRefName' "$state_dir/pr-state.base.json")"
+git fetch origin "$head_ref"
+git status --short --branch > "$state_dir/worktreeStatus.txt"
+git rev-parse HEAD > "$state_dir/localHeadOid.txt"
+git rev-parse "origin/$head_ref" > "$state_dir/remoteHeadOid.txt"
+default_branch="$(gh repo view "$owner/$repo" --json defaultBranchRef --jq '.defaultBranchRef.name')"
+closing_issue="$(
+  jq -r '.body // ""
+    | split("\n")
+    | map(select((. | gsub("[[:space:]]"; "")) != ""))
+    | last // ""
+    | capture("^(Fixes|Closes|Resolves) #(?<number>[0-9]+)$").number? // empty' \
+    "$state_dir/pr-state.base.json"
+)"
+if [ -n "$closing_issue" ] &&
+  [ "$(jq -r '.baseRefName // ""' "$state_dir/pr-state.base.json")" != "$default_branch" ]; then
+  gh issue view "$closing_issue" --repo "$owner/$repo" --json number,url,labels \
+    > "$state_dir/linkedIssue.json"
+  jq '{nodes:[{number,url,labels:{nodes:(.labels | map({name}))}}]}' \
+    "$state_dir/linkedIssue.json" > "$state_dir/linkedIssueReferences.json"
+else
+  jq -n '{nodes:[]}' > "$state_dir/linkedIssueReferences.json"
+fi
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) {
+    defaultBranchRef { name }
     labels(first:100) { nodes { name } }
     pullRequest(number:$number) {
+      headRef { target { ... on Commit { committedDate } } }
       labels(first:50) { nodes { name } }
       closingIssuesReferences(first:20) { nodes { number labels(first:50) { nodes { name } } } }
       reviewThreads(first:100, after:$endCursor) {
@@ -25,7 +52,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.reviewThreads.pages.json
+}' > "$state_dir/reviewThreads.pages.json"
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -43,7 +70,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.comments.pages.json
+}' > "$state_dir/comments.pages.json"
 gh api graphql --paginate --slurp \
   -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
@@ -55,45 +82,87 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
       }
     }
   }
-}' > pr-state.reviews.pages.json
+}' > "$state_dir/reviews.pages.json"
 jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
   | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
-  pr-state.reviewThreads.pages.json > pr-state.reviewThreads.json
+  "$state_dir/reviewThreads.pages.json" > "$state_dir/reviewThreads.json"
 jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
-  pr-state.comments.pages.json > pr-state.comments.json
+  "$state_dir/comments.pages.json" > "$state_dir/comments.json"
 jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
-  pr-state.reviews.pages.json > pr-state.reviews.json
-jq '.[0].data.repository | {repositoryLabels: .labels} + (.pullRequest | {labels, closingIssuesReferences})' \
-  pr-state.reviewThreads.pages.json > pr-state.labels.json
-jq --slurpfile reviewThreads pr-state.reviewThreads.json \
-  --slurpfile labels pr-state.labels.json \
-  --slurpfile comments pr-state.comments.json \
-  --slurpfile reviews pr-state.reviews.json \
-  '. + $labels[0] + {reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
-  pr-state.base.json > pr-state.json
-rm -f pr-state.base.json pr-state.reviewThreads.pages.json \
-  pr-state.reviewThreads.json pr-state.comments.pages.json \
-  pr-state.comments.json pr-state.reviews.pages.json \
-  pr-state.reviews.json pr-state.labels.json
+  "$state_dir/reviews.pages.json" > "$state_dir/reviews.json"
+jq '.[0].data.repository
+  | {repositoryLabels: .labels, defaultBranchRef}
+    + (.pullRequest | {
+        labels,
+        closingIssuesReferences,
+        headRefCommittedDate: (.headRef.target.committedDate // null)
+      })' \
+  "$state_dir/reviewThreads.pages.json" > "$state_dir/labels.json"
+jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
+  --slurpfile labels "$state_dir/labels.json" \
+  --slurpfile linkedIssueReferences "$state_dir/linkedIssueReferences.json" \
+  --slurpfile comments "$state_dir/comments.json" \
+  --slurpfile reviews "$state_dir/reviews.json" \
+  --rawfile worktreeStatus "$state_dir/worktreeStatus.txt" \
+  --rawfile localHeadOid "$state_dir/localHeadOid.txt" \
+  --rawfile remoteHeadOid "$state_dir/remoteHeadOid.txt" \
+  '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, localHeadOid: ($localHeadOid | gsub("\n$"; "")), remoteHeadOid: ($remoteHeadOid | gsub("\n$"; "")), reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
+  "$state_dir/pr-state.base.json" > pr-state.json
 scripts/validate-plugin-config --check-completion-handoff \
   --handoff-file <report> \
   --pr-state-file pr-state.json
 ```
 
+For stacked PRs whose `baseRefName` is not the captured `defaultBranchRef.name`,
+GitHub does not populate PR `closingIssuesReferences` from closing keywords. The
+PR state file MUST still include comparable authoritative issue evidence before
+readiness. It MUST keep the PR `body` final closing-keyword line and MUST add
+`linkedIssueReferences.nodes[]` for that issue, including `number`, `url`, and
+`labels.nodes[].name`, captured from the same GitHub repository's issue or
+GraphQL API output.
+
 For review-response handoffs, the PR state file MUST include GraphQL
 `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and
 comment URLs. For PR-readiness or merge-readiness handoffs, the PR state file
-MUST include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with
-issue labels. When repository labels exist, the PR state file MUST also include
-the repository label taxonomy as `repositoryLabels`; an unlabeled PR is not
-ready merely because handoff prose says no labels apply.
+MUST include PR `headRefName`, PR `headRefCommittedDate`, PR `labels`, and
+`closingIssuesReferences` with issue labels for default-branch PRs. For
+non-default-base stacked PRs where GitHub ignores closing keywords, the PR state
+file MUST include
+`linkedIssueReferences` with issue labels instead. When repository labels exist,
+the PR state file MUST also include the repository label taxonomy as
+`repositoryLabels`; an unlabeled PR is not ready merely because handoff prose
+says no labels apply.
+For child handoffs that claim pushed or synced branch state, the PR state file
+MUST include the local `git status --short --branch` output as `worktreeStatus`;
+missing branch-status evidence blocks the handoff because stale local branches
+MUST NOT be ruled out without local branch-status evidence.
+For child handoffs that claim parent acceptance, merge evaluation, or PR
+readiness, the PR state file MUST include captured local `HEAD` as
+`localHeadOid` and the PR branch remote-tracking ref as `remoteHeadOid`.
 
-The packaged hook surface currently emits SessionStart routing context, not a
-GitHub PR lifecycle hook. Until a PR lifecycle hook is available, the supported
-hook/readiness enforcement path is the SessionStart-required
-`scripts/validate-plugin-config --check-completion-handoff --handoff-file
-<report> --pr-state-file pr-state.json` command with `repositoryLabels`
-captured in `pr-state.json`.
+Before PR readiness, the owning lane MUST run the hard PR title hook with the
+exact GitHub PR title:
+
+```sh
+plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$(gh pr view "$pr" --json title --jq .title)"
+```
+
+Before PR readiness, the owning lane MUST run the hard PR label hook against
+captured PR state with `repositoryLabels`:
+
+```sh
+plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file pr-state.json
+```
+
+Completion-handoff validation MUST run in the same readiness path. Linked issue
+labels and repository label evidence MUST NOT be skipped after the label hook
+passes:
+
+```sh
+scripts/validate-plugin-config --check-completion-handoff \
+  --handoff-file <report> \
+  --pr-state-file pr-state.json
+```
 
 ## Codex Review Gate
 
@@ -118,6 +187,22 @@ it:
 gh pr comment <pr> --body "@codex review"
 ```
 
+Immediately before posting `@codex review`, the parent/orchestrator MUST re-read
+the latest PR comments and reviews for the current head. The parent/orchestrator
+MUST NOT post `@codex review` when that fresh state already contains a Codex
+review request or current-head Codex review output. This duplicate guard is not
+limited to requests with `eyes`; a just-posted child request is already enough
+that the parent/orchestrator MUST wait or poll instead. Because plain PR
+comments are not reliably commit-bound in captured PR state, the
+parent/orchestrator MUST treat any existing `@codex review` request comment as
+active unless stronger current-head evidence proves otherwise. Historical
+evidence for this guard includes PR #255
+comments
+`https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880788420` and
+`https://github.com/eunsoogi/codexy/pull/255#issuecomment-4880788656`, where a
+child and parent posted duplicate requests seven seconds apart without a fresh
+parent read of the latest comments.
+
 An `eyes` reaction on the request means Codex noticed it; it is not approval.
 Eyes-only evidence on a current-head review request is not merge-ready. Actual
 review text, inline review output, a recognized no-suggestion body, or a
@@ -129,8 +214,15 @@ such as `Didn't find any major issues`. Setup comments such as "create an
 environment for this repo" are connector responses but not review completion.
 
 If new commits are pushed after Codex review, request or wait for fresh review
-on the new head. MUST NOT send duplicate `@codex review` requests while an
-existing request already has `eyes` for the same PR head.
+on the new head only after the immediate pre-post comment/review re-read proves
+that no current-head Codex review request or output exists.
+
+Before requesting `@codex review`, MUST inspect PR review threads. If unresolved
+actionable review threads remain, MUST NOT request a fresh Codex review until the
+current head proves the thread fix and the thread is resolved, or an accepted
+no-change rationale is documented for the thread. Request exactly one fresh
+Codex review only when no current-head request or output exists and no unresolved
+actionable review thread blocks the request.
 
 ## Child-Owned Review Feedback
 
@@ -147,5 +239,6 @@ MUST verify that the current head addresses each completed review thread before
 resolving it in GitHub.
 
 Fixed or accepted review threads MUST be resolved in GitHub before the PR is
-merged. The parent MUST NOT resolve a thread merely because a child said it was
-fixed, a commit was pushed, or a fresh review was requested.
+claimed PR-ready, merge-ready, or merged. The parent MUST NOT resolve a thread
+merely because a child said it was fixed, a commit was pushed, or a fresh review
+was requested.

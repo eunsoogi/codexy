@@ -3,8 +3,14 @@ mod evidence_fields;
 mod git_preflight;
 mod git_preflight_commands;
 mod git_preflight_lines;
+mod review_request_context;
 
 use serde_json::Value;
+
+use super::codex_review_handoff_events::{
+    has_codex_review_output, has_latest_eyes_request_without_later_codex_output,
+};
+use review_request_context::{has_codex_review_request_context, has_review_request_context};
 
 const COMPACTION_CONTEXT_PHRASES: &[&str] = &[
     "compacted continuation",
@@ -45,7 +51,34 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !git_preflight::has_git_graph_log_preflight(handoff) {
         errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph before editing".into());
     }
+    if has_codex_review_request_context(&text) {
+        if !has_pr_comments_and_reviews_evidence(pr_state) {
+            errors.push("duplicate current-head Codex review request evidence missing: include freshly captured PR comments and reviews before planning @codex review".into());
+        } else if !has_current_head_oid_evidence(pr_state) {
+            errors.push("duplicate current-head Codex review request evidence incomplete: include headRefOid before planning @codex review".into());
+        } else if has_codex_review_output(pr_state)
+            || has_latest_eyes_request_without_later_codex_output(pr_state)
+        {
+            errors.push("duplicate current-head Codex review request blocked: re-read latest PR comments/reviews immediately before posting and do not post @codex review when a request or current-head output already exists".into());
+        }
+    }
     errors
+}
+
+fn has_pr_comments_and_reviews_evidence(pr_state: &Value) -> bool {
+    has_array_field(pr_state, "comments")
+        && (has_array_field(pr_state, "reviews") || has_array_field(pr_state, "latestReviews"))
+}
+
+fn has_current_head_oid_evidence(pr_state: &Value) -> bool {
+    pr_state
+        .get("headRefOid")
+        .and_then(Value::as_str)
+        .is_some_and(|head| !head.trim().is_empty())
+}
+
+fn has_array_field(value: &Value, field: &str) -> bool {
+    value.get(field).is_some_and(Value::is_array)
 }
 
 fn claims_compacted_continuation_readiness(text: &str) -> bool {
@@ -110,63 +143,6 @@ fn has_pending_edit_plan(line: &str) -> bool {
                 "start editing",
                 "edit the pr now",
                 "edit the pr branch",
-            ],
-        )
-}
-
-fn has_review_request_context(line: &str) -> bool {
-    line.split([';', '.', '!', '?', ',']).any(|clause| {
-        let clause = clause.trim();
-        !has_negated_review_request_context(clause)
-            && (has_any(
-                clause,
-                &[
-                    "review request",
-                    "ready for review",
-                    "@codex review",
-                    "request codex review",
-                    "request a codex review",
-                    "request fresh codex review",
-                    "request a fresh codex review",
-                ],
-            ) || has_request_codex_review_context(clause))
-    })
-}
-
-fn has_request_codex_review_context(line: &str) -> bool {
-    line.contains("request") && (line.contains("codex review") || line.contains("@codex review"))
-}
-
-fn has_negated_review_request_context(line: &str) -> bool {
-    has_any(
-        line,
-        &[
-            "not ready for review",
-            "no @codex review request",
-            "no codex review request",
-            "no review request",
-            "without @codex review request",
-            "without codex review request",
-            "without review request",
-            "do not request codex review",
-            "don't request codex review",
-            "not request codex review",
-            "will not request codex review",
-            "won't request codex review",
-        ],
-    ) || has_negated_request_codex_review_context(line)
-}
-
-fn has_negated_request_codex_review_context(line: &str) -> bool {
-    has_request_codex_review_context(line)
-        && has_any(
-            line,
-            &[
-                "do not request",
-                "don't request",
-                "not request",
-                "will not request",
-                "won't request",
             ],
         )
 }

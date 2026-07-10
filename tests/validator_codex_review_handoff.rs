@@ -175,7 +175,7 @@ fn validator_cli_rejects_negated_maintainer_override_with_eyes_only_review() -> 
 #[test]
 fn validator_cli_accepts_affirmative_maintainer_override() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Maintainer override: yes. Codex review passed. PR is merge-ready.\n",
+        "Maintainer override: yes. Codex review passed. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         eyes_only_pr_state(),
     )?;
     assert!(
@@ -189,7 +189,7 @@ fn validator_cli_accepts_affirmative_maintainer_override() -> TestResult {
 #[test]
 fn validator_cli_accepts_later_completed_compact_codex_review() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",
@@ -211,7 +211,7 @@ fn validator_cli_accepts_later_completed_compact_codex_review() -> TestResult {
 }
 
 fn eyes_only_pr_state() -> &'static str {
-    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}]}"#
+    r#"{"number":156,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"body":"@codex review","author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z","reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#
 }
 
 fn assert_rejected_eyes_only(output: &std::process::Output, message: &str) {

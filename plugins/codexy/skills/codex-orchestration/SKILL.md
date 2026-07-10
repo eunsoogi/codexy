@@ -41,25 +41,15 @@ MUST stop, classify, and only then MUST continue through the matching Codexy wor
 
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
 TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
-`plugins/codexy/agents/catalog.toml`. MUST keep one specialist agent per file.
+`plugins/codexy/agents/catalog.toml`; MUST keep one specialist agent per file.
 `plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
 specialist worker.
 
-Installed Codexy agents become native Codex `spawn_agent` roles only after the
-user's Codex config registers those packaged TOMLs through
-`[agents.<codexy-name>] config_file = "<installed-plugin>/agents/<codexy-name>.toml"`.
-MUST use `skills/codex-orchestration/scripts/register-codexy-agents` from the
-installed plugin to add or remove Codexy's managed config block safely. MUST NOT treat
+Installed Codexy specialists require the stable registration bridge and an
+independent schema/invocation preflight. MUST read
+`references/agent-registration.md` before registering, updating, uninstalling,
+diagnosing, or invoking a packaged specialist. MUST NOT treat
 `plugins/codexy/.codex/agents` as installed custom agents.
-
-To register Codexy agents from an installed plugin, MUST run:
-
-```sh
-skills/codex-orchestration/scripts/register-codexy-agents
-```
-
-Restart Codex or start a fresh session after registration before expecting new
-`spawn_agent` agent types to appear.
 
 ## Required Control Plane
 
@@ -84,6 +74,31 @@ Restart Codex or start a fresh session after registration before expecting new
   `scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`.
   If the report discusses addressed review feedback, the PR state evidence
   MUST include GraphQL `reviewThreads.nodes`.
+
+## Active Child Thread Ledger
+Orchestration MUST maintain a durable active/waiting child thread ledger for
+Codex app child threads across normal polling, compaction recovery, dreaming
+rehydration, and parent handoffs. Active child Codex app threads MUST be capped
+at 5. The orchestrator MUST count only active or waiting Codex app child threads
+against that cap. Packaged specialist subagents MUST NOT be counted as active
+child Codex app threads.
+Before creating a new child Codex app thread, orchestration MUST check the
+ledger and current issue/PR state for an existing issue/PR owner thread, and
+MUST reuse it when present instead of creating a duplicate owner.
+Blocked/rate-limited child lanes MUST be rechecked and continued through the
+existing owner thread when possible, with the blocker and next action kept
+current in the ledger.
+Each ledger entry MUST include issue/PR, thread id, status, owner state,
+blocker, latest evidence, and next action. Normal polling MUST refresh these
+fields from current thread, worktree, issue, PR, and review evidence. Compaction
+recovery and dreaming rehydration MUST rebuild the ledger before dispatching
+more child work or claiming no active child work remains. Completed child
+threads MUST be removed from the active/waiting ledger after current evidence
+proves completion, and the orchestrator MUST ensure completed child threads are
+archived/deleted where supported by the available tool surface. When
+archive/delete support is unavailable, it MUST record that unavailable-tool
+evidence and MUST still remove the completed lane from the active/waiting
+ledger.
 
 ## Multi-Agent And Reviewer Gate
 
@@ -128,9 +143,9 @@ insufficient. Situational routing is:
   atomic unit before handoff, PR readiness, completion, or parent acceptance.
 
 If `spawn_agent` supports the Codexy role, invoke specialists by exact agent
-type, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.")`,
-`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.")`, or
-`spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.")`.
+type with no or bounded history, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.", fork_turns="none")`,
+`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.", fork_turns="3")`, or
+`spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.", fork_turns="none")`.
 
 If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST report
 that the Codexy agents have not been registered in the active Codex config and

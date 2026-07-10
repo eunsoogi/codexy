@@ -59,6 +59,26 @@ For Codexy GitHub lanes, current evidence usually means `git status`, `git log
 --graph`, PR head SHA, checks, review threads, latest Codex review output, and
 child owner state.
 
+## Active Child Thread Ledger
+
+For orchestration, dogfooding, review-response, or multi-lane handoffs, dreaming
+MUST preserve a durable active/waiting child thread ledger instead of reducing
+child work to a one-time summary. The dream pass MUST collect the full
+in-progress/waiting child thread list from current issue, PR, thread, worktree,
+and handoff evidence before deciding whether new child work is needed.
+
+Each active or waiting Codex app child thread entry MUST include issue/PR, thread
+id, status, owner state, blocker, latest evidence, and next action. Blocked or
+rate-limited child lanes MUST stay in the ledger with the current blocker and
+next recheck action until current evidence proves they are complete, reassigned,
+or intentionally abandoned by a maintainer.
+
+Completed child lanes MUST be removed from the ledger after current evidence
+proves completion, and the completed child thread MUST be archived/deleted where
+supported by the available tool surface. If archive/delete tooling is
+unavailable, the dream pass MUST record that unavailable-tool evidence and MUST
+still remove the completed lane from the active/waiting ledger.
+
 ## Compact Handoff Shape
 
 MUST use this shape when writing or repairing a compacted continuation summary:
@@ -76,6 +96,8 @@ Current anchors:
 
 Remember:
 - Durable policy, scope, owner boundaries, exact IDs, and current refs.
+- Active/waiting child thread ledger entries, each with issue/PR, thread id,
+  status, owner state, blocker, latest evidence, and next action.
 
 Fix:
 - Current unresolved obligations only, each with current evidence and next
@@ -85,6 +107,8 @@ Forget or demote:
 - Resolved review feedback, stale SHAs, old branch state, duplicate lanes,
   outdated checks, superseded summaries, and historical notes that MUST NOT
   drive the next action.
+- Completed child lanes removed from the ledger after archive/delete or
+  unavailable archive/delete evidence.
 
 Next action:
 - The single next action allowed by the current owner boundary and stop condition.

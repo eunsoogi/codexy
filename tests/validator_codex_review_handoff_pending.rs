@@ -6,7 +6,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
 fn validator_cli_rejects_unacknowledged_codex_review_request() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",
@@ -16,8 +16,8 @@ fn validator_cli_rejects_unacknowledged_codex_review_request() -> TestResult {
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-2001",
                 "reactionGroups":[]
             }],
             "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
@@ -25,8 +25,8 @@ fn validator_cli_rejects_unacknowledged_codex_review_request() -> TestResult {
     )?;
     assert_rejected_with_stderr(
         &output,
-        "validator should reject readiness while a Codex review request is unacknowledged",
-        "Codex review request",
+        "validator should reject readiness while a Codex review request lacks current-head output",
+        "unacknowledged Codex review request",
     );
     Ok(())
 }
@@ -44,8 +44,8 @@ fn validator_cli_rejects_unresolved_thread_without_author_identity() -> TestResu
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-2002",
                 "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "latestReviews":[{
@@ -85,8 +85,8 @@ fn validator_cli_rejects_unresolved_thread_with_null_author_identity() -> TestRe
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-2003",
                 "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "latestReviews":[{
@@ -117,7 +117,7 @@ fn validator_cli_rejects_unresolved_thread_with_null_author_identity() -> TestRe
 #[test]
 fn validator_cli_rejects_codex_readiness_without_head_ref_oid() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",
@@ -126,8 +126,8 @@ fn validator_cli_rejects_codex_readiness_without_head_ref_oid() -> TestResult {
             "reviewDecision":"APPROVED",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-2004",
                 "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "latestReviews":[{
@@ -159,8 +159,8 @@ fn validator_cli_rejects_codex_readiness_with_blank_head_ref_oid() -> TestResult
             "headRefOid":"   ",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-2005",
                 "reactionGroups":[{"content":"EYES","users":{"totalCount":1}}]
             }],
             "latestReviews":[{
@@ -182,7 +182,7 @@ fn validator_cli_rejects_codex_readiness_with_blank_head_ref_oid() -> TestResult
 #[test]
 fn validator_cli_accepts_connector_output_with_review_request_footer() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",
@@ -192,8 +192,8 @@ fn validator_cli_accepts_connector_output_with_review_request_footer() -> TestRe
             "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
             "comments":[{
                 "body":"@codex review",
-                "author":{"login":"eunsoogi"},
-                "createdAt":"2026-06-22T12:45:06Z",
+                "author":{"login":"eunsoogi"},"createdAt":"2026-06-22T12:45:06Z",
+                "url":"https://github.com/eunsoogi/codexy/pull/156#issuecomment-2006",
                 "reactionGroups":[]
             }],
             "latestReviews":[{
