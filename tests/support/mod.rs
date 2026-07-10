@@ -2,8 +2,14 @@
 #![allow(dead_code, unused_imports)]
 
 mod agent_model_assignments;
+mod cache_fixture;
 mod package;
+mod package_archive;
 mod package_fixture;
+mod release_cache;
+mod release_cache_audit;
+mod release_cache_resources;
+mod release_version;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
@@ -24,6 +30,17 @@ pub(super) use package::{
     assert_wrapper_requires_token_for_default_artifact_without_cargo,
     assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo,
 };
+pub(super) use release_cache::{
+    assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
+    assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,
+};
+pub(super) use release_cache_audit::{
+    assert_wrapper_rejects_invalid_top_level_plugin_versions,
+    assert_wrapper_reports_cache_helper_prerequisites,
+    assert_wrapper_uses_top_level_version_in_minified_and_nested_manifests,
+    assert_wrappers_migrate_v1_caches_without_deleting_them,
+};
+pub(super) use release_cache_resources::assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest;
 
 pub(super) struct WrapperFixture<'a> {
     pub(super) home: &'a std::path::Path,
