@@ -62,6 +62,20 @@ codexy/
 - MUST put executable Git, issue, PR, review, and merge rules in
   `plugins/codexy/skills/git-workflow/SKILL.md`, not in this file.
 
+## Release/version-only orchestration
+
+- MUST discover and prefer `.github/workflows/plugin-version-bump.yml` before
+  dispatching a manual child lane or creating a manual branch or PR when its
+  contract covers the requested version metadata. This workflow is the existing
+  automation for synchronizing the version, creating the release branch and
+  commit, pushing it, and opening the version-bump PR.
+- MUST record why the workflow is unavailable or insufficient before using a
+  manual fallback. After either route, the parent MUST still cover issue
+  linkage, repository labels, full tests, package CI, packaged Sentinel, Codex
+  review, merge-message validation, and post-merge release/install proof.
+- MUST keep executable Git and release commands in their canonical skills rather
+  than duplicating them here.
+
 ## Conventions
 
 - This repository is plugin-first: user-visible behavior usually lands under
