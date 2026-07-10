@@ -21,6 +21,7 @@ fn validator_rejects_line_wrapped_recursive_permissions() -> TestResult {
 #[test]
 fn validator_rejects_recursive_actions_after_unrelated_negations() -> TestResult {
     for permission in [
+        "MUST spawn validator_edge_pass and workflow_ownership_pass as additional helpers.",
         "MUST NOT merge, but MAY spawn another helper.",
         "A helper MAY not edit files, but MAY spawn another helper.",
         "Allowed actions: MUST NOT edit files, but spawn another helper.",
@@ -52,6 +53,20 @@ fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -
     Ok(())
 }
 
+#[test]
+fn validator_does_not_flag_punctuated_nonrecursive_prohibitions() -> TestResult {
+    for prohibition in [
+        "A helper MAY not, under any circumstances, spawn another helper.",
+        "A helper MAY never, even during recovery, create another reviewer task.",
+        "A helper is not allowed, under this contract, to delegate work to another reviewer.",
+        "Allowed actions: map files, but MUST NOT spawn another helper.",
+        "Every helper MUST NOT spawn, delegate to, or create any additional agent.",
+    ] {
+        assert_recursion_not_reported(prohibition)?;
+    }
+    Ok(())
+}
+
 fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
@@ -62,6 +77,19 @@ fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
         role.replacen("\n\"\"\"", &format!("\n{permission}\n\"\"\""), 1),
     )?;
     assert_recursion_rejected(validator(&plugin_root)?, permission);
+    Ok(())
+}
+
+fn assert_recursion_not_reported(prohibition: &str) -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = fixture(&temp)?;
+    let role_path = plugin_root.join("agents/codexy-cartographer.toml");
+    let role = std::fs::read_to_string(&role_path)?;
+    std::fs::write(
+        &role_path,
+        role.replacen("\n\"\"\"", &format!("\n{prohibition}\n\"\"\""), 1),
+    )?;
+    assert!(!stderr(&validator(&plugin_root)?).contains("permits recursive delegation"));
     Ok(())
 }
 

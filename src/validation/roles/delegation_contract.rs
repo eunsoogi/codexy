@@ -95,7 +95,10 @@ fn reject_recursive_delegation_permission(
             clause = clause.replace(CANONICAL_ROOT_DELEGATION, "");
         }
         let action = has_unnegated_delegation_action(&clause);
-        (inherited_child_permission || has_unnegated_permission(&clause)) && action
+        (inherited_child_permission
+            || has_unnegated_permission(&clause)
+            || has_unnegated_mandatory_delegation_action(&clause))
+            && action
     });
     if permits_recursion {
         errors.push(format!(
@@ -147,6 +150,31 @@ fn has_unnegated_delegation_action(clause: &str) -> bool {
     })
 }
 
+fn has_unnegated_mandatory_delegation_action(clause: &str) -> bool {
+    ["spawn", "delegate", "create"].into_iter().any(|action| {
+        clause.match_indices(action).any(|(index, _)| {
+            let prefix = clause[..index]
+                .rsplit_once(" but ")
+                .map_or(&clause[..index], |(_, contrast)| contrast);
+            let suffix = &clause[index..];
+            let creates_child_thread = action == "create" && suffix.contains("child thread");
+            has_unnegated_mandatory_permission(prefix)
+                && !creates_child_thread
+                && ["agent", "helper", "reviewer", "task", "thread"]
+                    .into_iter()
+                    .any(|target| suffix.contains(target))
+        })
+    })
+}
+
+fn has_unnegated_mandatory_permission(prefix: &str) -> bool {
+    let words = prefix
+        .split(|character: char| !character.is_ascii_alphabetic())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    words.last() == Some(&"must")
+}
+
 fn has_action_negation(prefix: &str) -> bool {
     let words = prefix
         .split(|character: char| !character.is_ascii_alphabetic())
@@ -183,48 +211,4 @@ fn normalize_instruction_text(text: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{has_unnegated_delegation_action, has_unnegated_permission};
-
-    #[test]
-    fn negated_permission_modals_are_not_permissions() {
-        assert!(!has_unnegated_permission("may not spawn another helper"));
-        assert!(!has_unnegated_permission("may never spawn another helper"));
-        assert!(!has_unnegated_permission(
-            "a helper is not allowed to spawn another helper",
-        ));
-        assert!(!has_unnegated_delegation_action(
-            "allowed actions: map repository files, but must not spawn another helper",
-        ));
-        assert!(!has_unnegated_delegation_action(
-            "allowed actions: map files, but a helper may not, under any circumstances, spawn another helper",
-        ));
-        assert!(!has_unnegated_delegation_action(
-            "a helper may never, even during recovery, create another reviewer task",
-        ));
-        assert!(!has_unnegated_delegation_action(
-            "a helper is not allowed, under this contract, to delegate work to another reviewer",
-        ));
-        assert!(!has_unnegated_delegation_action(
-            "every helper must not spawn, delegate to, or create any additional agent",
-        ));
-        assert!(has_unnegated_delegation_action(
-            "must not merge, but may spawn another helper",
-        ));
-        assert!(has_unnegated_delegation_action(
-            "a helper may not edit files, but may spawn another helper",
-        ));
-        assert!(has_unnegated_delegation_action(
-            "allowed actions: must not edit files, but spawn another helper",
-        ));
-        assert!(has_unnegated_delegation_action(
-            "permitted actions: must not merge, but create reviewer tasks",
-        ));
-        assert!(has_unnegated_delegation_action(
-            "a helper is not allowed to merge, but is allowed to spawn another helper",
-        ));
-    }
 }
