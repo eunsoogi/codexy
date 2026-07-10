@@ -3,7 +3,9 @@
 
 mod agent_model_assignments;
 mod package;
+mod package_archive;
 mod package_fixture;
+mod release_cache;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
@@ -23,6 +25,10 @@ pub(super) use package::{
     assert_wrapper_refreshes_package_before_stale_cache_without_cargo,
     assert_wrapper_requires_token_for_default_artifact_without_cargo,
     assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo,
+};
+pub(super) use release_cache::{
+    assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
+    assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,
 };
 
 pub(super) struct WrapperFixture<'a> {

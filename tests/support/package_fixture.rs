@@ -1,6 +1,7 @@
 use std::io::Write as _;
 use std::process::{Command, Stdio};
 
+use super::package_archive::zip_package;
 use super::{copy_dir, make_executable};
 
 pub(super) fn install_cached_runtime(
@@ -12,7 +13,13 @@ pub(super) fn install_cached_runtime(
     fake_version: &str,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let runtime = format!("codexy-mcp-{server}");
-    let cache_key = runtime_cache_key(repository, runtime_ref, platform, &runtime)?;
+    let cache_key = runtime_cache_key(
+        repository,
+        runtime_ref,
+        platform,
+        env!("CARGO_PKG_VERSION"),
+        &runtime,
+    )?;
     let bin_dir = cache.join(cache_key).join("bin");
     std::fs::create_dir_all(&bin_dir)?;
     let runtime_path = bin_dir.join(&runtime);
@@ -152,22 +159,6 @@ pub(super) fn create_fake_curl_bin_with_release_package(
     Ok(fake_bin)
 }
 
-fn zip_package(
-    artifact_zip: &std::path::Path,
-    package_path: &std::path::Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let status = Command::new("zip")
-        .arg("-q")
-        .arg("-j")
-        .arg(artifact_zip)
-        .arg(package_path)
-        .status()?;
-    if !status.success() {
-        return Err("creating artifact zip failed".into());
-    }
-    Ok(())
-}
-
 pub(super) fn create_source_layout_plugin(
     root: &std::path::Path,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
@@ -197,6 +188,7 @@ fn runtime_cache_key(
     repository: &str,
     runtime_ref: &str,
     platform: &str,
+    plugin_release: &str,
     runtime: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut child = Command::new("cksum")
@@ -207,7 +199,7 @@ fn runtime_cache_key(
         let stdin = child.stdin.as_mut().ok_or("missing cksum stdin")?;
         write!(
             stdin,
-            "{repository}\n{runtime_ref}\n{platform}\nstdio-newline-v1\npackage-default\n{runtime}\n"
+            "{repository}\n{runtime_ref}\n{platform}\nstdio-newline-v1\npackage-default\n{plugin_release}\n{runtime}\n"
         )?;
     }
     let output = child.wait_with_output()?;

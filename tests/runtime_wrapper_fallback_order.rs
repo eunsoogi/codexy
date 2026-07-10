@@ -66,21 +66,31 @@ fn find_required(
 }
 
 #[test]
-fn mcp_wrapper_uses_package_runtime_without_invoking_cargo_when_package_exists()
+fn mcp_wrappers_use_package_runtime_without_invoking_cargo_when_package_exists()
 -> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_uses_package_runtime_without_invoking_cargo(server)?;
+    }
+    Ok(())
+}
+
+fn assert_wrapper_uses_package_runtime_without_invoking_cargo(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("installed-plugin");
     let wrapper_dir = plugin_root.join("mcp");
     std::fs::create_dir_all(&wrapper_dir)?;
-    let wrapper_path = wrapper_dir.join("codexy-mcp-lsp");
+    let wrapper_path = wrapper_dir.join(format!("codexy-mcp-{server}"));
     std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/mcp/codexy-mcp-lsp"),
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("plugins/codexy/mcp/codexy-mcp-{server}")),
         &wrapper_path,
     )?;
     make_executable(&wrapper_path)?;
 
     let package_archive = temp.path().join("codexy-marketplace-plugin.tar.gz");
-    create_fake_runtime_package(temp.path(), &package_archive)?;
+    create_fake_runtime_package(temp.path(), &package_archive, server)?;
     let fake_cargo_dir = temp.path().join("fake-bin");
     let cargo_sentinel = temp.path().join("cargo-was-called");
     create_fake_cargo(&fake_cargo_dir)?;
@@ -118,6 +128,11 @@ fn mcp_wrapper_uses_package_runtime_without_invoking_cargo_when_package_exists()
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
+        !String::from_utf8_lossy(&output.stderr).contains("plugin.json"),
+        "sparse package override should not emit a manifest-read error\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
         !cargo_sentinel.exists(),
         "Cargo should not be invoked when the packaged runtime is available"
     );
@@ -128,11 +143,12 @@ fn mcp_wrapper_uses_package_runtime_without_invoking_cargo_when_package_exists()
 fn create_fake_runtime_package(
     temp_root: &Path,
     archive_path: &Path,
+    server: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let package_root = temp_root.join("package-root");
     let runtime_dir = package_root.join("runtime");
     std::fs::create_dir_all(&runtime_dir)?;
-    let runtime_path = runtime_dir.join("codexy-mcp-lsp-darwin-arm64.bin");
+    let runtime_path = runtime_dir.join(format!("codexy-mcp-{server}-darwin-arm64.bin"));
     std::fs::write(
         &runtime_path,
         "#!/bin/sh\necho PACKAGED_RUNTIME_USED \"$@\" >&2\nexit 42\n",
