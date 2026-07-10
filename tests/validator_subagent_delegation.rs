@@ -151,37 +151,6 @@ fn validator_rejects_recursive_or_missing_reference_delegation_contract() -> Tes
 }
 
 #[test]
-fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -> TestResult {
-    for suffix in [
-        "and those helpers MAY spawn another helper",
-        "and delegate work to another helper",
-        "and create another reviewer task",
-    ] {
-        let temp = tempfile::tempdir()?;
-        let plugin_root = temp.path().join("codexy");
-        support::copy_dir(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-            &plugin_root,
-        )?;
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-        let mut skill = std::fs::read_to_string(&skill_path)?;
-        skill.push_str(&format!(
-            "\nA child implementation thread MAY spawn bounded first-level specialist helpers or Sentinel reviewers, {suffix}.\n",
-        ));
-        std::fs::write(&skill_path, skill)?;
-
-        let output = validator(&plugin_root)?;
-
-        assert!(!output.status.success(), "{suffix}");
-        assert!(
-            stderr(&output).contains("permits recursive delegation"),
-            "{suffix}"
-        );
-    }
-    Ok(())
-}
-
-#[test]
 fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let orchestration =

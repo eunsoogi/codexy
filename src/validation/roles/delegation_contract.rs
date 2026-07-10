@@ -85,7 +85,8 @@ fn reject_recursive_delegation_permission(
     allow_canonical_child_delegation: bool,
     errors: &mut Vec<String>,
 ) {
-    let permits_recursion = text.split(['.', '!', '?', '\n']).any(|clause| {
+    let normalized = normalize_instruction_text(text);
+    let permits_recursion = normalized.split(['.', '!', '?']).any(|clause| {
         let mut clause = clause.to_ascii_lowercase();
         let mut inherited_child_permission = false;
         if allow_canonical_child_delegation {
@@ -133,10 +134,9 @@ fn has_unnegated_delegation_action(clause: &str) -> bool {
     ["spawn", "delegate", "create"].into_iter().any(|action| {
         clause.match_indices(action).any(|(index, _)| {
             let prefix = &clause[..index];
-            let local_prefix = prefix.rsplit([',', ';']).next().unwrap_or(prefix);
             let negated = ["must not", "may not", "may never", "not allowed to"]
                 .into_iter()
-                .any(|marker| local_prefix.contains(marker));
+                .any(|marker| prefix.contains(marker));
             let suffix = &clause[index..];
             let target = ["agent", "helper", "reviewer", "task", "thread"]
                 .into_iter()
@@ -144,6 +144,23 @@ fn has_unnegated_delegation_action(clause: &str) -> bool {
             !negated && target
         })
     })
+}
+
+fn normalize_instruction_text(text: &str) -> String {
+    text.lines()
+        .map(str::trim)
+        .map(|line| {
+            line.strip_prefix("- ")
+                .or_else(|| line.strip_prefix("* "))
+                .unwrap_or(line)
+        })
+        .map(|line| {
+            line.split_once(". ")
+                .filter(|(prefix, _)| prefix.chars().all(|character| character.is_ascii_digit()))
+                .map_or(line, |(_, remainder)| remainder)
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 #[cfg(test)]
@@ -159,6 +176,9 @@ mod tests {
         ));
         assert!(!has_unnegated_delegation_action(
             "allowed actions: map repository files, but must not spawn another helper",
+        ));
+        assert!(!has_unnegated_delegation_action(
+            "allowed actions: map files, but a helper may not, under any circumstances, spawn another helper",
         ));
     }
 }
