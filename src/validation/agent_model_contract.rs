@@ -5,16 +5,14 @@ use toml::Value;
 
 use crate::paths::display_relative;
 
-#[doc(hidden)]
 #[derive(Debug)]
-pub struct SpecialistModelContract {
-    pub name: &'static str,
-    pub model: &'static str,
-    pub reasoning_effort: &'static str,
+pub(super) struct SpecialistModelContract {
+    pub(super) name: &'static str,
+    pub(super) model: &'static str,
+    pub(super) reasoning_effort: &'static str,
 }
 
-#[doc(hidden)]
-pub const SPECIALIST_MODEL_CONTRACTS: &[SpecialistModelContract] = &[
+pub(super) const SPECIALIST_MODEL_CONTRACTS: &[SpecialistModelContract] = &[
     contract("codexy-architect", "gpt-5.6-sol", "high"),
     contract("codexy-auditor", "gpt-5.6-terra", "medium"),
     contract("codexy-cartographer", "gpt-5.6-luna", "low"),

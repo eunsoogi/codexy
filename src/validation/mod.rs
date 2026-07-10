@@ -1,5 +1,4 @@
-#[doc(hidden)]
-pub mod agent_model_contract;
+mod agent_model_contract;
 mod agent_registration;
 mod agent_registration_catalog;
 mod child_handoff_readiness;

@@ -1,33 +1,139 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::path::Path;
-use std::process::{Command, Output};
-
-use codexy_runtime::validation::agent_model_contract::SPECIALIST_MODEL_CONTRACTS;
 
 mod support;
 
-type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+use support::{
+    TestResult, public_contract_import_check, validate_agent_replacement,
+    validate_catalog_replacement,
+};
+
+#[derive(Debug)]
+struct ExpectedAgent {
+    name: &'static str,
+    filename: &'static str,
+    model: &'static str,
+    effort: &'static str,
+}
+
+const EXPECTED_AGENTS: &[ExpectedAgent] = &[
+    ExpectedAgent {
+        name: "codexy-architect",
+        filename: "codexy-architect.toml",
+        model: "gpt-5.6-sol",
+        effort: "high",
+    },
+    ExpectedAgent {
+        name: "codexy-auditor",
+        filename: "codexy-auditor.toml",
+        model: "gpt-5.6-terra",
+        effort: "medium",
+    },
+    ExpectedAgent {
+        name: "codexy-cartographer",
+        filename: "codexy-cartographer.toml",
+        model: "gpt-5.6-luna",
+        effort: "low",
+    },
+    ExpectedAgent {
+        name: "codexy-forge",
+        filename: "codexy-forge.toml",
+        model: "gpt-5.6-terra",
+        effort: "medium",
+    },
+    ExpectedAgent {
+        name: "codexy-pathfinder",
+        filename: "codexy-pathfinder.toml",
+        model: "gpt-5.6-sol",
+        effort: "xhigh",
+    },
+    ExpectedAgent {
+        name: "codexy-scribe",
+        filename: "codexy-scribe.toml",
+        model: "gpt-5.6-luna",
+        effort: "low",
+    },
+    ExpectedAgent {
+        name: "codexy-sculptor",
+        filename: "codexy-sculptor.toml",
+        model: "gpt-5.6-terra",
+        effort: "high",
+    },
+    ExpectedAgent {
+        name: "codexy-sentinel",
+        filename: "codexy-sentinel.toml",
+        model: "gpt-5.6-sol",
+        effort: "xhigh",
+    },
+    ExpectedAgent {
+        name: "codexy-shipwright",
+        filename: "codexy-shipwright.toml",
+        model: "gpt-5.6-terra",
+        effort: "high",
+    },
+    ExpectedAgent {
+        name: "codexy-tracer",
+        filename: "codexy-tracer.toml",
+        model: "gpt-5.6-sol",
+        effort: "high",
+    },
+    ExpectedAgent {
+        name: "codexy-warden",
+        filename: "codexy-warden.toml",
+        model: "gpt-5.6-sol",
+        effort: "xhigh",
+    },
+    ExpectedAgent {
+        name: "codexy-weaver",
+        filename: "codexy-weaver.toml",
+        model: "gpt-5.6-terra",
+        effort: "medium",
+    },
+];
+
+#[test]
+fn packaged_agents_match_the_independent_role_contract() -> TestResult {
+    let agents_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/agents");
+    let actual_files = std::fs::read_dir(&agents_root)?
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| name.starts_with("codexy-") && name.ends_with(".toml"))
+        .collect::<BTreeSet<_>>();
+    let expected_files = EXPECTED_AGENTS
+        .iter()
+        .map(|agent| agent.filename.to_owned())
+        .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        actual_files, expected_files,
+        "specialist file set must be exact"
+    );
+    for expected in EXPECTED_AGENTS {
+        let agent = parse_agent(&agents_root.join(expected.filename))?;
+        assert_eq!(
+            agent.get("name").and_then(toml::Value::as_str),
+            Some(expected.name)
+        );
+        assert_eq!(
+            agent.get("model").and_then(toml::Value::as_str),
+            Some(expected.model)
+        );
+        assert_eq!(
+            agent
+                .get("model_reasoning_effort")
+                .and_then(toml::Value::as_str),
+            Some(expected.effort)
+        );
+    }
+    Ok(())
+}
 
 #[test]
 fn validator_cli_rejects_every_role_model_regression() -> TestResult {
-    for contract in SPECIALIST_MODEL_CONTRACTS {
-        let output = validate_agent_replacement(
-            contract.name,
-            &format!("model = {:?}", contract.model),
-            "model = \"gpt-5.5\"",
-        )?;
-        assert!(
-            !output.status.success(),
-            "{} model regression passed",
-            contract.name
-        );
-        assert!(
-            stderr(&output).contains(&format!(
-                "{} model must be {}",
-                contract.name, contract.model
-            )),
-            "stderr:\n{}",
-            stderr(&output)
+    for expected in EXPECTED_AGENTS {
+        assert_rejected(
+            validate_agent_replacement(expected.filename, "model", expected.model, "gpt-5.5")?,
+            &format!("{} model must be {}", expected.name, expected.model),
         );
     }
     Ok(())
@@ -35,149 +141,88 @@ fn validator_cli_rejects_every_role_model_regression() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_every_role_effort_regression() -> TestResult {
-    for contract in SPECIALIST_MODEL_CONTRACTS {
-        let output = validate_agent_replacement(
-            contract.name,
-            &format!("model_reasoning_effort = {:?}", contract.reasoning_effort),
-            "model_reasoning_effort = \"ultra\"",
-        )?;
-        assert!(
-            !output.status.success(),
-            "{} effort regression passed",
-            contract.name
-        );
-        assert!(
-            stderr(&output).contains(&format!(
+    for expected in EXPECTED_AGENTS {
+        assert_rejected(
+            validate_agent_replacement(
+                expected.filename,
+                "model_reasoning_effort",
+                expected.effort,
+                "ultra",
+            )?,
+            &format!(
                 "{} model_reasoning_effort must be {}",
-                contract.name, contract.reasoning_effort
-            )),
-            "stderr:\n{}",
-            stderr(&output)
+                expected.name, expected.effort
+            ),
         );
     }
     Ok(())
 }
 
 #[test]
-fn validator_cli_rejects_catalog_outside_exact_contract() -> TestResult {
-    let output =
-        validate_catalog_replacement("\"codexy-architect.toml\"", "\"codexy-unknown.toml\"")?;
-
-    assert!(!output.status.success());
-    assert!(
-        stderr(&output).contains("agent_files must exactly match the specialist model contract")
+fn validator_cli_reports_missing_catalog_contract_entry() -> TestResult {
+    assert_rejected(
+        validate_catalog_replacement("  \"codexy-architect.toml\",\n", "")?,
+        "missing: codexy-architect.toml; unexpected: none",
     );
     Ok(())
 }
 
 #[test]
-fn packaged_agents_use_role_appropriate_gpt_5_6_models() -> TestResult {
-    let expected = SPECIALIST_MODEL_CONTRACTS
-        .iter()
-        .map(|contract| (contract.name, (contract.model, contract.reasoning_effort)))
-        .collect::<BTreeMap<_, _>>();
-    let agents_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/agents");
-    let packaged = std::fs::read_dir(&agents_root)?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with("codexy-") && name.ends_with(".toml"))
-        })
-        .count();
-
-    assert_eq!(
-        packaged,
-        expected.len(),
-        "specialist mapping must be complete"
+fn validator_cli_reports_unexpected_catalog_contract_entry() -> TestResult {
+    assert_rejected(
+        validate_catalog_replacement(
+            "  \"codexy-warden.toml\",\n]",
+            "  \"codexy-warden.toml\",\n  \"codexy-unknown.toml\",\n]",
+        )?,
+        "missing: none; unexpected: codexy-unknown.toml",
     );
-    for (name, (expected_model, expected_effort)) in expected {
-        let path = agents_root.join(format!("{name}.toml"));
-        let agent = toml::from_str::<toml::Value>(&std::fs::read_to_string(&path)?)?;
-        assert_eq!(
-            agent.get("model").and_then(toml::Value::as_str),
-            Some(expected_model),
-            "{} must reject stale, non-5.6, or role-inappropriate model assignments",
-            path.display()
-        );
-        assert_eq!(
-            agent
-                .get("model_reasoning_effort")
-                .and_then(toml::Value::as_str),
-            Some(expected_effort),
-            "{} must use its role-appropriate reasoning effort",
-            path.display()
-        );
-    }
-
     Ok(())
 }
 
 #[test]
 fn sentinel_uses_sol_with_xhigh_reasoning_and_not_ultra() -> TestResult {
-    let path =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/agents/codexy-sentinel.toml");
-    let agent = toml::from_str::<toml::Value>(&std::fs::read_to_string(path)?)?;
-
+    let sentinel = parse_agent(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/agents/codexy-sentinel.toml"),
+    )?;
     assert_eq!(
-        agent.get("model").and_then(toml::Value::as_str),
+        sentinel.get("model").and_then(toml::Value::as_str),
         Some("gpt-5.6-sol")
     );
     assert_eq!(
-        agent
+        sentinel
             .get("model_reasoning_effort")
             .and_then(toml::Value::as_str),
         Some("xhigh")
     );
     assert_ne!(
-        agent
+        sentinel
             .get("model_reasoning_effort")
             .and_then(toml::Value::as_str),
         Some("ultra")
     );
-
     Ok(())
 }
 
-fn validate_agent_replacement(name: &str, needle: &str, replacement: &str) -> TestResult<Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let path = plugin_root.join(format!("agents/{name}.toml"));
-    let agent = std::fs::read_to_string(&path)?;
-    std::fs::write(&path, agent.replacen(needle, replacement, 1))?;
+#[test]
+fn specialist_model_contract_is_not_a_public_api() -> TestResult {
+    let output = public_contract_import_check()?;
 
-    validator(&plugin_root)
+    assert!(
+        !output.status.success(),
+        "specialist contract must not be publicly importable"
+    );
+    Ok(())
 }
 
-fn validate_catalog_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let path = plugin_root.join("agents/catalog.toml");
-    let catalog = std::fs::read_to_string(&path)?;
-    std::fs::write(&path, catalog.replacen(needle, replacement, 1))?;
-
-    validator(&plugin_root)
+fn parse_agent(path: &Path) -> TestResult<toml::Value> {
+    Ok(toml::from_str(&std::fs::read_to_string(path)?)?)
 }
 
-fn validator(plugin_root: &Path) -> TestResult<Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check-roles",
-        ])
-        .output()?)
-}
-
-fn stderr(output: &Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
+fn assert_rejected(output: std::process::Output, expected: &str) {
+    assert!(!output.status.success(), "validator unexpectedly succeeded");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(expected),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
