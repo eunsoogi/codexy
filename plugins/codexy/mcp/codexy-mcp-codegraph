@@ -123,9 +123,16 @@ else
 fi
 plugin_manifest="$plugin_root/.codex-plugin/plugin.json"
 runtime_cache_helper="$self_dir/codexy-runtime-cache-key.py"
-if [ ! -f "$runtime_cache_helper" ] \
-  || ! runtime_cache_key=$(python3 "$runtime_cache_helper" "$plugin_manifest" "$runtime_package_override_was_set" "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" "$runtime_cache_source" "codexy-mcp-codegraph"); then
-  echo "codexy-mcp-codegraph cannot read plugin release from $plugin_manifest" >&2
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "codexy-mcp-codegraph runtime cache requires python3 on PATH" >&2
+  exit 127
+fi
+if [ ! -f "$runtime_cache_helper" ] || [ ! -x "$runtime_cache_helper" ]; then
+  echo "codexy-mcp-codegraph runtime cache helper is missing or not executable: $runtime_cache_helper" >&2
+  exit 127
+fi
+if ! runtime_cache_key=$(python3 "$runtime_cache_helper" "$plugin_manifest" "$runtime_package_override_was_set" "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" "$runtime_cache_source" "codexy-mcp-codegraph"); then
+  echo "codexy-mcp-codegraph cannot derive runtime cache key from plugin manifest: $plugin_manifest" >&2
   exit 127
 fi
 runtime_install_root="$runtime_cache_root/$runtime_cache_key"

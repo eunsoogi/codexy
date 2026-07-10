@@ -34,6 +34,7 @@ pub(super) use release_cache::{
 };
 pub(super) use release_cache_audit::{
     assert_wrapper_rejects_invalid_top_level_plugin_versions,
+    assert_wrapper_reports_cache_helper_prerequisites,
     assert_wrapper_uses_top_level_version_in_minified_and_nested_manifests,
     assert_wrappers_migrate_v1_caches_without_deleting_them,
 };

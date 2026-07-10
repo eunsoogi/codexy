@@ -1,8 +1,8 @@
 use std::process::Command;
 
-use super::WrapperFixture;
 use super::cache_fixture::install_v1_cached_runtime;
 use super::release_cache::{create_fake_curl_bin, create_runtime_package, run_wrapper_help};
+use super::{WrapperFixture, make_executable};
 
 const REPOSITORY: &str = "https://github.com/eunsoogi/codexy";
 const PLATFORM: &str = "darwin-arm64";
@@ -111,11 +111,46 @@ pub(crate) fn assert_wrapper_rejects_invalid_top_level_plugin_versions(
             "{label} plugin manifest must fail before runtime bootstrapping"
         );
         assert!(
-            String::from_utf8_lossy(&output.stderr).contains("cannot read plugin release"),
+            String::from_utf8_lossy(&output.stderr)
+                .contains("cannot derive runtime cache key from plugin manifest"),
             "{label} manifest should report release validation failure, stderr:\n{}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    Ok(())
+}
+
+pub(crate) fn assert_wrapper_reports_cache_helper_prerequisites(
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let missing_python = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(missing_python.path())?;
+    let path_without_python = missing_python.path().join("no-python-bin");
+    std::fs::create_dir_all(&path_without_python)?;
+    let dirname = path_without_python.join("dirname");
+    std::fs::write(
+        &dirname,
+        "#!/bin/sh\n[ \"${1:-}\" = -- ] && shift\ncase \"$1\" in */*) printf '%s\\n' \"${1%/*}\" ;; *) printf '.\\n' ;; esac\n",
+    )?;
+    make_executable(&dirname)?;
+    assert_wrapper_failure(
+        &fixture,
+        server,
+        path_without_python
+            .to_str()
+            .ok_or("non-UTF8 no-python path")?,
+        "runtime cache requires python3 on PATH",
+    )?;
+
+    let missing_helper = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(missing_helper.path())?;
+    std::fs::remove_file(fixture.plugin_root.join("mcp/codexy-runtime-cache-key.py"))?;
+    assert_wrapper_failure(
+        &fixture,
+        server,
+        &format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()),
+        "runtime cache helper is missing or not executable",
+    )?;
     Ok(())
 }
 
@@ -144,6 +179,31 @@ fn write_manifest(
     manifest: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(plugin_root.join(".codex-plugin/plugin.json"), manifest)?;
+    Ok(())
+}
+
+fn assert_wrapper_failure(
+    fixture: &WrapperFixture,
+    server: &str,
+    path: &str,
+    expected: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+        .arg("--help")
+        .env("HOME", fixture.home)
+        .env("PATH", path)
+        .env(
+            "CODEXY_RUNTIME_CACHE_DIR",
+            fixture.home.join("runtime-cache"),
+        )
+        .env("CODEXY_RUNTIME_PLATFORM", PLATFORM)
+        .output()?;
+    assert_eq!(output.status.code(), Some(127));
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(expected),
+        "expected {expected:?}, stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
