@@ -27,11 +27,26 @@ fn validator_cli_rejects_sentinel_without_specialized_review_passes() -> TestRes
 #[test]
 fn validator_cli_rejects_sentinel_without_reasoning_control_marker() -> TestResult {
     let output = validate_sentinel_replacement(
-        "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting, currently model_reasoning_effort = \"xhigh\". If an invocation surface does not expose or confirm reasoning controls, the reviewer evidence MUST record explicit unavailable evidence and MUST still state that the packaged Sentinel file declares xhigh.",
+        "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra. If an invocation surface does not expose or confirm reasoning controls, the reviewer evidence MUST record explicit unavailable evidence and MUST still state that the packaged Sentinel file declares xhigh.",
         "Reasoning controls are described by later evidence expectations.",
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Reasoning control:"));
+    Ok(())
+}
+
+#[test]
+fn sentinel_reasoning_contract_is_deliberately_xhigh_not_runtime_maximum() -> TestResult {
+    let sentinel_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/agents/codexy-sentinel.toml");
+    let sentinel = std::fs::read_to_string(sentinel_path)?;
+
+    assert!(sentinel.contains(
+        "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\""
+    ));
+    assert!(!sentinel.contains("highest available reasoning setting"));
+    assert!(!sentinel.contains("runtime maximum"));
+    assert!(sentinel.contains("MUST NOT claim or require max or ultra"));
     Ok(())
 }
 

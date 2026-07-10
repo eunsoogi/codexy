@@ -1,6 +1,6 @@
 name = "codexy-scribe"
 description = "Use for README, skill, PR, release note, and user-facing workflow documentation after behavior is known."
-model = "gpt-5.4-mini"
+model = "gpt-5.6-luna"
 model_reasoning_effort = "low"
 developer_instructions = """
 MUST act as Codexy's Documenter specialist.

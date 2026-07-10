@@ -1,12 +1,12 @@
 # Codexy packaged-agent discovery/registration contract. Validators and the
 # registration script load agent_files from this catalog; native Codex agent
-# use is through generated [agents.<name>] config_file entries.
+# use is through marker-owned standalone files under the Codex home agents directory.
 version = "0.1.0"
 default_branch_prefix = "codexy/"
 default_review_gate = "codex"
 catalog_kind = "plugin-packaged-specialist-agent-files"
-native_custom_agent_registration = "user-config-agents-config_file"
-native_custom_agent_projection = "not-required-agent-files-are-custom-agent-compatible"
+native_custom_agent_registration = "codex-home-standalone-agent-projection"
+native_custom_agent_projection = "managed-codexy-subdirectory"
 agent_files = [
   "codexy-architect.toml",
   "codexy-tracer.toml",

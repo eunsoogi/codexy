@@ -19,7 +19,12 @@ child-owned implementation lane through another surface.
 3. If `tool_search` or the visible tool surface discovers a Codex app thread
    tool but invocation fails with `No handler registered for tool: ...`, record
    both the discovered metadata and runtime missing-handler evidence as a
-   dogfooding/tool-exposure defect.
+   dogfooding/tool-exposure defect. This is not ordinary unavailable thread
+   tooling: the handoff or status MUST name the exact discovered tool, the
+   exact missing-handler error, the fallback route used to reach the intended
+   child owner or reviewer or explicitly state that no fallback route was
+   available, and the separate dogfood issue that tracks the exposure/handler
+   mismatch.
 4. MUST treat app-server-observed `thread/start` and `turn/start` evidence from a
    freshly created child lane as proof that a real Codex thread started. This
    is not permission to replace thread tooling with generic app-server or CLI
@@ -58,6 +63,13 @@ git rev-parse --verify origin/<branch>
 - Waiting for pending worktree setup is an active orchestration state. Poll or
   wait for the pending result; MUST NOT judge the lane failed just because setup
   has not completed quickly.
+- If `create_thread` or `fork_thread` returns a `pendingWorktreeId`, active lane
+  accounting MUST keep the pending id until one of these explicit states is
+  observed: surfaced thread id with active owner, failed setup with actionable
+  error, or `not-surfaced-after-bounded-wait` after bounded searches by pending
+  id, branch, PR/issue, SHA, and available review-thread id. Only the bounded
+  not-surfaced state may allow safe retry or reassignment, and the handoff MUST
+  name that retry/reassignment decision.
 - MUST keep exactly one active owner for each issue-sized lane. Before retrying or
   reassigning after pending or failed setup, list current child threads,
   pending worktrees, branches, and worktree paths when the tools expose them.

@@ -5,6 +5,8 @@ use serde_json::Value;
 
 use crate::paths::{display_relative, repo_root};
 
+mod cargo;
+
 const PLUGIN_NAME: &str = "codexy";
 
 fn plugin_manifest() -> Result<PathBuf> {
@@ -200,6 +202,7 @@ pub fn check_versions() -> Result<String> {
             );
         }
     }
+    cargo::check_version(manifest_version)?;
     Ok(format!("plugin version sync ok: {manifest_version}"))
 }
 
@@ -223,6 +226,7 @@ pub fn set_version(version: &str) -> Result<String> {
     write_json(&manifest_path, &manifest)?;
     write_json(&market_path, &marketplace)?;
     write_json(&publish_path, &publish)?;
+    cargo::set_version(version)?;
     for path in package_manifests()? {
         let mut package = load_json(&path)?;
         package["version"] = Value::String(version.to_owned());

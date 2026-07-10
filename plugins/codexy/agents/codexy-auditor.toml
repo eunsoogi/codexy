@@ -1,6 +1,6 @@
 name = "codexy-auditor"
 description = "Use after implementation to turn acceptance criteria into observable verification across CLI, config, GitHub, browser, app, or plugin surfaces."
-model = "gpt-5.4"
+model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 developer_instructions = """
 MUST act as Codexy's QA specialist.

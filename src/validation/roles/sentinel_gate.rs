@@ -7,7 +7,7 @@ use crate::paths::display_relative;
 mod reasoning_control;
 
 const REVIEWER_GATE_MARKERS: &[&str] = &[
-    "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting",
+    "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra.",
     "the reviewer evidence MUST record explicit unavailable evidence",
     "Reviewer specialization: MUST split the review into named passes",
     "The validator/parser edge-case pass MUST search",
@@ -123,13 +123,17 @@ fn has_positive_marker(instructions: &str, marker: &str) -> bool {
 }
 
 fn is_prefix_negated(prefix: &str) -> bool {
-    let sentence_start = prefix
-        .rfind(['.', '!', '?'])
-        .map_or(0, |index| index + 1);
-    let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase(); let sentence_prefix = sentence_prefix.trim_end();
+    let sentence_start = prefix.rfind(['.', '!', '?']).map_or(0, |index| index + 1);
+    let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase();
+    let sentence_prefix = sentence_prefix.trim_end();
     sentence_prefix.contains("must not")
         || sentence_prefix.contains("do not")
-        || ["should not", "but not", "and not", "or not"].iter().any(|phrase| sentence_prefix.contains(phrase)) || [" no", ", no", "no", " not", ", not", "not"].iter().any(|suffix| sentence_prefix.ends_with(suffix))
+        || ["should not", "but not", "and not", "or not"]
+            .iter()
+            .any(|phrase| sentence_prefix.contains(phrase))
+        || [" no", ", no", "no", " not", ", not", "not"]
+            .iter()
+            .any(|suffix| sentence_prefix.ends_with(suffix))
 }
 
 fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: &str) -> bool {
@@ -165,7 +169,9 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
 }
 
 fn marker_tail_has_conditional_waiver(tail: &str) -> bool {
-    let tail = tail.trim_start_matches(|ch: char| ch.is_ascii_whitespace() || matches!(ch, ':' | '-' | ',' | ';'));
+    let tail = tail.trim_start_matches(|ch: char| {
+        ch.is_ascii_whitespace() || matches!(ch, ':' | '-' | ',' | ';')
+    });
     let clause_end = tail.find([',', ';']).unwrap_or(tail.len());
     let clause = tail[..clause_end].trim_start();
     [

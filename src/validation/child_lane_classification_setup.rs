@@ -26,7 +26,6 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     }
     Vec::new()
 }
-
 fn formal_child_classification_complete_index_before(
     lines: &[&str],
     setup_index: usize,
@@ -54,7 +53,6 @@ fn formal_child_classification_complete_index_before(
     }
     None
 }
-
 #[derive(Default)]
 struct ClassificationFields {
     lane_type: bool,
@@ -66,7 +64,6 @@ struct ClassificationFields {
     stop_blocker: bool,
     child_owner_decision: bool,
 }
-
 impl ClassificationFields {
     fn record(&mut self, key: &str, value: &str) {
         if value.is_empty() {
@@ -120,7 +117,6 @@ impl ClassificationFields {
             && self.child_owner_decision
     }
 }
-
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     let line = trimmed_value(line);
     if line.split_once(':').is_some_and(|(key, value)| {
@@ -140,7 +136,6 @@ fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
         .filter(|clause| clause_has_child_branch_or_worktree_setup(clause))
         .collect()
 }
-
 fn setup_clauses(line: &str) -> Vec<&str> {
     let mut clauses = line
         .split(&[',', ';', '.'][..])
@@ -154,7 +149,6 @@ fn setup_clauses(line: &str) -> Vec<&str> {
     }
     clauses
 }
-
 fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
     (has_child_setup_actor(line)
         || has_child_setup_subject(line)
@@ -167,7 +161,6 @@ fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
         && !has_parent_setup_subject(line)
         && !has_absent_child_setup(line)
 }
-
 fn has_unqualified_branch_or_worktree_setup(line: &str) -> bool {
     (line.contains("branch") || line.contains("worktree")) && has_setup_action(line)
 }
@@ -176,7 +169,6 @@ fn has_parent_setup_subject(line: &str) -> bool {
         .split('|')
         .any(|marker| line.contains(marker))
 }
-
 fn has_child_setup_actor(line: &str) -> bool {
     "child created|child-created|child thread created|child-thread created|child-thread-created|child lane created|child-lane created|child-lane-created|owning child thread created|owning child lane created|child switched|child checked out|child checkout|child thread switched|child-thread switched|child thread checked out|child-thread checked out|child thread checkout|child-thread checkout|child lane switched|child-lane switched|child lane checked out|child-lane checked out|child lane checkout|child-lane checkout|created child branch|ran git worktree add|child set up|owning child thread switched|owning child thread checked out|owning child thread checkout|owning child lane switched|owning child lane checked out|owning child lane checkout"
         .split('|')
@@ -196,7 +188,6 @@ fn has_codexy_branch_setup_subject(line: &str) -> bool {
         || (line.contains("git worktree add") && line.contains(" codexy/"))
         || (line.contains(" codexy/") && has_setup_action(&line))
 }
-
 fn has_setup_action(line: &str) -> bool {
     "created | created:| created.| created,| created;|-created | was created| got created|creation occurred|switched | switched:| switched.| switched,| switched;| was switched| checked out| checkout |git switch | setup| set up|worktree add"
         .split('|')
@@ -210,7 +201,6 @@ fn has_absent_child_setup(line: &str) -> bool {
         .split('|')
         .any(|marker| line.contains(marker))
 }
-
 fn is_current_thread_owner(value: &str) -> bool {
     value.starts_with("current-thread-owned")
         && (value.contains("implementation lane") || value.contains("child implementation"))
@@ -219,26 +209,22 @@ fn is_current_thread_owner(value: &str) -> bool {
 fn is_child_completion_owner(value: &str) -> bool {
     !is_parent_owned_value(value) && is_child_delegation_owner_decision(value)
 }
-
 fn starts_with_absent_child_setup(line: &str) -> bool {
     "no child branch|no child-branch|no child worktree|no child-worktree|not child branch|not child-branch|not child worktree|not child-worktree|without child branch|without child-branch|without child worktree|without child-worktree|neither child branch|neither child worktree|never child branch|never child worktree|none child branch|none child worktree"
         .split('|')
         .any(|marker| line.starts_with(marker))
 }
-
 fn has_negated_setup_action(line: &str) -> bool {
     "was not created|were not created|wasn't created|weren't created|was never created|were never created|was not set up|were not set up|wasn't set up|weren't set up"
         .split('|')
         .any(|marker| line.contains(marker))
 }
-
 fn line_claims_setup_before_classification(line: &str) -> bool {
     let line = trimmed_value(line);
     "before task classification|before the task classification|before task-classification|before the task-classification|before formal task classification|before the formal task classification|before formal task-classification|before the formal task-classification|before formal $task-classification|before the formal $task-classification|before formal `$task-classification`|before the formal `$task-classification`|before formal classification output|before the formal classification output|before classification|before the classification|before $task-classification|before the $task-classification"
         .split('|')
     .any(|marker| line.contains(marker))
 }
-
 fn metadata_value_describes_required_negative_setup_proof(value: &str) -> bool {
     let value = trimmed_value(value);
     let has_negative_marker = value.contains("did not occur")

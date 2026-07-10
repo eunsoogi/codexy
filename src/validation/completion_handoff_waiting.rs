@@ -18,6 +18,9 @@ const RESOLVED_CODEX_REVIEW_FAILURE: &str = "previous codex review failure was f
 const CURRENT_BLOCKED_CLAIM: &str = "now blocked|currently blocked|still blocked|remains blocked|is blocked|goal blocked|work blocked|lane blocked";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
+    if let Some(error) = super::completion_handoff_pending_worktree::check(&text) {
+        return Some(error);
+    }
     let false_blocked_wait = |fragment: &str, context: &str| {
         claims_blocked_state(fragment)
             && mentions_non_blocking_wait(fragment)
@@ -228,9 +231,8 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
     matches!(first, Some("none" | "no" | "false" | "n/a" | "na")) && terminal
         || value.starts_with("not applicable")
 }
-fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
-    is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
-}
+#[rustfmt::skip]
+fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool { is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next()) }
 #[rustfmt::skip]
 fn is_boundary(c: Option<char>) -> bool { c.is_none_or(|c| !c.is_ascii_alphanumeric()) }
 fn has_nearby_negation(prefix: &str) -> bool {
@@ -241,10 +243,7 @@ fn has_nearby_negation(prefix: &str) -> bool {
             m.split('|').any(|m| word == m) && negation_phrase_matches(before)
         })
 }
-fn negation_phrase_matches(prefix: &str) -> bool {
-    "no|no known|no longer|non|non-|not|not a|not an|isn't|is not|hasn't|without"
-        .split('|')
-        .any(|phrase| prefix.ends_with(phrase))
-}
+#[rustfmt::skip]
+fn negation_phrase_matches(prefix: &str) -> bool { "no|no known|no longer|non|non-|not|not a|not an|isn't|is not|hasn't|without".split('|').any(|phrase| prefix.ends_with(phrase)) }
 #[rustfmt::skip]
 fn char_window_start(text: &str, end: usize, window: usize) -> usize { text[..end].char_indices().rev().nth(window).map_or(0, |(index, _)| index) }
