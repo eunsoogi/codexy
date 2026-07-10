@@ -13,7 +13,14 @@ pub(super) fn create_runtime_package(
     let runtime = format!("codexy-mcp-{server}");
     let package_root = root.join("package-root");
     let runtime_dir = package_root.join("plugins/codexy/runtime");
+    let manifest_dir = package_root.join("plugins/codexy/.codex-plugin");
     std::fs::create_dir_all(&runtime_dir)?;
+    std::fs::create_dir_all(&manifest_dir)?;
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/.codex-plugin/plugin.json"),
+        manifest_dir.join("plugin.json"),
+    )?;
     let runtime_path = runtime_dir.join(format!("{runtime}-{platform}.bin"));
     std::fs::write(
         &runtime_path,
