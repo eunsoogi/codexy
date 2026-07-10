@@ -52,6 +52,20 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
         .output()?)
 }
 
+pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !output.status.success()
+        && stderr.contains("error[E0603]: module `agent_model_contract` is private")
+    {
+        return Ok(());
+    }
+    Err(format!(
+        "expected Rust privacy diagnostic for agent_model_contract, got status {:?} with stderr:\n{stderr}",
+        output.status
+    )
+    .into())
+}
+
 fn copy_plugin_fixture(root: &Path) -> TestResult<std::path::PathBuf> {
     let plugin_root = root.join("codexy");
     copy_dir(

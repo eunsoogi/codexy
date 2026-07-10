@@ -10,8 +10,8 @@ use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
 pub(crate) use agent_model_assignments::{
-    TestResult, public_contract_import_check, validate_agent_replacement,
-    validate_catalog_replacement,
+    TestResult, assert_privacy_diagnostic, public_contract_import_check,
+    validate_agent_replacement, validate_catalog_replacement,
 };
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,

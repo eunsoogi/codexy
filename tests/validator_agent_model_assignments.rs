@@ -1,11 +1,12 @@
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::process::Command;
 
 mod support;
 
 use support::{
-    TestResult, public_contract_import_check, validate_agent_replacement,
-    validate_catalog_replacement,
+    TestResult, assert_privacy_diagnostic, public_contract_import_check,
+    validate_agent_replacement, validate_catalog_replacement,
 };
 
 #[derive(Debug)]
@@ -206,10 +207,21 @@ fn sentinel_uses_sol_with_xhigh_reasoning_and_not_ultra() -> TestResult {
 #[test]
 fn specialist_model_contract_is_not_a_public_api() -> TestResult {
     let output = public_contract_import_check()?;
+    assert_privacy_diagnostic(&output)?;
+    Ok(())
+}
+
+#[test]
+fn privacy_contract_import_rejects_unrelated_cargo_failures() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let output = Command::new("cargo")
+        .args(["check", "--quiet"])
+        .current_dir(temp.path())
+        .output()?;
 
     assert!(
-        !output.status.success(),
-        "specialist contract must not be publicly importable"
+        assert_privacy_diagnostic(&output).is_err(),
+        "an unrelated cargo failure must not prove the specialist contract private"
     );
     Ok(())
 }
