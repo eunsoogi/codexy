@@ -87,6 +87,11 @@ fn assert_wrapper_uses_package_runtime_without_invoking_cargo(
             .join(format!("plugins/codexy/mcp/codexy-mcp-{server}")),
         &wrapper_path,
     )?;
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/mcp/codexy-runtime-cache-key.py"),
+        wrapper_dir.join("codexy-runtime-cache-key.py"),
+    )?;
     make_executable(&wrapper_path)?;
 
     let package_archive = temp.path().join("codexy-marketplace-plugin.tar.gz");

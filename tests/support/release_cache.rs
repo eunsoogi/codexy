@@ -101,7 +101,7 @@ fn initialize_wrapper(
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-fn run_wrapper_help(
+pub(super) fn run_wrapper_help(
     fixture: &WrapperFixture,
     server: &str,
     cache: &std::path::Path,
@@ -120,7 +120,7 @@ fn run_wrapper_help(
     Ok(String::from_utf8(output.stdout)?)
 }
 
-fn wrapper_command(
+pub(super) fn wrapper_command(
     fixture: &WrapperFixture,
     server: &str,
     cache: &std::path::Path,
@@ -153,7 +153,7 @@ fn set_plugin_release(
     Ok(())
 }
 
-fn create_runtime_package(
+pub(super) fn create_runtime_package(
     root: &std::path::Path,
     server: &str,
     version: &str,
@@ -186,7 +186,7 @@ fn create_runtime_package(
     Ok(package)
 }
 
-fn create_fake_curl_bin(
+pub(super) fn create_fake_curl_bin(
     root: &std::path::Path,
     package: &std::path::Path,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
