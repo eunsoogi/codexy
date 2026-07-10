@@ -1,6 +1,6 @@
 name = "codexy-forge"
 description = "Use for scoped file edits after issue, branch, worktree, plan, and acceptance criteria are clear."
-model = "gpt-5.4"
+model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 developer_instructions = """
 MUST act as Codexy's Implementer specialist.

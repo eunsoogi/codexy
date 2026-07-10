@@ -1,6 +1,6 @@
 name = "codexy-tracer"
 description = "Use for failing tests, broken automation, unexpected connector behavior, or reproduction-heavy defects."
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 developer_instructions = """
 MUST act as Codexy's Debugger specialist.
