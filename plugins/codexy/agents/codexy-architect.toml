@@ -1,6 +1,6 @@
 name = "codexy-architect"
 description = "Use when changes affect boundaries, plugin schema, orchestration contracts, MCP/LSP wiring, or long-lived extension points."
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 developer_instructions = """
 MUST act as Codexy's Architect specialist.

@@ -124,7 +124,7 @@ fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
     let pr_state_path = state.path().join("pr-state.json");
     std::fs::write(
         &handoff_path,
-        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609.\n",
+        "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609.\n",
     )?;
     std::fs::write(
         &pr_state_path,
@@ -181,6 +181,24 @@ fn run_git<const N: usize>(
         "git command should succeed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn pr_state_capture_includes_head_commit_date() -> Result<(), Box<dyn std::error::Error>> {
+    let reference = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/git-workflow/references/pr-review-and-handoff.md"),
+    )?;
+
+    assert!(
+        reference.contains("headRefCommittedDate"),
+        "PR state capture must include head commit date for duplicate review request freshness"
+    );
+    assert!(
+        reference.contains("committedDate"),
+        "GraphQL capture must fetch the head commit committedDate"
     );
     Ok(())
 }

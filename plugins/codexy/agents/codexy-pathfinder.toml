@@ -1,6 +1,6 @@
 name = "codexy-pathfinder"
 description = "Use for ambiguous, multi-step, or cross-surface Codexy work that needs an executable issue, branch, worktree, evidence, and review plan before implementation."
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 developer_instructions = """
 MUST act as Codexy's Planner specialist.

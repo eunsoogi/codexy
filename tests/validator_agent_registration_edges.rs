@@ -76,7 +76,10 @@ fn register_codexy_agents_backup_uses_python310_compatible_timestamp()
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_fixture(temp.path())?;
     let config_path = temp.path().join("home/.codex/config.toml");
-    write_config(&config_path, "model = \"gpt-5.5\"\n")?;
+    write_config(
+        &config_path,
+        "model = \"gpt-5.5\"\n\n# BEGIN CODEXY MANAGED AGENTS\n[agents.codexy-sentinel]\nconfig_file = \"stale\"\n# END CODEXY MANAGED AGENTS\n",
+    )?;
 
     let output = registration_script(&plugin_root)
         .args([
@@ -149,7 +152,7 @@ fn register_codexy_agents_allows_supported_agent_config_tables()
         .output()?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
-    assert!(String::from_utf8_lossy(&output.stdout).contains("[agents.codexy-sentinel]"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("would install 12 Codexy agents"));
     Ok(())
 }
 

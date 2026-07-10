@@ -162,12 +162,14 @@ fn clean_pr_state_with_comment(comment: &str) -> String {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate": "2026-06-22T12:44:00Z",
         "comments": [{
             "body": comment,
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
             "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
         }],
+        "reviews": [],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })
     .to_string()
@@ -177,10 +179,12 @@ fn clean_pr_state_with_rest_eyes_reaction(reactions: serde_json::Value) -> Strin
         "number": 174, "state": "OPEN", "isDraft": false,
         "mergeStateStatus": "CLEAN", "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate": "2026-06-22T12:44:00Z",
         "comments": [{
             "body": "@codex review", "user": {"login": "eunsoogi"},
             "created_at": "2026-06-22T12:45:06Z", "reactions": reactions
         }],
+        "reviews": [],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })
     .to_string()
@@ -193,12 +197,14 @@ fn clean_pr_state_with_unacknowledged_comment(comment: &str) -> String {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate": "2026-06-22T12:44:00Z",
         "comments": [{
             "body": comment,
             "author": {"login": "eunsoogi"},
             "createdAt": "2026-06-22T12:45:06Z",
             "reactionGroups": []
         }],
+        "reviews": [],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })
     .to_string()

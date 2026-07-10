@@ -26,27 +26,30 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !codex_review_errors.is_empty() {
         return codex_review_errors;
     }
-    if !is_open_pr(&pr_state) || !claims_completion(handoff) || states_explicit_deferral(handoff) {
-        return Vec::new();
+    if is_open_pr(&pr_state) && claims_completion(handoff) && !states_explicit_deferral(handoff) {
+        return vec![format!(
+            "opening a PR is not completion: PR #{} is still open; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
+            pr_number(&pr_state)
+        )];
     }
-    vec![format!(
-        "opening a PR is not completion: PR #{} is still open; state an explicit stop, wait, draft-only, leave-open, or no-merge deferral instead of claiming completion",
-        pr_number(&pr_state)
-    )]
+    let sentinel_errors =
+        super::sentinel_handoff::check(handoff, string_field(&pr_state, "headRefOid"));
+    if !sentinel_errors.is_empty() {
+        return sentinel_errors;
+    }
+    Vec::new()
 }
 fn is_open_pr(pr_state: &Value) -> bool {
     string_field(pr_state, "state").is_some_and(|state| state.eq_ignore_ascii_case("OPEN"))
 }
-fn claims_completion(handoff: &str) -> bool {
+pub(super) fn claims_completion(handoff: &str) -> bool {
     let mut text = handoff.to_ascii_lowercase();
-    if has_not_complete_until_merge(&text) {
-        text = text.replace("verification completed.", "verification evidence.");
-        text = text.replace("verification completed:", "verification evidence:");
-        for phrase in
-            "successfully completed|completed successfully|completed|finished|finalized".split('|')
-        {
-            text = text.replace(&format!("verification {phrase};"), "verification evidence;");
-        }
+    for phrase in
+        "successfully completed|completed successfully|completed|finished|finalized".split('|')
+    {
+        text = text.replace(&format!("verification {phrase}."), "verification evidence.");
+        text = text.replace(&format!("verification {phrase}:"), "verification evidence:");
+        text = text.replace(&format!("verification {phrase};"), "verification evidence;");
     }
     ["completed", "finished", "finalized", "all set"]
         .iter()
@@ -58,11 +61,6 @@ fn claims_completion(handoff: &str) -> bool {
         || has_unnegated_word(&text, "finalize", 16)
 }
 
-fn has_not_complete_until_merge(text: &str) -> bool {
-    "not complete until merge|not currently complete until merge|isn't complete until merge|isn't currently complete until merge|aren't complete until merge|aren't currently complete until merge"
-        .split('|')
-        .any(|phrase| has_unnegated_phrase(text, phrase, 16))
-}
 fn states_explicit_deferral(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
     "maintainer requested stop|maintainer requested wait|maintainer requested no merge|maintainer requested no-merge|maintainer requested push only|maintainer requested leave open|maintainer requested leave-open|maintainer explicitly requested stop|maintainer explicitly requested wait|maintainer explicitly requested no merge|maintainer explicitly requested no-merge|maintainer explicitly requested push only|maintainer explicitly requested leave open|maintainer explicitly requested leave-open|maintainer asked me to stop|maintainer asked me to wait|maintainer asked me to leave open|do not merge per maintainer|no merge per maintainer|no-merge instruction|maintainer requested draft-only|maintainer requested draft only|maintainer explicitly requested draft-only|maintainer explicitly requested draft only|draft pr per maintainer|draft pull request per maintainer|draft-only instruction|leave open per maintainer|left open per maintainer|deferred by maintainer"

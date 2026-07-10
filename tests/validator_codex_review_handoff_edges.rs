@@ -15,7 +15,7 @@ fn validator_cli_rejects_colon_label_before_merge_ready_claim() -> TestResult {
 #[test]
 fn validator_cli_accepts_later_inline_codex_review_comment() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review passed on the current head. PR is merge-ready.\n",
+        "Codex review passed on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r##"{
             "number":156,
             "state":"OPEN",
@@ -154,7 +154,7 @@ fn validator_cli_allows_non_codex_review_approval_wait_state() -> TestResult {
 #[test]
 fn validator_cli_accepts_later_empty_body_codex_approval_review() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review approved on the current head. PR is merge-ready.\n",
+        "Codex review approved on the current head. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. PR is merge-ready.\n",
         r#"{
             "number":156,
             "state":"OPEN",

@@ -42,7 +42,7 @@ fn validator_allows_captured_handler_missing_dogfooding_defect() -> TestResult {
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding defect: handler-missing tool-exposure defect recorded with both the discovered codex_app.read_thread surface and the runtime handler failure.
+Dogfooding defect: handler-missing tool-exposure defect recorded with both the discovered codex_app.read_thread surface and the runtime handler failure; no fallback route was available; separate dogfood issue: #205.
 Maintainer reassignment: none
 "#,
     )?;
@@ -199,7 +199,7 @@ fn validator_distinguishes_negated_capture_wording() -> TestResult {
             false,
         ),
         (
-            "Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; it was not captured as an ordinary unavailable-tool fallback.",
+            "Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; separate dogfood issue: #205; it was not captured as an ordinary unavailable-tool fallback.",
             true,
         ),
         (
