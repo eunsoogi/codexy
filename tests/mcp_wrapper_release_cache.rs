@@ -26,6 +26,7 @@ use support::{
     assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest,
     assert_wrapper_rejects_stale_default_release_then_accepts_matching_release,
     assert_wrapper_reports_cache_helper_prerequisites,
+    assert_wrapper_reuses_default_package_git_fallback,
     assert_wrapper_uses_top_level_version_in_minified_and_nested_manifests,
     assert_wrappers_migrate_v1_caches_without_deleting_them,
 };
@@ -71,6 +72,15 @@ fn wrappers_recover_from_mismatched_cache_marker_without_corrupting_initialize()
 -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_recovers_from_mismatched_cache_marker(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_reuse_default_package_git_fallback_across_launches()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_reuses_default_package_git_fallback(server)?;
     }
     Ok(())
 }

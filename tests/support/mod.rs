@@ -9,6 +9,7 @@ mod package_fixture;
 mod release_cache;
 mod release_cache_audit;
 mod release_cache_fixture;
+mod release_cache_git_fallback;
 mod release_cache_release_match;
 mod release_cache_resources;
 mod release_version;
@@ -42,6 +43,7 @@ pub(super) use release_cache_audit::{
     assert_wrapper_uses_top_level_version_in_minified_and_nested_manifests,
     assert_wrappers_migrate_v1_caches_without_deleting_them,
 };
+pub(super) use release_cache_git_fallback::assert_wrapper_reuses_default_package_git_fallback;
 pub(super) use release_cache_release_match::{
     assert_wrapper_allows_explicit_package_release_mismatch,
     assert_wrapper_recovers_from_mismatched_cache_marker,

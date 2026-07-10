@@ -136,9 +136,7 @@ runtime_ref_is_pinned=0
 case "$runtime_git_ref" in
   *[!0123456789abcdefABCDEF]*|"") ;;
   *)
-    if [ "$(printf '%s' "$runtime_git_ref" | wc -c | tr -d ' ')" = 40 ]; then
-      runtime_ref_is_pinned=1
-    fi
+    if [ "$(printf '%s' "$runtime_git_ref" | wc -c | tr -d ' ')" = 40 ]; then runtime_ref_is_pinned=1; fi
     ;;
 esac
 if [ "$runtime_package_override_was_set" = 0 ] && [ -x "$installed_runtime" ]; then
@@ -237,6 +235,7 @@ if [ "$cargo_available" = 1 ]; then
     fi
   fi
   if [ -x "$installed_runtime" ]; then
+    if [ "$runtime_package_requested" = 1 ] && [ "$runtime_package_override_was_set" = 0 ]; then cp "$plugin_manifest" "$runtime_install_root/plugin.json"; fi
     exec "$installed_runtime" "$@"
   fi
 fi
