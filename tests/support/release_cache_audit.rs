@@ -182,7 +182,7 @@ fn write_manifest(
     Ok(())
 }
 
-fn assert_wrapper_failure(
+pub(super) fn assert_wrapper_failure(
     fixture: &WrapperFixture,
     server: &str,
     path: &str,

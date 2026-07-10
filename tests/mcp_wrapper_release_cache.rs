@@ -4,6 +4,7 @@ use support::{
     assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
     assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,
     assert_wrapper_rejects_invalid_top_level_plugin_versions,
+    assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest,
     assert_wrapper_reports_cache_helper_prerequisites,
     assert_wrapper_uses_top_level_version_in_minified_and_nested_manifests,
     assert_wrappers_migrate_v1_caches_without_deleting_them,
@@ -54,6 +55,15 @@ fn wrappers_reject_missing_or_invalid_top_level_versions() -> Result<(), Box<dyn
 fn wrappers_report_missing_cache_helper_prerequisites() -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         assert_wrapper_reports_cache_helper_prerequisites(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrappers_reject_nonexecutable_helpers_and_unavailable_manifests()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest(server)?;
     }
     Ok(())
 }

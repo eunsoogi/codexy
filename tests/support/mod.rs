@@ -8,6 +8,7 @@ mod package_archive;
 mod package_fixture;
 mod release_cache;
 mod release_cache_audit;
+mod release_cache_resources;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
@@ -38,6 +39,7 @@ pub(super) use release_cache_audit::{
     assert_wrapper_uses_top_level_version_in_minified_and_nested_manifests,
     assert_wrappers_migrate_v1_caches_without_deleting_them,
 };
+pub(super) use release_cache_resources::assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest;
 
 pub(super) struct WrapperFixture<'a> {
     pub(super) home: &'a std::path::Path,
