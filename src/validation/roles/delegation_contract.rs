@@ -142,9 +142,17 @@ fn has_unnegated_delegation_action(clause: &str) -> bool {
                 .map_or(prefix, |(_, contrast)| contrast);
             let negated = has_action_negation(action_prefix);
             let suffix = &clause[index..];
-            let target = ["agent", "helper", "reviewer", "task", "thread"]
-                .into_iter()
-                .any(|target| suffix.contains(target));
+            let target = [
+                "agent",
+                "helper",
+                "reviewer",
+                "sentinel",
+                "specialist",
+                "task",
+                "thread",
+            ]
+            .into_iter()
+            .any(|target| suffix.contains(target));
             !negated && target
         })
     })
@@ -157,12 +165,22 @@ fn has_unnegated_mandatory_delegation_action(clause: &str) -> bool {
                 .rsplit_once(" but ")
                 .map_or(&clause[..index], |(_, contrast)| contrast);
             let suffix = &clause[index..];
-            let creates_child_thread = action == "create" && suffix.contains("child thread");
+            let creates_child_thread = action == "create"
+                && clause.contains("orchestrator")
+                && suffix.contains("child thread");
             has_unnegated_mandatory_permission(prefix)
                 && !creates_child_thread
-                && ["agent", "helper", "reviewer", "task", "thread"]
-                    .into_iter()
-                    .any(|target| suffix.contains(target))
+                && [
+                    "agent",
+                    "helper",
+                    "reviewer",
+                    "sentinel",
+                    "specialist",
+                    "task",
+                    "thread",
+                ]
+                .into_iter()
+                .any(|target| suffix.contains(target))
         })
     })
 }
@@ -172,7 +190,10 @@ fn has_unnegated_mandatory_permission(prefix: &str) -> bool {
         .split(|character: char| !character.is_ascii_alphabetic())
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
-    words.last() == Some(&"must")
+    words
+        .iter()
+        .rposition(|word| *word == "must")
+        .is_some_and(|index| words.get(index + 1) != Some(&"not"))
 }
 
 fn has_action_negation(prefix: &str) -> bool {

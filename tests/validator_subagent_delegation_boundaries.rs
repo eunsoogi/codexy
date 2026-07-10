@@ -22,6 +22,10 @@ fn validator_rejects_line_wrapped_recursive_permissions() -> TestResult {
 fn validator_rejects_recursive_actions_after_unrelated_negations() -> TestResult {
     for permission in [
         "MUST spawn validator_edge_pass and workflow_ownership_pass as additional helpers.",
+        "MUST create a child thread.",
+        "MUST immediately spawn another helper.",
+        "MUST spawn another Sentinel.",
+        "MUST delegate work to another specialist.",
         "MUST NOT merge, but MAY spawn another helper.",
         "A helper MAY not edit files, but MAY spawn another helper.",
         "Allowed actions: MUST NOT edit files, but spawn another helper.",
@@ -62,8 +66,20 @@ fn validator_does_not_flag_punctuated_nonrecursive_prohibitions() -> TestResult 
         "Allowed actions: map files, but MUST NOT spawn another helper.",
         "Every helper MUST NOT spawn, delegate to, or create any additional agent.",
     ] {
-        assert_recursion_not_reported(prohibition)?;
+        assert_role_recursion_not_reported(prohibition)?;
     }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_orchestrator_child_thread_creation() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = fixture(&temp)?;
+    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let mut skill = std::fs::read_to_string(&skill_path)?;
+    skill.push_str("\nThe root orchestrator MUST create a child thread.\n");
+    std::fs::write(skill_path, skill)?;
+    assert_recursion_not_reported(&plugin_root)?;
     Ok(())
 }
 
@@ -80,7 +96,7 @@ fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
     Ok(())
 }
 
-fn assert_recursion_not_reported(prohibition: &str) -> TestResult {
+fn assert_role_recursion_not_reported(prohibition: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
     let role_path = plugin_root.join("agents/codexy-cartographer.toml");
@@ -89,7 +105,11 @@ fn assert_recursion_not_reported(prohibition: &str) -> TestResult {
         &role_path,
         role.replacen("\n\"\"\"", &format!("\n{prohibition}\n\"\"\""), 1),
     )?;
-    assert!(!stderr(&validator(&plugin_root)?).contains("permits recursive delegation"));
+    assert_recursion_not_reported(&plugin_root)
+}
+
+fn assert_recursion_not_reported(plugin_root: &Path) -> TestResult {
+    assert!(!stderr(&validator(plugin_root)?).contains("permits recursive delegation"));
     Ok(())
 }
 
