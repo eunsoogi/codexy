@@ -101,6 +101,32 @@ fn diagnostics_separate_discovery_schema_and_fork_contracts()
 }
 
 #[test]
+fn registration_does_not_write_bytecode_into_plugin_scripts()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = installed_fixture(temp.path())?;
+    let scripts_root = plugin_root.join("skills/codex-orchestration/scripts");
+    let bytecode = scripts_root.join("__pycache__");
+    if bytecode.exists() {
+        std::fs::remove_dir_all(&bytecode)?;
+    }
+
+    let output = run(
+        &plugin_root,
+        &temp.path().join("home/.codex"),
+        &["--dry-run", "--diagnose"],
+    )?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    assert!(
+        !bytecode.exists(),
+        "registration created bytecode in {}",
+        scripts_root.display()
+    );
+    Ok(())
+}
+
+#[test]
 fn registration_refuses_unowned_discovery_file_without_partial_writes()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

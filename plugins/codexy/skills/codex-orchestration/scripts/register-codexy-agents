@@ -13,6 +13,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 from agent_registration_support import diagnostic_lines, find_conflicts
 BEGIN, END = "# BEGIN CODEXY MANAGED AGENTS", "# END CODEXY MANAGED AGENTS"
 MANAGED = "# CODEXY MANAGED AGENT\n"
