@@ -5,13 +5,12 @@ use toml::Value;
 
 use crate::paths::display_relative;
 use crate::validation::{
-    agent_registration, agent_registration_catalog, custom_agent_mcp, custom_agent_schema,
-    load_toml, roles_yaml, toml_array_strings,
+    agent_model_contract as model_contract, agent_registration, agent_registration_catalog,
+    custom_agent_mcp, custom_agent_schema, load_toml, roles_yaml, toml_array_strings,
 };
 
 mod sentinel_gate;
 
-const REQUIRED_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
 const MIN_DEVELOPER_INSTRUCTION_WORDS: usize = 20;
 const MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS: usize = 120;
 
@@ -58,6 +57,7 @@ fn check_specialists(plugin_root: &Path) -> Result<Vec<String>> {
         ));
         return Ok(errors);
     }
+    model_contract::check_catalog_files(&catalog_path, &agent_names, &mut errors);
     let mut seen_files = BTreeSet::new();
     let mut seen_agents = BTreeSet::new();
     for filename in &agent_names {
@@ -106,8 +106,9 @@ fn check_specialists(plugin_root: &Path) -> Result<Vec<String>> {
             ));
         }
     }
-    let missing = REQUIRED_AGENTS
-        .split_whitespace()
+    let missing = model_contract::SPECIALIST_MODEL_CONTRACTS
+        .iter()
+        .map(|contract| contract.name)
         .filter(|agent| !seen_agents.contains(*agent))
         .collect::<Vec<_>>();
     if !missing.is_empty() {
@@ -157,6 +158,7 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             display_relative(path)
         ));
     }
+    model_contract::check_agent(path, name, &agent, errors);
     let allowed = ALLOWED_CUSTOM_AGENT_FIELDS
         .split_whitespace()
         .collect::<BTreeSet<_>>();

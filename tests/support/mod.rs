@@ -1,6 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 #![allow(dead_code, unused_imports)]
 
+mod agent_model_assignments;
 mod package;
 mod package_fixture;
 
@@ -8,6 +9,10 @@ mod package_fixture;
 use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
+pub(crate) use agent_model_assignments::{
+    TestResult, assert_privacy_diagnostic, public_contract_import_check,
+    validate_agent_replacement, validate_catalog_replacement,
+};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,
