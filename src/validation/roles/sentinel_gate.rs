@@ -5,7 +5,7 @@ use toml::Value;
 use crate::paths::display_relative;
 
 const REVIEWER_GATE_MARKERS: &[&str] = &[
-    "Reasoning control: the packaged Sentinel definition MUST run with the highest available reasoning setting",
+    "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra.",
     "the reviewer evidence MUST record explicit unavailable evidence",
     "Reviewer specialization: MUST split the review into named passes",
     "The validator/parser edge-case pass MUST search",
