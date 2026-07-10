@@ -80,7 +80,22 @@ fn validator_allows_orchestrator_child_thread_creation() -> TestResult {
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str("\nThe root orchestrator MUST create a child thread.\n");
     std::fs::write(skill_path, skill)?;
-    assert_recursion_not_reported(&plugin_root)?;
+    assert_validator_succeeds(&plugin_root)?;
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_sentinel_child_thread_creation_in_orchestration() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = fixture(&temp)?;
+    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let mut skill = std::fs::read_to_string(&skill_path)?;
+    skill.push_str("\nA Sentinel acting as orchestrator MUST create a child thread.\n");
+    std::fs::write(skill_path, skill)?;
+    assert_recursion_rejected(
+        validator(&plugin_root)?,
+        "Sentinel orchestration child thread",
+    );
     Ok(())
 }
 
@@ -111,6 +126,12 @@ fn assert_role_recursion_not_reported(prohibition: &str) -> TestResult {
 
 fn assert_recursion_not_reported(plugin_root: &Path) -> TestResult {
     assert!(!stderr(&validator(plugin_root)?).contains("permits recursive delegation"));
+    Ok(())
+}
+
+fn assert_validator_succeeds(plugin_root: &Path) -> TestResult {
+    let output = validator(plugin_root)?;
+    assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 

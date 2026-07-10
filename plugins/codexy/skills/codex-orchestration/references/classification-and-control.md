@@ -10,7 +10,7 @@
   and review-response fixes for its assigned issue or lane.
 - Independent requested outcomes MUST be decomposed into separate issue-sized
   atomic child lanes before child thread, worktree, branch, or PR creation.
-- The orchestrator MUST create, fork, or assign the owning child thread before
+- The root orchestrator MUST create, fork, or assign the owning child thread before
   implementation patches begin for any lane that needs a branch, worktree, PR,
   durable child context, or review-response ownership.
 - The orchestrator MUST NOT directly fix child-owned review feedback unless a
