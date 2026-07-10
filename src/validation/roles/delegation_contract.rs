@@ -170,7 +170,7 @@ fn has_unnegated_mandatory_delegation_action(
             let suffix = &clause[index..];
             let creates_child_thread = allow_root_child_thread_creation
                 && action == "create"
-                && clause.contains("root orchestrator")
+                && prefix.contains("root orchestrator must")
                 && suffix.contains("child thread");
             has_unnegated_mandatory_permission(prefix)
                 && !creates_child_thread
