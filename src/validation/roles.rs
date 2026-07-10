@@ -5,8 +5,8 @@ use toml::Value;
 
 use crate::paths::display_relative;
 use crate::validation::{
-    agent_registration, custom_agent_mcp, custom_agent_schema, load_toml, roles_yaml,
-    toml_array_strings,
+    agent_registration, agent_registration_catalog, custom_agent_mcp, custom_agent_schema,
+    load_toml, roles_yaml, toml_array_strings,
 };
 
 mod sentinel_gate;
@@ -49,16 +49,7 @@ fn check_specialists(plugin_root: &Path) -> Result<Vec<String>> {
             display_relative(&catalog_path)
         ));
     }
-    if catalog
-        .get("native_custom_agent_registration")
-        .and_then(Value::as_str)
-        != Some("user-config-agents-config_file")
-    {
-        errors.push(format!(
-            "{} native_custom_agent_registration must be user-config-agents-config_file",
-            display_relative(&catalog_path)
-        ));
-    }
+    errors.extend(agent_registration_catalog::check(&catalog_path, &catalog));
     let agent_names = toml_array_strings(catalog.get("agent_files")).unwrap_or_default();
     if agent_names.is_empty() {
         errors.push(format!(
