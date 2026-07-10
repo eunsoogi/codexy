@@ -87,18 +87,14 @@ fn reject_recursive_delegation_permission(
 ) {
     let permits_recursion = text.split(['.', '!', '?', '\n']).any(|clause| {
         let mut clause = clause.to_ascii_lowercase();
+        let mut inherited_child_permission = false;
         if allow_canonical_child_delegation {
+            inherited_child_permission = clause.contains(CANONICAL_CHILD_DELEGATION_PREFIX);
             clause = clause.replace(CANONICAL_CHILD_DELEGATION_PREFIX, "");
             clause = clause.replace(CANONICAL_ROOT_DELEGATION, "");
         }
-        let action = ["spawn", "delegate", "create"]
-            .into_iter()
-            .any(|action| clause.contains(action));
-        let target = ["agent", "helper", "reviewer", "task", "thread"]
-            .into_iter()
-            .any(|target| clause.contains(target));
-        let permission = has_unnegated_permission(&clause);
-        permission && action && target
+        let action = has_unnegated_delegation_action(&clause);
+        (inherited_child_permission || has_unnegated_permission(&clause)) && action
     });
     if permits_recursion {
         errors.push(format!(
@@ -117,23 +113,52 @@ fn has_unnegated_permission(clause: &str) -> bool {
         "may" | "can" => words
             .get(index + 1)
             .is_none_or(|next| !matches!(*next, "not" | "never")),
-        "allowed" => words
-            .get(index + 1)
-            .is_some_and(|next| matches!(*next, "actions" | "to")),
-        "permitted" => words
-            .get(index + 1)
-            .is_some_and(|next| matches!(*next, "to" | "actions")),
+        "allowed" => {
+            words.get(index.wrapping_sub(1)) != Some(&"not")
+                && words
+                    .get(index + 1)
+                    .is_some_and(|next| matches!(*next, "actions" | "to"))
+        }
+        "permitted" => {
+            words.get(index.wrapping_sub(1)) != Some(&"not")
+                && words
+                    .get(index + 1)
+                    .is_some_and(|next| matches!(*next, "to" | "actions"))
+        }
         _ => false,
+    })
+}
+
+fn has_unnegated_delegation_action(clause: &str) -> bool {
+    ["spawn", "delegate", "create"].into_iter().any(|action| {
+        clause.match_indices(action).any(|(index, _)| {
+            let prefix = &clause[..index];
+            let local_prefix = prefix.rsplit([',', ';']).next().unwrap_or(prefix);
+            let negated = ["must not", "may not", "may never", "not allowed to"]
+                .into_iter()
+                .any(|marker| local_prefix.contains(marker));
+            let suffix = &clause[index..];
+            let target = ["agent", "helper", "reviewer", "task", "thread"]
+                .into_iter()
+                .any(|target| suffix.contains(target));
+            !negated && target
+        })
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::has_unnegated_permission;
+    use super::{has_unnegated_delegation_action, has_unnegated_permission};
 
     #[test]
     fn negated_permission_modals_are_not_permissions() {
         assert!(!has_unnegated_permission("may not spawn another helper"));
         assert!(!has_unnegated_permission("may never spawn another helper"));
+        assert!(!has_unnegated_permission(
+            "a helper is not allowed to spawn another helper",
+        ));
+        assert!(!has_unnegated_delegation_action(
+            "allowed actions: map repository files, but must not spawn another helper",
+        ));
     }
 }
