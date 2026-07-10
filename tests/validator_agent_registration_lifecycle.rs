@@ -30,20 +30,28 @@ fn orchestration_guidance_covers_registration_schema_and_fork_preflight()
 }
 
 #[test]
-fn validator_requires_packaged_registration_support_module()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = installed_fixture(temp.path())?;
-    std::fs::remove_file(
-        plugin_root.join("skills/codex-orchestration/scripts/agent_registration_support.py"),
-    )?;
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--plugin-root", path(&plugin_root)?, "--check-roles"])
-        .output()?;
-
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("agent_registration_support.py must exist"));
+fn validator_requires_packaged_registration_modules() -> Result<(), Box<dyn std::error::Error>> {
+    for module in [
+        "agent_registration_support.py",
+        "agent_registration_lifecycle.py",
+        "agent_registration_fs.py",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = installed_fixture(temp.path())?;
+        std::fs::remove_file(
+            plugin_root
+                .join("skills/codex-orchestration/scripts")
+                .join(module),
+        )?;
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args(["--plugin-root", path(&plugin_root)?, "--check-roles"])
+            .output()?;
+        assert!(
+            !output.status.success(),
+            "validator accepted missing {module}"
+        );
+        assert!(stderr(&output).contains(&format!("{module} must exist")));
+    }
     Ok(())
 }
 
