@@ -9,6 +9,7 @@ mod package_fixture;
 mod release_cache;
 mod release_cache_audit;
 mod release_cache_resources;
+mod release_version;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;

@@ -5,7 +5,7 @@ use std::{
 
 use serde_json::{Value, json};
 
-use super::{WrapperFixture, make_executable};
+use super::{WrapperFixture, make_executable, release_version};
 
 pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_refresh(
     server: &str,
@@ -37,23 +37,25 @@ pub(crate) fn assert_wrapper_refreshes_cached_runtime_when_plugin_release_change
     let fixture = WrapperFixture::new(temp.path())?;
     let cache = temp.path().join("runtime-cache");
 
+    let current_release = release_version::current_plugin_release(&fixture.plugin_root)?;
+    let next_release = release_version::next_plugin_release(&current_release)?;
     let first_root = temp.path().join("release-one");
-    let first_package = create_runtime_package(&first_root, server, "1.0.1")?;
+    let first_package = create_runtime_package(&first_root, server, &current_release)?;
     let first_bin = create_fake_curl_bin(&first_root, &first_package)?;
     assert_server_info(
         initialize_wrapper(&fixture, server, &cache, &first_bin)?,
         server,
-        "1.0.1",
+        &current_release,
     );
 
-    set_plugin_release(&fixture.plugin_root, "1.0.2")?;
+    set_plugin_release(&fixture.plugin_root, &current_release, &next_release)?;
     let second_root = temp.path().join("release-two");
-    let second_package = create_runtime_package(&second_root, server, "1.0.2")?;
+    let second_package = create_runtime_package(&second_root, server, &next_release)?;
     let second_bin = create_fake_curl_bin(&second_root, &second_package)?;
     assert_server_info(
         initialize_wrapper(&fixture, server, &cache, &second_bin)?,
         server,
-        "1.0.2",
+        &next_release,
     );
     assert!(
         std::fs::read_to_string(second_root.join("curl.log"))?
@@ -137,14 +139,11 @@ pub(super) fn wrapper_command(
 
 fn set_plugin_release(
     plugin_root: &std::path::Path,
+    current: &str,
     next: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let manifest_path = plugin_root.join(".codex-plugin/plugin.json");
     let manifest = std::fs::read_to_string(&manifest_path)?;
-    let current = serde_json::from_str::<Value>(&manifest)?["version"]
-        .as_str()
-        .ok_or("plugin fixture version is missing")?
-        .to_owned();
     let current_field = format!("\"version\": \"{current}\"");
     if !manifest.contains(&current_field) {
         return Err(format!("plugin fixture version {current} not found").into());
