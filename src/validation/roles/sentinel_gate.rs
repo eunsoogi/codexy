@@ -16,13 +16,6 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
 ];
 
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
-    if agent.get("model_reasoning_effort").and_then(Value::as_str) != Some("xhigh") {
-        errors.push(format!(
-            "{} codexy-sentinel model_reasoning_effort must be xhigh",
-            display_relative(path)
-        ));
-    }
-
     let instructions = agent
         .get("developer_instructions")
         .and_then(Value::as_str)
