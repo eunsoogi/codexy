@@ -5,6 +5,26 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 const HEAD: &str = "32b03a210b3defb2d29dd352283ea2488e60d893";
 
 #[test]
+fn validator_rejects_later_generic_block_after_named_sentinel_pass() -> TestResult {
+    let handoff = format!(
+        "Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. Reviewer gate: BLOCK on current head {HEAD}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+    );
+    let output = validate_file(&handoff)?;
+    assert!(
+        !output.status.success(),
+        "validator accepted a later generic reviewer-gate BLOCK after named Sentinel PASS\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        stderr(&output)
+    );
+    assert!(
+        stderr(&output).contains("BLOCK"),
+        "unexpected stderr: {}",
+        stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_generic_reviewer_gate_as_packaged_sentinel_proof() -> TestResult {
     let output = validate_file(&format!(
         "PR ready for parent handoff. Reviewer gate: PASS on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
