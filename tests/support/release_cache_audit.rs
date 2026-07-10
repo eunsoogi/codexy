@@ -1,7 +1,10 @@
 use std::process::Command;
 
 use super::cache_fixture::install_v1_cached_runtime;
-use super::release_cache::{create_fake_curl_bin, create_runtime_package, run_wrapper_help};
+use super::release_cache::{
+    create_fake_curl_bin, create_runtime_package, create_runtime_package_with_release,
+    run_wrapper_help,
+};
 use super::{WrapperFixture, make_executable};
 
 const REPOSITORY: &str = "https://github.com/eunsoogi/codexy";
@@ -23,7 +26,12 @@ pub(crate) fn assert_wrappers_migrate_v1_caches_without_deleting_them()
             .ok_or("seeded runtime has no cache root")?
             .to_path_buf();
         let release_root = temp.path().join(format!("release-{server}"));
-        let release = create_runtime_package(&release_root, server, "fresh-v2")?;
+        let release = create_runtime_package_with_release(
+            &release_root,
+            server,
+            "fresh-v2",
+            &super::release_version::current_plugin_release(&fixture.plugin_root)?,
+        )?;
         let fake_bin = create_fake_curl_bin(&release_root, &release)?;
         let output = run_wrapper_help(&fixture, server, &cache, &fake_bin)?;
 
