@@ -1,5 +1,21 @@
 mod support;
 
+#[test]
+fn runtime_cache_helper_avoids_python_39_builtin_generic_annotations()
+-> Result<(), Box<dyn std::error::Error>> {
+    let helper = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/mcp/codexy-runtime-cache-key.py"),
+    )?;
+
+    let postpones_annotations = helper.contains("from __future__ import annotations");
+    assert!(
+        !helper.contains("arguments: list[str]") || postpones_annotations,
+        "Python 3.8 evaluates list[...] annotations at import time unless annotations are postponed"
+    );
+    Ok(())
+}
+
 use support::{
     assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
     assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,

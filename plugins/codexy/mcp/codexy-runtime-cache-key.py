@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Build versioned cache keys for packaged Codexy MCP runtimes."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import re
