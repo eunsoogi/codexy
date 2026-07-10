@@ -6,21 +6,43 @@ const HEAD: &str = "32b03a210b3defb2d29dd352283ea2488e60d893";
 
 #[test]
 fn validator_rejects_later_generic_block_after_named_sentinel_pass() -> TestResult {
-    let handoff = format!(
-        "Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. Reviewer gate: BLOCK on current head {HEAD}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
-    );
-    let output = validate_file(&handoff)?;
-    assert!(
-        !output.status.success(),
-        "validator accepted a later generic reviewer-gate BLOCK after named Sentinel PASS\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        stderr(&output)
-    );
-    assert!(
-        stderr(&output).contains("BLOCK"),
-        "unexpected stderr: {}",
-        stderr(&output)
-    );
+    for verdict in [
+        "Reviewer gate: BLOCK",
+        "Reviewer gate returned BLOCK",
+        "Reviewer gate BLOCK",
+        "Reviewer gate verdict: BLOCK",
+        "Reviewer-gate returned BLOCK",
+    ] {
+        let handoff = format!(
+            "Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. {verdict} on current head {HEAD}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+        );
+        let output = validate_file(&handoff)?;
+        assert!(
+            !output.status.success(),
+            "validator accepted a later generic reviewer-gate BLOCK after named Sentinel PASS\nhandoff:\n{handoff}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr(&output)
+        );
+        assert!(
+            stderr(&output).contains("BLOCK"),
+            "unexpected stderr: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_non_current_generic_block_text() -> TestResult {
+    for context in [
+        "Earlier reviewer gate returned BLOCK. Packaged Codexy Sentinel Turing: PASS",
+        "- [ ] Reviewer gate returned BLOCK\nPackaged Codexy Sentinel Turing: PASS",
+        "Reviewer gate returned BLOCKER. Packaged Codexy Sentinel Turing: PASS",
+    ] {
+        assert_accepts(&format!(
+            "{context} on current head {HEAD}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+        ))?;
+    }
     Ok(())
 }
 

@@ -1,7 +1,7 @@
 pub(super) const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
 const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate|reviewer-gate";
 const PASS_MARKERS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass";
-const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate: block|reviewer-gate: block";
+const BLOCK_MARKERS: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate: block|reviewer gate returned block|reviewer gate block|reviewer gate verdict: block|reviewer-gate: block|reviewer-gate returned block";
 const UNOBSERVABLE_MARKERS: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable|sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict|still running";
 const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|ready for handoff|parent-handoff-ready|parent handoff ready|pr-ready|pr ready|pr is ready|pr-readiness|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|pull request is ready|parent can merge|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|push-readiness|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
 const HISTORICAL_STATUS_PREFIX_MARKERS: &str = "previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|initial sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|initial codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|initial reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate|initial reviewer-gate";
@@ -133,7 +133,10 @@ fn status_marker_starts(text: &str) -> Vec<(usize, SentinelStatus)> {
         .collect()
 }
 fn is_sentinel_status_context(text: &str, start: usize, phrase: &str) -> bool {
-    if phrase.contains("sentinel") || phrase.contains("reviewer gate") {
+    if phrase.contains("sentinel")
+        || phrase.contains("reviewer gate")
+        || phrase.contains("reviewer-gate")
+    {
         return true;
     }
     let context_start = last_status_context_boundary(&text[..start]).unwrap_or(0);
