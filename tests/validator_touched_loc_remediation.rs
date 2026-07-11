@@ -31,6 +31,42 @@ fn touched_loc_rejects_multiline_collapse_remediation() -> TestResult {
 }
 
 #[test]
+fn touched_loc_rejects_mixed_token_collapse_over_eight_lines() -> TestResult {
+    let repo = fixture("src/too_large.rs", mixed_token_collapse_source())?;
+    std::fs::write(
+        repo.path().join("src/too_large.rs"),
+        format!(
+            "{}let report = format!(\"{{}}/{{}}\", \"status\", 1 + 2, true, \"ok\", 3 * 4, 5 - 1, 6 / 2,);\n",
+            regular_lines(241)
+        ),
+    )?;
+
+    let output = validate(repo.path())?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_allows_collapse_with_independent_structural_remediation() -> TestResult {
+    let repo = fixture("src/too_large.rs", multiline_source())?;
+    std::fs::write(
+        repo.path().join("src/too_large.rs"),
+        format!(
+            "mod helper;\n{}let summary = format!(\"status\");\n",
+            regular_lines(248)
+        ),
+    )?;
+    write(repo.path(), "src/helper.rs", &regular_lines(249))?;
+
+    let output = validate(repo.path())?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_allows_structural_remediation_variants() -> TestResult {
     for (label, path, source, replacement, extracted) in [
         (
@@ -134,6 +170,13 @@ fn multiline_source() -> String {
     format!(
         "{}let summary = format!(\n    \"status\"\n);\n",
         regular_lines(249)
+    )
+}
+
+fn mixed_token_collapse_source() -> String {
+    format!(
+        "{}let report = format!(\n    \"{{}}/{{}}\",\n    \"status\",\n    1 + 2,\n    true,\n    \"ok\",\n    3 * 4,\n    5 - 1,\n    6 / 2,\n);\n",
+        regular_lines(241)
     )
 }
 

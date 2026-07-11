@@ -30,15 +30,53 @@ fn mentions_loc_evidence(text: &str) -> bool {
 }
 
 fn has_structural_evidence(text: &str) -> bool {
-    [
+    evidence_clauses(text).any(|clause| {
+        !is_stale_clause(clause)
+            && has_file_boundary(clause)
+            && structural_markers()
+                .iter()
+                .any(|marker| has_positive_marker(clause, marker))
+    })
+}
+
+fn evidence_clauses(text: &str) -> impl Iterator<Item = &str> {
+    text.split(['\n', ';'])
+        .flat_map(|segment| segment.split(". "))
+        .map(str::trim)
+        .filter(|segment| !segment.is_empty())
+}
+
+const fn structural_markers() -> &'static [&'static str] {
+    &[
         "helper extraction",
         "module splitting",
         "test-target splitting",
         "responsibility separation",
         "real duplication removal",
     ]
-    .iter()
-    .any(|marker| has_positive_marker(text, marker))
+}
+
+fn has_file_boundary(clause: &str) -> bool {
+    clause.split_whitespace().any(|word| {
+        let word = word.trim_matches(|character: char| {
+            matches!(character, '"' | '\'' | '`' | '(' | ')' | ',' | ':' | '.')
+        });
+        ["src/", "tests/", "plugins/", "scripts/"]
+            .iter()
+            .any(|prefix| word.starts_with(prefix))
+            && word.contains('.')
+    })
+}
+
+fn is_stale_clause(clause: &str) -> bool {
+    clause.split_whitespace().any(|word| {
+        matches!(
+            word.trim_matches(|character: char| !character.is_ascii_alphabetic())
+                .to_ascii_lowercase()
+                .as_str(),
+            "previous" | "stale" | "historical" | "earlier"
+        )
+    })
 }
 
 fn has_positive_marker(text: &str, marker: &str) -> bool {

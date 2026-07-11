@@ -50,6 +50,19 @@ fn completion_handoff_rejects_quoted_or_negated_structural_markers() -> TestResu
     Ok(())
 }
 
+#[test]
+fn completion_handoff_requires_structural_class_and_file_boundary_in_one_clause() -> TestResult {
+    for handoff in [
+        "LOC remediation: helper extraction performed. Touched file: src/parser_rules.rs. --check-touched-loc passed.",
+        "Previous LOC remediation: helper extraction moved rules into src/old_rules.rs. --check-touched-loc passed.",
+    ] {
+        let output = validate(handoff)?;
+
+        assert!(!output.status.success());
+    }
+    Ok(())
+}
+
 fn validate(handoff: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

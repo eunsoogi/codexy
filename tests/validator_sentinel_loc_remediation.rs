@@ -8,6 +8,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const REQUIRED_MARKERS: &[&str] = &[
     "MUST identify formatting-only LOC remediation before approving readiness.",
     "MUST inspect the base-to-current reduction and block blank-line deletion or collapsed readable multiline code, tests, or instructions",
+    "MUST permit a collapsed readable multiline construct when the same reduction includes independent structural remediation.",
 ];
 
 #[test]

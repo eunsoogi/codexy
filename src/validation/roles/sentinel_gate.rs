@@ -28,6 +28,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "any unresolved risk",
     "MUST identify formatting-only LOC remediation before approving readiness.",
     "MUST inspect the base-to-current reduction and block blank-line deletion or collapsed readable multiline code, tests, or instructions",
+    "MUST permit a collapsed readable multiline construct when the same reduction includes independent structural remediation.",
 ];
 
 const APPROVAL_EVIDENCE_MARKERS: &[&str] = &[
