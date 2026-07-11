@@ -106,7 +106,7 @@ fn has_missing_status_suffix(suffix: &str) -> bool {
             "missing" | "absent" | "lacking",
             ..
         ] | [
-            "evidence",
+            "evidence" | "status" | "verdict" | "result",
             "is" | "was" | "were" | "are" | "be" | "been",
             "missing" | "absent" | "lacking",
             ..
