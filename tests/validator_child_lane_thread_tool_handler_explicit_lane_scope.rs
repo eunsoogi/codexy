@@ -80,3 +80,36 @@ fn validator_allows_conjunction_prose_after_explicit_lane_capture()
     }
     Ok(())
 }
+
+#[test]
+fn validator_preserves_lane_scope_after_length_changing_unicode()
+-> Result<(), Box<dyn std::error::Error>> {
+    let prefixed = |phrase: &str| {
+        format!(
+            r#"İ note
+Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Fallback route: no fallback route was available.
+Tracking issue: #205.
+Invocation evidence: codex_app.read_thread failed with `no handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect {phrase}: recorded runtime missing-handler evidence for codex_app.read_thread."#
+        )
+    };
+
+    let multi_lane = run_ownership_validator(&prefixed("for Lane Alpha and Beta"))?;
+    assert!(
+        !multi_lane.status.success(),
+        "validator should reject a Unicode-prefixed multi-lane capture\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&multi_lane.stdout),
+        String::from_utf8_lossy(&multi_lane.stderr)
+    );
+
+    let prose = run_ownership_validator(&prefixed("for Lane Alpha and work continued"))?;
+    assert!(
+        prose.status.success(),
+        "validator should preserve Unicode-prefixed prose\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&prose.stdout),
+        String::from_utf8_lossy(&prose.stderr)
+    );
+    Ok(())
+}
