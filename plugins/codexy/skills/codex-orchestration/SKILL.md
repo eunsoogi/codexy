@@ -85,13 +85,19 @@ child Codex app threads.
 Before creating a new child Codex app thread, orchestration MUST check the ledger and current issue/PR state for an existing issue/PR owner thread, MUST treat it as the existing owner thread, and MUST reuse it when present. If that owner is usable, orchestration MUST reuse or continue it instead of creating a duplicate owner.
 Replacement child threads MUST be created only after existing owner evidence is inspected and the old owner is stopped, unusable, or explicitly superseded.
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
-blocker, latest evidence, and next action. Normal polling MUST refresh those
-fields from current thread, worktree, issue, PR, and review evidence.
-Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger.
-Compaction recovery and dreaming rehydration MUST rebuild the ledger before
-dispatching more child work or claiming no active child work remains. Completed
-child threads MUST be removed from the active/waiting ledger after current
-evidence proves completion, and MUST be archived/deleted where supported or recorded as unavailable-tool evidence.
+blocker, latest evidence, and next action. It MUST also include canonical
+worktree CWD, frozen HEAD, clean/index state, every referencing specialist or
+Sentinel task id, and explicit release/archive state. Normal polling MUST refresh
+these fields from current thread, worktree, issue, PR, and review evidence.
+Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger. Packaged specialist subagents
+MUST NOT count against the child-thread cap, but every active or waiting
+specialist or Sentinel that references a worktree MUST keep its reservation
+active. Compaction recovery and dreaming rehydration MUST rebuild the ledger
+before dispatching more child work or claiming no active child work remains.
+Completed child threads MUST remain reserved until every referencing task is
+terminal and explicitly archived or released. The orchestrator MUST record an
+unavailable archive/delete surface as unresolved reservation evidence; it MUST
+NOT silently recycle that worktree.
 
 ## Multi-Agent And Reviewer Gate
 
