@@ -86,13 +86,13 @@ fn validator_preserves_lane_scope_after_length_changing_unicode()
 -> Result<(), Box<dyn std::error::Error>> {
     let prefixed = |phrase: &str| {
         format!(
-            r#"İ note
+            r"İ note
 Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
 Fallback route: no fallback route was available.
 Tracking issue: #205.
 Invocation evidence: codex_app.read_thread failed with `no handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect {phrase}: recorded runtime missing-handler evidence for codex_app.read_thread."#
+Dogfooding/tool-exposure defect {phrase}: recorded runtime missing-handler evidence for codex_app.read_thread."
         )
     };
 
