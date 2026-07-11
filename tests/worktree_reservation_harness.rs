@@ -1,0 +1,66 @@
+mod support;
+
+use support::worktree_reservation_harness::{
+    FrozenWorktree, ReservationError, ReservationRegistry, ReservationRole, TaskState,
+};
+
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn live_sentinel_reservations_preserve_frozen_worktree_until_every_task_is_archived() -> TestResult
+{
+    let temp = tempfile::tempdir()?;
+    let frozen = FrozenWorktree::initialize(temp.path().join("frozen"))?;
+    let alternate = temp.path().join("alternate");
+    let expected = frozen.snapshot()?;
+
+    let mut reservations = ReservationRegistry::default();
+    reservations.reserve(
+        "sentinel-a",
+        ReservationRole::Sentinel,
+        &frozen,
+        TaskState::Active,
+    )?;
+    reservations.reserve(
+        "sentinel-b",
+        ReservationRole::Sentinel,
+        &frozen,
+        TaskState::Waiting,
+    )?;
+
+    assert_eq!(
+        reservations.allocate(&[frozen.path(), &alternate])?,
+        alternate
+    );
+    frozen.materialize_child(&alternate)?;
+    assert_eq!(frozen.snapshot()?, expected);
+    let collision = reservations.allocate(&[frozen.path()]).unwrap_err();
+    match collision {
+        ReservationError::Collision {
+            reserved_path,
+            snapshot,
+            ..
+        } => {
+            assert_eq!(reserved_path, frozen.path());
+            assert_eq!(snapshot, expected);
+        }
+        other => panic!("expected a reservation collision, got {other:?}"),
+    }
+    assert_eq!(frozen.snapshot()?, expected);
+
+    reservations.transition("sentinel-a", TaskState::Terminal)?;
+    reservations.archive("sentinel-a")?;
+    assert!(reservations.is_reserved(frozen.path()));
+    assert!(matches!(
+        reservations.release(frozen.path()),
+        Err(ReservationError::ReleaseBlocked { .. })
+    ));
+    reservations.transition("sentinel-b", TaskState::Terminal)?;
+    reservations.archive("sentinel-b")?;
+
+    reservations.release(frozen.path())?;
+    assert!(!reservations.is_reserved(frozen.path()));
+    assert_eq!(reservations.allocate(&[frozen.path()])?, frozen.path());
+    assert_eq!(frozen.snapshot()?, expected);
+    Ok(())
+}
