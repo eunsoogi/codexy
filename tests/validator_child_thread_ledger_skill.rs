@@ -54,6 +54,55 @@ fn validator_cli_rejects_specialist_subagent_cap_exception() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_cli_rejects_missing_live_worktree_reservation_preflight() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let routing_path =
+        plugin_root.join("skills/codex-orchestration/references/thread-and-worktree-routing.md");
+    let routing = std::fs::read_to_string(&routing_path)?;
+    std::fs::write(
+        &routing_path,
+        routing
+            .replace(
+                "Live Worktree Reservation Preflight",
+                "Worktree setup notes",
+            )
+            .replace("reservation map", "untracked list")
+            .replace(
+                "MUST NOT create or fork the new thread",
+                "May create the new thread",
+            ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("live worktree reservation preflight"));
+    assert!(stderr.contains("reservation map"));
+    assert!(stderr.contains("must not create or fork the new thread"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_missing_dreaming_worktree_reservation_fields() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let dreaming_path = plugin_root.join("skills/dreaming/SKILL.md");
+    let dreaming = std::fs::read_to_string(&dreaming_path)?;
+    std::fs::write(
+        &dreaming_path,
+        dreaming
+            .replace("canonical\nworktree CWD", "worktree location")
+            .replace("MUST NOT recycle the worktree", "may recycle the worktree"),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("canonical worktree cwd"));
+    assert!(stderr.contains("must not recycle the worktree"));
+    Ok(())
+}
+
 fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");

@@ -89,16 +89,18 @@ Blocked/rate-limited child lanes MUST be rechecked and continued through the
 existing owner thread when possible, with the blocker and next action kept
 current in the ledger.
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
-blocker, latest evidence, and next action. Normal polling MUST refresh these
-fields from current thread, worktree, issue, PR, and review evidence. Compaction
-recovery and dreaming rehydration MUST rebuild the ledger before dispatching
-more child work or claiming no active child work remains. Completed child
-threads MUST be removed from the active/waiting ledger after current evidence
-proves completion, and the orchestrator MUST ensure completed child threads are
-archived/deleted where supported by the available tool surface. When
-archive/delete support is unavailable, it MUST record that unavailable-tool
-evidence and MUST still remove the completed lane from the active/waiting
-ledger.
+blocker, latest evidence, and next action. It MUST also include canonical
+worktree CWD, frozen HEAD, clean/index state, every referencing specialist or
+Sentinel task id, and explicit release/archive state. Normal polling MUST refresh
+these fields from current thread, worktree, issue, PR, and review evidence. Packaged specialist subagents
+MUST NOT count against the child-thread cap, but every active or waiting
+specialist or Sentinel that references a worktree MUST keep its reservation
+active. Compaction recovery and dreaming rehydration MUST rebuild the ledger
+before dispatching more child work or claiming no active child work remains.
+Completed child threads MUST remain reserved until every referencing task is
+terminal and explicitly archived or released. The orchestrator MUST record an
+unavailable archive/delete surface as unresolved reservation evidence; it MUST
+NOT silently recycle that worktree.
 
 ## Multi-Agent And Reviewer Gate
 

@@ -19,7 +19,13 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "latest evidence",
                 "next action",
                 "removed from the ledger",
-                "archived/deleted where supported",
+                "canonical worktree cwd",
+                "frozen head",
+                "clean/index state",
+                "referencing specialist or sentinel",
+                "explicit release/archive state",
+                "must remain as worktree reservations",
+                "must not recycle the worktree",
             ],
         );
     } else if path.ends_with("skills/codex-orchestration/SKILL.md") {
@@ -32,14 +38,20 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "active child codex app threads must be capped at 5",
                 "existing issue/pr owner thread",
                 "reuse it when present",
-                "completed child threads must be removed",
-                "archived/deleted where supported",
+                "completed child threads must remain reserved",
+                "unavailable archive/delete surface as unresolved reservation evidence",
                 "blocked/rate-limited child lanes",
                 "existing owner thread",
                 "latest evidence",
                 "compaction recovery",
                 "normal polling",
                 "packaged specialist subagents must not be counted",
+                "canonical worktree cwd",
+                "frozen head",
+                "clean/index state",
+                "explicit release/archive state",
+                "must keep its reservation active",
+                "must not silently recycle that worktree",
             ],
         );
         reject_all(
@@ -48,6 +60,23 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             errors,
             "orchestration skill must not allow specialist subagents to count against the child thread cap",
             &["packaged specialist subagents must not be counted unless"],
+        );
+    } else if path.ends_with("skills/codex-orchestration/references/thread-and-worktree-routing.md")
+    {
+        require_all(
+            path,
+            text,
+            errors,
+            "thread routing must require live worktree reservation preflight",
+            &[
+                "live worktree reservation preflight",
+                "reservation map",
+                "every active or waiting specialist or sentinel",
+                "must not create or fork the new thread",
+                "must fail setup before allocation",
+                "host allocator blocker",
+                "dirty or locked candidate worktrees",
+            ],
         );
     }
 }
