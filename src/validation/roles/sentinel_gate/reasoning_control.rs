@@ -139,7 +139,6 @@ fn affirmative_evidence_list_suffix(clause: &str) -> Option<String> {
 fn evidence_list_suffix_is_disallowed(suffix: &str) -> bool {
     suffix
         .split([',', ';'])
-        .skip(1)
         .map(str::trim_start)
         .any(|segment| {
             has_evidence_followup(segment) && contains_disallowed_marker_context(segment)

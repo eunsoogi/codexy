@@ -296,6 +296,26 @@ fn validator_cli_rejects_permissive_suffix_after_affirmative_evidence_list() -> 
 }
 
 #[test]
+fn validator_cli_rejects_undelimited_permissive_suffix_after_affirmative_evidence_list()
+-> TestResult {
+    for suffix in [
+        "but this evidence can be absent",
+        "but this evidence may be disregarded",
+    ] {
+        let output = validate_sentinel_edit(|sentinel| {
+            Ok(sentinel.replace(
+                "and any unresolved risk. MUST block",
+                &format!(
+                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed {suffix}. MUST block"
+                ),
+            ))
+        })?;
+        assert!(!output.status.success(), "accepted {suffix:?}");
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_weakened_affirmative_reference_clauses() -> TestResult {
     for replacement in [
         "reasoning control used or unavailable evidence, MUST reference if available direct reviewer passes performed",
