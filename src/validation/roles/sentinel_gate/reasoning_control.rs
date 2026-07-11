@@ -108,16 +108,19 @@ fn mandatory_omission_prohibition_followup_is_disallowed(context: &str) -> Optio
                         context[..index].rsplit('.').next().unwrap_or_default(),
                         before
                     ))
-                    && affirmative_evidence_list_starts(clause);
+                    && affirmative_evidence_list_suffix(clause).is_some();
                 has_affirmative_list.then(|| {
-                    tail.split_once('.')
-                        .is_some_and(|(_, followup)| contains_disallowed_marker_context(followup))
+                    affirmative_evidence_list_suffix(clause)
+                        .is_some_and(|suffix| evidence_list_suffix_is_disallowed(&suffix))
+                        || tail.split_once('.').is_some_and(|(_, followup)| {
+                            contains_disallowed_marker_context(followup)
+                        })
                 })
             })
         })
 }
 
-fn affirmative_evidence_list_starts(clause: &str) -> bool {
+fn affirmative_evidence_list_suffix(clause: &str) -> Option<String> {
     let clause = clause
         .split_ascii_whitespace()
         .collect::<Vec<_>>()
@@ -128,7 +131,19 @@ fn affirmative_evidence_list_starts(clause: &str) -> bool {
         .map_or("", |value| {
             value.trim_start().trim_start_matches([':', '-', ',', ';'])
         });
-    evidence.starts_with("direct reviewer passes performed")
+    evidence
+        .strip_prefix("direct reviewer passes performed")
+        .map(str::to_owned)
+}
+
+fn evidence_list_suffix_is_disallowed(suffix: &str) -> bool {
+    suffix
+        .split([',', ';'])
+        .skip(1)
+        .map(str::trim_start)
+        .any(|segment| {
+            has_evidence_followup(segment) && contains_disallowed_marker_context(segment)
+        })
 }
 
 fn contains_disallowed_marker_context(context: &str) -> bool {
