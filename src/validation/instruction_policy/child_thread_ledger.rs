@@ -106,13 +106,18 @@ fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
             .next()
             .unwrap_or_default();
         let after = text[index + phrase.len()..]
-            .trim_start_matches([',', ':', '-', '—'])
+            .trim_start_matches([',', ':', ';', '-', '—'])
             .trim_start();
         !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
 }
 
 fn has_invalid_prefix(before: &str) -> bool {
+    let section = before
+        .rsplit("</markdown-heading>")
+        .next()
+        .unwrap_or_default();
+    let clause = clause_prefix(section);
     [
         "historical example",
         "not required",
@@ -120,7 +125,24 @@ fn has_invalid_prefix(before: &str) -> bool {
         "false that",
     ]
     .iter()
-    .any(|marker| before.contains(marker))
+    .any(|marker| clause.contains(marker))
+}
+
+fn clause_prefix(section: &str) -> &str {
+    let mut start = 0;
+    for (index, character) in section.char_indices() {
+        let after = section[index + character.len_utf8()..].trim_start();
+        if character == ';'
+            || (character == '.'
+                && !after
+                    .chars()
+                    .next()
+                    .is_some_and(|item| item.is_ascii_digit()))
+        {
+            start = index + character.len_utf8();
+        }
+    }
+    &section[start..]
 }
 
 fn has_invalid_suffix(after: &str) -> bool {
