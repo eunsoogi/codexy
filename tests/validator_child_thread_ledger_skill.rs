@@ -1,9 +1,6 @@
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
 mod support;
 
-type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+use support::{TestResult, copy_plugin_fixture, stderr, validator};
 
 #[test]
 fn validator_cli_rejects_missing_child_thread_ledger_contract() -> TestResult {
@@ -54,26 +51,22 @@ fn validator_cli_rejects_specialist_subagent_cap_exception() -> TestResult {
     Ok(())
 }
 
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
+#[test]
+fn validator_cli_rejects_missing_dreaming_worktree_reservation_fields() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let dreaming_path = plugin_root.join("skills/dreaming/SKILL.md");
+    let dreaming = std::fs::read_to_string(&dreaming_path)?;
+    std::fs::write(
+        &dreaming_path,
+        dreaming
+            .replace("canonical\nworktree CWD", "worktree location")
+            .replace("MUST NOT recycle the worktree", "may recycle the worktree"),
     )?;
-    Ok((temp, plugin_root))
-}
 
-fn validator(
-    plugin_root: &Path,
-    mode: &str,
-) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    let root = plugin_root.to_str().ok_or("plugin root path")?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--plugin-root", root, mode])
-        .output()?)
-}
-
-fn stderr(output: &std::process::Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("canonical worktree cwd"));
+    assert!(stderr.contains("must not recycle the worktree"));
+    Ok(())
 }

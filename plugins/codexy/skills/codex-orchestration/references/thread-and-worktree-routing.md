@@ -45,6 +45,45 @@ child-owned implementation lane through another surface.
 MUST use this when calling Codex app thread/worktree tools such as `fork_thread` or
 `create_thread` with a worktree environment.
 
+## Live Worktree Reservation Preflight
+
+MUST run this before creating, forking, reusing, or recycling a Codex app
+worktree. This is a repository-side fail-closed diagnostic; it does not claim to
+atomically control the host allocator.
+
+1. MUST rebuild the reservation map from the active/waiting child ledger and
+   every active or waiting specialist or Sentinel. Each reservation MUST name the
+   canonical worktree CWD, frozen HEAD, clean/index state, referencing task ids,
+   role, status, and explicit release/archive state.
+2. MUST compare the candidate against every reservation before setup and MUST
+   exclude dirty or locked candidate worktrees. A collision or excluded candidate
+   MUST record the reserved path, referencing task ids/statuses, expected frozen
+   HEAD, observed HEAD/clean state, and the unavailable or failed reservation API.
+   The parent MUST NOT create or fork the new thread, retry the same path, unlock
+   it, clean it, archive it, or recycle it.
+3. If the host chooses the candidate internally, the parent MUST require an atomic
+   reservation/exclusion API that compares the full reservation map before setup.
+   Reservation API health MUST be available, complete, and prove a full live-task
+   inventory. When that health check fails, the parent MUST fail setup before
+   allocation and record the host allocator blocker. The parent MUST NOT rely on
+   post-setup collision checks.
+
+Only the host allocator can prove distinct-path allocation. The repository
+contract requires safe failure rather than fabricating allocator enforcement.
+
+- MUST inspect current child owner state before creating or resuming a child
+  Codex thread. The preflight evidence MUST include the current active child
+  Codex thread count and whether an existing thread owns the same issue or PR.
+- MUST keep at most five active Codex app child threads at a time. MUST NOT call
+  `create_thread`, `fork_thread`, or a child-thread resume/continue operation
+  that would make six active Codex app child threads.
+- If an existing usable thread already owns the same issue or PR, MUST reuse
+  that owner thread or MUST continue that owner thread instead of creating a
+  replacement. Replacement child threads MUST require inspected existing-owner
+  evidence plus proof that the old owner is stopped, unusable, or explicitly
+  superseded.
+- Packaged specialist subagents are helper or reviewer roles and MUST NOT count
+  toward the five active Codex app child-thread limit.
 - MUST preflight branch names with local Git:
 
 ```sh
@@ -95,6 +134,11 @@ git rev-parse --verify origin/<branch>
 - One branch per pull request.
 - One independent requested outcome per child lane unless a maintainer
   explicitly scoped multiple outcomes as one atomic lane before implementation.
+- Orchestrators MUST keep at most five Codex app child threads active
+  concurrently for orchestrator-created or orchestrator-resumed child lanes.
+- Existing issue or PR owner threads MUST be reused when present and usable;
+  replacement owner threads MUST require old-owner stop, unusable, or
+  supersession evidence.
 - Worktree-based implementation lanes MUST require a Codex thread when thread tools
   are available.
 - Worktree-based implementation lanes MUST require lane ownership before edits:

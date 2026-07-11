@@ -76,29 +76,28 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
   MUST include GraphQL `reviewThreads.nodes`.
 
 ## Active Child Thread Ledger
-Orchestration MUST maintain a durable active/waiting child thread ledger for
-Codex app child threads across normal polling, compaction recovery, dreaming
-rehydration, and parent handoffs. Active child Codex app threads MUST be capped
-at 5. The orchestrator MUST count only active or waiting Codex app child threads
-against that cap. Packaged specialist subagents MUST NOT be counted as active
+Orchestration MUST maintain a durable active/waiting child thread ledger across normal polling, compaction recovery, dreaming rehydration, and parent handoffs.
+Active child Codex app threads MUST be capped at 5. Orchestrators MUST count
+only active/waiting Codex app child threads against that cap and MUST NOT create, continue, or resume a sixth active child thread until another active child thread has finished, stopped, or been explicitly removed from the ledger.
+Packaged specialist subagents MUST NOT be counted as active
 child Codex app threads.
-Before creating a new child Codex app thread, orchestration MUST check the
-ledger and current issue/PR state for an existing issue/PR owner thread, and
-MUST reuse it when present instead of creating a duplicate owner.
-Blocked/rate-limited child lanes MUST be rechecked and continued through the
-existing owner thread when possible, with the blocker and next action kept
-current in the ledger.
+
+Before creating a new child Codex app thread, orchestration MUST check the ledger and current issue/PR state for an existing issue/PR owner thread, MUST treat it as the existing owner thread, and MUST reuse it when present. If that owner is usable, orchestration MUST reuse or continue it instead of creating a duplicate owner.
+Replacement child threads MUST be created only after existing owner evidence is inspected and the old owner is stopped, unusable, or explicitly superseded.
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
-blocker, latest evidence, and next action. Normal polling MUST refresh these
-fields from current thread, worktree, issue, PR, and review evidence. Compaction
-recovery and dreaming rehydration MUST rebuild the ledger before dispatching
-more child work or claiming no active child work remains. Completed child
-threads MUST be removed from the active/waiting ledger after current evidence
-proves completion, and the orchestrator MUST ensure completed child threads are
-archived/deleted where supported by the available tool surface. When
-archive/delete support is unavailable, it MUST record that unavailable-tool
-evidence and MUST still remove the completed lane from the active/waiting
-ledger.
+blocker, latest evidence, and next action. It MUST also include canonical
+worktree CWD, frozen HEAD, clean/index state, every referencing specialist or
+Sentinel task id, and explicit release/archive state. Normal polling MUST refresh
+these fields from current thread, worktree, issue, PR, and review evidence.
+Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger. Packaged specialist subagents
+MUST NOT count against the child-thread cap, but every active or waiting
+specialist or Sentinel that references a worktree MUST keep its reservation
+active. Compaction recovery and dreaming rehydration MUST rebuild the ledger
+before dispatching more child work or claiming no active child work remains.
+Completed child threads MUST remain reserved until every referencing task is
+terminal and explicitly archived or released. The orchestrator MUST record an
+unavailable archive/delete surface as unresolved reservation evidence; it MUST
+NOT silently recycle that worktree.
 
 ## Multi-Agent And Reviewer Gate
 
