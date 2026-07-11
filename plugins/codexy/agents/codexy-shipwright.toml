@@ -1,6 +1,6 @@
 name = "codexy-shipwright"
 description = "Use for version bumps, release PRs, manifest sync, marketplace readiness, tags, and rollback planning."
-model = "gpt-5.5"
+model = "gpt-5.6-terra"
 model_reasoning_effort = "high"
 developer_instructions = """
 MUST act as Codexy's Release Engineer specialist.

@@ -141,7 +141,7 @@ fn validator_allows_capitalized_pushed_head_markers() -> TestResult {
         "feedback fixes HEAD",
     ] {
         let handoff = format!(
-            "Child handoff: branch clean, synced. Pushed {marker} 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n"
+            "Child handoff: branch clean, synced. Pushed {marker} 068dbb247b7755035223c91ee39f26830f3c1609. Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n"
         );
         let output = validate_handoff_with_pr_state(
             &handoff,
@@ -157,8 +157,8 @@ fn validator_allows_capitalized_pushed_head_markers() -> TestResult {
 #[test]
 fn validator_allows_compact_pushed_hash_labels() -> TestResult {
     for handoff in [
-        "Child handoff: branch clean, synced. Pushed: yes, 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
-        "Child handoff: branch clean, synced. Pushed: 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+        "Child handoff: branch clean, synced. Pushed: yes, 068dbb247b7755035223c91ee39f26830f3c1609. Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+        "Child handoff: branch clean, synced. Pushed: 068dbb247b7755035223c91ee39f26830f3c1609. Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
     ] {
         let output = validate_handoff_with_pr_state(
             handoff,
@@ -174,7 +174,7 @@ fn validator_allows_compact_pushed_hash_labels() -> TestResult {
 #[test]
 fn validator_allows_remote_pr_head_match_hashes() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Child handoff: branch clean. Remote/PR head match: yes (068dbb247b7755035223c91ee39f26830f3c1609). PR ready for parent handoff; parent will handle merge gates.\n",
+        "Child handoff: branch clean. Remote/PR head match: yes (068dbb247b7755035223c91ee39f26830f3c1609). Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
         &pr_state_with(
             r###""mergeStateStatus":"CLEAN","headRefName":"codexy/example","headRefOid":"068dbb247b7755035223c91ee39f26830f3c1609","localHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","remoteHeadOid":"068dbb247b7755035223c91ee39f26830f3c1609","worktreeStatus":"## codexy/example...origin/codexy/example","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"###,
         ),
@@ -186,8 +186,8 @@ fn validator_allows_remote_pr_head_match_hashes() -> TestResult {
 #[test]
 fn validator_allows_equals_style_local_head_hashes() -> TestResult {
     for handoff in [
-        "Child handoff: branch clean, synced. Pushed: yes HEAD=068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
-        "Child handoff: branch clean, synced. local head=068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+        "Child handoff: branch clean, synced. Pushed: yes HEAD=068dbb247b7755035223c91ee39f26830f3c1609. Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
+        "Child handoff: branch clean, synced. local head=068dbb247b7755035223c91ee39f26830f3c1609. Packaged Codexy Sentinel Turing: PASS on current head 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
     ] {
         let output = validate_handoff_with_pr_state(
             handoff,

@@ -63,6 +63,13 @@ git rev-parse --verify origin/<branch>
 - Waiting for pending worktree setup is an active orchestration state. Poll or
   wait for the pending result; MUST NOT judge the lane failed just because setup
   has not completed quickly.
+- If `create_thread` or `fork_thread` returns a `pendingWorktreeId`, active lane
+  accounting MUST keep the pending id until one of these explicit states is
+  observed: surfaced thread id with active owner, failed setup with actionable
+  error, or `not-surfaced-after-bounded-wait` after bounded searches by pending
+  id, branch, PR/issue, SHA, and available review-thread id. Only the bounded
+  not-surfaced state may allow safe retry or reassignment, and the handoff MUST
+  name that retry/reassignment decision.
 - MUST keep exactly one active owner for each issue-sized lane. Before retrying or
   reassigning after pending or failed setup, list current child threads,
   pending worktrees, branches, and worktree paths when the tools expose them.

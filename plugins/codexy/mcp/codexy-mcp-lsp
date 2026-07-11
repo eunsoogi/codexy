@@ -1,6 +1,5 @@
 #!/bin/sh
 set -eu
-
 self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
 repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
@@ -59,7 +58,6 @@ if [ -z "$platform" ]; then
   esac
   platform="$os-$arch"
 fi
-
 runtime_name="codexy-mcp-lsp-$platform.bin"
 bundled_runtime="$plugin_root/runtime/$runtime_name"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
@@ -76,7 +74,6 @@ if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   echo "codexy-mcp-lsp runtime not found for $platform in CODEXY_RUNTIME_DIR: $CODEXY_RUNTIME_DIR/$runtime_name" >&2
   exit 127
 fi
-
 if [ -n "$repo_root" ] \
   && [ -f "$repo_root/Cargo.toml" ] \
   && grep -Eq '^name = "codexy-runtime"$' "$repo_root/Cargo.toml" \
@@ -85,7 +82,6 @@ if [ -n "$repo_root" ] \
   && [ "$cargo_available" = 1 ]; then
   exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"
 fi
-
 case " $bundled_platforms " in
   *" $platform "*)
     if [ -x "$bundled_runtime" ]; then
@@ -97,7 +93,6 @@ case " $bundled_platforms " in
     exit 127
     ;;
 esac
-
 if [ -n "${CODEXY_RUNTIME_CACHE_DIR:-}" ]; then
   runtime_cache_root=$CODEXY_RUNTIME_CACHE_DIR
 else
@@ -121,20 +116,34 @@ elif [ "$runtime_package_requested" = 1 ]; then
 else
   runtime_cache_source="git"
 fi
-runtime_cache_key=$(printf '%s\n%s\n%s\n%s\n%s\ncodexy-mcp-lsp\n' "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" "$runtime_cache_source" | cksum | awk '{print $1}')
+plugin_manifest="$plugin_root/.codex-plugin/plugin.json"
+runtime_cache_helper="$self_dir/codexy-runtime-cache-key.py"
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "codexy-mcp-lsp runtime cache requires python3 on PATH" >&2
+  exit 127
+fi
+if [ ! -f "$runtime_cache_helper" ] || [ ! -x "$runtime_cache_helper" ]; then
+  echo "codexy-mcp-lsp runtime cache helper is missing or not executable: $runtime_cache_helper" >&2
+  exit 127
+fi
+if ! runtime_cache_key=$(python3 "$runtime_cache_helper" "$plugin_manifest" "$runtime_package_override_was_set" "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" "$runtime_cache_source" "codexy-mcp-lsp"); then
+  echo "codexy-mcp-lsp cannot derive runtime cache key from plugin manifest: $plugin_manifest" >&2
+  exit 127
+fi
 runtime_install_root="$runtime_cache_root/$runtime_cache_key"
 installed_runtime="$runtime_install_root/bin/codexy-mcp-lsp"
 runtime_ref_is_pinned=0
 case "$runtime_git_ref" in
   *[!0123456789abcdefABCDEF]*|"") ;;
   *)
-    if [ "$(printf '%s' "$runtime_git_ref" | wc -c | tr -d ' ')" = 40 ]; then
-      runtime_ref_is_pinned=1
-    fi
+    if [ "$(printf '%s' "$runtime_git_ref" | wc -c | tr -d ' ')" = 40 ]; then runtime_ref_is_pinned=1; fi
     ;;
 esac
 if [ "$runtime_package_override_was_set" = 0 ] && [ -x "$installed_runtime" ]; then
-  exec "$installed_runtime" "$@"
+  if [ "$runtime_package_requested" = 0 ]; then exec "$installed_runtime" "$@"; fi
+  cached_manifest="$runtime_install_root/plugin.json"
+  if [ -f "$cached_manifest" ] && python3 "$runtime_cache_helper" --compare-release "$plugin_manifest" "$cached_manifest" >/dev/null; then exec "$installed_runtime" "$@"; fi
+  rm -rf "$runtime_install_root"
 fi
 if [ "$runtime_package_requested" = 1 ]; then
   package_tmp_dir="$runtime_install_root/package.$$"
@@ -198,7 +207,14 @@ if [ "$runtime_package_requested" = 1 ]; then
     if [ "$package_ready" = 1 ] && tar -xzf "$package_archive" -C "$package_tmp_dir"; then
       packaged_runtime=$(find "$package_tmp_dir" -path "*/runtime/$runtime_name" -type f | head -n 1)
       if [ -n "$packaged_runtime" ] && [ -f "$packaged_runtime" ]; then
+        package_manifest=$(find "$package_tmp_dir" -path "*/plugins/codexy/.codex-plugin/plugin.json" -type f | head -n 1)
+        if [ "$runtime_package_override_was_set" = 0 ] && ! package_release_error=$(python3 "$runtime_cache_helper" --compare-release "$plugin_manifest" "$package_manifest"); then
+          rm -rf "$runtime_install_root"
+          echo "codexy-mcp-lsp $package_release_error" >&2
+          exit 127
+        fi
         mkdir -p "$(dirname "$installed_runtime")"
+        if [ "$runtime_package_override_was_set" = 0 ]; then cp "$package_manifest" "$runtime_install_root/plugin.json"; fi
         cp "$packaged_runtime" "$installed_runtime"
         chmod 755 "$installed_runtime"
         rm -rf "$package_tmp_dir" "$package_archive"
@@ -208,7 +224,6 @@ if [ "$runtime_package_requested" = 1 ]; then
   fi
   rm -rf "$package_tmp_dir" "$package_archive" "$package_zip" "$package_json"
 fi
-
 if [ "$cargo_available" = 1 ]; then
   if [ "$runtime_ref_is_pinned" = 1 ]; then
     cargo install --locked --git "$runtime_git_repository" --rev "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp
@@ -220,17 +235,15 @@ if [ "$cargo_available" = 1 ]; then
     fi
   fi
   if [ -x "$installed_runtime" ]; then
+    if [ "$runtime_package_requested" = 1 ] && [ "$runtime_package_override_was_set" = 0 ]; then cp "$plugin_manifest" "$runtime_install_root/plugin.json"; fi
     exec "$installed_runtime" "$@"
   fi
 fi
-
 if [ "$cargo_available" != 1 ] && [ -x "$installed_runtime" ]; then
   exec "$installed_runtime" "$@"
 fi
-
 if [ -x "$bundled_runtime" ]; then
   exec "$bundled_runtime" "$@"
 fi
-
 echo "codexy-mcp-lsp bundled runtime missing for declared platform $platform: $bundled_runtime" >&2
 exit 127

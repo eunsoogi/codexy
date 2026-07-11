@@ -152,6 +152,10 @@ fn validator_cli_allows_negated_review_request_verbs_after_compaction() -> TestR
          Next action: do not request current-head Codex review yet.\n",
         "Compaction summary:\n\
          Next action: do not request another Codex review yet.\n",
+        "Compaction summary:\n\
+         Next action: do not request a fresh Codex review yet.\n",
+        "Compaction summary:\n\
+         Next action: do not request a new Codex review yet.\n",
     ] {
         let output = validate_open_pr_handoff(handoff)?;
         assert!(

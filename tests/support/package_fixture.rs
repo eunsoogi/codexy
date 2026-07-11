@@ -1,49 +1,8 @@
-use std::io::Write as _;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
+pub(super) use super::cache_fixture::{install_cached_runtime, install_legacy_cached_runtime};
+use super::package_archive::zip_package;
 use super::{copy_dir, make_executable};
-
-pub(super) fn install_cached_runtime(
-    cache: &std::path::Path,
-    repository: &str,
-    runtime_ref: &str,
-    platform: &str,
-    server: &str,
-    fake_version: &str,
-) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    let runtime = format!("codexy-mcp-{server}");
-    let cache_key = runtime_cache_key(repository, runtime_ref, platform, &runtime)?;
-    let bin_dir = cache.join(cache_key).join("bin");
-    std::fs::create_dir_all(&bin_dir)?;
-    let runtime_path = bin_dir.join(&runtime);
-    std::fs::write(
-        &runtime_path,
-        format!("#!/bin/sh\necho fake-installed {fake_version} {runtime} \"$@\"\n"),
-    )?;
-    make_executable(&runtime_path)?;
-    Ok(runtime_path)
-}
-
-pub(super) fn install_legacy_cached_runtime(
-    cache: &std::path::Path,
-    repository: &str,
-    runtime_ref: &str,
-    platform: &str,
-    server: &str,
-    fake_version: &str,
-) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    let runtime = format!("codexy-mcp-{server}");
-    let cache_key = legacy_runtime_cache_key(repository, runtime_ref, platform, &runtime)?;
-    let bin_dir = cache.join(cache_key).join("bin");
-    std::fs::create_dir_all(&bin_dir)?;
-    let runtime_path = bin_dir.join(&runtime);
-    std::fs::write(
-        &runtime_path,
-        format!("#!/bin/sh\necho fake-installed {fake_version} {runtime} \"$@\"\n"),
-    )?;
-    make_executable(&runtime_path)?;
-    Ok(runtime_path)
-}
 
 pub(super) fn create_runtime_package(
     root: &std::path::Path,
@@ -54,7 +13,14 @@ pub(super) fn create_runtime_package(
     let runtime = format!("codexy-mcp-{server}");
     let package_root = root.join("package-root");
     let runtime_dir = package_root.join("plugins/codexy/runtime");
+    let manifest_dir = package_root.join("plugins/codexy/.codex-plugin");
     std::fs::create_dir_all(&runtime_dir)?;
+    std::fs::create_dir_all(&manifest_dir)?;
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/.codex-plugin/plugin.json"),
+        manifest_dir.join("plugin.json"),
+    )?;
     let runtime_path = runtime_dir.join(format!("{runtime}-{platform}.bin"));
     std::fs::write(
         &runtime_path,
@@ -152,22 +118,6 @@ pub(super) fn create_fake_curl_bin_with_release_package(
     Ok(fake_bin)
 }
 
-fn zip_package(
-    artifact_zip: &std::path::Path,
-    package_path: &std::path::Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let status = Command::new("zip")
-        .arg("-q")
-        .arg("-j")
-        .arg(artifact_zip)
-        .arg(package_path)
-        .status()?;
-    if !status.success() {
-        return Err("creating artifact zip failed".into());
-    }
-    Ok(())
-}
-
 pub(super) fn create_source_layout_plugin(
     root: &std::path::Path,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
@@ -191,62 +141,4 @@ pub(super) fn create_source_layout_plugin(
         &plugin_root,
     )?;
     Ok(plugin_root)
-}
-
-fn runtime_cache_key(
-    repository: &str,
-    runtime_ref: &str,
-    platform: &str,
-    runtime: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let mut child = Command::new("cksum")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
-    {
-        let stdin = child.stdin.as_mut().ok_or("missing cksum stdin")?;
-        write!(
-            stdin,
-            "{repository}\n{runtime_ref}\n{platform}\nstdio-newline-v1\npackage-default\n{runtime}\n"
-        )?;
-    }
-    let output = child.wait_with_output()?;
-    if !output.status.success() {
-        return Err("cksum failed while computing runtime cache key".into());
-    }
-    let stdout = String::from_utf8(output.stdout)?;
-    let key = stdout
-        .split_whitespace()
-        .next()
-        .ok_or("cksum output missing cache key")?;
-    Ok(key.to_owned())
-}
-
-fn legacy_runtime_cache_key(
-    repository: &str,
-    runtime_ref: &str,
-    platform: &str,
-    runtime: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let mut child = Command::new("cksum")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
-    {
-        let stdin = child.stdin.as_mut().ok_or("missing cksum stdin")?;
-        write!(
-            stdin,
-            "{repository}\n{runtime_ref}\n{platform}\n{runtime}\n"
-        )?;
-    }
-    let output = child.wait_with_output()?;
-    if !output.status.success() {
-        return Err("cksum failed while computing legacy runtime cache key".into());
-    }
-    let stdout = String::from_utf8(output.stdout)?;
-    let key = stdout
-        .split_whitespace()
-        .next()
-        .ok_or("cksum output missing legacy cache key")?;
-    Ok(key.to_owned())
 }

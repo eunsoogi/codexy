@@ -124,6 +124,9 @@ fn pr_state_with_unresolved_outdated_thread() -> String {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate": "2026-06-23T00:00:00Z",
+        "comments": [],
+        "reviews": [],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": [{
             "id": "PRRT_kwDOOutdated",
             "isResolved": false,
@@ -146,6 +149,7 @@ fn pr_state_with_headless_request_and_later_stale_output() -> String {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate": "2026-06-23T00:00:00Z",
         "comments": [{
             "body": "@codex review",
             "author": {"login": "eunsoogi"},
@@ -180,6 +184,7 @@ fn pr_state_with_stale_acknowledged_request_without_output() -> String {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "REVIEW_REQUIRED",
         "headRefOid": "32b03a210b3defb2d29dd352283ea2488e60d893",
+        "headRefCommittedDate": "2026-06-23T00:00:00Z",
         "comments": [{
             "body": "@codex review",
             "author": {"login": "eunsoogi"},
@@ -187,6 +192,7 @@ fn pr_state_with_stale_acknowledged_request_without_output() -> String {
             "commit": {"oid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
             "reactionGroups": [{"content": "EYES", "users": {"totalCount": 1}}]
         }],
+        "reviews": [],
         "reviewThreads": {"pageInfo": {"hasNextPage": false}, "nodes": []}
     })
     .to_string()
