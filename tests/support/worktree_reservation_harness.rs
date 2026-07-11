@@ -83,6 +83,7 @@ impl ReservationRegistry {
         let snapshot = self.snapshot_for(&reserved_path)?;
         Err(ReservationError::Collision {
             task_ids: self.task_ids(&reserved_path),
+            roles: self.roles(&reserved_path),
             reserved_path,
             snapshot,
         })
@@ -144,6 +145,14 @@ impl ReservationRegistry {
             .collect()
     }
 
+    fn roles(&self, path: &Path) -> Vec<ReservationRole> {
+        self.reservations
+            .values()
+            .filter(|reservation| reservation.snapshot.path == path)
+            .map(|reservation| reservation.role)
+            .collect()
+    }
+
     fn snapshot_for(&self, path: &Path) -> Result<WorktreeSnapshot, ReservationError> {
         self.reservations
             .values()
@@ -158,6 +167,7 @@ pub(crate) enum ReservationError {
     ArchiveBeforeTerminal(String),
     Collision {
         reserved_path: PathBuf,
+        roles: Vec<ReservationRole>,
         snapshot: WorktreeSnapshot,
         task_ids: Vec<String>,
     },

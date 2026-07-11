@@ -6,6 +6,8 @@ use support::worktree_reservation_harness::{
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+// The Codex host allocator is outside this repository. This test-only harness
+// exercises the local fail-closed contract against real temporary Git worktrees.
 #[test]
 fn live_sentinel_reservations_preserve_frozen_worktree_until_every_task_is_archived() -> TestResult
 {
@@ -38,10 +40,12 @@ fn live_sentinel_reservations_preserve_frozen_worktree_until_every_task_is_archi
     match collision {
         ReservationError::Collision {
             reserved_path,
+            roles,
             snapshot,
             ..
         } => {
             assert_eq!(reserved_path, frozen.path());
+            assert_eq!(roles, vec![ReservationRole::Sentinel; 2]);
             assert_eq!(snapshot, expected);
         }
         other => panic!("expected a reservation collision, got {other:?}"),
