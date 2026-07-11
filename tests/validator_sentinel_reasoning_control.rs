@@ -203,6 +203,33 @@ fn validator_cli_accepts_mandatory_reasoning_evidence_omission_prohibitions() ->
 }
 
 #[test]
+fn validator_cli_accepts_mandatory_omission_prohibitions_with_later_evidence() -> TestResult {
+    for prohibition in ["omit", "skip", "leave out"] {
+        let output = validate_sentinel_edit(|sentinel| {
+            Ok(sentinel.replace(
+                "and any unresolved risk. MUST block",
+                &format!(
+                    "and any unresolved risk. Every approval MUST NOT {prohibition} reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. MUST block"
+                ),
+            ))
+        })?;
+        assert!(output.status.success(), "{}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_negated_later_approval_evidence() -> TestResult {
+    let output = validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence, direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, but not direct reviewer passes performed",
+    )?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("reviewer gate contract is missing"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestResult {
     for replacement in [
         "Reasoning control: the packaged Sentinel definition MUST use the deliberate high-intensity reviewer setting model_reasoning_effort = \"xhigh\" alongside model = \"gpt-5.6-sol\". It MUST NOT claim or require max or ultra is optional. Reviewer evidence MUST record explicit unavailable evidence.\n\n",

@@ -126,21 +126,39 @@ fn is_prefix_negated(prefix: &str) -> bool {
     let sentence_start = prefix.rfind(['.', '!', '?']).map_or(0, |index| index + 1);
     let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase();
     let sentence_prefix = sentence_prefix.trim_end();
-    !ends_with_mandatory_evidence_omission_prohibition(sentence_prefix)
-        && (sentence_prefix.contains("must not")
-            || sentence_prefix.contains("do not")
-            || ["should not", "but not", "and not", "or not"]
-                .iter()
-                .any(|phrase| sentence_prefix.contains(phrase))
-            || [" no", ", no", "no", " not", ", not", "not"]
-                .iter()
-                .any(|suffix| sentence_prefix.ends_with(suffix)))
+    !has_mandatory_evidence_omission_prohibition_before_affirmative_reference(sentence_prefix)
+        && contains_negated_language(sentence_prefix)
 }
 
-fn ends_with_mandatory_evidence_omission_prohibition(sentence: &str) -> bool {
+fn has_mandatory_evidence_omission_prohibition_before_affirmative_reference(
+    sentence: &str,
+) -> bool {
     ["must not omit", "must not skip", "must not leave out"]
         .iter()
-        .any(|prohibition| sentence.ends_with(prohibition))
+        .filter_map(|prohibition| {
+            sentence
+                .rfind(prohibition)
+                .map(|index| (index, prohibition))
+        })
+        .any(|(index, prohibition)| {
+            let tail = &sentence[index + prohibition.len()..];
+            tail.is_empty()
+                || tail.rsplit_once(',').is_some_and(|(before, clause)| {
+                    matches!(clause.trim(), "and must reference" | "and must record")
+                        && !contains_negated_language(&format!("{}{}", &sentence[..index], before))
+                })
+        })
+}
+
+fn contains_negated_language(sentence: &str) -> bool {
+    sentence.contains("must not")
+        || sentence.contains("do not")
+        || ["should not", "but not", "and not", "or not"]
+            .iter()
+            .any(|phrase| sentence.contains(phrase))
+        || [" no", ", no", "no", " not", ", not", "not"]
+            .iter()
+            .any(|suffix| sentence.ends_with(suffix))
 }
 
 fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: &str) -> bool {
