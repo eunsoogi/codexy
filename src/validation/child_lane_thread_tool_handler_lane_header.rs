@@ -31,6 +31,7 @@ fn lane_header_label(line: &str) -> Option<String> {
     let label = rest.trim_end_matches([':', '.', '-']).trim();
     ((trimmed != line || line.ends_with(':'))
         && !label.is_empty()
+        && !is_excluded_lane_metadata_label(label)
         && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
     .then(|| format!("lane {}", label.to_ascii_lowercase()))
 }
@@ -69,8 +70,17 @@ fn line_starts_with_lane_label(line: &str) -> Option<String> {
         .next()
         .unwrap_or_default()
         .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-    (!label.is_empty() && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
-        .then(|| format!("lane {}", label.to_ascii_lowercase()))
+    (!label.is_empty()
+        && !is_excluded_lane_metadata_label(label)
+        && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+    .then(|| format!("lane {}", label.to_ascii_lowercase()))
+}
+
+fn is_excluded_lane_metadata_label(label: &str) -> bool {
+    matches!(
+        label.to_ascii_lowercase().as_str(),
+        "owner" | "owners" | "ownership" | "metadata" | "type"
+    )
 }
 
 fn has_defect_label(line: &str) -> bool {
@@ -86,5 +96,32 @@ fn strip_markdown_heading_prefix(line: &str) -> &str {
         line[marker_end..].trim_start()
     } else {
         line
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::include_preceding_lane_header;
+
+    #[test]
+    fn skips_multiline_lane_type_metadata_for_the_current_lane() {
+        let evidence = "Lane A:\nLane type:\n- implementation\nInvocation evidence";
+        let start = evidence.find("Invocation").unwrap();
+
+        assert_eq!(
+            include_preceding_lane_header(evidence, start),
+            evidence.find("Lane A:").unwrap(),
+        );
+    }
+
+    #[test]
+    fn stops_at_a_later_lane_after_multiline_lane_type_metadata() {
+        let evidence = "Lane A:\nLane type:\n- implementation\nLane B:\nInvocation evidence";
+        let start = evidence.find("Invocation").unwrap();
+
+        assert_eq!(
+            include_preceding_lane_header(evidence, start),
+            evidence.find("Lane B:").unwrap(),
+        );
     }
 }

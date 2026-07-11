@@ -353,8 +353,17 @@ fn lane_header_label(line: &str) -> Option<String> {
     let line = strip_markdown_heading_prefix(line.trim_start()).to_ascii_lowercase();
     let rest = line.strip_prefix("lane ")?;
     let label = rest.trim_end_matches([':', '.', '-']).trim();
-    (!label.is_empty() && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
-        .then(|| label.to_string())
+    (!label.is_empty()
+        && !is_excluded_lane_metadata_label(label)
+        && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+    .then(|| label.to_string())
+}
+
+fn is_excluded_lane_metadata_label(label: &str) -> bool {
+    matches!(
+        label,
+        "owner" | "owners" | "ownership" | "metadata" | "type"
+    )
 }
 
 fn strip_markdown_heading_prefix(line: &str) -> &str {
