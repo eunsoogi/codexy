@@ -3,6 +3,7 @@
 
 mod agent_model_assignments;
 mod cache_fixture;
+mod child_thread_ledger_skill;
 mod package;
 mod package_archive;
 mod package_fixture;
@@ -23,6 +24,7 @@ pub(crate) use agent_model_assignments::{
     TestResult, assert_privacy_diagnostic, public_contract_import_check,
     validate_agent_replacement, validate_catalog_replacement,
 };
+pub(crate) use child_thread_ledger_skill::{copy_plugin_fixture, stderr, validator};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,
