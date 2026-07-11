@@ -64,6 +64,9 @@ fn validator_allows_conjunction_prose_after_explicit_lane_capture()
         "for Lane A and-or I can follow up",
         "for Lane A and we recorded the handoff",
         "for Lane Alpha and we recorded the handoff",
+        "for Lane Alpha and work continued",
+        "for Lane Alpha or ordinary handoff prose",
+        "for Lane Alpha and the owner recorded the handoff",
         "for Lane A or ordinary handoff prose",
     ] {
         let output = run_ownership_validator(&evidence_with_defect_phrase(phrase))?;

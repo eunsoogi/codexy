@@ -29,6 +29,7 @@ mod child_lane_thread_tool_handler_issue_value;
 mod child_lane_thread_tool_handler_lane_header;
 mod child_lane_thread_tool_handler_lane_mentions;
 mod child_lane_thread_tool_handler_no_route;
+mod child_lane_thread_tool_handler_raw_lane;
 mod child_lane_thread_tool_handler_route_value;
 mod child_lane_thread_tool_handler_scope;
 mod child_lane_thread_tool_handlers;

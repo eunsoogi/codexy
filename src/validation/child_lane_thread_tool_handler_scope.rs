@@ -284,15 +284,10 @@ fn lane_mention_labels(line: &str) -> Vec<String> {
         {
             let plural_lane_marker = token.eq_ignore_ascii_case("lanes");
             let context = explicit_lane_mention_context(&tokens, index).unwrap_or(previous);
-            let first_lane_label = tokens.get(index + 1).copied().unwrap_or_default();
             let mut label_index = index + 1;
             while let Some(label) = tokens.get(label_index).copied() {
                 if label_index != index + 1
-                    && !is_unambiguous_conjunction_lane_label(
-                        label,
-                        plural_lane_marker,
-                        first_lane_label,
-                    )
+                    && !is_unambiguous_conjunction_lane_label(label, plural_lane_marker)
                 {
                     break;
                 }
@@ -321,39 +316,15 @@ fn lane_mention_labels(line: &str) -> Vec<String> {
     labels
 }
 
-fn is_unambiguous_conjunction_lane_label(
-    label: &str,
-    plural_lane_marker: bool,
-    first_lane_label: &str,
-) -> bool {
-    !is_conjunction_prose_pronoun(label)
+fn is_unambiguous_conjunction_lane_label(label: &str, plural_lane_marker: bool) -> bool {
+    !label.eq_ignore_ascii_case("i")
         && (label.bytes().all(|byte| byte.is_ascii_digit())
             || label.len() == 1 && label.bytes().all(|byte| byte.is_ascii_alphabetic())
             || label
                 .bytes()
                 .next()
                 .is_some_and(|byte| byte.is_ascii_uppercase())
-            || (plural_lane_marker
-                || first_lane_label.len() > 1 && is_lowercase_lane_label_token(first_lane_label))
-                && is_lowercase_lane_label_token(label))
-}
-
-fn is_conjunction_prose_pronoun(label: &str) -> bool {
-    matches!(
-        label.to_ascii_lowercase().as_str(),
-        "i" | "we"
-            | "you"
-            | "he"
-            | "she"
-            | "they"
-            | "it"
-            | "me"
-            | "us"
-            | "them"
-            | "my"
-            | "our"
-            | "their"
-    )
+            || plural_lane_marker && is_lowercase_lane_label_token(label))
 }
 
 fn is_lane_conjunction(token: &str) -> bool {
