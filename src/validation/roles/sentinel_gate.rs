@@ -26,6 +26,8 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "replayed review examples when applicable",
     "no-finding result when no blockers remain",
     "any unresolved risk",
+    "MUST identify formatting-only LOC remediation before approving readiness.",
+    "MUST inspect the base-to-current reduction and block blank-line deletion or collapsed readable multiline code, tests, or instructions",
 ];
 
 const APPROVAL_EVIDENCE_MARKERS: &[&str] = &[

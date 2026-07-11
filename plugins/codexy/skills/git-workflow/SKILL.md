@@ -124,6 +124,9 @@ scripts/validate-plugin-config --check-touched-loc --base-ref origin/main
 MUST treat touched implementation, test-harness, and skill `SKILL.md` files over
 the 250 LOC target as review-blocking unless a tracked Codexy LOC exception
 contains a narrow maintained rationale.
+MUST treat a formatting-only reduction as review-blocking: blank-line deletion or
+collapsed readable multiline code, tests, or instructions does not prove structural
+LOC remediation.
 
 When the requested behavior is a GitHub setting, branch rule, PR lifecycle,
 CLI, browser page, desktop app, or other external surface, MUST drive that surface
