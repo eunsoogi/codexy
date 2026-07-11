@@ -12,6 +12,8 @@ fn validator_rejects_later_generic_block_after_named_sentinel_pass() -> TestResu
         "Reviewer gate BLOCK",
         "Reviewer gate verdict: BLOCK",
         "Reviewer-gate returned BLOCK",
+        "Reviewer-gate BLOCK",
+        "Reviewer-gate verdict: BLOCK",
     ] {
         let handoff = format!(
             "Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. {verdict} on current head {HEAD}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
@@ -41,6 +43,14 @@ fn validator_ignores_non_current_generic_block_text() -> TestResult {
     ] {
         assert_accepts(&format!(
             "{context} on current head {HEAD}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+        ))?;
+    }
+    for context in [
+        "Example: Reviewer gate returned BLOCK",
+        "Stale reviewer gate returned BLOCK",
+    ] {
+        assert_accepts(&format!(
+            "Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. {context}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
         ))?;
     }
     Ok(())

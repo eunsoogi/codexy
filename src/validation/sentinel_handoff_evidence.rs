@@ -65,10 +65,22 @@ pub(super) fn has_negative_label_value(suffix: &str) -> bool {
 }
 
 pub(super) fn has_non_claim_phrase_context(prefix: &str, suffix: &str) -> bool {
-    has_unchecked_checklist_marker_before(prefix)
+    has_non_claim_heading_prefix(prefix)
+        || has_unchecked_checklist_marker_before(prefix)
         || has_non_claim_heading_suffix(suffix)
         || has_non_claim_label_value(suffix)
         || has_missing_status_suffix(suffix)
+}
+
+fn has_non_claim_heading_prefix(prefix: &str) -> bool {
+    let heading = prefix
+        .rsplit(['.', '!', '?', ';', '\n'])
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .trim_end_matches(':')
+        .trim();
+    matches!(heading, "example" | "stale")
 }
 
 fn has_missing_status_suffix(suffix: &str) -> bool {
