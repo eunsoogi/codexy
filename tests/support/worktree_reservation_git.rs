@@ -60,16 +60,20 @@ impl FrozenWorktree {
     }
 
     pub(crate) fn snapshot(&self) -> Result<WorktreeSnapshot, ReservationError> {
-        Ok(WorktreeSnapshot {
-            path: canonical(&self.path),
-            head: git(&self.path, ["rev-parse", "HEAD"])?.trim().to_owned(),
-            clean: git(&self.path, ["status", "--porcelain"])?.is_empty(),
-        })
+        snapshot(&self.path)
     }
 }
 
 pub(super) fn canonical(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
+pub(super) fn snapshot(path: &Path) -> Result<WorktreeSnapshot, ReservationError> {
+    Ok(WorktreeSnapshot {
+        path: canonical(path),
+        head: git(path, ["rev-parse", "HEAD"])?.trim().to_owned(),
+        clean: git(path, ["status", "--porcelain"])?.is_empty(),
+    })
 }
 
 fn git<const N: usize>(directory: &Path, args: [&str; N]) -> Result<String, ReservationError> {

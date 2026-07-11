@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 #[path = "worktree_reservation_git.rs"]
 mod worktree_reservation_git;
 
-use worktree_reservation_git::canonical;
+use worktree_reservation_git::{canonical, snapshot as capture_snapshot};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WorktreeSnapshot {
@@ -80,12 +80,15 @@ impl ReservationRegistry {
         }
         let reserved_path = collision
             .ok_or_else(|| ReservationError::Harness("no allocation candidates".into()))?;
-        let snapshot = self.snapshot_for(&reserved_path)?;
+        let expected_snapshot = self.snapshot_for(&reserved_path)?;
+        let observed_snapshot = capture_snapshot(&reserved_path)?;
         Err(ReservationError::Collision {
             task_ids: self.task_ids(&reserved_path),
             roles: self.roles(&reserved_path),
+            statuses: self.statuses(&reserved_path),
             reserved_path,
-            snapshot,
+            expected_snapshot,
+            observed_snapshot,
         })
     }
 
@@ -153,6 +156,14 @@ impl ReservationRegistry {
             .collect()
     }
 
+    fn statuses(&self, path: &Path) -> Vec<TaskState> {
+        self.reservations
+            .values()
+            .filter(|reservation| reservation.snapshot.path == path)
+            .map(|reservation| reservation.state)
+            .collect()
+    }
+
     fn snapshot_for(&self, path: &Path) -> Result<WorktreeSnapshot, ReservationError> {
         self.reservations
             .values()
@@ -168,8 +179,10 @@ pub(crate) enum ReservationError {
     Collision {
         reserved_path: PathBuf,
         roles: Vec<ReservationRole>,
-        snapshot: WorktreeSnapshot,
         task_ids: Vec<String>,
+        statuses: Vec<TaskState>,
+        expected_snapshot: WorktreeSnapshot,
+        observed_snapshot: WorktreeSnapshot,
     },
     DirtyWorktree(PathBuf),
     Harness(String),

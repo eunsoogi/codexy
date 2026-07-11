@@ -84,6 +84,50 @@ fn validator_cli_rejects_missing_live_worktree_reservation_preflight() -> TestRe
 }
 
 #[test]
+fn validator_cli_rejects_exception_that_weakens_reservation_preflight() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let routing_path =
+        plugin_root.join("skills/codex-orchestration/references/thread-and-worktree-routing.md");
+    let routing = std::fs::read_to_string(&routing_path)?;
+    assert!(routing.contains("MUST NOT create or fork the new thread, retry the same path"));
+    std::fs::write(
+        &routing_path,
+        routing.replace(
+            "MUST NOT create or fork the new thread, retry the same path",
+            "MUST NOT create or fork the new thread unless the allocator appears healthy, then retry the same path",
+        ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("must not create or fork the new thread"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_historical_example_that_retains_reservation_phrase() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let routing_path =
+        plugin_root.join("skills/codex-orchestration/references/thread-and-worktree-routing.md");
+    let routing = std::fs::read_to_string(&routing_path)?;
+    assert!(routing.contains("MUST NOT create or fork the new thread, retry the same path"));
+    std::fs::write(
+        &routing_path,
+        routing.replace(
+            "The parent MUST NOT create or fork the new thread, retry the same path",
+            "Historical example only: the parent MUST NOT create or fork the new thread, retry the same path",
+        ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("must not create or fork the new thread"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_missing_dreaming_worktree_reservation_fields() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let dreaming_path = plugin_root.join("skills/dreaming/SKILL.md");
