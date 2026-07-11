@@ -42,8 +42,10 @@ pub(super) fn has_negated_reasoning_control_evidence(instructions: &str) -> bool
         .any(|(start, _)| contains_disallowed_marker_scoped_context(marker_context(&lower, start)))
 }
 fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
-    if has_mandatory_omission_prohibition_with_affirmative_evidence_list(context) {
-        return false;
+    if let Some(followup_is_disallowed) =
+        mandatory_omission_prohibition_followup_is_disallowed(context)
+    {
+        return followup_is_disallowed;
     }
     let Some((head, tail)) = context.split_once(EVIDENCE_MARKER) else {
         return contains_disallowed_context(context);
@@ -87,20 +89,24 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     ))
 }
 
-fn has_mandatory_omission_prohibition_with_affirmative_evidence_list(context: &str) -> bool {
+fn mandatory_omission_prohibition_followup_is_disallowed(context: &str) -> Option<bool> {
     MANDATORY_EVIDENCE_OMISSION_PROHIBITIONS
         .iter()
         .filter_map(|prohibition| context.rfind(prohibition).map(|index| (index, prohibition)))
-        .any(|(index, prohibition)| {
+        .find_map(|(index, prohibition)| {
             let tail = &context[index + prohibition.len()..];
-            tail.split_once(',').is_some_and(|(before, clause)| {
-                before.contains(EVIDENCE_MARKER)
+            tail.split_once(',').and_then(|(before, clause)| {
+                let has_affirmative_list = before.contains(EVIDENCE_MARKER)
                     && !contains_disallowed_context(&format!(
                         "{}{}",
                         context[..index].rsplit('.').next().unwrap_or_default(),
                         before
                     ))
-                    && affirmative_evidence_list_starts(clause)
+                    && affirmative_evidence_list_starts(clause);
+                has_affirmative_list.then(|| {
+                    tail.split_once('.')
+                        .is_some_and(|(_, followup)| contains_disallowed_marker_context(followup))
+                })
             })
         })
 }

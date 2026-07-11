@@ -232,6 +232,19 @@ fn validator_cli_accepts_mandatory_omission_prohibition_with_later_evidence_mark
 }
 
 #[test]
+fn validator_cli_rejects_waiver_after_affirmative_evidence_list() -> TestResult {
+    let output = validate_sentinel_edit(|sentinel| {
+        Ok(sentinel.replace(
+            "and any unresolved risk. MUST block",
+            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. This evidence may be omitted. MUST block",
+        ))
+    })?;
+    assert!(!output.status.success(), "accepted cross-sentence waiver");
+    assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_weakened_affirmative_reference_clauses() -> TestResult {
     for replacement in [
         "reasoning control used or unavailable evidence, MUST reference if available direct reviewer passes performed",
