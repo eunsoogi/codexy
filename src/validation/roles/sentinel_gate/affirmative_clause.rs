@@ -17,21 +17,9 @@ pub(super) fn has_weakened_marker_prefix(prefix: &str) -> bool {
         return false;
     };
     matches!(*first, "optional" | "optionally" | "waived" | "waiver")
+        || matches!(*first, "if" | "when" | "where" | "unless" | "provided")
         || matches!(
             suffix,
-            [
-                "if" | "when" | "where" | "unless" | "provided",
-                "available" | "applicable" | "needed" | "possible" | "feasible" | "waived",
-                ..
-            ]
-        )
-        || matches!(
-            suffix,
-            [
-                "only",
-                "if" | "when" | "where" | "unless" | "provided",
-                "available" | "applicable" | "needed" | "possible" | "feasible" | "waived",
-                ..
-            ]
+            ["only", "if" | "when" | "where" | "unless" | "provided", ..]
         )
 }

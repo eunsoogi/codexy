@@ -219,10 +219,25 @@ fn validator_cli_accepts_mandatory_omission_prohibitions_with_later_evidence() -
 }
 
 #[test]
+fn validator_cli_accepts_mandatory_omission_prohibition_with_later_evidence_markers() -> TestResult
+{
+    let output = validate_sentinel_edit(|sentinel| {
+        Ok(sentinel.replace(
+            "and any unresolved risk. MUST block",
+            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed, edge classes reviewed, replayed review examples when applicable, no-finding result when no blockers remain, and any unresolved risk. MUST block",
+        ))
+    })?;
+    assert!(output.status.success(), "{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_weakened_affirmative_reference_clauses() -> TestResult {
     for replacement in [
         "reasoning control used or unavailable evidence, MUST reference if available direct reviewer passes performed",
         "reasoning control used or unavailable evidence, MUST record, when available, direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, MUST reference if the evidence is available direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, MUST record, when it is applicable, direct reviewer passes performed",
         "reasoning control used or unavailable evidence, MUST reference,\noptionally,\ndirect reviewer passes performed",
         "reasoning control used or unavailable evidence, MUST reference only if available direct reviewer passes performed",
         "reasoning control used or unavailable evidence, MUST record — unless waived — direct reviewer passes performed",

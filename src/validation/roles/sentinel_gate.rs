@@ -112,7 +112,7 @@ fn has_positive_marker(instructions: &str, marker: &str) -> bool {
     let mut search_start = 0;
     while let Some(relative_index) = instructions[search_start..].find(marker) {
         let marker_index = search_start + relative_index;
-        if is_prefix_negated(&instructions[..marker_index])
+        if is_prefix_negated(instructions, marker_index, marker)
             || is_marker_sentence_weakened(instructions, marker_index, marker)
         {
             return false;
@@ -123,12 +123,17 @@ fn has_positive_marker(instructions: &str, marker: &str) -> bool {
     found_positive
 }
 
-fn is_prefix_negated(prefix: &str) -> bool {
-    let sentence_start = prefix.rfind(['.', '!', '?']).map_or(0, |index| index + 1);
-    let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase();
-    let sentence_prefix = sentence_prefix.trim_end();
-    !has_mandatory_evidence_omission_prohibition_before_affirmative_reference(sentence_prefix)
-        && contains_negated_language(sentence_prefix)
+fn is_prefix_negated(instructions: &str, marker_index: usize, marker: &str) -> bool {
+    let sentence_start = instructions[..marker_index]
+        .rfind(['.', '!', '?'])
+        .map_or(0, |index| index + 1);
+    let prefix = instructions[sentence_start..marker_index].to_ascii_lowercase();
+    let prefix = prefix.trim_end();
+    contains_negated_language(prefix)
+        && !has_mandatory_evidence_omission_prohibition_before_affirmative_reference(&format!(
+            "{prefix}{}",
+            marker.to_ascii_lowercase()
+        ))
 }
 
 fn has_mandatory_evidence_omission_prohibition_before_affirmative_reference(
@@ -143,12 +148,29 @@ fn has_mandatory_evidence_omission_prohibition_before_affirmative_reference(
         })
         .any(|(index, prohibition)| {
             let tail = &sentence[index + prohibition.len()..];
-            tail.is_empty()
-                || tail.rsplit_once(',').is_some_and(|(before, clause)| {
-                    matches!(clause.trim(), "and must reference" | "and must record")
+            tail.trim() == "reasoning control used or unavailable evidence"
+                || tail.split_once(',').is_some_and(|(before, clause)| {
+                    before.contains("reasoning control used or unavailable evidence")
+                        && has_unweakened_approval_evidence_clause(clause)
                         && !contains_negated_language(&format!("{}{}", &sentence[..index], before))
                 })
         })
+}
+
+fn has_unweakened_approval_evidence_clause(clause: &str) -> bool {
+    let clause = clause
+        .split_ascii_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let evidence = clause
+        .strip_prefix("and must reference")
+        .or_else(|| clause.strip_prefix("and must record"))
+        .map(str::trim_start)
+        .map(|value| value.trim_start_matches(|ch| matches!(ch, ':' | '-' | ',' | ';')))
+        .unwrap_or("");
+    APPROVAL_EVIDENCE_MARKERS
+        .iter()
+        .any(|marker| evidence.starts_with(&marker.to_ascii_lowercase()))
 }
 
 fn contains_negated_language(sentence: &str) -> bool {
