@@ -77,12 +77,14 @@ fn operation_clause_tool_markers() -> impl Iterator<Item = &'static str> {
 }
 fn is_child_thread_operation_line(line: &str) -> bool {
     let line = normalized_operation_line(line);
-    (line.contains("child thread")
-        && (operation_markers().any(|marker| line.contains(marker))
-            || has_passive_created_thread_id(&line)))
-        || ["create_thread", "fork_thread", "send_message_to_thread"]
-            .into_iter()
-            .any(|tool| is_thread_tool_invocation(&line, tool))
+    let failed_child_thread_request = line.contains("requested child thread failed");
+    !failed_child_thread_request
+        && ((line.contains("child thread")
+            && (operation_markers().any(|marker| line.contains(marker))
+                || has_passive_created_thread_id(&line)))
+            || ["create_thread", "fork_thread", "send_message_to_thread"]
+                .into_iter()
+                .any(|tool| is_thread_tool_invocation(&line, tool)))
 }
 fn normalized_operation_line(line: &str) -> String {
     line.to_ascii_lowercase()

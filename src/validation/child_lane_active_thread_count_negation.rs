@@ -53,6 +53,7 @@ fn has_odd_count_negation(words: &[String], index: usize) -> bool {
                 | "currently"
                 | "equal"
                 | "equals"
+                | "exactly"
                 | "inactive"
                 | "is"
                 | "of"
@@ -61,6 +62,7 @@ fn has_odd_count_negation(words: &[String], index: usize) -> bool {
                 | "thread"
                 | "threads"
                 | "total"
+                | "to"
                 | "waiting"
                 | "was"
         ) {
@@ -84,6 +86,8 @@ fn status_negations(words: &[String], index: usize) -> usize {
     while let Some(previous) = position.checked_sub(1) {
         if matches!(words[previous].as_str(), "not" | "no") {
             negations += 1;
+            position = previous;
+        } else if words[previous] == "currently" {
             position = previous;
         } else {
             break;

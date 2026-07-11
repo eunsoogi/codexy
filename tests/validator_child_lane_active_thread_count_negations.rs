@@ -54,3 +54,63 @@ Maintainer reassignment: none
     );
     Ok(())
 }
+
+#[test]
+fn validator_ignores_nonadjacent_negated_active_status() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Not currently active child Codex threads: 6
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "a nonadjacent negated active status is not capacity evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_enforces_nonadjacent_negated_inactive_status() -> Result<(), Box<dyn std::error::Error>>
+{
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for orchestration only; child routing required
+Not currently inactive child Codex threads: 6
+Existing issue/PR owner check: no existing owner thread found for issue #269.
+Thread creation: created child thread thread-269 for issue #269.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "a nonadjacent negated inactive status should still enforce the cap"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("would exceed five active child Codex threads"),
+        "stderr should name the five-active-child-thread violation, got:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_nonexact_negated_count_claims() -> Result<(), Box<dyn std::error::Error>> {
+    for claim in ["count was not exactly 6", "count was not equal to 6"] {
+        let output = run_ownership_validator(&format!(
+            "Owner decision: parent-owned for orchestration only; child routing required\nActive child Codex threads: {claim}\nMaintainer reassignment: none\n"
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "a negated nonexact count is not capacity evidence: {claim}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
