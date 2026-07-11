@@ -94,23 +94,24 @@ fn has_non_claim_heading_prefix(prefix: &str) -> bool {
 }
 
 fn has_missing_status_suffix(suffix: &str) -> bool {
-    let clause = suffix
-        .split(['.', '!', '?', ';', '\n'])
-        .next()
-        .unwrap_or_default();
-    let words: Vec<_> = clause
+    let words: Vec<_> = suffix
+        .trim_start_matches([' ', '\t', '-', '*'])
         .split(|character: char| !character.is_ascii_alphanumeric())
         .filter(|word| !word.is_empty())
         .collect();
-    words.windows(2).any(|pair| {
-        matches!(
-            pair,
-            [
-                "is" | "was" | "were" | "are" | "be" | "been",
-                "missing" | "absent" | "lacking"
-            ]
-        )
-    })
+    matches!(
+        words.as_slice(),
+        [
+            "is" | "was" | "were" | "are" | "be" | "been",
+            "missing" | "absent" | "lacking",
+            ..
+        ] | [
+            "evidence",
+            "is" | "was" | "were" | "are" | "be" | "been",
+            "missing" | "absent" | "lacking",
+            ..
+        ]
+    )
 }
 
 fn has_unchecked_checklist_marker_before(prefix: &str) -> bool {

@@ -108,9 +108,15 @@ fn validator_rejects_missing_sentinel_pass_evidence() -> TestResult {
 
 #[test]
 fn validator_accepts_unrelated_missing_after_named_sentinel_pass() -> TestResult {
-    assert_accepts(&format!(
-        "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS after fixing missing tests on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
-    ))
+    for explanation in [
+        "after fixing missing tests",
+        "after fixing a fixture that was missing",
+    ] {
+        assert_accepts(&format!(
+            "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS {explanation} on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+        ))?;
+    }
+    Ok(())
 }
 
 #[test]
