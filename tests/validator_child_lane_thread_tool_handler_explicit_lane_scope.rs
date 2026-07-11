@@ -15,7 +15,7 @@ fn evidence_with_defect_phrase(phrase: &str) -> String {
     format!(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Tool search: discovered codex_app.read_thread as an available thread tool.
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Invocation evidence: codex_app.read_thread failed with `no handler registered for tool: read_thread`.
 Dogfooding/tool-exposure defect {phrase}: recorded runtime missing-handler evidence for codex_app.read_thread.
 Fallback route: no fallback route was available.
 Tracking issue: #205.
@@ -35,6 +35,12 @@ fn validator_rejects_ambiguous_multi_lane_defect_capture() -> Result<(), Box<dyn
         "for Lane A, B",
         "for Lane A/B",
         "for Lanes Alpha and Beta",
+        "for Lane Alpha and Beta",
+        "for Lane Alpha or Beta",
+        "for Lane Alpha and/or Beta",
+        "for Lane Alpha and-or Beta",
+        "for Lane Alpha, Beta",
+        "for Lane Alpha/Beta",
     ] {
         let output = run_ownership_validator(&evidence_with_defect_phrase(phrase))?;
 
@@ -55,7 +61,9 @@ fn validator_allows_conjunction_prose_after_explicit_lane_capture()
         "for Lane A and I recorded the handoff",
         "for Lane A or I can provide the evidence",
         "for Lane A and/or I can follow up",
+        "for Lane A and-or I can follow up",
         "for Lane A and we recorded the handoff",
+        "for Lane Alpha and we recorded the handoff",
         "for Lane A or ordinary handoff prose",
     ] {
         let output = run_ownership_validator(&evidence_with_defect_phrase(phrase))?;

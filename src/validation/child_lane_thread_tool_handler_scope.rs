@@ -284,10 +284,15 @@ fn lane_mention_labels(line: &str) -> Vec<String> {
         {
             let plural_lane_marker = token.eq_ignore_ascii_case("lanes");
             let context = explicit_lane_mention_context(&tokens, index).unwrap_or(previous);
+            let first_lane_label = tokens.get(index + 1).copied().unwrap_or_default();
             let mut label_index = index + 1;
             while let Some(label) = tokens.get(label_index).copied() {
                 if label_index != index + 1
-                    && !is_unambiguous_conjunction_lane_label(label, plural_lane_marker)
+                    && !is_unambiguous_conjunction_lane_label(
+                        label,
+                        plural_lane_marker,
+                        first_lane_label,
+                    )
                 {
                     break;
                 }
@@ -316,12 +321,39 @@ fn lane_mention_labels(line: &str) -> Vec<String> {
     labels
 }
 
-fn is_unambiguous_conjunction_lane_label(label: &str, plural_lane_marker: bool) -> bool {
-    label.bytes().all(|byte| byte.is_ascii_digit())
-        || label.len() == 1
-            && label.bytes().all(|byte| byte.is_ascii_alphabetic())
-            && !label.eq_ignore_ascii_case("i")
-        || plural_lane_marker && is_lowercase_lane_label_token(label)
+fn is_unambiguous_conjunction_lane_label(
+    label: &str,
+    plural_lane_marker: bool,
+    first_lane_label: &str,
+) -> bool {
+    !is_conjunction_prose_pronoun(label)
+        && (label.bytes().all(|byte| byte.is_ascii_digit())
+            || label.len() == 1 && label.bytes().all(|byte| byte.is_ascii_alphabetic())
+            || label
+                .bytes()
+                .next()
+                .is_some_and(|byte| byte.is_ascii_uppercase())
+            || (plural_lane_marker
+                || first_lane_label.len() > 1 && is_lowercase_lane_label_token(first_lane_label))
+                && is_lowercase_lane_label_token(label))
+}
+
+fn is_conjunction_prose_pronoun(label: &str) -> bool {
+    matches!(
+        label.to_ascii_lowercase().as_str(),
+        "i" | "we"
+            | "you"
+            | "he"
+            | "she"
+            | "they"
+            | "it"
+            | "me"
+            | "us"
+            | "them"
+            | "my"
+            | "our"
+            | "their"
+    )
 }
 
 fn is_lane_conjunction(token: &str) -> bool {
@@ -677,4 +709,42 @@ fn has_defect_label(line: &str) -> bool {
     line.contains("dogfooding defect")
         || line.contains("tool-exposure defect")
         || line.contains("dogfooding/tool-exposure defect")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::has_different_lane_mention;
+
+    #[test]
+    fn detects_singular_multi_letter_lane_lists() {
+        for line in [
+            "for Lane Alpha and Beta",
+            "for Lane Alpha or Beta",
+            "for Lane Alpha and/or Beta",
+            "for Lane Alpha and-or Beta",
+            "for Lane Alpha, Beta",
+            "for Lane Alpha/Beta",
+        ] {
+            assert!(
+                has_different_lane_mention(line),
+                "expected {line} to be multi-lane"
+            );
+        }
+    }
+
+    #[test]
+    fn ignores_first_person_conjunction_prose() {
+        for line in [
+            "for Lane A and I recorded the handoff",
+            "for Lane A or I can provide the evidence",
+            "for Lane A and/or I can follow up",
+            "for Lane A and-or I can follow up",
+            "for Lane Alpha and we recorded the handoff",
+        ] {
+            assert!(
+                !has_different_lane_mention(line),
+                "expected {line} to remain same-lane prose"
+            );
+        }
+    }
 }

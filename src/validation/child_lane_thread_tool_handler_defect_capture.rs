@@ -781,6 +781,16 @@ mod tests {
     use super::has_handler_marker_and_tool_name_in_defect_capture;
 
     #[test]
+    fn rejects_singular_multi_letter_lane_defect_capture() {
+        let evidence = "Dogfooding/tool-exposure defect for Lane Alpha and Beta: recorded runtime missing-handler evidence for codex_app.read_thread.";
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "a singular multi-letter lane list must not satisfy a handler-defect capture"
+        );
+    }
+
+    #[test]
     fn rejects_preceding_handoff_metadata_for_a_different_lane() {
         let evidence = r#"Fallback route: parent posted the handoff for Lane B.
 Tracking issue: #246
