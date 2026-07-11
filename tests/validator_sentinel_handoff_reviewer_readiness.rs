@@ -71,6 +71,36 @@ fn validator_rejects_modal_future_sentinel_pass_after_block() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_reviewer_gate_result_block_after_sentinel_pass() -> TestResult {
+    for handoff in [
+        format!(
+            "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. Reviewer gate result: BLOCK on current head. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+        ),
+        format!(
+            "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. Reviewer-gate result: BLOCK on current head. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+        ),
+    ] {
+        assert_rejects_sentinel_handoff(&handoff)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_accepts_explanatory_reviewer_gate_result_text_after_sentinel_pass() -> TestResult {
+    let handoff = format!(
+        "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. Reviewer-gate result: documentation note only. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+    );
+    let output = validate_file(&handoff)?;
+    assert!(
+        output.status.success(),
+        "validator should preserve Sentinel PASS when reviewer-gate result text is explanatory\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_reviewer_named_returned_pass() -> TestResult {
     let handoff = format!(
         "PR ready for parent handoff. Packaged Codexy Sentinel Turing returned PASS on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
