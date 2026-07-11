@@ -126,7 +126,7 @@ fn is_prefix_negated(prefix: &str) -> bool {
     let sentence_start = prefix.rfind(['.', '!', '?']).map_or(0, |index| index + 1);
     let sentence_prefix = prefix[sentence_start..].to_ascii_lowercase();
     let sentence_prefix = sentence_prefix.trim_end();
-    !has_mandatory_evidence_omission_prohibition(sentence_prefix)
+    !ends_with_mandatory_evidence_omission_prohibition(sentence_prefix)
         && (sentence_prefix.contains("must not")
             || sentence_prefix.contains("do not")
             || ["should not", "but not", "and not", "or not"]
@@ -137,10 +137,10 @@ fn is_prefix_negated(prefix: &str) -> bool {
                 .any(|suffix| sentence_prefix.ends_with(suffix)))
 }
 
-fn has_mandatory_evidence_omission_prohibition(sentence: &str) -> bool {
+fn ends_with_mandatory_evidence_omission_prohibition(sentence: &str) -> bool {
     ["must not omit", "must not skip", "must not leave out"]
         .iter()
-        .any(|prohibition| sentence.contains(prohibition))
+        .any(|prohibition| sentence.ends_with(prohibition))
 }
 
 fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: &str) -> bool {

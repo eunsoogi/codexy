@@ -140,6 +140,22 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     })?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
+    let output = validate_sentinel_replacement(
+        "reasoning control used or unavailable evidence, direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, direct reviewer passes performed",
+    )?;
+    assert!(output.status.success(), "{}", stderr(&output));
+    let output = validate_sentinel_edit(|sentinel| {
+        Ok(sentinel.replace(
+            "and any unresolved risk. MUST block",
+            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, but not direct reviewer passes performed. MUST block",
+        ))
+    })?;
+    assert!(
+        !output.status.success(),
+        "accepted mixed-polarity approval evidence"
+    );
+    assert!(stderr(&output).contains("reviewer gate contract is missing"));
     Ok(())
 }
 #[test]
