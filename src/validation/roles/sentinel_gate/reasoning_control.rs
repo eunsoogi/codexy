@@ -1,4 +1,6 @@
 const EVIDENCE_MARKER: &str = "reasoning control used or unavailable evidence";
+const MANDATORY_EVIDENCE_OMISSION_PROHIBITIONS: &[&str] =
+    &["must not omit", "must not skip", "must not leave out"];
 const EVIDENCE_FOLLOWUP_PREFIXES: &str = "this |that |it |evidence|requirement";
 const EVIDENCE_FOLLOWUP_REFERENCES: &str = "this evidence|that evidence|the evidence|reasoning control evidence|evidence|this requirement|that requirement|the requirement|this|that|it";
 const PARAGRAPH_MARKERS: &[&str] = &[
@@ -46,13 +48,13 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
     let head_segments = head.split([',', ';']).map(str::trim).collect::<Vec<_>>();
     let preamble = head_segments.first().copied().unwrap_or(head);
     let scoped_head = head.rsplit([',', ';']).next().unwrap_or(head);
-    if contains_disallowed_context(preamble)
+    if contains_disallowed_marker_context(preamble)
         || head_segments
             .iter()
             .rev()
             .skip(1)
             .take(1)
-            .any(|segment| contains_disallowed_context(segment))
+            .any(|segment| contains_disallowed_marker_context(segment))
         || head_segments.iter().any(|segment| contains_scoped_opt_out(segment))
         || "if applicable, reference|when applicable, reference|where applicable, reference|as applicable, reference, if applicable|reference, when applicable|reference, where applicable|reference, as applicable|reference if applicable|reference when applicable|reference where applicable|reference as applicable"
             .split('|')
@@ -71,15 +73,27 @@ fn contains_disallowed_marker_scoped_context(context: &str) -> bool {
         .filter(|segment| {
             let segment = segment.trim_start();
             has_evidence_followup(segment)
-                || (contains_disallowed_context(segment)
+                || (contains_disallowed_marker_context(segment)
                     && references_reasoning_evidence_requirement(segment))
         })
         .collect::<Vec<_>>()
         .join(" ");
     let followups = &tail[sentence_end..];
-    contains_disallowed_context(&format!(
+    contains_disallowed_marker_context(&format!(
         "{scoped_head}{EVIDENCE_MARKER}{scoped_tail} {opt_out_tail}{followups}"
     ))
+}
+
+fn contains_disallowed_marker_context(context: &str) -> bool {
+    if !has_mandatory_evidence_omission_prohibition(context) {
+        return contains_disallowed_context(context);
+    }
+    let normalized = MANDATORY_EVIDENCE_OMISSION_PROHIBITIONS
+        .iter()
+        .fold(context.to_owned(), |context, prohibition| {
+            context.replace(prohibition, "")
+        });
+    contains_disallowed_context(&normalized)
 }
 
 fn reasoning_control_paragraph(text: &str, marker_start: usize) -> &str {
@@ -165,12 +179,19 @@ fn references_reasoning_evidence_requirement(clause: &str) -> bool {
 }
 
 fn contains_mandatory_context(clause: &str) -> bool {
-    "reference|record"
-        .split('|')
-        .any(|pattern| contains_context_pattern(clause, pattern))
-        && (contains_context_pattern(clause, "must")
-            || (contains_context_pattern(clause, "required")
-                && !contains_required_negation(clause)))
+    has_mandatory_evidence_omission_prohibition(clause)
+        || ("reference|record"
+            .split('|')
+            .any(|pattern| contains_context_pattern(clause, pattern))
+            && (contains_context_pattern(clause, "must")
+                || (contains_context_pattern(clause, "required")
+                    && !contains_required_negation(clause))))
+}
+
+fn has_mandatory_evidence_omission_prohibition(clause: &str) -> bool {
+    MANDATORY_EVIDENCE_OMISSION_PROHIBITIONS
+        .iter()
+        .any(|prohibition| contains_context_pattern(clause, prohibition))
 }
 
 fn contains_disallowed_paragraph_context(paragraph: &str) -> bool {

@@ -48,6 +48,9 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "Every approval MUST reference the current diff or head, lane scope, but is required not to reference reasoning control used or unavailable evidence",
         "Every approval MUST reference the current diff or head, lane scope, but is required to not reference reasoning control used or unavailable evidence",
         "Every approval MUST inspect reasoning control used or unavailable evidence",
+        "Every approval MUST omit reasoning control used or unavailable evidence",
+        "Every approval MUST skip reasoning control used or unavailable evidence",
+        "Every approval MUST NOT omit reasoning control used or unavailable evidence if applicable",
         "reasoning control used or unavailable evidence does not have to be supplied",
         "reasoning control used or unavailable evidence does not\nneed to be supplied",
         "reasoning control used or unavailable evidence needn't be supplied",
@@ -165,6 +168,24 @@ fn validator_cli_accepts_affirmative_reasoning_control_evidence_control() -> Tes
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
+
+#[test]
+fn validator_cli_accepts_mandatory_reasoning_evidence_omission_prohibitions() -> TestResult {
+    for replacement in [
+        "Every approval MUST NOT omit reasoning control used or unavailable evidence",
+        "Every approval MUST NOT skip reasoning control used or unavailable evidence",
+    ] {
+        let output = validate_sentinel_edit(|sentinel| {
+            Ok(sentinel.replace(
+                "and any unresolved risk. MUST block",
+                &format!("and any unresolved risk. {replacement}. MUST block"),
+            ))
+        })?;
+        assert!(output.status.success(), "{}", stderr(&output));
+    }
+    Ok(())
+}
+
 #[test]
 fn validator_cli_rejects_non_affirmative_reasoning_control_paragraph() -> TestResult {
     for replacement in [
