@@ -106,6 +106,26 @@ fn validator_cli_rejects_exception_that_weakens_reservation_preflight() -> TestR
 }
 
 #[test]
+fn validator_cli_rejects_comma_prefixed_exception_that_weakens_reservation_preflight() -> TestResult
+{
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let routing_path =
+        plugin_root.join("skills/codex-orchestration/references/thread-and-worktree-routing.md");
+    let routing = std::fs::read_to_string(&routing_path)?;
+    std::fs::write(
+        &routing_path,
+        routing.replace(
+            "MUST NOT create or fork the new thread, retry the same path",
+            "MUST NOT create or fork the new thread, unless the allocator appears healthy, then retry the same path",
+        ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_historical_example_that_retains_reservation_phrase() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let routing_path =
@@ -124,6 +144,45 @@ fn validator_cli_rejects_historical_example_that_retains_reservation_phrase() ->
     assert!(!output.status.success());
     let stderr = stderr(&output);
     assert!(stderr.contains("must not create or fork the new thread"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_numbered_historical_example_that_retains_reservation_phrase() -> TestResult
+{
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let routing_path =
+        plugin_root.join("skills/codex-orchestration/references/thread-and-worktree-routing.md");
+    let routing = std::fs::read_to_string(&routing_path)?;
+    std::fs::write(
+        &routing_path,
+        routing.replace(
+            "The parent MUST NOT create or fork the new thread, retry the same path",
+            "Historical example no. 1: the parent MUST NOT create or fork the new thread, retry the same path",
+        ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_cli_accepts_current_contract_after_historical_examples_heading() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let routing_path =
+        plugin_root.join("skills/codex-orchestration/references/thread-and-worktree-routing.md");
+    let routing = std::fs::read_to_string(&routing_path)?;
+    std::fs::write(
+        &routing_path,
+        routing.replace(
+            "The parent MUST NOT create or fork the new thread, retry the same path",
+            "## Historical examples\n\n## Current contract\n\nThe parent MUST NOT create or fork the new thread, retry the same path",
+        ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 

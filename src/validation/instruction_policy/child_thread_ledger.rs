@@ -101,11 +101,12 @@ fn require_all(
 
 fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
-        let before = text[..index].rsplit(['.', ';']).next().unwrap_or_default();
-        let after = text[index + phrase.len()..]
-            .split(['.', ';'])
+        let before = text[..index]
+            .rsplit("</markdown-heading>")
             .next()
-            .unwrap_or_default()
+            .unwrap_or_default();
+        let after = text[index + phrase.len()..]
+            .trim_start_matches(|character| matches!(character, ',' | ':' | '-' | '—'))
             .trim_start();
         !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
@@ -147,7 +148,20 @@ fn reject_all(
 }
 
 fn normalized_whitespace(text: &str) -> String {
-    text.to_ascii_lowercase()
+    let mut with_heading_boundaries = String::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('#') {
+            with_heading_boundaries.push_str(" <markdown-heading> ");
+            with_heading_boundaries.push_str(trimmed.trim_start_matches('#').trim());
+            with_heading_boundaries.push_str(" </markdown-heading> ");
+        } else {
+            with_heading_boundaries.push_str(line);
+            with_heading_boundaries.push(' ');
+        }
+    }
+    with_heading_boundaries
+        .to_ascii_lowercase()
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
