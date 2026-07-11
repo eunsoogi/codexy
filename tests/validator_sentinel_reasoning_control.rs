@@ -245,6 +245,38 @@ fn validator_cli_rejects_waiver_after_affirmative_evidence_list() -> TestResult 
 }
 
 #[test]
+fn validator_cli_rejects_negated_followups_after_affirmative_evidence_list() -> TestResult {
+    for followup in [
+        "This evidence cannot be included.",
+        "This evidence may not be included.",
+    ] {
+        let output = validate_sentinel_edit(|sentinel| {
+            Ok(sentinel.replace(
+                "and any unresolved risk. MUST block",
+                &format!(
+                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. {followup} MUST block"
+                ),
+            ))
+        })?;
+        assert!(!output.status.success(), "accepted {followup:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_accepts_passive_mandatory_followup_after_affirmative_evidence_list() -> TestResult
+{
+    let output = validate_sentinel_edit(|sentinel| {
+        Ok(sentinel.replace(
+            "and any unresolved risk. MUST block",
+            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. This evidence MUST NOT be omitted. MUST block",
+        ))
+    })?;
+    assert!(output.status.success(), "{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_weakened_affirmative_reference_clauses() -> TestResult {
     for replacement in [
         "reasoning control used or unavailable evidence, MUST reference if available direct reviewer passes performed",

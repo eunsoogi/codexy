@@ -165,9 +165,9 @@ fn has_unweakened_approval_evidence_clause(clause: &str) -> bool {
     let evidence = clause
         .strip_prefix("and must reference")
         .or_else(|| clause.strip_prefix("and must record"))
-        .map(str::trim_start)
-        .map(|value| value.trim_start_matches(|ch| matches!(ch, ':' | '-' | ',' | ';')))
-        .unwrap_or("");
+        .map_or("", |value| {
+            value.trim_start().trim_start_matches([':', '-', ',', ';'])
+        });
     APPROVAL_EVIDENCE_MARKERS
         .iter()
         .any(|marker| evidence.starts_with(&marker.to_ascii_lowercase()))
