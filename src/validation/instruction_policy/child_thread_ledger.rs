@@ -106,7 +106,7 @@ fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
             .next()
             .unwrap_or_default();
         let after = text[index + phrase.len()..]
-            .trim_start_matches(|character| matches!(character, ',' | ':' | '-' | '—'))
+            .trim_start_matches([',', ':', '-', '—'])
             .trim_start();
         !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
