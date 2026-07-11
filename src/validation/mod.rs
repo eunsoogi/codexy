@@ -6,6 +6,8 @@ mod child_handoff_readiness_claims;
 mod child_handoff_readiness_heads;
 mod child_handoff_readiness_status;
 mod child_handoff_readiness_text;
+#[path = "child_lane_active_threads_module.rs"]
+mod child_lane_active_threads;
 mod child_lane_classification_boundaries;
 mod child_lane_classification_setup;
 mod child_lane_classification_setup_context;

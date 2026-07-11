@@ -1,4 +1,8 @@
-use std::{fs, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {
@@ -66,6 +70,100 @@ fn sync_version_script_check_rejects_stale_cargo_lock() -> Result<(), Box<dyn st
         "sync-version --check auto-healed Cargo.lock:\n{after}"
     );
     Ok(())
+}
+
+#[test]
+fn sync_version_cli_updates_only_the_supplied_isolated_root()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let build_root = archive_repository(&temp, "build-root")?;
+    let diagnostic_root = archive_repository(&temp, "diagnostic-root")?;
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/paths.rs"),
+        build_root.join("src/paths.rs"),
+    )?;
+    let build_target = build_root.join("target");
+
+    let build_status = Command::new("cargo")
+        .args([
+            "build",
+            "--locked",
+            "--quiet",
+            "--bin",
+            "codexy-sync-version",
+        ])
+        .env("CARGO_TARGET_DIR", &build_target)
+        .current_dir(&build_root)
+        .status()?;
+    assert!(build_status.success(), "isolated helper build failed");
+
+    let build_root_before = version_surface_contents(&build_root)?;
+    let output = Command::new(build_target.join("debug/codexy-sync-version"))
+        .args(["--version", "9.9.9"])
+        .env("CODEXY_REPO_ROOT", &diagnostic_root)
+        .current_dir(&diagnostic_root)
+        .output()?;
+    assert!(
+        output.status.success(),
+        "isolated diagnostic failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        version_surface_contents(&build_root)?,
+        build_root_before,
+        "the compiled helper mutated its baked-in build root"
+    );
+    for (path, contents) in version_surface_contents(&diagnostic_root)? {
+        assert!(
+            String::from_utf8_lossy(&contents).contains("9.9.9"),
+            "supplied diagnostic root was not updated at {}",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+fn archive_repository(
+    temp: &tempfile::TempDir,
+    name: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let archive = temp.path().join(format!("{name}.tar"));
+    let repo = temp.path().join(name);
+    let archive_status = Command::new("git")
+        .args(["archive", "--format=tar", "HEAD"])
+        .arg("-o")
+        .arg(&archive)
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .status()?;
+    assert!(archive_status.success(), "git archive failed");
+    fs::create_dir(&repo)?;
+    let tar_status = Command::new("tar")
+        .arg("-xf")
+        .arg(&archive)
+        .arg("-C")
+        .arg(&repo)
+        .status()?;
+    assert!(tar_status.success(), "tar extract failed");
+    Ok(repo)
+}
+
+fn version_surface_contents(
+    root: &Path,
+) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {
+    [
+        ".agents/plugins/marketplace.json",
+        ".agents/plugins/release-publish-contract.json",
+        "Cargo.lock",
+        "Cargo.toml",
+        "plugins/codexy/.codex-plugin/plugin.json",
+    ]
+    .into_iter()
+    .map(|relative| {
+        let path = root.join(relative);
+        Ok((path.clone(), fs::read(path)?))
+    })
+    .collect()
 }
 
 fn stale_codexy_runtime_lock_version(

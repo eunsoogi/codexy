@@ -20,9 +20,16 @@ pub fn plugin_root() -> PathBuf {
 ///
 /// # Errors
 ///
-/// Returns an error if the compile-time plugin root cannot be walked back to
-/// the repository root.
+/// Returns an error if a relative `CODEXY_REPO_ROOT` cannot be resolved from
+/// the current working directory.
 pub fn repo_root() -> Result<PathBuf> {
+    if let Some(path) = std::env::var_os("CODEXY_REPO_ROOT").filter(|value| !value.is_empty()) {
+        let path = PathBuf::from(path);
+        if path.is_absolute() {
+            return Ok(path);
+        }
+        return Ok(std::env::current_dir()?.join(path));
+    }
     Ok(Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf())
 }
 
