@@ -4,6 +4,7 @@ use toml::Value;
 
 use crate::paths::display_relative;
 
+mod affirmative_clause;
 mod reasoning_control;
 
 const REVIEWER_GATE_MARKERS: &[&str] = &[
@@ -170,6 +171,7 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
         .find(['.', '!', '?'])
         .map_or(instructions.len(), |index| marker_end + index);
     let sentence = instructions[sentence_start..sentence_end].to_ascii_lowercase();
+    let marker_prefix = &sentence[..marker_index - sentence_start];
     let marker_tail_start = marker_index - sentence_start + marker.len();
     let marker_tail = &sentence[marker_tail_start..];
     sentence
@@ -178,6 +180,7 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
         || sentence.contains("not required")
         || sentence.contains("not mandatory")
         || sentence.contains("not needed")
+        || affirmative_clause::has_weakened_marker_prefix(marker_prefix)
         || marker_tail_has_conditional_waiver(marker_tail)
         || sentence.contains("may skip")
         || sentence.contains("may omit")

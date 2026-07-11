@@ -219,13 +219,55 @@ fn validator_cli_accepts_mandatory_omission_prohibitions_with_later_evidence() -
 }
 
 #[test]
+fn validator_cli_rejects_weakened_affirmative_reference_clauses() -> TestResult {
+    for replacement in [
+        "reasoning control used or unavailable evidence, MUST reference if available direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, MUST record, when available, direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, MUST reference,\noptionally,\ndirect reviewer passes performed",
+        "reasoning control used or unavailable evidence, MUST reference only if available direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, MUST record — unless waived — direct reviewer passes performed",
+    ] {
+        let output = validate_sentinel_replacement(
+            "reasoning control used or unavailable evidence, direct reviewer passes performed",
+            replacement,
+        )?;
+        assert!(!output.status.success(), "accepted {replacement:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_accepts_unweakened_affirmative_reference_clauses() -> TestResult {
+    for replacement in [
+        "reasoning control used or unavailable evidence, MUST reference direct reviewer passes performed",
+        "reasoning control used or unavailable evidence, MUST\nrecord\ndirect reviewer passes performed",
+    ] {
+        let output = validate_sentinel_replacement(
+            "reasoning control used or unavailable evidence, direct reviewer passes performed",
+            replacement,
+        )?;
+        assert!(
+            output.status.success(),
+            "{replacement}: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_negated_later_approval_evidence() -> TestResult {
-    let output = validate_sentinel_replacement(
-        "reasoning control used or unavailable evidence, direct reviewer passes performed",
+    for replacement in [
         "reasoning control used or unavailable evidence, but not direct reviewer passes performed",
-    )?;
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("reviewer gate contract is missing"));
+        "MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed is waived",
+    ] {
+        let output = validate_sentinel_replacement(
+            "reasoning control used or unavailable evidence, direct reviewer passes performed",
+            replacement,
+        )?;
+        assert!(!output.status.success(), "accepted {replacement:?}");
+        assert!(stderr(&output).contains("reviewer gate contract is missing"));
+    }
     Ok(())
 }
 
