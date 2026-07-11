@@ -6,14 +6,7 @@ mod child_handoff_readiness_claims;
 mod child_handoff_readiness_heads;
 mod child_handoff_readiness_status;
 mod child_handoff_readiness_text;
-mod child_lane_active_thread_capacity;
-mod child_lane_active_thread_count;
-mod child_lane_active_thread_count_records;
-mod child_lane_active_thread_count_segments;
-mod child_lane_active_thread_evidence;
-mod child_lane_active_thread_freed_capacity;
-mod child_lane_active_thread_operations;
-mod child_lane_active_thread_owner_lookup_segments;
+#[path = "child_lane_active_threads_module.rs"]
 mod child_lane_active_threads;
 mod child_lane_classification_boundaries;
 mod child_lane_classification_setup;

@@ -1,3 +1,5 @@
+use super::child_lane_active_thread_count_negation::{count_word, has_active_child_thread_key};
+
 pub(super) fn active_child_thread_count(line: &str) -> Option<u64> {
     let (key, value) = line.split_once(':')?;
     let key_words = key_words(key);
@@ -18,26 +20,30 @@ pub(super) fn key_words(key: &str) -> Vec<String> {
 }
 fn explicit_total(words: &[String]) -> Option<u64> {
     words
-        .windows(2)
-        .find_map(|window| {
-            (window[0] == "total")
-                .then(|| window[1].parse().ok())
+        .iter()
+        .enumerate()
+        .find_map(|(index, word)| {
+            (word == "total")
+                .then(|| count_word(words, index + 1))
                 .flatten()
         })
         .or_else(|| {
-            words.windows(2).find_map(|window| {
-                (window[1] == "total")
-                    .then(|| window[0].parse().ok())
+            words.iter().enumerate().find_map(|(index, word)| {
+                (word == "total")
+                    .then(|| {
+                        index
+                            .checked_sub(1)
+                            .and_then(|previous| count_word(words, previous))
+                    })
                     .flatten()
             })
         })
 }
 fn fallback_count(words: &[String]) -> Option<u64> {
-    let first = words.first()?;
-    if matches!(first.as_str(), "none" | "zero") && words.len() == 1 {
+    if words.len() == 1 && count_word(words, 0) == Some(0) {
         return Some(0);
     }
-    if first.chars().all(|c| c.is_ascii_digit()) {
+    if let Some(first_count) = count_word(words, 0) {
         let starts_list = words.get(1).is_some_and(|word| {
             is_prefixed_thread_id(word)
                 || is_non_prefixed_codex_thread_id(word)
@@ -48,7 +54,7 @@ fn fallback_count(words: &[String]) -> Option<u64> {
         });
         return thread_id_entry_count(words)
             .filter(|count| *count > 1 && starts_list)
-            .or_else(|| first.parse().ok());
+            .or(Some(first_count));
     }
     if let Some(count) = thread_id_entry_count(words) {
         return Some(count);
@@ -58,8 +64,8 @@ fn fallback_count(words: &[String]) -> Option<u64> {
     }
     words
         .iter()
-        .find(|word| word.chars().all(|character| character.is_ascii_digit()))
-        .and_then(|word| word.parse().ok())
+        .enumerate()
+        .find_map(|(index, _)| count_word(words, index))
 }
 fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64> {
     let mut counts = [None, None, None];
@@ -85,7 +91,7 @@ fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64
     if key_has_active && counts[0].is_none() {
         counts[0] = thread_id_entry_count(words);
     }
-    if let Some(first_count) = words.first().and_then(|word| count_word(word)) {
+    if let Some(first_count) = count_word(words, 0) {
         if !first_count_used && key_has_active && counts[0].is_none() {
             counts[0] = Some(first_count);
         } else if !first_count_used && key_has_waiting && counts[1].is_none() {
@@ -97,7 +103,7 @@ fn labeled_component_count(key_words: &[String], words: &[String]) -> Option<u64
 fn component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
     let previous_count = index
         .checked_sub(1)
-        .and_then(|previous| count_word(&words[previous]).map(|count| (count, previous)));
+        .and_then(|previous| count_word(words, previous).map(|count| (count, previous)));
     let previous_follows_component =
         previous_count.is_some_and(|(_, previous)| count_follows_component(words, previous));
     let previous_is_key_count = component_index(&words[index]) != Some(0)
@@ -112,11 +118,11 @@ fn component_count(words: &[String], index: usize) -> Option<(u64, usize)> {
         .or_else(|| next_component_count(words, index))
 }
 fn count_follows_component(words: &[String], count_index: usize) -> bool {
-    for word in words[..count_index].iter().rev() {
-        if component_index(word).is_some() {
+    for previous in (0..count_index).rev() {
+        if component_index(&words[previous]).is_some() {
             return true;
         }
-        if count_word(word).is_some() {
+        if count_word(words, previous).is_some() {
             return false;
         }
     }
@@ -127,7 +133,7 @@ fn previous_component_count(words: &[String], index: usize) -> Option<(u64, usiz
         if component_index(&words[previous]).is_some() {
             break;
         }
-        if let Some(count) = count_word(&words[previous]) {
+        if let Some(count) = count_word(words, previous) {
             return Some((count, previous));
         }
     }
@@ -138,7 +144,7 @@ fn next_component_count(words: &[String], index: usize) -> Option<(u64, usize)> 
         if component_index(word).is_some() {
             break;
         }
-        if let Some(count) = count_word(word) {
+        if let Some(count) = count_word(words, next) {
             return Some((count, next));
         }
     }
@@ -149,13 +155,6 @@ fn component_index(word: &str) -> Option<usize> {
         "active" => Some(0),
         "blocked" | "passive" | "rate-limited" | "waiting" => Some(1),
         "pending" => Some(2),
-        _ => None,
-    }
-}
-fn count_word(word: &str) -> Option<u64> {
-    match word {
-        "none" | "zero" => Some(0),
-        _ if word.chars().all(|character| character.is_ascii_digit()) => word.parse().ok(),
         _ => None,
     }
 }
@@ -218,25 +217,4 @@ fn is_non_thread_id_context(words: &[String], index: usize) -> bool {
     words
         .get(index.saturating_sub(1))
         .is_some_and(|word| matches!(word.as_str(), "branch" | "worktree" | "path"))
-}
-fn has_active_child_thread_key(words: &[String]) -> bool {
-    words
-        .iter()
-        .any(|word| matches!(word.as_str(), "active" | "waiting"))
-        && words.iter().any(|word| word == "child")
-        && words
-            .iter()
-            .any(|word| matches!(word.as_str(), "thread" | "threads"))
-        && !words.iter().any(|word| word == "inactive")
-        && !words
-            .windows(2)
-            .any(|window| window[0] == "non" && window[1] == "active")
-        && (!words.iter().any(|word| {
-            matches!(
-                word.as_str(),
-                "subagent" | "subagents" | "specialist" | "specialists"
-            )
-        }) || words
-            .iter()
-            .any(|word| matches!(word.as_str(), "exclude" | "excluding" | "excluded")))
 }
