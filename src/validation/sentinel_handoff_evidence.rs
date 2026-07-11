@@ -73,14 +73,24 @@ pub(super) fn has_non_claim_phrase_context(prefix: &str, suffix: &str) -> bool {
 }
 
 fn has_non_claim_heading_prefix(prefix: &str) -> bool {
-    let heading = prefix
-        .rsplit(['.', '!', '?', ';', '\n'])
+    let line = prefix
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or_default();
+    let heading = line
+        .rsplit(['.', '!', '?', ';'])
         .next()
         .unwrap_or_default()
         .trim()
         .trim_end_matches(':')
+        .trim()
+        .trim_start_matches('#')
         .trim();
-    matches!(heading, "example" | "stale")
+    matches!(heading, "example" | "historical example" | "stale")
+        || heading.strip_prefix("example ").is_some_and(|number| {
+            !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit())
+        })
 }
 
 fn has_missing_status_suffix(suffix: &str) -> bool {

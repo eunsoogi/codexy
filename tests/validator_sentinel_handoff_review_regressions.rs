@@ -57,6 +57,28 @@ fn validator_ignores_non_current_generic_block_text() -> TestResult {
 }
 
 #[test]
+fn validator_ignores_generic_block_text_in_explicit_examples() -> TestResult {
+    for context in [
+        "Example 1: Reviewer gate returned BLOCK",
+        "Historical example: Reviewer gate returned BLOCK",
+        "### Example\nReviewer gate returned BLOCK",
+    ] {
+        assert_accepts(&format!(
+            "Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. {context}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_current_generic_block_after_example_text() -> TestResult {
+    let handoff = format!(
+        "Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. ### Example\nReviewer gate returned BLOCK. Reviewer gate returned BLOCK on current head {HEAD}. PR ready for parent handoff. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+    );
+    assert_rejects(&handoff)
+}
+
+#[test]
 fn validator_rejects_generic_reviewer_gate_as_packaged_sentinel_proof() -> TestResult {
     let output = validate_file(&format!(
         "PR ready for parent handoff. Reviewer gate: PASS on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
