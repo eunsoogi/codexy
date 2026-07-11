@@ -3,6 +3,7 @@ use super::child_lane_thread_tool_handler_issue_value::has_placeholder_or_pendin
 use super::child_lane_thread_tool_handler_lane_mentions::has_unnegated_different_lane_phrase;
 use super::child_lane_thread_tool_handler_no_route::has_false_no_route_answer;
 use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
+use super::child_lane_thread_tool_handler_scope::has_different_lane_mention;
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     evidence: &str,
     tool: &str,
@@ -10,6 +11,7 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
+            && !has_different_lane_mention(line)
             && !has_negated_fallback_route_field(line)
             && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
                 && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))
@@ -36,6 +38,7 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
+            && !has_different_lane_mention(line)
             && !has_negated_fallback_route_field(line)
             && (has_handler_marker_in_defect_clause(line)
                 && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))

@@ -39,7 +39,7 @@ pub(super) fn capture_end_before_unrelated_evidence(
     handler_start: usize,
 ) -> usize {
     let mut cursor = line_end(evidence, handler_start);
-    let scope_lane = lane_label_for_scope(evidence, capture_start, cursor)
+    let mut scope_lane = lane_label_for_scope(evidence, capture_start, cursor)
         .or_else(|| lane_label_for_current_scope(evidence, handler_start, cursor));
     let mut saw_capture = is_capture_related(&evidence[capture_start..cursor]);
     let mut saw_handler_defect_capture =
@@ -62,20 +62,28 @@ pub(super) fn capture_end_before_unrelated_evidence(
         let line_matches_upcoming_defect_lane = scope_lane.is_none()
             && is_lane_scoped_defect_preface_metadata_line(line)
             && metadata_line_matches_upcoming_defect_lane(evidence, line_end, line);
+        let line_is_unscoped_defect_without_different_lane = scope_lane.is_none()
+            && line_opens_defect_capture
+            && !has_unnegated_different_lane_phrase(line)
+            && !has_different_lane_mention(line);
+        let line_is_pending_unscoped_capture_without_different_lane = scope_lane.is_none()
+            && pending_defect_capture
+            && is_handler_capture_line(line)
+            && !has_absent_defect_capture(line)
+            && !has_unnegated_different_lane_phrase(line)
+            && !has_different_lane_mention(line);
         let line_names_different_lane = line_mentions_different_lane(line, scope_lane.as_deref())
-            && !(scope_lane.is_none()
-                && line_opens_defect_capture
-                && !has_unnegated_different_lane_phrase(line)
-                && !defect_line_mentions_other_lane(line))
-            && !(scope_lane.is_none()
-                && pending_defect_capture
-                && is_handler_capture_line(line)
-                && !has_absent_defect_capture(line)
-                && !has_unnegated_different_lane_phrase(line)
-                && !defect_line_mentions_other_lane(line))
+            && !line_is_unscoped_defect_without_different_lane
+            && !line_is_pending_unscoped_capture_without_different_lane
             && !line_matches_upcoming_defect_lane;
         if line_names_different_lane {
             return line_start;
+        }
+        if scope_lane.is_none()
+            && is_handler_defect_capture_line(line)
+            && !has_different_lane_mention(line)
+        {
+            scope_lane = lane_mention_labels(line).into_iter().next();
         }
         let line_is_unrelated_metadata = is_unrelated_metadata_line(line)
             && (saw_handler_defect_capture
@@ -157,7 +165,7 @@ fn line_mentions_different_lane(line: &str, current_lane: Option<&str>) -> bool 
         .any(|lane| current_lane.is_none_or(|current_lane| lane != current_lane))
 }
 
-fn defect_line_mentions_other_lane(line: &str) -> bool {
+pub(super) fn has_different_lane_mention(line: &str) -> bool {
     let lanes = lane_mention_labels(line);
     let Some(defect_lane) = lanes.first() else {
         return false;
@@ -256,25 +264,71 @@ fn list_capture_matches_metadata_lane(
 
 fn lane_mention_labels(line: &str) -> Vec<String> {
     let mut labels = Vec::new();
-    let tokens = line
+    let lane_expression = line
+        .replace("and/or", " and ")
+        .replace("and-or", " and ")
+        .replace(',', " , ")
+        .replace('/', " / ");
+    let tokens = lane_expression
         .split_whitespace()
-        .map(|word| word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()))
+        .map(|word| {
+            word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric() && ch != ',' && ch != '/')
+        })
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     for (index, token) in tokens.iter().enumerate() {
         let previous = index.checked_sub(1).map_or("", |previous| tokens[previous]);
-        if token.eq_ignore_ascii_case("lane")
+        if (token.eq_ignore_ascii_case("lane") || token.eq_ignore_ascii_case("lanes"))
             && !previous.eq_ignore_ascii_case("same")
             && !is_negated_explicit_lane_mention(&tokens, index)
         {
+            let plural_lane_marker = token.eq_ignore_ascii_case("lanes");
             let context = explicit_lane_mention_context(&tokens, index).unwrap_or(previous);
-            let label = tokens.get(index + 1).copied().unwrap_or_default();
-            if let Some(lane) = normalized_lane_mention_label(label, context) {
-                labels.push(lane);
+            let mut label_index = index + 1;
+            while let Some(label) = tokens.get(label_index).copied() {
+                if label_index != index + 1
+                    && !is_unambiguous_conjunction_lane_label(label, plural_lane_marker)
+                {
+                    break;
+                }
+                let Some(lane_label) = normalized_lane_mention_label(label, context) else {
+                    break;
+                };
+                labels.push(lane_label);
+
+                let mut next_label_index = label_index + 1;
+                let Some(connector) = tokens.get(next_label_index) else {
+                    break;
+                };
+                if !is_lane_conjunction(connector) {
+                    break;
+                }
+                while tokens
+                    .get(next_label_index)
+                    .is_some_and(|token| is_lane_conjunction(token))
+                {
+                    next_label_index += 1;
+                }
+                label_index = next_label_index;
             }
         }
     }
     labels
+}
+
+fn is_unambiguous_conjunction_lane_label(label: &str, plural_lane_marker: bool) -> bool {
+    label.bytes().all(|byte| byte.is_ascii_digit())
+        || label.len() == 1
+            && label.bytes().all(|byte| byte.is_ascii_alphabetic())
+            && !label.eq_ignore_ascii_case("i")
+        || plural_lane_marker && is_lowercase_lane_label_token(label)
+}
+
+fn is_lane_conjunction(token: &str) -> bool {
+    matches!(
+        token.to_ascii_lowercase().as_str(),
+        "and" | "or" | "and/or" | "and-or" | "," | "/"
+    )
 }
 
 fn explicit_lane_mention_context<'a>(tokens: &'a [&str], lane_index: usize) -> Option<&'a str> {
