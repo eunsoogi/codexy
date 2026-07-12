@@ -192,7 +192,7 @@ fn post_result_is_confirmed(
 }
 
 fn is_local_agent_route(line: &str) -> bool {
-    line.contains("agents.send_message") && line.contains("/root")
+    line.contains("agents.send_message")
 }
 
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
@@ -233,7 +233,8 @@ fn is_local_agent_target(value: &str) -> bool {
 }
 
 fn is_lane_boundary(line: &str) -> bool {
-    line.contains("lane ownership:") || line.contains("owner decision:")
+    line.contains("lane ownership:")
+        || (line.contains("owner decision:") && line.contains("parent-owned"))
 }
 
 fn is_child_owned(line: &str) -> bool {

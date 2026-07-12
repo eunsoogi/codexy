@@ -75,7 +75,7 @@ Representative static fixture: #360 blocked notice; #276 blocked notice; #311 us
             "prose-only",
         ),
         (
-            "Lane ownership: child-owned\nSource thread id: parent-375\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed\nParent route: agents.send_message('/root')\n",
+            "Lane ownership: child-owned\nSource thread id: parent-375\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed\nParent route: agents.send_message('parent-task')\n",
             "local agents",
         ),
         (
@@ -111,6 +111,10 @@ Representative static fixture: #360 blocked notice; #276 blocked notice; #311 us
         "Lane ownership: child-owned\nSource thread id: first-parent\nLane ownership: parent-owned\nGoal tool call: update_goal(blocked)\n",
     )?;
     assert!(isolated_parent.status.success());
+    let child_owner_decision = run_validator(
+        "Lane ownership: child-owned\nOwner decision: current-thread-owned child implementation lane\nSource thread id: parent\nGoal tool call: update_goal(blocked)\n",
+    )?;
+    assert!(!child_owner_decision.status.success());
     let negated = run_validator(
         "Lane ownership: child-owned\nSource thread id: parent\nGoal control state: source_thread_id=parent\nGoal transition key: 375:create_goal:proof\nParent goal pre-delivery: operation=create_goal; parent task=parent; parent goal not: delivery=confirmed; not: task surface=codex task/thread; issue=#375; plan step=go; branch=b; worktree=w; head=h; clean/index=clean; evidence=e; next action=n; transition key=375:create_goal:proof\nGoal tool call: create_goal\n",
     )?;
