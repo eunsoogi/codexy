@@ -67,20 +67,19 @@ pub(super) fn has_conflicting_specialist_override(bullet: &str) -> bool {
         (fields || !models.is_empty()) && conflicting_assignment
     })
 }
-
 pub(super) fn has_conflicting_luna_default(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     normalized.contains("gpt-5.6-luna")
         && positive_must_segments(bullet).iter().any(|segment| {
             let normalized = segment.to_ascii_lowercase();
             normalized.contains("blanket default")
+                && !normalized.trim_start().starts_with("must report")
                 && !luna_blanket_default_is_negated(&normalized)
                 && [" be ", " use ", " make "]
                     .iter()
                     .any(|assignment| normalized.contains(assignment))
         })
 }
-
 fn luna_blanket_default_is_negated(segment: &str) -> bool {
     [
         "not be the blanket default",
@@ -89,9 +88,16 @@ fn luna_blanket_default_is_negated(segment: &str) -> bool {
         "not a blanket default",
     ]
     .iter()
-    .any(|negation| segment.contains(negation))
+    .filter_map(|negation| segment.find(negation))
+    .min()
+    .is_some_and(|index| {
+        let prefix = &segment[..index];
+        !(prefix.contains("blanket default")
+            && [" be ", " use ", " make "]
+                .iter()
+                .any(|assignment| prefix.contains(assignment)))
+    })
 }
-
 pub(super) fn has_conflicting_sentinel_tier(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     normalized.contains("codexy-sentinel")
@@ -99,7 +105,6 @@ pub(super) fn has_conflicting_sentinel_tier(bullet: &str) -> bool {
             .iter()
             .any(|segment| assigns_conflicting_sentinel_tier(&segment.to_ascii_lowercase()))
 }
-
 fn assigns_conflicting_sentinel_tier(segment: &str) -> bool {
     let normalized = segment.replace('`', "");
     assigns_sentinel_ultra(&normalized)

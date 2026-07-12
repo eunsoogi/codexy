@@ -100,6 +100,10 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
             "Luna must remain limited to bounded mechanical work",
         ),
         (
+            "- `gpt-5.6-luna` MUST use Luna as the blanket default for implementation, but not be the blanket default for security review.\n\n## Read Next",
+            "Luna must remain limited to bounded mechanical work",
+        ),
+        (
             "- `codexy-sentinel` MUST run on `gpt-5.6-terra` with high reasoning.\n\n## Read Next",
             "codexy-sentinel must remain gpt-5.6-sol/xhigh",
         ),
@@ -119,6 +123,17 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
         },
         "generic child thread must explicitly request gpt-5.6-terra/high",
     )
+}
+
+#[test]
+fn validator_cli_accepts_reporting_about_luna_default_policy() -> TestResult {
+    assert_routing_accepted(|skill| {
+        skill.replacen(
+            "## Read Next",
+            "- `gpt-5.6-luna` MUST report that Luna will never be the blanket default.\n\n## Read Next",
+            1,
+        )
+    })
 }
 
 fn assert_routing_rejected(mutate: impl FnOnce(String) -> String, expected: &str) -> TestResult {
@@ -144,6 +159,30 @@ fn assert_routing_rejected(mutate: impl FnOnce(String) -> String, expected: &str
     assert!(
         String::from_utf8_lossy(&output.stderr).contains(expected),
         "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+fn assert_routing_accepted(mutate: impl FnOnce(String) -> String) -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &plugin_root,
+    )?;
+    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    std::fs::write(&path, mutate(std::fs::read_to_string(&path)?))?;
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root")?,
+            "--check",
+        ])
+        .output()?;
+    assert!(
+        output.status.success(),
+        "reporting prose unexpectedly failed:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())

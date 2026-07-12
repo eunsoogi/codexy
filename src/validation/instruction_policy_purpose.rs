@@ -7,6 +7,9 @@ pub(super) fn has_prohibition_marker(lower: &str, marker: &str) -> bool {
 }
 
 pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> bool {
+    if reporting_policy_statement(lower, marker_index) {
+        return true;
+    }
     if has_leading_condition_modal(lower, marker_index) {
         return true;
     }
@@ -31,6 +34,14 @@ pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> boo
         .max();
     connector_index
         .is_some_and(|connector| boundary_index.is_none_or(|boundary| connector > boundary))
+}
+
+fn reporting_policy_statement(lower: &str, marker_index: usize) -> bool {
+    last_modal_before(lower, marker_index).is_some_and(|modal_index| {
+        lower[modal_index + "must".len()..marker_index]
+            .trim_start()
+            .starts_with("report that ")
+    })
 }
 
 fn has_leading_condition_modal(lower: &str, marker_index: usize) -> bool {
