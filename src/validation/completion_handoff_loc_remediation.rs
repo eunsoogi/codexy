@@ -43,9 +43,12 @@ fn evidence_clauses(text: &str) -> impl Iterator<Item = &str> {
     text.split(['\n', ';'])
         .flat_map(|segment| segment.split(". "))
         .map(str::trim)
-        .filter(|segment| {
-            !segment.is_empty() && segment.to_ascii_lowercase().contains("loc remediation")
-        })
+        .filter(|segment| !segment.is_empty() && has_evidence_label(segment))
+}
+
+fn has_evidence_label(clause: &str) -> bool {
+    let clause = clause.trim_start().to_ascii_lowercase();
+    clause.starts_with("loc remediation:") || clause.starts_with("touched loc:")
 }
 
 const fn structural_markers() -> &'static [&'static str] {
@@ -86,7 +89,12 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
     while let Some(relative_index) = text[search_start..].find(marker) {
         let marker_index = search_start + relative_index;
         let prefix = text[..marker_index].trim_end();
-        if !is_quoted(prefix) && !is_negated(prefix) {
+        let suffix = &text[marker_index + marker.len()..];
+        if !is_quoted(prefix)
+            && !is_negated(prefix)
+            && !is_example(prefix)
+            && !is_tentative(prefix, suffix)
+        {
             return true;
         }
         search_start = marker_index + marker.len();
@@ -96,17 +104,40 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
 
 fn is_quoted(prefix: &str) -> bool {
     matches!(prefix.chars().next_back(), Some('"' | '\'' | '`'))
+        || prefix.chars().filter(|character| *character == '"').count() % 2 == 1
 }
 
 fn is_negated(prefix: &str) -> bool {
-    prefix
-        .rsplit_once(['.', '!', '?', ';', '\n'])
-        .map_or(prefix, |(_, sentence)| sentence)
-        .split_whitespace()
-        .rev()
-        .take(5)
+    evidence_words(prefix).any(|word| matches!(word, "not" | "no" | "without"))
+}
+
+fn is_example(prefix: &str) -> bool {
+    prefix.to_ascii_lowercase().contains("for example")
+        || evidence_words(prefix).any(|word| word == "example")
+}
+
+fn is_tentative(prefix: &str, suffix: &str) -> bool {
+    evidence_words(prefix)
+        .chain(evidence_words(suffix))
+        .any(|word| {
+            matches!(
+                word,
+                "considered"
+                    | "plan"
+                    | "planned"
+                    | "intend"
+                    | "intended"
+                    | "would"
+                    | "could"
+                    | "might"
+            )
+        })
+}
+
+fn evidence_words(text: &str) -> impl Iterator<Item = &str> {
+    text.split_whitespace()
         .map(|word| word.trim_matches(|character: char| !character.is_ascii_alphabetic()))
-        .any(|word| matches!(word, "not" | "no" | "without"))
+        .filter(|word| !word.is_empty())
 }
 
 fn has_not_applicable_evidence(text: &str) -> bool {

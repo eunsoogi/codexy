@@ -37,6 +37,16 @@ fn completion_handoff_accepts_structural_loc_evidence() -> TestResult {
 }
 
 #[test]
+fn completion_handoff_accepts_touched_loc_structural_evidence() -> TestResult {
+    let output = validate(
+        "Touched LOC: helper extraction moved parser rules into src/parser_rules.rs. --check-touched-loc passed.",
+    )?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn completion_handoff_rejects_quoted_or_negated_structural_markers() -> TestResult {
     for handoff in [
         "LOC remediation: quoted evidence \"helper extraction\". --check-touched-loc passed.",
@@ -69,6 +79,22 @@ fn completion_handoff_rejects_terminal_reviewer_false_positives() -> TestResult 
         "LOC remediation: we did not perform helper extraction in src/parser_rules.rs. --check-touched-loc passed.",
         "LOC remediation: responsibility separation occurred. For example, helper extraction moved parser rules into src/example_rules.rs. --check-touched-loc passed.",
         "LOC remediation: module splitting was considered. Later unrelated file: src/unrelated.rs. --check-touched-loc passed.",
+    ] {
+        let output = validate(handoff)?;
+
+        assert!(!output.status.success(), "unexpectedly accepted: {handoff}");
+        assert!(stderr(&output).contains("LOC remediation evidence must name"));
+    }
+    Ok(())
+}
+
+#[test]
+fn completion_handoff_rejects_all_terminal_parser_boundaries() -> TestResult {
+    for handoff in [
+        "LOC remediation: we did not actually plan or intend to perform helper extraction in src/parser_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: reviewer text said \"the team used helper extraction in src/example_rules.rs\". --check-touched-loc passed.",
+        "LOC remediation: for example, helper extraction moved parser rules into src/example_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: module splitting was considered for src/parser_rules.rs. --check-touched-loc passed.",
     ] {
         let output = validate(handoff)?;
 
