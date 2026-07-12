@@ -23,3 +23,9 @@ pub(super) fn has_weakened_marker_prefix(prefix: &str) -> bool {
             ["only", "if" | "when" | "where" | "unless" | "provided", ..]
         )
 }
+
+pub(super) fn has_quoted_marker_prefix(prefix: &str) -> bool {
+    let prefix = prefix.trim_end();
+    matches!(prefix.chars().next_back(), Some('"' | '\'' | '`'))
+        || prefix.chars().filter(|character| *character == '"').count() % 2 == 1
+}

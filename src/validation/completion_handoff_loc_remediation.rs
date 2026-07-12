@@ -125,21 +125,13 @@ fn has_marker_negation(prefix: &str, suffix: &str) -> bool {
 }
 
 fn has_postposed_negation(suffix: &str) -> bool {
-    let mut words = evidence_words(suffix);
-    for _ in 0..6 {
-        match words.next() {
-            Some("not" | "no") => return true,
-            Some("without") => {
-                return !matches!(
-                    (words.next(), words.next()),
-                    (Some("changing"), Some("behavior"))
-                );
-            }
-            Some(_) => {}
-            None => return false,
-        }
-    }
-    false
+    let words = evidence_words(suffix).collect::<Vec<_>>();
+    words.iter().take(6).enumerate().any(|(index, word)| {
+        matches!(*word, "not" | "no")
+            || (*word == "without"
+                && !(words.get(index + 1) == Some(&"changing")
+                    && words.get(index + 2) == Some(&"behavior")))
+    })
 }
 
 fn has_marker_example(prefix: &str, suffix: &str) -> bool {
