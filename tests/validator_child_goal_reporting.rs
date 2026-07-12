@@ -86,6 +86,14 @@ Representative static fixture: #360 blocked notice; #276 blocked notice; #311 us
             "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: 375:create_goal:objective\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed; issue=#375; plan step=implement; branch=codexy/375; worktree=/worktree; HEAD=abc; clean/index=clean; evidence=classification; next action=create\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed\n",
             "duplicate goal call",
         ),
+        (
+            "1. Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: 375:blocked:proof\nParent goal pre-delivery: operation=update_goal(blocked); parent task=parent-375; delivery=confirmed=false; task surface=codex task/thread unavailable; issue=; plan step=; branch=; worktree=; head=; clean/index=; evidence=; next action=; transition key=375:blocked:proof\nGoal tool call: update_goal(blocked)\nParent goal post-result: operation=update_goal(blocked); exact tool result=; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=375:blocked:proof\n",
+            "required pre-delivery fields",
+        ),
+        (
+            "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: 375:create_goal:x\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=go; branch=codexy/375; worktree=/w; head=a; clean/index=clean; evidence=e; next action=n; transition key=375:create_goal:xyz\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=ok; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=375:create_goal:xyz\n",
+            "stable transition key",
+        ),
     ] {
         let output = run_validator(evidence)?;
         assert!(
@@ -99,6 +107,10 @@ Representative static fixture: #360 blocked notice; #276 blocked notice; #311 us
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    let isolated_parent = run_validator(
+        "Lane ownership: child-owned\nSource thread id: first-parent\nLane ownership: parent-owned\nGoal tool call: update_goal(blocked)\n",
+    )?;
+    assert!(isolated_parent.status.success());
     Ok(())
 }
 

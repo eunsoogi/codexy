@@ -2,13 +2,21 @@ use std::collections::BTreeSet;
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
-    if !text
-        .lines()
-        .any(|line| line.trim() == "lane ownership: child-owned")
-    {
-        return Vec::new();
-    }
     let lines = text.lines().map(str::trim).collect::<Vec<_>>();
+    let mut errors = Vec::new();
+    let mut start = 0;
+    for end in 1..=lines.len() {
+        if end == lines.len() || is_lane_boundary(lines[end]) {
+            if is_child_owned(lines[start]) {
+                errors.extend(check_lane(&lines[start..end]));
+            }
+            start = end;
+        }
+    }
+    errors
+}
+
+fn check_lane(lines: &[&str]) -> Vec<String> {
     if !lines.iter().any(|line| {
         line.starts_with("source thread id:")
             || line.starts_with("goal tool call:")
@@ -52,7 +60,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 errors.push("goal operation is missing a confirmed post-result report".into());
             }
             let valid_key = key.is_some_and(|value| key_matches(value, operation));
-            if !text.contains(&control) || !valid_key {
+            if !lines.contains(&control.as_str()) || !valid_key {
                 errors.push("goal operation lacks a stable transition key and exact source_thread_id control state".into());
             }
             if needs_pre_delivery(operation) {
@@ -133,24 +141,24 @@ fn pre_delivery_is_confirmed(
     key: Option<&str>,
     errors: &mut Vec<String>,
 ) -> bool {
-    if !line.contains(&format!("parent task={source};")) {
+    if field(line, "parent task") != Some(source) {
         errors.push("goal report names the wrong parent task id".into());
         return false;
     }
     let required = [
-        "delivery=confirmed",
-        "task surface=codex task/thread",
-        "issue=",
-        "plan step=",
-        "branch=",
-        "worktree=",
-        "head=",
-        "clean/index=",
-        "evidence=",
-        "next action=",
+        "issue",
+        "plan step",
+        "branch",
+        "worktree",
+        "head",
+        "clean/index",
+        "evidence",
+        "next action",
     ];
-    if !line.contains(&format!("operation={operation};"))
-        || required.iter().any(|field| !line.contains(field))
+    if field(line, "operation") != Some(operation)
+        || field(line, "delivery") != Some("confirmed")
+        || field(line, "task surface") != Some("codex task/thread")
+        || required.iter().any(|name| invalid_value(field(line, name)))
     {
         errors.push("goal pre-delivery report is missing required pre-delivery fields".into());
         return false;
@@ -165,20 +173,18 @@ fn post_result_is_confirmed(
     key: Option<&str>,
     errors: &mut Vec<String>,
 ) -> bool {
-    if !line.contains(&format!("parent task={source};")) {
+    if field(line, "parent task") != Some(source) {
         errors.push("goal report names the wrong parent task id".into());
         return false;
     }
-    let required = [
-        format!("operation={operation};"),
-        "exact tool result=".into(),
-        "delivery=confirmed".into(),
-        "task surface=codex task/thread".into(),
-    ];
     if !matches_key(line, key, errors) {
         return false;
     }
-    if required.iter().any(|field| !line.contains(field)) {
+    if field(line, "operation") != Some(operation)
+        || field(line, "delivery") != Some("confirmed")
+        || field(line, "task surface") != Some("codex task/thread")
+        || invalid_value(field(line, "exact tool result"))
+    {
         errors.push("goal post-result report is prose-only or missing an exact tool result".into());
         return false;
     }
@@ -190,7 +196,7 @@ fn is_local_agent_route(line: &str) -> bool {
 }
 
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
-    if key.is_some_and(|value| line.contains(&format!("transition key={value}"))) {
+    if key.is_some_and(|value| field(line, "transition key") == Some(value)) {
         true
     } else {
         errors.push("goal receipt does not match its stable transition key".into());
@@ -198,6 +204,30 @@ fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool 
     }
 }
 
+fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
+    let prefix = format!("{name}=");
+    line.split(';').map(str::trim).find_map(|part| {
+        part.find(&prefix)
+            .map(|index| &part[index + prefix.len()..])
+    })
+}
+
+fn invalid_value(value: Option<&str>) -> bool {
+    value.is_none_or(|item| {
+        item.is_empty()
+            || matches!(item, "false" | "unavailable" | "none")
+            || item.contains(" unavailable")
+    })
+}
+
 fn is_local_agent_target(value: &str) -> bool {
     value == "/root" || value.starts_with("agents.") || value.contains("send_message")
+}
+
+fn is_lane_boundary(line: &str) -> bool {
+    line.contains("lane ownership:") || line.starts_with("owner decision:")
+}
+
+fn is_child_owned(line: &str) -> bool {
+    line.contains("lane ownership: child-owned") || line.contains("owner decision: child-owned")
 }
