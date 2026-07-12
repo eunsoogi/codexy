@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "metadataOnly": true,
+  "lane": {
+    "issue": "<issue-number>",
+    "pr": "<pr-number-or-not-created>",
+    "branch": "<branch>",
+    "head": "<head-sha-or-dirty-fingerprint>",
+    "base": "<base-sha>",
+    "ownerThreadId": "<owner-thread-id>",
+    "childCreatedAt": "<RFC-3339 timestamp>"
+  },
+  "installed": {
+    "pluginId": "codexy@codexy",
+    "version": "<manifest-version>",
+    "cacheRoot": "<installed-plugin-root>",
+    "manifestSha256": "<sha256>",
+    "changedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }],
+    "contentEquivalent": false
+  },
+  "audit": {
+    "inputSha256": "<sha256-of-private-metadata-input>",
+    "session": {
+      "sizeBytes": 0,
+      "latestCumulativeTokens": 0,
+      "recentTurnAverageTokens": 0,
+      "toolCalls": {},
+      "toolOutputBytes": {}
+    },
+    "duplicateEventsSkipped": 0
+  },
+  "metrics": {
+    "reviewRequests": 0,
+    "reviewFeedback": 0,
+    "childAgeSeconds": 0,
+    "retriesByKind": { "parentMessage": 0, "reviewRequest": 0, "ci": 0, "sentinel": 0 },
+    "eventIds": ["<kind>|<lane>|<subject>"]
+  },
+  "goalPlanReceipts": ["<create_goal-or-update_plan-event-id>"],
+  "helpers": [{ "id": "<agent-id>", "ownedSlice": "<read-only-or-disjoint-slice>" }],
+  "commandReceipts": [{ "command": "<bounded-command>", "exitCode": 0 }]
+}

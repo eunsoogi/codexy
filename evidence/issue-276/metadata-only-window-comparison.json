@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "metadataOnly": true,
+  "comparison": {
+    "kind": "same-owner fixed-record-window observation",
+    "claim": "observational only; no causal driver is asserted",
+    "recordsPerWindow": 256,
+    "sameOwner": true,
+    "implementationOwnerCount": 1,
+    "implementationWakeups": 0
+  },
+  "lane": {
+    "issue": 276,
+    "pr": "not-created",
+    "branch": "codexy/276-token-quota-containment",
+    "head": "dirty-fingerprint-808195b02614bdac45a77e804a134e6439985bde1906cd3a2aa730142f32289b",
+    "base": "85a1e82b05e068ff443ed6dd718eb97f7e1ad2a1",
+    "ownerThreadId": "019f5526-ce6f-79f3-9387-7bcf06f6d8df",
+    "childCreatedAt": "2026-07-12T16:07:14+09:00"
+  },
+  "installed": {
+    "pluginId": "codexy@codexy",
+    "version": "1.1.0",
+    "manifestSha256": "1349023d2872d43144824c2bd93bbdcb8fec25f809dc29aade38fbbf1dd7b99e",
+    "contentEquivalent": true,
+    "changedFiles": [
+      { "path": "skills/codex-orchestration/SKILL.md", "sha256": "e13cbb24f2eb0afdf081e6b1fa67acd1b946f5997654b4172d6fbec165f5f45f" },
+      { "path": "skills/token-efficient-orchestration/SKILL.md", "sha256": "f562bd20ae89b5084e77d9641ad1d555d3b5c9da8315db8b1c045aa0c512e629" }
+    ]
+  },
+  "input": {
+    "sha256": "c68b8f7ded6966cf1a8f282934345bd234ce751005c84e16f3b551d1b235995a",
+    "rawContentStored": false
+  },
+  "before": {
+    "sizeBytes": 886825,
+    "latestCumulativeTokens": 3835009,
+    "recentTurnAverageTokens": 145364,
+    "toolCalls": { "exec": 40 },
+    "toolOutputBytes": { "exec": 405265 },
+    "duplicateEventsSkipped": 1
+  },
+  "after": {
+    "sizeBytes": 328082,
+    "latestCumulativeTokens": 36337072,
+    "recentTurnAverageTokens": 121955,
+    "toolCalls": {
+      "exec": 30,
+      "send_message": 3,
+      "spawn_agent": 1,
+      "wait": 3,
+      "wait_agent": 9
+    },
+    "toolOutputBytes": {
+      "exec": 36005,
+      "send_message": 0,
+      "spawn_agent": 80,
+      "wait": 12350,
+      "wait_agent": 416
+    },
+    "duplicateEventsSkipped": 1
+  },
+  "metrics": {
+    "reviewRequests": 0,
+    "reviewFeedback": 0,
+    "childAgeSeconds": 4154,
+    "retriesByKind": { "parentMessage": 0, "reviewRequest": 0, "ci": 0, "sentinel": 0 },
+    "eventIds": ["sentinel|276|pre-pr", "review-feedback|276|none"],
+    "reviewState": "no-pr-created; no-human-or-github-review-feedback"
+  },
+  "goalPlanReceipts": ["create_goal|276|active", "get_goal|276|active", "update_plan|276|repair"],
+  "helpers": [
+    { "id": "/root/metric_warden", "ownedSlice": "read-only audit privacy review" },
+    { "id": "/root/proof_auditor", "ownedSlice": "read-only receipt review" }
+  ],
+  "commandReceipts": [
+    { "command": "scripts/session-audit --input <window> --recent-turns 3", "exitCode": 0 },
+    { "command": "cargo test --offline", "exitCode": 0 },
+    { "command": "scripts/validate-plugin-config --check", "exitCode": 0 }
+  ]
+}

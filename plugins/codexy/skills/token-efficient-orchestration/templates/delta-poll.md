@@ -1,4 +1,4 @@
-<!-- Token-efficient orchestration delta poll. MUST keep one block per active lane. -->
+<!-- Token-efficient orchestration event delta. MUST keep one block per active lane. -->
 
 ## Lane
 
@@ -12,9 +12,31 @@
 
 ## Delta
 
-- since last poll:
+- event id:
+- event kind:
+- delta:
 - changed ids:
 - stale or demoted:
+
+## External Gate Wait
+
+- external gate wait:
+- bounded child-local monitoring:
+- parent delta before transition:
+
+## Sentinel BLOCK Repair
+
+- BLOCK receipt:
+- repair plan:
+- faithful RED coverage:
+- terminal proof:
+- fresh Sentinel review for new file state or head:
+
+## New Child Setup
+
+- archive candidates inspected:
+- active reservation ledger:
+- archive decision:
 
 ## Required Gates
 
