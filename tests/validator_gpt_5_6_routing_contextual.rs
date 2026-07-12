@@ -108,6 +108,14 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
             "Luna must remain limited to bounded mechanical work",
         ),
         (
+            "- `gpt-5.6-luna` MUST report that Luna is available for comparison, not as the blanket default but make Luna the blanket default for implementation.\n\n## Read Next",
+            "Luna must remain limited to bounded mechanical work",
+        ),
+        (
+            "- `gpt-5.6-luna` MUST report that Luna is available for comparison, not as the blanket default and make Luna the blanket default for implementation.\n\n## Read Next",
+            "Luna must remain limited to bounded mechanical work",
+        ),
+        (
             "- `codexy-sentinel` MUST run on `gpt-5.6-terra` with high reasoning.\n\n## Read Next",
             "codexy-sentinel must remain gpt-5.6-sol/xhigh",
         ),
@@ -134,7 +142,7 @@ fn validator_cli_accepts_reporting_about_luna_default_policy() -> TestResult {
     assert_routing_accepted(|skill| {
         skill.replacen(
             "## Read Next",
-            "- `gpt-5.6-luna` MUST report that Luna will never be the blanket default.\n\n## Read Next",
+            "- `gpt-5.6-luna` MUST report that Luna may be used for comparison, not as the blanket default.\n\n## Read Next",
             1,
         )
     })

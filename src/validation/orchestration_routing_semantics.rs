@@ -1,3 +1,7 @@
+use super::orchestration_routing_luna_policy::{
+    has_luna_default_assignment, luna_blanket_default_is_negated, luna_policy_clauses,
+};
+
 pub(super) fn has_conflicting_specialist_override(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     if !normalized.contains("custom specialist") {
@@ -71,34 +75,15 @@ pub(super) fn has_conflicting_luna_default(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     normalized.contains("gpt-5.6-luna")
         && positive_must_segments(bullet).iter().any(|segment| {
-            let normalized = segment.to_ascii_lowercase();
-            normalized.contains("blanket default")
-                && !luna_blanket_default_is_negated(&normalized)
-                && [" be ", " use ", " make "]
-                    .iter()
-                    .any(|assignment| normalized.contains(assignment))
+            luna_policy_clauses(segment).any(|clause| {
+                let normalized = clause.to_ascii_lowercase();
+                normalized.contains("blanket default")
+                    && !luna_blanket_default_is_negated(&normalized)
+                    && has_luna_default_assignment(&normalized)
+            })
         })
 }
-fn luna_blanket_default_is_negated(segment: &str) -> bool {
-    [
-        "not be the blanket default",
-        "not be a blanket default",
-        "not the blanket default",
-        "not a blanket default",
-        "never be the blanket default",
-        "never be a blanket default",
-    ]
-    .iter()
-    .filter_map(|negation| segment.find(negation))
-    .min()
-    .is_some_and(|index| {
-        let prefix = &segment[..index];
-        !(prefix.contains("blanket default")
-            && [" be ", " use ", " make "]
-                .iter()
-                .any(|assignment| prefix.contains(assignment)))
-    })
-}
+
 pub(super) fn has_conflicting_sentinel_tier(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     normalized.contains("codexy-sentinel")

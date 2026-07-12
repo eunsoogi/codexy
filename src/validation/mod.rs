@@ -62,6 +62,7 @@ mod mcp;
 mod mcp_runtime;
 mod merge_message;
 mod orchestration_routing;
+mod orchestration_routing_luna_policy;
 mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod release_publish_contract;
