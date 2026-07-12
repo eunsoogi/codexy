@@ -26,8 +26,19 @@ pub(super) fn has_weakened_marker_prefix(prefix: &str) -> bool {
 
 pub(super) fn has_quoted_marker_prefix(prefix: &str) -> bool {
     let prefix = prefix.trim_end();
-    matches!(
-        prefix.chars().next_back(),
-        Some('"' | '\'' | '`' | '“' | '‘')
-    ) || prefix.chars().filter(|character| *character == '"').count() % 2 == 1
+    matches!(prefix.chars().next_back(), Some('"' | '\'' | '`'))
+        || prefix.chars().filter(|character| *character == '"').count() % 2 == 1
+        || has_unclosed_quote(prefix, '“', '”')
+        || has_unclosed_quote(prefix, '‘', '’')
+}
+
+fn has_unclosed_quote(prefix: &str, opening: char, closing: char) -> bool {
+    prefix
+        .chars()
+        .filter(|character| *character == opening)
+        .count()
+        > prefix
+            .chars()
+            .filter(|character| *character == closing)
+            .count()
 }

@@ -58,7 +58,7 @@ fn validator_cli_rejects_waiver_after_affirmative_evidence_list() -> TestResult 
     let output = validate_sentinel_edit(|sentinel| {
         Ok(sentinel.replace(
             "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
-            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. This evidence may be omitted. MUST block",
+            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. This evidence may be omitted.. MUST identify formatting-only LOC remediation before approving readiness.",
         ))
     })?;
     assert!(!output.status.success(), "accepted cross-sentence waiver");
@@ -76,11 +76,12 @@ fn validator_cli_rejects_negated_followups_after_affirmative_evidence_list() -> 
             Ok(sentinel.replace(
                 "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
                 &format!(
-                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. {followup} MUST block"
+                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed. {followup}. MUST identify formatting-only LOC remediation before approving readiness."
                 ),
             ))
         })?;
         assert!(!output.status.success(), "accepted {followup:?}");
+        assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
     Ok(())
 }
@@ -108,11 +109,12 @@ fn validator_cli_rejects_permissive_suffix_after_affirmative_evidence_list() -> 
             Ok(sentinel.replace(
                 "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
                 &format!(
-                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed, {suffix}. MUST block"
+                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed, {suffix}.. MUST identify formatting-only LOC remediation before approving readiness."
                 ),
             ))
         })?;
         assert!(!output.status.success(), "accepted {suffix:?}");
+        assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
     Ok(())
 }
@@ -128,11 +130,12 @@ fn validator_cli_rejects_undelimited_permissive_suffix_after_affirmative_evidenc
             Ok(sentinel.replace(
                 "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
                 &format!(
-                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed {suffix}. MUST block"
+                    "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, and MUST reference direct reviewer passes performed {suffix}.. MUST identify formatting-only LOC remediation before approving readiness."
                 ),
             ))
         })?;
         assert!(!output.status.success(), "accepted {suffix:?}");
+        assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     }
     Ok(())
 }

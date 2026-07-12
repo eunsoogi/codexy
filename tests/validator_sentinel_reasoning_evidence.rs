@@ -148,7 +148,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     let output = validate_sentinel_edit(|sentinel| {
         Ok(sentinel.replace(
             "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
-            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, but not direct reviewer passes performed. MUST block",
+            "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, but not direct reviewer passes performed.. MUST identify formatting-only LOC remediation before approving readiness.",
         ))
     })?;
     assert!(

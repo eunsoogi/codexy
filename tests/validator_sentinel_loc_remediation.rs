@@ -37,6 +37,8 @@ fn roles_validator_rejects_quoted_or_negated_loc_remediation_markers() -> TestRe
         "MUST NOT {marker}",
         "Quoted policy text: \"{marker}\"",
         "Quoted policy text: “{marker}”",
+        "Quoted policy text: “The policy says {marker}”",
+        "Quoted policy text: ‘The policy says {marker}’",
     ] {
         let (_temp, plugin_root) = fixture()?;
         let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
@@ -55,6 +57,22 @@ fn roles_validator_rejects_quoted_or_negated_loc_remediation_markers() -> TestRe
         );
         assert!(stderr(&output).contains("reviewer gate contract is missing"));
     }
+    Ok(())
+}
+
+#[test]
+fn roles_validator_accepts_closed_typographic_quote_before_marker() -> TestResult {
+    let (_temp, plugin_root) = fixture()?;
+    let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
+    let sentinel = std::fs::read_to_string(&sentinel_path)?;
+    let marker = REQUIRED_MARKERS[0];
+    std::fs::write(
+        &sentinel_path,
+        sentinel.replacen(marker, &format!("“historical wording” {marker}"), 1),
+    )?;
+
+    let output = validator(&plugin_root)?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
