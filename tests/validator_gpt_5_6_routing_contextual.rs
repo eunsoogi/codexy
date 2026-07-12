@@ -148,6 +148,20 @@ fn validator_cli_accepts_reporting_about_luna_default_policy() -> TestResult {
     })
 }
 
+#[test]
+fn validator_rejects_normalized_luna_blanket_default_assignments() -> TestResult {
+    for replacement in [
+        "- `GPT-5.6-LUNA` MUST ASSIGN Luna as the blanket-default for implementation.\n\n## Read Next",
+        "- `gpt-5.6-luna` MUST report comparison availability, BUT MUST assign Luna as\tthe blanket default for implementation.\n\n## Read Next",
+    ] {
+        assert_routing_rejected(
+            |skill| skill.replacen("## Read Next", replacement, 1),
+            "Luna must remain limited to bounded mechanical work",
+        )?;
+    }
+    Ok(())
+}
+
 fn assert_routing_rejected(mutate: impl FnOnce(String) -> String, expected: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
