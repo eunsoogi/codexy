@@ -30,6 +30,15 @@ fn completion_handoff_accepts_affirmative_no_remediation_claim() -> TestResult {
 }
 
 #[test]
+fn completion_handoff_accepts_current_na_with_unrelated_history() -> TestResult {
+    let output = validate(
+        "Previous lane used a fallback route for unrelated work.\nAll touched files were already below 250 LOC and no LOC remediation was needed. --check-touched-loc passed.",
+    )?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn completion_handoff_accepts_closed_s_ending_quote_before_marker() -> TestResult {
     let output = validate(
         "LOC remediation: 'approved policies' before helper extraction moved rules into src/parser_rules.rs. --check-touched-loc passed.",

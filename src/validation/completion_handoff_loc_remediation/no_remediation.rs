@@ -1,15 +1,21 @@
 pub(super) fn has_evidence(text: &str) -> bool {
-    if super::is_stale_clause(text) || !super::has_current_lane_scope(text) {
+    text.split('\n')
+        .flat_map(|line| line.split(". "))
+        .any(has_clause_evidence)
+}
+
+fn has_clause_evidence(clause: &str) -> bool {
+    if super::is_stale_clause(clause) || !super::has_current_lane_scope(clause) {
         return false;
     }
-    text.contains("loc remediation: not applicable")
-        && !text.contains("false that no touched file")
-        && !text.contains("not true that no touched file")
-        && (text.contains("no touched file exceeded 250 loc")
-            || text.contains("no touched file exceeded the loc limit"))
-        || text.contains("no loc remediation was needed")
-            && text.contains("all touched files")
-            && !text.contains("not all touched files")
-            && !text.contains("all touched files were not")
-            && (text.contains("below 250 loc") || text.contains("within the loc limit"))
+    clause.contains("loc remediation: not applicable")
+        && !clause.contains("false that no touched file")
+        && !clause.contains("not true that no touched file")
+        && (clause.contains("no touched file exceeded 250 loc")
+            || clause.contains("no touched file exceeded the loc limit"))
+        || clause.contains("no loc remediation was needed")
+            && clause.contains("all touched files")
+            && !clause.contains("not all touched files")
+            && !clause.contains("all touched files were not")
+            && (clause.contains("below 250 loc") || clause.contains("within the loc limit"))
 }
