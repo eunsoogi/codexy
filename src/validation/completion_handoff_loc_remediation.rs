@@ -12,6 +12,9 @@ const COSMETIC_MARKERS: &[&str] = &[
     "multiline collapse",
     "formatting-only",
 ];
+const FORMATTING_ONLY_ERROR: &str =
+    "formatting-only LOC remediation cannot satisfy completion readiness evidence";
+const MISSING_STRUCTURAL_EVIDENCE_ERROR: &str = "LOC remediation evidence must name a structural boundary, responsibility, or real duplication removal";
 
 pub(super) fn check(handoff: &str) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
@@ -25,13 +28,9 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
         return Vec::new();
     }
     if affirmative_cosmetic || has_cosmetic_marker(&text) {
-        return vec![
-            "formatting-only LOC remediation cannot satisfy completion readiness evidence".into(),
-        ];
+        return vec![FORMATTING_ONLY_ERROR.into()];
     }
-    vec![
-        "LOC remediation evidence must name a structural boundary, responsibility, or real duplication removal".into(),
-    ]
+    vec![MISSING_STRUCTURAL_EVIDENCE_ERROR.into()]
 }
 
 fn mentions_loc_evidence(text: &str) -> bool {
@@ -45,24 +44,28 @@ fn has_structural_evidence(text: &str) -> bool {
         !is_stale_clause(clause)
             && has_current_lane_scope(clause)
             && has_file_boundary(clause)
-            && STRUCTURAL_MARKERS
-                .iter()
-                .any(|marker| has_positive_marker(clause, marker))
+            && has_positive_marker_in(clause, STRUCTURAL_MARKERS)
     })
 }
 
 fn has_affirmative_cosmetic_remediation(text: &str) -> bool {
-    text.lines().flat_map(|line| line.split(';')).any(|clause| {
-        !is_stale_clause(clause)
-            && has_current_lane_scope(clause)
-            && COSMETIC_MARKERS
-                .iter()
-                .any(|marker| has_positive_marker(clause, marker))
-    })
+    text.lines()
+        .flat_map(|line| line.split(';').flat_map(|segment| segment.split(". ")))
+        .any(|clause| {
+            !is_stale_clause(clause)
+                && has_current_lane_scope(clause)
+                && has_positive_marker_in(clause, COSMETIC_MARKERS)
+        })
 }
 
 fn has_cosmetic_marker(text: &str) -> bool {
     COSMETIC_MARKERS.iter().any(|marker| text.contains(marker))
+}
+
+fn has_positive_marker_in(clause: &str, markers: &[&str]) -> bool {
+    markers
+        .iter()
+        .any(|marker| has_positive_marker(clause, marker))
 }
 
 fn evidence_clauses(text: &str) -> impl Iterator<Item = &str> {
@@ -87,7 +90,7 @@ fn has_evidence_label(clause: &str) -> bool {
 fn has_file_boundary(clause: &str) -> bool {
     clause.split_whitespace().any(|word| {
         let word = word.trim_matches(|character: char| {
-            matches!(character, '"' | '\'' | '`' | '(' | ')' | ',' | ':' | '.')
+            !character.is_alphanumeric() && character != '/' && character != '.'
         });
         word.contains('.')
             && matches!(
@@ -154,11 +157,12 @@ fn has_marker_example(prefix: &str, suffix: &str) -> bool {
 }
 
 fn is_quoted(prefix: &str, suffix: &str) -> bool {
-    has_unclosed_straight_quote(prefix, suffix, '"')
-        || has_unclosed_straight_quote(prefix, suffix, '\'')
-        || has_unclosed_straight_quote(prefix, suffix, '`')
-        || has_unclosed_quote(prefix, '“', '”')
-        || has_unclosed_quote(prefix, '‘', '’')
+    ['"', '\'', '`']
+        .into_iter()
+        .any(|quote| has_unclosed_straight_quote(prefix, suffix, quote))
+        || [('“', '”'), ('‘', '’')]
+            .into_iter()
+            .any(|(opening, closing)| has_unclosed_quote(prefix, opening, closing))
 }
 
 fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool {
@@ -203,19 +207,16 @@ fn quote_opened_after_said(chars: &[char], index: usize, quote: char) -> bool {
 }
 
 fn has_unclosed_quote(prefix: &str, opening: char, closing: char) -> bool {
-    let mut open = false;
-    for character in prefix.chars() {
-        if character == opening {
-            open = true;
-        } else if character == closing {
-            open = false;
-        }
-    }
-    open
+    prefix.chars().fold(false, |open, character| {
+        character == opening || (open && character != closing)
+    })
 }
 
 fn is_negated(prefix: &str) -> bool {
-    evidence_words(prefix).any(|word| matches!(word, "not" | "no" | "without"))
+    evidence_words(prefix)
+        .rev()
+        .take(3)
+        .any(|word| matches!(word, "not" | "no" | "without"))
 }
 
 fn is_example(prefix: &str) -> bool {
@@ -241,7 +242,7 @@ fn is_tentative(prefix: &str, suffix: &str) -> bool {
         })
 }
 
-fn evidence_words(text: &str) -> impl Iterator<Item = &str> {
+fn evidence_words(text: &str) -> impl DoubleEndedIterator<Item = &str> {
     text.split_whitespace()
         .map(|word| word.trim_matches(|character: char| !character.is_ascii_alphabetic()))
         .filter(|word| !word.is_empty())

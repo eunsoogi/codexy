@@ -84,6 +84,20 @@ fn completion_handoff_rejects_unlabeled_or_contradictory_cosmetic_claims() -> Te
     Ok(())
 }
 
+#[test]
+fn completion_handoff_rejects_cosmetic_claims_despite_unrelated_negation_or_stale_history()
+-> TestResult {
+    for handoff in [
+        "LOC remediation: helper extraction moved code into src/helper.rs; no behavior changed while blank-line deletion supplied the remaining reduction. --check-touched-loc passed.",
+        "LOC remediation: helper extraction moved code into src/helper.rs; blank-line deletion supplied the remaining reduction. Previous lane evidence was stale. --check-touched-loc passed.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(!output.status.success(), "unexpectedly accepted: {handoff}");
+        assert!(stderr(&output).contains("formatting-only LOC remediation"));
+    }
+    Ok(())
+}
+
 fn validate(handoff: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
