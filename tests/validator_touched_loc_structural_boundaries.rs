@@ -29,14 +29,11 @@ fn touched_loc_allows_extraction_into_existing_module() -> TestResult {
     write(
         repo.path(),
         "src/helper.rs",
-        "fn existing() {}\nfn extracted() {}\n",
+        "fn existing() {}\nlet summary = format!(\"status\");\n",
     )?;
     std::fs::write(
         repo.path().join("src/too_large.rs"),
-        format!(
-            "mod helper;\n{}let summary = format!(\"status\");\n",
-            regular_lines(248)
-        ),
+        format!("mod helper;\n{}", regular_lines(249)),
     )?;
     let output = validate(repo.path())?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
@@ -49,6 +46,11 @@ fn touched_loc_rejects_unrelated_existing_module_declaration() -> TestResult {
     write(repo.path(), "src/helper.rs", "fn existing() {}\n")?;
     run(repo.path(), &["add", "."])?;
     run(repo.path(), &["commit", "-qm", "existing helper"])?;
+    write(
+        repo.path(),
+        "src/helper.rs",
+        "fn existing() {}\nfn unrelated_change() {}\n",
+    )?;
     std::fs::write(
         repo.path().join("src/too_large.rs"),
         format!(

@@ -33,7 +33,7 @@ pub(super) fn has_quoted_marker_prefix(prefix: &str, suffix: &str) -> bool {
         || has_unclosed_quote(prefix, '‘', '’')
 }
 
-fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool {
+fn has_unclosed_straight_quote(prefix: &str, _suffix: &str, quote: char) -> bool {
     let chars = prefix.chars().collect::<Vec<_>>();
     chars
         .iter()
@@ -43,12 +43,7 @@ fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool 
                 && index > 0
                 && chars[index - 1].is_alphanumeric()
                 && ((!open && chars[index - 1] == 's')
-                    || (open
-                        && chars[index - 1] == 's'
-                        && (chars[index + 1..]
-                            .iter()
-                            .any(|character| !character.is_whitespace())
-                            || suffix.contains(quote)))
+                    || (open && chars[index - 1] == 's')
                     || chars
                         .get(index + 1)
                         .is_some_and(|next| next.is_alphanumeric()));

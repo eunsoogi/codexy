@@ -74,7 +74,11 @@ fn touched_loc_allows_collapse_with_independent_structural_remediation() -> Test
             regular_lines(248)
         ),
     )?;
-    write(repo.path(), "src/helper.rs", &regular_lines(249))?;
+    write(
+        repo.path(),
+        "src/helper.rs",
+        "fn line_248() {}\nlet summary = format!(\n    \"status\"\n);\n",
+    )?;
 
     let output = validate(repo.path())?;
 
@@ -90,28 +94,28 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
             "src/too_large.rs",
             regular_lines(252),
             format!("mod helper;\n{}", regular_lines(249)),
-            Some(("src/helper.rs", regular_lines(249))),
+            Some(("src/helper.rs", regular_lines_from(249, 3))),
         ),
         (
             "module splitting",
             "src/too_large.rs",
             regular_lines(252),
             format!("mod extracted;\n{}", regular_lines(249)),
-            Some(("src/extracted.rs", regular_lines(249))),
+            Some(("src/extracted.rs", regular_lines_from(249, 3))),
         ),
         (
             "test-target splitting",
             "tests/too_large.rs",
             regular_lines(252),
             format!("mod scenarios;\n{}", regular_lines(249)),
-            Some(("tests/scenarios.rs", regular_lines(249))),
+            Some(("tests/scenarios.rs", regular_lines_from(249, 3))),
         ),
         (
             "responsibility separation",
             "src/too_large.rs",
             regular_lines(252),
             format!("mod worker;\n{}", regular_lines(249)),
-            Some(("src/worker.rs", regular_lines(249))),
+            Some(("src/worker.rs", regular_lines_from(249, 3))),
         ),
         (
             "real duplication removal",
@@ -198,6 +202,12 @@ fn mixed_token_collapse_source() -> String {
 
 fn regular_lines(count: usize) -> String {
     (0..count)
+        .map(|index| format!("fn line_{index}() {{}}\n"))
+        .collect()
+}
+
+fn regular_lines_from(start: usize, count: usize) -> String {
+    (start..start + count)
         .map(|index| format!("fn line_{index}() {{}}\n"))
         .collect()
 }

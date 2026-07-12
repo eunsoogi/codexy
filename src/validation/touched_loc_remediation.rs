@@ -45,6 +45,15 @@ fn has_new_module_boundary(
     base: &str,
     current: &str,
 ) -> Result<bool> {
+    let current_lines = current.lines().collect::<std::collections::HashSet<_>>();
+    let removed = base
+        .lines()
+        .filter(|line| !line.trim().is_empty() && !current_lines.contains(line))
+        .collect::<String>();
+    let removed = removed.split_whitespace().collect::<String>();
+    if removed.is_empty() {
+        return Ok(false);
+    }
     for line in current.lines() {
         let line = line.trim();
         let Some(module) = line
@@ -62,7 +71,18 @@ fn has_new_module_boundary(
             .join(format!("{module}.rs"));
         let current_module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
         let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
-        if !current_module.is_empty() && current_module != base_module {
+        let base_module_lines = base_module
+            .lines()
+            .collect::<std::collections::HashSet<_>>();
+        let added = current_module
+            .lines()
+            .filter(|line| !line.trim().is_empty() && !base_module_lines.contains(line))
+            .collect::<String>();
+        if added
+            .split_whitespace()
+            .collect::<String>()
+            .contains(&removed)
+        {
             return Ok(true);
         }
     }
