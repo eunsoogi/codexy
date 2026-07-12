@@ -1,4 +1,7 @@
 use super::child_lane_thread_tool_handler_capture::has_absent_defect_capture;
+use super::child_lane_thread_tool_handler_scope_labels::{
+    is_handler_capture_line, lane_label, line_key_value, strip_list_prefix,
+};
 
 pub(super) fn scope_start_until_blank(evidence: &str, line_start: usize) -> (usize, Option<usize>) {
     let mut previous_start = line_start;
@@ -119,8 +122,8 @@ pub(super) fn is_handoff_metadata_line(line: &str) -> bool {
 pub(super) fn preceding_handoff_metadata_start(evidence: &str, line_start: usize) -> usize {
     let mut capture_start = line_start;
     let mut cursor = line_start;
-    let current_line = &evidence[line_start..line_end(evidence, line_start)];
-    let current_lane = lane_label(current_line)
+    let evidence_line = &evidence[line_start..line_end(evidence, line_start)];
+    let current_lane = lane_label(evidence_line)
         .or_else(|| lane_label_for_current_scope(evidence, line_start, line_start));
     while cursor > 0 {
         let previous_end = cursor - 1;
@@ -214,46 +217,6 @@ pub(super) fn following_handoff_metadata_has(
 pub(super) fn is_list_item(line: &str) -> bool {
     strip_list_prefix(line) != line.trim_start()
 }
-fn line_key_value(line: &str) -> Option<(&str, &str)> {
-    let trimmed = strip_list_prefix(line);
-    let (key, value) = trimmed.split_once(':')?;
-    let key = strip_lane_label_prefix(key);
-    if key.trim().is_empty() {
-        return value.trim_start().split_once(':');
-    }
-    Some((key, value))
-}
-fn strip_list_prefix(line: &str) -> &str {
-    let line = line.trim_start();
-    if let Some(rest) = line.strip_prefix("- ").or_else(|| line.strip_prefix("* ")) {
-        return rest.trim_start();
-    }
-    let Some((marker, rest)) = line.split_once(['.', ')']) else {
-        return line;
-    };
-    if !marker.is_empty() && marker.bytes().all(|byte| byte.is_ascii_digit()) {
-        rest.trim_start()
-    } else {
-        line
-    }
-}
-fn strip_lane_label_prefix(key: &str) -> &str {
-    let Some(rest) = key
-        .trim_start()
-        .strip_prefix("Lane ")
-        .or_else(|| key.trim_start().strip_prefix("lane "))
-    else {
-        return key;
-    };
-    let label_end = rest
-        .find(|ch: char| ch.is_whitespace() || ch == '-' || ch == '.')
-        .unwrap_or(rest.len());
-    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-    if label.is_empty() {
-        return key;
-    }
-    rest[label_end..].trim_start_matches(|ch: char| ch.is_whitespace() || ch == '-' || ch == '.')
-}
 
 fn lane_label_for_scope(evidence: &str, start: usize, end: usize) -> Option<String> {
     evidence[start..end].lines().filter_map(lane_label).last()
@@ -279,41 +242,4 @@ fn is_different_lane_line(line: &str, current_lane: Option<&str>) -> bool {
 
 fn handoff_metadata_lane(evidence: &str, line_start: usize, line: &str) -> Option<String> {
     lane_label(line).or_else(|| lane_label_for_scope(evidence, 0, line_start))
-}
-
-fn lane_label(line: &str) -> Option<String> {
-    let trimmed = strip_markdown_heading_prefix(strip_list_prefix(line));
-    let rest = trimmed
-        .strip_prefix("Lane ")
-        .or_else(|| trimmed.strip_prefix("lane "))?;
-    let label = rest
-        .split(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
-        .next()
-        .unwrap_or_default()
-        .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-    (!label.is_empty() && !label.eq_ignore_ascii_case("ownership"))
-        .then(|| format!("lane {}", label.to_ascii_lowercase()))
-}
-
-fn strip_markdown_heading_prefix(line: &str) -> &str {
-    let trimmed = line.trim_start();
-    let marker_end = trimmed.bytes().take_while(|byte| *byte == b'#').count();
-    if marker_end > 0 && trimmed[marker_end..].starts_with(' ') {
-        trimmed[marker_end..].trim_start()
-    } else {
-        line
-    }
-}
-
-fn is_affirmative_capture_line(line: &str) -> bool {
-    "captured|classified|recorded|reported|routed|tracked"
-        .split('|')
-        .any(|marker| line.contains(marker))
-}
-
-fn is_handler_capture_line(line: &str) -> bool {
-    is_affirmative_capture_line(line)
-        && ["handler", "missing-handler", "no handler registered"]
-            .into_iter()
-            .any(|marker| line.contains(marker))
 }
