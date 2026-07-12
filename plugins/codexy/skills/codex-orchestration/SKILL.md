@@ -22,6 +22,7 @@ MUST read these relative references before acting on the matching surface:
 
 - `references/classification-and-control.md` for classification, goal, plan,
   child execution, multi-agent, codegraph, LSP, and sentinel discipline.
+- `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for the intake, plan, dispatch,
