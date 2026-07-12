@@ -1,3 +1,5 @@
+use super::child_lane_thread_tool_handler_route_owner_absence::has_route_owner_absence;
+
 const ROUTE_PREFIX_TRIM_CHARACTERS: [char; 13] = [
     ',', ';', '.', ':', '_', '-', '/', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}',
     '\u{2015}',
@@ -121,11 +123,6 @@ fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
 #[rustfmt::skip]
 fn has_handler_tool_negation_subject(tokens: &[&str]) -> bool { tokens.iter().rev().find(|token| !matches!(**token, "actually" | "can" | "could" | "did" | "does" | "do" | "fully" | "really" | "truly")).is_some_and(|token| matches!(*token, "handler" | "tool")) }
 
-#[rustfmt::skip]
-fn has_route_owner_absence(tokens: &[&str]) -> bool {
-    let tokens = strip_actor_article(tokens); match tokens { ["need" | "needed" | "use" | "used", rest @ ..] => has_route_owner_absence(rest), ["actual" | "assigned" | "authorized" | "correct" | "current" | "expected" | "intended" | "primary" | "proper" | "real" | "responsible" | "right" | "same" | "valid", rest @ ..] => has_route_owner_absence(rest), ["child", "thread", "tool", "handler" | "handlers", "are" | "is" | "was" | "were", "available" | "provided" | "registered", ..] => false, ["child", ..] | ["fallback", "route", ..] | ["fallback", "path", ..] | ["owner", ..] | ["route", "owner", ..] => true, _ => false }
-}
-
 fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
     const QUALIFIERS: &str = "actual|assigned|authorized|correct|current|expected|intended|primary|proper|real|responsible|right|same|valid";
     tokens.is_empty()
@@ -135,7 +132,7 @@ fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
 }
 
 #[rustfmt::skip]
-fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
+pub(super) fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
     let mut tokens = tokens; while matches!(tokens.first().copied(), Some("a" | "an" | "any" | "from" | "member" | "of" | "one" | "single" | "the")) { tokens = &tokens[1..]; } tokens
 }
 
