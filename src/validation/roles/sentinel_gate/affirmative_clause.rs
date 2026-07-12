@@ -33,6 +33,30 @@ pub(super) fn has_quoted_marker_prefix(prefix: &str, suffix: &str) -> bool {
         || has_unclosed_quote(prefix, '‘', '’')
 }
 
+pub(super) fn marker_tail_has_conditional_waiver(tail: &str) -> bool {
+    let tail = tail.trim_start_matches(|ch: char| {
+        ch.is_ascii_whitespace() || matches!(ch, ':' | '-' | ',' | ';')
+    });
+    let clause_end = tail.find([',', ';']).unwrap_or(tail.len());
+    let clause = tail[..clause_end].trim_start();
+    [
+        "if available",
+        "when available",
+        "if possible",
+        "when possible",
+        "if applicable",
+        "when applicable",
+        "as applicable",
+        "where applicable",
+        "if needed",
+        "when needed",
+        "as needed",
+        "where needed",
+    ]
+    .iter()
+    .any(|phrase| clause.starts_with(phrase))
+}
+
 fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool {
     let chars = prefix.chars().collect::<Vec<_>>();
     chars
