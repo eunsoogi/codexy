@@ -71,6 +71,19 @@ fn completion_handoff_rejects_structural_evidence_with_cosmetic_reduction() -> T
     Ok(())
 }
 
+#[test]
+fn completion_handoff_rejects_unlabeled_or_contradictory_cosmetic_claims() -> TestResult {
+    for handoff in [
+        "LOC remediation: helper extraction moved code into src/helper.rs.\nFormatting-only LOC remediation supplied the remaining reduction. --check-touched-loc passed.",
+        "LOC remediation: not applicable because no touched file exceeded 250 LOC; blank-line deletion supplied the reduction. --check-touched-loc passed.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(!output.status.success(), "unexpectedly accepted: {handoff}");
+        assert!(stderr(&output).contains("formatting-only LOC remediation"));
+    }
+    Ok(())
+}
+
 fn validate(handoff: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

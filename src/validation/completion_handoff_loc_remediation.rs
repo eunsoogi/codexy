@@ -18,13 +18,13 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     if !mentions_loc_evidence(&text) {
         return Vec::new();
     }
-    if has_structural_evidence(&text) && !has_affirmative_cosmetic_remediation(&text) {
+    let affirmative_cosmetic = has_affirmative_cosmetic_remediation(&text);
+    if (has_structural_evidence(&text) || no_remediation::has_evidence(&text))
+        && !affirmative_cosmetic
+    {
         return Vec::new();
     }
-    if no_remediation::has_evidence(&text) {
-        return Vec::new();
-    }
-    if has_cosmetic_marker(&text) {
+    if affirmative_cosmetic || has_cosmetic_marker(&text) {
         return vec![
             "formatting-only LOC remediation cannot satisfy completion readiness evidence".into(),
         ];
@@ -52,9 +52,8 @@ fn has_structural_evidence(text: &str) -> bool {
 }
 
 fn has_affirmative_cosmetic_remediation(text: &str) -> bool {
-    text.lines().map(str::trim).any(|clause| {
-        has_evidence_label(clause)
-            && !is_stale_clause(clause)
+    text.lines().flat_map(|line| line.split(';')).any(|clause| {
+        !is_stale_clause(clause)
             && has_current_lane_scope(clause)
             && COSMETIC_MARKERS
                 .iter()
