@@ -209,7 +209,12 @@ fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     line.split(';').map(str::trim).find_map(|part| {
         part.strip_prefix(&prefix).or_else(|| {
             part.split_once(": ")
-                .filter(|(label, _)| label.starts_with("parent goal "))
+                .filter(|(label, _)| {
+                    matches!(
+                        *label,
+                        "parent goal pre-delivery" | "parent goal post-result"
+                    )
+                })
                 .and_then(|(_, value)| value.strip_prefix(&prefix))
         })
     })
