@@ -119,8 +119,19 @@ fn completion_handoff_accepts_closed_typographic_quote_before_evidence() -> Test
 
 #[test]
 fn completion_handoff_accepts_markdown_bullet_evidence() -> TestResult {
+    for prefix in ["- ", "+ ", "*   "] {
+        let output = validate(&format!(
+            "{prefix}LOC remediation: helper extraction moved parser rules into src/parser_rules.rs. --check-touched-loc passed."
+        ))?;
+        assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
+fn completion_handoff_accepts_plural_possessive_evidence() -> TestResult {
     let output = validate(
-        "- LOC remediation: helper extraction moved parser rules into src/parser_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: reviewers' helper extraction moved rules into src/parser_rules.rs. --check-touched-loc passed.",
     )?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())

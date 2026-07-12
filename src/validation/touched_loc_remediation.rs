@@ -22,7 +22,7 @@ pub(super) fn formatting_only_error(
     let same_nonempty_lines = nonempty_line_count(&base_text) == nonempty_line_count(&current_text);
     let formatting_only = without_whitespace(&base_text) == without_whitespace(&current_text);
     let concealed_collapse = !same_nonempty_lines
-        && !has_added_file(root, base_ref)?
+        && !has_new_module_boundary(&base_text, &current_text)
         && !removed_lines_are_duplicates(&base_text, &current_text);
     if !formatting_only && !concealed_collapse {
         return Ok(None);
@@ -38,33 +38,29 @@ pub(super) fn formatting_only_error(
     )))
 }
 
-fn has_added_file(root: &Path, base_ref: &str) -> Result<bool> {
-    let output = Command::new("git")
-        .args(["diff", "--name-status", base_ref])
-        .current_dir(root)
-        .output()?;
-    if String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .any(|line| line.starts_with("A\t"))
-    {
-        return Ok(true);
-    }
-    let status = Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(root)
-        .output()?;
-    Ok(String::from_utf8_lossy(&status.stdout)
-        .lines()
-        .any(|line| line.starts_with("?? ")))
+fn has_new_module_boundary(base: &str, current: &str) -> bool {
+    current.lines().any(|line| {
+        let line = line.trim();
+        line.starts_with("mod ")
+            && line.ends_with(';')
+            && !base.lines().any(|base| base.trim() == line)
+    })
 }
 
 fn removed_lines_are_duplicates(base: &str, current: &str) -> bool {
-    let current = current.lines().collect::<std::collections::HashSet<_>>();
-    let removed = base
-        .lines()
-        .filter(|line| !line.trim().is_empty() && !current.contains(line))
-        .collect::<Vec<_>>();
-    removed.len() > 1 && removed.iter().all(|line| *line == removed[0])
+    let mut base_counts = std::collections::HashMap::new();
+    let mut current_counts = std::collections::HashMap::new();
+    for line in base.lines().filter(|line| !line.trim().is_empty()) {
+        *base_counts.entry(line).or_insert(0usize) += 1;
+    }
+    for line in current.lines().filter(|line| !line.trim().is_empty()) {
+        *current_counts.entry(line).or_insert(0usize) += 1;
+    }
+    base_counts.iter().any(|(line, count)| {
+        current_counts
+            .get(line)
+            .is_some_and(|current| *current > 0 && count > current)
+    })
 }
 
 fn base_path(root: &Path, base_ref: &str, path: &Path) -> Result<PathBuf> {

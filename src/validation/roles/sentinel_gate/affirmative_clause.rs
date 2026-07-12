@@ -40,10 +40,13 @@ fn has_unclosed_straight_quote(prefix: &str, quote: char) -> bool {
         .enumerate()
         .fold(false, |open, (index, character)| {
             let contraction = quote == '\''
+                && !open
                 && index > 0
-                && index + 1 < chars.len()
                 && chars[index - 1].is_alphanumeric()
-                && chars[index + 1].is_alphanumeric();
+                && (chars[index - 1] == 's'
+                    || chars
+                        .get(index + 1)
+                        .is_some_and(|next| next.is_alphanumeric()));
             if *character == quote && !contraction {
                 !open
             } else {

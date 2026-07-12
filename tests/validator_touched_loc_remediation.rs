@@ -117,10 +117,10 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
             "real duplication removal",
             "src/too_large.rs",
             format!(
-                "{}fn duplicate() {{}}\nfn duplicate() {{}}\n",
-                regular_lines(250)
+                "{}fn duplicate() {{}}\nfn duplicate() {{}}\nfn duplicate() {{}}\n",
+                regular_lines(249)
             ),
-            regular_lines(250),
+            format!("{}fn duplicate() {{}}\n", regular_lines(249)),
             None,
         ),
     ] {

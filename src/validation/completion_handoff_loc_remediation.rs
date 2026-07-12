@@ -48,12 +48,14 @@ fn evidence_clauses(text: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_evidence_label(clause: &str) -> bool {
-    let clause = clause
-        .trim_start()
-        .strip_prefix("- ")
-        .or_else(|| clause.trim_start().strip_prefix("* "))
-        .unwrap_or_else(|| clause.trim_start())
-        .to_ascii_lowercase();
+    let trimmed = clause.trim_start();
+    let clause = match trimmed.chars().next() {
+        Some('-' | '*' | '+') if trimmed[1..].starts_with(char::is_whitespace) => {
+            trimmed[1..].trim_start()
+        }
+        _ => trimmed,
+    }
+    .to_ascii_lowercase();
     clause.starts_with("loc remediation:") || clause.starts_with("touched loc:")
 }
 
@@ -158,10 +160,13 @@ fn has_unclosed_straight_quote(prefix: &str, quote: char) -> bool {
         .enumerate()
         .fold(false, |open, (index, character)| {
             let contraction = quote == '\''
+                && !open
                 && index > 0
-                && index + 1 < chars.len()
                 && chars[index - 1].is_alphanumeric()
-                && chars[index + 1].is_alphanumeric();
+                && (chars[index - 1] == 's'
+                    || chars
+                        .get(index + 1)
+                        .is_some_and(|next| next.is_alphanumeric()));
             if *character == quote && !contraction {
                 !open
             } else {
