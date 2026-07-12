@@ -1,5 +1,7 @@
 mod no_remediation;
 
+use super::completion_handoff_loc_polarity as polarity;
+
 const STRUCTURAL_MARKERS: &[&str] = &[
     "helper extraction",
     "module splitting",
@@ -123,8 +125,9 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
         let prefix = text[..marker_index].trim_end();
         let suffix = &text[marker_index + marker.len()..];
         if !is_quoted(prefix, suffix)
-            && !has_marker_negation(prefix, suffix)
-            && !has_marker_example(prefix, suffix)
+            && !polarity::is_negated(prefix, suffix, marker)
+            && !is_example(prefix)
+            && !suffix.contains("as an example only")
             && !is_tentative(prefix, suffix)
         {
             return true;
@@ -132,22 +135,6 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
         search_start = marker_index + marker.len();
     }
     false
-}
-
-fn has_marker_negation(prefix: &str, suffix: &str) -> bool {
-    is_negated(prefix) || has_postposed_negation(suffix)
-}
-
-fn has_postposed_negation(suffix: &str) -> bool {
-    let words = evidence_words(suffix).collect::<Vec<_>>();
-    matches!(
-        words.as_slice(),
-        ["was" | "is" | "were", "not" | "no", ..] | ["did", "not", ..]
-    )
-}
-
-fn has_marker_example(prefix: &str, suffix: &str) -> bool {
-    is_example(prefix) || suffix.contains("as an example only")
 }
 
 fn is_quoted(prefix: &str, suffix: &str) -> bool {
@@ -204,16 +191,6 @@ fn has_unclosed_quote(prefix: &str, opening: char, closing: char) -> bool {
     prefix.chars().fold(false, |open, character| {
         character == opening || (open && character != closing)
     })
-}
-
-fn is_negated(prefix: &str) -> bool {
-    let words = evidence_words(prefix).collect::<Vec<_>>();
-    words.iter().rev().take(5).any(|word| *word == "not")
-        || words.iter().rev().take(3).any(|word| *word == "no")
-        || (!prefix
-            .trim_end_matches(|character: char| !character.is_ascii_alphabetic())
-            .ends_with("without changing behavior")
-            && words.iter().rev().take(3).any(|word| *word == "without"))
 }
 
 fn is_example(prefix: &str) -> bool {

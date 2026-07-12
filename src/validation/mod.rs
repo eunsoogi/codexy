@@ -40,6 +40,7 @@ mod codex_review_handoff_events;
 mod codex_review_handoff_readiness;
 mod completion_handoff;
 mod completion_handoff_compaction;
+mod completion_handoff_loc_polarity;
 mod completion_handoff_loc_remediation;
 mod completion_handoff_pending_worktree;
 mod completion_handoff_pending_worktree_labels;

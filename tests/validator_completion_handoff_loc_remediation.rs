@@ -195,6 +195,13 @@ fn completion_handoff_rejects_negation_after_without_changing_behavior() -> Test
 }
 
 #[test]
+fn completion_handoff_rejects_local_without_marker() -> TestResult {
+    completion_handoff_rejects(
+        "LOC remediation: rules passed without helper extraction in src/parser_rules.rs. --check-touched-loc passed.",
+    )
+}
+
+#[test]
 fn completion_handoff_rejects_postposed_example_only() -> TestResult {
     completion_handoff_rejects(
         "LOC remediation: helper extraction moved rules into src/parser_rules.rs as an example only. --check-touched-loc passed.",
