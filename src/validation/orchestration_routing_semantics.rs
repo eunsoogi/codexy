@@ -73,12 +73,11 @@ pub(super) fn has_conflicting_luna_default(bullet: &str) -> bool {
     normalized.contains("gpt-5.6-luna")
         && positive_must_segments(bullet).iter().any(|segment| {
             let normalized = segment.to_ascii_lowercase();
-            [
-                "must be the blanket default",
-                "must always be the blanket default",
-            ]
-            .iter()
-            .any(|assignment| normalized.trim_start().starts_with(assignment))
+            normalized.contains("blanket default")
+                && !normalized.contains(" not ")
+                && [" be ", " use ", " make "]
+                    .iter()
+                    .any(|assignment| normalized.contains(assignment))
         })
 }
 
@@ -87,11 +86,19 @@ pub(super) fn has_conflicting_sentinel_tier(bullet: &str) -> bool {
     normalized.contains("codexy-sentinel")
         && positive_unquoted_must_segments(bullet)
             .iter()
-            .any(|segment| assigns_sentinel_ultra(&segment.to_ascii_lowercase()))
+            .any(|segment| assigns_conflicting_sentinel_tier(&segment.to_ascii_lowercase()))
+}
+
+fn assigns_conflicting_sentinel_tier(segment: &str) -> bool {
+    let normalized = segment.replace('`', "");
+    assigns_sentinel_ultra(&normalized)
+        || assignment_intent(&normalized)
+            && model_ids(&normalized)
+                .iter()
+                .any(|model| *model != "gpt-5.6-sol")
 }
 
 fn assigns_sentinel_ultra(segment: &str) -> bool {
-    let normalized = segment.replace('`', "");
     [
         "must use ultra",
         "must run on ultra",
@@ -100,7 +107,7 @@ fn assigns_sentinel_ultra(segment: &str) -> bool {
         "must be ultra",
     ]
     .iter()
-    .any(|assignment| normalized.trim_start().starts_with(assignment))
+    .any(|assignment| segment.trim_start().starts_with(assignment))
 }
 
 fn passes_specialist_overrides(segment: &str) -> bool {
