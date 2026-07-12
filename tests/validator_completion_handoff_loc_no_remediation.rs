@@ -49,6 +49,15 @@ fn completion_handoff_accepts_closed_s_ending_quote_before_marker() -> TestResul
     Ok(())
 }
 
+#[test]
+fn completion_handoff_accepts_negated_cosmetic_explanation_after_structure() -> TestResult {
+    let output = validate(
+        "LOC remediation: helper extraction moved code into src/helper.rs; this was not formatting-only. --check-touched-loc passed.",
+    )?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
 fn validate(handoff: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

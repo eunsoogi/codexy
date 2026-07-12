@@ -115,9 +115,6 @@ fn has_new_module_boundary(
         else {
             continue;
         };
-        if base.lines().any(|base| base.trim() == line) {
-            continue;
-        }
         let module_path = path
             .parent()
             .unwrap_or(Path::new(""))

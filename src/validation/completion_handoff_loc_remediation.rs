@@ -5,6 +5,9 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     if !mentions_loc_evidence(&text) {
         return Vec::new();
     }
+    if has_structural_evidence(&text) || no_remediation::has_evidence(&text) {
+        return Vec::new();
+    }
     if [
         "blank-line deletion",
         "multiline collapse",
@@ -16,9 +19,6 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
         return vec![
             "formatting-only LOC remediation cannot satisfy completion readiness evidence".into(),
         ];
-    }
-    if has_structural_evidence(&text) || no_remediation::has_evidence(&text) {
-        return Vec::new();
     }
     vec![
         "LOC remediation evidence must name a structural boundary, responsibility, or real duplication removal".into(),

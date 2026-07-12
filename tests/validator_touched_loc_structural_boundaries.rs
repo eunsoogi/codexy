@@ -22,7 +22,10 @@ fn touched_loc_rejects_collapse_with_unrelated_added_file() -> TestResult {
 
 #[test]
 fn touched_loc_allows_extraction_into_existing_module() -> TestResult {
-    let repo = fixture("src/too_large.rs", multiline_source())?;
+    let repo = fixture(
+        "src/too_large.rs",
+        format!("mod helper;\n{}", multiline_source()),
+    )?;
     write(repo.path(), "src/helper.rs", "fn existing() {}\n")?;
     run(repo.path(), &["add", "."])?;
     run(repo.path(), &["commit", "-qm", "existing helper"])?;
