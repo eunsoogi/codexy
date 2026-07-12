@@ -75,14 +75,17 @@ fn segments(sentence: &str) -> Vec<&str> {
 }
 
 fn split_modal_and_clause(segment: &str) -> Vec<&str> {
-    let Some((left, right)) = segment.split_once(" and ") else {
-        return vec![segment];
-    };
-    if starts_permission(right) {
-        vec![left, right]
-    } else {
-        vec![segment]
+    let mut clauses = Vec::new();
+    let mut start = 0;
+    for (index, _) in segment.match_indices(" and ") {
+        let right = &segment[index + " and ".len()..];
+        if starts_permission(right) {
+            clauses.push(&segment[start..index]);
+            start = index + " and ".len();
+        }
     }
+    clauses.push(&segment[start..]);
+    clauses
 }
 
 fn starts_permission(clause: &str) -> bool {
