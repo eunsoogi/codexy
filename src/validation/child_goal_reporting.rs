@@ -1,5 +1,8 @@
 use std::collections::BTreeSet;
 
+use super::child_lane_owner_decision::is_child_delegation_owner_decision;
+use super::child_lane_ownership_phrases::field_value;
+
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
     let lines = text.lines().map(str::trim).collect::<Vec<_>>();
@@ -35,7 +38,9 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
     if is_local_agent_target(source) {
         return vec!["source_thread_id must name a Codex task id, not a local agent target".into()];
     }
-    let control = format!("goal control state: source_thread_id={source}");
+    let has_control_source = lines.iter().any(|line| {
+        line.starts_with("goal control state:") && field(line, "source_thread_id") == Some(source)
+    });
     let mut errors = Vec::new();
     let mut key = None;
     let mut pending = None;
@@ -60,7 +65,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
                 errors.push("goal operation is missing a confirmed post-result report".into());
             }
             let valid_key = key.is_some_and(|value| key_matches(value, operation));
-            if !lines.contains(&control.as_str()) || !valid_key {
+            if !has_control_source || !valid_key {
                 errors.push("goal operation lacks a stable transition key and exact source_thread_id control state".into());
             }
             if needs_pre_delivery(operation) {
@@ -212,7 +217,9 @@ fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
                 .filter(|(label, _)| {
                     matches!(
                         *label,
-                        "parent goal pre-delivery" | "parent goal post-result"
+                        "goal control state"
+                            | "parent goal pre-delivery"
+                            | "parent goal post-result"
                     )
                 })
                 .and_then(|(_, value)| value.strip_prefix(&prefix))
@@ -238,5 +245,6 @@ fn is_lane_boundary(line: &str) -> bool {
 }
 
 fn is_child_owned(line: &str) -> bool {
-    line.contains("lane ownership: child-owned") || line.contains("owner decision: child-owned")
+    line.contains("lane ownership: child-owned")
+        || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
 }

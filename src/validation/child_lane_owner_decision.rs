@@ -3,9 +3,16 @@ use super::child_lane_ownership_phrases::{has_absent_field_value, trimmed_value}
 pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
     let value = trimmed_value(value);
     is_affirmative_child_owned_value(value)
+        || is_current_thread_child_implementation(value)
         || (!has_negated_child_routing_requirement(value)
             && has_child_delegation(value)
             && has_routing_only_parent_context(value))
+}
+
+fn is_current_thread_child_implementation(value: &str) -> bool {
+    value.starts_with("current-thread-owned")
+        && (value.contains("implementation lane") || value.contains("child implementation"))
+        && !value.contains("not current-thread-owned")
 }
 
 pub(super) fn is_affirmative_child_owned_value(value: &str) -> bool {
