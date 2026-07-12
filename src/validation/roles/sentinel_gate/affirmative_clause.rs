@@ -33,12 +33,13 @@ pub(super) fn has_quoted_marker_prefix(prefix: &str) -> bool {
 }
 
 fn has_unclosed_quote(prefix: &str, opening: char, closing: char) -> bool {
-    prefix
-        .chars()
-        .filter(|character| *character == opening)
-        .count()
-        > prefix
-            .chars()
-            .filter(|character| *character == closing)
-            .count()
+    let mut open = false;
+    for character in prefix.chars() {
+        if character == opening {
+            open = true;
+        } else if character == closing {
+            open = false;
+        }
+    }
+    open
 }

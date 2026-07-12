@@ -141,6 +141,20 @@ fn has_marker_example(prefix: &str, suffix: &str) -> bool {
 fn is_quoted(prefix: &str) -> bool {
     matches!(prefix.chars().next_back(), Some('"' | '\'' | '`'))
         || prefix.chars().filter(|character| *character == '"').count() % 2 == 1
+        || has_unclosed_quote(prefix, '“', '”')
+        || has_unclosed_quote(prefix, '‘', '’')
+}
+
+fn has_unclosed_quote(prefix: &str, opening: char, closing: char) -> bool {
+    let mut open = false;
+    for character in prefix.chars() {
+        if character == opening {
+            open = true;
+        } else if character == closing {
+            open = false;
+        }
+    }
+    open
 }
 
 fn is_negated(prefix: &str) -> bool {

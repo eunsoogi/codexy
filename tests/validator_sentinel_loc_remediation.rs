@@ -39,6 +39,7 @@ fn roles_validator_rejects_quoted_or_negated_loc_remediation_markers() -> TestRe
         "Quoted policy text: “{marker}”",
         "Quoted policy text: “The policy says {marker}”",
         "Quoted policy text: ‘The policy says {marker}’",
+        "Quoted policy text: ” stray closer, then “The policy says {marker}”",
     ] {
         let (_temp, plugin_root) = fixture()?;
         let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
