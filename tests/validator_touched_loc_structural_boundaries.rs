@@ -26,6 +26,11 @@ fn touched_loc_allows_extraction_into_existing_module() -> TestResult {
     write(repo.path(), "src/helper.rs", "fn existing() {}\n")?;
     run(repo.path(), &["add", "."])?;
     run(repo.path(), &["commit", "-qm", "existing helper"])?;
+    write(
+        repo.path(),
+        "src/helper.rs",
+        "fn existing() {}\nfn extracted() {}\n",
+    )?;
     std::fs::write(
         repo.path().join("src/too_large.rs"),
         format!(
@@ -35,6 +40,25 @@ fn touched_loc_allows_extraction_into_existing_module() -> TestResult {
     )?;
     let output = validate(repo.path())?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_unrelated_existing_module_declaration() -> TestResult {
+    let repo = fixture("src/too_large.rs", multiline_source())?;
+    write(repo.path(), "src/helper.rs", "fn existing() {}\n")?;
+    run(repo.path(), &["add", "."])?;
+    run(repo.path(), &["commit", "-qm", "existing helper"])?;
+    std::fs::write(
+        repo.path().join("src/too_large.rs"),
+        format!(
+            "mod helper;\n{}let renamed_summary = format!(\"status\");\n",
+            regular_lines(248)
+        ),
+    )?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
     Ok(())
 }
 

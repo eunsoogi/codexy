@@ -116,7 +116,10 @@ fn has_positive_marker(instructions: &str, marker: &str) -> bool {
     while let Some(relative_index) = instructions[search_start..].find(marker) {
         let marker_index = search_start + relative_index;
         if is_prefix_negated(instructions, marker_index, marker)
-            || affirmative_clause::has_quoted_marker_prefix(&instructions[..marker_index])
+            || affirmative_clause::has_quoted_marker_prefix(
+                &instructions[..marker_index],
+                &instructions[marker_index + marker.len()..],
+            )
             || is_marker_sentence_weakened(instructions, marker_index, marker)
         {
             return false;

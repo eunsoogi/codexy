@@ -22,7 +22,7 @@ pub(super) fn formatting_only_error(
     let same_nonempty_lines = nonempty_line_count(&base_text) == nonempty_line_count(&current_text);
     let formatting_only = without_whitespace(&base_text) == without_whitespace(&current_text);
     let concealed_collapse = !same_nonempty_lines
-        && !has_new_module_boundary(&base_text, &current_text)
+        && !has_new_module_boundary(root, base_ref, path, &base_text, &current_text)?
         && !removed_lines_are_duplicates(&base_text, &current_text);
     if !formatting_only && !concealed_collapse {
         return Ok(None);
@@ -38,13 +38,35 @@ pub(super) fn formatting_only_error(
     )))
 }
 
-fn has_new_module_boundary(base: &str, current: &str) -> bool {
-    current.lines().any(|line| {
+fn has_new_module_boundary(
+    root: &Path,
+    base_ref: &str,
+    path: &Path,
+    base: &str,
+    current: &str,
+) -> Result<bool> {
+    for line in current.lines() {
         let line = line.trim();
-        line.starts_with("mod ")
-            && line.ends_with(';')
-            && !base.lines().any(|base| base.trim() == line)
-    })
+        let Some(module) = line
+            .strip_prefix("mod ")
+            .and_then(|name| name.strip_suffix(';'))
+        else {
+            continue;
+        };
+        if base.lines().any(|base| base.trim() == line) {
+            continue;
+        }
+        let module_path = path
+            .parent()
+            .unwrap_or(Path::new(""))
+            .join(format!("{module}.rs"));
+        let current_module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
+        let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
+        if !current_module.is_empty() && current_module != base_module {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn removed_lines_are_duplicates(base: &str, current: &str) -> bool {

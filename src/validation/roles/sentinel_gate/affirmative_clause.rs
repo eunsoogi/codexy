@@ -24,26 +24,31 @@ pub(super) fn has_weakened_marker_prefix(prefix: &str) -> bool {
         )
 }
 
-pub(super) fn has_quoted_marker_prefix(prefix: &str) -> bool {
+pub(super) fn has_quoted_marker_prefix(prefix: &str, suffix: &str) -> bool {
     let prefix = prefix.trim_end();
-    has_unclosed_straight_quote(prefix, '"')
-        || has_unclosed_straight_quote(prefix, '\'')
-        || has_unclosed_straight_quote(prefix, '`')
+    has_unclosed_straight_quote(prefix, suffix, '"')
+        || has_unclosed_straight_quote(prefix, suffix, '\'')
+        || has_unclosed_straight_quote(prefix, suffix, '`')
         || has_unclosed_quote(prefix, '“', '”')
         || has_unclosed_quote(prefix, '‘', '’')
 }
 
-fn has_unclosed_straight_quote(prefix: &str, quote: char) -> bool {
+fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool {
     let chars = prefix.chars().collect::<Vec<_>>();
     chars
         .iter()
         .enumerate()
         .fold(false, |open, (index, character)| {
             let contraction = quote == '\''
-                && !open
                 && index > 0
                 && chars[index - 1].is_alphanumeric()
-                && (chars[index - 1] == 's'
+                && ((!open && chars[index - 1] == 's')
+                    || (open
+                        && chars[index - 1] == 's'
+                        && (chars[index + 1..]
+                            .iter()
+                            .any(|character| !character.is_whitespace())
+                            || suffix.contains(quote)))
                     || chars
                         .get(index + 1)
                         .is_some_and(|next| next.is_alphanumeric()));

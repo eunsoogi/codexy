@@ -115,7 +115,7 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
         let marker_index = search_start + relative_index;
         let prefix = text[..marker_index].trim_end();
         let suffix = &text[marker_index + marker.len()..];
-        if !is_quoted(prefix)
+        if !is_quoted(prefix, suffix)
             && !has_marker_negation(prefix, suffix)
             && !has_marker_example(prefix, suffix)
             && !is_tentative(prefix, suffix)
@@ -145,25 +145,30 @@ fn has_marker_example(prefix: &str, suffix: &str) -> bool {
     is_example(prefix) || suffix.contains("as an example only")
 }
 
-fn is_quoted(prefix: &str) -> bool {
-    has_unclosed_straight_quote(prefix, '"')
-        || has_unclosed_straight_quote(prefix, '\'')
-        || has_unclosed_straight_quote(prefix, '`')
+fn is_quoted(prefix: &str, suffix: &str) -> bool {
+    has_unclosed_straight_quote(prefix, suffix, '"')
+        || has_unclosed_straight_quote(prefix, suffix, '\'')
+        || has_unclosed_straight_quote(prefix, suffix, '`')
         || has_unclosed_quote(prefix, '“', '”')
         || has_unclosed_quote(prefix, '‘', '’')
 }
 
-fn has_unclosed_straight_quote(prefix: &str, quote: char) -> bool {
+fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool {
     let chars = prefix.chars().collect::<Vec<_>>();
     chars
         .iter()
         .enumerate()
         .fold(false, |open, (index, character)| {
             let contraction = quote == '\''
-                && !open
                 && index > 0
                 && chars[index - 1].is_alphanumeric()
-                && (chars[index - 1] == 's'
+                && ((!open && chars[index - 1] == 's')
+                    || (open
+                        && chars[index - 1] == 's'
+                        && (chars[index + 1..]
+                            .iter()
+                            .any(|character| !character.is_whitespace())
+                            || suffix.contains(quote)))
                     || chars
                         .get(index + 1)
                         .is_some_and(|next| next.is_alphanumeric()));
@@ -222,4 +227,7 @@ fn evidence_words(text: &str) -> impl Iterator<Item = &str> {
 
 fn has_not_applicable_evidence(text: &str) -> bool {
     text.contains("loc remediation: not applicable") && text.contains("no touched file")
+        || text.contains("no loc remediation was needed")
+            && text.contains("all touched files")
+            && (text.contains("below 250 loc") || text.contains("within the loc limit"))
 }
