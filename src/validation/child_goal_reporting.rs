@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
-use super::child_lane_ownership_phrases::field_value;
+use super::child_lane_ownership_phrases::{field_value, metadata_key};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
@@ -118,7 +118,6 @@ fn needs_pre_delivery(operation: &str) -> bool {
         "create_goal" | "update_goal(complete)" | "update_goal(blocked)"
     )
 }
-
 fn pre_delivery_error(operation: &str) -> String {
     match operation {
         "update_goal(blocked)" => {
@@ -130,7 +129,6 @@ fn pre_delivery_error(operation: &str) -> String {
         _ => "goal operation requires confirmed pre-delivery parent report".into(),
     }
 }
-
 fn pre_delivery_is_confirmed(
     line: &str,
     operation: &str,
@@ -162,7 +160,6 @@ fn pre_delivery_is_confirmed(
     }
     matches_key(line, key, errors)
 }
-
 fn post_result_is_confirmed(
     line: &str,
     operation: &str,
@@ -187,10 +184,16 @@ fn post_result_is_confirmed(
     }
     true
 }
-
 fn is_local_agent_route(line: &str) -> bool {
-    line.find("agents.send_message")
-        .is_some_and(|index| !line[..index].contains("must not use"))
+    line.match_indices("agents.send_message").any(|(index, _)| {
+        let prefix = &line[..index];
+        !prefix
+            .rsplit_once(". ")
+            .map_or(prefix, |(_, sentence)| sentence)
+            .rsplit([';', ':'])
+            .next()
+            .is_some_and(|clause| clause.contains("must not use"))
+    })
 }
 fn without_numbered_metadata_prefix(line: &str) -> &str {
     let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());
@@ -198,7 +201,6 @@ fn without_numbered_metadata_prefix(line: &str) -> &str {
         .or_else(|| rest.strip_prefix(") "))
         .unwrap_or(line)
 }
-
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
     if key.is_some_and(|value| field(line, "transition key") == Some(value)) {
         true
@@ -207,7 +209,6 @@ fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool 
         false
     }
 }
-
 fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let prefix = format!("{name}=");
     line.split(';').map(str::trim).find_map(|part| {
@@ -225,7 +226,6 @@ fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
         })
     })
 }
-
 fn invalid_value(value: Option<&str>) -> bool {
     value.is_none_or(|item| {
         item.is_empty()
@@ -233,15 +233,17 @@ fn invalid_value(value: Option<&str>) -> bool {
             || item.contains(" unavailable")
     })
 }
-
 fn is_local_agent_target(value: &str) -> bool {
     value == "/root" || value.starts_with("agents.") || value.contains("send_message")
 }
-
 fn is_lane_boundary(line: &str) -> bool {
-    line.contains("lane ownership:") || line.contains("owner decision:")
+    ["lane ownership", "owner decision"]
+        .into_iter()
+        .any(|field| {
+            line.split_once(':')
+                .is_some_and(|(key, _)| metadata_key(key) == field)
+        })
 }
-
 fn is_child_owned(line: &str) -> bool {
     line.contains("lane ownership: child-owned")
         || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
