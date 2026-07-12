@@ -43,7 +43,9 @@ fn evidence_clauses(text: &str) -> impl Iterator<Item = &str> {
     text.split(['\n', ';'])
         .flat_map(|segment| segment.split(". "))
         .map(str::trim)
-        .filter(|segment| !segment.is_empty())
+        .filter(|segment| {
+            !segment.is_empty() && segment.to_ascii_lowercase().contains("loc remediation")
+        })
 }
 
 const fn structural_markers() -> &'static [&'static str] {
@@ -101,8 +103,10 @@ fn is_negated(prefix: &str) -> bool {
         .rsplit_once(['.', '!', '?', ';', '\n'])
         .map_or(prefix, |(_, sentence)| sentence)
         .split_whitespace()
-        .next_back()
-        .is_some_and(|word| matches!(word, "not" | "no" | "without"))
+        .rev()
+        .take(5)
+        .map(|word| word.trim_matches(|character: char| !character.is_ascii_alphabetic()))
+        .any(|word| matches!(word, "not" | "no" | "without"))
 }
 
 fn has_not_applicable_evidence(text: &str) -> bool {

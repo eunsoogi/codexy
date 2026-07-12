@@ -63,6 +63,21 @@ fn completion_handoff_requires_structural_class_and_file_boundary_in_one_clause(
     Ok(())
 }
 
+#[test]
+fn completion_handoff_rejects_terminal_reviewer_false_positives() -> TestResult {
+    for handoff in [
+        "LOC remediation: we did not perform helper extraction in src/parser_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: responsibility separation occurred. For example, helper extraction moved parser rules into src/example_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: module splitting was considered. Later unrelated file: src/unrelated.rs. --check-touched-loc passed.",
+    ] {
+        let output = validate(handoff)?;
+
+        assert!(!output.status.success(), "unexpectedly accepted: {handoff}");
+        assert!(stderr(&output).contains("LOC remediation evidence must name"));
+    }
+    Ok(())
+}
+
 fn validate(handoff: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
