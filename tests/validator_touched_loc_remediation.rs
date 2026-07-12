@@ -49,6 +49,22 @@ fn touched_loc_rejects_mixed_token_collapse_over_eight_lines() -> TestResult {
 }
 
 #[test]
+fn touched_loc_rejects_collapse_hidden_by_unrelated_rename() -> TestResult {
+    let repo = fixture("src/too_large.rs", multiline_source())?;
+    std::fs::write(
+        repo.path().join("src/too_large.rs"),
+        format!(
+            "{}let renamed_summary = format!(\"status\");\n",
+            regular_lines(249)
+        ),
+    )?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_allows_collapse_with_independent_structural_remediation() -> TestResult {
     let repo = fixture("src/too_large.rs", multiline_source())?;
     std::fs::write(

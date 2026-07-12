@@ -40,6 +40,8 @@ fn roles_validator_rejects_quoted_or_negated_loc_remediation_markers() -> TestRe
         "Quoted policy text: “The policy says {marker}”",
         "Quoted policy text: ‘The policy says {marker}’",
         "Quoted policy text: ” stray closer, then “The policy says {marker}”",
+        "Quoted policy text: 'The policy says {marker}'",
+        "Quoted policy text: `{marker} is required`",
     ] {
         let (_temp, plugin_root) = fixture()?;
         let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
@@ -74,6 +76,23 @@ fn roles_validator_accepts_closed_typographic_quote_before_marker() -> TestResul
 
     let output = validator(&plugin_root)?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn roles_validator_accepts_closed_straight_quote_before_marker() -> TestResult {
+    for quoted in ["'historical wording'", "`historical wording`"] {
+        let (_temp, plugin_root) = fixture()?;
+        let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
+        let sentinel = std::fs::read_to_string(&sentinel_path)?;
+        let marker = REQUIRED_MARKERS[0];
+        std::fs::write(
+            &sentinel_path,
+            sentinel.replacen(marker, &format!("{quoted} {marker}"), 1),
+        )?;
+        let output = validator(&plugin_root)?;
+        assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    }
     Ok(())
 }
 

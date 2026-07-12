@@ -48,7 +48,12 @@ fn evidence_clauses(text: &str) -> impl Iterator<Item = &str> {
 }
 
 fn has_evidence_label(clause: &str) -> bool {
-    let clause = clause.trim_start().to_ascii_lowercase();
+    let clause = clause
+        .trim_start()
+        .strip_prefix("- ")
+        .or_else(|| clause.trim_start().strip_prefix("* "))
+        .unwrap_or_else(|| clause.trim_start())
+        .to_ascii_lowercase();
     clause.starts_with("loc remediation:") || clause.starts_with("touched loc:")
 }
 
@@ -139,10 +144,30 @@ fn has_marker_example(prefix: &str, suffix: &str) -> bool {
 }
 
 fn is_quoted(prefix: &str) -> bool {
-    matches!(prefix.chars().next_back(), Some('"' | '\'' | '`'))
-        || prefix.chars().filter(|character| *character == '"').count() % 2 == 1
+    has_unclosed_straight_quote(prefix, '"')
+        || has_unclosed_straight_quote(prefix, '\'')
+        || has_unclosed_straight_quote(prefix, '`')
         || has_unclosed_quote(prefix, '“', '”')
         || has_unclosed_quote(prefix, '‘', '’')
+}
+
+fn has_unclosed_straight_quote(prefix: &str, quote: char) -> bool {
+    let chars = prefix.chars().collect::<Vec<_>>();
+    chars
+        .iter()
+        .enumerate()
+        .fold(false, |open, (index, character)| {
+            let contraction = quote == '\''
+                && index > 0
+                && index + 1 < chars.len()
+                && chars[index - 1].is_alphanumeric()
+                && chars[index + 1].is_alphanumeric();
+            if *character == quote && !contraction {
+                !open
+            } else {
+                open
+            }
+        })
 }
 
 fn has_unclosed_quote(prefix: &str, opening: char, closing: char) -> bool {

@@ -94,6 +94,8 @@ fn completion_handoff_rejects_all_terminal_parser_boundaries() -> TestResult {
         "LOC remediation: we did not actually plan or intend to perform helper extraction in src/parser_rules.rs. --check-touched-loc passed.",
         "LOC remediation: reviewer text said \"the team used helper extraction in src/example_rules.rs\". --check-touched-loc passed.",
         "LOC remediation: reviewer text said “the team used helper extraction in src/example_rules.rs”. --check-touched-loc passed.",
+        "LOC remediation: reviewer text said 'the team used helper extraction in src/example_rules.rs'. --check-touched-loc passed.",
+        "LOC remediation: reviewer text said `the team used helper extraction in src/example_rules.rs`. --check-touched-loc passed.",
         "LOC remediation: for example, helper extraction moved parser rules into src/example_rules.rs. --check-touched-loc passed.",
         "LOC remediation: module splitting was considered for src/parser_rules.rs. --check-touched-loc passed.",
     ] {
@@ -111,6 +113,15 @@ fn completion_handoff_accepts_closed_typographic_quote_before_evidence() -> Test
         "LOC remediation: reviewer cited “helper extraction” before helper extraction moved rules into src/parser_rules.rs. --check-touched-loc passed.",
     )?;
 
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn completion_handoff_accepts_markdown_bullet_evidence() -> TestResult {
+    let output = validate(
+        "- LOC remediation: helper extraction moved parser rules into src/parser_rules.rs. --check-touched-loc passed.",
+    )?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }

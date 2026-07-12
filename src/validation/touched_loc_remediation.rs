@@ -19,10 +19,15 @@ pub(super) fn formatting_only_error(
     }
     let current_text = std::fs::read_to_string(root.join(path))
         .with_context(|| format!("reading touched file {}", path.display()))?;
-    if without_whitespace(&base_text) != without_whitespace(&current_text) {
+    let same_nonempty_lines = nonempty_line_count(&base_text) == nonempty_line_count(&current_text);
+    let formatting_only = without_whitespace(&base_text) == without_whitespace(&current_text);
+    let concealed_collapse = !same_nonempty_lines
+        && !has_added_file(root, base_ref)?
+        && !removed_lines_are_duplicates(&base_text, &current_text);
+    if !formatting_only && !concealed_collapse {
         return Ok(None);
     }
-    let reduction = if nonempty_line_count(&base_text) == nonempty_line_count(&current_text) {
+    let reduction = if same_nonempty_lines {
         "blank-line deletion or other whitespace-only compression"
     } else {
         "multiline collapse or other formatting-only compression"
@@ -31,6 +36,35 @@ pub(super) fn formatting_only_error(
         "{} reached the {loc_limit}-line LOC target through {reduction}; use coherent structural refactoring instead",
         path.display()
     )))
+}
+
+fn has_added_file(root: &Path, base_ref: &str) -> Result<bool> {
+    let output = Command::new("git")
+        .args(["diff", "--name-status", base_ref])
+        .current_dir(root)
+        .output()?;
+    if String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .any(|line| line.starts_with("A\t"))
+    {
+        return Ok(true);
+    }
+    let status = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(root)
+        .output()?;
+    Ok(String::from_utf8_lossy(&status.stdout)
+        .lines()
+        .any(|line| line.starts_with("?? ")))
+}
+
+fn removed_lines_are_duplicates(base: &str, current: &str) -> bool {
+    let current = current.lines().collect::<std::collections::HashSet<_>>();
+    let removed = base
+        .lines()
+        .filter(|line| !line.trim().is_empty() && !current.contains(line))
+        .collect::<Vec<_>>();
+    removed.len() > 1 && removed.iter().all(|line| *line == removed[0])
 }
 
 fn base_path(root: &Path, base_ref: &str, path: &Path) -> Result<PathBuf> {
