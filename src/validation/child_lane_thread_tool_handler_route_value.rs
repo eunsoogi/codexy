@@ -1,4 +1,6 @@
-use super::child_lane_thread_tool_handler_route_owner_absence::has_route_owner_absence;
+use super::child_lane_thread_tool_handler_route_owner_absence::{
+    has_route_owner_absence, strip_actor_article,
+};
 
 const ROUTE_PREFIX_TRIM_CHARACTERS: [char; 13] = [
     ',', ';', '.', ':', '_', '-', '/', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}',
@@ -129,11 +131,6 @@ fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
         || tokens
             .iter()
             .all(|token| QUALIFIERS.split('|').any(|qualifier| *token == qualifier))
-}
-
-#[rustfmt::skip]
-pub(super) fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
-    let mut tokens = tokens; while matches!(tokens.first().copied(), Some("a" | "an" | "any" | "from" | "member" | "of" | "one" | "single" | "the")) { tokens = &tokens[1..]; } tokens
 }
 
 fn has_post_destination_route_negation(suffix: &str) -> bool {
