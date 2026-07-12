@@ -5,6 +5,8 @@
 //! goal and plan; only a material terminal result emits one parent delta and
 //! transitions the child out of its awaiting state.
 
+use std::{io, process::Child};
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum AwaitedGate {
     CodexReview,
@@ -29,6 +31,7 @@ pub struct ParentDelta {
 pub enum ObservationEffect {
     RetainActive,
     BoundReached,
+    Terminal,
     Transitioned,
 }
 
@@ -68,6 +71,19 @@ impl ChildLocalMonitor {
 
         self.observations += 1;
         ObservationEffect::RetainActive
+    }
+
+    /// Checks child-process liveness without emitting a parent delta.
+    pub fn observe_process_liveness(&mut self, child: &mut Child) -> io::Result<ObservationEffect> {
+        if !self.goal_active {
+            return Ok(ObservationEffect::Transitioned);
+        }
+
+        if child.try_wait()?.is_some() {
+            return Ok(ObservationEffect::Terminal);
+        }
+
+        Ok(self.observe_liveness())
     }
 
     /// Transitions once on a material result and returns the sole parent delta.

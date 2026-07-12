@@ -120,7 +120,7 @@ fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
         let before = &text[..index];
         let after = text[index + phrase.len()..]
-            .trim_start_matches([',', ':', ';', '-', '—'])
+            .trim_start_matches([',', ':', ';', '.', '-', '—'])
             .trim_start();
         !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
@@ -183,6 +183,7 @@ fn has_invalid_suffix(after: &str) -> bool {
         "but ",
         "however ",
         "although ",
+        "it is not required",
     ]
     .iter()
     .any(|marker| after.starts_with(marker))

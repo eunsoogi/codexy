@@ -87,6 +87,16 @@ fn validator_cli_rejects_weakened_or_historical_sentinel_observation_clauses() -
         ),
         (
             "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST be read-only. However it may interrupt a live Sentinel.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST be read-only. It is not required.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
             "Status observation of a running packaged Sentinel MUST NOT be read-only.",
             "status observation of a running packaged sentinel must be read-only",
         ),
