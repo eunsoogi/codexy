@@ -8,6 +8,7 @@ use crate::paths::display_relative;
 use crate::validation::{instruction_policy_text, load_json, prompt_yaml};
 
 mod child_thread_ledger;
+pub(crate) mod sentinel_scope_policy;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
@@ -42,6 +43,7 @@ fn check_surfaces(surfaces: Vec<PathBuf>, errors: &mut Vec<String>) {
                 }
                 check_structured_prompts(&path, &text, errors);
                 child_thread_ledger::check(&path, &text, errors);
+                sentinel_scope_policy::check(&path, &text, errors);
             }
             Err(error) => errors.push(format!(
                 "{} could not be read: {error}",

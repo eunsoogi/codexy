@@ -165,6 +165,10 @@ or `UNOBSERVABLE`. The owning lane MUST bound its wait, MUST report the
 reviewer name and exact head, and MUST keep push/readiness blocked for `BLOCK` or
 `UNOBSERVABLE` unless a maintainer explicitly approves a fallback. A delayed,
 pending, stuck, or unobservable Sentinel MUST NOT be treated as approval.
+The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
+Every BLOCK finding MUST map to an in-scope acceptance criterion.
+Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
+Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
 
 ## Codegraph And LSP
 
