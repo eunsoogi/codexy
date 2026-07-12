@@ -240,8 +240,7 @@ fn is_local_agent_target(value: &str) -> bool {
 }
 
 fn is_lane_boundary(line: &str) -> bool {
-    line.contains("lane ownership:")
-        || (line.contains("owner decision:") && line.contains("parent-owned"))
+    line.contains("lane ownership:") || line.contains("owner decision:")
 }
 
 fn is_child_owned(line: &str) -> bool {

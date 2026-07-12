@@ -148,6 +148,27 @@ fn validator_applies_goal_reporting_to_delegated_owner_decisions() -> TestResult
 }
 
 #[test]
+fn validator_starts_a_child_lane_at_delegated_owner_decisions() -> TestResult {
+    for owner_decision in [
+        "Owner decision: routing-only child delegation for static validator evidence",
+        "Owner decision: current-thread-owned child implementation lane",
+    ] {
+        let output = run_validator(&format!(
+            "Owner decision: parent-owned coordination lane\nSource thread id: parent-owner\n{owner_decision}\nSource thread id: child-owner\nGoal tool call: update_goal(blocked)\n"
+        ))?;
+        assert!(
+            !output.status.success(),
+            "delegated owner decision after parent lane must validate goal reports: {owner_decision}"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("blocked goal operation precedes confirmed parent delivery")
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_source_thread_id_control_field_with_metadata() -> TestResult {
     let output = run_validator(
         "Lane ownership: child-owned\nSource thread id: parent\nGoal control state: source_thread_id=parent; goal_id=goal-375; status=active\nGoal transition key: 375:get_goal:inspection\nGoal tool call: get_goal\nParent goal post-result: operation=get_goal; exact tool result=active; parent task=parent; delivery=confirmed; task surface=codex task/thread; transition key=375:get_goal:inspection\n",
