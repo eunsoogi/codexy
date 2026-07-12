@@ -23,7 +23,8 @@ pub(super) fn has_conflicting_specialist_override(bullet: &str) -> bool {
             "spawned with ",
         ]
         .iter()
-        .any(|action| normalized.contains(action));
+        .any(|action| normalized.contains(action))
+            || passes_specialist_overrides(&normalized);
         let fields = normalized.contains("model")
             || normalized.contains("reasoning-effort")
             || normalized.contains("reasoning_effort");
@@ -67,6 +68,60 @@ pub(super) fn has_conflicting_specialist_override(bullet: &str) -> bool {
     })
 }
 
+pub(super) fn has_conflicting_luna_default(bullet: &str) -> bool {
+    let normalized = bullet.to_ascii_lowercase();
+    normalized.contains("gpt-5.6-luna")
+        && positive_must_segments(bullet).iter().any(|segment| {
+            let normalized = segment.to_ascii_lowercase();
+            [
+                "must be the blanket default",
+                "must always be the blanket default",
+            ]
+            .iter()
+            .any(|assignment| normalized.trim_start().starts_with(assignment))
+        })
+}
+
+pub(super) fn has_conflicting_sentinel_tier(bullet: &str) -> bool {
+    let normalized = bullet.to_ascii_lowercase();
+    normalized.contains("codexy-sentinel")
+        && positive_unquoted_must_segments(bullet)
+            .iter()
+            .any(|segment| assigns_sentinel_ultra(&segment.to_ascii_lowercase()))
+}
+
+fn assigns_sentinel_ultra(segment: &str) -> bool {
+    let normalized = segment.replace('`', "");
+    [
+        "must use ultra",
+        "must run on ultra",
+        "must run using ultra",
+        "must remain ultra",
+        "must be ultra",
+    ]
+    .iter()
+    .any(|assignment| normalized.trim_start().starts_with(assignment))
+}
+
+fn passes_specialist_overrides(segment: &str) -> bool {
+    (segment.contains(" pass ") || segment.contains(" passing "))
+        && segment.contains("overrides")
+        && (segment.contains("model")
+            || segment.contains("reasoning-effort")
+            || segment.contains("reasoning_effort"))
+        && !without_overrides(segment)
+}
+
+fn without_overrides(segment: &str) -> bool {
+    segment.find("without").is_some_and(|index| {
+        let clause = segment[index..].split(" and ").next().unwrap_or_default();
+        clause.contains("overrides")
+            && (clause.contains("model")
+                || clause.contains("reasoning-effort")
+                || clause.contains("reasoning_effort"))
+    })
+}
+
 pub(super) fn has_conflicting_tier_assignment(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     let expected = if normalized.contains("root/orchestrator") {
@@ -99,6 +154,7 @@ fn assignment_intent(segment: &str) -> bool {
         " set ",
         " assign",
         " receive",
+        " remain ",
         " spawn",
         " request",
         " select ",
@@ -145,4 +201,27 @@ fn positive_must_segments(text: &str) -> Vec<&str> {
         })
         .filter(|segment| !segment.starts_with("MUST NOT"))
         .collect()
+}
+
+fn positive_unquoted_must_segments(text: &str) -> Vec<&str> {
+    let starts = text
+        .match_indices("MUST")
+        .filter_map(|(index, _)| (!is_quoted_at(text, index)).then_some(index))
+        .collect::<Vec<_>>();
+    starts
+        .iter()
+        .enumerate()
+        .map(|(position, start)| {
+            let end = starts.get(position + 1).copied().unwrap_or(text.len());
+            &text[*start..end]
+        })
+        .filter(|segment| !segment.starts_with("MUST NOT"))
+        .collect()
+}
+
+fn is_quoted_at(text: &str, index: usize) -> bool {
+    let prefix = &text[..index];
+    [b'"', b'`']
+        .iter()
+        .any(|marker| prefix.bytes().filter(|byte| byte == marker).count() % 2 == 1)
 }

@@ -2,6 +2,7 @@ use std::{fs, path::Path};
 
 use crate::paths::display_relative;
 use crate::validation::orchestration_routing_semantics::{
+    has_conflicting_luna_default, has_conflicting_sentinel_tier,
     has_conflicting_specialist_override, has_conflicting_tier_assignment,
 };
 
@@ -90,6 +91,24 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(&path)
         ));
     }
+    if bullets
+        .iter()
+        .any(|bullet| has_conflicting_luna_default(bullet))
+    {
+        errors.push(format!(
+            "{} Luna must remain limited to bounded mechanical work",
+            display_relative(&path)
+        ));
+    }
+    if bullets
+        .iter()
+        .any(|bullet| has_conflicting_sentinel_tier(bullet))
+    {
+        errors.push(format!(
+            "{} codexy-sentinel must remain gpt-5.6-sol/xhigh",
+            display_relative(&path)
+        ));
+    }
     errors
 }
 
@@ -165,11 +184,11 @@ fn policy_bullets(section: &str) -> Vec<String> {
         let trimmed = line.trim();
         if let Some(bullet) = trimmed.strip_prefix("- ") {
             bullets.push(bullet.to_owned());
-        } else if !trimmed.is_empty()
-            && let Some(bullet) = bullets.last_mut()
-        {
-            bullet.push(' ');
-            bullet.push_str(trimmed);
+        } else if !trimmed.is_empty() {
+            if let Some(bullet) = bullets.last_mut() {
+                bullet.push(' ');
+                bullet.push_str(trimmed);
+            }
         }
     }
     bullets
