@@ -56,18 +56,11 @@ mod tests {
     fn route_owner_dependency_is_one_way() {
         let route_value = include_str!("child_lane_thread_tool_handler_route_value.rs");
         let route_owner = include_str!("child_lane_thread_tool_handler_route_owner_absence.rs");
+        let route_owner_production = route_owner
+            .split_once("#[cfg(test)]")
+            .map_or(route_owner, |(production, _)| production);
 
-        assert!(
-            route_value
-                .lines()
-                .take(5)
-                .any(|line| line.contains("route_owner_absence"))
-        );
-        assert!(
-            route_owner
-                .lines()
-                .take(5)
-                .all(|line| !line.contains("route_value"))
-        );
+        assert!(route_value.contains("route_owner_absence"));
+        assert!(!route_owner_production.contains("child_lane_thread_tool_handler_route_value"));
     }
 }
