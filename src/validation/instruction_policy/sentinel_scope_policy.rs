@@ -54,8 +54,7 @@ fn violations(text: &str) -> Vec<&'static str> {
 fn permits(text: &str, subject: &str, permissions: &[&str]) -> bool {
     text.to_ascii_lowercase()
         .split(['.', '!', '?'])
-        .flat_map(|sentence| sentence.split(';'))
-        .flat_map(|segment| segment.split(" but "))
+        .flat_map(segments)
         .any(|segment| {
             let words = words(segment);
             segment.contains(subject)
@@ -65,6 +64,32 @@ fn permits(text: &str, subject: &str, permissions: &[&str]) -> bool {
                         && !has_local_prohibition(&words, index)
                 })
         })
+}
+
+fn segments(sentence: &str) -> Vec<&str> {
+    sentence
+        .split(';')
+        .flat_map(|segment| segment.split(" but "))
+        .flat_map(split_modal_and_clause)
+        .collect()
+}
+
+fn split_modal_and_clause(segment: &str) -> Vec<&str> {
+    let Some((left, right)) = segment.split_once(" and ") else {
+        return vec![segment];
+    };
+    if starts_permission(right) {
+        vec![left, right]
+    } else {
+        vec![segment]
+    }
+}
+
+fn starts_permission(clause: &str) -> bool {
+    matches!(
+        clause.split_ascii_whitespace().next(),
+        Some("may" | "can" | "should" | "must" | "allowed" | "permitted" | "authorized")
+    )
 }
 
 fn words(sentence: &str) -> Vec<&str> {

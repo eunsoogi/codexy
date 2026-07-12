@@ -28,6 +28,7 @@ const SCOPE_POLICY_PROHIBITIONS: &[&str] = &[
     "Sentinel MUST NOT review unrelated behaviors or files.",
     "Recurring same-class defects MUST NOT use phrase patches.",
     "Sentinel MAY review authorized files but MUST NOT BLOCK unrelated edge cases.",
+    "Sentinel MAY review authorized files and MUST NOT BLOCK unrelated edge cases.",
 ];
 
 #[test]
