@@ -140,12 +140,10 @@ fn has_marker_negation(prefix: &str, suffix: &str) -> bool {
 
 fn has_postposed_negation(suffix: &str) -> bool {
     let words = evidence_words(suffix).collect::<Vec<_>>();
-    words.iter().take(6).enumerate().any(|(index, word)| {
-        matches!(*word, "not" | "no")
-            || (*word == "without"
-                && !(words.get(index + 1) == Some(&"changing")
-                    && words.get(index + 2) == Some(&"behavior")))
-    })
+    matches!(
+        words.as_slice(),
+        ["was" | "is" | "were", "not" | "no", ..] | ["did", "not", ..]
+    )
 }
 
 fn has_marker_example(prefix: &str, suffix: &str) -> bool {
@@ -224,7 +222,9 @@ fn is_example(prefix: &str) -> bool {
 
 fn is_tentative(prefix: &str, suffix: &str) -> bool {
     evidence_words(prefix)
-        .chain(evidence_words(suffix))
+        .rev()
+        .take(5)
+        .chain(evidence_words(suffix).take(3))
         .any(|word| {
             matches!(
                 word,

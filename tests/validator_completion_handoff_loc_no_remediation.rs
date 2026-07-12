@@ -89,7 +89,9 @@ fn completion_handoff_rejects_cosmetic_claims_despite_unrelated_negation_or_stal
 -> TestResult {
     for handoff in [
         "LOC remediation: helper extraction moved code into src/helper.rs; no behavior changed while blank-line deletion supplied the remaining reduction. --check-touched-loc passed.",
+        "LOC remediation: helper extraction moved code into src/helper.rs; blank-line deletion supplied the remaining reduction with no behavior change. --check-touched-loc passed.",
         "LOC remediation: helper extraction moved code into src/helper.rs; blank-line deletion supplied the remaining reduction. Previous lane evidence was stale. --check-touched-loc passed.",
+        "LOC remediation: helper extraction moved code into src/helper.rs; blank-line deletion supplied the remaining reduction while future work could improve tests. --check-touched-loc passed.",
     ] {
         let output = validate(handoff)?;
         assert!(!output.status.success(), "unexpectedly accepted: {handoff}");
