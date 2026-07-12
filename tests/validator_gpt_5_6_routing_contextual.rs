@@ -96,6 +96,10 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
             "Luna must remain limited to bounded mechanical work",
         ),
         (
+            "- `gpt-5.6-luna` MUST use Luna as the blanket default, not Terra.\n\n## Read Next",
+            "Luna must remain limited to bounded mechanical work",
+        ),
+        (
             "- `codexy-sentinel` MUST run on `gpt-5.6-terra` with high reasoning.\n\n## Read Next",
             "codexy-sentinel must remain gpt-5.6-sol/xhigh",
         ),

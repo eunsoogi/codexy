@@ -74,11 +74,22 @@ pub(super) fn has_conflicting_luna_default(bullet: &str) -> bool {
         && positive_must_segments(bullet).iter().any(|segment| {
             let normalized = segment.to_ascii_lowercase();
             normalized.contains("blanket default")
-                && !normalized.contains(" not ")
+                && !luna_blanket_default_is_negated(&normalized)
                 && [" be ", " use ", " make "]
                     .iter()
                     .any(|assignment| normalized.contains(assignment))
         })
+}
+
+fn luna_blanket_default_is_negated(segment: &str) -> bool {
+    [
+        "not be the blanket default",
+        "not be a blanket default",
+        "not the blanket default",
+        "not a blanket default",
+    ]
+    .iter()
+    .any(|negation| segment.contains(negation))
 }
 
 pub(super) fn has_conflicting_sentinel_tier(bullet: &str) -> bool {
