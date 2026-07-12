@@ -27,7 +27,7 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
     {
         return Vec::new();
     }
-    if affirmative_cosmetic || has_cosmetic_marker(&text) {
+    if affirmative_cosmetic || COSMETIC_MARKERS.iter().any(|marker| text.contains(marker)) {
         return vec![FORMATTING_ONLY_ERROR.into()];
     }
     vec![MISSING_STRUCTURAL_EVIDENCE_ERROR.into()]
@@ -56,10 +56,6 @@ fn has_affirmative_cosmetic_remediation(text: &str) -> bool {
                 && has_current_lane_scope(clause)
                 && has_positive_marker_in(clause, COSMETIC_MARKERS)
         })
-}
-
-fn has_cosmetic_marker(text: &str) -> bool {
-    COSMETIC_MARKERS.iter().any(|marker| text.contains(marker))
 }
 
 fn has_positive_marker_in(clause: &str, markers: &[&str]) -> bool {
@@ -213,15 +209,17 @@ fn has_unclosed_quote(prefix: &str, opening: char, closing: char) -> bool {
 }
 
 fn is_negated(prefix: &str) -> bool {
-    evidence_words(prefix)
-        .rev()
-        .take(3)
-        .any(|word| matches!(word, "not" | "no" | "without"))
+    let words = evidence_words(prefix).collect::<Vec<_>>();
+    words.iter().rev().take(5).any(|word| *word == "not")
+        || words.iter().rev().take(3).any(|word| *word == "no")
+        || (!prefix
+            .trim_end_matches(|character: char| !character.is_ascii_alphabetic())
+            .ends_with("without changing behavior")
+            && words.iter().rev().take(3).any(|word| *word == "without"))
 }
 
 fn is_example(prefix: &str) -> bool {
-    prefix.to_ascii_lowercase().contains("for example")
-        || evidence_words(prefix).any(|word| word == "example")
+    evidence_words(prefix).last() == Some("example")
 }
 
 fn is_tentative(prefix: &str, suffix: &str) -> bool {

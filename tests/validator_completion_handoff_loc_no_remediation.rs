@@ -98,6 +98,23 @@ fn completion_handoff_rejects_cosmetic_claims_despite_unrelated_negation_or_stal
     Ok(())
 }
 
+#[test]
+fn completion_handoff_keeps_cosmetic_marker_context_local() -> TestResult {
+    let accepted = validate(
+        "LOC remediation: helper extraction moved code into src/helper.rs; this was not in any way formatting-only. --check-touched-loc passed.",
+    )?;
+    assert!(accepted.status.success(), "stderr:\n{}", stderr(&accepted));
+    for handoff in [
+        "LOC remediation: helper extraction moved code into src/helper.rs; without changing behavior, blank-line deletion supplied the remaining reduction. --check-touched-loc passed.",
+        "LOC remediation: helper extraction moved example code into src/helper.rs and blank-line deletion supplied the remaining reduction. --check-touched-loc passed.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(!output.status.success(), "unexpectedly accepted: {handoff}");
+        assert!(stderr(&output).contains("formatting-only LOC remediation"));
+    }
+    Ok(())
+}
+
 fn validate(handoff: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
