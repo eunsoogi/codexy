@@ -7,6 +7,7 @@ fn completion_handoff_models_without_attachment_locally() -> TestResult {
     for handoff in [
         "LOC remediation: without altering behavior helper extraction moved parser rules into src/parser_rules.rs. --check-touched-loc passed.",
         "LOC remediation: without any behavior changes module splitting moved parser rules into src/parser_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: helper extraction did not change behavior and moved parser rules into src/parser_rules.rs. --check-touched-loc passed.",
     ] {
         assert!(
             validate(handoff)?.status.success(),
@@ -16,6 +17,7 @@ fn completion_handoff_models_without_attachment_locally() -> TestResult {
     for handoff in [
         "LOC remediation: rules passed without helper extraction in src/parser_rules.rs. --check-touched-loc passed.",
         "LOC remediation: helper extraction without altering behavior not performed in src/parser_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: helper extraction did not occur in src/parser_rules.rs. --check-touched-loc passed.",
     ] {
         assert!(
             !validate(handoff)?.status.success(),

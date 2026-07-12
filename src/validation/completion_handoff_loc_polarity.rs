@@ -21,30 +21,40 @@ fn without_targets_marker(words: &[&str]) -> bool {
 }
 
 fn suffix_negates_marker(suffix: &str, marker: &str) -> bool {
-    let mut words = words(suffix).into_iter().peekable();
-    while let Some(word) = words.next() {
-        if is_clause_boundary(word) {
-            return false;
-        }
-        if word == "not" && !words.peek().is_some_and(|word| is_gerund(word)) {
-            return true;
-        }
-        if word == "no"
-            && words
-                .next()
-                .is_some_and(|word| is_marker_word(marker, word))
-        {
-            return true;
-        }
-    }
-    false
+    let words = words(suffix);
+    let clauses = words
+        .split(|word| is_clause_boundary(word))
+        .collect::<Vec<_>>();
+    clauses.iter().enumerate().any(|(index, clause)| {
+        clause_negates_marker(clause, marker)
+            && !(starts_with_did_not(clause) && follows_affirmative_clause(&clauses, index))
+    })
+}
+
+fn clause_negates_marker(clause: &[&str], marker: &str) -> bool {
+    clause
+        .windows(2)
+        .any(|words| words[0] == "not" && !is_gerund(words[1]))
+        || clause
+            .windows(2)
+            .any(|words| words[0] == "no" && is_marker_word(marker, words[1]))
+}
+
+fn starts_with_did_not(clause: &[&str]) -> bool {
+    matches!(clause, ["did", "not", ..])
+}
+
+fn follows_affirmative_clause(clauses: &[&[&str]], index: usize) -> bool {
+    clauses[index + 1..]
+        .iter()
+        .any(|clause| !matches!(clause, [] | ["not" | "no", ..]))
 }
 
 fn is_clause_boundary(word: &str) -> bool {
     matches!(word, "and" | "but" | "while")
 }
 
-fn is_gerund(word: &&str) -> bool {
+fn is_gerund(word: &str) -> bool {
     word.ends_with("ing")
 }
 
