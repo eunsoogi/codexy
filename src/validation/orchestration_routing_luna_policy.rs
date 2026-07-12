@@ -9,8 +9,7 @@ pub(super) fn luna_policy_clauses(segment: &str) -> impl Iterator<Item = String>
 
 pub(super) fn has_luna_default_assignment(segment: &str) -> bool {
     let normalized = normalize_clause(segment);
-    has_word(&normalized, "luna")
-        && normalized.contains("blanket default")
+    normalized.contains("blanket default")
         && [
             "be", "use", "make", "set", "assign", "route", "serve", "serves", "keep", "remain",
         ]
