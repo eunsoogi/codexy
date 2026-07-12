@@ -144,3 +144,39 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     }
     Ok(())
 }
+
+#[test]
+fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let original = fs::read_to_string(&path)?;
+    fs::write(
+        &path,
+        format!(
+            "{}\n## Latest evidence\n",
+            original.replace("latest evidence", "current proof")
+        ),
+    )?;
+
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("latest evidence"));
+    Ok(())
+}
+
+#[test]
+fn validator_allows_compliant_negated_polling_prohibitions() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    fs::write(
+        &path,
+        format!(
+            "{}\nMUST NOT keep polling and keep the goal active.\n",
+            fs::read_to_string(&path)?
+        ),
+    )?;
+
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(output.status.success(), "{}", support::stderr(&output));
+    Ok(())
+}

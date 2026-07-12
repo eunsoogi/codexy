@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
+    io::Read as _,
     path::PathBuf,
 };
 
@@ -61,11 +62,18 @@ fn main() -> Result<()> {
     if cli.recent_turns == 0 {
         bail!("--recent-turns must be at least 1");
     }
-    let input = fs::read_to_string(&cli.input)
+    let input_file = fs::File::open(&cli.input)
+        .with_context(|| format!("opening session metadata input {}", cli.input.display()))?;
+    let mut input_bytes = Vec::new();
+    input_file
+        .take((MAX_INPUT_BYTES + 1) as u64)
+        .read_to_end(&mut input_bytes)
         .with_context(|| format!("reading session metadata input {}", cli.input.display()))?;
-    if input.len() > MAX_INPUT_BYTES {
+    if input_bytes.len() > MAX_INPUT_BYTES {
         bail!("session metadata input exceeds {MAX_INPUT_BYTES} bytes");
     }
+    let input = String::from_utf8(input_bytes)
+        .with_context(|| format!("decoding session metadata input {}", cli.input.display()))?;
     let report = if codex_session::is_codex_session(&input) {
         codex_session::audit(&input, cli.recent_turns)?
     } else {

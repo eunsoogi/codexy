@@ -213,18 +213,6 @@ branch, worktree, PR, durable child context, or review-response ownership:
 5. A failed first search for thread or worktree tooling is not proof that the
    tooling is unavailable. MUST continue discovery before reporting a blocker.
 
-## Child Thread Titles
-- After a forked Codex worktree child thread finishes setup and a thread id is
-  available, the orchestrator MUST rename it with `set_thread_title` when the
-  tool is available.
-- The child thread title MUST clearly include the project, issue number, and
-  lane purpose so users can distinguish concurrent child threads, such as
-  `Codexy #52 refactoring skill agent lane`.
-- If thread title renaming is unavailable, mention that limitation in the
-  orchestration status or child handoff and continue with the lane.
-- Child thread title renaming is a clarity policy, not a merge blocker for
-  otherwise complete implementation work.
-
 ## Completion Guard
 
 MUST NOT mark a plan step complete until its evidence has been inspected by the

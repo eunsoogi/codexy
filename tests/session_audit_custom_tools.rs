@@ -196,6 +196,24 @@ fn session_audit_rejects_empty_generic_metadata() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn session_audit_rejects_oversized_invalid_utf8_before_decoding() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let input = temp.path().join("oversized-invalid.jsonl");
+    let file = fs::File::create(&input)?;
+    file.set_len((8 * 1024 * 1024 + 1) as u64)?;
+    drop(file);
+    fs::write(&input, [0xff])?;
+    let file = fs::OpenOptions::new().write(true).open(&input)?;
+    file.set_len((8 * 1024 * 1024 + 1) as u64)?;
+
+    let output = audit(&input)?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("session metadata input exceeds 8388608 bytes"));
+    assert!(!stderr(&output).contains("not valid UTF-8"));
+    Ok(())
+}
+
 fn audit(input: &std::path::Path) -> TestResult<std::process::Output> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-session-audit"))
         .arg("--input")
