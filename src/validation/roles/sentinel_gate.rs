@@ -26,6 +26,9 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "replayed review examples when applicable",
     "no-finding result when no blockers remain",
     "any unresolved risk",
+    "MUST identify formatting-only LOC remediation before approving readiness.",
+    "MUST inspect the base-to-current reduction and block blank-line deletion or collapsed readable multiline code, tests, or instructions",
+    "MUST permit a collapsed readable multiline construct when the same reduction includes independent structural remediation.",
 ];
 
 const APPROVAL_EVIDENCE_MARKERS: &[&str] = &[
@@ -113,6 +116,10 @@ fn has_positive_marker(instructions: &str, marker: &str) -> bool {
     while let Some(relative_index) = instructions[search_start..].find(marker) {
         let marker_index = search_start + relative_index;
         if is_prefix_negated(instructions, marker_index, marker)
+            || affirmative_clause::has_quoted_marker_prefix(
+                &instructions[..marker_index],
+                &instructions[marker_index + marker.len()..],
+            )
             || is_marker_sentence_weakened(instructions, marker_index, marker)
         {
             return false;

@@ -28,8 +28,10 @@ mod child_lane_thread_tool_handler_issue_reference;
 mod child_lane_thread_tool_handler_issue_tracking;
 mod child_lane_thread_tool_handler_issue_value;
 mod child_lane_thread_tool_handler_no_route;
+mod child_lane_thread_tool_handler_route_owner_absence;
 mod child_lane_thread_tool_handler_route_value;
 mod child_lane_thread_tool_handler_scope;
+mod child_lane_thread_tool_handler_scope_labels;
 mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
 mod codex_review_fresh_request;
@@ -41,6 +43,8 @@ mod codex_review_handoff_events;
 mod codex_review_handoff_readiness;
 mod completion_handoff;
 mod completion_handoff_compaction;
+mod completion_handoff_loc_polarity;
+mod completion_handoff_loc_remediation;
 mod completion_handoff_pending_worktree;
 mod completion_handoff_pending_worktree_labels;
 mod completion_handoff_pending_worktree_search;
@@ -77,6 +81,7 @@ mod sentinel_handoff;
 mod sentinel_handoff_evidence;
 mod sentinel_handoff_reviewer;
 mod touched_loc;
+mod touched_loc_remediation;
 
 use std::path::Path;
 
