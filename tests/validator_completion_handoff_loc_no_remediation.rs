@@ -9,6 +9,7 @@ fn completion_handoff_rejects_negated_no_remediation_claims() -> TestResult {
         "All touched files were not already below 250 LOC and no LOC remediation was needed. --check-touched-loc passed.",
         "LOC remediation: not applicable because no touched file was below 250 LOC. --check-touched-loc passed.",
         "LOC remediation: not applicable; no touched file stayed within the LOC limit. --check-touched-loc passed.",
+        "LOC remediation: not applicable because it is false that no touched file exceeded 250 LOC. --check-touched-loc passed.",
     ] {
         let output = validate(handoff)?;
         assert!(!output.status.success(), "unexpectedly accepted: {handoff}");

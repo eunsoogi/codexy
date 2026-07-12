@@ -48,7 +48,8 @@ fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool 
                         && (chars[index + 1..]
                             .iter()
                             .all(|character| character.is_whitespace())
-                            || suffix.contains(quote)))
+                            || suffix.contains(quote)
+                            || quote_opened_after_said(&chars, index, quote)))
                     || chars
                         .get(index + 1)
                         .is_some_and(|next| next.is_alphanumeric()));
@@ -57,6 +58,19 @@ fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool 
             } else {
                 open
             }
+        })
+}
+
+fn quote_opened_after_said(chars: &[char], index: usize, quote: char) -> bool {
+    chars[..index]
+        .iter()
+        .rposition(|character| *character == quote)
+        .is_some_and(|opening| {
+            chars[..opening]
+                .iter()
+                .collect::<String>()
+                .trim_end()
+                .ends_with("said")
         })
 }
 

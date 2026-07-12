@@ -41,6 +41,7 @@ fn roles_validator_rejects_quoted_or_negated_loc_remediation_markers() -> TestRe
         "Quoted policy text: ‘The policy says {marker}’",
         "Quoted policy text: ” stray closer, then “The policy says {marker}”",
         "Quoted policy text: 'The policy says {marker}'",
+        "Quoted policy text said 'reviewers' reported {marker}",
         "Quoted policy text: `{marker} is required`",
     ] {
         let (_temp, plugin_root) = fixture()?;

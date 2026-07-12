@@ -1,3 +1,5 @@
+mod no_remediation;
+
 pub(super) fn check(handoff: &str) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !mentions_loc_evidence(&text) {
@@ -15,7 +17,7 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
             "formatting-only LOC remediation cannot satisfy completion readiness evidence".into(),
         ];
     }
-    if has_structural_evidence(&text) || has_not_applicable_evidence(&text) {
+    if has_structural_evidence(&text) || no_remediation::has_evidence(&text) {
         return Vec::new();
     }
     vec![
@@ -168,7 +170,8 @@ fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool 
                         && (chars[index + 1..]
                             .iter()
                             .all(|character| character.is_whitespace())
-                            || suffix.contains(quote)))
+                            || suffix.contains(quote)
+                            || quote_opened_after_said(&chars, index, quote)))
                     || chars
                         .get(index + 1)
                         .is_some_and(|next| next.is_alphanumeric()));
@@ -177,6 +180,19 @@ fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool 
             } else {
                 open
             }
+        })
+}
+
+fn quote_opened_after_said(chars: &[char], index: usize, quote: char) -> bool {
+    chars[..index]
+        .iter()
+        .rposition(|character| *character == quote)
+        .is_some_and(|opening| {
+            chars[..opening]
+                .iter()
+                .collect::<String>()
+                .trim_end()
+                .ends_with("said")
         })
 }
 
@@ -223,15 +239,4 @@ fn evidence_words(text: &str) -> impl Iterator<Item = &str> {
     text.split_whitespace()
         .map(|word| word.trim_matches(|character: char| !character.is_ascii_alphabetic()))
         .filter(|word| !word.is_empty())
-}
-
-fn has_not_applicable_evidence(text: &str) -> bool {
-    text.contains("loc remediation: not applicable")
-        && (text.contains("no touched file exceeded 250 loc")
-            || text.contains("no touched file exceeded the loc limit"))
-        || text.contains("no loc remediation was needed")
-            && text.contains("all touched files")
-            && !text.contains("not all touched files")
-            && !text.contains("all touched files were not")
-            && (text.contains("below 250 loc") || text.contains("within the loc limit"))
 }
