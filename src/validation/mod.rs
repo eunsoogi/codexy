@@ -1,6 +1,7 @@
 mod agent_model_contract;
 mod agent_registration;
 mod agent_registration_catalog;
+mod child_goal_reporting;
 mod child_handoff_readiness;
 mod child_handoff_readiness_claims;
 mod child_handoff_readiness_heads;
@@ -153,7 +154,11 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             errors
         }
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
-        Mode::ChildLaneOwnership { evidence } => child_lane_ownership::check(&evidence),
+        Mode::ChildLaneOwnership { evidence } => {
+            let mut errors = child_lane_ownership::check(&evidence);
+            errors.extend(child_goal_reporting::check(&evidence));
+            errors
+        }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),
     };
     if errors.is_empty() {

@@ -78,6 +78,24 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "dirty or locked candidate worktrees",
             ],
         );
+    } else if path.ends_with("skills/codex-orchestration/references/goal-transition-reporting.md") {
+        require_all(
+            path,
+            text,
+            errors,
+            "goal-transition reporting guidance must preserve the static parent receipt contract",
+            &[
+                "source_thread_id",
+                "actual codex task/thread messaging surface",
+                "agents.send_message('/root')",
+                "stable transition key",
+                "before `create_goal`",
+                "after every goal tool call, including `get_goal`",
+                "must not execute until parent delivery is confirmed",
+                "exact tool result",
+                "task cwd that differs from the canonical reserved worktree",
+            ],
+        );
     }
 }
 
