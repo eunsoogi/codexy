@@ -105,16 +105,13 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
     }
     errors
 }
-
 fn event_operation<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
     line.strip_prefix(prefix)
         .map(|value| value.split(';').next().unwrap_or(value))
 }
-
 fn valid_transition_key(key: &str) -> bool {
     key.split(':').count() == 3 && key.split(':').all(|part| !part.is_empty())
 }
-
 fn needs_pre_delivery(operation: &str) -> bool {
     matches!(
         operation,
@@ -192,7 +189,10 @@ fn post_result_is_confirmed(
 }
 
 fn is_local_agent_route(line: &str) -> bool {
-    line.contains("agents.send_message") && !line.contains("must not use agents.send_message")
+    line.split(';').any(|clause| {
+        clause.contains("agents.send_message")
+            && !clause.contains("must not use agents.send_message")
+    })
 }
 fn without_numbered_metadata_prefix(line: &str) -> &str {
     let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());

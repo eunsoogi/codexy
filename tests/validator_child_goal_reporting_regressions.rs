@@ -30,6 +30,17 @@ fn validator_accepts_opaque_transition_keys_and_negated_local_agent_policy() -> 
     Ok(())
 }
 
+#[test]
+fn validator_rejects_local_agent_routes_beside_a_negated_policy() -> TestResult {
+    let output = run_validator(
+        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: opaque:receipt:key\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=create goal; transition key=opaque:receipt:key\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=opaque:receipt:key\nParent route: agents.send_message('parent-task'); compliance: MUST NOT use agents.send_message('/root').\n",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("local agents"));
+    Ok(())
+}
+
 fn run_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");
