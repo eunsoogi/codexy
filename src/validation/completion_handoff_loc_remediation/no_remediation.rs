@@ -1,5 +1,5 @@
 pub(super) fn has_evidence(text: &str) -> bool {
-    text.split('\n')
+    text.split(['\n', ';'])
         .flat_map(|line| line.split(". "))
         .any(has_clause_evidence)
 }
