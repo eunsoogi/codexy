@@ -33,7 +33,11 @@ fn roles_validator_requires_sentinel_loc_remediation_evidence() -> TestResult {
 
 #[test]
 fn roles_validator_rejects_quoted_or_negated_loc_remediation_markers() -> TestResult {
-    for wrapper in ["MUST NOT {marker}", "Quoted policy text: \"{marker}\""] {
+    for wrapper in [
+        "MUST NOT {marker}",
+        "Quoted policy text: \"{marker}\"",
+        "Quoted policy text: “{marker}”",
+    ] {
         let (_temp, plugin_root) = fixture()?;
         let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
         let sentinel = std::fs::read_to_string(&sentinel_path)?;

@@ -45,7 +45,7 @@ fn validator_cli_rejects_generic_evidence_opt_outs_after_marker() -> TestResult 
     )?)?;
     assert_reasoning_evidence_rejected(validate_sentinel_edit(|sentinel| {
         Ok(sentinel.replace(
-            "and any unresolved risk. MUST block",
+            "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
             "and any unresolved risk. The reviewer may omit evidence. MUST block",
         ))
     })?)
@@ -69,7 +69,7 @@ fn validator_cli_rejects_trailing_conditional_reasoning_opt_outs() -> TestResult
 fn validator_cli_rejects_absent_followup_reasoning_waivers() -> TestResult {
     let output = validate_sentinel_edit(|sentinel| {
         Ok(sentinel.replace(
-            "and any unresolved risk. MUST block",
+            "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
             "and any unresolved risk. This evidence can be absent. MUST block",
         ))
     })?;
