@@ -118,6 +118,53 @@ fn touched_loc_allows_normal_duplicate_reduction() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn touched_loc_rejects_collapse_with_incidental_duplicate_drop() -> TestResult {
+    let repo = fixture(
+        "src/too_large.rs",
+        format!(
+            "{}fn first() {{\n    call(\n    );\n}}\nfn second() {{\n    other(\n    );\n}}\n",
+            regular_lines(245)
+        ),
+    )?;
+    std::fs::write(
+        repo.path().join("src/too_large.rs"),
+        format!(
+            "{}fn renamed_first() {{ call(); }}\nfn second() {{\n    other(\n    );\n}}\n",
+            regular_lines(245)
+        ),
+    )?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_allows_standalone_test_target_split() -> TestResult {
+    let repo = fixture("tests/too_large.rs", regular_lines(252))?;
+    std::fs::write(repo.path().join("tests/too_large.rs"), regular_lines(249))?;
+    write(
+        repo.path(),
+        "tests/extracted_cases.rs",
+        &regular_lines_from(249, 3),
+    )?;
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_incidental_test_target_overlap() -> TestResult {
+    let repo = fixture("tests/too_large.rs", regular_lines(252))?;
+    std::fs::write(repo.path().join("tests/too_large.rs"), regular_lines(249))?;
+    write(repo.path(), "tests/unrelated.rs", "fn line_249() {}\n")?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
 fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
     let repo = tempfile::tempdir()?;
     run(repo.path(), &["init", "-q"])?;
@@ -164,6 +211,12 @@ fn multiline_source() -> String {
 
 fn regular_lines(count: usize) -> String {
     (0..count)
+        .map(|index| format!("fn line_{index}() {{}}\n"))
+        .collect()
+}
+
+fn regular_lines_from(start: usize, count: usize) -> String {
+    (start..start + count)
         .map(|index| format!("fn line_{index}() {{}}\n"))
         .collect()
 }

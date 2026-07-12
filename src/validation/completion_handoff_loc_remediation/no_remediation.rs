@@ -1,4 +1,7 @@
 pub(super) fn has_evidence(text: &str) -> bool {
+    if super::is_stale_clause(text) || !super::has_current_lane_scope(text) {
+        return false;
+    }
     text.contains("loc remediation: not applicable")
         && !text.contains("false that no touched file")
         && !text.contains("not true that no touched file")

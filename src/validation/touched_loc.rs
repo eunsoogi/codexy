@@ -68,7 +68,7 @@ fn git_top_level() -> Result<PathBuf> {
     ))
 }
 
-fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
+pub(super) fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
     let mut files = run_git_diff(root, &format!("{base_ref}...HEAD"))?;
     files.extend(run_git_diff(root, "--cached")?);
     files.extend(run_git_diff(root, "")?);
