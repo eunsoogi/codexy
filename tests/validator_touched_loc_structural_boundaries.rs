@@ -65,6 +65,42 @@ fn touched_loc_rejects_unrelated_existing_module_declaration() -> TestResult {
 }
 
 #[test]
+fn touched_loc_allows_visible_module_extraction() -> TestResult {
+    for declaration in ["pub mod helper;", "pub(crate) mod helper;"] {
+        let repo = fixture("src/too_large.rs", multiline_source())?;
+        write(
+            repo.path(),
+            "src/helper.rs",
+            "let summary = format!(\"status\");\n",
+        )?;
+        std::fs::write(
+            repo.path().join("src/too_large.rs"),
+            format!("{declaration}\n{}", regular_lines(249)),
+        )?;
+        let output = validate(repo.path())?;
+        assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_unrelated_visible_module_change() -> TestResult {
+    let repo = fixture("src/too_large.rs", multiline_source())?;
+    write(repo.path(), "src/helper.rs", "fn unrelated() {}\n")?;
+    std::fs::write(
+        repo.path().join("src/too_large.rs"),
+        format!(
+            "pub mod helper;\n{}let renamed_summary = format!(\"status\");\n",
+            regular_lines(248)
+        ),
+    )?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_allows_normal_duplicate_reduction() -> TestResult {
     let repo = fixture(
         "src/too_large.rs",

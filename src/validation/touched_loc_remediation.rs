@@ -56,7 +56,11 @@ fn has_new_module_boundary(
     }
     for line in current.lines() {
         let line = line.trim();
-        let Some(module) = line
+        let declaration = line
+            .strip_prefix("pub(crate) ")
+            .or_else(|| line.strip_prefix("pub "))
+            .unwrap_or(line);
+        let Some(module) = declaration
             .strip_prefix("mod ")
             .and_then(|name| name.strip_suffix(';'))
         else {

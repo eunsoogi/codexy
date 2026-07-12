@@ -81,7 +81,11 @@ fn roles_validator_accepts_closed_typographic_quote_before_marker() -> TestResul
 
 #[test]
 fn roles_validator_accepts_closed_straight_quote_before_marker() -> TestResult {
-    for quoted in ["'historical wording'", "`historical wording`"] {
+    for quoted in [
+        "'historical wording'",
+        "'historical policies' before",
+        "`historical wording`",
+    ] {
         let (_temp, plugin_root) = fixture()?;
         let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
         let sentinel = std::fs::read_to_string(&sentinel_path)?;
