@@ -189,10 +189,8 @@ fn post_result_is_confirmed(
 }
 
 fn is_local_agent_route(line: &str) -> bool {
-    line.split(';').any(|clause| {
-        clause.contains("agents.send_message")
-            && !clause.contains("must not use agents.send_message")
-    })
+    line.find("agents.send_message")
+        .is_some_and(|index| !line[..index].contains("must not use"))
 }
 fn without_numbered_metadata_prefix(line: &str) -> &str {
     let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());
