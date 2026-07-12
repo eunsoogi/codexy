@@ -1,6 +1,6 @@
 interface:
   display_name: "Token-Efficient Orchestration"
   short_description: "Keep long Codexy loops compact without dropping proof gates."
-  default_prompt: "You MUST use $token-efficient-orchestration during long Codexy multi-PR loops, compaction recovery, polling, or handoff work to keep only current deltas, exact ids, required proof gates, and one next action per lane."
+  default_prompt: "You MUST use $token-efficient-orchestration during long Codexy multi-PR loops, compaction recovery, event-driven observation, or handoff work to keep only current deltas, exact ids, required proof gates, and one next action per lane."
 policy:
   allow_implicit_invocation: true

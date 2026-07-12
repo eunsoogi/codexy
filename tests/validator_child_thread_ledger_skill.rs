@@ -52,6 +52,32 @@ fn validator_cli_rejects_specialist_subagent_cap_exception() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_mutating_or_polling_sentinel_observation() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    std::fs::write(
+        &skill_path,
+        skill
+            .replace(
+                "Status observation of a running packaged Sentinel MUST be read-only.",
+                "Status observation of a running packaged Sentinel may mutate it.",
+            )
+            .replace(
+                "Parent policy MUST use event-driven terminal deltas and MUST NOT poll a running Sentinel.",
+                "Parent policy may poll a running Sentinel.",
+            ),
+    )?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("status observation of a running packaged sentinel must be read-only"));
+    assert!(stderr.contains("event-driven terminal deltas"));
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_missing_dreaming_worktree_reservation_fields() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let dreaming_path = plugin_root.join("skills/dreaming/SKILL.md");

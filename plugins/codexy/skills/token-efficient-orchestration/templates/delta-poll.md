@@ -12,7 +12,7 @@
 
 ## Delta
 
-- since last poll:
+- since last event:
 - changed ids:
 - stale or demoted:
 

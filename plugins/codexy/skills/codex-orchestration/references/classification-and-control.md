@@ -95,6 +95,7 @@ edits.
   status. The child MUST keep push/readiness blocked for `BLOCK` or
   `UNOBSERVABLE`, and MUST NOT treat delayed, pending, stuck, or unobservable
   Sentinel output as approval without explicit maintainer fallback approval.
+  Delayed output alone MUST NOT cause `UNOBSERVABLE`.
 
 ## Completion-Handoff Validation
 
