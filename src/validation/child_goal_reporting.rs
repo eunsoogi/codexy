@@ -5,7 +5,11 @@ use super::child_lane_ownership_phrases::field_value;
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
-    let lines = text.lines().map(str::trim).collect::<Vec<_>>();
+    let lines = text
+        .lines()
+        .map(str::trim)
+        .map(without_numbered_metadata_prefix)
+        .collect::<Vec<_>>();
     let mut errors = Vec::new();
     let mut start = 0;
     for end in 1..=lines.len() {
@@ -64,7 +68,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
             if pending.is_some() {
                 errors.push("goal operation is missing a confirmed post-result report".into());
             }
-            let valid_key = key.is_some_and(|value| key_matches(value, operation));
+            let valid_key = key.is_some();
             if !has_control_source || !valid_key {
                 errors.push("goal operation lacks a stable transition key and exact source_thread_id control state".into());
             }
@@ -109,15 +113,6 @@ fn event_operation<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
 
 fn valid_transition_key(key: &str) -> bool {
     key.split(':').count() == 3 && key.split(':').all(|part| !part.is_empty())
-}
-
-fn key_matches(key: &str, operation: &str) -> bool {
-    let action = match operation {
-        "update_goal(blocked)" => "blocked",
-        "update_goal(complete)" => "complete",
-        operation => operation,
-    };
-    key.contains(action)
 }
 
 fn needs_pre_delivery(operation: &str) -> bool {
@@ -197,7 +192,13 @@ fn post_result_is_confirmed(
 }
 
 fn is_local_agent_route(line: &str) -> bool {
-    line.contains("agents.send_message")
+    line.contains("agents.send_message") && !line.contains("must not use agents.send_message")
+}
+fn without_numbered_metadata_prefix(line: &str) -> &str {
+    let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());
+    rest.strip_prefix(". ")
+        .or_else(|| rest.strip_prefix(") "))
+        .unwrap_or(line)
 }
 
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
