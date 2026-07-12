@@ -1,7 +1,7 @@
 pub(super) fn has_route_owner_absence(tokens: &[&str]) -> bool {
     let tokens = strip_actor_article(tokens);
-    if let [first, rest @ ..] = tokens
-        && matches!(
+    if tokens.first().is_some_and(|first| {
+        matches!(
             *first,
             "need"
                 | "needed"
@@ -22,8 +22,8 @@ pub(super) fn has_route_owner_absence(tokens: &[&str]) -> bool {
                 | "same"
                 | "valid"
         )
-    {
-        return has_route_owner_absence(rest);
+    }) {
+        return has_route_owner_absence(&tokens[1..]);
     }
     if matches!(
         tokens,
