@@ -18,6 +18,8 @@ fn completion_handoff_models_without_attachment_locally() -> TestResult {
         "LOC remediation: rules passed without helper extraction in src/parser_rules.rs. --check-touched-loc passed.",
         "LOC remediation: helper extraction without altering behavior not performed in src/parser_rules.rs. --check-touched-loc passed.",
         "LOC remediation: helper extraction did not occur in src/parser_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: helper extraction did not occur and tests passed in src/parser_rules.rs. --check-touched-loc passed.",
+        "LOC remediation: helper extraction did not occur and parser rules remained in src/parser_rules.rs. --check-touched-loc passed.",
     ] {
         assert!(
             !validate(handoff)?.status.success(),

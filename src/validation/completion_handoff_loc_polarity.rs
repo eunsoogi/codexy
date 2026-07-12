@@ -1,3 +1,5 @@
+const STRUCTURAL_ACTIONS: &[&str] = &["moved", "extracted", "split", "separated", "removed"];
+
 pub(super) fn is_negated(prefix: &str, suffix: &str, marker: &str) -> bool {
     prefix_negates_marker(prefix) || suffix_negates_marker(suffix, marker)
 }
@@ -27,7 +29,7 @@ fn suffix_negates_marker(suffix: &str, marker: &str) -> bool {
         .collect::<Vec<_>>();
     clauses.iter().enumerate().any(|(index, clause)| {
         clause_negates_marker(clause, marker)
-            && !(starts_with_did_not(clause) && follows_affirmative_clause(&clauses, index))
+            && !(starts_with_did_not(clause) && follows_structural_action(&clauses, index))
     })
 }
 
@@ -44,10 +46,12 @@ fn starts_with_did_not(clause: &[&str]) -> bool {
     matches!(clause, ["did", "not", ..])
 }
 
-fn follows_affirmative_clause(clauses: &[&[&str]], index: usize) -> bool {
-    clauses[index + 1..]
-        .iter()
-        .any(|clause| !matches!(clause, [] | ["not" | "no", ..]))
+fn follows_structural_action(clauses: &[&[&str]], index: usize) -> bool {
+    clauses[index + 1..].iter().any(|clause| {
+        clause
+            .first()
+            .is_some_and(|word| STRUCTURAL_ACTIONS.contains(word))
+    })
 }
 
 fn is_clause_boundary(word: &str) -> bool {
