@@ -207,8 +207,10 @@ fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool 
 fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let prefix = format!("{name}=");
     line.split(';').map(str::trim).find_map(|part| {
-        part.find(&prefix)
-            .map(|index| &part[index + prefix.len()..])
+        part.strip_prefix(&prefix).or_else(|| {
+            part.split_once(": ")
+                .and_then(|(_, value)| value.strip_prefix(&prefix))
+        })
     })
 }
 
@@ -225,7 +227,7 @@ fn is_local_agent_target(value: &str) -> bool {
 }
 
 fn is_lane_boundary(line: &str) -> bool {
-    line.contains("lane ownership:") || line.starts_with("owner decision:")
+    line.contains("lane ownership:") || line.contains("owner decision:")
 }
 
 fn is_child_owned(line: &str) -> bool {

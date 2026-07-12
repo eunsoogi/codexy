@@ -111,6 +111,14 @@ Representative static fixture: #360 blocked notice; #276 blocked notice; #311 us
         "Lane ownership: child-owned\nSource thread id: first-parent\nLane ownership: parent-owned\nGoal tool call: update_goal(blocked)\n",
     )?;
     assert!(isolated_parent.status.success());
+    let negated = run_validator(
+        "Lane ownership: child-owned\nSource thread id: parent\nGoal control state: source_thread_id=parent\nGoal transition key: 375:create_goal:proof\nParent goal pre-delivery: operation=create_goal; parent task=parent; not delivery=confirmed; not task surface=codex task/thread; issue=#375; plan step=go; branch=b; worktree=w; head=h; clean/index=clean; evidence=e; next action=n; transition key=375:create_goal:proof\nGoal tool call: create_goal\n",
+    )?;
+    assert!(!negated.status.success());
+    let numbered_parent = run_validator(
+        "1. Lane ownership: child-owned\nSource thread id: first-parent\n2. Owner decision: parent-owned\nGoal tool call: update_goal(blocked)\n",
+    )?;
+    assert!(numbered_parent.status.success());
     Ok(())
 }
 
