@@ -120,6 +120,26 @@ fn completion_handoff_rejects_postposed_negation() -> TestResult {
 }
 
 #[test]
+fn completion_handoff_accepts_postposed_negation_beyond_six_words() -> TestResult {
+    let output = validate(
+        "LOC remediation: helper extraction moved parser rules into src/parser_rules.rs while preserving every tested behavior and not changing behavior. --check-touched-loc passed.",
+    )?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn completion_handoff_accepts_without_changing_behavior() -> TestResult {
+    let output = validate(
+        "LOC remediation: helper extraction moved parser rules into src/parser_rules.rs without changing behavior. --check-touched-loc passed.",
+    )?;
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn completion_handoff_rejects_postposed_example_only() -> TestResult {
     completion_handoff_rejects(
         "LOC remediation: helper extraction moved rules into src/parser_rules.rs as an example only. --check-touched-loc passed.",
@@ -131,6 +151,16 @@ fn completion_handoff_rejects_foreign_lane_structural_claim() -> TestResult {
     completion_handoff_rejects(
         "LOC remediation: fallback lane used helper extraction in src/fallback_rules.rs. --check-touched-loc passed.",
     )
+}
+
+#[test]
+fn completion_handoff_rejects_foreign_fallback_lane_variants() -> TestResult {
+    for lane in ["fallback-lane", "fallback child lane"] {
+        completion_handoff_rejects(&format!(
+            "LOC remediation: {lane} used helper extraction in src/fallback_rules.rs. --check-touched-loc passed.",
+        ))?;
+    }
+    Ok(())
 }
 
 fn validate(handoff: &str) -> TestResult<Output> {

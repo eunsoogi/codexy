@@ -88,6 +88,8 @@ fn is_stale_clause(clause: &str) -> bool {
 fn has_current_lane_scope(clause: &str) -> bool {
     ![
         "fallback lane",
+        "fallback-lane",
+        "fallback child lane",
         "fallback route",
         "other lane",
         "another lane",
@@ -119,10 +121,25 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
 }
 
 fn has_marker_negation(prefix: &str, suffix: &str) -> bool {
-    is_negated(prefix)
-        || evidence_words(suffix)
-            .take(6)
-            .any(|word| matches!(word, "not" | "no" | "without"))
+    is_negated(prefix) || has_postposed_negation(suffix)
+}
+
+fn has_postposed_negation(suffix: &str) -> bool {
+    let mut words = evidence_words(suffix);
+    for _ in 0..6 {
+        match words.next() {
+            Some("not" | "no") => return true,
+            Some("without") => {
+                return !matches!(
+                    (words.next(), words.next()),
+                    (Some("changing"), Some("behavior"))
+                );
+            }
+            Some(_) => {}
+            None => return false,
+        }
+    }
+    false
 }
 
 fn has_marker_example(prefix: &str, suffix: &str) -> bool {
