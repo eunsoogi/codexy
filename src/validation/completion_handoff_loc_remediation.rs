@@ -32,6 +32,7 @@ fn mentions_loc_evidence(text: &str) -> bool {
 fn has_structural_evidence(text: &str) -> bool {
     evidence_clauses(text).any(|clause| {
         !is_stale_clause(clause)
+            && has_current_lane_scope(clause)
             && has_file_boundary(clause)
             && structural_markers()
                 .iter()
@@ -84,6 +85,21 @@ fn is_stale_clause(clause: &str) -> bool {
     })
 }
 
+fn has_current_lane_scope(clause: &str) -> bool {
+    ![
+        "fallback lane",
+        "fallback route",
+        "other lane",
+        "another lane",
+        "separate lane",
+        "different lane",
+        "other branch",
+        "another branch",
+    ]
+    .iter()
+    .any(|foreign_scope| clause.contains(foreign_scope))
+}
+
 fn has_positive_marker(text: &str, marker: &str) -> bool {
     let mut search_start = 0;
     while let Some(relative_index) = text[search_start..].find(marker) {
@@ -91,8 +107,8 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
         let prefix = text[..marker_index].trim_end();
         let suffix = &text[marker_index + marker.len()..];
         if !is_quoted(prefix)
-            && !is_negated(prefix)
-            && !is_example(prefix)
+            && !has_marker_negation(prefix, suffix)
+            && !has_marker_example(prefix, suffix)
             && !is_tentative(prefix, suffix)
         {
             return true;
@@ -100,6 +116,17 @@ fn has_positive_marker(text: &str, marker: &str) -> bool {
         search_start = marker_index + marker.len();
     }
     false
+}
+
+fn has_marker_negation(prefix: &str, suffix: &str) -> bool {
+    is_negated(prefix)
+        || evidence_words(suffix)
+            .take(6)
+            .any(|word| matches!(word, "not" | "no" | "without"))
+}
+
+fn has_marker_example(prefix: &str, suffix: &str) -> bool {
+    is_example(prefix) || suffix.contains("as an example only")
 }
 
 fn is_quoted(prefix: &str) -> bool {

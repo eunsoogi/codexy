@@ -104,6 +104,35 @@ fn completion_handoff_rejects_all_terminal_parser_boundaries() -> TestResult {
     Ok(())
 }
 
+fn completion_handoff_rejects(handoff: &str) -> TestResult {
+    let output = validate(handoff)?;
+
+    assert!(!output.status.success(), "unexpectedly accepted: {handoff}");
+    assert!(stderr(&output).contains("LOC remediation evidence must name"));
+    Ok(())
+}
+
+#[test]
+fn completion_handoff_rejects_postposed_negation() -> TestResult {
+    completion_handoff_rejects(
+        "LOC remediation: helper extraction was not performed in src/parser_rules.rs. --check-touched-loc passed.",
+    )
+}
+
+#[test]
+fn completion_handoff_rejects_postposed_example_only() -> TestResult {
+    completion_handoff_rejects(
+        "LOC remediation: helper extraction moved rules into src/parser_rules.rs as an example only. --check-touched-loc passed.",
+    )
+}
+
+#[test]
+fn completion_handoff_rejects_foreign_lane_structural_claim() -> TestResult {
+    completion_handoff_rejects(
+        "LOC remediation: fallback lane used helper extraction in src/fallback_rules.rs. --check-touched-loc passed.",
+    )
+}
+
 fn validate(handoff: &str) -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
