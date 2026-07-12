@@ -38,9 +38,11 @@ pub(super) fn allows_prohibition_marker(lower: &str, marker_index: usize) -> boo
 
 fn reporting_policy_statement(lower: &str, marker_index: usize) -> bool {
     last_modal_before(lower, marker_index).is_some_and(|modal_index| {
-        lower[modal_index + "must".len()..marker_index]
-            .trim_start()
-            .starts_with("report that ")
+        let context = &lower[modal_index + "must".len()..marker_index];
+        context.trim_start().starts_with("report that ")
+            && ![". ", "; ", ", but ", ", and ", " then "]
+                .iter()
+                .any(|boundary| context.contains(boundary))
     })
 }
 

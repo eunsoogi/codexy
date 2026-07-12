@@ -73,7 +73,6 @@ pub(super) fn has_conflicting_luna_default(bullet: &str) -> bool {
         && positive_must_segments(bullet).iter().any(|segment| {
             let normalized = segment.to_ascii_lowercase();
             normalized.contains("blanket default")
-                && !normalized.trim_start().starts_with("must report")
                 && !luna_blanket_default_is_negated(&normalized)
                 && [" be ", " use ", " make "]
                     .iter()
@@ -86,6 +85,8 @@ fn luna_blanket_default_is_negated(segment: &str) -> bool {
         "not be a blanket default",
         "not the blanket default",
         "not a blanket default",
+        "never be the blanket default",
+        "never be a blanket default",
     ]
     .iter()
     .filter_map(|negation| segment.find(negation))
@@ -113,7 +114,6 @@ fn assigns_conflicting_sentinel_tier(segment: &str) -> bool {
                 .iter()
                 .any(|model| *model != "gpt-5.6-sol")
 }
-
 fn assigns_sentinel_ultra(segment: &str) -> bool {
     [
         "must use ultra",
