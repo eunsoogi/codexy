@@ -1,21 +1,30 @@
 mod no_remediation;
 
+const STRUCTURAL_MARKERS: &[&str] = &[
+    "helper extraction",
+    "module splitting",
+    "test-target splitting",
+    "responsibility separation",
+    "real duplication removal",
+];
+const COSMETIC_MARKERS: &[&str] = &[
+    "blank-line deletion",
+    "multiline collapse",
+    "formatting-only",
+];
+
 pub(super) fn check(handoff: &str) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !mentions_loc_evidence(&text) {
         return Vec::new();
     }
-    if has_structural_evidence(&text) || no_remediation::has_evidence(&text) {
+    if has_structural_evidence(&text) && !has_affirmative_cosmetic_remediation(&text) {
         return Vec::new();
     }
-    if [
-        "blank-line deletion",
-        "multiline collapse",
-        "formatting-only",
-    ]
-    .iter()
-    .any(|marker| text.contains(marker))
-    {
+    if no_remediation::has_evidence(&text) {
+        return Vec::new();
+    }
+    if has_cosmetic_marker(&text) {
         return vec![
             "formatting-only LOC remediation cannot satisfy completion readiness evidence".into(),
         ];
@@ -26,9 +35,9 @@ pub(super) fn check(handoff: &str) -> Vec<String> {
 }
 
 fn mentions_loc_evidence(text: &str) -> bool {
-    text.contains("--check-touched-loc")
-        || text.contains("loc remediation")
-        || text.contains("touched loc")
+    ["--check-touched-loc", "loc remediation", "touched loc"]
+        .iter()
+        .any(|marker| text.contains(marker))
 }
 
 fn has_structural_evidence(text: &str) -> bool {
@@ -36,10 +45,25 @@ fn has_structural_evidence(text: &str) -> bool {
         !is_stale_clause(clause)
             && has_current_lane_scope(clause)
             && has_file_boundary(clause)
-            && structural_markers()
+            && STRUCTURAL_MARKERS
                 .iter()
                 .any(|marker| has_positive_marker(clause, marker))
     })
+}
+
+fn has_affirmative_cosmetic_remediation(text: &str) -> bool {
+    text.lines().map(str::trim).any(|clause| {
+        has_evidence_label(clause)
+            && !is_stale_clause(clause)
+            && has_current_lane_scope(clause)
+            && COSMETIC_MARKERS
+                .iter()
+                .any(|marker| has_positive_marker(clause, marker))
+    })
+}
+
+fn has_cosmetic_marker(text: &str) -> bool {
+    COSMETIC_MARKERS.iter().any(|marker| text.contains(marker))
 }
 
 fn evidence_clauses(text: &str) -> impl Iterator<Item = &str> {
@@ -61,54 +85,37 @@ fn has_evidence_label(clause: &str) -> bool {
     clause.starts_with("loc remediation:") || clause.starts_with("touched loc:")
 }
 
-const fn structural_markers() -> &'static [&'static str] {
-    &[
-        "helper extraction",
-        "module splitting",
-        "test-target splitting",
-        "responsibility separation",
-        "real duplication removal",
-    ]
-}
-
 fn has_file_boundary(clause: &str) -> bool {
     clause.split_whitespace().any(|word| {
         let word = word.trim_matches(|character: char| {
             matches!(character, '"' | '\'' | '`' | '(' | ')' | ',' | ':' | '.')
         });
-        ["src/", "tests/", "plugins/", "scripts/"]
-            .iter()
-            .any(|prefix| word.starts_with(prefix))
-            && word.contains('.')
+        word.contains('.')
+            && matches!(
+                word.split('/').next(),
+                Some("src" | "tests" | "plugins" | "scripts")
+            )
     })
 }
 
 fn is_stale_clause(clause: &str) -> bool {
-    clause.split_whitespace().any(|word| {
-        matches!(
-            word.trim_matches(|character: char| !character.is_ascii_alphabetic())
-                .to_ascii_lowercase()
-                .as_str(),
-            "previous" | "stale" | "historical" | "earlier"
-        )
-    })
+    evidence_words(clause)
+        .any(|word| matches!(word, "previous" | "stale" | "historical" | "earlier"))
 }
 
 fn has_current_lane_scope(clause: &str) -> bool {
-    ![
-        "fallback lane",
-        "fallback-lane",
-        "fallback child lane",
-        "fallback route",
-        "other lane",
-        "another lane",
-        "separate lane",
-        "different lane",
-        "other branch",
-        "another branch",
-    ]
-    .iter()
-    .any(|foreign_scope| clause.contains(foreign_scope))
+    let words = evidence_words(clause).collect::<Vec<_>>();
+    !clause.contains("fallback-lane")
+        && !words.windows(2).any(|words| {
+            matches!(
+                words,
+                ["fallback", "lane" | "child" | "route"]
+                    | [
+                        "other" | "another" | "separate" | "different",
+                        "lane" | "branch"
+                    ]
+            )
+        })
 }
 
 fn has_positive_marker(text: &str, marker: &str) -> bool {
