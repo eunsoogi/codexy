@@ -61,6 +61,8 @@ mod manifest;
 mod mcp;
 mod mcp_runtime;
 mod merge_message;
+mod orchestration_routing;
+mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod release_publish_contract;
 mod review_thread_evidence;
@@ -129,6 +131,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
             all.extend(instruction_policy::check(plugin_root));
+            all.extend(orchestration_routing::check(plugin_root));
             all
         }
         Mode::Lsp => lsp::check(plugin_root),
