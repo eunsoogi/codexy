@@ -97,6 +97,26 @@ fn validator_cli_rejects_weakened_or_historical_sentinel_observation_clauses() -
         ),
         (
             "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST be read-only. It may interrupt a live Sentinel.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST be read-only. The parent may interrupt a live Sentinel.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST be read-only. The root parent may interrupt a live Sentinel.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST be read-only. The parent may still interrupt a live Sentinel.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
             "Status observation of a running packaged Sentinel MUST NOT be read-only.",
             "status observation of a running packaged sentinel must be read-only",
         ),
@@ -108,6 +128,16 @@ fn validator_cli_rejects_weakened_or_historical_sentinel_observation_clauses() -
         (
             "Status observation of a running packaged Sentinel MUST be read-only.",
             "The active policy is described elsewhere.\n\n## Historical example\n\nStatus observation of a running packaged Sentinel MUST be read-only.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "- Status observation of a running packaged Sentinel MUST be read-only.",
+            "## Status observation of a running packaged Sentinel MUST be read-only.\n\nThe active policy is described elsewhere.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Requirement: false — Status observation of a running packaged Sentinel MUST be read-only.",
             "status observation of a running packaged sentinel must be read-only",
         ),
         (
@@ -124,6 +154,36 @@ fn validator_cli_rejects_weakened_or_historical_sentinel_observation_clauses() -
         let output = validator(&plugin_root, "--check")?;
         assert!(!output.status.success(), "accepted {replacement:?}");
         assert!(stderr(&output).contains(expected));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_non_mutating_subject_prefixed_continuations() -> TestResult {
+    for continuation in [
+        "It may be recorded after terminal completion.",
+        "The terminal result record entry may be archived after completion.",
+        "The parent may not interrupt a live Sentinel.",
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(
+            &skill_path,
+            skill.replace(
+                "Status observation of a running packaged Sentinel MUST be read-only.",
+                &format!(
+                    "Status observation of a running packaged Sentinel MUST be read-only. {continuation}"
+                ),
+            ),
+        )?;
+
+        let output = validator(&plugin_root, "--check")?;
+        assert!(
+            output.status.success(),
+            "rejected {continuation:?}: {}",
+            stderr(&output)
+        );
     }
     Ok(())
 }

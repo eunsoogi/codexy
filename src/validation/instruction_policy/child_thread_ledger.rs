@@ -2,6 +2,11 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
+mod clauses;
+mod markdown;
+use clauses::{has_false_requirement, has_mutating_permission};
+use markdown::normalized_whitespace;
+
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     if path.ends_with("skills/dreaming/SKILL.md") {
         require_all(
@@ -132,7 +137,9 @@ fn has_invalid_prefix(before: &str) -> bool {
         .next()
         .unwrap_or_default();
     let clause = clause_prefix(section);
-    has_invalid_context(clause) || has_invalid_context(most_recent_heading(before))
+    before.rfind("<markdown-heading>") > before.rfind("</markdown-heading>")
+        || has_invalid_context(clause)
+        || has_invalid_context(most_recent_heading(before))
 }
 
 fn most_recent_heading(before: &str) -> &str {
@@ -155,6 +162,7 @@ fn has_invalid_context(text: &str) -> bool {
     ]
     .iter()
     .any(|marker| text.contains(marker))
+        || has_false_requirement(text)
 }
 
 fn clause_prefix(section: &str) -> &str {
@@ -179,7 +187,6 @@ fn has_invalid_suffix(after: &str) -> bool {
         "unless ",
         "except ",
         "only if ",
-        "may ",
         "but ",
         "however ",
         "although ",
@@ -187,6 +194,7 @@ fn has_invalid_suffix(after: &str) -> bool {
     ]
     .iter()
     .any(|marker| after.starts_with(marker))
+        || has_mutating_permission(after)
 }
 
 fn reject_all(
@@ -205,24 +213,4 @@ fn reject_all(
             ));
         }
     }
-}
-
-fn normalized_whitespace(text: &str) -> String {
-    let mut with_heading_boundaries = String::new();
-    for line in text.lines() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with('#') {
-            with_heading_boundaries.push_str(" <markdown-heading> ");
-            with_heading_boundaries.push_str(trimmed.trim_start_matches('#').trim());
-            with_heading_boundaries.push_str(" </markdown-heading> ");
-        } else {
-            with_heading_boundaries.push_str(line);
-            with_heading_boundaries.push(' ');
-        }
-    }
-    with_heading_boundaries
-        .to_ascii_lowercase()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
 }
