@@ -78,6 +78,47 @@ fn validator_cli_rejects_mutating_or_polling_sentinel_observation() -> TestResul
 }
 
 #[test]
+fn validator_cli_rejects_weakened_or_historical_sentinel_observation_clauses() -> TestResult {
+    for (target, replacement, expected) in [
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST be read-only, but it may interrupt a live Sentinel.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Status observation of a running packaged Sentinel MUST NOT be read-only.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "Stale example: Status observation of a running packaged Sentinel MUST be read-only.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "Status observation of a running packaged Sentinel MUST be read-only.",
+            "The active policy is described elsewhere.\n\n## Historical example\n\nStatus observation of a running packaged Sentinel MUST be read-only.",
+            "status observation of a running packaged sentinel must be read-only",
+        ),
+        (
+            "delayed output alone MUST NOT cause `UNOBSERVABLE`.",
+            "delayed output alone MUST NOT cause `UNOBSERVABLE`, but a status request may declare it unavailable.",
+            "delayed output alone must not cause `unobservable`",
+        ),
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(&skill_path, skill.replace(target, replacement))?;
+
+        let output = validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "accepted {replacement:?}");
+        assert!(stderr(&output).contains(expected));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_missing_dreaming_worktree_reservation_fields() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let dreaming_path = plugin_root.join("skills/dreaming/SKILL.md");

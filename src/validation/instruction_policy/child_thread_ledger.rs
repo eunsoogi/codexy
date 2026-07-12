@@ -66,6 +66,18 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             "orchestration skill must not allow specialist subagents to count against the child thread cap",
             &["packaged specialist subagents must not be counted unless"],
         );
+    } else if path.ends_with("skills/proof-driven-completion/SKILL.md") {
+        require_all(
+            path,
+            text,
+            errors,
+            "proof-completion skill must preserve live Sentinel observation",
+            &[
+                "for a running packaged sentinel, parent observation must be read-only",
+                "must not poll, send messages, interrupts, or follow-up prompts",
+                "sentinel must remain active until its own `pass`, `block`, or `unobservable` terminal result",
+            ],
+        );
     } else if path.ends_with("skills/codex-orchestration/references/thread-and-worktree-routing.md")
     {
         require_all(
@@ -106,10 +118,7 @@ fn require_all(
 
 fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
-        let before = text[..index]
-            .rsplit("</markdown-heading>")
-            .next()
-            .unwrap_or_default();
+        let before = &text[..index];
         let after = text[index + phrase.len()..]
             .trim_start_matches([',', ':', ';', '-', '—'])
             .trim_start();
@@ -123,14 +132,29 @@ fn has_invalid_prefix(before: &str) -> bool {
         .next()
         .unwrap_or_default();
     let clause = clause_prefix(section);
+    has_invalid_context(clause) || has_invalid_context(most_recent_heading(before))
+}
+
+fn most_recent_heading(before: &str) -> &str {
+    before
+        .rsplit("<markdown-heading>")
+        .next()
+        .and_then(|heading_and_text| heading_and_text.split_once("</markdown-heading>"))
+        .map(|(heading, _)| heading)
+        .unwrap_or_default()
+}
+
+fn has_invalid_context(text: &str) -> bool {
     [
         "historical example",
+        "stale example",
+        "example only",
         "not required",
         "no longer required",
         "false that",
     ]
     .iter()
-    .any(|marker| clause.contains(marker))
+    .any(|marker| text.contains(marker))
 }
 
 fn clause_prefix(section: &str) -> &str {
@@ -151,9 +175,17 @@ fn clause_prefix(section: &str) -> &str {
 }
 
 fn has_invalid_suffix(after: &str) -> bool {
-    ["unless ", "except ", "only if ", "may "]
-        .iter()
-        .any(|marker| after.starts_with(marker))
+    [
+        "unless ",
+        "except ",
+        "only if ",
+        "may ",
+        "but ",
+        "however ",
+        "although ",
+    ]
+    .iter()
+    .any(|marker| after.starts_with(marker))
 }
 
 fn reject_all(
