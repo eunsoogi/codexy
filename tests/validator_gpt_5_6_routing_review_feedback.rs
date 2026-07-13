@@ -72,6 +72,7 @@ fn validator_allows_negated_or_reporting_policy_text() -> TestResult {
         "- `gpt-5.6-luna` MUST report that it is not the blanket default.\n",
         "- `codexy-sentinel` MUST document that Ultra is historical.\n",
         "- `codexy-sentinel` MUST report that Ultra was previously assigned.\n",
+        "- `codexy-sentinel` MUST report that it was previously assigned Ultra.\n",
         "- `codexy-sentinel` MUST document the historical rule \"agents MUST use Ultra\".\n",
         "- A named custom specialist MUST pass validation without model or reasoning-effort overrides.\n",
     ] {

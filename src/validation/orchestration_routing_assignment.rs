@@ -21,8 +21,30 @@ pub(super) fn assignment_intent(segment: &str) -> bool {
 
 pub(super) fn assigns_ultra(segment: &str) -> bool {
     segment.match_indices("ultra").any(|(index, _)| {
-        is_token_at(segment, index, "ultra") && assignment_intent(&unquoted_prefix(segment, index))
+        is_token_at(segment, index, "ultra")
+            && affirmative_assignment_intent(&unquoted_prefix(segment, index))
     })
+}
+
+fn affirmative_assignment_intent(segment: &str) -> bool {
+    [
+        " use ",
+        " run on ",
+        " run with ",
+        " run using ",
+        " set ",
+        " assign ",
+        " receive ",
+        " remain ",
+        " spawn ",
+        " request ",
+        " select ",
+        " choose ",
+    ]
+    .iter()
+    .any(|action| segment.contains(action))
+        || segment.contains("model:")
+        || segment.contains("reasoning_effort:")
 }
 
 fn unquoted_prefix(text: &str, end: usize) -> String {
