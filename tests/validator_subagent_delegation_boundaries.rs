@@ -64,6 +64,7 @@ fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -
 #[test]
 fn validator_does_not_flag_punctuated_nonrecursive_prohibitions() -> TestResult {
     for prohibition in [
+        "A helper MAY, under no circumstances, spawn another helper.",
         "A helper MAY not, under any circumstances, spawn another helper.",
         "A helper MAY never, even during recovery, create another reviewer task.",
         "A helper is not allowed, under this contract, to delegate work to another reviewer.",
@@ -82,6 +83,7 @@ fn validator_allows_orchestrator_child_thread_creation() -> TestResult {
     let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str("\nThe root orchestrator MUST create a child thread.\n");
+    skill.push_str("The root orchestrator MAY create child threads.\n");
     std::fs::write(skill_path, skill)?;
     assert_validator_succeeds(&plugin_root)?;
     Ok(())

@@ -215,10 +215,16 @@ fn has_action_negation(prefix: &str) -> bool {
     else {
         return false;
     };
+    let following = &words[index + 1..];
     match words[index] {
-        "may" | "can" => words
-            .get(index + 1)
-            .is_some_and(|next| matches!(*next, "not" | "never")),
+        "may" | "can" => {
+            following
+                .iter()
+                .any(|word| matches!(*word, "not" | "never"))
+                || following
+                    .windows(2)
+                    .any(|pair| pair == ["no", "circumstances"])
+        }
         "must" => words.get(index + 1) == Some(&"not"),
         "allowed" | "permitted" => words.get(index.wrapping_sub(1)) == Some(&"not"),
         _ => false,
