@@ -5,13 +5,14 @@ use anyhow::{Context as _, Result, bail};
 
 pub(super) fn formatting_only_error(
     root: &Path,
-    base_ref: &str,
+    change_base_ref: &str,
+    baseline_ref: &str,
     path: &Path,
     current_lines: usize,
     loc_limit: usize,
 ) -> Result<Option<String>> {
-    let base_path = base_path(root, base_ref, path)?;
-    let Some(base_text) = read_base_text(root, base_ref, &base_path)? else {
+    let base_path = base_path(root, baseline_ref, path)?;
+    let Some(base_text) = read_base_text(root, baseline_ref, &base_path)? else {
         return Ok(None);
     };
     if base_text.lines().count() <= loc_limit || current_lines > loc_limit {
@@ -22,8 +23,15 @@ pub(super) fn formatting_only_error(
     let same_nonempty_lines = nonempty_line_count(&base_text) == nonempty_line_count(&current_text);
     let formatting_only = without_whitespace(&base_text) == without_whitespace(&current_text);
     let concealed_collapse = !same_nonempty_lines
-        && !has_new_module_boundary(root, base_ref, path, &base_text, &current_text)?
-        && !has_test_target_split(root, base_ref, path, &base_text, &current_text)?
+        && !has_new_module_boundary(root, baseline_ref, path, &base_text, &current_text)?
+        && !has_test_target_split(
+            root,
+            change_base_ref,
+            baseline_ref,
+            path,
+            &base_text,
+            &current_text,
+        )?
         && !removed_lines_are_duplicates(&base_text, &current_text);
     if !formatting_only && !concealed_collapse {
         return Ok(None);
@@ -41,7 +49,8 @@ pub(super) fn formatting_only_error(
 
 fn has_test_target_split(
     root: &Path,
-    base_ref: &str,
+    change_base_ref: &str,
+    baseline_ref: &str,
     path: &Path,
     base: &str,
     current: &str,
@@ -63,14 +72,14 @@ fn has_test_target_split(
             .and_modify(|count| *count = count.saturating_sub(1));
     }
     let mut added = std::collections::HashMap::<String, usize>::new();
-    for candidate in super::touched_loc::changed_files(root, base_ref)? {
+    for candidate in super::touched_loc::changed_files(root, change_base_ref)? {
         if candidate == path
             || candidate.parent() != path.parent()
             || candidate
                 .extension()
                 .and_then(|extension| extension.to_str())
                 != Some("rs")
-            || read_base_text(root, base_ref, &candidate)?.is_some()
+            || read_base_text(root, baseline_ref, &candidate)?.is_some()
         {
             continue;
         }
