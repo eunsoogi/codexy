@@ -148,6 +148,20 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let secret_archive = root.path().join("secret.tar.gz");
     create_archive(root.path(), &secret_archive);
     assert!(!run_gate(&secret_archive, &plugin_root).status.success());
+
+    std::fs::write(plugin_root.join(".rgignore"), "hidden-secret.txt\n").expect("ignore fixture");
+    std::fs::write(
+        plugin_root.join("hidden-secret.txt"),
+        "AKIA1234567890ABCDEF\n",
+    )
+    .expect("ignored secret fixture");
+    let ignored_secret_archive = root.path().join("ignored-secret.tar.gz");
+    create_archive(root.path(), &ignored_secret_archive);
+    assert!(
+        !run_gate(&ignored_secret_archive, &plugin_root)
+            .status
+            .success()
+    );
 }
 
 #[test]
