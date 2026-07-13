@@ -101,6 +101,8 @@ fn validator_rejects_missing_sentinel_pass_evidence() -> TestResult {
         "PASS status is missing",
         "PASS verdict is absent",
         "PASS result is lacking",
+        "PASS review evidence is missing",
+        "PASS review evidence is currently missing",
     ] {
         assert_rejects(&format!(
             "PR ready for parent handoff. Packaged Codexy Sentinel Turing: {evidence} on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
