@@ -24,6 +24,42 @@ fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn s
 }
 
 #[test]
+fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error::Error>> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        root.join("plugins/codexy/.codex-plugin/plugin.json"),
+    )?)?;
+    let version = manifest["version"].as_str().ok_or("manifest version")?;
+    let matching_tag = format!("v{version}");
+    let matching = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--check", "--tag", &matching_tag])
+        .output()?;
+    assert!(
+        matching.status.success(),
+        "matching release tag failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&matching.stdout),
+        String::from_utf8_lossy(&matching.stderr)
+    );
+
+    let mismatched = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--check", "--tag", "1.1.0"])
+        .output()?;
+    assert!(
+        !mismatched.status.success(),
+        "tag without v prefix unexpectedly passed"
+    );
+
+    let stale = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--check", "--tag", "v9.9.9"])
+        .output()?;
+    assert!(
+        !stale.status.success(),
+        "mismatched release tag unexpectedly passed"
+    );
+    Ok(())
+}
+
+#[test]
 fn sync_version_script_check_rejects_stale_cargo_lock() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let archive = temp.path().join("repo.tar");

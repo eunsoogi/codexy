@@ -6,6 +6,8 @@ use clap::Parser;
 struct Cli {
     #[arg(long, conflicts_with = "version")]
     check: bool,
+    #[arg(long, requires = "check")]
+    tag: Option<String>,
     #[arg(long)]
     version: Option<String>,
 }
@@ -13,7 +15,7 @@ struct Cli {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let message = if cli.check {
-        codexy_runtime::version::check_versions()?
+        codexy_runtime::version::check_versions_for_tag(cli.tag.as_deref())?
     } else if let Some(version) = cli.version {
         codexy_runtime::version::set_version(&version)?
     } else {

@@ -9,8 +9,6 @@ on:
       previous_tag:
         description: "Optional previous tag for changelog range"
         required: false
-  release:
-    types: [published]
   push:
     branches: [main]
     tags: ["v*"]
@@ -172,6 +170,9 @@ jobs:
             exit 1
           fi
           echo "RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
+
+      - name: Verify release tag parity
+        run: scripts/sync-plugin-version --check --tag "$RELEASE_TAG"
 
       - name: Generate commit-log changelog
         env:
