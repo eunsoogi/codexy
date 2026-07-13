@@ -68,7 +68,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         .filter(|(start, clauses, _)| {
             bullets
                 .iter()
-                .find(|bullet| bullet.starts_with(start))
+                .find(|bullet| required_clause_matches(bullet, start))
                 .is_none_or(|bullet| clauses.iter().any(|clause| !bullet.contains(clause)))
         })
         .map(|(_, _, error)| format!("{} {error}", display_relative(&path)))
@@ -110,6 +110,11 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         ));
     }
     errors
+}
+
+fn required_clause_matches(bullet: &str, prefix: &str) -> bool {
+    bullet.starts_with(prefix)
+        && (!prefix.ends_with("MUST") || !bullet[prefix.len()..].trim_start().starts_with("NOT"))
 }
 
 fn routing_section(skill: &str) -> Option<String> {

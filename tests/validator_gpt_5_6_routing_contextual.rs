@@ -72,6 +72,16 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
     ] {
         assert_routing_rejected(|skill| skill.replacen(needle, replacement, 1), expected)?;
     }
+    assert_routing_rejected(
+        |skill| {
+            skill.replacen(
+                "Generic implementation, debugging, integration, and QA child thread: MUST\n  explicitly request",
+                "Generic implementation, debugging, integration, and QA child thread: MUST NOT\n  explicitly request",
+                1,
+            )
+        },
+        "generic child thread must explicitly request gpt-5.6-terra/high",
+    )?;
     for replacement in [
         "Named custom specialists MUST receive model and reasoning-effort overrides at spawn time.",
         "A named custom specialist MUST receive model and reasoning_effort overrides at spawn time.",
