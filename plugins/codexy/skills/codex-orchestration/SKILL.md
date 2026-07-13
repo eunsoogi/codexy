@@ -1,20 +1,38 @@
 ---
 name: codex-orchestration
-description: MUST use when coordinating Codex plugin calls, bounded child implementation goals, issue-sized decomposition, multi-agent or multi-thread execution, worktrees, todo/update_plan tracking, and event-driven orchestration.
+description: MUST use when coordinating Codex plugin calls, long-running goals, issue-sized decomposition, multi-agent or multi-thread execution, worktrees, todo/update_plan tracking, and orchestrator-led implementation loops.
 ---
 
 # Codex Orchestration
 
 ## Purpose
 
-MUST run the current plugin-invoking Codex thread as the orchestrator for
+MUST run the current plugin-invoking Codex thread as the root/orchestrator for
 goal-oriented work. MUST NOT spawn or assign a separate orchestrator agent. The
-invoking Codex thread owns intent, decomposition, routing, evidence
-integration, and final completion claims. Specialist subagents and separate
-Codex thread/worktree lanes own bounded atomic units only.
+invoking Codex thread owns intent, decomposition, routing, evidence integration,
+and final completion claims. Specialists and separate Codex thread/worktree lanes
+own bounded atomic units only.
 
 Root `AGENTS.md` owns repo-wide dogfooding policy. This skill supplies the
 execution loop and MUST be read with root `AGENTS.md`.
+
+## GPT-5.6 Routing Matrix
+
+- Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
+  integration, and completion.
+- Generic implementation, debugging, integration, and QA child thread: MUST
+  explicitly request `model: "gpt-5.6-terra"` and `reasoning_effort: "high"`.
+- `gpt-5.6-luna` is only for repository discovery, cataloging, simple
+  documentation drafting, bounded polling, and repetitive checks. MUST NOT use
+  Luna as the blanket default for implementation, security review, or ambiguous
+  reasoning.
+- Cost guidance: Luna is an optimization for bounded low-risk work, not a
+  quality-neutral replacement for Terra.
+- A named custom specialist TOML is the model and reasoning-effort source of
+  truth. MUST NOT pass model or reasoning-effort overrides.
+- `codexy-sentinel` remains `gpt-5.6-sol` / `xhigh`. MUST NOT use Ultra.
+  Custom-agent invocations MUST use `fork_turns="none"` or a positive bounded
+  count with a self-contained handoff.
 
 ## Read Next
 
@@ -22,10 +40,11 @@ MUST read these relative references before acting on the matching surface:
 
 - `references/classification-and-control.md` for classification, goal, plan,
   child execution, multi-agent, codegraph, LSP, and sentinel discipline.
+- `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for the intake, plan, dispatch,
-  integrate, verify, and finish loop plus handoff templates.
+  integrate, verify, finish, failure-mode, and handoff-template guidance.
 
 ## Classification Gate
 
@@ -39,9 +58,11 @@ MUST stop, classify, and only then MUST continue through the matching Codexy wor
 
 ## Packaged Agents
 
-Codexy ships specialist custom-agent TOMLs in `plugins/codexy/agents/<name>.toml`
-with discovery metadata in `catalog.toml`; `agents/openai.yaml` is the invocation
-interface, not a specialist worker.
+Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
+TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
+`plugins/codexy/agents/catalog.toml`; MUST keep one specialist agent per file.
+`plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
+specialist worker.
 
 Installed Codexy specialists require the stable registration bridge and an
 independent schema/invocation preflight. MUST read
@@ -51,27 +72,17 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
 
 ## Required Control Plane
 
-- A child implementation lane MUST establish a short-lived child implementation goal
-  before edits. If `create_goal` is available, the child MUST use it directly for
-  non-trivial work, inspect it with `get_goal`, and update it only when completion
-  or true blockage is proved. The root/orchestrator MUST NOT retain a persistent long-running goal for monitoring, polling, or child-state accumulation.
-  The root/orchestrator MAY end its goal and plan after dispatch. A child
-  external-gate wait MUST retain active goal and plan, use bounded child-local monitoring until a material result, and send a parent delta before transition.
+- MUST establish the goal before implementation. If `create_goal` is available,
+  MUST use it directly for non-trivial delegated or orchestrated lanes; MUST use
+  `get_goal` to inspect active goal state when needed; MUST use `update_goal` only
+  when completion or true blockage is proved.
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST treat Codex connector review, child-thread work, queued worktree/thread
-  setup, and asynchronous tool completion as event waits, not blockers. The
-  root/orchestrator MUST NOT autonomously poll; it MUST process only compact child
-  deltas for terminal child state, Sentinel verdict, PR creation, new HEAD,
-  GitHub check-state change, actionable review-feedback change, or clean review
-  completion.
-- Every delta MUST carry a stable event identity and exact task ids. A parent-message
-  failure MUST emit exactly one terminal unavailable report and MUST NOT retry the
-  parent message. There MUST be no full conversation transfer and no full agent-tree
-  listing; direct reads and command output MUST remain bounded.
-- For event-driven multi-issue or multi-PR coordination, MUST use
-  `$token-efficient-orchestration` to preserve proof gates with compact deltas.
+- MUST treat asynchronous completion as event waits, not blockers. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- In long multi-issue or multi-PR polling loops, MUST use
+  `$token-efficient-orchestration` for preserving all proof gates while
+  carrying only current deltas.
 - Opening a PR is not completion when the requested outcome includes
   completion, merge, default Codexy merge flow, or no explicit stop/wait/
   draft-only/leave-open instruction.
@@ -82,7 +93,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
   MUST include GraphQL `reviewThreads.nodes`.
 
 ## Active Child Thread Ledger
-Orchestration MUST maintain a durable active/waiting child thread ledger across event-driven refresh, compaction recovery, dreaming rehydration, and parent handoffs.
+Orchestration MUST maintain a durable active/waiting child thread ledger across normal polling, compaction recovery, dreaming rehydration, and parent handoffs.
 Active child Codex app threads MUST be capped at 5. Orchestrators MUST count
 only active/waiting Codex app child threads against that cap and MUST NOT create, continue, or resume a sixth active child thread until another active child thread has finished, stopped, or been explicitly removed from the ledger.
 Packaged specialist subagents MUST NOT be counted as active
@@ -90,12 +101,11 @@ child Codex app threads.
 
 Before creating a new child Codex app thread, orchestration MUST check the ledger and current issue/PR state for an existing issue/PR owner thread, MUST treat it as the existing owner thread, and MUST reuse it when present. If that owner is usable, orchestration MUST reuse or continue it instead of creating a duplicate owner.
 Replacement child threads MUST be created only after existing owner evidence is inspected and the old owner is stopped, unusable, or explicitly superseded.
-Before creating a new child, orchestration MUST inspect archive candidates and the active reservation ledger. It MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate; it MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence.
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
 blocker, latest evidence, and next action. It MUST also include canonical
 worktree CWD, frozen HEAD, clean/index state, every referencing specialist or
-Sentinel task id, and explicit release/archive state. Event-driven refresh MUST
-update these fields only from a qualifying current change.
+Sentinel task id, and explicit release/archive state. Normal polling MUST refresh
+these fields from current thread, worktree, issue, PR, and review evidence.
 Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger. Packaged specialist subagents
 MUST NOT count against the child-thread cap, but every active or waiting
 specialist or Sentinel that references a worktree MUST keep its reservation
@@ -110,9 +120,10 @@ NOT silently recycle that worktree.
 
 MUST use multi-agent dispatch for bounded specialist help inside the current thread
 when the lane does not need its own branch or PR and has separable research,
-implementation, QA, verification, review, or review-feedback work. A
-`spawn_agent` subagent is a helper, reviewer, explorer, or worker inside the
-current orchestration context. A `spawn_agent` subagent MUST NOT be treated as a
+implementation, QA, verification, review, or review-feedback work. A `spawn_agent`
+subagent is a helper, reviewer, explorer, or worker inside the current orchestration
+context. Subagents are not child-owned implementation owners. A
+subagent MUST NOT be treated as a
 Codex subthread/worktree owner.
 
 When a packaged Codexy specialist role is available and the task clearly falls
@@ -148,10 +159,15 @@ insufficient. Situational routing is:
 - MUST use `codexy-sentinel` as the final reviewer gate for every non-trivial
   atomic unit before handoff, PR readiness, completion, or parent acceptance.
 
-Exact role calls include:
-`spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.", fork_turns="none")`,
-`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.", fork_turns="3")`, and
+If `spawn_agent` supports the Codexy role, invoke specialists by exact agent
+type with no or bounded history, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.", fork_turns="none")`,
+`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.", fork_turns="3")`, or
 `spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.", fork_turns="none")`.
+
+If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST report
+that the Codexy agents have not been registered in the active Codex config and
+fall back to packaged TOML/catalog context without claiming native-agent
+success.
 
 MUST end every non-trivial atomic unit with the packaged Codexy reviewer agent
 defined in `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate MUST
@@ -166,15 +182,13 @@ or `UNOBSERVABLE`. The owning lane MUST bound its wait, MUST report the
 reviewer name and exact head, and MUST keep push/readiness blocked for `BLOCK` or
 `UNOBSERVABLE` unless a maintainer explicitly approves a fallback. A delayed,
 pending, stuck, or unobservable Sentinel MUST NOT be treated as approval.
-On a `BLOCK`, the usable existing owner MUST record the `BLOCK` and update the
-plan to a repair step; it MUST add faithful RED coverage, repair, rerun terminal
-proof, then invoke exactly one fresh Sentinel review for the new file state or
-head. It MUST NOT call `update_goal(status="blocked")`, end merely for `BLOCK`,
-ask the parent to create a replacement, or MUST NOT create a replacement thread. A new
-thread is permitted only for an unusable or stale blocked goal, lost worktree,
-owner conflict, or demonstrated excessive context.
+The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
+Every BLOCK finding MUST map to an in-scope acceptance criterion.
+Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
+Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
 
 ## Codegraph And LSP
+
 For repository code exploration, MUST use the packaged Codexy `codegraph` MCP when
 it is available before falling back to text search. MUST identify files, import
 edges, and nearby implementation surfaces with codegraph output, then MUST confirm
@@ -192,6 +206,7 @@ MUST capture both surfaces as evidence and carry the exposure mismatch instead o
 presenting a quiet fallback as normal.
 
 ## Parent Stop Preflight
+
 MUST run this checkpoint before any implementation edit when a lane may need a
 branch, worktree, PR, durable child context, or review-response ownership:
 
@@ -215,25 +230,17 @@ branch, worktree, PR, durable child context, or review-response ownership:
 
 ## Completion Guard
 
+## Event-driven token and quota containment
+
+The root/orchestrator MUST NOT retain a persistent long-running goal, MUST NOT autonomously poll, and MUST process only compact deltas for terminal child state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or clean review completion; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry; no full conversation transfer or full agent-tree listing. The root/orchestrator MAY end its goal and plan after dispatch; child external-gate wait MUST retain active goal and plan, use bounded child-local monitoring, and send a parent delta before transition.
+
+Before creating a child, inspect archive candidates and the active reservation ledger; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head.
+Event-driven refresh MUST update only from qualifying changes; a failed parent message MUST NOT retry the parent message, there MUST be no full agent-tree listing, and orchestration MUST inspect archive candidates and the active reservation ledger.
+
+The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions. Every BLOCK finding MUST map to an in-scope acceptance criterion. Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane. Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
+
 MUST NOT mark a plan step complete until its evidence has been inspected by the
 orchestrator. MUST use `update_goal` only when that tool is available, an active or
 user-requested goal exists, and every explicit requirement has current matching
 proof. Reserve `blocked` for repeated true impasses where meaningful progress
 requires user input or an external state change.
-
-## Failure Modes
-
-- Starting setup, delegation, implementation, validation, PR handling, review
-  response, or merge coordination before `$task-classification`.
-- Subagents are not child-owned implementation owners.
-- Treating subagents as child-owned Codex thread/worktree owners.
-- Marking a goal blocked because review, child work, worktree/thread setup, or
-  another asynchronous tool is pending.
-- Treating expected or registered MCPs as ordinary unavailable tools when the
-  callable Codex surface does not expose them.
-- Starting parent implementation patches for a lane that needs its own child
-  thread, worktree, branch, or PR, then delegating only after files changed.
-- Treating parent-only readthrough, arbitrary reviewer agents, generic review
-  roles, or stale reviewer output as the packaged Codexy reviewer gate.
-- Reporting completion while review comments, open threads, stale PR heads, or
-  unverified claims remain unresolved.
