@@ -39,7 +39,6 @@ fn session_audit_counts_and_deduplicates_custom_tool_metadata() -> TestResult {
     assert_eq!(report["sessions"][0]["tool_output_bytes"]["exec"], 39);
     Ok(())
 }
-
 #[test]
 fn session_audit_uses_utf8_bytes_and_rejects_conflicting_or_cross_session_metadata() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -92,7 +91,6 @@ fn session_audit_uses_utf8_bytes_and_rejects_conflicting_or_cross_session_metada
     assert!(stderr(&second_session).contains("exactly one session_meta"));
     Ok(())
 }
-
 #[test]
 fn session_audit_rejects_unsafe_call_ids_and_handles_empty_or_late_metadata() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -152,7 +150,6 @@ fn session_audit_rejects_unsafe_call_ids_and_handles_empty_or_late_metadata() ->
     assert_eq!(late_meta_report["session_count"], 1);
     Ok(())
 }
-
 #[test]
 fn session_audit_rejects_aggregate_overflow_without_panicking() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -195,7 +192,36 @@ fn session_audit_rejects_empty_generic_metadata() -> TestResult {
     assert!(stderr(&output).contains("exactly one session"));
     Ok(())
 }
-
+#[test]
+fn session_audit_accepts_canonical_id_and_null_rate_limit_info() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let input = temp.path().join("canonical-session.jsonl");
+    fs::write(
+        &input,
+        concat!(
+            "{\"type\":\"session_meta\",\"payload\":{\"id\":\"lane-276\"}}\n",
+            "{\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":null}}\n",
+            "{\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"total_tokens\":120},\"last_token_usage\":{\"total_tokens\":40}}}}\n"
+        ),
+    )?;
+    let output = audit(&input)?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    let report: Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(report["sessions"][0]["session_id"], "lane-276");
+    assert_eq!(report["sessions"][0]["latest_cumulative_tokens"], 120);
+    assert_eq!(report["sessions"][0]["recent_turn_average_tokens"], 40);
+    fs::write(
+        &input,
+        concat!(
+            "{\"type\":\"session_meta\",\"payload\":{\"id\":\"lane-276\"}}\n",
+            "{\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"total_token_usage\":null}}}\n"
+        ),
+    )?;
+    let malformed = audit(&input)?;
+    assert!(!malformed.status.success());
+    assert!(stderr(&malformed).contains("total_token_usage.total_tokens"));
+    Ok(())
+}
 #[test]
 fn session_audit_rejects_oversized_invalid_utf8_before_decoding() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -213,14 +239,12 @@ fn session_audit_rejects_oversized_invalid_utf8_before_decoding() -> TestResult 
     assert!(!stderr(&output).contains("not valid UTF-8"));
     Ok(())
 }
-
 fn audit(input: &std::path::Path) -> TestResult<std::process::Output> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-session-audit"))
         .arg("--input")
         .arg(input)
         .output()?)
 }
-
 fn stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }

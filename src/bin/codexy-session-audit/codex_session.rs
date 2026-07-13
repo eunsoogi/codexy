@@ -44,7 +44,7 @@ pub(super) fn audit(input: &str, recent_turns: usize) -> Result<Report> {
             .and_then(Value::as_str)
             .unwrap_or_default();
         if kind == "session_meta" {
-            let id = nested_id(object, &["payload", "session_id"], line_number)?;
+            let id = session_meta_id(object, line_number)?;
             if session_id.is_some() {
                 bail!("Codex session metadata must contain exactly one session_meta");
             }
@@ -56,6 +56,15 @@ pub(super) fn audit(input: &str, recent_turns: usize) -> Result<Report> {
             continue;
         };
         if kind == "event_msg" && nested_str(object, &["payload", "type"]) == Some("token_count") {
+            let Some(info) = object
+                .get("payload")
+                .and_then(|payload| payload.get("info"))
+            else {
+                continue;
+            };
+            if info.is_null() {
+                continue;
+            }
             let tokens = nested_u64(
                 object,
                 &["payload", "info", "total_token_usage", "total_tokens"],
@@ -102,7 +111,16 @@ pub(super) fn audit(input: &str, recent_turns: usize) -> Result<Report> {
         sessions: vec![session],
     })
 }
-
+fn session_meta_id(object: &serde_json::Map<String, Value>, line_number: usize) -> Result<String> {
+    let value = nested_str(object, &["payload", "id"])
+        .or_else(|| nested_str(object, &["payload", "session_id"]))
+        .unwrap_or_default();
+    if is_safe_id(value) {
+        Ok(value.to_owned())
+    } else {
+        bail!("metadata line {line_number} payload.id must be a safe id")
+    }
+}
 fn recent_direct_average(tokens: &[u64], recent_turns: usize) -> Result<u64> {
     let recent = &tokens[tokens.len().saturating_sub(recent_turns)..];
     let count = u64::try_from(recent.len()).unwrap_or(0);
@@ -114,7 +132,6 @@ fn recent_direct_average(tokens: &[u64], recent_turns: usize) -> Result<u64> {
     })?;
     Ok(total / count)
 }
-
 fn record_tool_metadata(
     object: &serde_json::Map<String, Value>,
     report: &mut SessionReport,
@@ -170,23 +187,19 @@ fn record_tool_metadata(
     }
     Ok(())
 }
-
 fn call_key(session_id: &str, item_type: &str, call_id: &str) -> Option<String> {
     let call_type = item_type.strip_suffix("_output").unwrap_or(item_type);
     is_tool_call(call_type).then(|| format!("{session_id}|{call_type}|{call_id}"))
 }
-
 fn is_tool_call(item_type: &str) -> bool {
     matches!(item_type, "function_call" | "custom_tool_call")
 }
-
 fn is_tool_output(item_type: &str) -> bool {
     matches!(
         item_type,
         "function_call_output" | "custom_tool_call_output"
     )
 }
-
 fn output_bytes(value: Option<&Value>) -> Result<u64> {
     let bytes = match value {
         Some(Value::String(text)) => text.len(),
@@ -195,7 +208,6 @@ fn output_bytes(value: Option<&Value>) -> Result<u64> {
     };
     Ok(u64::try_from(bytes)?)
 }
-
 fn nested_str<'a>(object: &'a serde_json::Map<String, Value>, keys: &[&str]) -> Option<&'a str> {
     let mut value = object.get(*keys.first()?)?;
     for key in &keys[1..] {
@@ -203,7 +215,6 @@ fn nested_str<'a>(object: &'a serde_json::Map<String, Value>, keys: &[&str]) -> 
     }
     value.as_str()
 }
-
 fn nested_id(
     object: &serde_json::Map<String, Value>,
     keys: &[&str],
