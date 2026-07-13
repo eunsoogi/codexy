@@ -2,6 +2,10 @@ use std::process::Command;
 
 use tempfile::tempdir;
 
+#[path = "support/release_archive.rs"]
+mod release_archive_support;
+use release_archive_support::{copy_tree, make_executable};
+
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
     Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
         .arg(archive)
@@ -179,6 +183,27 @@ fn archive_gate_rejects_incomplete_packaged_surface() {
 }
 
 #[test]
+fn archive_gate_rejects_traversal_member_before_extraction() {
+    let root = tempdir().expect("tempdir");
+    let plugin_root = root.path().join("plugins/codexy");
+    std::fs::create_dir_all(&plugin_root).expect("plugin directory");
+    let archive = root.path().join("traversal.tar.gz");
+    let script = r#"import io, sys, tarfile
+with tarfile.open(sys.argv[1], "w:gz") as archive:
+    info = tarfile.TarInfo("plugins/codexy/../escape")
+    payload = b"escape"
+    info.size = len(payload)
+    archive.addfile(info, io.BytesIO(payload))
+"#;
+    let status = Command::new("python3")
+        .args(["-c", script, archive.to_str().expect("archive path")])
+        .status()
+        .expect("python should start");
+    assert!(status.success(), "traversal archive fixture failed");
+    assert!(!run_gate(&archive, &plugin_root).status.success());
+}
+
+#[test]
 fn archive_gate_rejects_unexpected_file_and_stale_content() {
     let root = tempdir().expect("tempdir");
     let plugin_root = root.path().join("plugins/codexy");
@@ -215,32 +240,4 @@ fn archive_gate_rejects_symlink_entries() {
 
     let output = run_gate(&archive, &plugin_root);
     assert!(!output.status.success());
-}
-
-fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(target)?;
-    for entry in std::fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let target_path = target.join(entry.file_name());
-        if source_path.is_dir() {
-            if entry.file_name() != "runtime" {
-                copy_tree(&source_path, &target_path)?;
-            }
-        } else {
-            std::fs::copy(source_path, target_path)?;
-        }
-    }
-    Ok(())
-}
-
-fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut permissions = std::fs::metadata(path)?.permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(path, permissions)?;
-    }
-    Ok(())
 }
