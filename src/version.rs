@@ -115,6 +115,10 @@ fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
 /// Returns an error when required files are missing, JSON is invalid, versions
 /// are malformed, or version values differ.
 pub fn check_versions() -> Result<String> {
+    check_versions_for_tag(None)
+}
+
+pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
     let manifest_path = plugin_manifest()?;
     let market_path = marketplace_path()?;
     let publish_path = release_publish_contract_path()?;
@@ -203,6 +207,12 @@ pub fn check_versions() -> Result<String> {
         }
     }
     cargo::check_version(manifest_version)?;
+    if let Some(tag) = tag {
+        let expected_tag = format!("v{manifest_version}");
+        if tag != expected_tag {
+            bail!("release tag must be {expected_tag:?}, got {tag:?}");
+        }
+    }
     Ok(format!("plugin version sync ok: {manifest_version}"))
 }
 

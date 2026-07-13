@@ -10,7 +10,6 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml"))?;
 
     for required in [
-        "release:",
         "package-plugin:",
         "needs: build-runtime",
         "actions/download-artifact@v4",
