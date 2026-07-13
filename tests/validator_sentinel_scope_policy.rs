@@ -37,6 +37,8 @@ const LIVE_SENTINEL_CONTROLS: &[&str] = &[
     "A child owner MAY message a live Sentinel.",
     "Root MAY interrupt or replace a live Sentinel.",
     "A child owner MAY follow up with a live Sentinel.",
+    "Root MUST NOT ignore safety, but MAY poll a live Sentinel.",
+    "Root MAY send a terminal-status request to a live Sentinel.",
 ];
 
 const LIVE_SENTINEL_EXEMPTIONS: &[&str] = &[
@@ -54,7 +56,8 @@ const LIVE_OBSERVATION_SKILLS: &[&str] = &[
     "token-efficient-orchestration",
 ];
 
-const LIVE_OBSERVATION_CLAUSE: &str = "Live Sentinel observation MUST be read-only and event-driven.";
+const LIVE_OBSERVATION_CLAUSE: &str =
+    "Live Sentinel observation MUST be read-only and event-driven.";
 
 #[test]
 fn validator_cli_rejects_missing_sentinel_scope_policy() -> TestResult {
@@ -160,9 +163,11 @@ fn validator_cli_rejects_live_sentinel_controls_but_allows_exemptions() -> TestR
         let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{exemption}\n"))?;
+        let output = validator(&plugin_root, "--check")?;
         assert!(
-            validator(&plugin_root, "--check")?.status.success(),
-            "{exemption:?}"
+            output.status.success(),
+            "{exemption:?}: {}",
+            stderr(&output)
         );
     }
     Ok(())
@@ -190,14 +195,23 @@ fn validator_cli_rejects_missing_or_contradictory_live_policy_in_every_skill() -
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join(format!("skills/{skill}/SKILL.md"));
         let text = std::fs::read_to_string(&path)?;
-        std::fs::write(&path, text.replace(LIVE_OBSERVATION_CLAUSE, "removed clause."))?;
-        assert!(!validator(&plugin_root, "--check")?.status.success(), "{skill}");
+        std::fs::write(
+            &path,
+            text.replace(LIVE_OBSERVATION_CLAUSE, "removed clause."),
+        )?;
+        assert!(
+            !validator(&plugin_root, "--check")?.status.success(),
+            "{skill}"
+        );
 
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join(format!("skills/{skill}/SKILL.md"));
         let text = std::fs::read_to_string(&path)?;
         std::fs::write(&path, format!("{text}\nRoot MAY poll a live Sentinel.\n"))?;
-        assert!(!validator(&plugin_root, "--check")?.status.success(), "{skill}");
+        assert!(
+            !validator(&plugin_root, "--check")?.status.success(),
+            "{skill}"
+        );
     }
     Ok(())
 }
