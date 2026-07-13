@@ -42,6 +42,7 @@ const LIVE_SENTINEL_CONTROLS: &[&str] = &[
     "Root MUST NOT message a live Sentinel, and root MAY poll a live Sentinel.",
     "Root MAY send a terminal-status request to a live Sentinel.",
     "Root MAY poll\na live Sentinel.",
+    "Before terminal PASS, root MAY poll a live Sentinel.",
     "Previous policy forbade polling, but root MAY poll a live Sentinel now.",
 ];
 
@@ -51,6 +52,8 @@ const LIVE_SENTINEL_EXEMPTIONS: &[&str] = &[
     "Root MUST NOT poll\na live Sentinel.",
     "Historically, root MAY poll a live Sentinel.",
     "After terminal PASS, root MAY poll a live Sentinel's archived result.",
+    "After terminal BLOCK, root MAY poll a live Sentinel's archived result.",
+    "After terminal UNOBSERVABLE, root MAY poll a live Sentinel's archived result.",
     "After terminal PASS, root MAY poll\na live Sentinel's archived result.",
     "sentinel_policy: Root MAY poll a live Sentinel.",
     "```text\nRoot MAY poll a live Sentinel.\n```",

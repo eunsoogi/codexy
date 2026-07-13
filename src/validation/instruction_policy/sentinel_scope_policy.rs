@@ -126,9 +126,17 @@ fn visible_live_text(text: &str) -> String {
 }
 
 fn historical_or_terminal(sentence: &str) -> bool {
-    "historic|former|previous|terminal pass|terminal block|terminal unobservable"
+    "historic|former|previous"
         .split('|')
         .any(|marker| sentence.contains(marker))
+        || completed_terminal_archive(sentence)
+}
+
+fn completed_terminal_archive(sentence: &str) -> bool {
+    sentence.contains("archived result")
+        && "after terminal pass|after terminal block|after terminal unobservable"
+            .split('|')
+            .any(|marker| sentence.contains(marker))
 }
 
 fn matches_live_control(words: &[&str], word: &str) -> bool {
