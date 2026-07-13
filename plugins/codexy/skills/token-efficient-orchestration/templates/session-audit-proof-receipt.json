@@ -16,7 +16,7 @@
     "cacheRoot": "<installed-plugin-root>",
     "manifestSha256": "<sha256>",
     "changedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }],
-    "contentEquivalent": false
+    "contentEquivalent": null
   },
   "audit": {
     "inputSha256": "<sha256-of-private-metadata-input>",

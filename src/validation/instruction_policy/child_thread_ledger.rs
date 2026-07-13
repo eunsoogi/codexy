@@ -27,7 +27,6 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "must remain as worktree reservations",
                 "must not recycle the worktree",
             ],
-            false,
         );
     } else if path.ends_with("skills/codex-orchestration/SKILL.md") {
         require_all(
@@ -71,7 +70,6 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "usable existing owner must record the `block` and update the plan to a repair step",
                 "add faithful red coverage, repair, rerun terminal proof, then invoke exactly one fresh sentinel review for the new file state or head",
             ],
-            false,
         );
         reject_all(
             path,
@@ -117,7 +115,6 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "host allocator blocker",
                 "dirty or locked candidate worktrees",
             ],
-            true,
         );
     }
 }
@@ -128,11 +125,10 @@ fn require_all(
     errors: &mut Vec<String>,
     requirement: &str,
     phrases: &[&str],
-    allow_heading_matches: bool,
 ) {
     let lower = normalized_whitespace(text);
     for phrase in phrases {
-        if !has_unweakened_required_clause(&lower, phrase, allow_heading_matches) {
+        if !has_unweakened_required_clause(&lower, phrase) {
             errors.push(format!(
                 "{} {requirement}: missing `{phrase}`",
                 display_relative(path)
@@ -141,15 +137,13 @@ fn require_all(
     }
 }
 
-fn has_unweakened_required_clause(text: &str, phrase: &str, allow_heading_matches: bool) -> bool {
+fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
         let before = &text[..index];
         let after = text[index + phrase.len()..]
             .trim_start_matches([',', ':', ';', '-', '—'])
             .trim_start();
-        (allow_heading_matches || !appears_in_heading(before))
-            && !has_invalid_prefix(before)
-            && !has_invalid_suffix(after)
+        !appears_in_heading(before) && !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
 }
 

@@ -25,7 +25,7 @@
     "trackingIssue": 376,
     "reason": "configured marketplace snapshot lacks a supported manifest",
     "cacheRoot": null,
-    "contentEquivalent": false,
+    "contentEquivalent": null,
     "changedFiles": [
       { "path": "skills/codex-orchestration/SKILL.md", "sha256": "48e88bc5e238219508c36e7050f00b5ce9957d06ff7ed7636c3e15a84bede14a" },
       { "path": "skills/token-efficient-orchestration/SKILL.md", "sha256": "4d8a496f35a4647469412246a4bd8f2a75f4d96ee3b5e92ff4a946d5f309f8e5" }
