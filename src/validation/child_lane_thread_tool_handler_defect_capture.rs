@@ -296,6 +296,52 @@ fn names_later_lane_handoff(line: &str, lane: Option<&str>) -> bool {
     has_unnegated_different_lane_phrase(line)
         || mentioned_lane(line, lane)
             .is_some_and(|mentioned| lane.is_some_and(|lane| !mentioned.eq_ignore_ascii_case(lane)))
+        || plural_lane_mentions_different_lane(line, lane)
+}
+
+fn plural_lane_mentions_different_lane(line: &str, lane: Option<&str>) -> bool {
+    let Some(lane) = lane else {
+        return false;
+    };
+    let lower = line.to_ascii_lowercase();
+    [
+        "for lanes ",
+        "in lanes ",
+        "assigned to lanes ",
+        "targeting lanes ",
+    ]
+    .into_iter()
+    .any(|marker| {
+        lower.find(marker).is_some_and(|offset| {
+            let mut tokens = line[offset + marker.len()..]
+                .split(|ch: char| ch.is_whitespace() || matches!(ch, ':' | '-' | '.' | ',' | '/'))
+                .filter(|token| !token.is_empty());
+            let Some(first) = tokens.next() else {
+                return false;
+            };
+            if !is_lane_label_token(first) {
+                return false;
+            }
+            if !first.eq_ignore_ascii_case(lane) {
+                return true;
+            }
+            while let Some(connector) = tokens.next() {
+                if !matches!(connector.to_ascii_lowercase().as_str(), "and" | "or") {
+                    return false;
+                }
+                let Some(label) = tokens.next() else {
+                    return false;
+                };
+                if !is_lane_label_token(label) {
+                    return false;
+                }
+                if !label.eq_ignore_ascii_case(lane) {
+                    return true;
+                }
+            }
+            false
+        })
+    })
 }
 
 fn is_exact_handler_error_metadata_item(line: &str) -> bool {
@@ -804,7 +850,10 @@ fn has_handler_marker(line: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_handler_marker_and_tool_name_in_defect_capture, preceding_defect_scope_lines};
+    use super::{
+        has_handler_marker_and_tool_name_in_defect_capture, names_later_lane_handoff,
+        preceding_defect_scope_lines,
+    };
 
     #[test]
     fn rejects_singular_multi_letter_lane_defect_capture() {
@@ -938,5 +987,13 @@ Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for c
                 "Lane A Tracking issue: #246.",
             ]
         );
+    }
+
+    #[test]
+    fn detects_plural_lane_handoff_metadata_that_names_another_lane() {
+        assert!(names_later_lane_handoff(
+            "Fallback route: no fallback route was available for Lanes A and B.",
+            Some("a")
+        ));
     }
 }
