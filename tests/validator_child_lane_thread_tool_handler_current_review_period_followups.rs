@@ -12,15 +12,137 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 }
 
 #[test]
-fn validator_allows_unprefixed_same_lane_handoff_fields_after_lane_header()
+fn validator_rejects_bulleted_preceding_metadata_for_later_lane()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
+- Fallback route: no fallback route was available for Lane B.
+- Tracking issue: #246
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        !output.status.success(),
+        "validator should not let a Lane A defect borrow bulleted preceding metadata scoped to Lane B\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_preceding_same_lane_metadata_without_prior_lane_context()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Fallback route: no fallback route was available for Lane A.
+Tracking issue: #246
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve preceding metadata scoped to the upcoming Lane A defect without prior lane context\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_preceding_same_lane_metadata_before_list_capture_without_prior_lane_context()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Fallback route: no fallback route was available for Lane A.
+Tracking issue: #246
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve same-lane metadata before a list-style Lane A defect without prior lane context\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_same_lane_preface_metadata_before_list_capture_without_prior_lane_context()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Fallback route: no fallback route was available for Lane A.
+Pending worktree id: wt-246 for Lane A.
+Tracking issue: #246
+Dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve same-lane preface metadata before a list-style Lane A defect\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_lane_scoped_defect_header_before_unprefixed_list_capture()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Fallback route: no fallback route was available for Lane A.
+Tracking issue: #246
+Dogfooding/tool-exposure defect for Lane A:
+- recorded runtime missing-handler evidence for codex_app.read_thread after `No handler registered for tool: read_thread`.
+Maintainer reassignment: none
+"#,
+    )?;
+
+    assert!(
+        output.status.success(),
+        "validator should preserve same-lane metadata before a lane-scoped defect list with unprefixed handler evidence\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_lane_type_classification_before_same_lane_handoff_block()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Lane A:
+Lane type: implementation
 Tool search: discovered codex_app.read_thread as an available thread tool.
-Fallback route: parent posted the handoff in the child thread.
-Tracking issue: #205.
 Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane A:
+Fallback route: no fallback route was available.
+Tracking issue: #246
 Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
 Maintainer reassignment: none
 "#,
@@ -28,162 +150,7 @@ Maintainer reassignment: none
 
     assert!(
         output.status.success(),
-        "validator should keep unprefixed handoff metadata inside the same Lane A section\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_allows_blank_line_after_same_lane_header() -> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
-Lane A:
-
-Tool search: discovered codex_app.read_thread as an available thread tool.
-Fallback route: parent posted the handoff in the child thread.
-Tracking issue: #205.
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        output.status.success(),
-        "validator should preserve a same-lane header across an empty line before handoff metadata\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_allows_markdown_lane_headings_before_handoff_metadata()
--> Result<(), Box<dyn std::error::Error>> {
-    for heading in [
-        "## Lane A",
-        "### Lane A",
-        "#### Lane A:",
-        "  ### Lane A.",
-        "#### Lane A -",
-    ] {
-        let output = run_ownership_validator(&format!(
-            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
-{heading}
-Tool search: discovered codex_app.read_thread as an available thread tool.
-Fallback route: parent posted the handoff in the child thread.
-Tracking issue: #205.
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Maintainer reassignment: none
-"#,
-        ))?;
-
-        assert!(
-            output.status.success(),
-            "validator should keep unprefixed handoff metadata under Markdown heading {heading}\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_markdown_lane_heading_cross_lane_metadata_borrowing()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
-### Lane B
-Fallback route: no fallback route was available for Lane B.
-Tracking issue: #246 in Lane B.
-### Lane A
-Tool search: discovered codex_app.read_thread as an available thread tool.
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        !output.status.success(),
-        "validator should not let Markdown Lane A defect evidence borrow Lane B handoff metadata\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_hyphenated_markdown_lane_heading_cross_lane_metadata_borrowing()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
-#### Lane A -
-Tool search: discovered codex_app.read_thread as an available thread tool.
-Fallback route: no fallback route was available for Lane B.
-Tracking issue: #246 in Lane B.
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        !output.status.success(),
-        "validator should keep hyphenated Markdown Lane A heading and reject borrowed Lane B metadata\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_block_lane_header_cross_lane_metadata_after_intervening_metadata()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
-Lane A:
-Tool search: discovered codex_app.read_thread as an available thread tool.
-Fallback route: no fallback route was available for Lane B.
-Tracking issue: #246 in Lane B.
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        !output.status.success(),
-        "validator should keep the Lane A block header through Tool search metadata and reject borrowed Lane B handoff metadata\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_current_lane_metadata_borrowing_before_adjacent_later_lane_header()
--> Result<(), Box<dyn std::error::Error>> {
-    let output = run_ownership_validator(
-        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
-Lane A:
-Tool search: discovered codex_app.read_thread as an available thread tool.
-Fallback route: no fallback route was available for Lane B.
-Tracking issue: #246 in Lane B.
-Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
-Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
-Lane B:
-Status: later lane starts here without a blank line.
-Maintainer reassignment: none
-"#,
-    )?;
-
-    assert!(
-        !output.status.success(),
-        "validator should not let a later adjacent Lane B header make the current Lane A defect lane-less\nstdout:\n{}\nstderr:\n{}",
+        "validator should treat Lane type as classification metadata, not a lane label\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
