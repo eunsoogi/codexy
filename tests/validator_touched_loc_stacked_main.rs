@@ -44,6 +44,39 @@ fn touched_loc_ignores_reconciled_main_files_but_checks_child_changes() -> TestR
     Ok(())
 }
 
+#[test]
+fn touched_loc_checks_child_revert_to_reconciled_main_content() -> TestResult {
+    let repo = tempfile::tempdir()?;
+    init_repo(repo.path())?;
+    write(repo.path(), "src/large.rs", &regular_lines(251))?;
+    write(repo.path(), "src/reconciled.rs", &multiline_source())?;
+    commit(repo.path(), "initial main")?;
+    run(repo.path(), &["branch", "stacked"])?;
+
+    write(repo.path(), "src/reconciled.rs", &collapsed_source())?;
+    commit(repo.path(), "reconcile main")?;
+    run(
+        repo.path(),
+        &["update-ref", "refs/remotes/origin/main", "HEAD"],
+    )?;
+
+    run(repo.path(), &["switch", "stacked"])?;
+    write(repo.path(), "src/large.rs", &regular_lines(249))?;
+    commit(repo.path(), "parent reduces large file")?;
+    run(repo.path(), &["switch", "-c", "child", "stacked"])?;
+    run(
+        repo.path(),
+        &["merge", "--no-ff", "main", "-m", "reconcile current main"],
+    )?;
+    write(repo.path(), "src/large.rs", &regular_lines(251))?;
+    commit(repo.path(), "child reverts to main content")?;
+
+    let output = validate(repo.path());
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("src/large.rs has 251 lines"));
+    Ok(())
+}
+
 fn init_repo(root: &Path) -> TestResult {
     run(root, &["init", "-q", "--initial-branch=main"])?;
     run(root, &["config", "user.email", "codexy@example.test"])?;
