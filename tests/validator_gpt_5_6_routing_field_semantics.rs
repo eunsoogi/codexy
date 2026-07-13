@@ -36,6 +36,8 @@ fn rejects_generic_child_effort_downgrades() -> TestResult {
     for addition in [
         "- Generic implementation child MUST request model: \"gpt-5.6-terra\" and reasoning_effort: \"low\".",
         "- Generic QA child MUST request model: \"gpt-5.6-terra\" and reasoning-effort: xhigh.",
+        "- Generic implementation child MUST set reasoning_effort to low.",
+        "- Generic QA child MUST set reasoning-effort to xhigh.",
     ] {
         assert_status(addition, false)?;
     }

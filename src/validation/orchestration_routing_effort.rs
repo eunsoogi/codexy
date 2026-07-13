@@ -3,7 +3,7 @@ pub(super) fn assigned_reasoning_efforts(segment: &str) -> Vec<&str> {
         .iter()
         .flat_map(|field| {
             segment.match_indices(field).filter_map(|(index, _)| {
-                let value = segment[index + field.len()..]
+                let mut values = segment[index + field.len()..]
                     .trim_start_matches(|character: char| {
                         character.is_ascii_whitespace()
                             || matches!(character, ':' | '=' | '`' | '\"' | '\'')
@@ -12,7 +12,12 @@ pub(super) fn assigned_reasoning_efforts(segment: &str) -> Vec<&str> {
                         character.is_ascii_whitespace()
                             || matches!(character, ',' | ';' | '.' | '`' | '\"' | '\'')
                     })
-                    .next()?;
+                    .filter(|value| !value.is_empty());
+                let value = values.next()?;
+                let value = (value == "to")
+                    .then(|| values.next())
+                    .flatten()
+                    .unwrap_or(value);
                 matches!(value, "low" | "medium" | "high" | "xhigh" | "max" | "ultra")
                     .then_some(value)
             })
