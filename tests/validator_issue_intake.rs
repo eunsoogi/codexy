@@ -151,6 +151,7 @@ fn cli_ignores_backtick_tilde_and_indented_code_headings() {
         "~~~markdown\n## Problem\n~~~\n## Scope\n## Acceptance Criteria\n## Verification",
         "    ## Problem\n## Scope\n## Acceptance Criteria\n## Verification",
         "<!--\n## Problem\n-->\n## Scope\n## Acceptance Criteria\n## Verification",
+        "<!-- hidden -->## Problem\n## Scope\n## Acceptance Criteria\n## Verification",
     ] {
         let mut receipt = valid_receipt();
         receipt["body"] = json!(body);

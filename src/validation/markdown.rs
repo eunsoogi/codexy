@@ -56,6 +56,7 @@ pub(super) fn has_heading(text: &str, heading: &str) -> bool {
         if !html_comment && (line.starts_with("    ") || line.starts_with('\t')) {
             continue;
         }
+        let heading_starts_line = trimmed.starts_with('#');
         let line = without_html_comments(line, &mut html_comment);
         if line.starts_with("    ") || line.starts_with('\t') {
             continue;
@@ -65,7 +66,7 @@ pub(super) fn has_heading(text: &str, heading: &str) -> bool {
             fence = Some(marker);
             continue;
         }
-        if trimmed.trim_end() == heading {
+        if heading_starts_line && trimmed.trim_end() == heading {
             return true;
         }
     }
