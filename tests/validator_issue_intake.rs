@@ -222,3 +222,12 @@ fn cli_rejects_malformed_source_task_id() {
     assert!(!output.status.success());
     assert!(output_text(&output).contains("explicit parent approval"));
 }
+
+#[test]
+fn cli_rejects_placeholder_source_task_id() {
+    let mut receipt = valid_receipt();
+    receipt["parent_approval"]["source_task_id"] = json!("00000000-0000-0000-0000-000000000000");
+    let output = run_receipt(&receipt);
+    assert!(!output.status.success());
+    assert!(output_text(&output).contains("explicit parent approval"));
+}

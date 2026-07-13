@@ -180,4 +180,5 @@ fn is_task_id(value: &str) -> bool {
                 8 | 13 | 18 | 23 => *item == b'-',
                 _ => item.is_ascii_hexdigit(),
             })
+        && value.bytes().any(|item| item != b'0' && item != b'-')
 }
