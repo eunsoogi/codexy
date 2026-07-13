@@ -28,10 +28,9 @@ fn archive_gate_allows_documentation_path_examples() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
     )
     .expect("archive gate script");
-    assert!(script.contains("--glob '!*.md'"));
-    assert!(script.contains("--glob '!*.txt'"));
-    assert!(!script.contains("--glob '!README.md'"));
-    assert!(script.contains("command -v rg"));
+    assert!(script.contains("--exclude='*.bin'"));
+    assert!(!script.contains("--exclude='*.md'"));
+    assert!(!script.contains("--exclude='*.txt'"));
     assert!(script.contains("command -v python3"));
     assert!(script.contains("rg or grep is required"));
     assert!(script.contains("hygiene scan failed"));
@@ -48,6 +47,77 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
     assert!(workflow.contains("Smoke test native MCP runtimes"));
     assert!(workflow.contains("codexy-mcp-${server}-${PLATFORM}.bin"));
+}
+
+#[test]
+fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
+    let root = tempdir().expect("tempdir");
+    let plugin_root = root.path().join("plugins/codexy");
+    copy_tree(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &plugin_root,
+    )
+    .expect("copy plugin fixture");
+    let runtime = plugin_root.join("runtime");
+    std::fs::create_dir_all(&runtime).expect("runtime directory");
+    let build = Command::new("cargo")
+        .args([
+            "build",
+            "--offline",
+            "--release",
+            "--bin",
+            "codexy-mcp-lsp",
+            "--bin",
+            "codexy-mcp-codegraph",
+        ])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .status()
+        .expect("release runtime build");
+    assert!(build.success(), "release runtime build failed");
+    let host_platform = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "aarch64") => "darwin-arm64",
+        ("linux", "x86_64") => "linux-x86_64",
+        _ => panic!("unsupported test host platform"),
+    };
+    for (server, binary) in [
+        ("lsp", "codexy-mcp-lsp"),
+        ("codegraph", "codexy-mcp-codegraph"),
+    ] {
+        for platform in ["darwin-arm64", "linux-x86_64"] {
+            let path = runtime.join(format!("codexy-mcp-{server}-{platform}.bin"));
+            if platform == host_platform {
+                std::fs::copy(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("target/release")
+                        .join(binary),
+                    &path,
+                )
+                .expect("copy runtime");
+            } else {
+                let header = if platform == "darwin-arm64" {
+                    vec![0xcf, 0xfa, 0xed, 0xfe]
+                } else {
+                    vec![0x7f, b'E', b'L', b'F']
+                };
+                std::fs::write(&path, header.repeat(1024)).expect("runtime fixture");
+            }
+            make_executable(&path).expect("runtime permissions");
+        }
+    }
+    let archive = root.path().join("valid.tar.gz");
+    create_archive(root.path(), &archive);
+    let output = run_gate(&archive, &plugin_root);
+    assert!(
+        output.status.success(),
+        "valid fixture failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
+        .expect("secret fixture");
+    let secret_archive = root.path().join("secret.tar.gz");
+    create_archive(root.path(), &secret_archive);
+    assert!(!run_gate(&secret_archive, &plugin_root).status.success());
 }
 
 #[test]
@@ -100,4 +170,32 @@ fn archive_gate_rejects_symlink_entries() {
 
     let output = run_gate(&archive, &plugin_root);
     assert!(!output.status.success());
+}
+
+fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(target)?;
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        if source_path.is_dir() {
+            if entry.file_name() != "runtime" {
+                copy_tree(&source_path, &target_path)?;
+            }
+        } else {
+            std::fs::copy(source_path, target_path)?;
+        }
+    }
+    Ok(())
+}
+
+fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(path)?.permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(path, permissions)?;
+    }
+    Ok(())
 }

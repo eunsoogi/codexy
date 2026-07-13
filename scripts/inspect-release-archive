@@ -39,8 +39,8 @@ if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*
   echo "archive contains a debug artifact" >&2
   exit 1
 fi
-find "$plugin_root" -type f -printf '%P\n' | sort >"$tmp_dir/expected"
-find "$extract_root/plugins/codexy" -type f -printf '%P\n' | sort >"$tmp_dir/actual"
+(cd "$plugin_root" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/expected"
+(cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 diff -u "$tmp_dir/expected" "$tmp_dir/actual"
 
 while IFS= read -r relative; do
@@ -63,13 +63,13 @@ fi
 hygiene_pattern='(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16}|/home/|/tmp/|/private/var/)'
 if command -v rg >/dev/null 2>&1; then
   set +e
-  rg -n --hidden --glob '!runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$hygiene_pattern" "$extract_root/plugins/codexy"
+  rg -n --hidden --glob '!runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
   set -e
 else
   command -v grep >/dev/null 2>&1 || { echo "rg or grep is required" >&2; exit 127; }
   set +e
-  grep -RIn --exclude='*.bin' --exclude='*.md' --exclude='*.txt' -E "$hygiene_pattern" "$extract_root/plugins/codexy"
+  grep -RIn --exclude='*.bin' -E "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
   set -e
 fi
@@ -88,13 +88,23 @@ for server in lsp codegraph; do
   if [ -x "$runtime" ]; then
     response_file="$tmp_dir/${server}-response"
     set +e
-    printf '%s\n%s\n%s\n' \
-      '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}' \
-      '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
-      '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | timeout 15 "$runtime" --stdio >"$response_file"
+    RUNTIME="$runtime" RESPONSE_FILE="$response_file" python3 - <<'PY'
+import os, subprocess
+requests = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+"""
+try:
+    completed = subprocess.run([os.environ["RUNTIME"], "--stdio"], input=requests,
+                               text=True, capture_output=True, timeout=15, check=True)
+    open(os.environ["RESPONSE_FILE"], "w", encoding="utf-8").write(completed.stdout)
+except (subprocess.SubprocessError, OSError) as error:
+    print(error)
+    raise SystemExit(124)
+PY
     status=$?
     set -e
-    [ "$status" -eq 0 ] || [ "$status" -eq 124 ] || { echo "$server MCP process failed: $status" >&2; exit 1; }
+    [ "$status" -eq 0 ] || { echo "$server MCP process failed: $status" >&2; exit 1; }
     SERVER="$server" RESPONSE_FILE="$response_file" python3 - <<'PY'
 import json, os, sys
 
