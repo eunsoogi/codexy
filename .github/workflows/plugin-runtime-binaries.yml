@@ -89,16 +89,19 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: |
           for server in lsp codegraph; do
-            response_file="$(mktemp)"
-            trap 'rm -f "$response_file"' EXIT
-            printf '%s\n%s\n%s\n' \
-              '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}' \
-              '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
-              '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | timeout 15 "dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" --stdio >"$response_file"
-            python3 - "$response_file" <<'PY'
-          import json, sys
+            RUNTIME="dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" \
+              python3 - <<'PY'
+          import json, os, subprocess
+          requests = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}
+          {"jsonrpc":"2.0","method":"notifications/initialized"}
+          {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+          """
+          completed = subprocess.run(
+              [os.environ["RUNTIME"], "--stdio"], input=requests, text=True,
+              capture_output=True, timeout=15, check=True,
+          )
           ids = {}
-          for line in open(sys.argv[1], encoding="utf-8"):
+          for line in completed.stdout.splitlines():
               try: message = json.loads(line)
               except json.JSONDecodeError: continue
               if isinstance(message, dict) and message.get("id") in (1, 2): ids[message["id"]] = message
