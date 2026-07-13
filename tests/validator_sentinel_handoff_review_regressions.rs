@@ -93,6 +93,13 @@ fn validator_rejects_generic_reviewer_gate_as_packaged_sentinel_proof() -> TestR
 }
 
 #[test]
+fn validator_rejects_generic_reviewer_gate_pass_near_sentinel_label() -> TestResult {
+    assert_rejects(&format!(
+        "PR ready for parent handoff. Codexy Sentinel evidence: reviewer gate returned PASS on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+    ))
+}
+
+#[test]
 fn validator_rejects_missing_sentinel_pass_evidence() -> TestResult {
     for evidence in [
         "PASS: missing evidence",

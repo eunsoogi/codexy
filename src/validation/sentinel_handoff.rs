@@ -7,8 +7,7 @@ const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge r
 const HISTORICAL_STATUS_PREFIX_MARKERS: &str = "previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|initial sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|initial codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|initial reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate|initial reviewer-gate";
 const FUTURE_STATUS_CONTEXT_MARKERS: &str = "before push|before readiness|before handoff|before merge|before parent handoff|before pr readiness|before merge readiness|before push readiness|required before|needed before|must pass before|needs to pass before|should pass before|planned after|after planned|planned rerun|planned review|planned pass|to be run|will be run";
 const FUTURE_STATUS_PREFIX_MARKERS: &str = "waiting for|wait for|waiting on|wait on|awaiting|pending|will rerun|will re-run|will return|will report|will be|expected to|is expected to|should return|should report|should be|needs rerun|needs re-run|need rerun|need re-run|rerun required|re-run required";
-const STATUS_NOISE_WORDS: &str =
-    "pass|passed|passes|block|blocked|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
+const STATUS_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|test|tests|focused|but|before|after|waiting|wait|rerun|retry|evidence|proof";
 const LOCAL_NEGATION_WORDS: &str = "no|not|without|never|isn't|aren't|wasn't|hasn't|haven't|didn't|doesn't|don't|can't|cannot|won't";
 pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();

@@ -1,6 +1,6 @@
 use super::sentinel_handoff::{SENTINEL_MARKERS, affirmed_phrase_starts, clause_bounds};
 
-const REVIEWER_IDENTITY_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|unobservable|returned|return|status|verdict|result|gate|reviewer|sentinel|codexy|packaged|current|head|exact|sha|oid|commit|on|for|the|this|a|an|as|planned|approved|approval|fallback|docs|separately";
+const REVIEWER_IDENTITY_NOISE_WORDS: &str = "pass|passed|passes|block|blocked|unobservable|returned|return|status|verdict|result|gate|reviewer|sentinel|codexy|packaged|current|head|exact|sha|oid|commit|on|for|the|this|a|an|as|planned|approved|approval|fallback|docs|separately|evidence|proof";
 const STATUS_NOISE_WORDS: &str =
     "pass|passed|passes|block|blocked|test|tests|focused|but|before|after|waiting|wait|rerun|retry";
 
