@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use super::child_lane_thread_tool_handler_lane_mentions::has_unnegated_different_lane_phrase;
 use super::child_lane_thread_tool_handler_scope::{
     capture_end_before_unrelated_evidence, has_different_lane_mention,
 };
@@ -30,6 +31,18 @@ pub(super) fn has_different_lane_defect_capture(evidence: &str) -> bool {
         (normalized.contains("dogfooding defect")
             || normalized.contains("tool-exposure defect")
             || normalized.contains("dogfooding/tool-exposure defect"))
-            && has_different_lane_mention(line)
+            && (has_different_lane_mention(line) || has_unnegated_different_lane_phrase(line))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::has_different_lane_defect_capture;
+
+    #[test]
+    fn detects_phrase_only_different_lane_capture() {
+        let evidence = "Dogfooding/tool-exposure defect for another lane: recorded runtime missing-handler evidence.";
+
+        assert!(has_different_lane_defect_capture(evidence));
+    }
 }

@@ -12,6 +12,7 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
             && !has_different_lane_mention(line)
+            && !has_unnegated_different_lane_phrase(line)
             && !has_negated_fallback_route_field(line)
             && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
                 && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))
@@ -39,6 +40,7 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
             && !has_different_lane_mention(line)
+            && !has_unnegated_different_lane_phrase(line)
             && !has_negated_fallback_route_field(line)
             && (has_handler_marker_in_defect_clause(line)
                 && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))
@@ -313,8 +315,14 @@ fn plural_lane_mentions_different_lane(line: &str, lane: Option<&str>) -> bool {
     .into_iter()
     .any(|marker| {
         lower.find(marker).is_some_and(|offset| {
-            let mut tokens = line[offset + marker.len()..]
-                .split(|ch: char| ch.is_whitespace() || matches!(ch, ':' | '-' | '.' | ',' | '/'))
+            let lane_expression = line[offset + marker.len()..]
+                .replace("and/or", " and ")
+                .replace("and-or", " and ")
+                .replace(',', " , ")
+                .replace('/', " / ")
+                .replace([':', '-', '.'], " ");
+            let mut tokens = lane_expression
+                .split_whitespace()
                 .filter(|token| !token.is_empty());
             let Some(first) = tokens.next() else {
                 return false;
@@ -326,7 +334,10 @@ fn plural_lane_mentions_different_lane(line: &str, lane: Option<&str>) -> bool {
                 return true;
             }
             while let Some(connector) = tokens.next() {
-                if !matches!(connector.to_ascii_lowercase().as_str(), "and" | "or") {
+                if !matches!(
+                    connector.to_ascii_lowercase().as_str(),
+                    "and" | "or" | "," | "/"
+                ) {
                     return false;
                 }
                 let Some(label) = tokens.next() else {
@@ -596,14 +607,29 @@ fn trim_at_other_lane_handoff_clause<'a>(line: &'a str, lane: Option<&str>) -> &
     let mut search_start = 0;
     while let Some((separator, delimiter_len)) = next_handoff_clause_separator(line, search_start) {
         let clause = line[separator + delimiter_len..].trim_start();
-        if is_unlisted_handoff_metadata_item(clause)
-            && !is_unlisted_handoff_metadata_item_for_lane(clause, lane)
+        let field_clause = if is_list_item(clause) {
+            strip_list_prefix(clause)
+        } else {
+            clause
+        };
+        if is_handoff_metadata_field_item(field_clause)
+            && !is_unlisted_handoff_metadata_item_for_lane(field_clause, lane)
         {
             return line[..separator].trim_end();
         }
         search_start = separator + delimiter_len;
     }
     line
+}
+
+fn is_handoff_metadata_field_item(line: &str) -> bool {
+    let line = if is_list_item(line) {
+        strip_list_prefix(line)
+    } else {
+        line
+    };
+    let lower = line.to_ascii_lowercase();
+    strip_lane_label_prefix_for_lane(&lower, None).is_some_and(is_handoff_metadata_field_line)
 }
 
 fn next_handoff_clause_separator(line: &str, search_start: usize) -> Option<(usize, usize)> {
@@ -851,8 +877,8 @@ fn has_handler_marker(line: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        has_handler_marker_and_tool_name_in_defect_capture, names_later_lane_handoff,
-        preceding_defect_scope_lines,
+        current_defect_clause_scope_for_lane, has_handler_marker_and_tool_name_in_defect_capture,
+        names_later_lane_handoff, preceding_defect_scope_lines,
     };
 
     #[test]
@@ -991,9 +1017,32 @@ Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for c
 
     #[test]
     fn detects_plural_lane_handoff_metadata_that_names_another_lane() {
-        assert!(names_later_lane_handoff(
-            "Fallback route: no fallback route was available for Lanes A and B.",
-            Some("a")
-        ));
+        for phrase in ["Lanes A and B", "Lanes A or B", "Lanes A, B", "Lanes A/B"] {
+            assert!(
+                names_later_lane_handoff(
+                    &format!("Fallback route: no fallback route was available for {phrase}."),
+                    Some("a")
+                ),
+                "expected {phrase} to include another lane"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_phrase_only_different_lane_defect_capture() {
+        let evidence = "Dogfooding/tool-exposure defect for a different lane: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; tracking issue: #205.";
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "a phrase-scoped different-lane defect must not satisfy the current lane"
+        );
+    }
+
+    #[test]
+    fn trims_phrase_scoped_same_line_handoff_fields() {
+        let evidence = "Lane A dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; fallback route: no fallback route was available for another lane; separate dogfood issue: #205.";
+        let scoped = current_defect_clause_scope_for_lane(evidence, Some("a"));
+
+        assert!(!scoped.contains("fallback route:"), "scope was {scoped:?}");
     }
 }
