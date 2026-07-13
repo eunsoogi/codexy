@@ -102,6 +102,10 @@ fn preceding_defect_scope_lines<'a>(
                 return None;
             }
             if skip_handoff_metadata_block && is_unlisted_or_list_handoff_metadata_item(line) {
+                if is_handoff_metadata_item_explicitly_for_lane(line, lane) {
+                    skip_handoff_metadata_block = false;
+                    return Some(*line);
+                }
                 return None;
             }
             skip_handoff_metadata_block = false;
@@ -133,7 +137,29 @@ fn is_handoff_metadata_item_for_different_lane(line: &str, lane: Option<&str>) -
     let Some(scope_line) = strip_lane_label_prefix_for_lane_preserving_case(line, None) else {
         return false;
     };
-    is_handoff_metadata_field_line(field_line) && names_later_lane_handoff(scope_line, Some(lane))
+    is_handoff_metadata_field_line(field_line)
+        && (strip_lane_label_prefix_for_lane_preserving_case(line, Some(lane)).is_none()
+            || names_later_lane_handoff(scope_line, Some(lane)))
+}
+
+fn is_handoff_metadata_item_explicitly_for_lane(line: &str, lane: Option<&str>) -> bool {
+    let Some(lane) = lane else {
+        return false;
+    };
+    let line = if is_list_item(line) {
+        strip_list_prefix(line)
+    } else {
+        line
+    };
+    let line_lower = line.to_ascii_lowercase();
+    let Some(field_line) = strip_lane_label_prefix_for_lane(&line_lower, Some(lane)) else {
+        return false;
+    };
+    let Some(scope_line) = strip_lane_label_prefix_for_lane_preserving_case(line, Some(lane))
+    else {
+        return false;
+    };
+    is_handoff_metadata_field_line(field_line) && scope_line.len() < line.trim_start().len()
 }
 
 fn defect_header_candidate_scope(lines: &[&str], index: usize, lane: Option<&str>) -> String {
@@ -778,7 +804,7 @@ fn has_handler_marker(line: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::has_handler_marker_and_tool_name_in_defect_capture;
+    use super::{has_handler_marker_and_tool_name_in_defect_capture, preceding_defect_scope_lines};
 
     #[test]
     fn rejects_singular_multi_letter_lane_defect_capture() {
@@ -878,6 +904,39 @@ Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for c
         assert!(
             !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
             "Markdown Lane A defect capture must not borrow preceding Lane B metadata"
+        );
+    }
+
+    #[test]
+    fn keeps_current_lane_metadata_after_other_lane_metadata() {
+        let evidence = r#"Lane A:
+Lane B Fallback route: pending confirmation.
+Lane B Tracking issue: pending.
+Lane A Fallback route: parent posted the handoff in the child thread.
+Lane A Tracking issue: #246.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A."#;
+
+        assert!(
+            has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A defect capture must retain its metadata after excluding a Lane B metadata block"
+        );
+    }
+
+    #[test]
+    fn scope_excludes_only_the_other_lane_metadata_block() {
+        let lines = [
+            "Lane B Fallback route: pending confirmation.",
+            "Lane B Tracking issue: pending.",
+            "Lane A Fallback route: parent posted the handoff in the child thread.",
+            "Lane A Tracking issue: #246.",
+        ];
+
+        assert_eq!(
+            preceding_defect_scope_lines(&lines, 0, lines.len(), Some("a")),
+            vec![
+                "Lane A Fallback route: parent posted the handoff in the child thread.",
+                "Lane A Tracking issue: #246.",
+            ]
         );
     }
 }
