@@ -35,7 +35,7 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
     "rationale": "REPLACE"
   },
   "title": "Validated descriptive issue title",
-  "body": "## Problem\n...\n## Scope\n...\n## Acceptance Criteria\n...\n## Verification\n...",
+  "body": "REPLACE",
   "labels": ["repository-label"],
   "repository_labels": ["repository-label"],
   "repository_milestones": ["repository-milestone"],
@@ -47,7 +47,8 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
 
 Every `REPLACE` value MUST be replaced with actual source-task or evidence data
 before running `--check-issue-intake`; the literal template is intentionally
-invalid.
+invalid. The replacement `body` MUST contain real `## Problem`, `## Scope`,
+`## Acceptance Criteria`, and `## Verification` sections.
 
 - `surface_kind` MUST be `real_producer` or `user_facing`.
 - `existing_owner.kind` MUST be `issue` or `pull_request`.
