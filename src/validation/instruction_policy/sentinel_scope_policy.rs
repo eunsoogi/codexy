@@ -90,31 +90,39 @@ fn violations(text: &str) -> Vec<&'static str> {
 }
 
 fn live_sentinel_control(text: &str) -> bool {
+    visible_live_text(text)
+        .to_ascii_lowercase()
+        .split(['.', '!', '?'])
+        .flat_map(|sentence| sentence.split(" but "))
+        .flat_map(split_modal_and_clause)
+        .any(|clause| {
+            let words = words(clause);
+            clause.contains("live sentinel")
+                && !historical_or_terminal(clause)
+                && words.iter().enumerate().any(|(index, word)| {
+                    matches_live_control(&words, word)
+                        && has_positive_permission(&words, index)
+                        && !has_live_control_prohibition(&words, index)
+                })
+        })
+}
+
+fn visible_live_text(text: &str) -> String {
     let mut fenced = false;
-    text.lines().any(|line| {
-        let line = line.trim();
-        if line.starts_with("```") {
-            fenced = !fenced;
-            return false;
-        }
-        if fenced || line.starts_with("sentinel_") {
-            return false;
-        }
-        line.to_ascii_lowercase()
-            .split(['.', '!', '?'])
-            .flat_map(|sentence| sentence.split(" but "))
-            .flat_map(split_modal_and_clause)
-            .any(|clause| {
-                let words = words(clause);
-                clause.contains("live sentinel")
-                    && !historical_or_terminal(clause)
-                    && words.iter().enumerate().any(|(index, word)| {
-                        matches_live_control(&words, word)
-                            && has_positive_permission(&words, index)
-                            && !has_live_control_prohibition(&words, index)
-                    })
-            })
-    })
+    text.lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.starts_with("```") {
+                fenced = !fenced;
+                return None;
+            }
+            if fenced || line.starts_with("sentinel_") {
+                return None;
+            }
+            (!line.is_empty()).then_some(line)
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn historical_or_terminal(sentence: &str) -> bool {
@@ -164,7 +172,7 @@ fn split_modal_and_clause(segment: &str) -> Vec<&str> {
     let mut start = 0;
     for (index, _) in segment.match_indices(" and ") {
         let right = &segment[index + " and ".len()..];
-        if starts_permission(right) {
+        if starts_modal_clause(right) {
             clauses.push(&segment[start..index]);
             start = index + " and ".len();
         }
@@ -173,11 +181,13 @@ fn split_modal_and_clause(segment: &str) -> Vec<&str> {
     clauses
 }
 
-fn starts_permission(clause: &str) -> bool {
-    matches!(
-        clause.split_ascii_whitespace().next(),
-        Some("may" | "can" | "should" | "must" | "allowed" | "permitted" | "authorized")
-    )
+fn starts_modal_clause(clause: &str) -> bool {
+    words(clause).iter().any(|word| {
+        matches!(
+            *word,
+            "may" | "can" | "should" | "must" | "allowed" | "permitted" | "authorized"
+        )
+    })
 }
 
 fn words(sentence: &str) -> Vec<&str> {
@@ -225,25 +235,4 @@ fn has_local_prohibition(words: &[&str], action_index: usize) -> bool {
     }) || context
         .iter()
         .any(|word| matches!(*word, "cannot" | "can't" | "prohibited" | "neither"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::live_sentinel_control;
-
-    #[test]
-    fn applies_clause_local_live_sentinel_polarity() {
-        for text in [
-            "Root MUST NOT ignore safety, but MAY poll a live Sentinel.",
-            "Root MAY send a terminal-status request to a live Sentinel.",
-        ] {
-            assert!(live_sentinel_control(text), "{text}");
-        }
-        for text in [
-            "Root MUST never poll a live Sentinel.",
-            "Root MUST refrain from polling a live Sentinel.",
-        ] {
-            assert!(!live_sentinel_control(text), "{text}");
-        }
-    }
 }

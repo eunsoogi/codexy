@@ -39,15 +39,19 @@ const LIVE_SENTINEL_CONTROLS: &[&str] = &[
     "A child owner MAY follow up with a live Sentinel.",
     "Root MUST NOT ignore safety, but MAY poll a live Sentinel.",
     "Root MUST NOT ignore safety and MAY poll a live Sentinel.",
+    "Root MUST NOT message a live Sentinel, and root MAY poll a live Sentinel.",
     "Root MAY send a terminal-status request to a live Sentinel.",
+    "Root MAY poll\na live Sentinel.",
     "Previous policy forbade polling, but root MAY poll a live Sentinel now.",
 ];
 
 const LIVE_SENTINEL_EXEMPTIONS: &[&str] = &[
     "Generic child and ledger polling MAY continue.",
     "Root MUST NOT poll a live Sentinel.",
+    "Root MUST NOT poll\na live Sentinel.",
     "Historically, root MAY poll a live Sentinel.",
     "After terminal PASS, root MAY poll a live Sentinel's archived result.",
+    "After terminal PASS, root MAY poll\na live Sentinel's archived result.",
     "sentinel_policy: Root MAY poll a live Sentinel.",
     "```text\nRoot MAY poll a live Sentinel.\n```",
 ];
