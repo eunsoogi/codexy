@@ -1,41 +1,83 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
 
 const MAIN_REF: &str = "origin/main";
 
-pub(super) fn exclude_reconciled_main_paths(
-    root: &Path,
-    requested_base: &str,
-    paths: Vec<PathBuf>,
-) -> Result<Vec<PathBuf>> {
-    let Some(reconciliation) = reconciliation_merge(root, requested_base)? else {
-        return Ok(paths);
-    };
-    let mut scoped = Vec::new();
-    for path in paths {
-        if !matches_main_tree(root, &path)? || changed_since(root, &reconciliation, &path)? {
-            scoped.push(path);
+pub(super) struct IntegrationScope {
+    head: String,
+    reconciliation: Option<Reconciliation>,
+}
+
+struct Reconciliation {
+    commit: String,
+    main_parent: String,
+}
+
+impl IntegrationScope {
+    pub(super) fn discover(root: &Path, requested_base: &str) -> Result<Self> {
+        let head = child_head(root, requested_base)?;
+        let reconciliation = reconciliation_merge(root, requested_base, &head)?;
+        Ok(Self {
+            head,
+            reconciliation,
+        })
+    }
+
+    pub(super) fn head(&self) -> &str {
+        &self.head
+    }
+
+    pub(super) fn baseline_for(
+        &self,
+        root: &Path,
+        requested_base: &str,
+        path: &Path,
+        locally_changed: bool,
+    ) -> Result<Option<String>> {
+        let Some(reconciliation) = &self.reconciliation else {
+            return Ok(Some(requested_base.to_owned()));
+        };
+        let first_parent = format!("{}^1", reconciliation.commit);
+        if !path_differs(root, &first_parent, &reconciliation.commit, path)? {
+            return Ok(Some(requested_base.to_owned()));
+        }
+        let changed_after = path_differs(root, &reconciliation.commit, &self.head, path)?;
+        if !changed_after && !locally_changed {
+            return Ok(None);
+        }
+        Ok(Some(reconciliation.main_parent.clone()))
+    }
+}
+
+fn child_head(root: &Path, requested_base: &str) -> Result<String> {
+    let head = resolve_commit(root, "HEAD")?;
+    let requested_base = resolve_commit(root, requested_base)?;
+    let parents = commit_parents(root, &head)?;
+    if parents.first() == Some(&requested_base) {
+        if let Some(child) = parents.get(1) {
+            if is_ancestor(root, &requested_base, child)? {
+                return Ok(child.clone());
+            }
         }
     }
-    Ok(scoped)
+    Ok(head)
 }
 
-fn commit_exists(root: &Path, reference: &str) -> Result<bool> {
-    let output = git(root, ["rev-parse", "--verify", "--quiet", reference])?;
-    Ok(output.status.success())
-}
-
-fn reconciliation_merge(root: &Path, requested_base: &str) -> Result<Option<String>> {
+fn reconciliation_merge(
+    root: &Path,
+    requested_base: &str,
+    head: &str,
+) -> Result<Option<Reconciliation>> {
     if requested_base == MAIN_REF
         || !commit_exists(root, MAIN_REF)?
-        || !is_ancestor(root, requested_base, "HEAD")?
-        || !is_ancestor(root, MAIN_REF, "HEAD")?
+        || !is_ancestor(root, requested_base, head)?
+        || !is_ancestor(root, MAIN_REF, head)?
     {
         return Ok(None);
     }
-    let range = format!("{requested_base}..HEAD");
+    let range = format!("{requested_base}..{head}");
     let output = git(root, ["rev-list", "--first-parent", "--merges", &range])?;
     if !output.status.success() {
         bail!(
@@ -44,16 +86,48 @@ fn reconciliation_merge(root: &Path, requested_base: &str) -> Result<Option<Stri
         );
     }
     for commit in String::from_utf8_lossy(&output.stdout).lines() {
-        let parents = git(root, ["show", "-s", "--format=%P", commit])?;
-        let parent_text = String::from_utf8_lossy(&parents.stdout);
-        let Some(main_parent) = parent_text.split_whitespace().nth(1) else {
+        let parents = commit_parents(root, commit)?;
+        let Some(main_parent) = parents.get(1) else {
             continue;
         };
         if is_ancestor(root, main_parent, MAIN_REF)? {
-            return Ok(Some(commit.to_owned()));
+            return Ok(Some(Reconciliation {
+                commit: commit.to_owned(),
+                main_parent: main_parent.clone(),
+            }));
         }
     }
     Ok(None)
+}
+
+fn commit_exists(root: &Path, reference: &str) -> Result<bool> {
+    let output = git(root, ["rev-parse", "--verify", "--quiet", reference])?;
+    Ok(output.status.success())
+}
+
+fn resolve_commit(root: &Path, reference: &str) -> Result<String> {
+    let output = git(root, ["rev-parse", "--verify", reference])?;
+    if !output.status.success() {
+        bail!(
+            "resolving touched LOC commit {reference} failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+}
+
+fn commit_parents(root: &Path, commit: &str) -> Result<Vec<String>> {
+    let output = git(root, ["show", "-s", "--format=%P", commit])?;
+    if !output.status.success() {
+        bail!(
+            "resolving touched LOC parents failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .split_whitespace()
+        .map(str::to_owned)
+        .collect())
 }
 
 fn is_ancestor(root: &Path, reference: &str, target: &str) -> Result<bool> {
@@ -65,53 +139,31 @@ fn is_ancestor(root: &Path, reference: &str, target: &str) -> Result<bool> {
         return Ok(false);
     }
     bail!(
-        "checking whether {reference} is an ancestor of HEAD failed: {}",
+        "checking whether {reference} is an ancestor of {target} failed: {}",
         String::from_utf8_lossy(&output.stderr).trim()
     )
 }
 
-fn changed_since(root: &Path, reconciliation: &str, path: &Path) -> Result<bool> {
-    let range = format!("{reconciliation}..HEAD");
-    let output = git(
-        root,
-        [
-            "log",
-            "--first-parent",
-            "--format=%H",
-            &range,
-            "--",
-            &path.to_string_lossy(),
-        ],
-    )?;
-    if !output.status.success() {
-        bail!(
-            "checking child changes after reconciliation failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        );
-    }
-    Ok(!output.stdout.is_empty())
-}
-
-fn matches_main_tree(root: &Path, path: &Path) -> Result<bool> {
+fn path_differs(root: &Path, before: &str, after: &str, path: &Path) -> Result<bool> {
     let output = git(
         root,
         [
             "diff",
             "--quiet",
-            MAIN_REF,
-            "HEAD",
+            before,
+            after,
             "--",
             &path.to_string_lossy(),
         ],
     )?;
     if output.status.success() {
-        return Ok(true);
-    }
-    if output.status.code() == Some(1) {
         return Ok(false);
     }
+    if output.status.code() == Some(1) {
+        return Ok(true);
+    }
     bail!(
-        "comparing {} to {MAIN_REF} failed: {}",
+        "comparing reconciliation provenance for {} failed: {}",
         path.display(),
         String::from_utf8_lossy(&output.stderr).trim()
     )
