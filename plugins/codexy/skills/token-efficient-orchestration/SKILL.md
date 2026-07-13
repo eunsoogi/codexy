@@ -1,15 +1,15 @@
 ---
 name: token-efficient-orchestration
-description: MUST use during long Codexy orchestration, multi-PR monitoring, review-response loops, or compaction recovery when token use is growing; preserves proof gates while replacing repeated full-context reloads with deltas, ledgers, and bounded polling.
+description: MUST use during Codexy multi-PR coordination, review-response loops, or compaction recovery when token use is growing; preserves proof gates while replacing full-context replay and autonomous polling with bounded event deltas and ledgers.
 ---
 
 # Token-Efficient Orchestration
 
 ## Purpose
 
-MUST keep long Codexy loops small without weakening evidence. MUST use this skill when a
-thread is monitoring several issues or PRs, recovering from compaction, polling
-children, routing review feedback, or preparing a handoff that might otherwise
+MUST keep Codexy coordination small without weakening evidence. MUST use this
+skill when a thread is recovering from compaction, receiving child terminal
+state, routing review feedback, or preparing a handoff that might otherwise
 repeat large unchanged artifacts.
 
 This skill is not a shortcut around `$proof-driven-completion`. It changes how
@@ -39,48 +39,83 @@ does not apply or has not been created yet. For gates that MUST exist for the
 current lane, refresh existing gates directly instead of inferring them from
 older context.
 
-## Token Budget Loop
+## Event-driven delta
 
-MUST run this loop before large polling batches, after compaction, and before
-handoff:
+MUST use this flow after compaction and before handoff:
 
-1. **Inventory once**: MUST list active lanes as one line each with `issue`, `PR`,
-   `branch`, `head`, `owner`, and `state`.
-2. **Poll by delta**: refresh only surfaces that can change: PR head, checks,
-   review threads, Codex review output, and child status. MUST NOT re-read
-   unchanged skill bodies, old review text, or full logs unless a changed id or
-   SHA requires it.
-3. **Promote ids, not prose**: MUST keep exact ids and links, such as PR numbers,
-   thread ids, review thread ids, check run names, and SHAs. MUST summarize bodies
-   in one sentence unless the exact wording is the bug.
-4. **Demote stale details**: MUST mark old heads, resolved comments, passed reruns,
-   and outdated review suggestions as stale or resolved. MUST NOT carry them as
-   active obligations.
-5. **Carry one next action**: each lane MUST end with exactly one next action:
-   MUST route feedback, wait for review, wait for checks, verify child handoff,
-   MUST resolve fixed thread, merge, or stop.
+1. **Inventory once**: MUST keep one compact ledger line per active lane with
+   `issue`, `PR`, `branch`, `head`, `owner`, and `state`.
+2. **Accept qualifying events only**: root/orchestrator MUST NOT autonomously poll.
+   Children MUST send a compact delta only for terminal child state, Sentinel
+   verdict, PR creation, new HEAD, GitHub check-state change, actionable
+   review-feedback change, or clean review completion.
+3. **Validate stable event identity**: every event MUST use a deterministic
+   `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated identity
+   before it changes counters or next actions.
+4. **Promote ids, not prose**: MUST keep exact ids and links. MUST NOT transfer a
+   full conversation, full tool body, or full agent-tree listing. Direct reads and
+   command output MUST remain bounded.
+5. **Fail once**: a failed parent message MUST emit exactly one terminal unavailable
+   report. It MUST include its event identity and MUST NOT retry the parent message.
+6. **Carry one next action**: each lane MUST end with exactly one current action.
 
-## Delta Poll Shape
+## Event Delta Shape
 
 MUST use this compact shape for each lane:
 
 ```text
 #<issue> / PR #<pr> / <branch>
+event id: <kind>|<lane>|<subject>
+event kind: terminal-child | sentinel | pr-created | new-head | check-state | review-feedback | review-clean | unavailable
 owner: child thread <id> | worktree <path>
 head: <sha> | base: <sha>
-delta since last poll: <new head/check/thread/review change or "none">
+delta: <one changed fact>
 required gates: checks=<state>; codex-review=<state>; threads=<state>; child=<state>
 active obligations: <only current unresolved work>
 stale/demoted: <old heads, resolved threads, superseded comments>
 next action: <one action>
 ```
 
-When nothing changed, MUST write `delta since last poll: none` and skip the old
-details.
+When no qualifying event arrived, MUST NOT wake the implementation lane. The
+orchestrator MAY retain its compact ledger without re-reading old details.
 
 For repeat handoffs, copy `templates/delta-poll.md` and fill only the current
 slots. MUST keep the template output in the thread or handoff; MUST NOT attach old
 logs or unchanged review bodies unless a current gate points to them.
+
+## Metadata-Only Session Audit
+
+In a source checkout, MUST use `scripts/session-audit --input <metadata-jsonl>`
+for bounded aggregate evidence. An installed skill MUST NOT claim this
+repository-local command is packaged; it MUST direct users to the source checkout
+or an explicitly packaged runtime before requesting audit execution. The audit MUST report session size, latest cumulative tokens, recent per-turn
+average, call counts by tool, and output bytes by tool. It MUST read only exact
+top-level metadata keys, reject invalid ids or tool keys, deduplicate the stable
+event identity, and MUST NOT emit prompts, tool arguments, tool bodies, or nested
+metadata. For string output, `output_bytes` is decoded UTF-8 byte length; for
+arrays, objects, and scalars it is compact JSON UTF-8 serialization length, not
+the source JSONL/wire length or Unicode character count. The audit MUST accept
+one session only, bind a tool name to its first valid `(session, call-kind,
+call-id)`, count the first matching output once, reject conflicting bindings,
+and ignore orphan outputs.
+
+MUST capture before/after aggregate output for one real lane using a comparable
+window and owner boundary. MUST use
+`templates/session-audit-proof-receipt.json` as the metadata-only receipt: it
+MUST include review requests, review feedback, child age, retries per PR, stable
+event ids, goal/plan receipts, helper ownership, sanitized audit input digest,
+and command exits. The comparison MUST report observations only; it MUST NOT
+claim a causal driver without a controlled comparison. Historical text, negated
+feedback, and stale-head events MUST NOT count as current review activity.
+
+Before attributing runtime behavior, MUST establish installed content equivalence,
+not just a matching version. MUST read the candidate manifest version, MUST run
+`codex plugin add codexy@codexy` to update the configured marketplace install,
+then compare the manifest and every changed packaged skill/template by SHA-256
+or `cmp`. MUST record `codex plugin list` output, the installed cache root,
+changed-file digests, and the metadata-only before/after audit. If an explicitly
+packaged runtime command is absent or differs, MUST record it as an install
+failure and MUST NOT attribute the candidate behavior to the installed plugin.
 
 ## Compaction Budget
 
@@ -109,13 +144,13 @@ work unless a fresh poll makes it current again.
 
 ## Stop Conditions
 
-MUST stop and refresh rather than summarizing when:
+MUST stop and refresh rather than summarizing when a qualifying event reports:
 
 - the head SHA changed,
-- a check moved from pending to pass/fail,
-- a new Codex review arrived,
-- a review thread changed resolved or outdated state,
-- child ownership is unclear,
+- a check moved from pending to pass/fail;
+- a new Codex review arrived;
+- a review thread changed resolved or outdated state;
+- child ownership is unclear; or
 - the next action would merge, resolve a review thread, or claim readiness.
 
 These actions MUST require current authoritative evidence, not a cached summary.

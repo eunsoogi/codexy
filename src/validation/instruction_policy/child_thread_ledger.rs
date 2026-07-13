@@ -44,7 +44,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "existing owner thread",
                 "latest evidence",
                 "compaction recovery",
-                "normal polling",
+                "event-driven refresh",
                 "packaged specialist subagents must not be counted",
                 "canonical worktree cwd",
                 "frozen head",
@@ -52,6 +52,23 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "explicit release/archive state",
                 "must keep its reservation active",
                 "must not silently recycle that worktree",
+                "short-lived child implementation goal",
+                "must not retain a persistent long-running goal",
+                "must not autonomously poll",
+                "exactly one terminal unavailable report",
+                "must not retry the parent message",
+                "no full conversation transfer",
+                "no full agent-tree listing",
+                "root/orchestrator may end its goal and plan after dispatch",
+                "child external-gate wait must retain active goal and plan",
+                "bounded child-local monitoring",
+                "send a parent delta before transition",
+                "inspect archive candidates and the active reservation ledger",
+                "may archive only terminal, unreferenced, clean and unreserved worktree lanes with no open pr or pending gate",
+                "must not archive pr owners or dirty/reserved candidates",
+                "record the decision in setup evidence",
+                "usable existing owner must record the `block` and update the plan to a repair step",
+                "add faithful red coverage, repair, rerun terminal proof, then invoke exactly one fresh sentinel review for the new file state or head",
             ],
         );
         reject_all(
@@ -60,6 +77,27 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             errors,
             "orchestration skill must not allow specialist subagents to count against the child thread cap",
             &["packaged specialist subagents must not be counted unless"],
+        );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must reject legacy persistent root goals and autonomous polling",
+            &["must keep polling and keep the goal active"],
+        );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must not block a usable owner goal after Sentinel BLOCK",
+            &["must call update_goal(status=\"blocked\") after a sentinel block"],
+        );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must not replace a usable owner after Sentinel BLOCK",
+            &["must create a replacement thread after a sentinel block"],
         );
     } else if path.ends_with("skills/codex-orchestration/references/thread-and-worktree-routing.md")
     {
@@ -98,7 +136,6 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         );
     }
 }
-
 fn require_all(
     path: &Path,
     text: &str,
@@ -108,7 +145,8 @@ fn require_all(
 ) {
     let lower = normalized_whitespace(text);
     for phrase in phrases {
-        if !has_unweakened_required_clause(&lower, phrase) {
+        let phrase = normalized_whitespace(phrase);
+        if !has_unweakened_required_clause(&lower, &phrase) {
             errors.push(format!(
                 "{} {requirement}: missing `{phrase}`",
                 display_relative(path)
@@ -116,34 +154,29 @@ fn require_all(
         }
     }
 }
-
 fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
-        let before = text[..index]
-            .rsplit("</markdown-heading>")
-            .next()
-            .unwrap_or_default();
+        let before = &text[..index];
         let after = text[index + phrase.len()..]
             .trim_start_matches([',', ':', ';', '-', '—'])
             .trim_start();
-        !has_invalid_prefix(before) && !has_invalid_suffix(after)
+        !appears_in_heading(before) && !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
 }
-
 fn has_invalid_prefix(before: &str) -> bool {
     let section = before
-        .rsplit("</markdown-heading>")
+        .rsplit("<markdown-heading>")
         .next()
         .unwrap_or_default();
     let clause = clause_prefix(section);
-    [
-        "historical example",
-        "not required",
-        "no longer required",
-        "false that",
-    ]
-    .iter()
-    .any(|marker| clause.contains(marker))
+    section
+        .trim_start()
+        .starts_with("historical example </markdown-heading>")
+        || clause.contains("historical example")
+        || clause.contains("false that")
+        || clause.starts_with("not required")
+        || clause.starts_with("no longer required")
+        || clause.trim_end().ends_with("it is not required that")
 }
 
 fn clause_prefix(section: &str) -> &str {
@@ -164,9 +197,13 @@ fn clause_prefix(section: &str) -> &str {
 }
 
 fn has_invalid_suffix(after: &str) -> bool {
-    ["unless ", "except ", "only if ", "may "]
+    ["unless ", "except ", "only if ", "may ", "is not required"]
         .iter()
         .any(|marker| after.starts_with(marker))
+}
+
+fn appears_in_heading(before: &str) -> bool {
+    before.rfind("<markdown-heading>") > before.rfind("</markdown-heading>")
 }
 
 fn reject_all(
@@ -178,7 +215,11 @@ fn reject_all(
 ) {
     let lower = normalized_whitespace(text);
     for phrase in phrases {
-        if lower.contains(phrase) {
+        let phrase = normalized_whitespace(phrase);
+        if lower.match_indices(&phrase).any(|(index, _)| {
+            let before = &lower[..index];
+            !appears_in_heading(before) && !has_invalid_prefix(before)
+        }) {
             errors.push(format!(
                 "{} {requirement}: forbidden `{phrase}`",
                 display_relative(path)
@@ -202,6 +243,7 @@ fn normalized_whitespace(text: &str) -> String {
     }
     with_heading_boundaries
         .to_ascii_lowercase()
+        .replace('`', "")
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")

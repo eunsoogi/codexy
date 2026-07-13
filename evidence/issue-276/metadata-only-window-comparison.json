@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "metadataOnly": true,
+  "comparison": {
+    "kind": "same-owner fixed-record-window observation",
+    "claim": "observational only; no causal driver, token reduction, or installed-plugin equivalence is asserted",
+    "recordsPerWindow": 256,
+    "sameOwner": true,
+    "implementationOwnerCount": 1,
+    "implementationWakeups": 0
+  },
+  "lane": {
+    "issue": 276,
+    "pr": "not-created",
+    "branch": "codexy/276-token-quota-containment",
+    "head": "ecb42d3cccbb8a312c6009f7b07e302091bedd47",
+    "worktreeDirty": true,
+    "base": "85a1e82b05e068ff443ed6dd718eb97f7e1ad2a1",
+    "ownerThreadId": "019f56a2-c6fb-7133-bc50-de1535d59d4b",
+    "childCreatedAt": "2026-07-12T23:02:54+09:00"
+  },
+  "installed": {
+    "pluginId": "codexy@codexy",
+    "status": "unobservable",
+    "trackingIssue": 376,
+    "reason": "configured marketplace snapshot lacks a supported manifest",
+    "cacheRoot": null,
+    "contentEquivalent": null,
+    "changedFiles": [
+      { "path": "skills/codex-orchestration/SKILL.md", "sha256": "48e88bc5e238219508c36e7050f00b5ce9957d06ff7ed7636c3e15a84bede14a" },
+      { "path": "skills/token-efficient-orchestration/SKILL.md", "sha256": "4d8a496f35a4647469412246a4bd8f2a75f4d96ee3b5e92ff4a946d5f309f8e5" }
+    ]
+  },
+  "input": {
+    "sha256": "c68b8f7ded6966cf1a8f282934345bd234ce751005c84e16f3b551d1b235995a",
+    "rawContentStored": false
+  },
+  "before": {
+    "sizeBytes": 886825,
+    "latestCumulativeTokens": 3835009,
+    "recentTurnAverageTokens": 145364,
+    "toolCalls": { "exec": 40 },
+    "toolOutputBytes": { "exec": 405265 },
+    "duplicateEventsSkipped": 1
+  },
+  "after": {
+    "sizeBytes": 328082,
+    "latestCumulativeTokens": 36337072,
+    "recentTurnAverageTokens": 121955,
+    "toolCalls": {
+      "exec": 30,
+      "send_message": 3,
+      "spawn_agent": 1,
+      "wait": 3,
+      "wait_agent": 9
+    },
+    "toolOutputBytes": {
+      "exec": 36005,
+      "send_message": 0,
+      "spawn_agent": 80,
+      "wait": 12350,
+      "wait_agent": 416
+    },
+    "duplicateEventsSkipped": 1
+  },
+  "metrics": {
+    "reviewRequests": 0,
+    "reviewFeedback": 0,
+    "childAgeSeconds": 4154,
+    "retriesByKind": { "parentMessage": 0, "reviewRequest": 0, "ci": 0, "sentinel": 0 },
+    "eventIds": ["sentinel|276|pre-pr", "review-feedback|276|none"],
+    "reviewState": "no-pr-created; no-human-or-github-review-feedback"
+  },
+  "goalPlanReceipts": ["create_goal|276|active", "get_goal|276|active", "update_plan|276|sentinel-repair"],
+  "helpers": [
+    { "id": "/root/metric_warden", "ownedSlice": "read-only audit privacy review" },
+    { "id": "/root/proof_auditor", "ownedSlice": "read-only receipt review" }
+  ],
+  "commandReceipts": [
+    { "command": "scripts/session-audit --input <window> --recent-turns 3", "exitCode": 0 },
+    { "command": "cargo test --offline", "exitCode": 0 },
+    { "command": "scripts/validate-plugin-config --check", "exitCode": 0 },
+    { "command": "scripts/validate-plugin-config --check-touched-loc --base-ref origin/main", "exitCode": 0 },
+    { "command": "scripts/sync-plugin-version --check", "exitCode": 0 }
+  ]
+}
