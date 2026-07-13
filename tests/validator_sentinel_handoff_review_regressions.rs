@@ -125,6 +125,13 @@ fn validator_accepts_unrelated_missing_after_named_sentinel_pass() -> TestResult
 }
 
 #[test]
+fn validator_ignores_later_missing_sentinel_evidence_after_valid_pass() -> TestResult {
+    assert_accepts(&format!(
+        "PR ready for parent handoff. Packaged Codexy Sentinel Turing: PASS on current head {HEAD}. Previous Sentinel evidence is missing. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"
+    ))
+}
+
+#[test]
 fn validator_rejects_role_only_sentinel_reviewer_gate_label() -> TestResult {
     let output = validate_file(&format!(
         "PR ready for parent handoff. Packaged Codexy Sentinel reviewer gate: PASS on current head {HEAD}. Branch clean. Pushed at {HEAD}. Remote/PR head match: yes {HEAD}.\n"

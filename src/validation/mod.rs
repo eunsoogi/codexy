@@ -81,6 +81,7 @@ mod runtime;
 mod sentinel_handoff;
 mod sentinel_handoff_evidence;
 mod sentinel_handoff_reviewer;
+mod sentinel_handoff_status_value;
 mod touched_loc;
 mod touched_loc_remediation;
 
