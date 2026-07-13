@@ -136,6 +136,24 @@ fn validator_rejects_qualified_allowed_recursive_delegation() -> TestResult {
     )
 }
 
+#[test]
+fn validator_rejects_qualified_permitted_recursive_delegation() -> TestResult {
+    assert_recursive_role_permission_rejected(
+        "A helper is permitted, after owner approval, to spawn another helper.",
+    )
+}
+
+#[test]
+fn validator_rejects_worker_and_explorer_recursive_delegation_targets() -> TestResult {
+    for permission in [
+        "A helper MAY spawn another worker.",
+        "A helper MAY delegate work to another explorer.",
+    ] {
+        assert_recursive_role_permission_rejected(permission)?;
+    }
+    Ok(())
+}
+
 fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;

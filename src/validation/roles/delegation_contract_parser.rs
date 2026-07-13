@@ -1,21 +1,27 @@
+const DELEGATION_TARGETS: [&str; 9] = [
+    "agent",
+    "helper",
+    "reviewer",
+    "sentinel",
+    "specialist",
+    "task",
+    "thread",
+    "worker",
+    "explorer",
+];
+
 pub(super) fn has_unnegated_permission(clause: &str) -> bool {
     let words = words(clause);
     words.iter().enumerate().any(|(index, word)| match *word {
         "may" | "can" => words
             .get(index + 1)
             .is_none_or(|next| !matches!(*next, "not" | "never")),
-        "allowed" => {
+        "allowed" | "permitted" => {
             words.get(index.wrapping_sub(1)) != Some(&"not")
                 && (words
                     .get(index + 1)
                     .is_some_and(|next| matches!(*next, "actions" | "to"))
                     || words[index + 1..].iter().any(|next| *next == "to"))
-        }
-        "permitted" => {
-            words.get(index.wrapping_sub(1)) != Some(&"not")
-                && words
-                    .get(index + 1)
-                    .is_some_and(|next| matches!(*next, "to" | "actions"))
         }
         _ => false,
     })
@@ -39,17 +45,9 @@ pub(super) fn has_unnegated_delegation_action(clause: &str) -> bool {
                 .map_or(prefix, |(_, contrast)| contrast);
             let suffix = &clause[index..];
             !has_action_negation(action_prefix)
-                && [
-                    "agent",
-                    "helper",
-                    "reviewer",
-                    "sentinel",
-                    "specialist",
-                    "task",
-                    "thread",
-                ]
-                .into_iter()
-                .any(|target| suffix.contains(target))
+                && DELEGATION_TARGETS
+                    .iter()
+                    .any(|target| suffix.contains(target))
         })
     })
 }
@@ -92,17 +90,9 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
                 && suffix.contains("child thread");
             has_unnegated_mandatory_permission(prefix)
                 && !creates_child_thread
-                && [
-                    "agent",
-                    "helper",
-                    "reviewer",
-                    "sentinel",
-                    "specialist",
-                    "task",
-                    "thread",
-                ]
-                .into_iter()
-                .any(|target| suffix.contains(target))
+                && DELEGATION_TARGETS
+                    .iter()
+                    .any(|target| suffix.contains(target))
         })
     })
 }
