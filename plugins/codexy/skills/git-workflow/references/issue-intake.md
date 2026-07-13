@@ -13,18 +13,18 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
   "reproduction": {
     "decision": "supported",
     "surface_kind": "real_producer",
-    "surface": "Codex app delegated child task",
-    "steps": ["Reproduce the behavior on the supported surface"],
-    "observed": "Record the behavior observed on that supported surface"
+    "surface": "REPLACE",
+    "steps": ["REPLACE"],
+    "observed": "REPLACE"
   },
   "ownership": {
     "decision": "cannot_own",
     "existing_owner": {"kind": "issue", "number": 195},
-    "rationale": "Explain why the existing issue does not own the correction"
+    "rationale": "REPLACE"
   },
   "duplicate_search": {
     "states": ["open", "closed"],
-    "search_terms": ["recorded search terms"],
+    "search_terms": ["REPLACE"],
     "results": [
       {"issue": 195, "state": "closed", "match_kind": "related"}
     ],
@@ -32,7 +32,7 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
   },
   "necessity": {
     "decision": "thin_harness_change_required",
-    "rationale": "Explain why a narrow change is preferable to no change"
+    "rationale": "REPLACE"
   },
   "title": "Validated descriptive issue title",
   "body": "## Problem\n...\n## Scope\n...\n## Acceptance Criteria\n...\n## Verification\n...",
@@ -45,8 +45,8 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
 }
 ```
 
-`source_task_id` MUST be replaced with the actual parent task UUID before
-running `--check-issue-intake`; the literal template value is intentionally
+Every `REPLACE` value MUST be replaced with actual source-task or evidence data
+before running `--check-issue-intake`; the literal template is intentionally
 invalid.
 
 - `surface_kind` MUST be `real_producer` or `user_facing`.
