@@ -45,6 +45,28 @@ fn rejects_generic_child_effort_downgrades() -> TestResult {
 }
 
 #[test]
+fn rejects_sentinel_effort_downgrades() -> TestResult {
+    for addition in [
+        "- `codexy-sentinel` MUST use `gpt-5.6-sol` with `reasoning_effort: high`.",
+        "- `codexy-sentinel` MUST set reasoning-effort to low.",
+    ] {
+        assert_status(addition, false)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn rejects_singular_specialist_overrides() -> TestResult {
+    for addition in [
+        "- A named custom specialist MUST pass a model override.",
+        "- A named custom specialist MUST pass a reasoning-effort override.",
+    ] {
+        assert_status(addition, false)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn allows_repeated_comparison_model_mentions() -> TestResult {
     assert_status(
         "- Root/orchestrator MUST use `gpt-5.6-terra` for comparison only; `gpt-5.6-terra` is not the assigned model.",

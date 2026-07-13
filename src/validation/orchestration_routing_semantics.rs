@@ -2,6 +2,7 @@ use super::orchestration_routing_effort::assigned_reasoning_efforts;
 use super::orchestration_routing_luna_policy::{
     has_luna_default_assignment, luna_blanket_default_is_negated, luna_policy_clauses,
 };
+use super::orchestration_routing_override::mentions_override;
 
 pub(super) fn has_conflicting_specialist_override(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
@@ -96,9 +97,12 @@ fn assigns_conflicting_sentinel_tier(segment: &str) -> bool {
     let normalized = segment.replace('`', "");
     assigns_sentinel_ultra(&normalized)
         || assignment_intent(&normalized)
-            && model_ids(&normalized)
+            && (model_ids(&normalized)
                 .iter()
                 .any(|model| *model != "gpt-5.6-sol")
+                || assigned_reasoning_efforts(&normalized)
+                    .iter()
+                    .any(|effort| *effort != "xhigh"))
 }
 fn assigns_sentinel_ultra(segment: &str) -> bool {
     [
@@ -114,7 +118,7 @@ fn assigns_sentinel_ultra(segment: &str) -> bool {
 
 fn passes_specialist_overrides(segment: &str) -> bool {
     (segment.contains(" pass ") || segment.contains(" passing "))
-        && segment.contains("overrides")
+        && mentions_override(segment)
         && (segment.contains("model")
             || segment.contains("reasoning-effort")
             || segment.contains("reasoning_effort"))
@@ -124,7 +128,7 @@ fn passes_specialist_overrides(segment: &str) -> bool {
 fn without_overrides(segment: &str) -> bool {
     segment.find("without").is_some_and(|index| {
         let clause = segment[index..].split(" and ").next().unwrap_or_default();
-        clause.contains("overrides")
+        mentions_override(clause)
             && (clause.contains("model")
                 || clause.contains("reasoning-effort")
                 || clause.contains("reasoning_effort"))
