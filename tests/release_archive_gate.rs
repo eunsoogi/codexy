@@ -200,7 +200,9 @@ with tarfile.open(sys.argv[1], "w:gz") as archive:
         .status()
         .expect("python should start");
     assert!(status.success(), "traversal archive fixture failed");
-    assert!(!run_gate(&archive, &plugin_root).status.success());
+    let output = run_gate(&archive, &plugin_root);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unsafe archive path"));
 }
 
 #[test]
