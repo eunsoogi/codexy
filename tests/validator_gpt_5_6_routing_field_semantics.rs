@@ -49,6 +49,7 @@ fn rejects_sentinel_effort_downgrades() -> TestResult {
     for addition in [
         "- `codexy-sentinel` MUST use `gpt-5.6-sol` with `reasoning_effort: high`.",
         "- `codexy-sentinel` MUST set reasoning-effort to low.",
+        "- `codexy-sentinel` MUST use the Ultra model.",
     ] {
         assert_status(addition, false)?;
     }

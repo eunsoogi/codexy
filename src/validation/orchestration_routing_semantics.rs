@@ -105,15 +105,10 @@ fn assigns_conflicting_sentinel_tier(segment: &str) -> bool {
                     .any(|effort| *effort != "xhigh"))
 }
 fn assigns_sentinel_ultra(segment: &str) -> bool {
-    [
-        "must use ultra",
-        "must run on ultra",
-        "must run using ultra",
-        "must remain ultra",
-        "must be ultra",
-    ]
-    .iter()
-    .any(|assignment| segment.trim_start().starts_with(assignment))
+    assignment_intent(segment)
+        && segment
+            .split(|character: char| !character.is_ascii_alphanumeric())
+            .any(|word| word == "ultra")
 }
 
 fn passes_specialist_overrides(segment: &str) -> bool {
