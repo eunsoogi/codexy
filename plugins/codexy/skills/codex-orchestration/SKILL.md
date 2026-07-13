@@ -63,7 +63,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
   unless the todo/plan tool is unavailable and the fallback is reported.
 - MUST treat Codex connector review, child-thread work, queued worktree/thread
   setup, and asynchronous tool completion as active waiting states, not
-  blockers. MUST keep polling and keep the goal active.
+  blockers. MUST keep polling and keep the goal active. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.

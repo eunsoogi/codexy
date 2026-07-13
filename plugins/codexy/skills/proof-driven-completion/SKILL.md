@@ -105,6 +105,7 @@ complete.
   with the reviewer name and exact head. `BLOCK` and `UNOBSERVABLE` MUST NOT
   satisfy PR readiness, push readiness, parent acceptance, or completion unless
   a maintainer explicitly approves a fallback.
+- Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, MUST verify
   the child reported actual goal-tool usage or an unavailable-goal-tool
