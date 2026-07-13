@@ -45,6 +45,32 @@ child-owned implementation lane through another surface.
 MUST use this when calling Codex app thread/worktree tools such as `fork_thread` or
 `create_thread` with a worktree environment.
 
+## Live Worktree Reservation Preflight
+
+MUST run this before creating, forking, reusing, or recycling a Codex app
+worktree. This is a repository-side fail-closed diagnostic; it does not claim to
+atomically control the host allocator.
+
+1. MUST rebuild the reservation map from the active/waiting child ledger and
+   every active or waiting specialist or Sentinel. Each reservation MUST name the
+   canonical worktree CWD, frozen HEAD, clean/index state, referencing task ids,
+   role, status, and explicit release/archive state.
+2. MUST compare the candidate against every reservation before setup and MUST
+   exclude dirty or locked candidate worktrees. A collision or excluded candidate
+   MUST record the reserved path, referencing task ids/statuses, expected frozen
+   HEAD, observed HEAD/clean state, and the unavailable or failed reservation API.
+   The parent MUST NOT create or fork the new thread, retry the same path, unlock
+   it, clean it, archive it, or recycle it.
+3. If the host chooses the candidate internally, the parent MUST require an atomic
+   reservation/exclusion API that compares the full reservation map before setup.
+   Reservation API health MUST be available, complete, and prove a full live-task
+   inventory. When that health check fails, the parent MUST fail setup before
+   allocation and record the host allocator blocker. The parent MUST NOT rely on
+   post-setup collision checks.
+
+Only the host allocator can prove distinct-path allocation. The repository
+contract requires safe failure rather than fabricating allocator enforcement.
+
 - MUST inspect current child owner state before creating or resuming a child
   Codex thread. The preflight evidence MUST include the current active child
   Codex thread count and whether an existing thread owns the same issue or PR.

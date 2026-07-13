@@ -3,4 +3,7 @@
 # refactor lanes.
 src/validation/child_lane_thread_tool_handler_defect_capture.rs cohesive defect-capture parser preserving review regression coverage pending focused split
 src/validation/child_lane_thread_tool_handler_scope.rs cohesive lane-scope metadata parser preserving same-lane behavior pending focused split
+src/validation/roles/sentinel_gate/reasoning_control.rs cohesive reasoning-evidence polarity parser preserving Sentinel contract edge coverage pending focused split
 tests/validator_child_lane_thread_tool_handler_same_line.rs regression matrix for same-line handler metadata cases pending focused test split
+tests/validator_sentinel_reasoning_control.rs regression matrix for Sentinel reasoning-control polarity and no-surface cases pending focused test split
+tests/validator_sentinel_reviewer_gate.rs regression matrix for Sentinel approval-evidence contract cases pending focused test split

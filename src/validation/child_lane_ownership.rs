@@ -9,10 +9,40 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_ascii_lowercase();
     let mut errors = super::child_lane_thread_tools::check(&normalized, evidence);
     errors.extend(super::child_lane_classification_setup::check(&normalized));
+    if has_unreported_worktree_mismatch_before_goal(&normalized) {
+        errors.push("worktree mismatch must be reported before goal continuation".to_owned());
+    }
     if has_unreassigned_parent_authored_fix(&normalized) {
         errors.push("child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment; parent implementation setup evidence is also a workflow defect".to_owned());
     }
     errors
+}
+fn has_unreported_worktree_mismatch_before_goal(evidence: &str) -> bool {
+    let mut mismatch = false;
+    for line in evidence.lines() {
+        if line.contains("restart audit:")
+            && line.contains("task cwd=")
+            && line.contains("canonical reserved worktree=")
+        {
+            let values = line.split("task cwd=").nth(1).and_then(|tail| {
+                let cwd = tail.split(';').next()?;
+                let canonical = tail
+                    .split("canonical reserved worktree=")
+                    .nth(1)?
+                    .split(';')
+                    .next()?;
+                Some((cwd, canonical))
+            });
+            mismatch |= values.is_some_and(|(cwd, canonical)| cwd != canonical);
+        }
+        if line.contains("mismatch reported before goal continuation") {
+            mismatch = false;
+        }
+        if mismatch && line.starts_with("goal tool call:") {
+            return true;
+        }
+    }
+    false
 }
 fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();

@@ -7,6 +7,10 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if let Some(error) = pr_state_input_error(&pr_state) {
         return vec![error];
     }
+    let loc_remediation_errors = super::completion_handoff_loc_remediation::check(handoff);
+    if !loc_remediation_errors.is_empty() {
+        return loc_remediation_errors;
+    }
     let child_handoff_errors = super::child_handoff_readiness::check(handoff, &pr_state);
     if !child_handoff_errors.is_empty() {
         return child_handoff_errors;
