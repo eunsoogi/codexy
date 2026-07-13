@@ -7,7 +7,7 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
 {
   "parent_approval": {
     "decision": "approved",
-    "source_task_id": "00000000-0000-0000-0000-000000000000"
+    "source_task_id": "REPLACE_WITH_ACTUAL_SOURCE_TASK_ID"
   },
   "classification": "issue_sized_defect",
   "reproduction": {
@@ -44,6 +44,10 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
   "assignee": "repository-assignee"
 }
 ```
+
+`source_task_id` MUST be replaced with the actual parent task UUID before
+running `--check-issue-intake`; the literal template value is intentionally
+invalid.
 
 - `surface_kind` MUST be `real_producer` or `user_facing`.
 - `existing_owner.kind` MUST be `issue` or `pull_request`.

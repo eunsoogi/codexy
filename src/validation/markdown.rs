@@ -20,6 +20,11 @@ pub(super) fn fence_marker(line: &str) -> Option<Fence> {
     (width >= 3).then_some(Fence { marker, width })
 }
 
+fn fence_candidate(line: &str) -> Option<&str> {
+    let indentation = line.bytes().take_while(|item| *item == b' ').count();
+    (indentation <= 3).then(|| &line[indentation..])
+}
+
 fn without_html_comments(line: &str, in_comment: &mut bool) -> String {
     let mut visible = String::new();
     let mut rest = line;
@@ -48,7 +53,10 @@ pub(super) fn has_heading(text: &str, heading: &str) -> bool {
     for line in text.lines() {
         let trimmed = line.trim_start();
         if let Some(marker) = fence {
-            if marker.closes(trimmed) {
+            if fence_candidate(line)
+                .map(|candidate| marker.closes(candidate))
+                .unwrap_or(false)
+            {
                 fence = None;
             }
             continue;
