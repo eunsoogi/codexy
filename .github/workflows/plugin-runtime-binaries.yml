@@ -16,28 +16,28 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "src/**"
-      - "plugins/codexy/**"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
       - "plugins/codexy/agents/**"
       - "plugins/codexy/skills/codex-orchestration/scripts/**"
       - "scripts/generate-release-changelog"
+      - "scripts/inspect-release-archive"
+      - "tests/release_archive_gate.rs"
       - ".agents/plugins/release-publish-contract.json"
-      - ".agents/plugins/marketplace.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
   pull_request:
     paths:
       - "Cargo.lock"
       - "Cargo.toml"
       - "src/**"
-      - "plugins/codexy/**"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
       - "plugins/codexy/agents/**"
       - "plugins/codexy/skills/codex-orchestration/scripts/**"
       - "scripts/generate-release-changelog"
+      - "scripts/inspect-release-archive"
+      - "tests/release_archive_gate.rs"
       - ".agents/plugins/release-publish-contract.json"
-      - ".agents/plugins/marketplace.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
 permissions:
@@ -122,6 +122,7 @@ jobs:
           scripts/validate-plugin-config --plugin-root "$plugin_root" --check-runtime-artifacts
           scripts/validate-plugin-config --plugin-root "$plugin_root" --check-hooks
           tar -C "$package_root" -czf "dist/codexy-marketplace-plugin.tar.gz" plugins/codexy
+          scripts/inspect-release-archive "dist/codexy-marketplace-plugin.tar.gz" "$plugin_root"
 
       - name: Upload marketplace package artifact
         uses: actions/upload-artifact@v4

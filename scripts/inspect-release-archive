@@ -1,0 +1,96 @@
+#!/bin/sh
+set -eu
+
+archive=${1:?archive path required}
+plugin_root=${2:?staged plugin root required}
+max_bytes=${MAX_ARCHIVE_FILE_BYTES:-52428800}
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
+command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required" >&2; exit 127; }
+[ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
+[ -d "$plugin_root" ] || { echo "staged plugin root missing: $plugin_root" >&2; exit 1; }
+
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+entries="$tmp_dir/entries"
+tar -tzf "$archive" >"$entries"
+
+while IFS= read -r entry; do
+  case "$entry" in
+    /*|../*|*/../*|*'/..'|*'//'*) echo "unsafe archive path: $entry" >&2; exit 1 ;;
+    plugins/codexy/*) ;;
+    *) echo "unexpected archive root entry: $entry" >&2; exit 1 ;;
+  esac
+done <"$entries"
+if tar -tvzf "$archive" | awk '$1 ~ /^l/ { print "symlink archive entry: " $0; bad=1 } END { exit bad }'; then :; else exit 1; fi
+
+extract_root="$tmp_dir/extracted"
+mkdir "$extract_root"
+tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
+"$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
+"$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
+"$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check
+if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
+  echo "archive contains a debug artifact" >&2
+  exit 1
+fi
+find "$plugin_root" -type f -printf '%P\n' | sort >"$tmp_dir/expected"
+find "$extract_root/plugins/codexy" -type f -printf '%P\n' | sort >"$tmp_dir/actual"
+diff -u "$tmp_dir/expected" "$tmp_dir/actual"
+
+while IFS= read -r relative; do
+  cmp -s "$plugin_root/$relative" "$extract_root/plugins/codexy/$relative" || {
+    echo "packaged file bytes differ: $relative" >&2
+    exit 1
+  }
+  expected_digest=$(sha256sum "$plugin_root/$relative" | awk '{print $1}')
+  actual_digest=$(sha256sum "$extract_root/plugins/codexy/$relative" | awk '{print $1}')
+  [ "$expected_digest" = "$actual_digest" ] || {
+    echo "packaged file digest differs: $relative" >&2
+    exit 1
+  }
+done <"$tmp_dir/expected"
+
+if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -quit | grep -q .; then
+  echo "archive contains an oversized file" >&2
+  exit 1
+fi
+if rg -n --hidden --glob '!runtime/*.bin' --glob '!*.md' --glob '!*.txt' '(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16}|/home/|/tmp/|/private/var/)' "$extract_root/plugins/codexy"; then
+  echo "archive contains a secret or local path" >&2
+  exit 1
+fi
+
+printf 'archive_sha256 '
+sha256sum "$archive" | awk '{print $1}'
+
+platform=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/;s/amd64/x86_64/')
+for server in lsp codegraph; do
+  runtime="$extract_root/plugins/codexy/runtime/codexy-mcp-$server-$platform.bin"
+  if [ -x "$runtime" ]; then
+    response_file="$tmp_dir/${server}-response"
+    set +e
+    printf '%s\n%s\n%s\n' \
+      '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}' \
+      '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+      '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | timeout 15 "$runtime" --stdio >"$response_file"
+    status=$?
+    set -e
+    [ "$status" -eq 0 ] || [ "$status" -eq 124 ] || { echo "$server MCP process failed: $status" >&2; exit 1; }
+    awk -v server="$server" '
+      function check(id, kind, line) {
+        if (line !~ /"jsonrpc"[[:space:]]*:[[:space:]]*"2.0"/) fail("invalid JSON-RPC response")
+        if (line !~ "\\\"id\\\"[[:space:]]*:[[:space:]]*" id "([,}])") fail("missing correlated id " id)
+        if (line ~ /"error"[[:space:]]*:/) fail("MCP " kind " returned an error")
+        if (line !~ /"result"[[:space:]]*:/) fail("MCP " kind " returned no result")
+        seen[id]++
+      }
+      function fail(message) { print server ": " message > "/dev/stderr"; exit 1 }
+      /"id"[[:space:]]*:[[:space:]]*1/ { check(1, "initialize", $0) }
+      /"id"[[:space:]]*:[[:space:]]*2/ { check(2, "tools/list", $0) }
+      END { if (seen[1] != 1 || seen[2] != 1) fail("MCP response ids were not correlated exactly once") }
+    ' "$response_file"
+  else
+    echo "${server} native smoke skipped: no executable $platform runtime"
+  fi
+done
