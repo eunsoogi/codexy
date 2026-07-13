@@ -9,6 +9,8 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
 command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required" >&2; exit 127; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
+response_checker="$script_dir/inspect-mcp-response"
+[ -x "$response_checker" ] || { echo "MCP response checker missing" >&2; exit 1; }
 [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
 [ -d "$plugin_root" ] || { echo "staged plugin root missing: $plugin_root" >&2; exit 1; }
 
@@ -133,30 +135,7 @@ PY
     status=$?
     set -e
     [ "$status" -eq 0 ] || { echo "$server MCP process failed: $status" >&2; exit 1; }
-    SERVER="$server" RESPONSE_FILE="$response_file" python3 - <<'PY'
-import json, os, sys
-
-server = os.environ["SERVER"]
-responses = {}
-for raw in open(os.environ["RESPONSE_FILE"], encoding="utf-8"):
-    try:
-        message = json.loads(raw)
-    except json.JSONDecodeError:
-        continue
-    if not isinstance(message, dict):
-        continue
-    identifier = message.get("id")
-    if type(identifier) is int and identifier in (1, 2):
-        if message.get("jsonrpc") != "2.0":
-            raise SystemExit(f"{server}: invalid JSON-RPC version for response id {identifier}")
-        if identifier in responses:
-            raise SystemExit(f"{server}: duplicate MCP response id {identifier}")
-        if "error" in message or "result" not in message:
-            raise SystemExit(f"{server}: MCP response id {identifier} is not a successful result")
-        responses[identifier] = message
-if set(responses) != {1, 2}:
-    raise SystemExit(f"{server}: MCP response ids were not correlated exactly once")
-PY
+    "$response_checker" "$response_file" "$server"
   else
     echo "${server} native smoke skipped: no executable $platform runtime"
   fi

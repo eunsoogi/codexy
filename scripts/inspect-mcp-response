@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+response_file=${1:?response file required}
+server=${2:?server name required}
+python3 - "$response_file" "$server" <<'PY'
+import json, sys
+
+responses = {}
+for raw in open(sys.argv[1], encoding="utf-8"):
+    try:
+        message = json.loads(raw)
+    except json.JSONDecodeError:
+        continue
+    if not isinstance(message, dict):
+        continue
+    identifier = message.get("id")
+    if type(identifier) is int and identifier in (1, 2):
+        if message.get("jsonrpc") != "2.0":
+            raise SystemExit(f"{sys.argv[2]}: invalid JSON-RPC version for response id {identifier}")
+        if identifier in responses:
+            raise SystemExit(f"{sys.argv[2]}: duplicate MCP response id {identifier}")
+        if "error" in message or "result" not in message:
+            raise SystemExit(f"{sys.argv[2]}: MCP response id {identifier} is not a successful result")
+        responses[identifier] = message
+if set(responses) != {1, 2}:
+    raise SystemExit(f"{sys.argv[2]}: MCP response ids were not correlated exactly once")
+PY
