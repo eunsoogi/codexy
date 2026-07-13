@@ -51,6 +51,7 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
     assert!(workflow.contains("Smoke test native MCP runtimes"));
     assert!(workflow.contains("codexy-mcp-${server}-${PLATFORM}.bin"));
+    assert!(workflow.contains("type(message.get(\"id\")) is int"));
 }
 
 #[test]
