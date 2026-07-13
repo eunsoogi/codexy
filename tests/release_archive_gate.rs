@@ -40,9 +40,13 @@ fn archive_gate_allows_documentation_path_examples() {
     assert!(script.contains("hygiene scan failed"));
     assert!(script.contains("duplicate archive entries"));
     assert!(script.contains("unexpected runtime artifact"));
-    assert!(script.contains("invalid JSON-RPC version for response id"));
+    let checker = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response"),
+    )
+    .expect("MCP response checker");
+    assert!(checker.contains("invalid JSON-RPC version for response id"));
     assert!(script.contains("unsafe archive path"));
-    assert!(script.contains("set(responses) != {1, 2}"));
+    assert!(checker.contains("set(responses) != {1, 2}"));
 }
 
 #[test]
