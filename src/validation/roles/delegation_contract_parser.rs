@@ -99,10 +99,13 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
 
 fn has_unnegated_mandatory_permission(prefix: &str) -> bool {
     let words = words(prefix);
-    words
-        .iter()
-        .rposition(|word| *word == "must")
-        .is_some_and(|index| words.get(index + 1) != Some(&"not"))
+    let Some(index) = words.iter().rposition(|word| *word == "must") else {
+        return false;
+    };
+    words.get(index + 1) != Some(&"not")
+        && !words[index + 1..]
+            .windows(2)
+            .any(|pair| pair == ["no", "circumstances"] || pair == ["any", "circumstances"])
 }
 
 fn has_action_negation(prefix: &str) -> bool {
@@ -123,7 +126,15 @@ fn has_action_negation(prefix: &str) -> bool {
                     .windows(2)
                     .any(|pair| pair == ["no", "circumstances"])
         }
-        "must" => words.get(index + 1) == Some(&"not"),
+        "must" => {
+            words.get(index + 1) == Some(&"not")
+                || following
+                    .windows(2)
+                    .any(|pair| pair == ["no", "circumstances"])
+                || following
+                    .windows(2)
+                    .any(|pair| pair == ["any", "circumstances"])
+        }
         "allowed" | "permitted" => words.get(index.wrapping_sub(1)) == Some(&"not"),
         _ => false,
     }
@@ -136,17 +147,35 @@ fn words(text: &str) -> Vec<&str> {
 }
 
 pub(super) fn normalize_instruction_text(text: &str) -> String {
+    let mut in_allowed_actions = false;
     text.lines()
         .map(str::trim)
         .map(|line| {
-            line.strip_prefix("- ")
+            if line.to_ascii_lowercase().starts_with("allowed actions")
+                || line.to_ascii_lowercase().starts_with("permitted actions")
+            {
+                in_allowed_actions = true;
+            }
+            let is_item = line.starts_with("- ")
+                || line.starts_with("* ")
+                || line
+                    .split_once('.')
+                    .is_some_and(|(prefix, _)| prefix.chars().all(|c| c.is_ascii_digit()));
+            let item = line
+                .strip_prefix("- ")
                 .or_else(|| line.strip_prefix("* "))
-                .unwrap_or(line)
-        })
-        .map(|line| {
-            line.split_once(". ")
-                .filter(|(prefix, _)| prefix.chars().all(|character| character.is_ascii_digit()))
-                .map_or(line, |(_, remainder)| remainder)
+                .or_else(|| {
+                    line.split_once(". ")
+                        .filter(|(prefix, _)| {
+                            prefix.chars().all(|character| character.is_ascii_digit())
+                        })
+                        .map(|(_, remainder)| remainder)
+                });
+            if in_allowed_actions && is_item {
+                format!("Allowed actions: {}", item.unwrap_or(line))
+            } else {
+                item.unwrap_or(line).to_owned()
+            }
         })
         .collect::<Vec<_>>()
         .join(" ")

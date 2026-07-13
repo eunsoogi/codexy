@@ -19,6 +19,17 @@ fn validator_rejects_line_wrapped_recursive_permissions() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_allowed_action_bullets_and_circumstantial_must() -> TestResult {
+    assert_recursive_role_permission_rejected(
+        "Allowed actions:\n- Map files.\n- Spawn another helper.",
+    )?;
+    assert_role_recursion_not_reported(
+        "A helper MUST, under no circumstances, spawn another helper.",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_recursive_actions_after_unrelated_negations() -> TestResult {
     for permission in [
         "MUST spawn validator_edge_pass and workflow_ownership_pass as additional helpers.",
