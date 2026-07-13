@@ -8,7 +8,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn validator_requires_child_external_gate_and_archive_preflight_policy() -> TestResult {
     for (required, replacement, error_fragment) in [
         (
-            "A child\n  external-gate wait MUST retain active goal and plan",
+            "child external-gate wait MUST retain active goal and plan",
             "A child\n  external-gate wait is optional",
             "child external-gate wait must retain active goal and plan",
         ),
@@ -23,12 +23,12 @@ fn validator_requires_child_external_gate_and_archive_preflight_policy() -> Test
             "may archive only terminal, unreferenced, clean and unreserved worktree lanes with no open pr or pending gate",
         ),
         (
-            "On a `BLOCK`, the usable existing owner MUST record the `BLOCK` and update the\nplan to a repair step",
-            "On a `BLOCK`, the usable existing owner MAY finish the lane",
-            "usable existing owner must record the `block` and update the plan to a repair step",
+            "After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step",
+            "After Sentinel BLOCK, the usable existing owner MAY finish the lane",
+            "usable existing owner must record the block and update the plan to a repair step",
         ),
         (
-            "add faithful RED coverage, repair, rerun terminal\nproof, then invoke exactly one fresh Sentinel review for the new file state or\nhead",
+            "add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head",
             "repair whenever convenient",
             "invoke exactly one fresh sentinel review for the new file state or head",
         ),
@@ -79,7 +79,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     fs::write(
         &path,
         original.replace(
-            "The root/orchestrator MAY end its goal and plan after dispatch. A child\n  external-gate wait MUST retain active goal and plan",
+            "The root/orchestrator MAY end its goal and plan after dispatch; child external-gate wait MUST retain active goal and plan",
             "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Historical Example\nThis is retained only for historical context.\nA child\n  external-gate wait MUST retain active goal and plan",
         ),
     )?;
@@ -117,7 +117,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     fs::write(
         &path,
         original.replace(
-            "The root/orchestrator MAY end its goal and plan after dispatch. A child\n  external-gate wait MUST retain active goal and plan, use bounded child-local monitoring until a material result, and send a parent delta before transition.",
+            "The root/orchestrator MAY end its goal and plan after dispatch; child external-gate wait MUST retain active goal and plan, use bounded child-local monitoring, and send a parent delta before transition.",
             "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Child external-gate wait MUST retain active goal and plan",
         ),
     )?;
@@ -135,7 +135,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
         fs::write(
             &path,
             original.replace(
-                "A child\n  external-gate wait MUST retain active goal and plan",
+                "child external-gate wait MUST retain active goal and plan",
                 negated_clause,
             ),
         )?;
@@ -178,5 +178,23 @@ fn validator_allows_compliant_negated_polling_prohibitions() -> TestResult {
 
     let output = support::validator(&plugin_root, "--check")?;
     assert!(output.status.success(), "{}", support::stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_inline_code_delimited_forbidden_policy() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let original = fs::read_to_string(&path)?;
+    fs::write(
+        &path,
+        format!(
+            "{original}\nMUST call `update_goal`(status=\"blocked\") after a Sentinel BLOCK.\n"
+        ),
+    )?;
+
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("must not block a usable owner"));
     Ok(())
 }

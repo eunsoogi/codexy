@@ -136,7 +136,6 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         );
     }
 }
-
 fn require_all(
     path: &Path,
     text: &str,
@@ -146,7 +145,8 @@ fn require_all(
 ) {
     let lower = normalized_whitespace(text);
     for phrase in phrases {
-        if !has_unweakened_required_clause(&lower, phrase) {
+        let phrase = normalized_whitespace(phrase);
+        if !has_unweakened_required_clause(&lower, &phrase) {
             errors.push(format!(
                 "{} {requirement}: missing `{phrase}`",
                 display_relative(path)
@@ -154,7 +154,6 @@ fn require_all(
         }
     }
 }
-
 fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
         let before = &text[..index];
@@ -164,7 +163,6 @@ fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
         !appears_in_heading(before) && !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
 }
-
 fn has_invalid_prefix(before: &str) -> bool {
     let section = before
         .rsplit("<markdown-heading>")
@@ -217,7 +215,8 @@ fn reject_all(
 ) {
     let lower = normalized_whitespace(text);
     for phrase in phrases {
-        if lower.match_indices(phrase).any(|(index, _)| {
+        let phrase = normalized_whitespace(phrase);
+        if lower.match_indices(&phrase).any(|(index, _)| {
             let before = &lower[..index];
             !appears_in_heading(before) && !has_invalid_prefix(before)
         }) {
@@ -244,6 +243,7 @@ fn normalized_whitespace(text: &str) -> String {
     }
     with_heading_boundaries
         .to_ascii_lowercase()
+        .replace('`', "")
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
