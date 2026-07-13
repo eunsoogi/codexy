@@ -7,7 +7,7 @@ const MAIN_REF: &str = "origin/main";
 
 pub(super) struct IntegrationScope {
     head: String,
-    reconciliation: Option<Reconciliation>,
+    reconciliations: Vec<Reconciliation>,
 }
 
 struct Reconciliation {
@@ -18,10 +18,10 @@ struct Reconciliation {
 impl IntegrationScope {
     pub(super) fn discover(root: &Path, requested_base: &str) -> Result<Self> {
         let head = child_head(root, requested_base)?;
-        let reconciliation = reconciliation_merge(root, requested_base, &head)?;
+        let reconciliations = reconciliation_merges(root, requested_base, &head)?;
         Ok(Self {
             head,
-            reconciliation,
+            reconciliations,
         })
     }
 
@@ -36,15 +36,26 @@ impl IntegrationScope {
         path: &Path,
         locally_changed: bool,
     ) -> Result<Option<String>> {
-        let Some(reconciliation) = &self.reconciliation else {
+        let mut baseline = None;
+        let mut child_changed = false;
+        for commit in path_history(root, requested_base, &self.head, path)? {
+            let reconciliation = self
+                .reconciliations
+                .iter()
+                .find(|reconciliation| reconciliation.commit == commit);
+            if let Some(reconciliation) = reconciliation {
+                if !path_differs(root, &reconciliation.main_parent, &commit, path)? {
+                    baseline = Some(reconciliation);
+                    child_changed = false;
+                    continue;
+                }
+            }
+            child_changed = true;
+        }
+        let Some(reconciliation) = baseline else {
             return Ok(Some(requested_base.to_owned()));
         };
-        let first_parent = format!("{}^1", reconciliation.commit);
-        if !path_differs(root, &first_parent, &reconciliation.commit, path)? {
-            return Ok(Some(requested_base.to_owned()));
-        }
-        let changed_after = path_differs(root, &reconciliation.commit, &self.head, path)?;
-        if !changed_after && !locally_changed {
+        if !child_changed && !locally_changed {
             return Ok(None);
         }
         Ok(Some(reconciliation.main_parent.clone()))
@@ -65,17 +76,17 @@ fn child_head(root: &Path, requested_base: &str) -> Result<String> {
     Ok(head)
 }
 
-fn reconciliation_merge(
+fn reconciliation_merges(
     root: &Path,
     requested_base: &str,
     head: &str,
-) -> Result<Option<Reconciliation>> {
+) -> Result<Vec<Reconciliation>> {
     if requested_base == MAIN_REF
         || !commit_exists(root, MAIN_REF)?
         || !is_ancestor(root, requested_base, head)?
         || !is_ancestor(root, MAIN_REF, head)?
     {
-        return Ok(None);
+        return Ok(Vec::new());
     }
     let range = format!("{requested_base}..{head}");
     let output = git(root, ["rev-list", "--first-parent", "--merges", &range])?;
@@ -85,19 +96,48 @@ fn reconciliation_merge(
             String::from_utf8_lossy(&output.stderr).trim()
         );
     }
+    let mut reconciliations = Vec::new();
     for commit in String::from_utf8_lossy(&output.stdout).lines() {
         let parents = commit_parents(root, commit)?;
         let Some(main_parent) = parents.get(1) else {
             continue;
         };
         if is_ancestor(root, main_parent, MAIN_REF)? {
-            return Ok(Some(Reconciliation {
+            reconciliations.push(Reconciliation {
                 commit: commit.to_owned(),
                 main_parent: main_parent.clone(),
-            }));
+            });
         }
     }
-    Ok(None)
+    reconciliations.reverse();
+    Ok(reconciliations)
+}
+
+fn path_history(root: &Path, requested_base: &str, head: &str, path: &Path) -> Result<Vec<String>> {
+    let range = format!("{requested_base}..{head}");
+    let output = git(
+        root,
+        [
+            "log",
+            "--first-parent",
+            "--format=%H",
+            &range,
+            "--",
+            &path.to_string_lossy(),
+        ],
+    )?;
+    if !output.status.success() {
+        bail!(
+            "resolving per-path reconciliation history failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    let mut commits = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    commits.reverse();
+    Ok(commits)
 }
 
 fn commit_exists(root: &Path, reference: &str) -> Result<bool> {
