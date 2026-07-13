@@ -69,7 +69,7 @@ pub(super) fn has_non_claim_phrase_context(prefix: &str, suffix: &str) -> bool {
         || has_unchecked_checklist_marker_before(prefix)
         || has_non_claim_heading_suffix(suffix)
         || has_non_claim_label_value(suffix)
-        || has_missing_status_suffix(suffix)
+        || super::sentinel_handoff_status_evidence::has_missing_status_suffix(suffix)
 }
 
 fn has_non_claim_heading_prefix(prefix: &str) -> bool {
@@ -91,26 +91,6 @@ fn has_non_claim_heading_prefix(prefix: &str) -> bool {
         || heading.strip_prefix("example ").is_some_and(|number| {
             !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit())
         })
-}
-
-fn has_missing_status_suffix(suffix: &str) -> bool {
-    let clause = suffix
-        .split(['.', '!', '?', ';', '\n'])
-        .next()
-        .unwrap_or_default();
-    let words: Vec<_> = clause
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .collect();
-    words.windows(2).any(|pair| {
-        matches!(
-            pair,
-            [
-                "is" | "was" | "were" | "are" | "be" | "been",
-                "missing" | "absent" | "lacking"
-            ]
-        )
-    })
 }
 
 fn has_unchecked_checklist_marker_before(prefix: &str) -> bool {
