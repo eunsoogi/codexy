@@ -87,6 +87,7 @@ Maintainer reassignment: none
 fn validator_allows_same_lane_metadata_that_negates_explicit_lane_labels()
 -> Result<(), Box<dyn std::error::Error>> {
     for phrase in [
+        "not Lane B",
         "not for Lane B",
         "not in Lane B",
         "not assigned to Lane B",

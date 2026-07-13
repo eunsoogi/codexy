@@ -363,10 +363,11 @@ fn is_negated_explicit_lane_mention(tokens: &[&str], lane_index: usize) -> bool 
         .checked_sub(3)
         .map(|index| tokens[index].to_ascii_lowercase());
 
-    matches!(previous.as_str(), "for" | "in")
-        && before_previous
-            .as_deref()
-            .is_some_and(is_lane_mention_negation)
+    is_lane_mention_negation(&previous)
+        || matches!(previous.as_str(), "for" | "in")
+            && before_previous
+                .as_deref()
+                .is_some_and(is_lane_mention_negation)
         || previous == "to"
             && before_previous.as_deref() == Some("assigned")
             && before_before_previous
@@ -629,7 +630,7 @@ fn has_defect_label(line: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::has_different_lane_mention;
+    use super::{has_different_lane_mention, lane_mention_labels};
 
     #[test]
     fn detects_singular_multi_letter_lane_lists() {
@@ -662,5 +663,10 @@ mod tests {
                 "expected {line} to remain same-lane prose"
             );
         }
+    }
+
+    #[test]
+    fn ignores_shorthand_negated_lane_mentions() {
+        assert!(lane_mention_labels("Fallback route: not Lane B").is_empty());
     }
 }
