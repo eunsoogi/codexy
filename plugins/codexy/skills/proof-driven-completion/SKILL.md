@@ -52,6 +52,10 @@ complete.
   MUST treat files over the 250 LOC target as failing evidence unless the tracked
   Codexy LOC exception mechanism names the file and rationale. Handoff or PR
   body prose alone is not proof of an exception.
+- MUST record why a LOC reduction is structural rather than formatting-only.
+  MUST NOT treat blank-line deletion or collapsed readable multiline content as
+  structural remediation evidence; MUST name the helper, module, test target,
+  responsibility, or duplicate removal that made the reduction coherent.
 - For plugin skills, MUST confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews,

@@ -4,6 +4,8 @@ use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
 
+use super::touched_loc_remediation;
+
 const LOC_LIMIT: usize = 250;
 const EXCEPTIONS_PATH: &str = ".codexy-loc-exceptions";
 
@@ -23,6 +25,12 @@ fn check_inner(base_ref: &str) -> Result<()> {
             continue;
         }
         let line_count = count_lines(&root.join(&path))?;
+        if let Some(error) = touched_loc_remediation::formatting_only_error(
+            &root, base_ref, &path, line_count, LOC_LIMIT,
+        )? {
+            errors.push(error);
+            continue;
+        }
         if line_count <= LOC_LIMIT || exceptions.contains_key(&path) {
             continue;
         }
@@ -60,7 +68,7 @@ fn git_top_level() -> Result<PathBuf> {
     ))
 }
 
-fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
+pub(super) fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
     let mut files = run_git_diff(root, &format!("{base_ref}...HEAD"))?;
     files.extend(run_git_diff(root, "--cached")?);
     files.extend(run_git_diff(root, "")?);

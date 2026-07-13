@@ -3,6 +3,7 @@ use std::path::Path;
 use toml::Value;
 
 use crate::paths::display_relative;
+use crate::validation::instruction_policy::sentinel_scope_policy;
 
 mod affirmative_clause;
 mod reasoning_control;
@@ -26,6 +27,9 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "replayed review examples when applicable",
     "no-finding result when no blockers remain",
     "any unresolved risk",
+    "MUST identify formatting-only LOC remediation before approving readiness.",
+    "MUST inspect the base-to-current reduction and block blank-line deletion or collapsed readable multiline code, tests, or instructions",
+    "MUST permit a collapsed readable multiline construct when the same reduction includes independent structural remediation.",
 ];
 
 const APPROVAL_EVIDENCE_MARKERS: &[&str] = &[
@@ -64,6 +68,7 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
             missing_markers.join(", ")
         ));
     }
+    sentinel_scope_policy::check_sentinel(path, instructions, errors);
     if !reasoning_control::has_reasoning_control_paragraph(instructions) {
         errors.push(format!(
             "{} codexy-sentinel reasoning-control paragraph must be present and affirmative",
@@ -113,6 +118,10 @@ fn has_positive_marker(instructions: &str, marker: &str) -> bool {
     while let Some(relative_index) = instructions[search_start..].find(marker) {
         let marker_index = search_start + relative_index;
         if is_prefix_negated(instructions, marker_index, marker)
+            || affirmative_clause::has_quoted_marker_prefix(
+                &instructions[..marker_index],
+                &instructions[marker_index + marker.len()..],
+            )
             || is_marker_sentence_weakened(instructions, marker_index, marker)
         {
             return false;
@@ -203,7 +212,7 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
         || sentence.contains("not mandatory")
         || sentence.contains("not needed")
         || affirmative_clause::has_weakened_marker_prefix(marker_prefix)
-        || marker_tail_has_conditional_waiver(marker_tail)
+        || affirmative_clause::marker_tail_has_conditional_waiver(marker_tail)
         || sentence.contains("may skip")
         || sentence.contains("may omit")
         || sentence.contains("may ignore")
@@ -216,28 +225,4 @@ fn is_marker_sentence_weakened(instructions: &str, marker_index: usize, marker: 
         || sentence.contains("can be skipped")
         || sentence.contains("can be omitted")
         || sentence.contains("can be ignored")
-}
-
-fn marker_tail_has_conditional_waiver(tail: &str) -> bool {
-    let tail = tail.trim_start_matches(|ch: char| {
-        ch.is_ascii_whitespace() || matches!(ch, ':' | '-' | ',' | ';')
-    });
-    let clause_end = tail.find([',', ';']).unwrap_or(tail.len());
-    let clause = tail[..clause_end].trim_start();
-    [
-        "if available",
-        "when available",
-        "if possible",
-        "when possible",
-        "if applicable",
-        "when applicable",
-        "as applicable",
-        "where applicable",
-        "if needed",
-        "when needed",
-        "as needed",
-        "where needed",
-    ]
-    .iter()
-    .any(|phrase| clause.starts_with(phrase))
 }
