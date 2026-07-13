@@ -8,7 +8,6 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
 command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required" >&2; exit 127; }
-command -v rg >/dev/null 2>&1 || { echo "rg is required" >&2; exit 127; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
 [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
 [ -d "$plugin_root" ] || { echo "staged plugin root missing: $plugin_root" >&2; exit 1; }
@@ -61,10 +60,24 @@ if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -qu
   echo "archive contains an oversized file" >&2
   exit 1
 fi
-if rg -n --hidden --glob '!runtime/*.bin' --glob '!*.md' --glob '!*.txt' '(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16}|/home/|/tmp/|/private/var/)' "$extract_root/plugins/codexy"; then
-  echo "archive contains a secret or local path" >&2
-  exit 1
+hygiene_pattern='(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16}|/home/|/tmp/|/private/var/)'
+if command -v rg >/dev/null 2>&1; then
+  set +e
+  rg -n --hidden --glob '!runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$hygiene_pattern" "$extract_root/plugins/codexy"
+  hygiene_status=$?
+  set -e
+else
+  command -v grep >/dev/null 2>&1 || { echo "rg or grep is required" >&2; exit 127; }
+  set +e
+  grep -RIn --exclude='*.bin' --exclude='*.md' --exclude='*.txt' -E "$hygiene_pattern" "$extract_root/plugins/codexy"
+  hygiene_status=$?
+  set -e
 fi
+case "$hygiene_status" in
+  0) echo "archive contains a secret or local path" >&2; exit 1 ;;
+  1) ;;
+  *) echo "archive hygiene scan failed: status $hygiene_status" >&2; exit 1 ;;
+esac
 
 printf 'archive_sha256 '
 sha256sum "$archive" | awk '{print $1}'

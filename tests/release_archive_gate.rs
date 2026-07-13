@@ -33,6 +33,8 @@ fn archive_gate_allows_documentation_path_examples() {
     assert!(!script.contains("--glob '!README.md'"));
     assert!(script.contains("command -v rg"));
     assert!(script.contains("command -v python3"));
+    assert!(script.contains("rg or grep is required"));
+    assert!(script.contains("hygiene scan failed"));
     assert!(script.contains("set(responses) != {1, 2}"));
 }
 
