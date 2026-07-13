@@ -29,8 +29,8 @@ fn archive_gate_allows_documentation_path_examples() {
     )
     .expect("archive gate script");
     assert!(script.contains("--exclude='*.bin'"));
-    assert!(!script.contains("--exclude='*.md'"));
-    assert!(!script.contains("--exclude='*.txt'"));
+    assert!(script.contains("--exclude='*.md'"));
+    assert!(script.contains("--exclude='*.txt'"));
     assert!(script.contains("command -v python3"));
     assert!(script.contains("rg or grep is required"));
     assert!(script.contains("hygiene scan failed"));

@@ -16,12 +16,14 @@ tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 entries="$tmp_dir/entries"
 tar -tzf "$archive" >"$entries"
-duplicates=$(sort "$entries" | uniq -d)
+canonical_entries="$tmp_dir/canonical-entries"
+sed 's#^\./##; s#//\+#/#g; s#/\./#/#g' "$entries" | sort >"$canonical_entries"
+duplicates=$(uniq -d "$canonical_entries")
 [ -z "$duplicates" ] || { echo "duplicate archive entries: $duplicates" >&2; exit 1; }
 
 while IFS= read -r entry; do
   case "$entry" in
-    /*|../*|*/../*|*'/..'|*'//'*) echo "unsafe archive path: $entry" >&2; exit 1 ;;
+    /*|../*|*/../*|*'/..'|*'//'|./*|*/./*) echo "unsafe archive path: $entry" >&2; exit 1 ;;
     plugins/codexy/*) ;;
     *) echo "unexpected archive root entry: $entry" >&2; exit 1 ;;
   esac
@@ -51,6 +53,13 @@ while IFS= read -r relative; do
     runtime/*) echo "unexpected runtime artifact: $relative" >&2; exit 1 ;;
   esac
 done <"$tmp_dir/actual"
+(cd "$extract_root/plugins/codexy" && find . -type d | sed 's#^./##') >"$tmp_dir/directories"
+while IFS= read -r relative; do
+  case "$relative" in
+    runtime) ;;
+    runtime/*) echo "unexpected runtime directory: $relative" >&2; exit 1 ;;
+  esac
+done <"$tmp_dir/directories"
 
 while IFS= read -r relative; do
   cmp -s "$plugin_root/$relative" "$extract_root/plugins/codexy/$relative" || {
@@ -69,23 +78,33 @@ if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -qu
   echo "archive contains an oversized file" >&2
   exit 1
 fi
-hygiene_pattern='(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16}|/home/|/tmp/|/private/var/)'
+hygiene_pattern='(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16})'
+local_path_pattern='/(Users|home|tmp|private/var)/'
 if command -v rg >/dev/null 2>&1; then
   set +e
   rg -n --hidden --glob '!runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
+  rg -n --hidden --glob '!runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
+  local_path_status=$?
   set -e
 else
   command -v grep >/dev/null 2>&1 || { echo "rg or grep is required" >&2; exit 127; }
   set +e
   grep -RIn --exclude='*.bin' -E "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
+  grep -RIn --exclude='*.bin' --exclude='*.md' --exclude='*.txt' -E "$local_path_pattern" "$extract_root/plugins/codexy"
+  local_path_status=$?
   set -e
 fi
 case "$hygiene_status" in
   0) echo "archive contains a secret or local path" >&2; exit 1 ;;
   1) ;;
   *) echo "archive hygiene scan failed: status $hygiene_status" >&2; exit 1 ;;
+esac
+case "$local_path_status" in
+  0) echo "archive contains a secret or local path" >&2; exit 1 ;;
+  1) ;;
+  *) echo "archive local-path scan failed: status $local_path_status" >&2; exit 1 ;;
 esac
 
 printf 'archive_sha256 '
@@ -127,7 +146,7 @@ for raw in open(os.environ["RESPONSE_FILE"], encoding="utf-8"):
     if not isinstance(message, dict):
         continue
     identifier = message.get("id")
-    if identifier in (1, 2):
+    if type(identifier) is int and identifier in (1, 2):
         if message.get("jsonrpc") != "2.0":
             raise SystemExit(f"{server}: invalid JSON-RPC version for response id {identifier}")
         if identifier in responses:
