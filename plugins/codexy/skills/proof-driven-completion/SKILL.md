@@ -52,6 +52,10 @@ complete.
   MUST treat files over the 250 LOC target as failing evidence unless the tracked
   Codexy LOC exception mechanism names the file and rationale. Handoff or PR
   body prose alone is not proof of an exception.
+- MUST record why a LOC reduction is structural rather than formatting-only.
+  MUST NOT treat blank-line deletion or collapsed readable multiline content as
+  structural remediation evidence; MUST name the helper, module, test target,
+  responsibility, or duplicate removal that made the reduction coherent.
 - For plugin skills, MUST confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews,
@@ -101,6 +105,7 @@ complete.
   with the reviewer name and exact head. `BLOCK` and `UNOBSERVABLE` MUST NOT
   satisfy PR readiness, push readiness, parent acceptance, or completion unless
   a maintainer explicitly approves a fallback.
+- Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, MUST verify
   the child reported actual goal-tool usage or an unavailable-goal-tool

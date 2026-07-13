@@ -15,6 +15,8 @@ repeat large unchanged artifacts.
 This skill is not a shortcut around `$proof-driven-completion`. It changes how
 evidence is summarized and refreshed, not which gates are required.
 
+Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+
 ## Required Proof Gates
 
 MUST NOT compress away these current facts for an active lane:

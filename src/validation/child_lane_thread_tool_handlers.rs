@@ -4,13 +4,16 @@ use super::child_lane_thread_tool_handler_defect_capture::{
     has_negated_fallback_route_field,
 };
 use super::child_lane_thread_tool_handler_exact_error::placeholder_tools_have_exact_errors;
+use super::child_lane_thread_tool_handler_lane_header::include_preceding_lane_header;
+use super::child_lane_thread_tool_handler_raw_lane::{
+    handler_missing_capture_range, has_different_lane_defect_capture,
+};
 use super::child_lane_thread_tool_handler_scope::{
-    capture_end_before_unrelated_evidence, following_handoff_metadata_has,
-    is_handoff_metadata_line, is_list_item, preceding_handoff_metadata_start,
-    previous_nonempty_block_start, scope_start_until_blank,
+    following_handoff_metadata_has, is_handoff_metadata_line, is_list_item,
+    preceding_handoff_metadata_start, previous_nonempty_block_start, scope_start_until_blank,
 };
 
-pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
+pub(super) fn has_uncaptured_defect(evidence: &str, original_evidence: &str) -> bool {
     if !has_discovered_or_expected_thread_tool(evidence) {
         return false;
     }
@@ -19,19 +22,27 @@ pub(super) fn has_uncaptured_defect(evidence: &str) -> bool {
         .any(|(start, _)| {
             let (line, line_start) = line_containing(evidence, start);
             let line_offset = start - line_start;
-            let capture_scope = handler_missing_capture_scope(evidence, start);
+            let capture_range = handler_missing_capture_range(evidence, start);
+            let capture_scope = &evidence[capture_range.clone()];
+            let original_capture_scope = original_evidence
+                .get(capture_range)
+                .unwrap_or(capture_scope);
+            let capture_names_different_lane =
+                has_different_lane_defect_capture(original_capture_scope);
             if let Some(tool) = handler_missing_tool(line, line_offset) {
                 return !has_negated_handler_missing_claim(line, line_offset)
-                    && !has_actionable_handler_defect_report(capture_scope, tool);
+                    && (capture_names_different_lane
+                        || !has_actionable_handler_defect_report(capture_scope, tool));
             }
             let placeholder_scope = handler_missing_placeholder_scope(evidence, line_start);
             handler_missing_placeholder(line, line_offset)
                 && has_thread_tool_name(placeholder_scope)
                 && !has_negated_handler_missing_claim(line, line_offset)
-                && !has_actionable_handler_placeholder_report(placeholder_scope, capture_scope)
+                && (capture_names_different_lane
+                    || !has_actionable_handler_placeholder_report(placeholder_scope, capture_scope))
         })
 }
-const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
+pub(super) const HANDLER_MISSING_MARKER: &str = "no handler registered for tool:";
 const CAPTURE_MARKERS: &str = "captured|classified|recorded|reported|routed|tracked";
 const THREAD_TOOL_DISCOVERY_MARKERS: &str = "available|callable|discovered|expected|exposed|found|listed|registered|tool_search|tool search|visible";
 const THREAD_TOOL_NAMES: &str = "create_thread|fork_thread|list_projects|list_threads|read_thread|send_message_to_thread|set_thread_title";
@@ -94,29 +105,14 @@ fn handler_missing_tool(line: &str, start: usize) -> Option<&'static str> {
 
     thread_tool_names().find(|thread_tool| *thread_tool == tool)
 }
-fn line_containing(text: &str, offset: usize) -> (&str, usize) {
+pub(super) fn line_containing(text: &str, offset: usize) -> (&str, usize) {
     let line_start = text[..offset].rfind('\n').map_or(0, |index| index + 1);
     let line_end = text[offset..]
         .find('\n')
         .map_or(text.len(), |index| offset + index);
     (&text[line_start..line_end], line_start)
 }
-fn handler_missing_capture_scope(evidence: &str, start: usize) -> &str {
-    let (_, line_start) = line_containing(evidence, start);
-    let capture_start = multiline_capture_start(evidence, line_start);
-    let next_start = evidence[start + HANDLER_MISSING_MARKER.len()..]
-        .match_indices(HANDLER_MISSING_MARKER)
-        .map(|(offset, _)| start + HANDLER_MISSING_MARKER.len() + offset)
-        .find(|next| {
-            evidence[start..*next].contains('\n')
-                && !same_handler_list_group(evidence, line_start, *next)
-                && !same_defect_list_report(evidence, line_start, *next)
-                && !line_containing(evidence, *next).0.contains("exact")
-        })
-        .unwrap_or_else(|| capture_end_before_unrelated_evidence(evidence, capture_start, start));
-    &evidence[capture_start..next_start]
-}
-fn same_defect_list_report(evidence: &str, line_start: usize, next: usize) -> bool {
+pub(super) fn same_defect_list_report(evidence: &str, line_start: usize, next: usize) -> bool {
     let (next_line, next_line_start) = line_containing(evidence, next);
     if !is_list_item(next_line) {
         return false;
@@ -130,7 +126,7 @@ fn same_defect_list_report(evidence: &str, line_start: usize, next: usize) -> bo
         !saw_defect_label || line.trim().is_empty() || is_list_item(line)
     }) && saw_defect_label
 }
-fn same_handler_list_group(evidence: &str, line_start: usize, next: usize) -> bool {
+pub(super) fn same_handler_list_group(evidence: &str, line_start: usize, next: usize) -> bool {
     let (next_line, next_line_start) = line_containing(evidence, next);
     if !evidence[line_start..next_line_start]
         .lines()
@@ -159,17 +155,16 @@ fn handler_missing_placeholder_scope(evidence: &str, line_start: usize) -> &str 
     }
     &evidence[previous_start..current_line_end]
 }
-fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
+pub(super) fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
     let current_line_end = line_end(evidence, line_start);
     let current_trimmed = evidence[line_start..current_line_end].trim_start();
     if !is_list_item(current_trimmed) {
-        if following_handoff_metadata_has(evidence, line_start, |line| {
+        let starts_at_handoff = following_handoff_metadata_has(evidence, line_start, |line| {
             has_defect_label(line) && !has_absent_defect_capture(line)
-        }) {
-            return preceding_handoff_metadata_start(evidence, line_start);
-        }
-        if has_defect_label(current_trimmed) {
-            return preceding_handoff_metadata_start(evidence, line_start);
+        }) || has_defect_label(current_trimmed);
+        if starts_at_handoff {
+            let start = preceding_handoff_metadata_start(evidence, line_start);
+            return include_preceding_lane_header(evidence, start);
         }
         let mut cursor = line_start;
         while cursor > 0 {
@@ -187,7 +182,7 @@ fn multiline_capture_start(evidence: &str, line_start: usize) -> usize {
             }
             cursor = previous_start;
         }
-        return line_start;
+        return include_preceding_lane_header(evidence, line_start);
     }
     let mut capture_start = line_start;
     let mut cursor = line_start;

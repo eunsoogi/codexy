@@ -1,7 +1,7 @@
 const MAINTAINER_FALLBACK_APPROVAL_MARKERS: &str = "maintainer explicitly approved fallback|maintainer explicitly approved a fallback|maintainer explicitly approved the fallback|maintainer approval: fallback approved|maintainer approval fallback approved";
 const FALLBACK_REJECTION_MARKERS: &str = "fallback required|approval required|required before|no maintainer approval|no maintainer response|not approved|previous fallback|prior fallback|old fallback|earlier fallback|superseded fallback|previous unobservable|prior unobservable|old unobservable|earlier unobservable|superseded unobservable|previous sentinel|prior sentinel|old sentinel|earlier sentinel|superseded sentinel|previous codexy-sentinel|prior codexy-sentinel|old codexy-sentinel|earlier codexy-sentinel|superseded codexy-sentinel|previous reviewer gate|prior reviewer gate|old reviewer gate|earlier reviewer gate|superseded reviewer gate|previous reviewer-gate|prior reviewer-gate|old reviewer-gate|earlier reviewer-gate|superseded reviewer-gate";
 const CURRENT_HEAD_REJECTION_MARKERS: &str = "old head|earlier head|previous head|prior head|stale head|old commit|previous commit|prior commit|stale commit|old sha|previous sha|prior sha|stale sha|old oid|previous oid|prior oid|stale oid|not on current head|not on current pr head|not on the current head|not on the current pr head|not for current head|not for current pr head|not for the current head|not for the current pr head|not current head|not current pr head";
-const NEGATIVE_LABEL_VALUE_MARKERS: &str = "false|not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|isn't currently ready|aren't ready|aren't yet ready|aren't currently ready|not requested|isn't requested|aren't requested|not applicable|isn't applicable|aren't applicable|n/a";
+const NEGATIVE_LABEL_VALUE_MARKERS: &str = "false|not ready|not yet ready|not currently ready|isn't ready|isn't yet ready|isn't currently ready|aren't ready|aren't yet ready|aren't currently ready|not requested|isn't requested|aren't requested|not applicable|isn't applicable|aren't applicable|missing|evidence missing|absent|not provided|n/a";
 const AFFIRMATIVE_LABEL_VALUE_MARKERS: &str = "yes|true|approved|explicitly approved";
 
 use super::sentinel_handoff::{affirmed_phrase_starts, clause_bounds, has_any, is_boundary};
@@ -65,9 +65,32 @@ pub(super) fn has_negative_label_value(suffix: &str) -> bool {
 }
 
 pub(super) fn has_non_claim_phrase_context(prefix: &str, suffix: &str) -> bool {
-    has_unchecked_checklist_marker_before(prefix)
+    has_non_claim_heading_prefix(prefix)
+        || has_unchecked_checklist_marker_before(prefix)
         || has_non_claim_heading_suffix(suffix)
         || has_non_claim_label_value(suffix)
+        || super::sentinel_handoff_status_evidence::has_missing_status_suffix(suffix)
+}
+
+fn has_non_claim_heading_prefix(prefix: &str) -> bool {
+    let line = prefix
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or_default();
+    let heading = line
+        .rsplit(['.', '!', '?', ';'])
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .trim_end_matches(':')
+        .trim()
+        .trim_start_matches('#')
+        .trim();
+    matches!(heading, "example" | "historical example" | "stale")
+        || heading.strip_prefix("example ").is_some_and(|number| {
+            !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit())
+        })
 }
 
 fn has_unchecked_checklist_marker_before(prefix: &str) -> bool {

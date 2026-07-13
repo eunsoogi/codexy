@@ -4,6 +4,11 @@ use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
 
+mod changes;
+mod reconciliation;
+
+use super::touched_loc_remediation;
+
 const LOC_LIMIT: usize = 250;
 const EXCEPTIONS_PATH: &str = ".codexy-loc-exceptions";
 
@@ -18,17 +23,28 @@ fn check_inner(base_ref: &str) -> Result<()> {
     let root = git_top_level()?;
     let exceptions = load_exceptions(&root)?;
     let mut errors = Vec::new();
-    for path in changed_files(&root, base_ref)? {
-        if !is_implementation_path(&path) {
+    for file in changes::scoped(&root, base_ref)? {
+        if !is_implementation_path(&file.path) {
             continue;
         }
-        let line_count = count_lines(&root.join(&path))?;
-        if line_count <= LOC_LIMIT || exceptions.contains_key(&path) {
+        let line_count = count_lines(&root.join(&file.path))?;
+        if let Some(error) = touched_loc_remediation::formatting_only_error(
+            &root,
+            base_ref,
+            &file.baseline,
+            &file.path,
+            line_count,
+            LOC_LIMIT,
+        )? {
+            errors.push(error);
+            continue;
+        }
+        if line_count <= LOC_LIMIT || exceptions.contains_key(&file.path) {
             continue;
         }
         errors.push(format!(
             "{} has {line_count} lines; touched implementation/test harness files must stay at or below {LOC_LIMIT} LOC",
-            path.display()
+            file.path.display()
         ));
     }
     if errors.is_empty() {
@@ -60,55 +76,10 @@ fn git_top_level() -> Result<PathBuf> {
     ))
 }
 
-fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
-    let mut files = run_git_diff(root, &format!("{base_ref}...HEAD"))?;
-    files.extend(run_git_diff(root, "--cached")?);
-    files.extend(run_git_diff(root, "")?);
-    files.extend(untracked_files(root)?);
-    files.sort();
-    files.dedup();
-    Ok(files)
-}
-
-fn run_git_diff(root: &Path, range: &str) -> Result<Vec<PathBuf>> {
-    let mut command = Command::new("git");
-    command.args(["diff", "--name-only", "--diff-filter=ACMRT"]);
-    if !range.is_empty() {
-        command.arg(range);
-    }
-    let output = command
-        .current_dir(root)
-        .output()
-        .context("running git diff for touched LOC validation")?;
-    if !output.status.success() {
-        bail!(
-            "git diff for touched LOC validation failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        );
-    }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(PathBuf::from)
-        .collect())
-}
-
-fn untracked_files(root: &Path) -> Result<Vec<PathBuf>> {
-    let output = Command::new("git")
-        .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(root)
-        .output()
-        .context("running git ls-files for touched LOC validation")?;
-    if !output.status.success() {
-        bail!(
-            "git ls-files for touched LOC validation failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        );
-    }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(PathBuf::from)
+pub(super) fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
+    Ok(changes::scoped(root, base_ref)?
+        .into_iter()
+        .map(|file| file.path)
         .collect())
 }
 
