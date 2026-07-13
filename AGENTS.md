@@ -104,8 +104,9 @@ codexy/
   exhaustive all-state duplicate search, thin-harness necessity, validated
   title/body, repository-valid labels, milestone, and assignee. Unsupported
   synthetic wording, phrase variants, or observations covered by an existing
-  repair MUST remain handoff-only. MUST treat separate tracking as approved
-  intake, and MUST NOT permit automatic issue creation.
+  repair MUST remain handoff-only. MUST require the intake gate and explicit
+  parent approval before separate tracking. Automatic issue creation MUST NOT
+  be permitted.
 - If a repo or plugin surface is expected, registered, or enabled but is not
   available in the actual Codex callable tool surface or `tool_search`, MUST treat
   the exposure mismatch as a dogfooding defect, not as a quiet fallback. For

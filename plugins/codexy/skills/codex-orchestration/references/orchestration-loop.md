@@ -2,9 +2,10 @@
 
 Before any child-created issue mutation, MUST send the parent one canonical
 machine-readable receipt, receive explicit approval, and pass
-`--check-issue-intake`. MUST treat separate tracking as approved intake, MUST
-NOT authorize automatic creation, and MUST return unsupported synthetic or
-same-class variants as handoff observations. MUST use typed decisions rather
+`--check-issue-intake`. MUST require the intake gate and explicit parent
+approval before separate tracking.
+Automatic creation MUST NOT be authorized. Unsupported synthetic or
+same-class variants MUST remain handoff observations. MUST use typed decisions rather
 than infer approval, support, ownership, necessity, or classification from
 rationale wording.
 
