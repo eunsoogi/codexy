@@ -62,13 +62,9 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
 - MUST treat Codex connector review, child-thread work, queued worktree/thread
-  setup, and asynchronous tool completion as active waiting states, not blockers.
-- Status observation of a running packaged Sentinel MUST be read-only. It MUST
-  NOT send messages, interrupts, follow-up prompts, or other mutations.
-- A live Sentinel MUST remain active until it produces its own `PASS`, `BLOCK`,
-  or `UNOBSERVABLE` terminal result; delayed output alone MUST NOT cause `UNOBSERVABLE`.
-- Parent policy MUST use event-driven terminal deltas and MUST NOT poll a running Sentinel.
-- In long multi-issue or multi-PR event-driven loops, MUST use
+  setup, and asynchronous tool completion as active waiting states, not
+  blockers. MUST keep polling and keep the goal active.
+- In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.
 - Opening a PR is not completion when the requested outcome includes
@@ -81,7 +77,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
   MUST include GraphQL `reviewThreads.nodes`.
 
 ## Active Child Thread Ledger
-Orchestration MUST maintain a durable active/waiting child thread ledger across event-driven observation, compaction recovery, dreaming rehydration, and parent handoffs.
+Orchestration MUST maintain a durable active/waiting child thread ledger across normal polling, compaction recovery, dreaming rehydration, and parent handoffs.
 Active child Codex app threads MUST be capped at 5. Orchestrators MUST count
 only active/waiting Codex app child threads against that cap and MUST NOT create, continue, or resume a sixth active child thread until another active child thread has finished, stopped, or been explicitly removed from the ledger.
 Packaged specialist subagents MUST NOT be counted as active
@@ -92,7 +88,7 @@ Replacement child threads MUST be created only after existing owner evidence is 
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
 blocker, latest evidence, and next action. It MUST also include canonical
 worktree CWD, frozen HEAD, clean/index state, every referencing specialist or
-Sentinel task id, and explicit release/archive state. Material events MUST refresh
+Sentinel task id, and explicit release/archive state. Normal polling MUST refresh
 these fields from current thread, worktree, issue, PR, and review evidence.
 Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger. Packaged specialist subagents
 MUST NOT count against the child-thread cap, but every active or waiting

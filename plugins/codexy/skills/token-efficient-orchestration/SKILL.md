@@ -1,6 +1,6 @@
 ---
 name: token-efficient-orchestration
-description: MUST use during long Codexy orchestration, multi-PR monitoring, review-response loops, or compaction recovery when token use is growing; preserves proof gates while replacing repeated full-context reloads with event deltas and ledgers.
+description: MUST use during long Codexy orchestration, multi-PR monitoring, review-response loops, or compaction recovery when token use is growing; preserves proof gates while replacing repeated full-context reloads with deltas, ledgers, and bounded polling.
 ---
 
 # Token-Efficient Orchestration
@@ -8,7 +8,7 @@ description: MUST use during long Codexy orchestration, multi-PR monitoring, rev
 ## Purpose
 
 MUST keep long Codexy loops small without weakening evidence. MUST use this skill when a
-thread is monitoring several issues or PRs, recovering from compaction, observing
+thread is monitoring several issues or PRs, recovering from compaction, polling
 children, routing review feedback, or preparing a handoff that might otherwise
 repeat large unchanged artifacts.
 
@@ -39,17 +39,15 @@ older context.
 
 ## Token Budget Loop
 
-MUST run this loop before large event batches, after compaction, and before
+MUST run this loop before large polling batches, after compaction, and before
 handoff:
 
 1. **Inventory once**: MUST list active lanes as one line each with `issue`, `PR`,
    `branch`, `head`, `owner`, and `state`.
-2. **Observe by delta**: parent observation MUST carry only material terminal
-   deltas: PR head, checks, review threads, Codex review output, and child
-   terminal status. A parent MUST NOT poll a running Sentinel or send messages,
-   interrupts, follow-up prompts, or other mutations while observing it. MUST
-   NOT re-read unchanged skill bodies, old review text, or full logs unless a
-   changed id or SHA requires it.
+2. **Poll by delta**: refresh only surfaces that can change: PR head, checks,
+   review threads, Codex review output, and child status. MUST NOT re-read
+   unchanged skill bodies, old review text, or full logs unless a changed id or
+   SHA requires it.
 3. **Promote ids, not prose**: MUST keep exact ids and links, such as PR numbers,
    thread ids, review thread ids, check run names, and SHAs. MUST summarize bodies
    in one sentence unless the exact wording is the bug.
@@ -68,14 +66,14 @@ MUST use this compact shape for each lane:
 #<issue> / PR #<pr> / <branch>
 owner: child thread <id> | worktree <path>
 head: <sha> | base: <sha>
-delta since last event: <new head/check/thread/review change or "none">
+delta since last poll: <new head/check/thread/review change or "none">
 required gates: checks=<state>; codex-review=<state>; threads=<state>; child=<state>
 active obligations: <only current unresolved work>
 stale/demoted: <old heads, resolved threads, superseded comments>
 next action: <one action>
 ```
 
-When nothing changed, MUST write `delta since last event: none` and skip the old
+When nothing changed, MUST write `delta since last poll: none` and skip the old
 details.
 
 For repeat handoffs, copy `templates/delta-poll.md` and fill only the current

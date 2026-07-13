@@ -1,4 +1,3 @@
-pub mod child_monitoring;
 pub mod codegraph;
 pub mod lsp;
 pub mod mcp;

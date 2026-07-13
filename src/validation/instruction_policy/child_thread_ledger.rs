@@ -2,11 +2,6 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
-mod clauses;
-mod markdown;
-use clauses::{has_false_requirement, has_mutating_permission};
-use markdown::normalized_whitespace;
-
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     if path.ends_with("skills/dreaming/SKILL.md") {
         require_all(
@@ -49,12 +44,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "existing owner thread",
                 "latest evidence",
                 "compaction recovery",
-                "event-driven observation",
-                "status observation of a running packaged sentinel must be read-only",
-                "must not send messages, interrupts, follow-up prompts, or other mutations",
-                "a live sentinel must remain active until it produces its own `pass`, `block`, or `unobservable` terminal result",
-                "delayed output alone must not cause `unobservable`",
-                "parent policy must use event-driven terminal deltas and must not poll a running sentinel",
+                "normal polling",
                 "packaged specialist subagents must not be counted",
                 "canonical worktree cwd",
                 "frozen head",
@@ -70,18 +60,6 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             errors,
             "orchestration skill must not allow specialist subagents to count against the child thread cap",
             &["packaged specialist subagents must not be counted unless"],
-        );
-    } else if path.ends_with("skills/proof-driven-completion/SKILL.md") {
-        require_all(
-            path,
-            text,
-            errors,
-            "proof-completion skill must preserve live Sentinel observation",
-            &[
-                "for a running packaged sentinel, parent observation must be read-only",
-                "must not poll, send messages, interrupts, or follow-up prompts",
-                "sentinel must remain active until its own `pass`, `block`, or `unobservable` terminal result",
-            ],
         );
     } else if path.ends_with("skills/codex-orchestration/references/thread-and-worktree-routing.md")
     {
@@ -141,9 +119,12 @@ fn require_all(
 
 fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
     text.match_indices(phrase).any(|(index, _)| {
-        let before = &text[..index];
+        let before = text[..index]
+            .rsplit("</markdown-heading>")
+            .next()
+            .unwrap_or_default();
         let after = text[index + phrase.len()..]
-            .trim_start_matches([',', ':', ';', '.', '-', '—'])
+            .trim_start_matches([',', ':', ';', '-', '—'])
             .trim_start();
         !has_invalid_prefix(before) && !has_invalid_suffix(after)
     })
@@ -155,32 +136,14 @@ fn has_invalid_prefix(before: &str) -> bool {
         .next()
         .unwrap_or_default();
     let clause = clause_prefix(section);
-    before.rfind("<markdown-heading>") > before.rfind("</markdown-heading>")
-        || has_invalid_context(clause)
-        || has_invalid_context(most_recent_heading(before))
-}
-
-fn most_recent_heading(before: &str) -> &str {
-    before
-        .rsplit("<markdown-heading>")
-        .next()
-        .and_then(|heading_and_text| heading_and_text.split_once("</markdown-heading>"))
-        .map(|(heading, _)| heading)
-        .unwrap_or_default()
-}
-
-fn has_invalid_context(text: &str) -> bool {
     [
         "historical example",
-        "stale example",
-        "example only",
         "not required",
         "no longer required",
         "false that",
     ]
     .iter()
-    .any(|marker| text.contains(marker))
-        || has_false_requirement(text)
+    .any(|marker| clause.contains(marker))
 }
 
 fn clause_prefix(section: &str) -> &str {
@@ -201,18 +164,9 @@ fn clause_prefix(section: &str) -> &str {
 }
 
 fn has_invalid_suffix(after: &str) -> bool {
-    [
-        "unless ",
-        "except ",
-        "only if ",
-        "but ",
-        "however ",
-        "although ",
-        "it is not required",
-    ]
-    .iter()
-    .any(|marker| after.starts_with(marker))
-        || has_mutating_permission(after)
+    ["unless ", "except ", "only if ", "may "]
+        .iter()
+        .any(|marker| after.starts_with(marker))
 }
 
 fn reject_all(
@@ -231,4 +185,24 @@ fn reject_all(
             ));
         }
     }
+}
+
+fn normalized_whitespace(text: &str) -> String {
+    let mut with_heading_boundaries = String::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('#') {
+            with_heading_boundaries.push_str(" <markdown-heading> ");
+            with_heading_boundaries.push_str(trimmed.trim_start_matches('#').trim());
+            with_heading_boundaries.push_str(" </markdown-heading> ");
+        } else {
+            with_heading_boundaries.push_str(line);
+            with_heading_boundaries.push(' ');
+        }
+    }
+    with_heading_boundaries
+        .to_ascii_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }

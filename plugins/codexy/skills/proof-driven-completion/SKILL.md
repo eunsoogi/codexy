@@ -169,12 +169,10 @@ MUST include:
   current matching proof and no required work remains.
 - MUST NOT call `update_goal(status="blocked")` merely because Codex connector
   review, child-thread work, queued worktree/thread setup, or asynchronous tool
-  completion is pending. MUST keep the goal active and route review feedback to
-  the owning child thread until a repeated true impasse prevents meaningful
-  progress without user input or an external state change.
-- For a running packaged Sentinel, parent observation MUST be read-only. It
-  MUST NOT poll, send messages, interrupts, or follow-up prompts. The Sentinel
-  MUST remain active until its own `PASS`, `BLOCK`, or `UNOBSERVABLE` terminal result.
+  completion is pending. MUST continue polling, send follow-up prompts as needed,
+  MUST route review feedback to the owning child thread, and MUST keep the goal active
+  until a repeated true impasse prevents meaningful progress without user input
+  or an external state change.
 - MUST NOT accept a non-trivial child implementation handoff as complete when it
   omits actual goal-tool usage, actual todo/plan tool usage, required
   situational multi-agent usage, a concrete not-useful rationale tied to
