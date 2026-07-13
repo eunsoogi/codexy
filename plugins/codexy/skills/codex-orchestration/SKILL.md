@@ -22,6 +22,7 @@ MUST read these relative references before acting on the matching surface:
 
 - `references/classification-and-control.md` for classification, goal, plan,
   child execution, multi-agent, codegraph, LSP, and sentinel discipline.
+- `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for the intake, plan, dispatch,
@@ -85,13 +86,19 @@ child Codex app threads.
 Before creating a new child Codex app thread, orchestration MUST check the ledger and current issue/PR state for an existing issue/PR owner thread, MUST treat it as the existing owner thread, and MUST reuse it when present. If that owner is usable, orchestration MUST reuse or continue it instead of creating a duplicate owner.
 Replacement child threads MUST be created only after existing owner evidence is inspected and the old owner is stopped, unusable, or explicitly superseded.
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
-blocker, latest evidence, and next action. Normal polling MUST refresh those
-fields from current thread, worktree, issue, PR, and review evidence.
-Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger.
-Compaction recovery and dreaming rehydration MUST rebuild the ledger before
-dispatching more child work or claiming no active child work remains. Completed
-child threads MUST be removed from the active/waiting ledger after current
-evidence proves completion, and MUST be archived/deleted where supported or recorded as unavailable-tool evidence.
+blocker, latest evidence, and next action. It MUST also include canonical
+worktree CWD, frozen HEAD, clean/index state, every referencing specialist or
+Sentinel task id, and explicit release/archive state. Normal polling MUST refresh
+these fields from current thread, worktree, issue, PR, and review evidence.
+Blocked/rate-limited child lanes MUST be continued through the existing owner when possible, with blocker and next action kept current in the ledger. Packaged specialist subagents
+MUST NOT count against the child-thread cap, but every active or waiting
+specialist or Sentinel that references a worktree MUST keep its reservation
+active. Compaction recovery and dreaming rehydration MUST rebuild the ledger
+before dispatching more child work or claiming no active child work remains.
+Completed child threads MUST remain reserved until every referencing task is
+terminal and explicitly archived or released. The orchestrator MUST record an
+unavailable archive/delete surface as unresolved reservation evidence; it MUST
+NOT silently recycle that worktree.
 
 ## Multi-Agent And Reviewer Gate
 
@@ -158,6 +165,10 @@ or `UNOBSERVABLE`. The owning lane MUST bound its wait, MUST report the
 reviewer name and exact head, and MUST keep push/readiness blocked for `BLOCK` or
 `UNOBSERVABLE` unless a maintainer explicitly approves a fallback. A delayed,
 pending, stuck, or unobservable Sentinel MUST NOT be treated as approval.
+The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
+Every BLOCK finding MUST map to an in-scope acceptance criterion.
+Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
+Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
 
 ## Codegraph And LSP
 
