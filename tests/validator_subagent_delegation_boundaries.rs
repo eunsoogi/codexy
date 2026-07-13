@@ -30,6 +30,8 @@ fn validator_rejects_recursive_actions_after_unrelated_negations() -> TestResult
         "MUST immediately spawn another helper.",
         "MUST spawn another Sentinel.",
         "MUST delegate work to another specialist.",
+        "Allowed actions: creating reviewer tasks.",
+        "Allowed actions: delegating work to helper threads.",
         "MUST NOT merge, but MAY spawn another helper.",
         "A helper MAY not edit files, but MAY spawn another helper.",
         "Allowed actions: MUST NOT edit files, but spawn another helper.",

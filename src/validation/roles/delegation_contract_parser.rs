@@ -22,7 +22,16 @@ pub(super) fn has_unnegated_permission(clause: &str) -> bool {
 }
 
 pub(super) fn has_unnegated_delegation_action(clause: &str) -> bool {
-    ["spawn", "delegate", "create"].into_iter().any(|action| {
+    [
+        "spawn",
+        "spawning",
+        "delegate",
+        "delegating",
+        "create",
+        "creating",
+    ]
+    .into_iter()
+    .any(|action| {
         clause.match_indices(action).any(|(index, _)| {
             let prefix = &clause[..index];
             let action_prefix = prefix
@@ -49,7 +58,16 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
     clause: &str,
     allow_root_child_thread_creation: bool,
 ) -> bool {
-    ["spawn", "delegate", "create"].into_iter().any(|action| {
+    [
+        "spawn",
+        "spawning",
+        "delegate",
+        "delegating",
+        "create",
+        "creating",
+    ]
+    .into_iter()
+    .any(|action| {
         clause.match_indices(action).any(|(index, _)| {
             let prefix = clause[..index]
                 .rsplit_once(" but ")
