@@ -4,6 +4,8 @@ use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
 
+mod reconciliation;
+
 use super::touched_loc_remediation;
 
 const LOC_LIMIT: usize = 250;
@@ -70,6 +72,7 @@ fn git_top_level() -> Result<PathBuf> {
 
 pub(super) fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
     let mut files = run_git_diff(root, &format!("{base_ref}...HEAD"))?;
+    files = reconciliation::exclude_reconciled_main_paths(root, base_ref, files)?;
     files.extend(run_git_diff(root, "--cached")?);
     files.extend(run_git_diff(root, "")?);
     files.extend(untracked_files(root)?);
