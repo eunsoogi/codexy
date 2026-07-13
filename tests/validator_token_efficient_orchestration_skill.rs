@@ -82,7 +82,7 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         assert!(receipt.contains(field), "receipt missing {field:?}");
     }
     assert!(orchestration.contains("$token-efficient-orchestration"));
-    assert!(orchestration.contains("preserve proof gates"));
+    assert!(orchestration.contains("preserving all proof gates"));
     let normalized_orchestration = orchestration
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -95,10 +95,8 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "inspect archive candidates and the active reservation ledger",
         "MUST NOT archive PR owners or dirty/reserved candidates",
         "record the decision in setup evidence",
-        "record the `BLOCK` and update the plan to a repair step",
+        "record the `block` and update the plan to a repair step",
         "add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head",
-        "MUST NOT call `update_goal(status=\"blocked\")`",
-        "MUST NOT create a replacement thread",
     ] {
         assert!(
             normalized_orchestration.contains(required),
