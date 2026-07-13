@@ -36,6 +36,8 @@ fn archive_gate_allows_documentation_path_examples() {
     assert!(script.contains("hygiene scan failed"));
     assert!(script.contains("duplicate archive entries"));
     assert!(script.contains("unexpected runtime artifact"));
+    assert!(script.contains("invalid JSON-RPC version for response id"));
+    assert!(script.contains("unsafe archive path"));
     assert!(script.contains("set(responses) != {1, 2}"));
 }
 
@@ -124,6 +126,21 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
             .success()
     );
     std::fs::remove_file(runtime.join("debug.log")).expect("remove runtime extra");
+
+    let missing_runtime = runtime.join("codexy-mcp-lsp-linux-x86_64.bin");
+    let missing_bytes = std::fs::read(&missing_runtime).expect("read runtime");
+    std::fs::remove_file(&missing_runtime).expect("remove runtime");
+    let missing_archive = root.path().join("missing-runtime.tar.gz");
+    create_archive(root.path(), &missing_archive);
+    assert!(!run_gate(&missing_archive, &plugin_root).status.success());
+    std::fs::write(&missing_runtime, missing_bytes).expect("restore runtime");
+
+    let malformed_bytes = std::fs::read(&missing_runtime).expect("read runtime again");
+    std::fs::write(&missing_runtime, b"not-a-binary").expect("malform runtime");
+    let malformed_archive = root.path().join("malformed-runtime.tar.gz");
+    create_archive(root.path(), &malformed_archive);
+    assert!(!run_gate(&malformed_archive, &plugin_root).status.success());
+    std::fs::write(&missing_runtime, malformed_bytes).expect("restore valid runtime");
 
     std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
         .expect("secret fixture");

@@ -124,10 +124,12 @@ for raw in open(os.environ["RESPONSE_FILE"], encoding="utf-8"):
         message = json.loads(raw)
     except json.JSONDecodeError:
         continue
-    if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
+    if not isinstance(message, dict):
         continue
     identifier = message.get("id")
     if identifier in (1, 2):
+        if message.get("jsonrpc") != "2.0":
+            raise SystemExit(f"{server}: invalid JSON-RPC version for response id {identifier}")
         if identifier in responses:
             raise SystemExit(f"{server}: duplicate MCP response id {identifier}")
         if "error" in message or "result" not in message:
