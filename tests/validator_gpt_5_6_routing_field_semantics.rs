@@ -38,6 +38,7 @@ fn rejects_generic_child_effort_downgrades() -> TestResult {
         "- Generic QA child MUST request model: \"gpt-5.6-terra\" and reasoning-effort: xhigh.",
         "- Generic implementation child MUST set reasoning_effort to low.",
         "- Generic QA child MUST set reasoning-effort to xhigh.",
+        "- Generic implementation child MUST request `gpt-5.6-terra` with low reasoning.",
         "- Generic implementation child MUST use Ultra.",
         "- Root/orchestrator MUST run using the Ultra model.",
     ] {
@@ -51,6 +52,7 @@ fn rejects_sentinel_effort_downgrades() -> TestResult {
     for addition in [
         "- `codexy-sentinel` MUST use `gpt-5.6-sol` with `reasoning_effort: high`.",
         "- `codexy-sentinel` MUST set reasoning-effort to low.",
+        "- `codexy-sentinel` MUST use `gpt-5.6-sol` with high reasoning.",
         "- `codexy-sentinel` MUST use the Ultra model.",
     ] {
         assert_status(addition, false)?;

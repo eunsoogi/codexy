@@ -22,5 +22,30 @@ pub(super) fn assigned_reasoning_efforts(segment: &str) -> Vec<&str> {
                     .then_some(value)
             })
         })
+        .chain(
+            segment
+                .match_indices("reasoning")
+                .filter_map(|(index, _)| prose_reasoning_effort(segment, index)),
+        )
         .collect()
+}
+
+fn prose_reasoning_effort(segment: &str, index: usize) -> Option<&str> {
+    let suffix = &segment[index + "reasoning".len()..];
+    let standalone = suffix
+        .chars()
+        .next()
+        .is_none_or(|character| !matches!(character, '_' | '-'));
+    standalone.then(|| {
+        segment[..index]
+            .split(|character: char| !character.is_ascii_alphanumeric())
+            .filter(|word| !word.is_empty())
+            .next_back()
+            .filter(|value| {
+                matches!(
+                    *value,
+                    "low" | "medium" | "high" | "xhigh" | "max" | "ultra"
+                )
+            })
+    })?
 }
