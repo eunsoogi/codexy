@@ -8,12 +8,50 @@ const SCOPE_POLICY_CLAUSES: &[&str] = &[
     "Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.",
     "Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.",
 ];
+const LIVE_OBSERVATION_CLAUSES: &[&str] = &[
+    "Live Sentinel observation MUST be read-only and event-driven.",
+    "Generic child and ledger polling remains permitted.",
+    "Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel.",
+    "A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.",
+];
+const LIVE_OBSERVATION_SKILLS: &[&str] = &[
+    "skills/codex-orchestration/SKILL.md",
+    "skills/proof-driven-completion/SKILL.md",
+    "skills/token-efficient-orchestration/SKILL.md",
+];
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
-    if !path.ends_with("skills/codex-orchestration/SKILL.md") {
+    if path.ends_with("skills/codex-orchestration/SKILL.md") {
+        report(path, text, errors);
+    }
+    if !LIVE_OBSERVATION_SKILLS
+        .iter()
+        .any(|skill| path.ends_with(skill))
+    {
         return;
     }
-    report(path, text, errors);
+    if LIVE_OBSERVATION_CLAUSES
+        .iter()
+        .any(|clause| !contains_clause(text, clause))
+    {
+        errors.push(format!(
+            "{} Sentinel scope policy contract failed: missing live-observation clause",
+            display_relative(path)
+        ));
+    }
+    if live_sentinel_control(text) {
+        errors.push(format!(
+            "{} Sentinel scope policy contract failed: must not control a live Sentinel",
+            display_relative(path)
+        ));
+    }
+}
+
+fn contains_clause(text: &str, clause: &str) -> bool {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .contains(&clause.split_whitespace().collect::<Vec<_>>().join(" "))
 }
 
 pub(crate) fn check_sentinel(path: &Path, text: &str, errors: &mut Vec<String>) {
@@ -49,6 +87,54 @@ fn violations(text: &str) -> Vec<&'static str> {
         violations.push("must not permit phrase patches for recurring same-class defects");
     }
     violations
+}
+
+fn live_sentinel_control(text: &str) -> bool {
+    let mut fenced = false;
+    text.lines().any(|line| {
+        let line = line.trim();
+        if line.starts_with("```") {
+            fenced = !fenced;
+            return false;
+        }
+        if fenced || line.starts_with("sentinel_") {
+            return false;
+        }
+        line.to_ascii_lowercase()
+            .split(['.', '!', '?'])
+            .any(|sentence| {
+                let words = words(sentence);
+                sentence.contains("live sentinel")
+                    && !historical_or_terminal(sentence)
+                    && !sentence.contains("neither ")
+                    && !sentence.contains("must not")
+                    && words.iter().enumerate().any(|(index, word)| {
+                        matches_live_control(word)
+                            && has_positive_permission(&words, index)
+                            && !has_local_prohibition(&words, index)
+                    })
+            })
+    })
+}
+
+fn historical_or_terminal(sentence: &str) -> bool {
+    [
+        "historic",
+        "former",
+        "previous",
+        "terminal pass",
+        "terminal block",
+        "terminal unobservable",
+    ]
+    .iter()
+    .any(|marker| sentence.contains(marker))
+}
+
+fn matches_live_control(word: &str) -> bool {
+    matches!(
+        word,
+        "message" | "interrupt" | "replace" | "follow" | "follow-up"
+    ) || word.starts_with("poll")
 }
 
 fn permits(text: &str, subject: &str, permissions: &[&str]) -> bool {
@@ -139,5 +225,5 @@ fn has_local_prohibition(words: &[&str], action_index: usize) -> bool {
             || pair[0] == "not" && matches!(pair[1], "allowed" | "permitted")
     }) || context
         .iter()
-        .any(|word| matches!(*word, "cannot" | "can't" | "prohibited"))
+        .any(|word| matches!(*word, "cannot" | "can't" | "prohibited" | "neither"))
 }
