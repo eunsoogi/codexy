@@ -16,24 +16,28 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "src/**"
+      - "plugins/codexy/**"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
       - "plugins/codexy/agents/**"
       - "plugins/codexy/skills/codex-orchestration/scripts/**"
       - "scripts/generate-release-changelog"
       - ".agents/plugins/release-publish-contract.json"
+      - ".agents/plugins/marketplace.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
   pull_request:
     paths:
       - "Cargo.lock"
       - "Cargo.toml"
       - "src/**"
+      - "plugins/codexy/**"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
       - "plugins/codexy/agents/**"
       - "plugins/codexy/skills/codex-orchestration/scripts/**"
       - "scripts/generate-release-changelog"
       - ".agents/plugins/release-publish-contract.json"
+      - ".agents/plugins/marketplace.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
 permissions:

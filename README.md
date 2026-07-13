@@ -51,6 +51,12 @@ structured after the first prompt. It bundles workflow instructions, specialist
 role definitions, MCP server registrations, validators, and release utilities
 that make multi-step coding work easier to route, verify, review, and finish.
 
+The marketplace package workflow runs for changes to any file under
+`plugins/codexy/**`, the marketplace manifest, or the release publish contract,
+as well as the runtime sources and release scripts that build the package.
+Unrelated documentation, tests, and other repository paths do not trigger the
+runtime package build unless they change one of those package inputs.
+
 ### Work Planning and Ownership
 
 #### Task Intake

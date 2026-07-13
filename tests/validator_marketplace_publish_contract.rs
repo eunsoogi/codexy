@@ -68,6 +68,21 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
                 "runtime workflow {trigger} paths must include {required_path}"
             );
         }
+
+        for packaged_source in [
+            "plugins/codexy/**",
+            ".agents/plugins/marketplace.json",
+            ".agents/plugins/release-publish-contract.json",
+        ] {
+            assert!(
+                trigger_text.contains(packaged_source),
+                "runtime workflow {trigger} paths must cover packaged source inventory entry {packaged_source}"
+            );
+        }
+        assert!(
+            !trigger_text.contains("README.md") && !trigger_text.contains("tests/**"),
+            "runtime workflow {trigger} paths must not include unrelated repository paths"
+        );
     }
     for forbidden in [
         "Publish generated marketplace snapshot",
