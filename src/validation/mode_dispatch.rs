@@ -4,7 +4,7 @@ use anyhow::{Result, bail};
 
 use super::{
     Mode, child_goal_reporting, child_lane_ownership, completion_handoff, conventional_commit,
-    github_labels, hooks, instruction_policy, lsp, manifest, mcp, merge_message,
+    github_labels, hooks, instruction_policy, issue_intake, lsp, manifest, mcp, merge_message,
     orchestration_routing, roles, runtime, touched_loc,
 };
 
@@ -36,6 +36,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
         } => merge_message::check(expected_issue, expected_pr, &message),
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
         Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
+        Mode::IssueIntake { receipt } => issue_intake::check(&receipt),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(&handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));

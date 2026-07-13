@@ -64,8 +64,11 @@ mod instruction_policy;
 mod instruction_policy_match;
 mod instruction_policy_purpose;
 mod instruction_policy_text;
+mod issue_intake;
+mod issue_intake_receipt;
 mod lsp;
 mod manifest;
+mod markdown;
 mod mcp;
 mod mcp_runtime;
 mod merge_message;
@@ -115,6 +118,9 @@ pub enum Mode {
     },
     IssueTitle {
         title: String,
+    },
+    IssueIntake {
+        receipt: String,
     },
     CompletionHandoff {
         handoff: String,
