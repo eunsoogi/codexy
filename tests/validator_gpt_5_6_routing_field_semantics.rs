@@ -32,6 +32,17 @@ fn rejects_effort_only_specialist_assignments() -> TestResult {
 }
 
 #[test]
+fn rejects_generic_child_effort_downgrades() -> TestResult {
+    for addition in [
+        "- Generic implementation child MUST request model: \"gpt-5.6-terra\" and reasoning_effort: \"low\".",
+        "- Generic QA child MUST request model: \"gpt-5.6-terra\" and reasoning-effort: xhigh.",
+    ] {
+        assert_status(addition, false)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn allows_repeated_comparison_model_mentions() -> TestResult {
     assert_status(
         "- Root/orchestrator MUST use `gpt-5.6-terra` for comparison only; `gpt-5.6-terra` is not the assigned model.",

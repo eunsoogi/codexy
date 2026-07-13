@@ -1,3 +1,4 @@
+use super::orchestration_routing_effort::assigned_reasoning_efforts;
 use super::orchestration_routing_luna_policy::{
     has_luna_default_assignment, luna_blanket_default_is_negated, luna_policy_clauses,
 };
@@ -140,6 +141,7 @@ pub(super) fn has_conflicting_tier_assignment(bullet: &str) -> bool {
         None
     };
     expected.is_some_and(|expected| {
+        let expected_effort = (expected == "gpt-5.6-terra").then_some("high");
         positive_must_segments(bullet).iter().any(|segment| {
             let normalized = segment.to_ascii_lowercase();
             let models = model_ids(&normalized);
@@ -148,7 +150,12 @@ pub(super) fn has_conflicting_tier_assignment(bullet: &str) -> bool {
                 .is_some_and(|first| models.iter().all(|model| model == first));
             !(is_comparison_only(&normalized) && one_unique_model)
                 && assignment_intent(&normalized)
-                && models.iter().any(|model| *model != expected)
+                && (models.iter().any(|model| *model != expected)
+                    || expected_effort.is_some_and(|expected_effort| {
+                        assigned_reasoning_efforts(&normalized)
+                            .iter()
+                            .any(|effort| *effort != expected_effort)
+                    }))
         })
     })
 }

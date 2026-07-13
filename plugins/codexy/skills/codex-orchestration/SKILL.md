@@ -40,6 +40,7 @@ MUST read these relative references before acting on the matching surface:
 
 - `references/classification-and-control.md` for classification, goal, plan,
   child execution, multi-agent, codegraph, LSP, and sentinel discipline.
+- `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for the intake, plan, dispatch,
@@ -183,6 +184,10 @@ or `UNOBSERVABLE`. The owning lane MUST bound its wait, MUST report the
 reviewer name and exact head, and MUST keep push/readiness blocked for `BLOCK` or
 `UNOBSERVABLE` unless a maintainer explicitly approves a fallback. A delayed,
 pending, stuck, or unobservable Sentinel MUST NOT be treated as approval.
+The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
+Every BLOCK finding MUST map to an in-scope acceptance criterion.
+Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
+Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
 
 ## Codegraph And LSP
 
@@ -224,19 +229,6 @@ branch, worktree, PR, durable child context, or review-response ownership:
    `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`.
 5. A failed first search for thread or worktree tooling is not proof that the
    tooling is unavailable. MUST continue discovery before reporting a blocker.
-
-## Child Thread Titles
-
-- After a forked Codex worktree child thread finishes setup and a thread id is
-  available, the orchestrator MUST rename it with `set_thread_title` when the
-  tool is available.
-- The child thread title MUST clearly include the project, issue number, and
-  lane purpose so users can distinguish concurrent child threads, such as
-  `Codexy #52 refactoring skill agent lane`.
-- If thread title renaming is unavailable, mention that limitation in the
-  orchestration status or child handoff and continue with the lane.
-- Child thread title renaming is a clarity policy, not a merge blocker for
-  otherwise complete implementation work.
 
 ## Completion Guard
 
