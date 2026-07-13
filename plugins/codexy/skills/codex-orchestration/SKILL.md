@@ -7,14 +7,32 @@ description: MUST use when coordinating Codex plugin calls, long-running goals, 
 
 ## Purpose
 
-MUST run the current plugin-invoking Codex thread as the orchestrator for
+MUST run the current plugin-invoking Codex thread as the root/orchestrator for
 goal-oriented work. MUST NOT spawn or assign a separate orchestrator agent. The
-invoking Codex thread owns intent, decomposition, routing, evidence
-integration, and final completion claims. Specialist subagents and separate
-Codex thread/worktree lanes own bounded atomic units only.
+invoking Codex thread owns intent, decomposition, routing, evidence integration,
+and final completion claims. Specialists and separate Codex thread/worktree lanes
+own bounded atomic units only.
 
 Root `AGENTS.md` owns repo-wide dogfooding policy. This skill supplies the
 execution loop and MUST be read with root `AGENTS.md`.
+
+## GPT-5.6 Routing Matrix
+
+- Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
+  integration, and completion.
+- Generic implementation, debugging, integration, and QA child thread: MUST
+  explicitly request `model: "gpt-5.6-terra"` and `reasoning_effort: "high"`.
+- `gpt-5.6-luna` is only for repository discovery, cataloging, simple
+  documentation drafting, bounded polling, and repetitive checks. MUST NOT use
+  Luna as the blanket default for implementation, security review, or ambiguous
+  reasoning.
+- Cost guidance: Luna is an optimization for bounded low-risk work, not a
+  quality-neutral replacement for Terra.
+- A named custom specialist TOML is the model and reasoning-effort source of
+  truth. MUST NOT pass model or reasoning-effort overrides.
+- `codexy-sentinel` remains `gpt-5.6-sol` / `xhigh`. MUST NOT use Ultra.
+  Custom-agent invocations MUST use `fork_turns="none"` or a positive bounded
+  count with a self-contained handoff.
 
 ## Read Next
 
@@ -26,7 +44,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for the intake, plan, dispatch,
-  integrate, verify, and finish loop plus handoff templates.
+  integrate, verify, finish, failure-mode, and handoff-template guidance.
 
 ## Classification Gate
 
@@ -104,9 +122,10 @@ NOT silently recycle that worktree.
 
 MUST use multi-agent dispatch for bounded specialist help inside the current thread
 when the lane does not need its own branch or PR and has separable research,
-implementation, QA, verification, review, or review-feedback work. A
-`spawn_agent` subagent is a helper, reviewer, explorer, or worker inside the
-current orchestration context. A `spawn_agent` subagent MUST NOT be treated as a
+implementation, QA, verification, review, or review-feedback work. A `spawn_agent`
+subagent is a helper, reviewer, explorer, or worker inside the current orchestration
+context. Subagents are not child-owned implementation owners. A
+subagent MUST NOT be treated as a
 Codex subthread/worktree owner.
 
 When a packaged Codexy specialist role is available and the task clearly falls
@@ -211,19 +230,6 @@ branch, worktree, PR, durable child context, or review-response ownership:
 5. A failed first search for thread or worktree tooling is not proof that the
    tooling is unavailable. MUST continue discovery before reporting a blocker.
 
-## Child Thread Titles
-
-- After a forked Codex worktree child thread finishes setup and a thread id is
-  available, the orchestrator MUST rename it with `set_thread_title` when the
-  tool is available.
-- The child thread title MUST clearly include the project, issue number, and
-  lane purpose so users can distinguish concurrent child threads, such as
-  `Codexy #52 refactoring skill agent lane`.
-- If thread title renaming is unavailable, mention that limitation in the
-  orchestration status or child handoff and continue with the lane.
-- Child thread title renaming is a clarity policy, not a merge blocker for
-  otherwise complete implementation work.
-
 ## Completion Guard
 
 MUST NOT mark a plan step complete until its evidence has been inspected by the
@@ -231,20 +237,3 @@ orchestrator. MUST use `update_goal` only when that tool is available, an active
 user-requested goal exists, and every explicit requirement has current matching
 proof. Reserve `blocked` for repeated true impasses where meaningful progress
 requires user input or an external state change.
-
-## Failure Modes
-
-- Starting setup, delegation, implementation, validation, PR handling, review
-  response, or merge coordination before `$task-classification`.
-- Subagents are not child-owned implementation owners.
-- Treating subagents as child-owned Codex thread/worktree owners.
-- Marking a goal blocked because review, child work, worktree/thread setup, or
-  another asynchronous tool is pending.
-- Treating expected or registered MCPs as ordinary unavailable tools when the
-  callable Codex surface does not expose them.
-- Starting parent implementation patches for a lane that needs its own child
-  thread, worktree, branch, or PR, then delegating only after files changed.
-- Treating parent-only readthrough, arbitrary reviewer agents, generic review
-  roles, or stale reviewer output as the packaged Codexy reviewer gate.
-- Reporting completion while review comments, open threads, stale PR heads, or
-  unverified claims remain unresolved.

@@ -4,8 +4,8 @@ use anyhow::{Result, bail};
 
 use super::{
     Mode, child_goal_reporting, child_lane_ownership, completion_handoff, conventional_commit,
-    github_labels, hooks, instruction_policy, lsp, manifest, mcp, merge_message, roles, runtime,
-    touched_loc,
+    github_labels, hooks, instruction_policy, lsp, manifest, mcp, merge_message,
+    orchestration_routing, roles, runtime, touched_loc,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -24,6 +24,7 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
             all.extend(instruction_policy::check(plugin_root));
+            all.extend(orchestration_routing::check(plugin_root));
             all
         }
         Mode::Lsp => lsp::check(plugin_root),
