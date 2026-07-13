@@ -31,6 +31,21 @@ fn archive_gate_allows_documentation_path_examples() {
     assert!(script.contains("--glob '!*.md'"));
     assert!(script.contains("--glob '!*.txt'"));
     assert!(!script.contains("--glob '!README.md'"));
+    assert!(script.contains("command -v rg"));
+    assert!(script.contains("command -v python3"));
+    assert!(script.contains("set(responses) != {1, 2}"));
+}
+
+#[test]
+fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
+    let workflow = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(".github/workflows/plugin-runtime-binaries.yml"),
+    )
+    .expect("runtime workflow");
+    assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
+    assert!(workflow.contains("Smoke test native MCP runtimes"));
+    assert!(workflow.contains("codexy-mcp-${server}-${PLATFORM}.bin"));
 }
 
 #[test]

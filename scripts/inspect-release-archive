@@ -8,6 +8,8 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
 command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required" >&2; exit 127; }
+command -v rg >/dev/null 2>&1 || { echo "rg is required" >&2; exit 127; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
 [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
 [ -d "$plugin_root" ] || { echo "staged plugin root missing: $plugin_root" >&2; exit 1; }
 
@@ -80,19 +82,28 @@ for server in lsp codegraph; do
     status=$?
     set -e
     [ "$status" -eq 0 ] || [ "$status" -eq 124 ] || { echo "$server MCP process failed: $status" >&2; exit 1; }
-    awk -v server="$server" '
-      function check(id, kind, line) {
-        if (line !~ /"jsonrpc"[[:space:]]*:[[:space:]]*"2.0"/) fail("invalid JSON-RPC response")
-        if (line !~ "\\\"id\\\"[[:space:]]*:[[:space:]]*" id "([,}])") fail("missing correlated id " id)
-        if (line ~ /"error"[[:space:]]*:/) fail("MCP " kind " returned an error")
-        if (line !~ /"result"[[:space:]]*:/) fail("MCP " kind " returned no result")
-        seen[id]++
-      }
-      function fail(message) { print server ": " message > "/dev/stderr"; exit 1 }
-      /"id"[[:space:]]*:[[:space:]]*1/ { check(1, "initialize", $0) }
-      /"id"[[:space:]]*:[[:space:]]*2/ { check(2, "tools/list", $0) }
-      END { if (seen[1] != 1 || seen[2] != 1) fail("MCP response ids were not correlated exactly once") }
-    ' "$response_file"
+    SERVER="$server" RESPONSE_FILE="$response_file" python3 - <<'PY'
+import json, os, sys
+
+server = os.environ["SERVER"]
+responses = {}
+for raw in open(os.environ["RESPONSE_FILE"], encoding="utf-8"):
+    try:
+        message = json.loads(raw)
+    except json.JSONDecodeError:
+        continue
+    if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
+        continue
+    identifier = message.get("id")
+    if identifier in (1, 2):
+        if identifier in responses:
+            raise SystemExit(f"{server}: duplicate MCP response id {identifier}")
+        if "error" in message or "result" not in message:
+            raise SystemExit(f"{server}: MCP response id {identifier} is not a successful result")
+        responses[identifier] = message
+if set(responses) != {1, 2}:
+    raise SystemExit(f"{server}: MCP response ids were not correlated exactly once")
+PY
   else
     echo "${server} native smoke skipped: no executable $platform runtime"
   fi

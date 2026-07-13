@@ -16,6 +16,8 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "src/**"
+      - "plugins/codexy/**"
+      - ".agents/plugins/marketplace.json"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
       - "plugins/codexy/agents/**"
@@ -30,6 +32,8 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "src/**"
+      - "plugins/codexy/**"
+      - ".agents/plugins/marketplace.json"
       - "plugins/codexy/hooks/**"
       - "plugins/codexy/mcp/**"
       - "plugins/codexy/agents/**"
@@ -79,6 +83,28 @@ jobs:
           chmod 755 "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
           file "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
           file "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
+
+      - name: Smoke test native MCP runtimes
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          for server in lsp codegraph; do
+            response_file="$(mktemp)"
+            trap 'rm -f "$response_file"' EXIT
+            printf '%s\n%s\n%s\n' \
+              '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}' \
+              '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+              '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | timeout 15 "dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" --stdio >"$response_file"
+            python3 - "$response_file" <<'PY'
+          import json, sys
+          ids = {}
+          for line in open(sys.argv[1], encoding="utf-8"):
+              try: message = json.loads(line)
+              except json.JSONDecodeError: continue
+              if isinstance(message, dict) and message.get("id") in (1, 2): ids[message["id"]] = message
+          assert set(ids) == {1, 2} and all("result" in item and "error" not in item for item in ids.values())
+          PY
+          done
 
       - name: Upload runtime binaries
         uses: actions/upload-artifact@v4
