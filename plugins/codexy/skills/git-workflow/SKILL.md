@@ -16,6 +16,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/local-git-and-branches.md` for branch/worktree setup, local
   change discipline, commit messages, conflict resolution, and pre-PR Git
   checks.
+- `references/issue-intake.md` before any Codexy-created GitHub issue mutation.
 - `references/pr-review-and-handoff.md` for PR bodies, Codex connector review,
   child-owned review feedback, and completion-handoff PR state capture,
   including review thread comment `commit { oid }` evidence.
@@ -64,6 +65,12 @@ Before creating or updating an issue title, MUST validate the exact title with
 
 Issue bodies MUST include `## Problem`, `## Scope`,
 `## Acceptance Criteria`, and `## Verification`.
+
+Before any Codexy-created issue mutation, child lanes MUST submit one canonical
+JSON receipt to the parent and receive explicit approval. Validate it with
+`scripts/validate-plugin-config --check-issue-intake --issue-intake-file
+<receipt.json>`. The receipt MUST follow `references/issue-intake.md`.
+Unsupported synthetic wording and same-class phrase variants are handoff-only.
 
 When labels are available, MUST inspect the repository's current taxonomy before
 creating or updating issues. MUST apply repository-appropriate labels only when
@@ -124,6 +131,9 @@ scripts/validate-plugin-config --check-touched-loc --base-ref origin/main
 MUST treat touched implementation, test-harness, and skill `SKILL.md` files over
 the 250 LOC target as review-blocking unless a tracked Codexy LOC exception
 contains a narrow maintained rationale.
+MUST treat a formatting-only reduction as review-blocking: blank-line deletion or
+collapsed readable multiline code, tests, or instructions does not prove structural
+LOC remediation.
 
 When the requested behavior is a GitHub setting, branch rule, PR lifecycle,
 CLI, browser page, desktop app, or other external surface, MUST drive that surface

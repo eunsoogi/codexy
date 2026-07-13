@@ -1,5 +1,14 @@
 # Orchestration Loop
 
+Before any child-created issue mutation, MUST send the parent one canonical
+machine-readable receipt, receive explicit approval, and pass
+`--check-issue-intake`. MUST require the intake gate and explicit parent
+approval before separate tracking.
+Automatic creation MUST NOT be authorized. Unsupported synthetic or
+same-class variants MUST remain handoff observations. MUST use typed decisions rather
+than infer approval, support, ownership, necessity, or classification from
+rationale wording.
+
 ## Loop
 
 1. Intake:
@@ -60,6 +69,22 @@
      matching clean PR remains open unless the maintainer explicitly requested
      stop, wait, draft-only, or leave-open behavior.
    - MUST report what changed, what proved it, what was not run, and remaining risk.
+
+## Failure Modes
+
+- Starting setup, delegation, implementation, validation, PR handling, review
+  response, or merge coordination before `$task-classification`.
+- Treating subagents as child-owned Codex thread/worktree owners.
+- Marking a goal blocked because review, child work, worktree/thread setup, or
+  another asynchronous tool is pending.
+- Treating expected or registered MCPs as ordinary unavailable tools when the
+  callable Codex surface does not expose them.
+- Starting parent implementation patches for a lane that needs its own child
+  thread, worktree, branch, or PR, then delegating only after files changed.
+- Treating parent-only readthrough, arbitrary reviewer agents, generic review
+  roles, or stale reviewer output as the packaged Codexy reviewer gate.
+- Reporting completion while review comments, open threads, stale PR heads, or
+  unverified claims remain unresolved.
 
 ## Multi-Agent Dispatch Template
 

@@ -7,14 +7,32 @@ description: MUST use when coordinating Codex plugin calls, long-running goals, 
 
 ## Purpose
 
-MUST run the current plugin-invoking Codex thread as the orchestrator for
+MUST run the current plugin-invoking Codex thread as the root/orchestrator for
 goal-oriented work. MUST NOT spawn or assign a separate orchestrator agent. The
-invoking Codex thread owns intent, decomposition, routing, evidence
-integration, and final completion claims. Specialist subagents and separate
-Codex thread/worktree lanes own bounded atomic units only.
+invoking Codex thread owns intent, decomposition, routing, evidence integration,
+and final completion claims. Specialists and separate Codex thread/worktree lanes
+own bounded atomic units only.
 
 Root `AGENTS.md` owns repo-wide dogfooding policy. This skill supplies the
 execution loop and MUST be read with root `AGENTS.md`.
+
+## GPT-5.6 Routing Matrix
+
+- Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
+  integration, and completion.
+- Generic implementation, debugging, integration, and QA child thread: MUST
+  explicitly request `model: "gpt-5.6-terra"` and `reasoning_effort: "high"`.
+- `gpt-5.6-luna` is only for repository discovery, cataloging, simple
+  documentation drafting, bounded polling, and repetitive checks. MUST NOT use
+  Luna as the blanket default for implementation, security review, or ambiguous
+  reasoning.
+- Cost guidance: Luna is an optimization for bounded low-risk work, not a
+  quality-neutral replacement for Terra.
+- A named custom specialist TOML is the model and reasoning-effort source of
+  truth. MUST NOT pass model or reasoning-effort overrides.
+- `codexy-sentinel` remains `gpt-5.6-sol` / `xhigh`. MUST NOT use Ultra.
+  Custom-agent invocations MUST use `fork_turns="none"` or a positive bounded
+  count with a self-contained handoff.
 
 ## Read Next
 
@@ -22,10 +40,11 @@ MUST read these relative references before acting on the matching surface:
 
 - `references/classification-and-control.md` for classification, goal, plan,
   child execution, multi-agent, codegraph, LSP, and sentinel discipline.
+- `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for the intake, plan, dispatch,
-  integrate, verify, and finish loop plus handoff templates.
+  integrate, verify, finish, failure-mode, and handoff-template guidance.
 
 ## Classification Gate
 
@@ -60,9 +79,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST treat Codex connector review, child-thread work, queued worktree/thread
-  setup, and asynchronous tool completion as active waiting states, not
-  blockers. MUST keep polling and keep the goal active.
+- MUST treat asynchronous completion as event waits, not blockers. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.
@@ -105,9 +122,10 @@ Delegation boundary: The root orchestrator MAY create child threads. A child imp
 
 MUST use multi-agent dispatch for bounded specialist help inside the current thread
 when the lane does not need its own branch or PR and has separable research,
-implementation, QA, verification, review, or review-feedback work. A
-`spawn_agent` subagent is a helper, reviewer, explorer, or worker inside the
-current orchestration context. A `spawn_agent` subagent MUST NOT be treated as a
+implementation, QA, verification, review, or review-feedback work. A `spawn_agent`
+subagent is a helper, reviewer, explorer, or worker inside the current orchestration
+context. Subagents are not child-owned implementation owners. A
+subagent MUST NOT be treated as a
 Codex subthread/worktree owner.
 
 When a packaged Codexy specialist role is available and the task clearly falls
@@ -166,6 +184,10 @@ or `UNOBSERVABLE`. The owning lane MUST bound its wait, MUST report the
 reviewer name and exact head, and MUST keep push/readiness blocked for `BLOCK` or
 `UNOBSERVABLE` unless a maintainer explicitly approves a fallback. A delayed,
 pending, stuck, or unobservable Sentinel MUST NOT be treated as approval.
+The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
+Every BLOCK finding MUST map to an in-scope acceptance criterion.
+Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
+Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
 
 ## Codegraph And LSP
 
@@ -208,40 +230,19 @@ branch, worktree, PR, durable child context, or review-response ownership:
 5. A failed first search for thread or worktree tooling is not proof that the
    tooling is unavailable. MUST continue discovery before reporting a blocker.
 
-## Child Thread Titles
-
-- After a forked Codex worktree child thread finishes setup and a thread id is
-  available, the orchestrator MUST rename it with `set_thread_title` when the
-  tool is available.
-- The child thread title MUST clearly include the project, issue number, and
-  lane purpose so users can distinguish concurrent child threads, such as
-  `Codexy #52 refactoring skill agent lane`.
-- If thread title renaming is unavailable, mention that limitation in the
-  orchestration status or child handoff and continue with the lane.
-- Child thread title renaming is a clarity policy, not a merge blocker for
-  otherwise complete implementation work.
-
 ## Completion Guard
+
+## Event-driven token and quota containment
+
+The root/orchestrator MUST NOT retain a persistent long-running goal, MUST NOT autonomously poll, and MUST process only compact deltas for terminal child state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or clean review completion; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry; no full conversation transfer or full agent-tree listing. The root/orchestrator MAY end its goal and plan after dispatch; child external-gate wait MUST retain active goal and plan, use bounded child-local monitoring, and send a parent delta before transition.
+
+Before creating a child, inspect archive candidates and the active reservation ledger; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head.
+Event-driven refresh MUST update only from qualifying changes; a failed parent message MUST NOT retry the parent message, there MUST be no full agent-tree listing, and orchestration MUST inspect archive candidates and the active reservation ledger.
+
+The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions. Every BLOCK finding MUST map to an in-scope acceptance criterion. Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane. Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
 
 MUST NOT mark a plan step complete until its evidence has been inspected by the
 orchestrator. MUST use `update_goal` only when that tool is available, an active or
 user-requested goal exists, and every explicit requirement has current matching
 proof. Reserve `blocked` for repeated true impasses where meaningful progress
 requires user input or an external state change.
-
-## Failure Modes
-
-- Starting setup, delegation, implementation, validation, PR handling, review
-  response, or merge coordination before `$task-classification`.
-- Subagents are not child-owned implementation owners.
-- Treating subagents as child-owned Codex thread/worktree owners.
-- Marking a goal blocked because review, child work, worktree/thread setup, or
-  another asynchronous tool is pending.
-- Treating expected or registered MCPs as ordinary unavailable tools when the
-  callable Codex surface does not expose them.
-- Starting parent implementation patches for a lane that needs its own child
-  thread, worktree, branch, or PR, then delegating only after files changed.
-- Treating parent-only readthrough, arbitrary reviewer agents, generic review
-  roles, or stale reviewer output as the packaged Codexy reviewer gate.
-- Reporting completion while review comments, open threads, stale PR heads, or
-  unverified claims remain unresolved.

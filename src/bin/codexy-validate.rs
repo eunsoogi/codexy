@@ -43,6 +43,10 @@ struct Cli {
     check_issue_title: bool,
     #[arg(long, requires = "check_issue_title")]
     issue_title: Option<String>,
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_completion_handoff", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
+    check_issue_intake: bool,
+    #[arg(long, requires = "check_issue_intake")]
+    issue_intake_file: Option<PathBuf>,
     #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
     check_completion_handoff: bool,
     #[arg(long, requires = "check_completion_handoff")]
@@ -104,6 +108,10 @@ fn main() -> Result<()> {
                 .issue_title
                 .clone()
                 .ok_or_else(|| anyhow::anyhow!("--issue-title is required"))?,
+        }
+    } else if cli.check_issue_intake {
+        validation::Mode::IssueIntake {
+            receipt: read_required_file(&cli.issue_intake_file, "--issue-intake-file")?,
         }
     } else if cli.check_completion_handoff {
         validation::Mode::CompletionHandoff {

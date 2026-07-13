@@ -50,6 +50,7 @@ MUST use this when calling Codex app thread/worktree tools such as `fork_thread`
 MUST run this before creating, forking, reusing, or recycling a Codex app
 worktree. This is a repository-side fail-closed diagnostic; it does not claim to
 atomically control the host allocator.
+The live worktree reservation preflight is the required repository-side check.
 
 1. MUST rebuild the reservation map from the active/waiting child ledger and
    every active or waiting specialist or Sentinel. Each reservation MUST name the

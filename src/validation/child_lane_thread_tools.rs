@@ -1,4 +1,4 @@
-pub(super) fn check(evidence: &str) -> Vec<String> {
+pub(super) fn check(evidence: &str, original_evidence: &str) -> Vec<String> {
     let mut errors = Vec::new();
     errors.extend(super::child_lane_active_threads::check(evidence));
     if super::child_lane_ownership_subagents::has_subagent_as_thread_owner(evidence) {
@@ -9,7 +9,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     if has_false_thread_tool_blocker(evidence) {
         errors.push("thread-tool discovery evidence reports a blocker from tool_search absence even though thread/start and turn/start events prove a real thread surface exists".to_owned());
     }
-    if super::child_lane_thread_tool_handlers::has_uncaptured_defect(evidence) {
+    if super::child_lane_thread_tool_handlers::has_uncaptured_defect(evidence, original_evidence) {
         errors.push("thread-tool handler evidence includes `No handler registered for tool` for an expected or discovered Codex app thread tool; report both the discovered tool surface and the missing handler as a dogfooding/tool-exposure defect instead of using ordinary unavailable-tool fallback".to_owned());
     }
     if has_forbidden_codex_cli_thread_fallback(evidence) {

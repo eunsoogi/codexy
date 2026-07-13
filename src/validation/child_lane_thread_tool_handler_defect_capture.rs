@@ -1,7 +1,9 @@
 use super::child_lane_thread_tool_handler_issue_tracking::has_tracking_issue;
 use super::child_lane_thread_tool_handler_issue_value::has_placeholder_or_pending_value;
+use super::child_lane_thread_tool_handler_lane_mentions::has_unnegated_different_lane_phrase;
 use super::child_lane_thread_tool_handler_no_route::has_false_no_route_answer;
 use super::child_lane_thread_tool_handler_route_value::has_substantive_route_value;
+use super::child_lane_thread_tool_handler_scope::has_different_lane_mention;
 pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     evidence: &str,
     tool: &str,
@@ -9,6 +11,8 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
+            && !has_different_lane_mention(line)
+            && !has_unnegated_different_lane_phrase(line)
             && !has_negated_fallback_route_field(line)
             && (has_handler_marker_and_tool_name_in_defect_clause(line, tool)
                 && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))
@@ -23,9 +27,10 @@ pub(super) fn has_handler_marker_and_tool_name_in_defect_capture(
                                 && has_handler_marker(following)
                                 && has_tool_name(following, tool)
                                 && has_handler_handoff_fields(&list_item_candidate_scope(
+                                    &lines,
+                                    index,
                                     &lines[index + 1..],
                                     offset,
-                                    &defect_header_candidate_scope(&lines, index),
                                 ))
                         }))
     })
@@ -34,6 +39,8 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
     let lines = evidence.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
         is_defect_capture_line(line)
+            && !has_different_lane_mention(line)
+            && !has_unnegated_different_lane_phrase(line)
             && !has_negated_fallback_route_field(line)
             && (has_handler_marker_in_defect_clause(line)
                 && has_handler_handoff_fields(&defect_candidate_scope(&lines, index))
@@ -47,23 +54,28 @@ pub(super) fn has_handler_marker_in_defect_capture(evidence: &str) -> bool {
                             !has_negated_fallback_route_field(following)
                                 && has_handler_marker(following)
                                 && has_handler_handoff_fields(&list_item_candidate_scope(
+                                    &lines,
+                                    index,
                                     &lines[index + 1..],
                                     offset,
-                                    &defect_header_candidate_scope(&lines, index),
                                 ))
                         }))
     })
 }
 fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
     let start = defect_scope_start(lines, index);
-    let mut scoped = lines[start..=index].to_vec();
-    scoped[index - start] = current_defect_clause_scope(lines[index]);
+    let defect_lane = defect_lane_label(lines, start, index);
+    let mut scoped = preceding_defect_scope_lines(lines, start, index, defect_lane.as_deref());
+    scoped.push(current_defect_clause_scope_for_lane(
+        lines[index],
+        defect_lane.as_deref(),
+    ));
     scoped.extend(
         lines[index + 1..]
             .iter()
             .take_while(|line| {
-                is_unlisted_handoff_metadata_item(line)
-                    || is_handoff_list_metadata_item(line)
+                is_unlisted_handoff_metadata_item_for_lane(line, defect_lane.as_deref())
+                    || is_handoff_list_metadata_item_for_lane(line, defect_lane.as_deref())
                     || is_exact_handler_error_metadata_item(line)
             })
             .map(|line| {
@@ -77,10 +89,85 @@ fn defect_candidate_scope(lines: &[&str], index: usize) -> String {
     scoped.join("\n")
 }
 
-fn defect_header_candidate_scope(lines: &[&str], index: usize) -> String {
+fn preceding_defect_scope_lines<'a>(
+    lines: &[&'a str],
+    start: usize,
+    index: usize,
+    lane: Option<&str>,
+) -> Vec<&'a str> {
+    let mut skip_handoff_metadata_block = false;
+    lines[start..index]
+        .iter()
+        .filter_map(|line| {
+            if is_handoff_metadata_item_for_different_lane(line, lane) {
+                skip_handoff_metadata_block = true;
+                return None;
+            }
+            if skip_handoff_metadata_block && is_unlisted_or_list_handoff_metadata_item(line) {
+                if is_handoff_metadata_item_explicitly_for_lane(line, lane) {
+                    skip_handoff_metadata_block = false;
+                    return Some(*line);
+                }
+                return None;
+            }
+            skip_handoff_metadata_block = false;
+            Some(*line)
+        })
+        .collect()
+}
+
+fn is_unlisted_or_list_handoff_metadata_item(line: &str) -> bool {
+    if is_handoff_list_metadata_item(line) {
+        return true;
+    }
+    is_unlisted_handoff_metadata_item(line)
+}
+
+fn is_handoff_metadata_item_for_different_lane(line: &str, lane: Option<&str>) -> bool {
+    let Some(lane) = lane else {
+        return false;
+    };
+    let line = if is_list_item(line) {
+        strip_list_prefix(line)
+    } else {
+        line
+    };
+    let line_lower = line.to_ascii_lowercase();
+    let Some(field_line) = strip_lane_label_prefix_for_lane(&line_lower, None) else {
+        return false;
+    };
+    let Some(scope_line) = strip_lane_label_prefix_for_lane_preserving_case(line, None) else {
+        return false;
+    };
+    is_handoff_metadata_field_line(field_line)
+        && (strip_lane_label_prefix_for_lane_preserving_case(line, Some(lane)).is_none()
+            || names_later_lane_handoff(scope_line, Some(lane)))
+}
+
+fn is_handoff_metadata_item_explicitly_for_lane(line: &str, lane: Option<&str>) -> bool {
+    let Some(lane) = lane else {
+        return false;
+    };
+    let line = if is_list_item(line) {
+        strip_list_prefix(line)
+    } else {
+        line
+    };
+    let line_lower = line.to_ascii_lowercase();
+    let Some(field_line) = strip_lane_label_prefix_for_lane(&line_lower, Some(lane)) else {
+        return false;
+    };
+    let Some(scope_line) = strip_lane_label_prefix_for_lane_preserving_case(line, Some(lane))
+    else {
+        return false;
+    };
+    is_handoff_metadata_field_line(field_line) && scope_line.len() < line.trim_start().len()
+}
+
+fn defect_header_candidate_scope(lines: &[&str], index: usize, lane: Option<&str>) -> String {
     let start = defect_scope_start(lines, index);
-    let mut scoped = lines[start..=index].to_vec();
-    scoped[index - start] = current_defect_clause_scope(lines[index]);
+    let mut scoped = preceding_defect_scope_lines(lines, start, index, lane);
+    scoped.push(current_defect_clause_scope_for_lane(lines[index], lane));
     scoped.join("\n")
 }
 
@@ -104,16 +191,33 @@ fn is_defect_trailing_metadata(line: &str) -> bool {
         || is_exact_handler_error_metadata_item(line)
 }
 
-fn list_item_candidate_scope(list_items: &[&str], index: usize, header_scope: &str) -> String {
-    let mut scoped = vec![header_scope, strip_list_prefix(list_items[index])];
+fn list_item_candidate_scope(
+    lines: &[&str],
+    defect_index: usize,
+    list_items: &[&str],
+    index: usize,
+) -> String {
+    let start = defect_scope_start(lines, defect_index);
+    let lane = defect_list_item_lane_label(list_items[index])
+        .or_else(|| defect_lane_label(lines, start, defect_index));
+    let header_scope = defect_header_candidate_scope(lines, defect_index, lane.as_deref());
+    let mut scoped = vec![
+        header_scope,
+        strip_list_prefix(list_items[index]).to_string(),
+    ];
     scoped.extend(
         list_items[index + 1..]
             .iter()
-            .take_while(|line| is_handoff_list_metadata_item(line))
-            .map(|line| strip_list_prefix(line)),
+            .take_while(|line| is_handoff_list_metadata_item_for_lane(line, lane.as_deref()))
+            .map(|line| strip_list_prefix(line).to_string()),
     );
-    if let Some(shared_metadata) = shared_handoff_list_metadata(list_items, index) {
-        scoped.extend(shared_metadata.iter().map(|line| strip_list_prefix(line)));
+    if let Some(shared_metadata) = shared_handoff_list_metadata(list_items, index, lane.as_deref())
+    {
+        scoped.extend(
+            shared_metadata
+                .iter()
+                .map(|line| strip_list_prefix(line).to_string()),
+        );
     }
     let list_end = list_items
         .iter()
@@ -122,34 +226,61 @@ fn list_item_candidate_scope(list_items: &[&str], index: usize, header_scope: &s
     scoped.extend(
         list_items[list_end..]
             .iter()
-            .take_while(|line| is_unlisted_handoff_metadata_item(line))
-            .copied(),
+            .take_while(|line| is_unlisted_handoff_metadata_item_for_lane(line, lane.as_deref()))
+            .map(|line| line.to_string()),
     );
     scoped.join("\n")
 }
 
-fn shared_handoff_list_metadata<'a>(list_items: &'a [&str], index: usize) -> Option<&'a [&'a str]> {
+fn defect_list_item_lane_label(line: &str) -> Option<String> {
+    let line = strip_list_prefix(line);
+    prefixed_lane_label(line).or_else(|| mentioned_lane_label(line))
+}
+
+fn shared_handoff_list_metadata<'a>(
+    list_items: &'a [&str],
+    index: usize,
+    lane: Option<&str>,
+) -> Option<&'a [&'a str]> {
     let list_end = list_items
         .iter()
         .position(|line| !is_list_item(line))
         .unwrap_or(list_items.len());
     let metadata_start = (index + 1..list_end).find(|candidate| {
         list_items[*candidate..list_end].iter().all(|line| {
-            is_handoff_list_metadata_item(line) && !has_handler_marker(strip_list_prefix(line))
+            is_handoff_list_metadata_item_for_lane(line, lane)
+                && !has_handler_marker(strip_list_prefix(line))
         })
     })?;
     (metadata_start > index + 1).then_some(&list_items[metadata_start..list_end])
 }
 
 fn is_handoff_list_metadata_item(line: &str) -> bool {
-    let line = strip_list_prefix(line).to_ascii_lowercase();
-    is_unlisted_handoff_metadata_item(&line)
+    is_handoff_list_metadata_item_for_lane(line, None)
+}
+
+fn is_handoff_list_metadata_item_for_lane(line: &str, lane: Option<&str>) -> bool {
+    let line = strip_list_prefix(line);
+    is_unlisted_handoff_metadata_item_for_lane(line, lane)
 }
 
 fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
-    let line = line.to_ascii_lowercase();
-    let line = strip_lane_label_prefix(&line);
-    is_fallback_metadata_field(&line)
+    is_unlisted_handoff_metadata_item_for_lane(line, None)
+}
+
+fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) -> bool {
+    let line_lower = line.to_ascii_lowercase();
+    let Some(field_line) = strip_lane_label_prefix_for_lane(&line_lower, lane) else {
+        return false;
+    };
+    let Some(scope_line) = strip_lane_label_prefix_for_lane_preserving_case(line, lane) else {
+        return false;
+    };
+    is_handoff_metadata_field_line(field_line) && !names_later_lane_handoff(scope_line, lane)
+}
+
+fn is_handoff_metadata_field_line(line: &str) -> bool {
+    is_fallback_metadata_field(line)
         || [
             "separate dogfood issue",
             "separate dogfooding issue",
@@ -163,6 +294,67 @@ fn is_unlisted_handoff_metadata_item(line: &str) -> bool {
         .any(|field| line.starts_with(field))
 }
 
+fn names_later_lane_handoff(line: &str, lane: Option<&str>) -> bool {
+    has_unnegated_different_lane_phrase(line)
+        || mentioned_lane(line, lane)
+            .is_some_and(|mentioned| lane.is_some_and(|lane| !mentioned.eq_ignore_ascii_case(lane)))
+        || plural_lane_mentions_different_lane(line, lane)
+}
+
+fn plural_lane_mentions_different_lane(line: &str, lane: Option<&str>) -> bool {
+    let Some(lane) = lane else {
+        return false;
+    };
+    let lower = line.to_ascii_lowercase();
+    [
+        "for lanes ",
+        "in lanes ",
+        "assigned to lanes ",
+        "targeting lanes ",
+    ]
+    .into_iter()
+    .any(|marker| {
+        lower.find(marker).is_some_and(|offset| {
+            let lane_expression = line[offset + marker.len()..]
+                .replace("and/or", " and ")
+                .replace("and-or", " and ")
+                .replace(',', " , ")
+                .replace('/', " / ")
+                .replace([':', '-', '.'], " ");
+            let mut tokens = lane_expression
+                .split_whitespace()
+                .filter(|token| !token.is_empty());
+            let Some(first) = tokens.next() else {
+                return false;
+            };
+            if !is_lane_label_token(first) {
+                return false;
+            }
+            if !first.eq_ignore_ascii_case(lane) {
+                return true;
+            }
+            while let Some(connector) = tokens.next() {
+                if !matches!(
+                    connector.to_ascii_lowercase().as_str(),
+                    "and" | "or" | "," | "/"
+                ) {
+                    return false;
+                }
+                let Some(label) = tokens.next() else {
+                    return false;
+                };
+                if !is_lane_label_token(label) {
+                    return false;
+                }
+                if !label.eq_ignore_ascii_case(lane) {
+                    return true;
+                }
+            }
+            false
+        })
+    })
+}
+
 fn is_exact_handler_error_metadata_item(line: &str) -> bool {
     let line = line.to_ascii_lowercase();
     let line = strip_lane_label_prefix(&line);
@@ -171,18 +363,226 @@ fn is_exact_handler_error_metadata_item(line: &str) -> bool {
 }
 
 fn strip_lane_label_prefix(line: &str) -> &str {
+    strip_lane_label_prefix_for_lane(line, None).unwrap_or(line)
+}
+
+fn strip_lane_label_prefix_for_lane<'a>(line: &'a str, lane: Option<&str>) -> Option<&'a str> {
     let Some(rest) = line.trim_start().strip_prefix("lane ") else {
-        return line;
+        return Some(line);
     };
     let label_end = rest
         .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
         .unwrap_or(rest.len());
     let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
     if label.is_empty() {
-        return line;
+        return Some(line);
     }
-    rest[label_end..]
-        .trim_start_matches(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+    if lane.is_some_and(|lane| lane != label) {
+        return None;
+    }
+    Some(
+        rest[label_end..].trim_start_matches(|ch: char| {
+            ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.'
+        }),
+    )
+}
+
+fn strip_lane_label_prefix_for_lane_preserving_case<'a>(
+    line: &'a str,
+    lane: Option<&str>,
+) -> Option<&'a str> {
+    let trimmed = line.trim_start();
+    let lower = trimmed.to_ascii_lowercase();
+    let Some(rest_lower) = lower.strip_prefix("lane ") else {
+        return Some(line);
+    };
+    let rest = &trimmed["lane ".len()..];
+    let label_end = rest_lower
+        .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .unwrap_or(rest_lower.len());
+    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    if label.is_empty() {
+        return Some(line);
+    }
+    if lane.is_some_and(|lane| !lane.eq_ignore_ascii_case(label)) {
+        return None;
+    }
+    Some(
+        rest[label_end..].trim_start_matches(|ch: char| {
+            ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.'
+        }),
+    )
+}
+
+fn prefixed_lane_label(line: &str) -> Option<String> {
+    let line = line.trim_start().to_ascii_lowercase();
+    let rest = line.strip_prefix("lane ")?;
+    let label_end = rest
+        .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .unwrap_or(rest.len());
+    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    (!label.is_empty()).then(|| label.to_string())
+}
+
+fn defect_lane_label(lines: &[&str], start: usize, index: usize) -> Option<String> {
+    prefixed_lane_label(lines[index])
+        .or_else(|| mentioned_lane_label(lines[index]))
+        .or_else(|| {
+            lines[start..index]
+                .iter()
+                .rev()
+                .find_map(|line| lane_header_label(line))
+        })
+}
+
+fn lane_header_label(line: &str) -> Option<String> {
+    let line = strip_markdown_heading_prefix(line.trim_start()).to_ascii_lowercase();
+    let rest = line.strip_prefix("lane ")?;
+    let label = rest.trim_end_matches([':', '.', '-']).trim();
+    (!label.is_empty()
+        && !is_excluded_lane_metadata_label(label)
+        && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+    .then(|| label.to_string())
+}
+
+fn is_excluded_lane_metadata_label(label: &str) -> bool {
+    matches!(
+        label,
+        "owner" | "owners" | "ownership" | "metadata" | "type"
+    )
+}
+
+fn strip_markdown_heading_prefix(line: &str) -> &str {
+    let marker_end = line.bytes().take_while(|byte| *byte == b'#').count();
+    if marker_end > 0 && line[marker_end..].starts_with(' ') {
+        line[marker_end..].trim_start()
+    } else {
+        line
+    }
+}
+
+fn mentioned_lane<'a>(line: &'a str, lane: Option<&str>) -> Option<&'a str> {
+    let lower = line.to_ascii_lowercase();
+    let mut first_match = None;
+    for marker in [
+        "for lane ",
+        "in lane ",
+        "assigned to lane ",
+        "targeting lane ",
+    ] {
+        let mut search_start = 0;
+        while let Some(offset) = lower[search_start..].find(marker) {
+            let marker_start = search_start + offset;
+            if let Some(label) = mentioned_lane_after(line, &lower, marker, marker_start, lane) {
+                if lane.is_some_and(|lane| !label.eq_ignore_ascii_case(lane)) {
+                    return Some(label);
+                }
+                first_match.get_or_insert(label);
+            }
+            search_start = marker_start + marker.len();
+        }
+    }
+    first_match
+}
+
+fn mentioned_lane_after<'a>(
+    line: &'a str,
+    lower: &str,
+    marker: &str,
+    marker_start: usize,
+    lane: Option<&str>,
+) -> Option<&'a str> {
+    if is_negated_lane_marker(&lower, marker_start) {
+        return None;
+    }
+    let lane_start = marker_start + marker.len();
+    let label = line[lane_start..]
+        .split(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .next()
+        .unwrap_or_default()
+        .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    is_lane_label_token(label)
+        .then_some(label)
+        .or_else(|| explicit_lane_marker_label(line, lane_start, marker, label).then_some(label))
+        .or_else(|| scoped_lowercase_lane_label(label, lane).then_some(label))
+}
+
+fn mentioned_lane_label(line: &str) -> Option<String> {
+    let lower = line.to_ascii_lowercase();
+    [
+        "for lane ",
+        "in lane ",
+        "assigned to lane ",
+        "targeting lane ",
+    ]
+    .into_iter()
+    .find_map(|marker| {
+        let marker_start = lower.find(marker)?;
+        if is_negated_lane_marker(&lower, marker_start) {
+            return None;
+        }
+        let lane_start = marker_start + marker.len();
+        let label = line[lane_start..]
+            .split(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+            .next()
+            .unwrap_or_default()
+            .trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+        (is_lane_label_token(label)
+            || explicit_lane_marker_label(line, lane_start, marker, label)
+            || lowercase_lane_label_token(label))
+        .then(|| label.to_ascii_lowercase())
+    })
+}
+
+fn is_negated_lane_marker(lower: &str, marker_start: usize) -> bool {
+    lower[..marker_start]
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .next_back()
+        .is_some_and(|token| matches!(token, "not" | "never" | "without"))
+}
+
+fn is_lane_label_token(label: &str) -> bool {
+    !label.is_empty()
+        && (label.bytes().all(|byte| byte.is_ascii_digit())
+            || label.len() == 1 && label.bytes().all(|byte| byte.is_ascii_alphabetic())
+            || label
+                .bytes()
+                .next()
+                .is_some_and(|byte| byte.is_ascii_uppercase()))
+}
+
+fn explicit_lane_marker_label(line: &str, lane_start: usize, marker: &str, label: &str) -> bool {
+    let marker_start = lane_start.saturating_sub(marker.len());
+    !label.is_empty()
+        && line[marker_start..lane_start].contains("Lane ")
+        && label.bytes().all(|byte| byte.is_ascii_alphanumeric())
+}
+
+fn scoped_lowercase_lane_label(label: &str, lane: Option<&str>) -> bool {
+    lane.is_some_and(|lane| lane.len() > 1) && lowercase_lane_label_token(label)
+}
+
+fn lowercase_lane_label_token(label: &str) -> bool {
+    !label.is_empty()
+        && label
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+        && !matches!(
+            label,
+            "context" | "handoff" | "metadata" | "review" | "setup" | "thread" | "workflow"
+        )
+}
+
+fn current_defect_clause_scope_for_lane<'a>(line: &'a str, lane: Option<&str>) -> &'a str {
+    let mentioned_lane;
+    let lane = if lane.is_some() {
+        lane
+    } else {
+        mentioned_lane = mentioned_lane_label(line);
+        mentioned_lane.as_deref()
+    };
+    trim_at_other_lane_handoff_clause(current_defect_clause_scope(line), lane)
 }
 
 fn current_defect_clause_scope(line: &str) -> &str {
@@ -201,6 +601,49 @@ fn current_defect_clause_scope(line: &str) -> &str {
         })
         .min()
         .map_or(line, |next| &line[..next])
+}
+
+fn trim_at_other_lane_handoff_clause<'a>(line: &'a str, lane: Option<&str>) -> &'a str {
+    let mut search_start = 0;
+    while let Some((separator, delimiter_len)) = next_handoff_clause_separator(line, search_start) {
+        let clause = line[separator + delimiter_len..].trim_start();
+        let field_clause = if is_list_item(clause) {
+            strip_list_prefix(clause)
+        } else {
+            clause
+        };
+        if is_handoff_metadata_field_item(field_clause)
+            && !is_unlisted_handoff_metadata_item_for_lane(field_clause, lane)
+        {
+            return line[..separator].trim_end();
+        }
+        search_start = separator + delimiter_len;
+    }
+    line
+}
+
+fn is_handoff_metadata_field_item(line: &str) -> bool {
+    let line = if is_list_item(line) {
+        strip_list_prefix(line)
+    } else {
+        line
+    };
+    let lower = line.to_ascii_lowercase();
+    strip_lane_label_prefix_for_lane(&lower, None).is_some_and(is_handoff_metadata_field_line)
+}
+
+fn next_handoff_clause_separator(line: &str, search_start: usize) -> Option<(usize, usize)> {
+    let semicolon = line[search_start..]
+        .find(';')
+        .map(|offset| (search_start + offset, 1));
+    let period = line[search_start..]
+        .find(". ")
+        .map(|offset| (search_start + offset, 2));
+
+    [semicolon, period]
+        .into_iter()
+        .flatten()
+        .min_by_key(|(index, _)| *index)
 }
 
 fn is_defect_label_boundary(prefix: &str) -> bool {
@@ -429,4 +872,177 @@ fn has_handler_marker(line: &str) -> bool {
         && "captured|classified|recorded|reported|routed|tracked"
             .split('|')
             .any(|marker| normalized.contains(marker))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        current_defect_clause_scope_for_lane, has_handler_marker_and_tool_name_in_defect_capture,
+        names_later_lane_handoff, preceding_defect_scope_lines,
+    };
+
+    #[test]
+    fn rejects_singular_multi_letter_lane_defect_capture() {
+        let evidence = "Dogfooding/tool-exposure defect for Lane Alpha and Beta: recorded runtime missing-handler evidence for codex_app.read_thread.";
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "a singular multi-letter lane list must not satisfy a handler-defect capture"
+        );
+    }
+
+    #[test]
+    fn rejects_preceding_handoff_metadata_for_a_different_lane() {
+        let evidence = r#"Fallback route: parent posted the handoff for Lane B.
+Tracking issue: #246
+Lane A dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread."#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A defect capture must not borrow preceding Lane B fallback metadata"
+        );
+    }
+
+    #[test]
+    fn rejects_list_defect_trailing_handoff_metadata_for_a_different_lane() {
+        let evidence = r#"Dogfooding/tool-exposure defect:
+- Lane A: recorded runtime missing-handler evidence for codex_app.read_thread.
+Fallback route: parent posted the handoff in the child thread for Lane B.
+Tracking issue: #246"#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A list defect capture must not borrow trailing Lane B fallback metadata"
+        );
+    }
+
+    #[test]
+    fn rejects_list_defect_bulleted_handoff_metadata_for_a_different_lane() {
+        let evidence = r#"Dogfooding/tool-exposure defect:
+- Lane A: recorded runtime missing-handler evidence for codex_app.read_thread.
+- Fallback route: parent posted the handoff in the child thread for Lane B.
+- Tracking issue: #246"#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A list defect capture must not borrow bulleted Lane B fallback metadata"
+        );
+    }
+
+    #[test]
+    fn rejects_single_line_defect_bulleted_handoff_metadata_for_a_different_lane() {
+        let evidence = r#"Lane A:
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A.
+- Fallback route: parent posted the handoff in the child thread for Lane B.
+- Tracking issue: #246"#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A single-line defect capture must not borrow bulleted Lane B fallback metadata"
+        );
+    }
+
+    #[test]
+    fn rejects_list_defect_bulleted_handoff_metadata_for_a_multi_letter_lane() {
+        let evidence = r#"lane alpha:
+dogfooding/tool-exposure defect:
+- recorded runtime missing-handler evidence for codex_app.read_thread.
+- fallback route: no fallback route was available for lane beta.
+- tracking issue: #246 in lane beta review thread."#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane alpha list defect capture must not borrow Lane beta fallback metadata"
+        );
+    }
+
+    #[test]
+    fn rejects_bulleted_preceding_handoff_metadata_for_another_lane() {
+        let evidence = r#"Lane A:
+- Fallback route: parent posted the handoff for another lane.
+- Tracking issue: #246
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread."#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A defect capture must not borrow bulleted preceding metadata for another lane"
+        );
+    }
+
+    #[test]
+    fn rejects_markdown_lane_header_preceding_handoff_metadata_for_a_different_lane() {
+        let evidence = r#"### Lane A
+Fallback route: no fallback route was available for Lane B.
+Tracking issue: #246 in Lane B.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread."#;
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Markdown Lane A defect capture must not borrow preceding Lane B metadata"
+        );
+    }
+
+    #[test]
+    fn keeps_current_lane_metadata_after_other_lane_metadata() {
+        let evidence = r#"Lane A:
+Lane B Fallback route: pending confirmation.
+Lane B Tracking issue: pending.
+Lane A Fallback route: parent posted the handoff in the child thread.
+Lane A Tracking issue: #246.
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread in Lane A."#;
+
+        assert!(
+            has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "Lane A defect capture must retain its metadata after excluding a Lane B metadata block"
+        );
+    }
+
+    #[test]
+    fn scope_excludes_only_the_other_lane_metadata_block() {
+        let lines = [
+            "Lane B Fallback route: pending confirmation.",
+            "Lane B Tracking issue: pending.",
+            "Lane A Fallback route: parent posted the handoff in the child thread.",
+            "Lane A Tracking issue: #246.",
+        ];
+
+        assert_eq!(
+            preceding_defect_scope_lines(&lines, 0, lines.len(), Some("a")),
+            vec![
+                "Lane A Fallback route: parent posted the handoff in the child thread.",
+                "Lane A Tracking issue: #246.",
+            ]
+        );
+    }
+
+    #[test]
+    fn detects_plural_lane_handoff_metadata_that_names_another_lane() {
+        for phrase in ["Lanes A and B", "Lanes A or B", "Lanes A, B", "Lanes A/B"] {
+            assert!(
+                names_later_lane_handoff(
+                    &format!("Fallback route: no fallback route was available for {phrase}."),
+                    Some("a")
+                ),
+                "expected {phrase} to include another lane"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_phrase_only_different_lane_defect_capture() {
+        let evidence = "Dogfooding/tool-exposure defect for a different lane: recorded runtime missing-handler evidence for codex_app.read_thread; no fallback route was available; tracking issue: #205.";
+
+        assert!(
+            !has_handler_marker_and_tool_name_in_defect_capture(evidence, "read_thread"),
+            "a phrase-scoped different-lane defect must not satisfy the current lane"
+        );
+    }
+
+    #[test]
+    fn trims_phrase_scoped_same_line_handoff_fields() {
+        let evidence = "Lane A dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread; fallback route: no fallback route was available for another lane; separate dogfood issue: #205.";
+        let scoped = current_defect_clause_scope_for_lane(evidence, Some("a"));
+
+        assert!(!scoped.contains("fallback route:"), "scope was {scoped:?}");
+    }
 }
