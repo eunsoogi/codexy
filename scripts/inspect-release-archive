@@ -16,6 +16,8 @@ tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 entries="$tmp_dir/entries"
 tar -tzf "$archive" >"$entries"
+duplicates=$(sort "$entries" | uniq -d)
+[ -z "$duplicates" ] || { echo "duplicate archive entries: $duplicates" >&2; exit 1; }
 
 while IFS= read -r entry; do
   case "$entry" in
@@ -42,6 +44,13 @@ fi
 (cd "$plugin_root" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/expected"
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 diff -u "$tmp_dir/expected" "$tmp_dir/actual"
+
+while IFS= read -r relative; do
+  case "$relative" in
+    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin) ;;
+    runtime/*) echo "unexpected runtime artifact: $relative" >&2; exit 1 ;;
+  esac
+done <"$tmp_dir/actual"
 
 while IFS= read -r relative; do
   cmp -s "$plugin_root/$relative" "$extract_root/plugins/codexy/$relative" || {

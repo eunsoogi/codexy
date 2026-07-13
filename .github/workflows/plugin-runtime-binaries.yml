@@ -105,6 +105,7 @@ jobs:
               try: message = json.loads(line)
               except json.JSONDecodeError: continue
               if isinstance(message, dict) and message.get("id") in (1, 2):
+                  assert message.get("jsonrpc") == "2.0", "invalid JSON-RPC version"
                   assert message["id"] not in ids, "duplicate MCP response id"
                   ids[message["id"]] = message
           assert set(ids) == {1, 2} and all("result" in item and "error" not in item for item in ids.values())

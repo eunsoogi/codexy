@@ -34,6 +34,8 @@ fn archive_gate_allows_documentation_path_examples() {
     assert!(script.contains("command -v python3"));
     assert!(script.contains("rg or grep is required"));
     assert!(script.contains("hygiene scan failed"));
+    assert!(script.contains("duplicate archive entries"));
+    assert!(script.contains("unexpected runtime artifact"));
     assert!(script.contains("set(responses) != {1, 2}"));
 }
 
@@ -112,6 +114,16 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
         "valid fixture failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+
+    std::fs::write(runtime.join("debug.log"), "debug\n").expect("runtime extra fixture");
+    let extra_runtime_archive = root.path().join("extra-runtime.tar.gz");
+    create_archive(root.path(), &extra_runtime_archive);
+    assert!(
+        !run_gate(&extra_runtime_archive, &plugin_root)
+            .status
+            .success()
+    );
+    std::fs::remove_file(runtime.join("debug.log")).expect("remove runtime extra");
 
     std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
         .expect("secret fixture");
