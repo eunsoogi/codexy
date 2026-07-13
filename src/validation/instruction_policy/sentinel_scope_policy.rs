@@ -102,10 +102,12 @@ fn live_sentinel_control(text: &str) -> bool {
         }
         line.to_ascii_lowercase()
             .split(['.', '!', '?'])
-            .any(|sentence| {
-                let words = words(sentence);
-                sentence.contains("live sentinel")
-                    && !historical_or_terminal(sentence)
+            .flat_map(|sentence| sentence.split(" but "))
+            .flat_map(split_modal_and_clause)
+            .any(|clause| {
+                let words = words(clause);
+                clause.contains("live sentinel")
+                    && !historical_or_terminal(clause)
                     && words.iter().enumerate().any(|(index, word)| {
                         matches_live_control(&words, word)
                             && has_positive_permission(&words, index)
@@ -122,19 +124,16 @@ fn historical_or_terminal(sentence: &str) -> bool {
 }
 
 fn matches_live_control(words: &[&str], word: &str) -> bool {
-    matches!(
-        word,
-        "message" | "interrupt" | "replace" | "follow" | "follow-up"
-    ) || word.starts_with("poll")
+    ["message", "interrupt", "replace", "follow", "follow-up"].contains(&word)
+        || word.starts_with("poll")
         || word == "send" && words.contains(&"terminal-status")
 }
 
 fn has_live_control_prohibition(words: &[&str], action_index: usize) -> bool {
-    let start = words[..action_index]
-        .iter()
-        .rposition(|word| *word == "but")
-        .map_or(0, |index| index + 1);
-    let context = &words[start..action_index];
+    let context = words[..action_index]
+        .rsplit(|word| *word == "but")
+        .next()
+        .unwrap();
     context
         .windows(2)
         .any(|pair| matches!(pair[0], "must" | "may" | "should") && pair[1] == "not")
@@ -234,12 +233,12 @@ mod tests {
 
     #[test]
     fn applies_clause_local_live_sentinel_polarity() {
-        assert!(live_sentinel_control(
-            "Root MUST NOT ignore safety, but MAY poll a live Sentinel."
-        ));
-        assert!(live_sentinel_control(
-            "Root MAY send a terminal-status request to a live Sentinel."
-        ));
+        for text in [
+            "Root MUST NOT ignore safety, but MAY poll a live Sentinel.",
+            "Root MAY send a terminal-status request to a live Sentinel.",
+        ] {
+            assert!(live_sentinel_control(text), "{text}");
+        }
         for text in [
             "Root MUST never poll a live Sentinel.",
             "Root MUST refrain from polling a live Sentinel.",

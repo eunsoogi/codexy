@@ -38,7 +38,9 @@ const LIVE_SENTINEL_CONTROLS: &[&str] = &[
     "Root MAY interrupt or replace a live Sentinel.",
     "A child owner MAY follow up with a live Sentinel.",
     "Root MUST NOT ignore safety, but MAY poll a live Sentinel.",
+    "Root MUST NOT ignore safety and MAY poll a live Sentinel.",
     "Root MAY send a terminal-status request to a live Sentinel.",
+    "Previous policy forbade polling, but root MAY poll a live Sentinel now.",
 ];
 
 const LIVE_SENTINEL_EXEMPTIONS: &[&str] = &[
