@@ -44,8 +44,8 @@ impl IntegrationScope {
                 .iter()
                 .find(|reconciliation| reconciliation.commit == commit);
             if let Some(reconciliation) = reconciliation {
+                baseline = Some(reconciliation);
                 if !path_differs(root, &reconciliation.main_parent, &commit, path)? {
-                    baseline = Some(reconciliation);
                     child_changed = false;
                     continue;
                 }
@@ -84,7 +84,6 @@ fn reconciliation_merges(
     if requested_base == MAIN_REF
         || !commit_exists(root, MAIN_REF)?
         || !is_ancestor(root, requested_base, head)?
-        || !is_ancestor(root, MAIN_REF, head)?
     {
         return Ok(Vec::new());
     }
