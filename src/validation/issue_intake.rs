@@ -114,39 +114,70 @@ fn check_issue_content(candidate: &Candidate, errors: &mut Vec<String>) {
 }
 
 fn check_metadata(candidate: &Candidate, errors: &mut Vec<String>) {
-    let repository_labels = candidate.repository_labels.iter().collect::<BTreeSet<_>>();
+    let repository_labels = candidate
+        .repository_labels
+        .iter()
+        .map(|label| label.trim())
+        .collect::<BTreeSet<_>>();
     if repository_labels.is_empty()
+        || repository_labels.contains("")
         || candidate.labels.is_empty()
         || candidate
             .labels
             .iter()
-            .any(|label| !repository_labels.contains(label))
+            .map(|label| label.trim())
+            .any(|label| label.is_empty() || !repository_labels.contains(label))
     {
         errors.push("issue-intake labels must be repository-valid".into());
     }
-    if candidate.repository_milestones.is_empty() {
-        errors.push("issue-intake requires a non-empty repository milestone taxonomy".into());
-    } else if !candidate
+    let repository_milestones = candidate
         .repository_milestones
-        .contains(&candidate.milestone)
-    {
+        .iter()
+        .map(|milestone| milestone.trim())
+        .collect::<BTreeSet<_>>();
+    let milestone = candidate.milestone.trim();
+    if repository_milestones.is_empty() || repository_milestones.contains("") {
+        errors.push("issue-intake requires a non-empty repository milestone taxonomy".into());
+    } else if milestone.is_empty() || !repository_milestones.contains(milestone) {
         errors.push("issue-intake milestone must be repository-valid".into());
     }
-    if candidate.repository_assignees.is_empty() {
+    let repository_assignees = candidate
+        .repository_assignees
+        .iter()
+        .map(|assignee| assignee.trim())
+        .collect::<BTreeSet<_>>();
+    let assignee = candidate.assignee.trim();
+    if repository_assignees.is_empty() || repository_assignees.contains("") {
         errors.push("issue-intake requires a non-empty repository assignee taxonomy".into());
-    } else if !candidate.repository_assignees.contains(&candidate.assignee) {
+    } else if assignee.is_empty() || !repository_assignees.contains(assignee) {
         errors.push("issue-intake assignee must be repository-valid".into());
     }
 }
 
 fn substantive(value: &str) -> bool {
-    value.trim().len() >= 12 && value.split_whitespace().count() >= 2
+    value
+        .split_whitespace()
+        .filter_map(|token| {
+            let normalized = token
+                .chars()
+                .filter(|character| character.is_alphanumeric())
+                .flat_map(char::to_lowercase)
+                .collect::<String>();
+            (normalized.chars().count() >= 2).then_some(normalized)
+        })
+        .collect::<BTreeSet<_>>()
+        .len()
+        >= 2
 }
 
 fn is_task_id(value: &str) -> bool {
     value.len() == 36
         && value
-            .chars()
-            .all(|item| item.is_ascii_hexdigit() || item == '-')
-        && value.chars().filter(|item| *item == '-').count() == 4
+            .as_bytes()
+            .iter()
+            .enumerate()
+            .all(|(index, item)| match index {
+                8 | 13 | 18 | 23 => *item == b'-',
+                _ => item.is_ascii_hexdigit(),
+            })
 }

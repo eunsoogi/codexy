@@ -177,3 +177,47 @@ fn cli_rejects_handoff_only_classifications_and_no_change_decision() {
     assert!(!output.status.success());
     assert!(output_text(&output).contains("no-change candidate is handoff-only"));
 }
+
+#[test]
+fn cli_rejects_repeated_one_character_evidence_and_search_terms() {
+    let mut receipt = valid_receipt();
+    receipt["reproduction"]["surface"] = json!("x x x x x x x");
+    receipt["reproduction"]["steps"] = json!(["x x x x x x x"]);
+    receipt["reproduction"]["observed"] = json!("x x x x x x x");
+    receipt["ownership"]["rationale"] = json!("x x x x x x x");
+    receipt["necessity"]["rationale"] = json!("x x x x x x x");
+    receipt["duplicate_search"]["search_terms"] = json!(["x x x x x x x"]);
+    let output = run_receipt(&receipt);
+    let text = output_text(&output);
+    assert!(!output.status.success());
+    assert!(text.contains("substantive supported-surface reproduction"));
+    assert!(text.contains("substantive ownership rationale"));
+    assert!(text.contains("substantive thin-harness necessity"));
+    assert!(text.contains("substantive duplicate-search terms"));
+}
+
+#[test]
+fn cli_rejects_blank_metadata_taxonomy_entries_and_selections() {
+    let mut receipt = valid_receipt();
+    receipt["repository_labels"] = json!([""]);
+    receipt["labels"] = json!([""]);
+    receipt["repository_milestones"] = json!([""]);
+    receipt["milestone"] = json!("");
+    receipt["repository_assignees"] = json!([""]);
+    receipt["assignee"] = json!("");
+    let output = run_receipt(&receipt);
+    let text = output_text(&output);
+    assert!(!output.status.success());
+    assert!(text.contains("labels must be repository-valid"));
+    assert!(text.contains("repository milestone taxonomy"));
+    assert!(text.contains("repository assignee taxonomy"));
+}
+
+#[test]
+fn cli_rejects_malformed_source_task_id() {
+    let mut receipt = valid_receipt();
+    receipt["parent_approval"]["source_task_id"] = json!("00000000000000000000000000000000----");
+    let output = run_receipt(&receipt);
+    assert!(!output.status.success());
+    assert!(output_text(&output).contains("explicit parent approval"));
+}
