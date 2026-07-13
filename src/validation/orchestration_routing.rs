@@ -6,6 +6,8 @@ use crate::validation::orchestration_routing_semantics::{
     has_conflicting_specialist_override, has_conflicting_tier_assignment,
 };
 
+use super::markdown::{Fence, fence_marker};
+
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
 
 const REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
@@ -159,28 +161,6 @@ fn routing_section(skill: &str) -> Option<String> {
         }
     }
     section
-}
-
-#[derive(Clone, Copy)]
-struct Fence {
-    marker: char,
-    width: usize,
-}
-
-impl Fence {
-    fn closes(self, line: &str) -> bool {
-        let width = line.chars().take_while(|item| *item == self.marker).count();
-        width >= self.width && line[width..].trim().is_empty()
-    }
-}
-
-fn fence_marker(line: &str) -> Option<Fence> {
-    let marker = line.chars().next()?;
-    if !matches!(marker, '`' | '~') {
-        return None;
-    }
-    let width = line.chars().take_while(|item| *item == marker).count();
-    (width >= 3).then_some(Fence { marker, width })
 }
 
 fn policy_bullets(section: &str) -> Vec<String> {

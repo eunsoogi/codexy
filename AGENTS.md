@@ -97,11 +97,15 @@ codexy/
 - MUST treat failures to follow governing `AGENTS.md` files and selected skills as
   dogfooding defects. MUST capture the evidence and fix or explicitly track the
   defect before PR readiness.
-- Every discovered dogfooding defect MUST be tracked in its own separate
-  GitHub issue. MUST NOT bundle a dogfooding defect into the current feature,
-  fix, review-response, or merge lane; MUST route it through the separate issue
-  unless a maintainer explicitly re-scopes the current work to that
-  issue-sized lane.
+- Every actionable dogfooding defect MUST be submitted through the canonical
+  approved issue-intake gate before creation. A child MUST send its parent one
+  machine-readable candidate receipt and receive explicit approval. The receipt
+  MUST prove supported real-surface reproduction, existing-owner exclusion,
+  exhaustive all-state duplicate search, thin-harness necessity, validated
+  title/body, repository-valid labels, milestone, and assignee. Unsupported
+  synthetic wording, phrase variants, or observations covered by an existing
+  repair MUST remain handoff-only. MUST treat separate tracking as approved
+  intake, and MUST NOT permit automatic issue creation.
 - If a repo or plugin surface is expected, registered, or enabled but is not
   available in the actual Codex callable tool surface or `tool_search`, MUST treat
   the exposure mismatch as a dogfooding defect, not as a quiet fallback. For
