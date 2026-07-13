@@ -19,7 +19,13 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "latest evidence",
                 "next action",
                 "removed from the ledger",
-                "archived/deleted where supported",
+                "canonical worktree cwd",
+                "frozen head",
+                "clean/index state",
+                "referencing specialist or sentinel",
+                "explicit release/archive state",
+                "must remain as worktree reservations",
+                "must not recycle the worktree",
             ],
         );
     } else if path.ends_with("skills/codex-orchestration/SKILL.md") {
@@ -32,14 +38,20 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "active child codex app threads must be capped at 5",
                 "existing issue/pr owner thread",
                 "reuse it when present",
-                "completed child threads must be removed",
-                "archived/deleted where supported",
+                "completed child threads must remain reserved",
+                "unavailable archive/delete surface as unresolved reservation evidence",
                 "blocked/rate-limited child lanes",
                 "existing owner thread",
                 "latest evidence",
                 "compaction recovery",
                 "normal polling",
                 "packaged specialist subagents must not be counted",
+                "canonical worktree cwd",
+                "frozen head",
+                "clean/index state",
+                "explicit release/archive state",
+                "must keep its reservation active",
+                "must not silently recycle that worktree",
             ],
         );
         reject_all(
@@ -48,6 +60,41 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             errors,
             "orchestration skill must not allow specialist subagents to count against the child thread cap",
             &["packaged specialist subagents must not be counted unless"],
+        );
+    } else if path.ends_with("skills/codex-orchestration/references/thread-and-worktree-routing.md")
+    {
+        require_all(
+            path,
+            text,
+            errors,
+            "thread routing must require live worktree reservation preflight",
+            &[
+                "live worktree reservation preflight",
+                "reservation map",
+                "every active or waiting specialist or sentinel",
+                "must not create or fork the new thread",
+                "must fail setup before allocation",
+                "host allocator blocker",
+                "dirty or locked candidate worktrees",
+            ],
+        );
+    } else if path.ends_with("skills/codex-orchestration/references/goal-transition-reporting.md") {
+        require_all(
+            path,
+            text,
+            errors,
+            "goal-transition reporting guidance must preserve the static parent receipt contract",
+            &[
+                "source_thread_id",
+                "actual codex task/thread messaging surface",
+                "agents.send_message('/root')",
+                "stable transition key",
+                "before `create_goal`",
+                "after every goal tool call, including `get_goal`",
+                "must not execute until parent delivery is confirmed",
+                "exact tool result",
+                "task cwd that differs from the canonical reserved worktree",
+            ],
         );
     }
 }
@@ -61,13 +108,65 @@ fn require_all(
 ) {
     let lower = normalized_whitespace(text);
     for phrase in phrases {
-        if !lower.contains(phrase) {
+        if !has_unweakened_required_clause(&lower, phrase) {
             errors.push(format!(
                 "{} {requirement}: missing `{phrase}`",
                 display_relative(path)
             ));
         }
     }
+}
+
+fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
+    text.match_indices(phrase).any(|(index, _)| {
+        let before = text[..index]
+            .rsplit("</markdown-heading>")
+            .next()
+            .unwrap_or_default();
+        let after = text[index + phrase.len()..]
+            .trim_start_matches([',', ':', ';', '-', '—'])
+            .trim_start();
+        !has_invalid_prefix(before) && !has_invalid_suffix(after)
+    })
+}
+
+fn has_invalid_prefix(before: &str) -> bool {
+    let section = before
+        .rsplit("</markdown-heading>")
+        .next()
+        .unwrap_or_default();
+    let clause = clause_prefix(section);
+    [
+        "historical example",
+        "not required",
+        "no longer required",
+        "false that",
+    ]
+    .iter()
+    .any(|marker| clause.contains(marker))
+}
+
+fn clause_prefix(section: &str) -> &str {
+    let mut start = 0;
+    for (index, character) in section.char_indices() {
+        let after = section[index + character.len_utf8()..].trim_start();
+        if character == ';'
+            || (character == '.'
+                && !after
+                    .chars()
+                    .next()
+                    .is_some_and(|item| item.is_ascii_digit()))
+        {
+            start = index + character.len_utf8();
+        }
+    }
+    &section[start..]
+}
+
+fn has_invalid_suffix(after: &str) -> bool {
+    ["unless ", "except ", "only if ", "may "]
+        .iter()
+        .any(|marker| after.starts_with(marker))
 }
 
 fn reject_all(
@@ -89,7 +188,20 @@ fn reject_all(
 }
 
 fn normalized_whitespace(text: &str) -> String {
-    text.to_ascii_lowercase()
+    let mut with_heading_boundaries = String::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('#') {
+            with_heading_boundaries.push_str(" <markdown-heading> ");
+            with_heading_boundaries.push_str(trimmed.trim_start_matches('#').trim());
+            with_heading_boundaries.push_str(" </markdown-heading> ");
+        } else {
+            with_heading_boundaries.push_str(line);
+            with_heading_boundaries.push(' ');
+        }
+    }
+    with_heading_boundaries
+        .to_ascii_lowercase()
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")

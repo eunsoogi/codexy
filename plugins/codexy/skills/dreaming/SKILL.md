@@ -68,16 +68,17 @@ in-progress/waiting child thread list from current issue, PR, thread, worktree,
 and handoff evidence before deciding whether new child work is needed.
 
 Each active or waiting Codex app child thread entry MUST include issue/PR, thread
-id, status, owner state, blocker, latest evidence, and next action. Blocked or
-rate-limited child lanes MUST stay in the ledger with the current blocker and
-next recheck action until current evidence proves they are complete, reassigned,
-or intentionally abandoned by a maintainer.
+id, status, owner state, blocker, latest evidence, next action, canonical
+worktree CWD, frozen HEAD, clean/index state, referencing specialist or Sentinel
+task ids, and explicit release/archive state. Blocked or rate-limited child lanes
+MUST stay in the ledger with the current blocker and next recheck action until
+current evidence proves they are complete, reassigned, or intentionally
+abandoned by a maintainer.
 
-Completed child lanes MUST be removed from the ledger after current evidence
-proves completion, and the completed child thread MUST be archived/deleted where
-supported by the available tool surface. If archive/delete tooling is
-unavailable, the dream pass MUST record that unavailable-tool evidence and MUST
-still remove the completed lane from the active/waiting ledger.
+Completed child lanes MUST remain as worktree reservations until every referencing
+task is terminal and explicitly archived or released. If archive/delete tooling
+is unavailable, the dream pass MUST record that unavailable-tool evidence and
+MUST NOT recycle the worktree or remove its reservation.
 
 ## Compact Handoff Shape
 
@@ -107,8 +108,9 @@ Forget or demote:
 - Resolved review feedback, stale SHAs, old branch state, duplicate lanes,
   outdated checks, superseded summaries, and historical notes that MUST NOT
   drive the next action.
-- Completed child lanes removed from the ledger after archive/delete or
-  unavailable archive/delete evidence.
+- Completed child lanes removed from the ledger only after every reference is
+  terminal and explicitly archived or released; unavailable archive/delete
+  evidence keeps the reservation active.
 
 Next action:
 - The single next action allowed by the current owner boundary and stop condition.

@@ -24,6 +24,13 @@ dependency inversion, naming cleanup, and review-driven maintainability work.
 - MUST NOT split files mechanically when the result obscures public contracts,
   makes navigation worse, or creates circular dependencies.
 
+- MUST reach at or below 250 LOC through coherent structural refactoring, not merely numeric compliance.
+- Blank-line deletion alone MUST NOT satisfy the LOC target.
+- MUST NOT collapse readable multiline code, tests, or instructions solely to meet the LOC target.
+- Accepted remediation includes helper extraction, module splitting, test-target splitting, responsibility separation, and removal of real duplication.
+- MUST describe the structural boundary or duplication removed when a touched file
+  crosses from over the LOC target to compliant.
+
 ## Workflow
 
 1. MUST read the issue, current diff, owning `AGENTS.md`, and relevant project
