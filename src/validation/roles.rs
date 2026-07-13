@@ -10,6 +10,7 @@ use crate::validation::{
 };
 
 mod delegation_contract;
+mod delegation_contract_parser;
 mod sentinel_gate;
 
 const MIN_DEVELOPER_INSTRUCTION_WORDS: usize = 20;

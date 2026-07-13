@@ -110,6 +110,30 @@ fn validator_rejects_nonroot_child_thread_creation_in_orchestration() -> TestRes
     Ok(())
 }
 
+#[test]
+fn validator_rejects_conjoined_nonroot_child_thread_creation() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = fixture(&temp)?;
+    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let mut skill = std::fs::read_to_string(&skill_path)?;
+    skill.push_str(
+        "\nThe root orchestrator MUST create a child thread and a Sentinel MUST create a child thread.\n",
+    );
+    std::fs::write(skill_path, skill)?;
+    assert_recursion_rejected(
+        validator(&plugin_root)?,
+        "a Sentinel MUST create a child thread",
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_qualified_allowed_recursive_delegation() -> TestResult {
+    assert_recursive_role_permission_rejected(
+        "A helper is allowed, after owner approval, to spawn another helper.",
+    )
+}
+
 fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;

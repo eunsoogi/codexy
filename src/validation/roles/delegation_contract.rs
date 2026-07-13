@@ -4,6 +4,11 @@ use toml::Value;
 
 use crate::paths::display_relative;
 
+use super::delegation_contract_parser::{
+    has_unnegated_delegation_action, has_unnegated_mandatory_delegation_action,
+    has_unnegated_permission, normalize_instruction_text,
+};
+
 const NO_RECURSIVE_DELEGATION: &str = "MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.";
 const ALLOWED_CHILD_DELEGATION: &str = "A child implementation thread MAY spawn bounded first-level specialist helpers or Sentinel reviewers.";
 const CANONICAL_CHILD_DELEGATION_PREFIX: &str =
@@ -106,144 +111,4 @@ fn reject_recursive_delegation_permission(
             display_relative(path)
         ));
     }
-}
-
-fn has_unnegated_permission(clause: &str) -> bool {
-    let words = clause
-        .split(|character: char| !character.is_ascii_alphabetic())
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
-    words.iter().enumerate().any(|(index, word)| match *word {
-        "may" | "can" => words
-            .get(index + 1)
-            .is_none_or(|next| !matches!(*next, "not" | "never")),
-        "allowed" => {
-            words.get(index.wrapping_sub(1)) != Some(&"not")
-                && words
-                    .get(index + 1)
-                    .is_some_and(|next| matches!(*next, "actions" | "to"))
-        }
-        "permitted" => {
-            words.get(index.wrapping_sub(1)) != Some(&"not")
-                && words
-                    .get(index + 1)
-                    .is_some_and(|next| matches!(*next, "to" | "actions"))
-        }
-        _ => false,
-    })
-}
-
-fn has_unnegated_delegation_action(clause: &str) -> bool {
-    ["spawn", "delegate", "create"].into_iter().any(|action| {
-        clause.match_indices(action).any(|(index, _)| {
-            let prefix = &clause[..index];
-            let action_prefix = prefix
-                .rsplit_once(" but ")
-                .map_or(prefix, |(_, contrast)| contrast);
-            let negated = has_action_negation(action_prefix);
-            let suffix = &clause[index..];
-            let target = [
-                "agent",
-                "helper",
-                "reviewer",
-                "sentinel",
-                "specialist",
-                "task",
-                "thread",
-            ]
-            .into_iter()
-            .any(|target| suffix.contains(target));
-            !negated && target
-        })
-    })
-}
-
-fn has_unnegated_mandatory_delegation_action(
-    clause: &str,
-    allow_root_child_thread_creation: bool,
-) -> bool {
-    ["spawn", "delegate", "create"].into_iter().any(|action| {
-        clause.match_indices(action).any(|(index, _)| {
-            let prefix = clause[..index]
-                .rsplit_once(" but ")
-                .map_or(&clause[..index], |(_, contrast)| contrast);
-            let suffix = &clause[index..];
-            let root_is_actor = prefix
-                .trim_start()
-                .starts_with("the root orchestrator must")
-                || prefix.trim_start().starts_with("root orchestrator must");
-            let creates_child_thread = allow_root_child_thread_creation
-                && action == "create"
-                && root_is_actor
-                && suffix.contains("child thread");
-            has_unnegated_mandatory_permission(prefix)
-                && !creates_child_thread
-                && [
-                    "agent",
-                    "helper",
-                    "reviewer",
-                    "sentinel",
-                    "specialist",
-                    "task",
-                    "thread",
-                ]
-                .into_iter()
-                .any(|target| suffix.contains(target))
-        })
-    })
-}
-
-fn has_unnegated_mandatory_permission(prefix: &str) -> bool {
-    let words = prefix
-        .split(|character: char| !character.is_ascii_alphabetic())
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
-    words
-        .iter()
-        .rposition(|word| *word == "must")
-        .is_some_and(|index| words.get(index + 1) != Some(&"not"))
-}
-
-fn has_action_negation(prefix: &str) -> bool {
-    let words = prefix
-        .split(|character: char| !character.is_ascii_alphabetic())
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
-    let Some(index) = words
-        .iter()
-        .rposition(|word| matches!(*word, "may" | "can" | "must" | "allowed" | "permitted"))
-    else {
-        return false;
-    };
-    let following = &words[index + 1..];
-    match words[index] {
-        "may" | "can" => {
-            following
-                .iter()
-                .any(|word| matches!(*word, "not" | "never"))
-                || following
-                    .windows(2)
-                    .any(|pair| pair == ["no", "circumstances"])
-        }
-        "must" => words.get(index + 1) == Some(&"not"),
-        "allowed" | "permitted" => words.get(index.wrapping_sub(1)) == Some(&"not"),
-        _ => false,
-    }
-}
-
-fn normalize_instruction_text(text: &str) -> String {
-    text.lines()
-        .map(str::trim)
-        .map(|line| {
-            line.strip_prefix("- ")
-                .or_else(|| line.strip_prefix("* "))
-                .unwrap_or(line)
-        })
-        .map(|line| {
-            line.split_once(". ")
-                .filter(|(prefix, _)| prefix.chars().all(|character| character.is_ascii_digit()))
-                .map_or(line, |(_, remainder)| remainder)
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
 }
