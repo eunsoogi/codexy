@@ -148,6 +148,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let secret_archive = root.path().join("secret.tar.gz");
     create_archive(root.path(), &secret_archive);
     assert!(!run_gate(&secret_archive, &plugin_root).status.success());
+    std::fs::remove_file(plugin_root.join("README.md")).expect("remove visible secret");
 
     std::fs::write(plugin_root.join(".rgignore"), "hidden-secret.txt\n").expect("ignore fixture");
     std::fs::write(
