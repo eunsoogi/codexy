@@ -1,3 +1,4 @@
+use super::orchestration_routing_assignment::{assignment_intent, assigns_ultra};
 use super::orchestration_routing_effort::assigned_reasoning_efforts;
 use super::orchestration_routing_luna_policy::{
     has_luna_default_assignment, luna_blanket_default_is_negated, luna_policy_clauses,
@@ -105,10 +106,7 @@ fn assigns_conflicting_sentinel_tier(segment: &str) -> bool {
                     .any(|effort| *effort != "xhigh"))
 }
 fn assigns_sentinel_ultra(segment: &str) -> bool {
-    assignment_intent(segment)
-        && segment
-            .split(|character: char| !character.is_ascii_alphanumeric())
-            .any(|word| word == "ultra")
+    assigns_ultra(segment)
 }
 
 fn passes_specialist_overrides(segment: &str) -> bool {
@@ -149,7 +147,8 @@ pub(super) fn has_conflicting_tier_assignment(bullet: &str) -> bool {
                 .is_some_and(|first| models.iter().all(|model| model == first));
             !(is_comparison_only(&normalized) && one_unique_model)
                 && assignment_intent(&normalized)
-                && (models.iter().any(|model| *model != expected)
+                && (assigns_ultra(&normalized)
+                    || models.iter().any(|model| *model != expected)
                     || expected_effort.is_some_and(|expected_effort| {
                         assigned_reasoning_efforts(&normalized)
                             .iter()
@@ -157,27 +156,6 @@ pub(super) fn has_conflicting_tier_assignment(bullet: &str) -> bool {
                     }))
         })
     })
-}
-
-fn assignment_intent(segment: &str) -> bool {
-    [
-        " use ",
-        " run on ",
-        " run with ",
-        " run using ",
-        " set ",
-        " assign",
-        " receive",
-        " remain ",
-        " spawn",
-        " request",
-        " select ",
-        " choose ",
-    ]
-    .iter()
-    .any(|action| segment.contains(action))
-        || segment.contains("model:")
-        || segment.contains("reasoning_effort:")
 }
 
 fn is_comparison_only(segment: &str) -> bool {

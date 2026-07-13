@@ -68,6 +68,7 @@ mod mcp_runtime;
 mod merge_message;
 mod mode_dispatch;
 mod orchestration_routing;
+mod orchestration_routing_assignment;
 mod orchestration_routing_effort;
 mod orchestration_routing_luna_policy;
 mod orchestration_routing_override;
