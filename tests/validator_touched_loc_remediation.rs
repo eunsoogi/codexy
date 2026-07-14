@@ -77,6 +77,7 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
         ("src/foo.rs", "helper", "src/foo/helper.rs"),
         ("src/foo/mod.rs", "extracted", "src/foo/extracted.rs"),
         ("src/bin/too_large.rs", "worker", "src/bin/worker.rs"),
+        ("src/bin/foo/main.rs", "helper", "src/bin/foo/helper.rs"),
         ("crates/app/build.rs", "worker", "crates/app/worker.rs"),
         (
             "crates/app/tests/too_large.rs",
@@ -162,6 +163,9 @@ fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
         &["config", "user.email", "codexy@example.test"],
     )?;
     run(repo.path(), &["config", "user.name", "Codexy Test"])?;
+    if path.starts_with("src/bin/") {
+        write(repo.path(), "Cargo.toml", "[package]\nname = \"app\"\n")?;
+    }
     if path.starts_with("crates/app/") {
         write(
             repo.path(),

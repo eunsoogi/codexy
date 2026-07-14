@@ -18,7 +18,11 @@ pub(super) fn paths(root: &Path, path: &Path, module: &str) -> [PathBuf; 2] {
 fn is_crate_root(root: &Path, path: &Path, parent: &Path) -> bool {
     (match path.file_name().and_then(|name| name.to_str()) {
         Some("mod.rs") => true,
-        Some("lib.rs" | "main.rs") => is_library_or_binary_crate_root(root, parent),
+        Some("lib.rs") => is_library_or_binary_crate_root(root, parent),
+        Some("main.rs") => {
+            is_library_or_binary_crate_root(root, parent)
+                || is_directory_binary_crate_root(root, parent)
+        }
         Some("build.rs") => parent == Path::new("") || is_package_root(root, parent),
         _ => false,
     }) || TARGET_ROOTS
@@ -34,6 +38,17 @@ fn is_library_or_binary_crate_root(root: &Path, parent: &Path) -> bool {
             .ancestors()
             .find(|candidate| is_package_root(root, candidate))
             .is_some_and(|package_root| parent == package_root.join("src"))
+}
+
+fn is_directory_binary_crate_root(root: &Path, parent: &Path) -> bool {
+    parent
+        .ancestors()
+        .find(|candidate| is_package_root(root, candidate))
+        .is_some_and(|package_root| {
+            parent
+                .parent()
+                .is_some_and(|bin_root| bin_root == package_root.join("src/bin"))
+        })
 }
 
 fn is_package_root(root: &Path, parent: &Path) -> bool {
