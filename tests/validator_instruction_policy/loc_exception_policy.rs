@@ -49,6 +49,26 @@ fn validator_cli_allows_negated_loc_exception_prohibition() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_waiver_after_adjacent_safe_prohibition() -> TestResult {
+    for skill in GOVERNED_SKILLS {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(skill);
+        let text = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(
+            &skill_path,
+            format!(
+                "{text}\n- MUST NOT collapse readable multiline code.\n- A governed file MAY exceed 250 LOC when a waiver is approved.\n- MUST NOT delete blank lines solely to meet the target.\n"
+            ),
+        )?;
+
+        let output = validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "{skill:?} unexpectedly passed");
+        assert!(stderr(&output).contains("LOC exception policy"));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_missing_unconditional_loc_contract() -> TestResult {
     for skill in GOVERNED_SKILLS {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
@@ -59,6 +79,30 @@ fn validator_cli_rejects_missing_unconditional_loc_contract() -> TestResult {
             text.replace(
                 "MUST stay at or below 250 LOC",
                 "MAY stay at or below 250 LOC",
+            ),
+        )?;
+
+        let output = validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "{skill:?} unexpectedly passed");
+        assert!(stderr(&output).contains("missing unconditional governed 250 LOC clause"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_negated_unconditional_loc_contract() -> TestResult {
+    for skill in GOVERNED_SKILLS {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(skill);
+        let text = std::fs::read_to_string(&skill_path)?;
+        let text = text.replace(
+            "MUST stay at or below 250 LOC",
+            "MAY stay at or below 250 LOC",
+        );
+        std::fs::write(
+            &skill_path,
+            format!(
+                "{text}\n- MUST NOT claim that every governed file MUST stay at or below 250 LOC.\n"
             ),
         )?;
 
