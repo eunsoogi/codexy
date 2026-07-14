@@ -43,6 +43,15 @@ fn validator_requires_handoff_for_suffixed_terminal_actions() -> TestResult {
 }
 
 #[test]
+fn validator_keeps_one_handoff_for_related_terminal_transitions() -> TestResult {
+    let output = run_validator(
+        "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|complete; issue/pr=#375 / PR #376; child task=child-375; parent task=parent-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=stop\nTerminal child transition: action=ownership release\n",
+    )?;
+    assert!(output.status.success());
+    Ok(())
+}
+
+#[test]
 fn validator_requires_handoff_for_status_form_goal_transitions() -> TestResult {
     for status in ["complete", "blocked"] {
         let missing = run_validator(&format!(

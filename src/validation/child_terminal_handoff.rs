@@ -39,7 +39,6 @@ impl TerminalHandoffs {
         }
         if is_terminal_transition(line) {
             let valid = self.0 == 1;
-            self.0 = 0;
             return (!valid).then_some(
                 "terminal child transition requires exactly one confirmed terminal parent handoff",
             );

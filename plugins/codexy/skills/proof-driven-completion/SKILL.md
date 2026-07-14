@@ -140,9 +140,11 @@ complete.
 - If review feedback is addressed by a child thread, evidence MUST include the
   child thread result, the exact new head, and the rerun verification.
 - If a fresh `@codex review` request for the current head already has `eyes`,
-  MUST NOT send duplicate requests for the same head. MUST continue polling and
-  waiting for review output. If it is unusually stale, document the status and
-  MUST use a distinct escalation rationale instead of repeated blind requests.
+  MUST NOT send duplicate requests for the same head. Once the child has finished
+  its execution work and only review output remains, it MUST send the terminal
+  parent handoff, end its goal and plan, and return control; the parent/runtime
+  monitor owns event-driven waiting. If review is unusually stale, document the
+  status and use a distinct escalation rationale instead of blind requests.
 - If a command was skipped, say so with the reason.
 - If evidence is local and untracked, MUST summarize it or give the ignored evidence
   path; MUST NOT commit scratch artifacts unless requested.
