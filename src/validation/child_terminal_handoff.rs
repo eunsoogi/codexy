@@ -13,11 +13,19 @@ const REQUIRED_FIELDS: &[&str] = &[
     "parent next action",
 ];
 
+pub(super) fn check(lines: &[&str], source: Option<&str>) -> Vec<String> {
+    let mut handoffs = TerminalHandoffs::default();
+    lines
+        .iter()
+        .filter_map(|line| handoffs.observe(line, source).map(str::to_owned))
+        .collect()
+}
+
 #[derive(Default)]
-pub(super) struct TerminalHandoffs(usize);
+struct TerminalHandoffs(usize);
 
 impl TerminalHandoffs {
-    pub(super) fn observe(&mut self, line: &str, source: &str) -> Option<&'static str> {
+    fn observe(&mut self, line: &str, source: Option<&str>) -> Option<&'static str> {
         if line.starts_with("terminal parent handoff:") {
             if confirmed_handoff(line, source) {
                 self.0 += 1;
@@ -42,13 +50,15 @@ fn is_terminal_transition(line: &str) -> bool {
         Some("update_goal(complete)" | "update_goal(blocked)")
     ) || line
         .strip_prefix("terminal child transition: action=")
-        .is_some_and(|action| matches!(action, "stop" | "archive" | "ownership release"))
+        .is_some_and(|action| {
+            matches!(action, "stop" | "archive" | "ownership release" | "blocked")
+        })
 }
 
-fn confirmed_handoff(line: &str, source: &str) -> bool {
+fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
     line.strip_prefix("terminal parent handoff:")
         .is_some_and(|_| {
-            field(line, "parent task") == Some(source)
+            source.is_none_or(|expected| field(line, "parent task") == Some(expected))
                 && field(line, "delivery") == Some("confirmed")
                 && field(line, "task surface") == Some("codex task/thread")
                 && REQUIRED_FIELDS

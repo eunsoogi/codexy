@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
-use super::child_terminal_handoff::TerminalHandoffs;
+use super::child_terminal_handoff::check as check_terminal_handoffs;
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
@@ -25,33 +25,35 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 
 fn check_lane(lines: &[&str]) -> Vec<String> {
-    if !lines.iter().any(|line| {
+    let has_goal_reporting = lines.iter().any(|line| {
         line.starts_with("source thread id:")
             || line.starts_with("goal tool call:")
             || line.starts_with("parent goal pre-delivery:")
             || line.starts_with("parent goal post-result:")
-    }) {
-        return Vec::new();
-    }
-    let Some(source) = lines
+    });
+    let source = lines
         .iter()
         .find_map(|line| line.strip_prefix("source thread id: "))
-        .filter(|value| !value.is_empty())
-    else {
-        return vec!["child goal reporting requires source_thread_id delegation evidence".into()];
+        .filter(|value| !value.is_empty());
+    let mut errors = check_terminal_handoffs(lines, source);
+    if !has_goal_reporting {
+        return errors;
+    }
+    let Some(source) = source else {
+        errors.push("child goal reporting requires source_thread_id delegation evidence".into());
+        return errors;
     };
     if source == "/root" || source.starts_with("agents.") || source.contains("send_message") {
-        return vec!["source_thread_id must name a Codex task id, not a local agent target".into()];
+        errors.push("source_thread_id must name a Codex task id, not a local agent target".into());
+        return errors;
     }
     let has_control_source = lines.iter().any(|line| {
         line.starts_with("goal control state:") && field(line, "source_thread_id") == Some(source)
     });
-    let mut errors = Vec::new();
     let mut key = None;
     let mut pending = None;
     let mut confirmed_pre = None;
     let mut seen_calls = BTreeSet::new();
-    let mut terminal_handoffs = TerminalHandoffs::default();
 
     for line in lines {
         if is_local_agent_route(line) {
@@ -60,9 +62,6 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
         if let Some(value) = line.strip_prefix("goal transition key: ") {
             key = valid_transition_key(value).then_some(value);
             continue;
-        }
-        if let Some(error) = terminal_handoffs.observe(line, source) {
-            errors.push(error.into());
         }
         if let Some(operation) = event_operation(line, "parent goal pre-delivery: operation=") {
             confirmed_pre = pre_delivery_is_confirmed(line, operation, source, key, &mut errors)

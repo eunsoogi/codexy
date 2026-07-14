@@ -206,6 +206,32 @@ fn validator_requires_one_confirmed_terminal_handoff_before_terminal_child_trans
     Ok(())
 }
 
+#[test]
+fn validator_rejects_terminal_only_child_exits_without_a_handoff() -> TestResult {
+    for action in ["archive", "ownership release", "blocked"] {
+        let output = run_validator(&format!(
+            "Lane ownership: child-owned\nTerminal child transition: action={action}\n"
+        ))?;
+        assert!(
+            !output.status.success(),
+            "terminal-only {action} evidence must not bypass parent-handoff validation"
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains(
+            "terminal child transition requires exactly one confirmed terminal parent handoff"
+        ));
+    }
+
+    let malformed = run_validator(
+        "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|archive; issue/pr=#375 / PR #376; child task=child-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=archive\n",
+    )?;
+    assert!(!malformed.status.success());
+    assert!(
+        String::from_utf8_lossy(&malformed.stderr)
+            .contains("terminal parent handoff is missing required confirmed delivery fields")
+    );
+    Ok(())
+}
+
 fn run_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");

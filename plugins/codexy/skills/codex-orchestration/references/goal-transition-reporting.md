@@ -69,7 +69,7 @@ by `event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
 `preserved reservation/artifacts`, `parent next action`, `delivery=confirmed`,
 and `task surface=codex task/thread`. Static evidence MUST format the exit as
 `Terminal child transition: action=stop`, `action=archive`, or
-`action=ownership release` when no goal operation represents it.
+`action=ownership release`, or `action=blocked` when no goal operation represents it.
 Delivery MUST be confirmed before the stop/archive/release. If delivery is unavailable,
 the child MUST emit one unavailable receipt and MUST NOT retry.
 It MUST preserve the lane instead of transitioning.
