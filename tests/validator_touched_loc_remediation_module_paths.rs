@@ -51,6 +51,23 @@ fn touched_loc_honors_attributed_module_path() -> TestResult {
 }
 
 #[test]
+fn touched_loc_rejects_self_attributed_module_path() -> TestResult {
+    let repo = fixture("src/foo.rs", self_attributed_base())?;
+    write(
+        repo.path(),
+        "src/foo.rs",
+        &format!(
+            "#[path = \"foo.rs\"]\nmod helper;\n{}let summary = format!(\"status\");\n",
+            regular_lines(247)
+        ),
+    )?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_honors_raw_path_literals() -> TestResult {
     for literal in ["r\"helper.rs\"", "r#\"helper.rs\"#"] {
         let repo = attributed_module_fixture("src/helper.rs", &format!("#[path = {literal}]\n"))?;
@@ -207,4 +224,11 @@ fn module_fixture(extracted_path: &str, declaration: &str) -> TestResult<tempfil
         &regular_lines_from(retained_lines, 252 - retained_lines),
     )?;
     Ok(repo)
+}
+
+fn self_attributed_base() -> String {
+    format!(
+        "{}let summary =\n    format!(\n        \"status\"\n    )\n;\n",
+        regular_lines(247)
+    )
 }

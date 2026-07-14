@@ -14,10 +14,12 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
     let mut default_parent = None;
     for declaration in declarations(source) {
         if let Some(attribute) = declaration.path {
-            if let Some(path) =
+            if let Some(module_path) =
                 normalize_relative_path(path.parent().unwrap_or(Path::new("")), &attribute)
             {
-                paths.push(path);
+                if module_path != path {
+                    paths.push(module_path);
+                }
             }
         } else {
             let module = declaration
