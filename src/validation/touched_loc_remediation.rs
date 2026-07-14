@@ -151,10 +151,11 @@ fn rust_module_paths(path: &Path, module: &str) -> [PathBuf; 2] {
     let parent = path.parent().unwrap_or(Path::new(""));
     let module_parent = match path.file_name().and_then(|name| name.to_str()) {
         Some("lib.rs" | "main.rs" | "mod.rs") => parent.to_owned(),
+        Some("build.rs") if parent == Path::new("") => parent.to_owned(),
         Some(_)
             if ["src/bin", "tests", "examples", "benches"]
                 .iter()
-                .any(|directory| parent.ends_with(directory)) =>
+                .any(|directory| parent == Path::new(directory)) =>
         {
             parent.to_owned()
         }

@@ -2,19 +2,15 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
 #[test]
 fn touched_loc_rejects_blank_line_only_remediation() -> TestResult {
     let repo = fixture("src/too_large.rs", blank_line_source())?;
     std::fs::write(repo.path().join("src/too_large.rs"), regular_lines(250))?;
-
     let output = validate(repo.path())?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("blank-line deletion"));
     Ok(())
 }
-
 #[test]
 fn touched_loc_rejects_multiline_collapse_remediation() -> TestResult {
     let repo = fixture("src/too_large.rs", multiline_source())?;
@@ -22,14 +18,11 @@ fn touched_loc_rejects_multiline_collapse_remediation() -> TestResult {
         repo.path().join("src/too_large.rs"),
         format!("{}let summary = format!(\"status\");\n", regular_lines(249)),
     )?;
-
     let output = validate(repo.path())?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("multiline collapse"));
     Ok(())
 }
-
 #[test]
 fn touched_loc_rejects_mixed_token_collapse_over_eight_lines() -> TestResult {
     let repo = fixture("src/too_large.rs", mixed_token_collapse_source())?;
@@ -40,14 +33,11 @@ fn touched_loc_rejects_mixed_token_collapse_over_eight_lines() -> TestResult {
             regular_lines(241)
         ),
     )?;
-
     let output = validate(repo.path())?;
-
     assert!(!output.status.success());
     assert!(stderr(&output).contains("multiline collapse"));
     Ok(())
 }
-
 #[test]
 fn touched_loc_rejects_collapse_hidden_by_unrelated_rename() -> TestResult {
     let repo = fixture("src/too_large.rs", multiline_source())?;
@@ -63,7 +53,6 @@ fn touched_loc_rejects_collapse_hidden_by_unrelated_rename() -> TestResult {
     assert!(stderr(&output).contains("multiline collapse"));
     Ok(())
 }
-
 #[test]
 fn touched_loc_allows_collapse_with_independent_structural_remediation() -> TestResult {
     let repo = fixture("src/too_large.rs", multiline_source())?;
@@ -79,76 +68,90 @@ fn touched_loc_allows_collapse_with_independent_structural_remediation() -> Test
         "src/too_large/helper.rs",
         "fn line_248() {}\nlet summary = format!(\n    \"status\"\n);\n",
     )?;
-
     let output = validate(repo.path())?;
-
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
 #[test]
 fn touched_loc_allows_structural_remediation_variants() -> TestResult {
-    for (label, path, source, replacement, extracted) in [
+    for (label, path, module, extracted_path) in [
         (
             "nested helper extraction from named module",
             "src/foo.rs",
-            regular_lines(252),
-            format!("mod helper;\n{}", regular_lines(249)),
-            Some(("src/foo/helper.rs", regular_lines_from(249, 3))),
+            "helper",
+            "src/foo/helper.rs",
         ),
         (
             "nested module splitting from mod.rs",
             "src/foo/mod.rs",
-            regular_lines(252),
-            format!("mod extracted;\n{}", regular_lines(249)),
-            Some(("src/foo/extracted.rs", regular_lines_from(249, 3))),
+            "extracted",
+            "src/foo/extracted.rs",
         ),
         (
             "binary crate root module splitting",
             "src/bin/too_large.rs",
-            regular_lines(252),
-            format!("mod worker;\n{}", regular_lines(249)),
-            Some(("src/bin/worker.rs", regular_lines_from(249, 3))),
+            "worker",
+            "src/bin/worker.rs",
+        ),
+        (
+            "build script crate root module splitting",
+            "build.rs",
+            "worker",
+            "worker.rs",
         ),
         (
             "test-target splitting",
             "tests/too_large.rs",
-            regular_lines(252),
-            format!("mod scenarios;\n{}", regular_lines(249)),
-            Some(("tests/scenarios.rs", regular_lines_from(249, 3))),
+            "scenarios",
+            "tests/scenarios.rs",
+        ),
+        (
+            "nested test directory module splitting",
+            "src/parser/tests/case.rs",
+            "helper",
+            "src/parser/tests/case/helper.rs",
         ),
         (
             "responsibility separation",
             "src/too_large.rs",
-            regular_lines(252),
-            format!("mod worker;\n{}", regular_lines(249)),
-            Some(("src/too_large/worker.rs", regular_lines_from(249, 3))),
-        ),
-        (
-            "real duplication removal",
-            "src/too_large.rs",
-            format!(
-                "{}fn duplicate() {{}}\nfn duplicate() {{}}\nfn duplicate() {{}}\n",
-                regular_lines(249)
-            ),
-            format!("{}fn duplicate() {{}}\n", regular_lines(249)),
-            None,
+            "worker",
+            "src/too_large/worker.rs",
         ),
     ] {
-        let repo = fixture(path, source)?;
-        write(repo.path(), path, &replacement)?;
-        if let Some((extracted_path, extracted_text)) = extracted {
-            write(repo.path(), extracted_path, &extracted_text)?;
-        }
-
-        let output = validate(repo.path())?;
-
-        assert!(
-            output.status.success(),
-            "{label} should remain eligible\nstderr:\n{}",
-            stderr(&output)
-        );
+        assert_module_split(label, path, module, extracted_path)?;
     }
+    let repo = fixture(
+        "src/too_large.rs",
+        format!(
+            "{}fn duplicate() {{}}\nfn duplicate() {{}}\nfn duplicate() {{}}\n",
+            regular_lines(249)
+        ),
+    )?;
+    write(
+        repo.path(),
+        "src/too_large.rs",
+        &format!("{}fn duplicate() {{}}\n", regular_lines(249)),
+    )?;
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+fn assert_module_split(label: &str, path: &str, module: &str, extracted_path: &str) -> TestResult {
+    let repo = fixture(path, regular_lines(252))?;
+    write(
+        repo.path(),
+        path,
+        &format!("mod {module};\n{}", regular_lines(249)),
+    )?;
+    write(repo.path(), extracted_path, &regular_lines_from(249, 3))?;
+    let output = validate(repo.path())?;
+    assert!(
+        output.status.success(),
+        "{label} should remain eligible\nstderr:\n{}",
+        stderr(&output)
+    );
     Ok(())
 }
 
@@ -157,6 +160,7 @@ fn touched_loc_rejects_sibling_files_for_nested_module_declarations() -> TestRes
     for (path, sibling) in [
         ("src/foo.rs", "src/helper.rs"),
         ("src/foo/mod.rs", "src/foo.rs"),
+        ("src/parser/tests/case.rs", "src/parser/tests/helper.rs"),
     ] {
         let repo = fixture(path, multiline_source())?;
         write(repo.path(), sibling, "let summary = format!(\"status\");\n")?;
