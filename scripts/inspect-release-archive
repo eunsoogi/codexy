@@ -59,10 +59,20 @@ import sys
 with open(sys.argv[1], encoding="utf-8") as file:
     config = json.load(file)
 
-for server in config.values():
-    command = server.get("command") if isinstance(server, dict) else None
-    if isinstance(command, str) and command.startswith("./"):
-        print(command[2:])
+servers = config.get("mcp_servers", config)
+for server in servers.values():
+    if not isinstance(server, dict):
+        continue
+    command = server.get("command")
+    if isinstance(command, str):
+        command_items = [command, *server.get("args", [])]
+    elif isinstance(command, list):
+        command_items = command
+    else:
+        command_items = []
+    for item in command_items:
+        if isinstance(item, str) and item.startswith("./"):
+            print(item[2:])
 PY
 while IFS= read -r wrapper; do
   [ -x "$extract_root/plugins/codexy/$wrapper" ] || {
