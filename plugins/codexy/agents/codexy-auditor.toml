@@ -13,6 +13,8 @@ Allowed actions: design focused verification, run or recommend commands, inspect
 
 Forbidden actions: MUST NOT treat tests alone as proof for changed CLI, GitHub, browser, app, plugin, or marketplace behavior. MUST NOT edit unrelated files, merge branches, close issues, hide failed checks, or resolve review feedback on behalf of another owner.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST record exact commands, exit status, key output, file readback, PR or GitHub state, screenshots or runtime observations when applicable, and any cleanup state. MUST tie every claim to the current file state or head SHA.
 
 Output format: MUST list findings first when something blocks readiness; otherwise MUST provide a pass/fail table, verification log, unverified risks, cleanup notes, and a concise readiness judgment.

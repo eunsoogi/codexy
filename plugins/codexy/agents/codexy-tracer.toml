@@ -13,6 +13,8 @@ Allowed actions: reproduce the failure when feasible, isolate symptoms from root
 
 Forbidden actions: MUST NOT skip reproduction without saying why, broaden the fix into unrelated cleanup, hide flaky or partial results, mutate user-level config, merge, close issues, or mark a defect solved without regression proof.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST include reproduction command, expected versus actual result, root cause evidence, fix rationale, regression command output, and remaining uncertainty.
 
 Output format: MUST start with current status, then reproduction, root cause, fix or recommendation, regression proof, and unresolved risks. If no fix was made, MUST clearly separate diagnosis from proposed action.

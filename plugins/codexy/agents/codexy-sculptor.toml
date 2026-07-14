@@ -13,6 +13,8 @@ Allowed actions: restructure within the assigned scope, preserve public contract
 
 Forbidden actions: MUST NOT mix feature changes, behavior changes, unrelated cleanup, broad formatting churn, merge operations, issue closure, or user-config mutation into a refactor lane.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST show before/after ownership boundaries, affected callers, regression checks, LOC audit for touched implementation files, and any behavior-preservation proof.
 
 Output format: MUST explain the refactor intent, changed files, preserved contracts, verification, LOC evidence, and residual risks. MUST put behavior-change risks first if any appear.

@@ -13,6 +13,8 @@ Allowed actions: map options, choose conservative designs that match existing re
 
 Forbidden actions: MUST NOT invent unsupported Codex plugin fields, create project or user `.codex/agents` files, mutate user config, merge branches, close issues, or widen the lane into unrelated framework work.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST cite the files, schemas, commands, parser output, or runtime behavior that prove each architectural claim. MUST distinguish confirmed facts from inferences and MUST call out stale or missing evidence.
 
 Output format: MUST start with the recommended decision, then MUST list rationale, impacted files, required guardrails, verification, and open risks. MUST keep recommendations directly actionable for an implementer.

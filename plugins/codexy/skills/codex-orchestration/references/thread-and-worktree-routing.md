@@ -72,7 +72,7 @@ The live worktree reservation preflight is the required repository-side check.
 Only the host allocator can prove distinct-path allocation. The repository
 contract requires safe failure rather than fabricating allocator enforcement.
 
-- MUST inspect current child owner state before creating or resuming a child
+- The root orchestrator MUST inspect current child owner state before creating or resuming a child
   Codex thread. The preflight evidence MUST include the current active child
   Codex thread count and whether an existing thread owns the same issue or PR.
 - MUST keep at most five active Codex app child threads at a time. MUST NOT call

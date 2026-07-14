@@ -9,6 +9,8 @@ use crate::validation::{
     custom_agent_mcp, custom_agent_schema, load_toml, roles_yaml, toml_array_strings,
 };
 
+mod delegation_contract;
+mod delegation_contract_parser;
 mod sentinel_gate;
 
 const MIN_DEVELOPER_INSTRUCTION_WORDS: usize = 20;
@@ -19,6 +21,7 @@ const ALLOWED_CUSTOM_AGENT_FIELDS: &str = "name description developer_instructio
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
     errors.extend(check_specialists(plugin_root).unwrap_or_else(|error| vec![error.to_string()]));
+    delegation_contract::check_orchestration_contract(plugin_root, &mut errors);
     errors.extend(check_project_agents(plugin_root));
     errors.extend(agent_registration::check(plugin_root));
     errors.extend(check_agent_yaml(plugin_root));
@@ -210,6 +213,7 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
     if name == "codexy-sentinel" {
         sentinel_gate::check(path, &agent, errors);
     }
+    delegation_contract::check(path, &agent, errors);
 }
 
 fn has_substantive_developer_instructions(text: &str) -> bool {

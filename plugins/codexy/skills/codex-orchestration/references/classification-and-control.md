@@ -10,7 +10,7 @@
   and review-response fixes for its assigned issue or lane.
 - Independent requested outcomes MUST be decomposed into separate issue-sized
   atomic child lanes before child thread, worktree, branch, or PR creation.
-- The orchestrator MUST create, fork, or assign the owning child thread before
+- The root orchestrator MUST create, fork, or assign the owning child thread before
   implementation patches begin for any lane that needs a branch, worktree, PR,
   durable child context, or review-response ownership.
 - The orchestrator MUST NOT directly fix child-owned review feedback unless a
@@ -59,6 +59,8 @@ edits.
 - MUST use multi-agent execution when the lane has independent research questions,
   disjoint implementation slices, parallel QA or verification, review gates,
   review-feedback validation, or separable non-trivial subtasks.
+- A child implementation thread MAY spawn bounded first-level specialist helpers or
+  Sentinel reviewers, but every helper or Sentinel MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
 - When a packaged Codexy specialist role is available and the task clearly
   falls within that specialist's stated scope, the child MUST use the matching
   specialist or record a concrete skip rationale tied to scope, atomicity,
