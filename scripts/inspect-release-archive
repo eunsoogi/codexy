@@ -37,6 +37,13 @@ mkdir "$extract_root"
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
+(cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
+while IFS= read -r relative; do
+  case "$relative" in
+    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin) ;;
+    runtime/*) echo "unexpected runtime artifact: $relative" >&2; exit 1 ;;
+  esac
+done <"$tmp_dir/actual"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 mkdir -p "$source_check_root"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
@@ -46,15 +53,7 @@ if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*
   exit 1
 fi
 (cd "$plugin_root" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/expected"
-(cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 diff -u "$tmp_dir/expected" "$tmp_dir/actual"
-
-while IFS= read -r relative; do
-  case "$relative" in
-    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin) ;;
-    runtime/*) echo "unexpected runtime artifact: $relative" >&2; exit 1 ;;
-  esac
-done <"$tmp_dir/actual"
 (cd "$extract_root/plugins/codexy" && find . -type d | sed 's#^./##') >"$tmp_dir/directories"
 while IFS= read -r relative; do
   case "$relative" in

@@ -47,6 +47,7 @@ fn archive_gate_allows_documentation_path_examples() {
     assert!(checker.contains("invalid JSON-RPC version for response id"));
     assert!(script.contains("unsafe archive path"));
     assert!(checker.contains("set(responses) != {1, 2}"));
+    assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
 }
 #[test]
 fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
@@ -128,10 +129,11 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     std::fs::write(runtime.join("debug.log"), "debug\n").expect("runtime extra fixture");
     let extra_runtime_archive = root.path().join("extra-runtime.tar.gz");
     create_archive(root.path(), &extra_runtime_archive);
+    let extra_runtime_output = run_gate(&extra_runtime_archive, &plugin_root);
+    assert!(!extra_runtime_output.status.success());
     assert!(
-        !run_gate(&extra_runtime_archive, &plugin_root)
-            .status
-            .success()
+        String::from_utf8_lossy(&extra_runtime_output.stderr)
+            .contains("unexpected runtime artifact: runtime/debug.log")
     );
     std::fs::remove_file(runtime.join("debug.log")).expect("remove runtime extra");
 
