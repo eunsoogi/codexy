@@ -1,4 +1,3 @@
-use std::collections::{HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -6,8 +5,8 @@ use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 
 mod manifest;
+mod traversal;
 
-use super::declaration::declarations;
 use super::{TARGET_ROOTS, normalize_relative_path};
 use manifest::cargo_manifest_paths;
 
@@ -17,53 +16,7 @@ pub(super) fn is_manifest_target_root(root: &Path, path: &Path) -> bool {
 }
 
 pub(super) fn is_path_attributed_module(root: &Path, target: &Path) -> bool {
-    let mut pending = crate_roots(root, target)
-        .into_iter()
-        .map(|path| (path, true))
-        .collect::<VecDeque<_>>();
-    let mut visited = HashSet::new();
-    while let Some((path, children_are_siblings)) = pending.pop_front() {
-        if !visited.insert(path.clone()) {
-            continue;
-        }
-        let Ok(source) = std::fs::read_to_string(root.join(&path)) else {
-            continue;
-        };
-        let parent = path.parent().unwrap_or(Path::new(""));
-        for declaration in declarations(&source) {
-            if let Some(attribute) = declaration.path {
-                let Some(child) = normalize_relative_path(parent, &attribute) else {
-                    continue;
-                };
-                if child == target {
-                    return true;
-                }
-                if root.join(&child).is_file() {
-                    pending.push_back((child, true));
-                }
-                continue;
-            }
-            let module = declaration
-                .module
-                .strip_prefix("r#")
-                .unwrap_or(&declaration.module);
-            let module_parent = if children_are_siblings {
-                parent.to_owned()
-            } else {
-                parent.join(path.file_stem().unwrap_or_default())
-            };
-            for child in [
-                module_parent.join(format!("{module}.rs")),
-                module_parent.join(module).join("mod.rs"),
-            ] {
-                if root.join(&child).is_file() {
-                    let child_is_mod = child.file_name().is_some_and(|name| name == "mod.rs");
-                    pending.push_back((child, child_is_mod));
-                }
-            }
-        }
-    }
-    false
+    traversal::is_path_attributed_module(root, target, crate_roots(root, target))
 }
 
 fn crate_roots(root: &Path, target: &Path) -> Vec<PathBuf> {

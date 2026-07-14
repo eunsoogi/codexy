@@ -1,6 +1,18 @@
 use super::attribute::{is_attribute_trivia, path_attribute};
 use super::scope::ScopeTracker;
 
+mod inline;
+
+pub(super) struct InlineModule<'a> {
+    pub(super) module: &'a str,
+    pub(super) body: &'a str,
+    pub(super) path: Option<String>,
+}
+
+pub(super) fn inline_modules(source: &str) -> Vec<InlineModule<'_>> {
+    inline::inline_modules(source)
+}
+
 pub(super) struct Declaration {
     pub(super) module: String,
     pub(super) path: Option<String>,

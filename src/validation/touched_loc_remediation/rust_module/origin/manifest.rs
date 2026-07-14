@@ -1,14 +1,13 @@
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
+use toml::Value as TomlValue;
+
 pub(super) fn cargo_manifest_paths(root: &Path) -> Vec<PathBuf> {
-    let root_manifest = root.join("Cargo.toml");
-    if root_manifest.is_file() {
-        return vec![root_manifest];
-    }
     let mut manifests = Vec::new();
-    let mut pending = VecDeque::from([root.to_owned()]);
-    while let Some(directory) = pending.pop_front() {
+    let mut pending = VecDeque::from([(root.to_owned(), false)]);
+    while let Some((directory, inside_workspace)) = pending.pop_front() {
+        let is_root = directory == root;
         let Ok(entries) = std::fs::read_dir(directory) else {
             continue;
         };
@@ -29,11 +28,32 @@ pub(super) fn cargo_manifest_paths(root: &Path) -> Vec<PathBuf> {
                 child_directories.push(path);
             }
         }
-        if let Some(manifest) = manifest {
-            manifests.push(manifest);
-        } else {
-            pending.extend(child_directories);
+        let declares_workspace = manifest
+            .as_ref()
+            .is_some_and(|path| manifest_declares_workspace(path));
+        if let Some(manifest) = manifest.as_ref()
+            && (!inside_workspace || declares_workspace)
+        {
+            manifests.push(manifest.to_owned());
+        }
+        if is_root || manifest.is_none() {
+            let child_inside_workspace = inside_workspace || declares_workspace;
+            pending.extend(
+                child_directories
+                    .into_iter()
+                    .map(|path| (path, child_inside_workspace)),
+            );
         }
     }
     manifests
+}
+
+fn manifest_declares_workspace(path: &Path) -> bool {
+    let Ok(source) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    let Ok(manifest) = toml::from_str::<TomlValue>(&source) else {
+        return false;
+    };
+    manifest.get("workspace").is_some_and(TomlValue::is_table)
 }
