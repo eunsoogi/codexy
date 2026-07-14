@@ -25,6 +25,13 @@ for raw in open(sys.argv[1], encoding="utf-8"):
     if not isinstance(message, dict):
         continue
     if "id" not in message:
+        if (
+            message.get("jsonrpc") != "2.0"
+            or not isinstance(message.get("method"), str)
+            or "result" in message
+            or "error" in message
+        ):
+            raise SystemExit(f"{sys.argv[2]}: unexpected id-less MCP stdout")
         continue
     identifier = message["id"]
     if type(identifier) is not int or identifier not in (1, 2):

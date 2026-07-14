@@ -40,7 +40,7 @@ fn rejects_non_json_stdout_and_keeps_valid_json_responses() {
     let valid = root.path().join("valid.jsonl");
     std::fs::write(
         &valid,
-        "\n  \t\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"serverInfo\":{\"name\":\"codexy-lsp\"}}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"lsp_status\"}]}}\n",
+        "\n  \t\n{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"serverInfo\":{\"name\":\"codexy-lsp\"}}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"lsp_status\"}]}}\n",
     )
     .expect("valid response fixture");
     assert!(
@@ -66,6 +66,25 @@ fn rejects_non_json_stdout_and_keeps_valid_json_responses() {
     let stderr = String::from_utf8_lossy(&contaminated_output.stderr);
     assert!(stderr.contains("non-JSON MCP stdout"));
     assert!(!stderr.contains("runtime banner"));
+}
+
+#[test]
+fn rejects_structured_stdout_noise() {
+    let root = tempdir().expect("tempdir");
+    let checker =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
+    let response = root.path().join("structured-noise.jsonl");
+    std::fs::write(
+        &response,
+        "{\"level\":\"info\"}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"serverInfo\":{\"name\":\"codexy-lsp\"}}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"lsp_status\"}]}}\n",
+    )
+    .expect("response fixture");
+    let output = Command::new(&checker)
+        .args([response.to_str().unwrap(), "lsp"])
+        .output()
+        .expect("checker");
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("id-less MCP stdout"));
 }
 
 #[test]
