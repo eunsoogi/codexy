@@ -84,9 +84,13 @@ fn has_positive_permission(words: &[String]) -> bool {
                 words.get(index + 1).map(String::as_str),
                 Some("allow" | "exempt")
             ),
-            "allowed" | "permitted" | "authorized" => !passive_permission_is_negated(words, index),
+            word if is_passive_permission(word) => !passive_permission_is_negated(words, index),
             _ => false,
         })
+}
+
+fn is_passive_permission(word: &str) -> bool {
+    matches!(word, "acceptable" | "allowed" | "authorized" | "permitted")
 }
 
 fn has_exception_carve_out(words: &[String]) -> bool {
@@ -116,7 +120,7 @@ fn passive_permission_is_negated(words: &[String], index: usize) -> bool {
     }
     prefix
         .iter()
-        .rposition(|word| matches!(word.as_str(), "allowed" | "permitted" | "authorized"))
+        .rposition(|word| is_passive_permission(word))
         .is_some_and(|previous| {
             passive_permission_is_negated(words, previous)
                 && words[previous + 1..index]

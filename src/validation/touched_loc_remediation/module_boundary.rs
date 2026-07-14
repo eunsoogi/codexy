@@ -32,7 +32,7 @@ pub(super) fn has_new_module_boundary(
 }
 
 fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) -> Result<String> {
-    let Some(directory) = facade_directory(path) else {
+    let Some(directory) = markdown_facade_directory(path) else {
         return Ok(String::new());
     };
     let parent = path.parent().unwrap_or(Path::new(""));
@@ -69,7 +69,8 @@ fn mechanical_numbered_component(component: &str) -> bool {
         stem.strip_prefix(prefix)
             .map(|suffix| suffix.trim_start_matches(['-', '_']))
             .is_some_and(|suffix| {
-                !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+                let digits = suffix.strip_prefix('v').unwrap_or(suffix);
+                !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit())
             })
     })
 }
@@ -156,6 +157,13 @@ fn rust_path_attribute(line: &str) -> Option<&str> {
 fn facade_directory(path: &Path) -> Option<PathBuf> {
     path.file_stem()
         .map(|stem| path.parent().unwrap_or(Path::new("")).join(stem))
+}
+
+fn markdown_facade_directory(path: &Path) -> Option<PathBuf> {
+    if path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md") {
+        return path.parent().map(|parent| parent.join("references"));
+    }
+    facade_directory(path)
 }
 
 fn extracted_new_lines(

@@ -38,7 +38,7 @@ fn touched_loc_allows_conventional_named_facade_submodules() -> TestResult {
 
 #[test]
 fn touched_loc_rejects_numbered_facade_sharding() -> TestResult {
-    for module in ["shard_1", "shard1", "part2", "chunk3"] {
+    for module in ["shard_1", "shard1", "part2", "part_v1", "chunk3"] {
         let repo = fixture("src/too_large.rs", multiline_source())?;
         std::fs::write(
             repo.path().join("src/too_large.rs"),
@@ -154,6 +154,31 @@ fn touched_loc_rejects_numbered_markdown_reference_fragments() -> TestResult {
         "plugins/codexy/skills/wiki/references/too_large/part-2.md",
         &regular_lines_from(126, 126),
     )?;
+
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_versioned_markdown_reference_fragments() -> TestResult {
+    let repo = fixture(
+        "plugins/codexy/skills/wiki/references/too_large.md",
+        regular_lines(252),
+    )?;
+    write(
+        repo.path(),
+        "plugins/codexy/skills/wiki/references/too_large.md",
+        "# Reference\n\n- [Part v1](too_large/part-v1.md)\n- [Part v2](too_large/part-v2.md)\n",
+    )?;
+    for (path, start) in [("part-v1.md", 0), ("part-v2.md", 126)] {
+        write(
+            repo.path(),
+            &format!("plugins/codexy/skills/wiki/references/too_large/{path}"),
+            &regular_lines_from(start, 126),
+        )?;
+    }
 
     let output = validate(repo.path())?;
     assert!(!output.status.success());

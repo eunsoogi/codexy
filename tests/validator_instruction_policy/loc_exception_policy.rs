@@ -54,6 +54,7 @@ fn validator_cli_rejects_passive_loc_exception_allowances() -> TestResult {
         "LOC exceptions are allowed when approved.",
         "LOC exceptions are permitted after review.",
         "LOC exceptions are authorized by maintainers.",
+        "LOC exceptions are acceptable with approval.",
     ] {
         for skill in GOVERNED_SKILLS {
             let (_temp, plugin_root) = copy_plugin_fixture()?;
@@ -80,7 +81,9 @@ fn validator_cli_allows_negated_passive_loc_exception_wording() -> TestResult {
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(
             &skill_path,
-            format!("{text}\n- LOC exceptions MUST NOT be allowed or authorized.\n"),
+            format!(
+                "{text}\n- LOC exceptions MUST NOT be allowed or authorized.\n- LOC exceptions are not acceptable.\n"
+            ),
         )?;
 
         let output = validator(&plugin_root, "--check")?;
