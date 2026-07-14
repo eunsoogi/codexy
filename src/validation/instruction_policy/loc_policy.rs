@@ -115,10 +115,11 @@ fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
                         matches!(word.as_str(), "justification" | "rationale" | "reason")
                     })
                 })
-                || words[..index]
-                    .iter()
-                    .rposition(|word| matches!(word.as_str(), "may" | "can"))
-                    .is_some_and(|modal| !words[modal + 1..index].iter().any(|word| word == "not")))
+                || index > 0 && matches!(words[index - 1].as_str(), "may" | "can")
+                || index > 1
+                    && words[index - 1] == "to"
+                    && matches!(words[index - 2].as_str(), "allowed" | "permitted")
+                    && !passive_permission_is_negated(words, index - 2))
                 && !overage_is_negated(words, index)
         })
 }

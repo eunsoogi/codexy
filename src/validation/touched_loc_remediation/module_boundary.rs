@@ -78,7 +78,8 @@ fn mechanical_numbered_component(component: &str) -> bool {
 fn markdown_link_target(line: &str) -> Option<&str> {
     line.trim()
         .split_once("](")
-        .and_then(|(_, target)| target.strip_suffix(')'))
+        .and_then(|(_, target)| target.split_once(')'))
+        .map(|(target, _)| target)
         .and_then(|target| target.split('#').next())
         .filter(|target| !target.is_empty())
 }
