@@ -19,3 +19,18 @@ fn plural_governed_file_permissions_respect_negation_and_subject_scope() {
         assert_eq!(permits_in(text, false), permits, "{text}");
     }
 }
+
+#[test]
+fn approval_permissions_respect_negation() {
+    for (text, permits) in [
+        ("LOC exceptions are approved after review.", true),
+        ("LOC exceptions are not approved after review.", false),
+        ("Maintainers approve LOC exceptions after review.", true),
+        (
+            "Maintainers do not approve LOC exceptions after review.",
+            false,
+        ),
+    ] {
+        assert_eq!(permits_in(text, false), permits, "{text}");
+    }
+}

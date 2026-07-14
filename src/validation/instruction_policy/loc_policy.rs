@@ -156,6 +156,8 @@ fn is_passive_permission(word: &str) -> bool {
     matches!(
         word,
         "acceptable"
+            | "approve"
+            | "approved"
             | "allowed"
             | "authorized"
             | "exempt"

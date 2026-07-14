@@ -118,6 +118,13 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
     for (addition, rejects) in [
         ("LOC exceptions are waived after approval.", true),
         ("LOC exceptions are not waived after approval.", false),
+        ("LOC exceptions are approved after review.", true),
+        ("LOC exceptions MUST NOT be approved after review.", false),
+        ("Maintainers approve LOC exceptions after review.", true),
+        (
+            "Maintainers MUST NOT approve LOC exceptions after review.",
+            false,
+        ),
         (
             "Governed files are allowed to exceed 250 LOC with approval.",
             true,
