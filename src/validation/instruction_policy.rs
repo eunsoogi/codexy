@@ -43,6 +43,7 @@ fn check_surfaces(surfaces: Vec<PathBuf>, errors: &mut Vec<String>) {
                     instruction_policy_text::check_text(&path, &text, errors, false);
                 }
                 check_structured_prompts(&path, &text, errors);
+                runtime_heartbeat::check(&path, &text, errors);
                 child_thread_ledger::check(&path, &text, errors);
                 sentinel_scope_policy::check(&path, &text, errors);
             }
