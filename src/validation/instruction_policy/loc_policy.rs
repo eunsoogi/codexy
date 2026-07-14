@@ -88,26 +88,26 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
         || words
             .windows(2)
             .any(|pair| matches!(pair, [first, second] if first == "large" && second == "file"));
-    let rationale_based_overage = authorizes_rationale_based_overage(&words, loc_context);
+    let overage_authorization = authorizes_loc_overage(&words, loc_context);
     let exception_context = inherited_context
         || (exception_term && loc_context)
-        || rationale_based_overage
+        || overage_authorization
         || words.iter().any(|word| {
             matches!(
                 word.as_str(),
                 "waiver" | "waivers" | "exempt" | "exempted" | "exemption"
             )
         });
-    exception_context && (rationale_based_overage || has_positive_permission(&words))
+    exception_context && (overage_authorization || has_positive_permission(&words))
 }
 
-fn authorizes_rationale_based_overage(words: &[String], loc_context: bool) -> bool {
+fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
     loc_context
         && words.iter().enumerate().any(|(index, word)| {
             matches!(
                 word.as_str(),
                 "exceed" | "exceeded" | "exceeding" | "exceeds"
-            ) && words[index + 1..]
+            ) && (words[index + 1..]
                 .iter()
                 .position(|word| word == "without")
                 .is_some_and(|without| {
@@ -115,6 +115,10 @@ fn authorizes_rationale_based_overage(words: &[String], loc_context: bool) -> bo
                         matches!(word.as_str(), "justification" | "rationale" | "reason")
                     })
                 })
+                || words[..index]
+                    .iter()
+                    .rposition(|word| matches!(word.as_str(), "may" | "can"))
+                    .is_some_and(|modal| !words[modal + 1..index].iter().any(|word| word == "not")))
                 && !overage_is_negated(words, index)
         })
 }
