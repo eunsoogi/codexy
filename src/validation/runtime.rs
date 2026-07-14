@@ -174,11 +174,7 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
                 display_relative(&path)
             )
         })?;
-        for required_path in [
-            "plugins/codexy/hooks/**",
-            "plugins/codexy/agents/**",
-            "plugins/codexy/skills/codex-orchestration/scripts/**",
-        ] {
+        for required_path in ["plugins/codexy/**", "scripts/inspect-mcp-response"] {
             if !trigger_text.contains(required_path) {
                 bail!(
                     "{} runtime package workflow {trigger} paths must include {required_path:?}",

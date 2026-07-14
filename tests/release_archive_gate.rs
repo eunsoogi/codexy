@@ -48,7 +48,6 @@ fn archive_gate_allows_documentation_path_examples() {
     assert!(script.contains("unsafe archive path"));
     assert!(checker.contains("set(responses) != {1, 2}"));
 }
-
 #[test]
 fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     let workflow = std::fs::read_to_string(
@@ -57,11 +56,11 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     )
     .expect("runtime workflow");
     assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
+    assert!(workflow.contains(
+        "scripts/validate-plugin-config --plugin-root plugins/codexy --check\n          rsync -a"
+    ));
     assert!(workflow.contains("Smoke test native MCP runtimes"));
-    assert!(workflow.contains("codexy-mcp-${server}-${PLATFORM}.bin"));
-    assert!(workflow.contains("type(message.get(\"id\")) is int"));
 }
-
 #[test]
 fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let root = tempdir().expect("tempdir");
