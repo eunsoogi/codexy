@@ -32,7 +32,7 @@ impl TerminalHandoffs {
     fn observe(&mut self, line: &str, source: Option<&str>) -> Option<&'static str> {
         if line.starts_with("terminal parent handoff:") {
             if confirmed_handoff(line, source) {
-                self.0 += 1;
+                self.0 = 1;
                 return None;
             }
             return Some("terminal parent handoff is missing required confirmed delivery fields");
