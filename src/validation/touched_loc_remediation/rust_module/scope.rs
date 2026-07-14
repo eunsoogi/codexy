@@ -66,8 +66,8 @@ impl ScopeTracker {
                 continue;
             }
             match bytes[index] {
-                b'{' => self.depth += 1,
-                b'}' => self.depth = self.depth.saturating_sub(1),
+                b'{' | b'(' | b'[' => self.depth += 1,
+                b'}' | b')' | b']' => self.depth = self.depth.saturating_sub(1),
                 _ => {}
             }
             index += 1;

@@ -50,6 +50,7 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
                 paths.push(path);
             }
         } else {
+            let module = module.strip_prefix("r#").unwrap_or(module);
             paths.extend(default_paths(root, path, module));
         }
     }
