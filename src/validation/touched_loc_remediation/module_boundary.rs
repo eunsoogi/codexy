@@ -118,7 +118,7 @@ fn collect_rust_modules(
             }
             continue;
         };
-        if module.bytes().any(|byte| byte.is_ascii_digit()) {
+        if mechanical_numbered_module(module) {
             explicit_path = None;
             continue;
         }
@@ -140,6 +140,11 @@ fn collect_rust_modules(
             collect_rust_modules(root, &module_path, &module, modules);
         }
     }
+}
+
+fn mechanical_numbered_module(module: &str) -> bool {
+    let stem = module.trim_end_matches(|character: char| character.is_ascii_digit());
+    stem.len() < module.len() && matches!(stem.trim_end_matches('_'), "shard" | "part" | "chunk")
 }
 
 fn rust_path_attribute(line: &str) -> Option<&str> {

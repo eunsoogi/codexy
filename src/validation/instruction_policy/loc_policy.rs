@@ -71,6 +71,9 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
 }
 
 fn has_positive_permission(words: &[String]) -> bool {
+    if has_exception_carve_out(words) {
+        return true;
+    }
     words
         .iter()
         .enumerate()
@@ -86,6 +89,22 @@ fn has_positive_permission(words: &[String]) -> bool {
         })
 }
 
+fn has_exception_carve_out(words: &[String]) -> bool {
+    words.iter().any(|word| word == "except")
+        || words
+            .windows(2)
+            .any(|pair| matches!(pair, [first, second] if first == "other" && second == "than"))
+        || words
+            .windows(2)
+            .any(|pair| matches!(pair, [first, second] if first == "subject" && second == "to"))
+        || words
+            .windows(2)
+            .any(|pair| matches!(pair, [first, second] if first == "provided" && second == "that"))
+        || words
+            .windows(2)
+            .any(|pair| matches!(pair, [first, second] if first == "save" && second == "for"))
+}
+
 fn passive_permission_is_negated(words: &[String], index: usize) -> bool {
     let prefix = &words[..index];
     if prefix.last().is_some_and(|word| word == "not")
@@ -98,7 +117,12 @@ fn passive_permission_is_negated(words: &[String], index: usize) -> bool {
     prefix
         .iter()
         .rposition(|word| matches!(word.as_str(), "allowed" | "permitted" | "authorized"))
-        .is_some_and(|previous| passive_permission_is_negated(words, previous))
+        .is_some_and(|previous| {
+            passive_permission_is_negated(words, previous)
+                && words[previous + 1..index]
+                    .iter()
+                    .all(|word| matches!(word.as_str(), "or" | "nor" | "otherwise"))
+        })
 }
 
 fn words(text: &str) -> Vec<String> {

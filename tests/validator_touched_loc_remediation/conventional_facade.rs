@@ -38,20 +38,47 @@ fn touched_loc_allows_conventional_named_facade_submodules() -> TestResult {
 
 #[test]
 fn touched_loc_rejects_numbered_facade_sharding() -> TestResult {
-    let repo = fixture("src/too_large.rs", multiline_source())?;
-    std::fs::write(
-        repo.path().join("src/too_large.rs"),
-        format!("mod shard_1;\n{}", regular_lines(249)),
-    )?;
-    write(
-        repo.path(),
-        "src/too_large/shard_1.rs",
-        "let summary = format!(\n    \"status\"\n);\n",
-    )?;
+    for module in ["shard_1", "shard1", "part2", "chunk3"] {
+        let repo = fixture("src/too_large.rs", multiline_source())?;
+        std::fs::write(
+            repo.path().join("src/too_large.rs"),
+            format!("mod {module};\n{}", regular_lines(249)),
+        )?;
+        write(
+            repo.path(),
+            &format!("src/too_large/{module}.rs"),
+            "let summary = format!(\n    \"status\"\n);\n",
+        )?;
 
-    let output = validate(repo.path())?;
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("multiline collapse"));
+        let output = validate(repo.path())?;
+        assert!(!output.status.success(), "{module:?} unexpectedly passed");
+        assert!(stderr(&output).contains("multiline collapse"));
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_allows_semantic_rust_module_names_with_digits() -> TestResult {
+    for module in ["http2", "s3", "ipv6"] {
+        let repo = fixture("src/too_large.rs", multiline_source())?;
+        write(
+            repo.path(),
+            "src/too_large.rs",
+            &format!("mod {module};\n{}", regular_lines(249)),
+        )?;
+        write(
+            repo.path(),
+            &format!("src/too_large/{module}.rs"),
+            "let summary = format!(\n    \"status\"\n);\n",
+        )?;
+
+        let output = validate(repo.path())?;
+        assert!(
+            output.status.success(),
+            "{module:?} should be eligible\nstderr:\n{}",
+            stderr(&output)
+        );
+    }
     Ok(())
 }
 

@@ -90,6 +90,50 @@ fn validator_cli_allows_negated_passive_loc_exception_wording() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_mixed_polarity_loc_exception_authorization() -> TestResult {
+    for skill in GOVERNED_SKILLS {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(skill);
+        let text = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(
+            &skill_path,
+            format!(
+                "{text}\n- LOC exceptions are not permitted but are authorized by maintainers.\n"
+            ),
+        )?;
+
+        let output = validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "{skill:?} unexpectedly passed");
+        assert!(stderr(&output).contains("LOC exception policy"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_loc_exception_carve_outs() -> TestResult {
+    for carve_out in [
+        "LOC exceptions MUST NOT be allowed except by maintainer approval.",
+        "LOC exceptions MUST NOT be permitted except when security review approves them.",
+        "LOC exceptions MUST NOT be authorized other than with maintainer approval.",
+    ] {
+        for skill in GOVERNED_SKILLS {
+            let (_temp, plugin_root) = copy_plugin_fixture()?;
+            let skill_path = plugin_root.join(skill);
+            let text = std::fs::read_to_string(&skill_path)?;
+            std::fs::write(&skill_path, format!("{text}\n- {carve_out}\n"))?;
+
+            let output = validator(&plugin_root, "--check")?;
+            assert!(
+                !output.status.success(),
+                "{skill:?}: {carve_out:?} unexpectedly passed"
+            );
+            assert!(stderr(&output).contains("LOC exception policy"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_waiver_after_safe_prohibition_across_clause_boundaries() -> TestResult {
     for skill in GOVERNED_SKILLS {
         for clauses in [
