@@ -1,7 +1,7 @@
 use super::{
     candidate_scopes::defect_list_item_lane_label,
     lane_scope_filters::{mentioned_lane_label, preceding_defect_scope_lines},
-    lane_scope_tokens::lane_label_prefix,
+    lane_scope_tokens::{lane_label_prefix, mentions_different_lane},
 };
 
 #[test]
@@ -37,4 +37,48 @@ fn excludes_prefixed_metadata_for_another_lane_from_a_preceding_scope() {
 #[test]
 fn keeps_lane_ownership_metadata_out_of_lane_prefix_normalization() {
     assert!(lane_label_prefix("Lane ownership: parent-owned").is_none());
+}
+
+#[test]
+fn detects_plural_handoff_markers_that_name_another_lane() {
+    for marker in [
+        "for lanes",
+        "in lanes",
+        "assigned to lanes",
+        "targeting lanes",
+    ] {
+        assert!(
+            mentions_different_lane(
+                &format!("Fallback route: unavailable {marker} A and B"),
+                "a"
+            ),
+            "expected {marker} to retain cross-lane scope"
+        );
+    }
+}
+
+#[test]
+fn detects_supported_plural_lane_connectors() {
+    for lanes in ["A or B", "A, B", "A/B"] {
+        assert!(mentions_different_lane(
+            &format!("Tracking issue: #205 for lanes {lanes}"),
+            "a"
+        ));
+    }
+}
+
+#[test]
+fn keeps_same_lane_and_negated_plural_markers_in_scope() {
+    assert!(!mentions_different_lane(
+        "Fallback route: unavailable for lanes A and A",
+        "a"
+    ));
+    assert!(!mentions_different_lane(
+        "Fallback route: not for lanes A and B",
+        "a"
+    ));
+    assert!(!mentions_different_lane(
+        "Fallback route: unavailable for lanes A and workflow",
+        "a"
+    ));
 }

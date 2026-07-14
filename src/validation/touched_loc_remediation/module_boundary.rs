@@ -89,10 +89,7 @@ fn rust_module_extraction(
     let mut explicit_path = None;
     for line in current.lines() {
         let line = line.trim();
-        if let Some(path) = line
-            .strip_prefix("#[path = \"")
-            .and_then(|path| path.strip_suffix("\"]"))
-        {
+        if let Some(path) = rust_path_attribute(line) {
             explicit_path = Some(path);
             continue;
         }
@@ -128,6 +125,16 @@ fn rust_module_extraction(
         }
     }
     extracted_new_lines(root, base_ref, modules)
+}
+
+fn rust_path_attribute(line: &str) -> Option<&str> {
+    line.strip_prefix("#[path")?
+        .strip_suffix(']')?
+        .trim()
+        .strip_prefix('=')?
+        .trim()
+        .strip_prefix('"')?
+        .strip_suffix('"')
 }
 
 fn facade_directory(path: &Path) -> Option<PathBuf> {
