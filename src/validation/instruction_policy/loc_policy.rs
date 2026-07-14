@@ -112,12 +112,16 @@ fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
                     })
                 })
                 || index > 0 && matches!(words[index - 1].as_str(), "may" | "can")
-                || index > 1
-                    && words[index - 1] == "to"
-                    && is_passive_permission(&words[index - 2])
-                    && !passive_permission_is_negated(words, index - 2))
+                || has_governing_passive_permission(words, index))
                 && !overage_is_negated(words, index)
         })
+}
+
+fn has_governing_passive_permission(words: &[String], exceed: usize) -> bool {
+    words[..exceed]
+        .iter()
+        .rposition(|word| is_passive_permission(word))
+        .is_some_and(|permission| !passive_permission_is_negated(words, permission))
 }
 
 fn overage_is_negated(words: &[String], exceed: usize) -> bool {

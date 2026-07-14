@@ -77,3 +77,38 @@ fn validator_allows_negated_authorized_loc_overage_in_governed_root_agents() -> 
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_non_adjacent_authorized_loc_overage() -> TestResult {
+    for skill in GOVERNED_SKILLS {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(skill);
+        let text = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(
+            &skill_path,
+            format!(
+                "{text}\n- A governed file is authorized by maintainer approval to exceed 250 LOC.\n"
+            ),
+        )?;
+        assert!(!validator(&plugin_root, "--check")?.status.success());
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_safe_non_adjacent_authorization_observations() -> TestResult {
+    for addition in [
+        "A governed file is not authorized by maintainer approval to exceed 250 LOC.",
+        "A governed file is authorized by maintainer approval to remain at or below 250 LOC.",
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
+        let text = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
+        assert!(
+            validator(&plugin_root, "--check")?.status.success(),
+            "{addition}"
+        );
+    }
+    Ok(())
+}
