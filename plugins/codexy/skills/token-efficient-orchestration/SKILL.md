@@ -74,8 +74,9 @@ MUST use this flow after compaction and before handoff:
    or when an explicit parent/user message arrives.
    This rule MUST NOT terminate or cancel the underlying wait/monitor session.
 
-Before a child stops, archives, yields ownership, or changes its goal to
-`blocked`, it MUST send exactly one terminal handoff delta to the source parent.
+Before a child stops, archives, yields ownership, or calls `update_goal(complete)`
+or `update_goal(blocked)`, it MUST send exactly one terminal handoff delta to the
+source parent.
 That delta MUST include the stable event identity, issue/PR, child task id,
 branch/worktree, exact HEAD and dirty/index state, last completed proof, current
 external gate, preserved artifacts or reservation, and one parent-owned next

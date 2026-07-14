@@ -58,6 +58,7 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "continuation turns, not polling",
         "MUST NOT reschedule themselves or emit another unchanged turn",
         "send exactly one terminal handoff delta",
+        "calls `update_goal(complete)` or `update_goal(blocked)`",
         "confirm task-surface delivery before the stop/archive or goal transition",
     ] {
         assert!(normalized_skill.contains(required), "missing {required:?}");
