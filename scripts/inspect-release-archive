@@ -122,7 +122,7 @@ if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -qu
   echo "archive contains an oversized file" >&2
   exit 1
 fi
-hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|AKIA[0-9A-Z]{16})'
+hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
 local_path_pattern='/(Users|home|tmp|private/var)/'
 scan_output="$tmp_dir/archive-scan-output"
 scan_archive_content() {

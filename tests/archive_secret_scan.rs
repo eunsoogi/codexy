@@ -10,7 +10,8 @@ use tempfile::{TempDir, tempdir};
 mod release_archive_support;
 use release_archive_support::complete_plugin_fixture;
 
-const SECRET: &str = "AKIA1234567890ABCDEF";
+const AKIA_SECRET: &str = "AKIA1234567890ABCDEF";
+const ASIA_SECRET: &str = "ASIA1234567890ABCDEF";
 const MATCHED_LINE: &str = "secret-line-payload";
 
 fn run_gate(archive: &Path, plugin_root: &Path, path: Option<&Path>) -> Output {
@@ -35,12 +36,12 @@ fn create_archive(root: &Path, archive: &Path) {
     assert!(status.success(), "tar failed: {status}");
 }
 
-fn secret_archive() -> (TempDir, PathBuf, PathBuf) {
+fn secret_archive(secret: &str) -> (TempDir, PathBuf, PathBuf) {
     let root = tempdir().expect("tempdir");
     let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
     fs::write(
         plugin_root.join("secret.txt"),
-        format!("{MATCHED_LINE}: {SECRET}\n"),
+        format!("{MATCHED_LINE}: {secret}\n"),
     )
     .expect("secret fixture");
     let archive = root.path().join("secret.tar.gz");
@@ -48,13 +49,13 @@ fn secret_archive() -> (TempDir, PathBuf, PathBuf) {
     (root, plugin_root, archive)
 }
 
-fn assert_secret_rejected_quietly(output: Output) {
+fn assert_secret_rejected_quietly(output: Output, secret: &str) {
     assert!(!output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert_eq!(stderr, "archive contains a secret or local path\n");
-    assert!(!stdout.contains(SECRET));
-    assert!(!stderr.contains(SECRET));
+    assert!(!stdout.contains(secret));
+    assert!(!stderr.contains(secret));
     assert!(!stdout.contains(MATCHED_LINE));
     assert!(!stderr.contains(MATCHED_LINE));
 }
@@ -107,14 +108,20 @@ fn grep_only_path(root: &Path) -> PathBuf {
 #[test]
 fn archive_gate_redacts_rg_secret_matches() {
     assert!(command_path("rg").is_file());
-    let (_root, plugin_root, archive) = secret_archive();
-    assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, None));
+    let (_root, plugin_root, archive) = secret_archive(AKIA_SECRET);
+    assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, None), AKIA_SECRET);
 }
 
 #[cfg(unix)]
 #[test]
 fn archive_gate_redacts_grep_fallback_secret_matches() {
-    let (root, plugin_root, archive) = secret_archive();
+    let (root, plugin_root, archive) = secret_archive(AKIA_SECRET);
     let path = grep_only_path(root.path());
-    assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, Some(&path)));
+    assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, Some(&path)), AKIA_SECRET);
+}
+
+#[test]
+fn archive_gate_redacts_asia_temporary_key_matches() {
+    let (_root, plugin_root, archive) = secret_archive(ASIA_SECRET);
+    assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, None), ASIA_SECRET);
 }
