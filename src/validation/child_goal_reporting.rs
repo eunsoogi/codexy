@@ -36,6 +36,9 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
         .find_map(|line| line.strip_prefix("source thread id: "))
         .filter(|value| !value.is_empty());
     let mut errors = check_terminal_handoffs(lines, source);
+    if lines.iter().any(|line| is_local_agent_route(line)) {
+        errors.push("child goal reporting must not use local agents /root routing".into());
+    }
     if !has_goal_reporting {
         return errors;
     }
@@ -56,9 +59,6 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
     let mut seen_calls = BTreeSet::new();
 
     for line in lines {
-        if is_local_agent_route(line) {
-            errors.push("child goal reporting must not use local agents /root routing".into());
-        }
         if let Some(value) = line.strip_prefix("goal transition key: ") {
             key = valid_transition_key(value).then_some(value);
             continue;
