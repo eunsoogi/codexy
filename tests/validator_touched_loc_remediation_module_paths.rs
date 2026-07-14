@@ -51,6 +51,44 @@ fn touched_loc_honors_attributed_module_path() -> TestResult {
 }
 
 #[test]
+fn touched_loc_honors_raw_path_literals() -> TestResult {
+    for literal in ["r\"helper.rs\"", "r#\"helper.rs\"#"] {
+        let repo = attributed_module_fixture("src/helper.rs", &format!("#[path = {literal}]\n"))?;
+        let output = validate(repo.path())?;
+        assert!(
+            output.status.success(),
+            "literal: {literal}\nstderr:\n{}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_honors_escaped_path_literals() -> TestResult {
+    for literal in ["helper\\u{2e}rs", "helper\\x2ers"] {
+        let repo =
+            attributed_module_fixture("src/helper.rs", &format!("#[path = \"{literal}\"]\n"))?;
+        let output = validate(repo.path())?;
+        assert!(
+            output.status.success(),
+            "literal: {literal}\nstderr:\n{}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_malformed_escaped_path_literal() -> TestResult {
+    let repo = attributed_module_fixture("src/helper.rs", "#[path = \"helper\\u{zz}rs\"]\n")?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_honors_attributed_module_path_with_trailing_comment() -> TestResult {
     let repo = attributed_module_fixture(
         "src/helper.rs",

@@ -2,8 +2,10 @@ use std::path::{Component, Path, PathBuf};
 
 use toml::Value;
 
+mod attribute;
 mod scope;
 
+use attribute::{is_attribute_trivia, path_attribute};
 use scope::ScopeTracker;
 
 const TARGET_ROOTS: [&str; 4] = ["src/bin", "tests", "examples", "benches"];
@@ -43,7 +45,7 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
         };
         if let Some(attribute) = attributed_path.take() {
             if let Some(path) =
-                normalize_relative_path(path.parent().unwrap_or(Path::new("")), attribute)
+                normalize_relative_path(path.parent().unwrap_or(Path::new("")), &attribute)
             {
                 paths.push(path);
             }
@@ -52,41 +54,6 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
         }
     }
     paths
-}
-
-fn is_attribute_trivia(line: &str, block_comment_depth: &mut usize) -> bool {
-    let mut remainder = line;
-    loop {
-        let trimmed = remainder.trim_start();
-        if *block_comment_depth == 0 {
-            if trimmed.is_empty() || trimmed.starts_with("//") {
-                return true;
-            }
-            let Some(after_comment) = trimmed.strip_prefix("/*") else {
-                return false;
-            };
-            *block_comment_depth += 1;
-            remainder = after_comment;
-            continue;
-        }
-        let next_start = remainder.find("/*");
-        let next_end = remainder.find("*/");
-        match (next_start, next_end) {
-            (Some(start), Some(end)) if start < end => {
-                *block_comment_depth += 1;
-                remainder = &remainder[start + 2..];
-            }
-            (_, Some(end)) => {
-                *block_comment_depth -= 1;
-                remainder = &remainder[end + 2..];
-            }
-            (Some(start), None) => {
-                *block_comment_depth += 1;
-                remainder = &remainder[start + 2..];
-            }
-            (None, None) => return true,
-        }
-    }
 }
 
 fn default_paths(root: &Path, path: &Path, module: &str) -> [PathBuf; 2] {
@@ -188,19 +155,6 @@ fn normalize_relative_path(base: &Path, path: &str) -> Option<PathBuf> {
         }
     }
     (!normalized.as_os_str().is_empty()).then_some(normalized)
-}
-
-fn path_attribute(line: &str) -> Option<&str> {
-    let value = line
-        .strip_prefix("#[path")?
-        .trim_start()
-        .strip_prefix('=')?
-        .trim_start()
-        .strip_prefix('"')?
-        .split_once('"')?;
-    let suffix = value.1.trim_start().strip_prefix(']')?;
-    let mut comment_depth = 0;
-    (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(value.0)
 }
 
 fn is_library_or_binary_crate_root(root: &Path, parent: &Path) -> bool {
