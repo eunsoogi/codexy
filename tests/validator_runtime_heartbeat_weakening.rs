@@ -32,6 +32,31 @@ fn punctuation_before_weakening_suffix_does_not_supply_policy() -> TestResult {
 }
 
 #[test]
+fn parenthesized_weakening_suffix_does_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "{CLAUSE} (unless explicitly approved, the heartbeat may be skipped)."
+    ))?;
+    assert!(
+        !output.status.success(),
+        "validator accepted a parenthesized weakening suffix"
+    );
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn safe_parenthesized_suffix_remains_valid() -> TestResult {
+    let output =
+        validate_replacement(&format!("{CLAUSE} (and record the result in the handoff)."))?;
+    assert!(
+        output.status.success(),
+        "validator rejected a safe parenthesized suffix: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
 fn emphasized_weakening_suffix_does_not_supply_policy() -> TestResult {
     let output = validate_replacement(&format!(
         "{CLAUSE}. **Unless** explicitly approved, the heartbeat may be skipped."
