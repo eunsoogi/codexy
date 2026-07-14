@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
-use super::child_terminal_handoff::check as check_terminal_handoffs;
+use super::child_terminal_handoff::{check as check_terminal_handoffs, is_local_task_target};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
@@ -43,7 +43,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
         errors.push("child goal reporting requires source_thread_id delegation evidence".into());
         return errors;
     };
-    if source == "/root" || source.starts_with("agents.") || source.contains("send_message") {
+    if is_local_task_target(source) {
         errors.push("source_thread_id must name a Codex task id, not a local agent target".into());
         return errors;
     }

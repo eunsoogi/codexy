@@ -21,6 +21,10 @@ pub(super) fn check(lines: &[&str], source: Option<&str>) -> Vec<String> {
         .collect()
 }
 
+pub(super) fn is_local_task_target(value: &str) -> bool {
+    value == "/root" || value.starts_with("agents.") || value.contains("send_message")
+}
+
 #[derive(Default)]
 struct TerminalHandoffs(usize);
 
@@ -58,7 +62,9 @@ fn is_terminal_transition(line: &str) -> bool {
 fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
     line.strip_prefix("terminal parent handoff:")
         .is_some_and(|_| {
-            source.is_none_or(|expected| field(line, "parent task") == Some(expected))
+            let parent_task = field(line, "parent task");
+            !parent_task.is_some_and(is_local_task_target)
+                && source.is_none_or(|expected| parent_task == Some(expected))
                 && field(line, "delivery") == Some("confirmed")
                 && field(line, "task surface") == Some("codex task/thread")
                 && REQUIRED_FIELDS
