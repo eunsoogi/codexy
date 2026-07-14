@@ -84,11 +84,7 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 line = remainder.trim_start();
             }
         }
-        let declaration = line
-            .strip_prefix("pub(crate) ")
-            .or_else(|| line.strip_prefix("pub "))
-            .unwrap_or(line);
-        let Some(module) = module_declaration(declaration) else {
+        let Some(module) = declaration_after_visibility(line).and_then(module_declaration) else {
             if line.starts_with("#[") {
                 outer_attribute_continuation = !scope.is_outer_scope();
                 if outer_attribute_continuation && line.starts_with("#[path") {
@@ -105,6 +101,34 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         });
     }
     declarations
+}
+
+fn declaration_after_visibility(source: &str) -> Option<&str> {
+    let Some(remainder) = source.strip_prefix("pub") else {
+        return Some(source);
+    };
+    if remainder
+        .as_bytes()
+        .first()
+        .is_some_and(u8::is_ascii_whitespace)
+    {
+        return Some(remainder.trim_start());
+    }
+    let restricted = remainder.strip_prefix('(')?;
+    let close = restricted.find(')')?;
+    valid_restricted_visibility(&restricted[..close]).then(|| restricted[close + 1..].trim_start())
+}
+
+fn valid_restricted_visibility(scope: &str) -> bool {
+    matches!(scope, "crate" | "self" | "super")
+        || scope.strip_prefix("in ").is_some_and(valid_visibility_path)
+}
+
+fn valid_visibility_path(path: &str) -> bool {
+    let mut segments = path.split("::");
+    matches!(segments.next(), Some("crate" | "self" | "super"))
+        && segments
+            .all(|segment| identifier(segment).is_some_and(|(_, remainder)| remainder.is_empty()))
 }
 
 fn module_declaration(declaration: &str) -> Option<&str> {

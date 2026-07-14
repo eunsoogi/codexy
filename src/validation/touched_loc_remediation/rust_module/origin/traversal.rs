@@ -86,10 +86,14 @@ fn enqueue_default_children(
     pending: &mut VecDeque<(PathBuf, bool)>,
 ) {
     let module = module.strip_prefix("r#").unwrap_or(module);
-    for child in [
+    let children = [
         parent.join(format!("{module}.rs")),
         parent.join(module).join("mod.rs"),
-    ] {
+    ];
+    if children.iter().all(|child| root.join(child).is_file()) {
+        return;
+    }
+    for child in children {
         if root.join(&child).is_file() {
             let siblings = child.file_name().is_some_and(|name| name == "mod.rs");
             pending.push_back((child, siblings));
