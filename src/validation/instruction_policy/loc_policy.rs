@@ -2,20 +2,16 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
-const GOVERNED_SKILLS: &[&str] = &[
-    "skills/git-workflow/SKILL.md",
-    "skills/plugin-marketplace-prep/SKILL.md",
-    "skills/proof-driven-completion/SKILL.md",
-    "skills/refactoring/SKILL.md",
-];
-const GOVERNED_AGENT_ROLES: &[&str] = &["agents/codexy-sculptor.toml"];
-const UNCONDITIONAL_CONTRACT: &str = "every governed file MUST stay at or below 250 LOC";
-const EXCEPTION_PROHIBITION: &str = "MUST NOT use or authorize LOC exceptions";
+mod surfaces;
+use surfaces::{
+    EXCEPTION_PROHIBITION, GOVERNED_AGENT_ROLES, GOVERNED_SKILLS, UNCONDITIONAL_CONTRACT,
+};
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     let governed_skill = GOVERNED_SKILLS.iter().any(|skill| path.ends_with(skill));
     let governed_agent_role = GOVERNED_AGENT_ROLES.iter().any(|role| path.ends_with(role));
-    if !governed_skill && !governed_agent_role {
+    let governed_root_agents = surfaces::is_governed_root_agents(path);
+    if !governed_skill && !governed_agent_role && !governed_root_agents {
         return;
     }
     if governed_skill && !contains_clause(text, UNCONDITIONAL_CONTRACT) {
@@ -24,7 +20,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
-    if !contains_clause(text, EXCEPTION_PROHIBITION) {
+    if !governed_root_agents && !contains_clause(text, EXCEPTION_PROHIBITION) {
         errors.push(format!(
             "{} LOC exception policy contract failed: missing LOC exception prohibition",
             display_relative(path)
