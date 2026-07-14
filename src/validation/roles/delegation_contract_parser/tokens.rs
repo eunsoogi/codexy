@@ -41,7 +41,9 @@ pub(super) fn is_delegation_action(word: &str) -> bool {
 }
 
 pub(super) fn words(text: &str) -> Vec<&str> {
-    text.split(|character: char| !character.is_ascii_alphabetic())
-        .filter(|word| !word.is_empty())
-        .collect()
+    text.split(|character: char| {
+        !character.is_ascii_alphabetic() && !matches!(character, '/' | '_')
+    })
+    .filter(|word| !word.is_empty())
+    .collect()
 }

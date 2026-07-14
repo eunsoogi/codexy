@@ -51,6 +51,7 @@ fn validator_rejects_nonroot_child_thread_creation_in_orchestration() -> TestRes
         "A Sentinel MUST create a child thread for the root orchestrator.",
         "A Sentinel working for the root orchestrator MUST create a child thread.",
         "A Sentinel and the root orchestrator MUST create a child thread.",
+        "A child owner MUST create a child thread.",
         "The root orchestrator MUST ask a reviewer to create a child thread.",
         "The root orchestrator MUST request that a reviewer create a child thread.",
     ] {
@@ -62,6 +63,21 @@ fn validator_rejects_nonroot_child_thread_creation_in_orchestration() -> TestRes
         std::fs::write(skill_path, skill)?;
         assert_recursion_rejected(validator(&plugin_root)?, instruction);
     }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_nonroot_permission_in_orchestration() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = fixture(&temp)?;
+    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let mut skill = std::fs::read_to_string(&skill_path)?;
+    skill.push_str("\nA child owner MAY spawn another helper.\n");
+    std::fs::write(skill_path, skill)?;
+    assert_recursion_rejected(
+        validator(&plugin_root)?,
+        "A child owner MAY spawn another helper.",
+    );
     Ok(())
 }
 

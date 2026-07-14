@@ -32,7 +32,7 @@ rationale wording.
 3. Dispatch:
    - MUST NOT dispatch until classification proves lane type, owner, atomicity,
      required skills, required tools, and first allowed action.
-   - MUST start specialist subagents only for bounded lanes without their own
+   - The root orchestrator MUST start specialist subagents only for bounded lanes without their own
      branch or PR.
    - Every helper or Sentinel assignment MUST include the nonrecursive delegation prohibition.
      `MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.`
@@ -40,7 +40,7 @@ rationale wording.
      Codexy specialist whose stated scope clearly matches the task, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex
      child-thread/worktree owner for an issue-sized implementation lane.
-   - For issue-sized implementation lanes, MUST start or fork a separate Codex
+   - For issue-sized implementation lanes, the root orchestrator MUST start or fork a separate Codex
      thread in a worktree when the tool is available.
    - MUST complete lane assignment before implementation edits begin. A parent may
      prepare issue text, branch name, worktree path, and handoff text, but MUST

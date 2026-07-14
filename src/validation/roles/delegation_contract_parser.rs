@@ -97,7 +97,8 @@ fn orchestration_owner_is_actor(prefix: &[&str]) -> bool {
         return false;
     };
     let subject = &prefix[..must_index];
-    !subject.iter().any(|word| DELEGATION_TARGETS.contains(word))
+    explicitly_names_root_orchestrator(subject)
+        && !subject.iter().any(|word| DELEGATION_TARGETS.contains(word))
         && !delegates_child_creation(&prefix[must_index + 1..])
 }
 
@@ -105,10 +106,17 @@ fn orchestration_owner_is_actor_for_action(words: &[&str], action_index: usize) 
     let Some(permission_index) = permission_index(&words[..action_index]) else {
         return false;
     };
-    !words[..permission_index]
-        .iter()
-        .any(|word| DELEGATION_TARGETS.contains(word))
+    explicitly_names_root_orchestrator(&words[..permission_index])
+        && !words[..permission_index]
+            .iter()
+            .any(|word| DELEGATION_TARGETS.contains(word))
         && !delegates_child_creation(&words[permission_index + 1..action_index])
+}
+
+fn explicitly_names_root_orchestrator(subject: &[&str]) -> bool {
+    subject
+        .windows(2)
+        .any(|words| words == ["root", "orchestrator"])
 }
 
 fn permission_index(words: &[&str]) -> Option<usize> {
