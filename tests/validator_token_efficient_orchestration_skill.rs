@@ -111,6 +111,8 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "A parent or child MUST NOT retain an active goal or plan during an external-gate wait",
         "child external-gate wait MUST end its active goal and plan before waiting",
         "runtime monitor lives outside goals",
+        "heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity",
+        "MUST NOT require a persistent exec/session identifier or same-process resume",
         "persistent exec/session id",
         "same-process resume",
         "A qualifying event starts a fresh short-lived execution goal",

@@ -34,6 +34,7 @@ const EXTERNAL_GATE_CLAUSES: &[&str] = &[
     "parent or child MUST NOT retain an active goal or plan during an external-gate wait",
     "child external-gate wait MUST end its active goal and plan before waiting",
     "qualifying event starts a fresh short-lived execution goal",
+    "heartbeat automation route MUST NOT require a persistent exec/session id or same-process resume",
 ];
 
 const TEMPLATE_CLAUSES: &[&str] = &[
@@ -45,6 +46,12 @@ const TEMPLATE_CLAUSES: &[&str] = &[
     "eligible material events:",
     "unchanged observations suppressed:",
     "terminal delete/disable action:",
+];
+
+const TRANSITION_CLAUSES: &[&str] = &[
+    "heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity",
+    "MUST NOT require a persistent exec/session identifier or same-process resume",
+    "persistent exec/session identifier, a scheduled next-observation deadline, the last observed state fingerprint or event identity, and same-process resume",
 ];
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
@@ -67,6 +74,11 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         (
             "runtime heartbeat delta template must preserve lifecycle slots",
             TEMPLATE_CLAUSES,
+        )
+    } else if path.ends_with("skills/codex-orchestration/references/goal-transition-reporting.md") {
+        (
+            "goal transition contract must distinguish heartbeat and process monitor identities",
+            TRANSITION_CLAUSES,
         )
     } else {
         return;
@@ -96,16 +108,21 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
         let before = &text[..index];
         let after = text[index + clause.len()..].trim_start();
         before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
-            && !before.rsplit(['.', ';']).next().is_some_and(|prefix| {
-                [
-                    "historical example",
-                    "false that",
-                    "not required",
-                    "no longer required",
-                ]
-                .iter()
-                .any(|marker| prefix.contains(marker))
-            })
+            && !before
+                .rsplit_once("</markdown-heading>")
+                .map_or(before, |(_, current_section)| current_section)
+                .rsplit(['.', ';'])
+                .next()
+                .is_some_and(|prefix| {
+                    [
+                        "historical example",
+                        "false that",
+                        "not required",
+                        "no longer required",
+                    ]
+                    .iter()
+                    .any(|marker| prefix.contains(marker))
+                })
             && !["unless ", "except ", "only if ", "may ", "is not required"]
                 .iter()
                 .any(|marker| after.starts_with(marker))
@@ -113,17 +130,22 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
 }
 
 fn normalized_policy_text(text: &str) -> String {
+    let mut historical_section = false;
     text.lines()
-        .flat_map(|line| {
+        .filter_map(|line| {
             let trimmed = line.trim_start();
             if trimmed.starts_with('#') {
-                [
-                    "<markdown-heading>",
-                    trimmed.trim_start_matches('#'),
-                    "</markdown-heading>",
-                ]
+                let heading = trimmed.trim_start_matches('#').trim();
+                let heading_lower = heading.to_ascii_lowercase();
+                historical_section = heading_lower == "history"
+                    || heading_lower.starts_with("history ")
+                    || heading_lower == "historical"
+                    || heading_lower.starts_with("historical ");
+                Some(format!("<markdown-heading> {heading} </markdown-heading>"))
+            } else if historical_section {
+                None
             } else {
-                [line, "", ""]
+                Some(line.to_owned())
             }
         })
         .collect::<Vec<_>>()

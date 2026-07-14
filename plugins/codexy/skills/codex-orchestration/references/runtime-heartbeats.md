@@ -13,6 +13,10 @@ inventing or copying a target-thread id. Creation MUST use a heartbeat name, pro
 bounded schedule, active status, and heartbeat kind; the owner MUST retain the
 returned automation id. It MUST view the heartbeat by that id before relying on the
 monitor.
+The heartbeat automation id, target thread, bounded schedule, and last observed
+state fingerprint are the runtime-issued identity for this route. A heartbeat
+automation route MUST NOT require a persistent exec/session id or same-process
+resume; those fields identify a separate process-backed monitor route.
 
 ## Registration Evidence And Prompt
 
