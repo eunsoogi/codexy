@@ -63,9 +63,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
                     continue;
                 }
                 if token != "mod" {
-                    if matches!(token, "fn" | "struct" | "enum" | "const" | "use") {
-                        attributed_path = None;
-                    }
+                    attributed_path = None;
                     continue;
                 }
                 let cursor = skip_trivia(bytes, index)?;

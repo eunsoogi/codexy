@@ -47,6 +47,32 @@ fn touched_loc_honors_path_on_restricted_visibility_inline_ancestor() -> TestRes
     Ok(())
 }
 
+#[test]
+fn touched_loc_clears_inline_path_after_completed_intervening_items() -> TestResult {
+    for item in [
+        "trait Marker {}\n",
+        "type Alias = ();\n",
+        "static MARKER: () = ();\n",
+    ] {
+        let repo = intervening_item_fixture(item)?;
+        let rustc = compile(repo.path())?;
+        assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+        assert_validator_fails_closed(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_fails_closed_after_malformed_intervening_item_prefixes() -> TestResult {
+    for item in ["trait Marker ", "type Alias = ", "static MARKER: "] {
+        let repo = intervening_item_fixture(item)?;
+        let rustc = compile(repo.path())?;
+        assert!(!rustc.status.success());
+        assert_validator_fails_closed(&repo)?;
+    }
+    Ok(())
+}
+
 fn assert_inline_ancestor_path(visibility: &str) -> TestResult {
     let repo = fixture("src/thread_files/tls.rs", regular_lines(252))?;
     write(
@@ -72,6 +98,37 @@ fn assert_inline_ancestor_path(visibility: &str) -> TestResult {
     assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
     let output = validate(repo.path())?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+fn intervening_item_fixture(item: &str) -> TestResult<tempfile::TempDir> {
+    let repo = fixture("src/thread_files/tls.rs", regular_lines(252))?;
+    write(
+        repo.path(),
+        "src/lib.rs",
+        &format!(
+            "#[path = \"thread_files\"]\n{item}mod thread {{\n    #[path = \"tls.rs\"]\n    mod local_data;\n}}\n"
+        ),
+    )?;
+    write(repo.path(), "src/thread/tls.rs", "")?;
+    amend_fixture(repo.path())?;
+    write(
+        repo.path(),
+        "src/thread_files/tls.rs",
+        &format!("mod helper;\n{}", regular_lines(249)),
+    )?;
+    write(
+        repo.path(),
+        "src/thread_files/helper.rs",
+        &regular_lines_from(249, 3),
+    )?;
+    Ok(repo)
+}
+
+fn assert_validator_fails_closed(repo: &tempfile::TempDir) -> TestResult {
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
     Ok(())
 }
 
