@@ -183,15 +183,18 @@ fn post_result_is_confirmed(
     true
 }
 fn is_local_agent_route(line: &str) -> bool {
-    line.match_indices("agents.send_message").any(|(index, _)| {
-        let prefix = &line[..index];
-        !prefix
-            .rsplit_once(". ")
-            .map_or(prefix, |(_, sentence)| sentence)
-            .rsplit([';', ':'])
-            .next()
-            .is_some_and(|clause| clause.contains("must not use"))
-    })
+    line.strip_prefix("parent route: ")
+        .and_then(|route| route.split([';', ',', ' ']).next())
+        .is_some_and(is_local_task_target)
+        || line.match_indices("agents.send_message").any(|(index, _)| {
+            let prefix = &line[..index];
+            !prefix
+                .rsplit_once(". ")
+                .map_or(prefix, |(_, sentence)| sentence)
+                .rsplit([';', ':'])
+                .next()
+                .is_some_and(|clause| clause.contains("must not use"))
+        })
 }
 fn without_numbered_metadata_prefix(line: &str) -> &str {
     let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());

@@ -15,6 +15,9 @@ fn validator_rejects_missing_parent_goal_transition_reporting_contract() -> Test
     assert!(text.contains("stable transition key"));
     assert!(text.contains("canonical reserved worktree"));
     assert!(text.contains("Before a child stops, archives, or releases lane ownership"));
+    assert!(text.contains(
+        "Before stop, archive, ownership release, `update_goal(complete)`, or `update_goal(blocked)`"
+    ));
     assert!(text.contains("terminal handoff receipt exactly once"));
     assert!(text.contains("Delivery MUST be confirmed before the stop/archive/release"));
     assert!(text.contains("MUST preserve the lane instead of transitioning"));

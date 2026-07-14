@@ -4,15 +4,17 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_local_parent_routes_in_terminal_only_handoffs() -> TestResult {
-    let local = run_validator(&terminal_only_evidence("agents.send_message('/root')"))?;
-    assert!(
-        !local.status.success(),
-        "terminal-only handoff must reject a local parent route"
-    );
-    assert!(
-        String::from_utf8_lossy(&local.stderr)
-            .contains("child goal reporting must not use local agents /root routing")
-    );
+    for route in ["agents.send_message('/root')", "/root", "agents.worker"] {
+        let local = run_validator(&terminal_only_evidence(route))?;
+        assert!(
+            !local.status.success(),
+            "terminal-only handoff must reject local parent route {route:?}"
+        );
+        assert!(
+            String::from_utf8_lossy(&local.stderr)
+                .contains("child goal reporting must not use local agents /root routing")
+        );
+    }
 
     let codex = run_validator(&terminal_only_evidence("codex task/thread"))?;
     assert!(

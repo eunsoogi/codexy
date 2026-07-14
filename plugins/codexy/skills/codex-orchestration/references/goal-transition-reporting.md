@@ -53,7 +53,7 @@ the delivery is unavailable, static evidence MUST show one terminal
 parent-messaging-unavailable receipt and no blocked goal call. The runtime
 delivery mechanics remain owned by #367.
 
-Before stop, archive, ownership release, or `update_goal(blocked)`, and before a
+Before stop, archive, ownership release, `update_goal(complete)`, or `update_goal(blocked)`, and before a
 child stops, archives, or releases lane ownership without a goal tool
 call, it MUST send exactly one terminal handoff delta to the source parent (the
 same terminal handoff receipt) exactly once.

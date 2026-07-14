@@ -120,7 +120,7 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head",
         "authorized child-local monitor that observes no qualifying event MUST keep its bounded schedule without emitting status or starting another model turn",
         "This MUST NOT terminate the underlying monitor",
-        "Before stop, archive, ownership release, or `update_goal(blocked)`",
+        "Before stop, archive, ownership release, `update_goal(complete)`, or `update_goal(blocked)`",
         "send exactly one terminal handoff delta to the source parent",
         "MUST NOT perform the stop/archive/blocked transition",
         "Polling/monitoring is a runtime claim, not an agent label",
