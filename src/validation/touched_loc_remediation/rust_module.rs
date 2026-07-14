@@ -4,7 +4,40 @@ use toml::Value;
 
 const TARGET_ROOTS: [&str; 4] = ["src/bin", "tests", "examples", "benches"];
 
-pub(super) fn paths(root: &Path, path: &Path, module: &str) -> [PathBuf; 2] {
+pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    let mut attributed_path = None;
+    for line in source.lines() {
+        let line = line.trim();
+        if let Some(path) = path_attribute(line) {
+            attributed_path = Some(path);
+            continue;
+        }
+        let declaration = line
+            .strip_prefix("pub(crate) ")
+            .or_else(|| line.strip_prefix("pub "))
+            .unwrap_or(line);
+        let Some(module) = declaration
+            .strip_prefix("mod ")
+            .and_then(|name| name.strip_suffix(';'))
+        else {
+            attributed_path = None;
+            continue;
+        };
+        if let Some(attribute) = attributed_path.take() {
+            if let Some(path) =
+                normalize_relative_path(path.parent().unwrap_or(Path::new("")), attribute)
+            {
+                paths.push(path);
+            }
+        } else {
+            paths.extend(default_paths(root, path, module));
+        }
+    }
+    paths
+}
+
+fn default_paths(root: &Path, path: &Path, module: &str) -> [PathBuf; 2] {
     let parent = path.parent().unwrap_or(Path::new(""));
     let module_parent = if is_crate_root(root, path, parent) {
         parent.to_owned()
@@ -24,7 +57,7 @@ fn is_crate_root(root: &Path, path: &Path, parent: &Path) -> bool {
             Some("lib.rs") => is_library_or_binary_crate_root(root, parent),
             Some("main.rs") => {
                 is_library_or_binary_crate_root(root, parent)
-                    || is_directory_binary_crate_root(root, parent)
+                    || is_directory_target_crate_root(root, parent)
             }
             Some("build.rs") => parent == Path::new("") || is_package_root(root, parent),
             _ => false,
@@ -87,20 +120,31 @@ fn manifest_declares_target_path(manifest: &Value, path: &Path) -> bool {
 fn target_path_matches(path: &Path, target: Option<&Value>) -> bool {
     target
         .and_then(Value::as_str)
-        .and_then(normalize_manifest_target_path)
+        .and_then(|target| normalize_relative_path(Path::new(""), target))
         .is_some_and(|target| target == path)
 }
 
-fn normalize_manifest_target_path(target: &str) -> Option<PathBuf> {
-    let mut normalized = PathBuf::new();
-    for component in Path::new(target).components() {
+fn normalize_relative_path(base: &Path, path: &str) -> Option<PathBuf> {
+    let mut normalized = base.to_owned();
+    for component in Path::new(path).components() {
         match component {
             Component::CurDir => {}
             Component::Normal(component) => normalized.push(component),
-            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+            Component::ParentDir if !normalized.pop() => return None,
+            Component::ParentDir => {}
+            Component::RootDir | Component::Prefix(_) => return None,
         }
     }
     (!normalized.as_os_str().is_empty()).then_some(normalized)
+}
+
+fn path_attribute(line: &str) -> Option<&str> {
+    let value = line.strip_prefix("#[path")?.strip_suffix(']')?.trim_start();
+    value
+        .strip_prefix('=')?
+        .trim()
+        .strip_prefix('"')?
+        .strip_suffix('"')
 }
 
 fn is_library_or_binary_crate_root(root: &Path, parent: &Path) -> bool {
@@ -112,14 +156,16 @@ fn is_library_or_binary_crate_root(root: &Path, parent: &Path) -> bool {
             .is_some_and(|package_root| parent == package_root.join("src"))
 }
 
-fn is_directory_binary_crate_root(root: &Path, parent: &Path) -> bool {
+fn is_directory_target_crate_root(root: &Path, parent: &Path) -> bool {
     parent
         .ancestors()
         .find(|candidate| is_package_root(root, candidate))
         .is_some_and(|package_root| {
-            parent
-                .parent()
-                .is_some_and(|bin_root| bin_root == package_root.join("src/bin"))
+            parent.parent().is_some_and(|target_root| {
+                TARGET_ROOTS
+                    .iter()
+                    .any(|directory| target_root == package_root.join(directory))
+            })
         })
 }
 

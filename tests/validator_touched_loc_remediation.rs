@@ -1,5 +1,7 @@
-use std::path::Path;
-use std::process::{Command, Output};
+mod support;
+
+use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
+
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[test]
 fn touched_loc_rejects_blank_line_only_remediation() -> TestResult {
@@ -78,8 +80,12 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
         ("src/foo/mod.rs", "extracted", "src/foo/extracted.rs"),
         ("src/bin/too_large.rs", "worker", "src/bin/worker.rs"),
         ("src/bin/foo/main.rs", "helper", "src/bin/foo/helper.rs"),
+        ("examples/foo/main.rs", "helper", "examples/foo/helper.rs"),
+        ("tests/foo/main.rs", "helper", "tests/foo/helper.rs"),
+        ("benches/foo/main.rs", "helper", "benches/foo/helper.rs"),
         ("src/custom_bin.rs", "helper", "src/helper.rs"),
         ("src/custom_dot_bin.rs", "helper", "src/helper.rs"),
+        ("src/custom_parent_bin.rs", "helper", "src/helper.rs"),
         ("crates/app/build.rs", "worker", "crates/app/worker.rs"),
         (
             "crates/app/tests/too_large.rs",
@@ -158,63 +164,6 @@ fn touched_loc_rejects_sibling_files_for_nested_module_declarations() -> TestRes
     }
     Ok(())
 }
-fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
-    let repo = tempfile::tempdir()?;
-    run(repo.path(), &["init", "-q"])?;
-    run(
-        repo.path(),
-        &["config", "user.email", "codexy@example.test"],
-    )?;
-    run(repo.path(), &["config", "user.name", "Codexy Test"])?;
-    if path.starts_with("src/bin/") {
-        write(repo.path(), "Cargo.toml", "[package]\nname = \"app\"\n")?;
-    }
-    if let Some(target) = match path {
-        "src/custom_bin.rs" => Some("src/custom_bin.rs"),
-        "src/custom_dot_bin.rs" => Some("./src//./custom_dot_bin.rs"),
-        "src/custom_escape.rs" => Some("../src/custom_escape.rs"),
-        _ => None,
-    } {
-        write(
-            repo.path(),
-            "Cargo.toml",
-            &format!(
-                "[package]\nname = \"app\"\n[[bin]]\nname = \"custom\"\npath = \"{target}\"\n"
-            ),
-        )?;
-    }
-    if path.starts_with("crates/app/") {
-        write(
-            repo.path(),
-            "crates/app/Cargo.toml",
-            "[package]\nname = \"app\"\n",
-        )?;
-    }
-    write(repo.path(), path, &source)?;
-    run(repo.path(), &["add", "."])?;
-    run(repo.path(), &["commit", "-qm", "initial"])?;
-    Ok(repo)
-}
-fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().expect("fixture file parent"))?;
-    std::fs::write(path, text)
-}
-fn validate(root: &Path) -> TestResult<Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-touched-loc", "--base-ref", "HEAD"])
-        .current_dir(root)
-        .output()?)
-}
-fn run(root: &Path, args: &[&str]) -> TestResult {
-    let output = Command::new("git").args(args).current_dir(root).output()?;
-    assert!(
-        output.status.success(),
-        "git {args:?} failed: {}",
-        stderr(&output)
-    );
-    Ok(())
-}
 fn blank_line_source() -> String {
     format!("\n\n{}", regular_lines(250))
 }
@@ -231,20 +180,4 @@ fn mixed_token_collapse_source() -> String {
         "{}let report = format!(\n    \"{{}}/{{}}\",\n    \"status\",\n    1 + 2,\n    true,\n    \"ok\",\n    3 * 4,\n    5 - 1,\n    6 / 2,\n);\n",
         regular_lines(241)
     )
-}
-
-fn regular_lines(count: usize) -> String {
-    (0..count)
-        .map(|index| format!("fn line_{index}() {{}}\n"))
-        .collect()
-}
-
-fn regular_lines_from(start: usize, count: usize) -> String {
-    (start..start + count)
-        .map(|index| format!("fn line_{index}() {{}}\n"))
-        .collect()
-}
-
-fn stderr(output: &Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
 }

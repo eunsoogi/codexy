@@ -114,36 +114,22 @@ fn has_new_module_boundary(
     if removed.is_empty() {
         return Ok(false);
     }
-    for line in current.lines() {
-        let line = line.trim();
-        let declaration = line
-            .strip_prefix("pub(crate) ")
-            .or_else(|| line.strip_prefix("pub "))
-            .unwrap_or(line);
-        let Some(module) = declaration
-            .strip_prefix("mod ")
-            .and_then(|name| name.strip_suffix(';'))
-        else {
-            continue;
-        };
-        for module_path in rust_module::paths(root, path, module) {
-            let current_module =
-                std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
-            let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
-            let base_module_lines = base_module
-                .lines()
-                .collect::<std::collections::HashSet<_>>();
-            let added = current_module
-                .lines()
-                .filter(|line| !line.trim().is_empty() && !base_module_lines.contains(line))
-                .collect::<String>();
-            if added
-                .split_whitespace()
-                .collect::<String>()
-                .contains(&removed)
-            {
-                return Ok(true);
-            }
+    for module_path in rust_module::declared_paths(root, path, current) {
+        let current_module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
+        let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
+        let base_module_lines = base_module
+            .lines()
+            .collect::<std::collections::HashSet<_>>();
+        let added = current_module
+            .lines()
+            .filter(|line| !line.trim().is_empty() && !base_module_lines.contains(line))
+            .collect::<String>();
+        if added
+            .split_whitespace()
+            .collect::<String>()
+            .contains(&removed)
+        {
+            return Ok(true);
         }
     }
     Ok(false)
