@@ -16,15 +16,18 @@ for raw in open(sys.argv[1], encoding="utf-8"):
         raise SystemExit(f"{sys.argv[2]}: non-JSON MCP stdout")
     if not isinstance(message, dict):
         continue
-    identifier = message.get("id")
-    if type(identifier) is int and identifier in (1, 2):
-        if message.get("jsonrpc") != "2.0":
-            raise SystemExit(f"{sys.argv[2]}: invalid JSON-RPC version for response id {identifier}")
-        if identifier in responses:
-            raise SystemExit(f"{sys.argv[2]}: duplicate MCP response id {identifier}")
-        if "error" in message or "result" not in message:
-            raise SystemExit(f"{sys.argv[2]}: MCP response id {identifier} is not a successful result")
-        responses[identifier] = message
+    if "id" not in message:
+        continue
+    identifier = message["id"]
+    if type(identifier) is not int or identifier not in (1, 2):
+        raise SystemExit(f"{sys.argv[2]}: unexpected MCP response id")
+    if message.get("jsonrpc") != "2.0":
+        raise SystemExit(f"{sys.argv[2]}: invalid JSON-RPC version for response id {identifier}")
+    if identifier in responses:
+        raise SystemExit(f"{sys.argv[2]}: duplicate MCP response id {identifier}")
+    if "error" in message or "result" not in message:
+        raise SystemExit(f"{sys.argv[2]}: MCP response id {identifier} is not a successful result")
+    responses[identifier] = message
 if set(responses) != {1, 2}:
     raise SystemExit(f"{sys.argv[2]}: MCP response ids were not correlated exactly once")
 PY

@@ -69,6 +69,25 @@ fn rejects_non_json_stdout_and_keeps_valid_json_responses() {
 }
 
 #[test]
+fn rejects_unsolicited_json_rpc_response_ids() {
+    let root = tempdir().expect("tempdir");
+    let checker =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
+    let response = root.path().join("unsolicited-id.jsonl");
+    std::fs::write(
+        &response,
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":99,\"result\":{}}\n",
+    )
+    .expect("response fixture");
+    let output = Command::new(&checker)
+        .args([response.to_str().unwrap(), "test"])
+        .output()
+        .expect("checker");
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unexpected MCP response id"));
+}
+
+#[test]
 fn workflow_delegates_mcp_stdout_validation_to_the_shared_checker() {
     let workflow = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
