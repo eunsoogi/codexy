@@ -59,8 +59,16 @@ pub(super) fn has_unnegated_delegation_action(clause: &str) -> bool {
             let action_prefix = prefix_words
                 .iter()
                 .rposition(|word| *word == "but")
-                .map_or(prefix, |but_index| prefix_words[but_index + 1..].join(" "));
-            !has_action_negation(&action_prefix)
+                .map_or_else(
+                    || prefix.clone(),
+                    |but_index| prefix_words[but_index + 1..].join(" "),
+                );
+            let contrast_starts_with_negation = action_prefix
+                .split_whitespace()
+                .next()
+                .is_some_and(|word| word == "not");
+            !(has_action_negation(&action_prefix)
+                || (contrast_starts_with_negation && has_action_negation(&prefix)))
                 && DELEGATION_TARGETS.iter().any(|target| {
                     clause_words[word_index..]
                         .iter()
@@ -103,9 +111,9 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
                     .trim_start()
                     .starts_with("root orchestrator must");
             let root_is_only_actor = root_is_actor
-                && !prefix.contains("sentinel")
-                && !prefix.contains("helper")
-                && !prefix.contains("specialist");
+                && !DELEGATION_TARGETS
+                    .iter()
+                    .any(|target| prefix.split_whitespace().any(|word| word == *target));
             let creates_child_thread = allow_root_child_thread_creation
                 && action == "create"
                 && root_is_only_actor

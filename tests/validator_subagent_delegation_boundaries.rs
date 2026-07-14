@@ -81,6 +81,7 @@ fn validator_does_not_flag_punctuated_nonrecursive_prohibitions() -> TestResult 
         "A helper MAY, under no circumstances, spawn another helper.",
         "A helper MAY not, under any circumstances, spawn another helper.",
         "A helper MAY never, even during recovery, create another reviewer task.",
+        "A helper MAY edit files but not spawn another helper.",
         "A helper is not allowed, under this contract, to delegate work to another reviewer.",
         "Allowed actions: map files, but MUST NOT spawn another helper.",
         "Every helper MUST NOT spawn, delegate to, or create any additional agent.",
@@ -112,6 +113,7 @@ fn validator_rejects_nonroot_child_thread_creation_in_orchestration() -> TestRes
         "A Sentinel MUST create a child thread for the root orchestrator.",
         "A Sentinel working for the root orchestrator MUST create a child thread.",
         "A Sentinel and the root orchestrator MUST create a child thread.",
+        "The root orchestrator MUST ask a reviewer to create a child thread.",
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = fixture(&temp)?;
