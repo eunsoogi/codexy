@@ -22,24 +22,32 @@ fn touched_loc_rejects_collapse_with_unrelated_added_file() -> TestResult {
 
 #[test]
 fn touched_loc_allows_extraction_into_existing_module() -> TestResult {
-    let repo = fixture(
-        "src/too_large.rs",
-        format!("mod helper;\n{}", multiline_source()),
-    )?;
-    write(repo.path(), "src/too_large/helper.rs", "fn existing() {}\n")?;
-    run(repo.path(), &["add", "."])?;
-    run(repo.path(), &["commit", "-qm", "existing helper"])?;
-    write(
-        repo.path(),
-        "src/too_large/helper.rs",
-        "fn existing() {}\nlet summary = format!(\"status\");\n",
-    )?;
-    std::fs::write(
-        repo.path().join("src/too_large.rs"),
-        format!("mod helper;\n{}", regular_lines(249)),
-    )?;
-    let output = validate(repo.path())?;
-    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    for (path, module, helper) in [
+        ("src/too_large.rs", "helper", "src/too_large/helper.rs"),
+        ("tests/foo.rs", "common", "tests/common.rs"),
+    ] {
+        let repo = fixture(path, format!("mod {module};\n{}", multiline_source()))?;
+        write(repo.path(), helper, "fn existing() {}\n")?;
+        run(repo.path(), &["add", "."])?;
+        run(repo.path(), &["commit", "-qm", "existing helper"])?;
+        write(
+            repo.path(),
+            helper,
+            "fn existing() {}\nlet summary = format!(\"status\");\n",
+        )?;
+        std::fs::write(
+            repo.path().join(path),
+            format!("mod {module};\n{}", regular_lines(249)),
+        )?;
+
+        let output = validate(repo.path())?;
+
+        assert!(
+            output.status.success(),
+            "{path} stderr:\n{}",
+            stderr(&output)
+        );
+    }
     Ok(())
 }
 
