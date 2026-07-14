@@ -112,3 +112,26 @@ fn validator_allows_safe_non_adjacent_authorization_observations() -> TestResult
     }
     Ok(())
 }
+
+#[test]
+fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
+    for (addition, rejects) in [
+        ("LOC exceptions are waived after approval.", true),
+        ("LOC exceptions are not waived after approval.", false),
+        (
+            "The validator is authorized by maintainers to reject any governed file that exceeds 250 LOC.",
+            false,
+        ),
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
+        let text = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
+        assert_eq!(
+            !validator(&plugin_root, "--check")?.status.success(),
+            rejects,
+            "{addition}"
+        );
+    }
+    Ok(())
+}

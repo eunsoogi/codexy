@@ -2,6 +2,7 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
+mod overage;
 mod surfaces;
 use surfaces::{
     EXCEPTION_PROHIBITION, GOVERNED_AGENT_ROLES, GOVERNED_SKILLS, UNCONDITIONAL_CONTRACT,
@@ -113,43 +114,21 @@ fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
                 })
                 || index > 0 && matches!(words[index - 1].as_str(), "may" | "can")
                 || has_governing_passive_permission(words, index))
-                && !overage_is_negated(words, index)
+                && !overage::is_negated(words, index)
         })
 }
 
 fn has_governing_passive_permission(words: &[String], exceed: usize) -> bool {
-    words[..exceed]
+    let Some(subject) = words[..exceed]
+        .windows(3)
+        .rposition(|phrase| matches!(phrase, [governed, file, is] if governed == "governed" && file == "file" && is == "is"))
+    else {
+        return false;
+    };
+    words[subject + 3..exceed]
         .iter()
         .rposition(|word| is_passive_permission(word))
-        .is_some_and(|permission| !passive_permission_is_negated(words, permission))
-}
-
-fn overage_is_negated(words: &[String], exceed: usize) -> bool {
-    let local_start = words[..exceed]
-        .iter()
-        .rposition(|word| matches!(word.as_str(), "but" | "however" | "yet"))
-        .map_or(0, |boundary| boundary + 1);
-    let local = &words[local_start..];
-    let exceed = exceed - local_start;
-    let before = &local[..exceed];
-    if before
-        .iter()
-        .rposition(|word| matches!(word.as_str(), "may" | "can"))
-        .is_some_and(|modal| !before[modal + 1..].iter().any(|word| word == "not"))
-    {
-        return false;
-    }
-    let modal_negation = |part: &[String]| {
-        part.windows(2).any(|pair| {
-            matches!(
-                pair,
-                [modal, not] if matches!(modal.as_str(), "must" | "may" | "can") && not == "not"
-            )
-        }) || part
-            .iter()
-            .any(|word| matches!(word.as_str(), "cannot" | "never"))
-    };
-    modal_negation(before) || modal_negation(&local[exceed + 1..])
+        .is_some_and(|permission| !passive_permission_is_negated(words, subject + 3 + permission))
 }
 
 fn has_positive_permission(words: &[String]) -> bool {
@@ -174,7 +153,14 @@ fn has_positive_permission(words: &[String]) -> bool {
 fn is_passive_permission(word: &str) -> bool {
     matches!(
         word,
-        "acceptable" | "allowed" | "authorized" | "exempt" | "exempted" | "permitted"
+        "acceptable"
+            | "allowed"
+            | "authorized"
+            | "exempt"
+            | "exempted"
+            | "permitted"
+            | "waive"
+            | "waived"
     )
 }
 
