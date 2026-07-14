@@ -1,13 +1,22 @@
-const DELEGATION_TARGETS: [&str; 9] = [
+const DELEGATION_TARGETS: [&str; 18] = [
     "agent",
+    "agents",
     "helper",
+    "helpers",
     "reviewer",
+    "reviewers",
     "sentinel",
+    "sentinels",
     "specialist",
+    "specialists",
     "task",
+    "tasks",
     "thread",
+    "threads",
     "worker",
+    "workers",
     "explorer",
+    "explorers",
 ];
 
 pub(super) fn has_unnegated_permission(clause: &str) -> bool {
@@ -38,16 +47,23 @@ pub(super) fn has_unnegated_delegation_action(clause: &str) -> bool {
     ]
     .into_iter()
     .any(|action| {
-        clause.match_indices(action).any(|(index, _)| {
-            let prefix = &clause[..index];
-            let action_prefix = prefix
-                .rsplit_once(" but ")
-                .map_or(prefix, |(_, contrast)| contrast);
-            let suffix = &clause[index..];
-            !has_action_negation(action_prefix)
-                && DELEGATION_TARGETS
-                    .iter()
-                    .any(|target| suffix.contains(target))
+        let clause_words = words(clause);
+        clause_words.iter().enumerate().any(|(word_index, word)| {
+            if *word != action {
+                return false;
+            }
+            let prefix_words = &clause_words[..word_index];
+            let prefix = prefix_words.join(" ");
+            let action_prefix = prefix_words
+                .iter()
+                .rposition(|word| *word == "but")
+                .map_or(prefix, |but_index| prefix_words[but_index + 1..].join(" "));
+            !has_action_negation(&action_prefix)
+                && DELEGATION_TARGETS.iter().any(|target| {
+                    clause_words[word_index..]
+                        .iter()
+                        .any(|candidate| candidate == target)
+                })
         })
     })
 }
@@ -66,11 +82,15 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
     ]
     .into_iter()
     .any(|action| {
-        clause.match_indices(action).any(|(index, _)| {
-            let prefix = clause[..index]
+        let clause_words = words(clause);
+        clause_words.iter().enumerate().any(|(word_index, word)| {
+            if *word != action {
+                return false;
+            }
+            let prefix = clause_words[..word_index].join(" ");
+            let prefix = prefix
                 .rsplit_once(" but ")
-                .map_or(&clause[..index], |(_, contrast)| contrast);
-            let suffix = &clause[index..];
+                .map_or(prefix.as_str(), |(_, contrast)| contrast);
             let actor_clause = prefix
                 .rsplit_once(" and ")
                 .map_or(prefix, |(_, current)| current);
@@ -87,12 +107,16 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
             let creates_child_thread = allow_root_child_thread_creation
                 && action == "create"
                 && root_is_only_actor
-                && suffix.contains("child thread");
+                && clause_words[word_index..]
+                    .windows(2)
+                    .any(|pair| pair == ["child", "thread"]);
             has_unnegated_mandatory_permission(prefix)
                 && !creates_child_thread
-                && DELEGATION_TARGETS
-                    .iter()
-                    .any(|target| suffix.contains(target))
+                && DELEGATION_TARGETS.iter().any(|target| {
+                    clause_words[word_index..]
+                        .iter()
+                        .any(|candidate| candidate == target)
+                })
         })
     })
 }

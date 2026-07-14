@@ -165,6 +165,17 @@ fn validator_rejects_worker_and_explorer_recursive_delegation_targets() -> TestR
     Ok(())
 }
 
+#[test]
+fn validator_allows_non_delegating_derived_words() -> TestResult {
+    for instruction in [
+        "A helper MAY review delegated tasks.",
+        "A helper MAY inspect a created thread id.",
+    ] {
+        assert_role_recursion_not_reported(instruction)?;
+    }
+    Ok(())
+}
+
 fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
