@@ -55,7 +55,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
                         if restricted_visibility(&source[cursor + 1..end]) {
                             index = end + 1;
                         } else {
-                            attributed_path = None;
+                            return None;
                         }
                     }
                     continue;

@@ -42,11 +42,10 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 };
                 outer_attribute_continuation = false;
                 if let Some(attribute) = multiline_path_attribute.take() {
-                    completed_path_attribute = path_attribute_prefix(&attribute)
-                        .map(|(path, remainder)| (path, remainder.to_owned()));
-                    if completed_path_attribute.is_none() {
-                        attributed_path = None;
-                    }
+                    let Some((path, remainder)) = path_attribute_prefix(&attribute) else {
+                        return Vec::new();
+                    };
+                    completed_path_attribute = Some((path, remainder.to_owned()));
                 }
                 if completed_path_attribute.is_none() {
                     line = remainder.trim();
@@ -82,12 +81,14 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 }
                 attributed_path = Some(path);
                 line = remainder.trim_start();
+            } else if is_path_attribute_start(line) && scope.is_outer_scope() {
+                return Vec::new();
             }
         }
         let Some(module) = declaration_after_visibility(line).and_then(module_declaration) else {
             if line.starts_with("#[") {
                 outer_attribute_continuation = !scope.is_outer_scope();
-                if outer_attribute_continuation && line.starts_with("#[path") {
+                if outer_attribute_continuation && is_path_attribute_start(line) {
                     multiline_path_attribute = Some(line.to_owned());
                 }
             } else {
@@ -101,6 +102,17 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         });
     }
     declarations
+}
+
+fn is_path_attribute_start(source: &str) -> bool {
+    let Some(remainder) = source.strip_prefix("#[path") else {
+        return false;
+    };
+    remainder.is_empty()
+        || remainder
+            .as_bytes()
+            .first()
+            .is_some_and(|byte| byte.is_ascii_whitespace() || matches!(byte, b'=' | b']'))
 }
 
 fn declaration_after_visibility(source: &str) -> Option<&str> {
