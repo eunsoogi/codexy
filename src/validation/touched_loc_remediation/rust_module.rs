@@ -7,8 +7,12 @@ const TARGET_ROOTS: [&str; 4] = ["src/bin", "tests", "examples", "benches"];
 pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     let mut attributed_path = None;
+    let mut block_comment_depth = 0;
     for line in source.lines() {
         let line = line.trim();
+        if is_attribute_trivia(line, &mut block_comment_depth) {
+            continue;
+        }
         if let Some(path) = path_attribute(line) {
             attributed_path = Some(path);
             continue;
@@ -37,6 +41,41 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
         }
     }
     paths
+}
+
+fn is_attribute_trivia(line: &str, block_comment_depth: &mut usize) -> bool {
+    let mut remainder = line;
+    loop {
+        let trimmed = remainder.trim_start();
+        if *block_comment_depth == 0 {
+            if trimmed.is_empty() || trimmed.starts_with("//") {
+                return true;
+            }
+            let Some(after_comment) = trimmed.strip_prefix("/*") else {
+                return false;
+            };
+            *block_comment_depth += 1;
+            remainder = after_comment;
+            continue;
+        }
+        let next_start = remainder.find("/*");
+        let next_end = remainder.find("*/");
+        match (next_start, next_end) {
+            (Some(start), Some(end)) if start < end => {
+                *block_comment_depth += 1;
+                remainder = &remainder[start + 2..];
+            }
+            (_, Some(end)) => {
+                *block_comment_depth -= 1;
+                remainder = &remainder[end + 2..];
+            }
+            (Some(start), None) => {
+                *block_comment_depth += 1;
+                remainder = &remainder[start + 2..];
+            }
+            (None, None) => return true,
+        }
+    }
 }
 
 fn default_paths(root: &Path, path: &Path, module: &str) -> [PathBuf; 2] {
