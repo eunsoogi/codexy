@@ -54,7 +54,7 @@ fn touched_loc_clears_inline_path_after_completed_intervening_items() -> TestRes
         "type Alias = ();\n",
         "static MARKER: () = ();\n",
     ] {
-        let repo = intervening_item_fixture(item)?;
+        let repo = intervening_item_fixture(item, "thread_files")?;
         let rustc = compile(repo.path())?;
         assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
         assert_validator_fails_closed(&repo)?;
@@ -65,7 +65,7 @@ fn touched_loc_clears_inline_path_after_completed_intervening_items() -> TestRes
 #[test]
 fn touched_loc_fails_closed_after_malformed_intervening_item_prefixes() -> TestResult {
     for item in ["trait Marker ", "type Alias = ", "static MARKER: "] {
-        let repo = intervening_item_fixture(item)?;
+        let repo = intervening_item_fixture(item, "thread")?;
         let rustc = compile(repo.path())?;
         assert!(!rustc.status.success());
         assert_validator_fails_closed(&repo)?;
@@ -101,8 +101,15 @@ fn assert_inline_ancestor_path(visibility: &str) -> TestResult {
     Ok(())
 }
 
-fn intervening_item_fixture(item: &str) -> TestResult<tempfile::TempDir> {
-    let repo = fixture("src/thread_files/tls.rs", regular_lines(252))?;
+fn intervening_item_fixture(item: &str, tracked_module: &str) -> TestResult<tempfile::TempDir> {
+    let tracked_tls = format!("src/{tracked_module}/tls.rs");
+    let tracked_helper = format!("src/{tracked_module}/helper.rs");
+    let control_module = if tracked_module == "thread" {
+        "thread_files"
+    } else {
+        "thread"
+    };
+    let repo = fixture(&tracked_tls, regular_lines(252))?;
     write(
         repo.path(),
         "src/lib.rs",
@@ -110,18 +117,14 @@ fn intervening_item_fixture(item: &str) -> TestResult<tempfile::TempDir> {
             "#[path = \"thread_files\"]\n{item}mod thread {{\n    #[path = \"tls.rs\"]\n    mod local_data;\n}}\n"
         ),
     )?;
-    write(repo.path(), "src/thread/tls.rs", "")?;
+    write(repo.path(), &format!("src/{control_module}/tls.rs"), "")?;
     amend_fixture(repo.path())?;
     write(
         repo.path(),
-        "src/thread_files/tls.rs",
+        &tracked_tls,
         &format!("mod helper;\n{}", regular_lines(249)),
     )?;
-    write(
-        repo.path(),
-        "src/thread_files/helper.rs",
-        &regular_lines_from(249, 3),
-    )?;
+    write(repo.path(), &tracked_helper, &regular_lines_from(249, 3))?;
     Ok(repo)
 }
 

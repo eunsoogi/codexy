@@ -63,7 +63,9 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
                     continue;
                 }
                 if token != "mod" {
-                    attributed_path = None;
+                    if attributed_path.take().is_some() {
+                        index = skip_non_module_item(bytes, index)?;
+                    }
                     continue;
                 }
                 let cursor = skip_trivia(bytes, index)?;
@@ -88,6 +90,23 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
         }
     }
     delimiters.is_empty().then_some(modules)
+}
+
+fn skip_non_module_item(bytes: &[u8], mut index: usize) -> Option<usize> {
+    while index < bytes.len() {
+        if let Some(next) = skip_non_code(bytes, index)? {
+            index = next;
+            continue;
+        }
+        match bytes[index] {
+            b';' => return Some(index + 1),
+            b'{' => return Some(matching_delimiter(bytes, index)? + 1),
+            b'(' | b'[' => index = matching_delimiter(bytes, index)? + 1,
+            b'}' | b')' | b']' => return None,
+            _ => index += 1,
+        }
+    }
+    None
 }
 
 fn matching_delimiter(bytes: &[u8], start: usize) -> Option<usize> {
