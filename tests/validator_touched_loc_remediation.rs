@@ -73,51 +73,28 @@ fn touched_loc_allows_collapse_with_independent_structural_remediation() -> Test
 }
 #[test]
 fn touched_loc_allows_structural_remediation_variants() -> TestResult {
-    for (label, path, module, extracted_path) in [
+    for (path, module, extracted_path) in [
+        ("src/foo.rs", "helper", "src/foo/helper.rs"),
+        ("src/foo/mod.rs", "extracted", "src/foo/extracted.rs"),
+        ("src/bin/too_large.rs", "worker", "src/bin/worker.rs"),
+        ("crates/app/build.rs", "worker", "crates/app/worker.rs"),
         (
-            "nested helper extraction from named module",
-            "src/foo.rs",
-            "helper",
-            "src/foo/helper.rs",
-        ),
-        (
-            "nested module splitting from mod.rs",
-            "src/foo/mod.rs",
-            "extracted",
-            "src/foo/extracted.rs",
-        ),
-        (
-            "binary crate root module splitting",
-            "src/bin/too_large.rs",
-            "worker",
-            "src/bin/worker.rs",
-        ),
-        (
-            "build script crate root module splitting",
-            "crates/app/build.rs",
-            "worker",
-            "crates/app/worker.rs",
-        ),
-        (
-            "test-target splitting",
             "crates/app/tests/too_large.rs",
             "scenarios",
             "crates/app/tests/scenarios.rs",
         ),
         (
-            "nested test directory module splitting",
             "src/parser/tests/case.rs",
             "helper",
             "src/parser/tests/case/helper.rs",
         ),
-        (
-            "responsibility separation",
-            "src/too_large.rs",
-            "worker",
-            "src/too_large/worker.rs",
-        ),
+        ("src/too_large.rs", "worker", "src/too_large/worker.rs"),
+        ("src/main.rs", "helper", "src/helper.rs"),
+        ("src/lib.rs", "helper", "src/helper.rs"),
+        ("src/foo/main.rs", "helper", "src/foo/main/helper.rs"),
+        ("src/foo/lib.rs", "helper", "src/foo/lib/helper.rs"),
     ] {
-        assert_module_split(label, path, module, extracted_path)?;
+        assert_module_split(path, module, extracted_path)?;
     }
     let repo = fixture(
         "src/too_large.rs",
@@ -136,7 +113,7 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
     Ok(())
 }
 
-fn assert_module_split(label: &str, path: &str, module: &str, extracted_path: &str) -> TestResult {
+fn assert_module_split(path: &str, module: &str, extracted_path: &str) -> TestResult {
     let repo = fixture(path, regular_lines(252))?;
     write(
         repo.path(),
@@ -147,7 +124,7 @@ fn assert_module_split(label: &str, path: &str, module: &str, extracted_path: &s
     let output = validate(repo.path())?;
     assert!(
         output.status.success(),
-        "{label} should remain eligible\nstderr:\n{}",
+        "{path} should remain eligible\nstderr:\n{}",
         stderr(&output)
     );
     Ok(())
@@ -157,6 +134,8 @@ fn touched_loc_rejects_sibling_files_for_nested_module_declarations() -> TestRes
     for (path, sibling) in [
         ("src/foo.rs", "src/helper.rs"),
         ("src/foo/mod.rs", "src/foo.rs"),
+        ("src/foo/main.rs", "src/foo/helper.rs"),
+        ("src/foo/lib.rs", "src/foo/helper.rs"),
         (
             "crates/app/src/parser/tests/case.rs",
             "crates/app/src/parser/tests/helper.rs",
