@@ -33,10 +33,10 @@ pub(crate) fn is_handoff_list_metadata_item_for_lane(line: &str, lane: Option<&s
 
 pub(crate) fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Option<&str>) -> bool {
     let lower = line.to_ascii_lowercase();
-    let Some(field) = strip_lane_label_prefix_for_lane(&lower, lane) else {
+    let Some(field) = strip_leading_lane_prefix_for_lane(&lower, lane) else {
         return false;
     };
-    let Some(scope) = strip_lane_label_prefix_for_lane_preserving_case(line, lane) else {
+    let Some(scope) = strip_leading_lane_prefix_for_lane(line, lane) else {
         return false;
     };
     is_handoff_metadata_field_line(field) && !names_later_lane_handoff(scope, lane)
@@ -44,7 +44,7 @@ pub(crate) fn is_unlisted_handoff_metadata_item_for_lane(line: &str, lane: Optio
 
 pub(crate) fn is_exact_handler_error_metadata_item(line: &str) -> bool {
     let lower = line.to_ascii_lowercase();
-    let line = strip_lane_label_prefix_for_lane(&lower, None).unwrap_or(&lower);
+    let line = strip_leading_lane_prefix_for_lane(&lower, None).unwrap_or(&lower);
     line.starts_with("exact missing-handler error:")
         && line.contains("no handler registered for tool:")
 }
@@ -59,6 +59,12 @@ pub(crate) fn defect_lane_label(lines: &[&str], start: usize, index: usize) -> O
 }
 
 pub(crate) fn mentioned_lane_label(line: &str) -> Option<String> {
+    lane_label_prefix(line)
+        .map(|(label, _)| label.to_ascii_lowercase())
+        .or_else(|| mentioned_lane_label_in_phrase(line))
+}
+
+fn mentioned_lane_label_in_phrase(line: &str) -> Option<String> {
     let lower = line.to_ascii_lowercase();
     [
         "for lane ",
@@ -109,8 +115,11 @@ fn is_handoff_metadata_item_for_different_lane(line: &str, lane: Option<&str>) -
     } else {
         line
     };
-    is_handoff_metadata_field_line(&line.to_ascii_lowercase())
-        && mentions_different_lane(line, lane)
+    is_handoff_metadata_field_line(
+        &strip_leading_lane_prefix_for_lane(line, None)
+            .unwrap_or(line)
+            .to_ascii_lowercase(),
+    ) && mentions_different_lane(line, lane)
 }
 
 fn is_handoff_metadata_item_explicitly_for_lane(line: &str, lane: Option<&str>) -> bool {
@@ -122,11 +131,15 @@ fn is_handoff_metadata_item_explicitly_for_lane(line: &str, lane: Option<&str>) 
     } else {
         line
     };
-    is_handoff_metadata_field_line(&line.to_ascii_lowercase())
-        && mentioned_lane_label(line).as_deref() == Some(lane)
+    is_handoff_metadata_field_line(
+        &strip_leading_lane_prefix_for_lane(line, None)
+            .unwrap_or(line)
+            .to_ascii_lowercase(),
+    ) && mentioned_lane_label(line).as_deref() == Some(lane)
 }
 
 fn is_handoff_metadata_field_line(line: &str) -> bool {
+    let line = strip_leading_lane_prefix_for_lane(line, None).unwrap_or(line);
     is_fallback_metadata_field(line)
         || [
             "separate dogfood issue",
@@ -158,48 +171,6 @@ fn lane_header_label(line: &str) -> Option<String> {
     let label = rest.trim_end_matches([':', '.', '-']).trim();
     (!label.is_empty() && label.bytes().all(|byte| byte.is_ascii_alphanumeric()))
         .then(|| label.to_string())
-}
-
-fn strip_lane_label_prefix_for_lane<'a>(line: &'a str, lane: Option<&str>) -> Option<&'a str> {
-    let Some(rest) = line.trim_start().strip_prefix("lane ") else {
-        return Some(line);
-    };
-    let label_end = rest
-        .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
-        .unwrap_or(rest.len());
-    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-    if label.is_empty() || lane.is_some_and(|lane| lane != label) {
-        return None;
-    }
-    Some(
-        rest[label_end..].trim_start_matches(|ch: char| {
-            ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.'
-        }),
-    )
-}
-
-fn strip_lane_label_prefix_for_lane_preserving_case<'a>(
-    line: &'a str,
-    lane: Option<&str>,
-) -> Option<&'a str> {
-    let trimmed = line.trim_start();
-    let lower = trimmed.to_ascii_lowercase();
-    let Some(rest_lower) = lower.strip_prefix("lane ") else {
-        return Some(line);
-    };
-    let rest = &trimmed["lane ".len()..];
-    let label_end = rest_lower
-        .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
-        .unwrap_or(rest_lower.len());
-    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-    if label.is_empty() || lane.is_some_and(|lane| !lane.eq_ignore_ascii_case(label)) {
-        return None;
-    }
-    Some(
-        rest[label_end..].trim_start_matches(|ch: char| {
-            ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.'
-        }),
-    )
 }
 
 fn current_defect_clause_scope(line: &str) -> &str {

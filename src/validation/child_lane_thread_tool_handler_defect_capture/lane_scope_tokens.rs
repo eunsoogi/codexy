@@ -27,6 +27,43 @@ pub(crate) fn is_lowercase_lane_label_token(label: &str) -> bool {
         )
 }
 
+pub(crate) fn lane_label_prefix(line: &str) -> Option<(&str, &str)> {
+    let trimmed = line.trim_start();
+    let rest = trimmed
+        .strip_prefix("Lane ")
+        .or_else(|| trimmed.strip_prefix("lane "))?;
+    let label_end = rest
+        .find(|ch: char| ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.')
+        .unwrap_or(rest.len());
+    let label = rest[..label_end].trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+    ((is_lane_label_token(label) || is_lowercase_lane_label_token(label))
+        && !is_reserved_lane_prefix_label(label))
+    .then_some((
+        label,
+        rest[label_end..].trim_start_matches(|ch: char| {
+            ch.is_whitespace() || ch == ':' || ch == '-' || ch == '.'
+        }),
+    ))
+}
+
+fn is_reserved_lane_prefix_label(label: &str) -> bool {
+    matches!(
+        label.to_ascii_lowercase().as_str(),
+        "owner" | "owners" | "ownership" | "metadata" | "type"
+    )
+}
+
+pub(crate) fn strip_leading_lane_prefix_for_lane<'a>(
+    line: &'a str,
+    lane: Option<&str>,
+) -> Option<&'a str> {
+    let Some((label, rest)) = lane_label_prefix(line) else {
+        return Some(line);
+    };
+    lane.is_none_or(|lane| lane.eq_ignore_ascii_case(label))
+        .then_some(rest)
+}
+
 pub(crate) fn is_defect_label_boundary(prefix: &str) -> bool {
     matches!(
         prefix.chars().next_back(),
@@ -35,6 +72,9 @@ pub(crate) fn is_defect_label_boundary(prefix: &str) -> bool {
 }
 
 pub(crate) fn mentions_different_lane(line: &str, current_lane: &str) -> bool {
+    if lane_label_prefix(line).is_some_and(|(lane, _)| !lane.eq_ignore_ascii_case(current_lane)) {
+        return true;
+    }
     if super::super::child_lane_thread_tool_handler_lane_mentions::has_unnegated_different_lane_phrase(line) {
         return true;
     }

@@ -1,10 +1,15 @@
 use super::{
     has_false_no_route_answer, has_placeholder_or_pending_value, has_substantive_route_value,
-    has_tracking_issue,
+    has_tracking_issue, lane_scope_tokens::strip_leading_lane_prefix_for_lane,
 };
 
 pub(crate) fn has_handler_handoff_fields(evidence: &str) -> bool {
-    let normalized = evidence.to_ascii_lowercase();
+    let normalized = evidence
+        .lines()
+        .map(|line| strip_leading_lane_prefix_for_lane(line, None).unwrap_or(line))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .to_ascii_lowercase();
     has_fallback_route_or_none(&normalized) && has_tracking_issue(&normalized)
 }
 

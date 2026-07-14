@@ -6,6 +6,8 @@ use super::child_lane_thread_tool_handler_route_value::has_substantive_route_val
 mod candidate_scopes;
 mod capture_markers;
 mod fallback_routes;
+#[cfg(test)]
+mod lane_prefix_regressions;
 mod lane_scope_filters;
 mod lane_scope_tokens;
 use super::child_lane_thread_tool_handler_lane_mentions::has_unnegated_different_lane_phrase;
