@@ -153,3 +153,59 @@ fn sibling_or_parent_heading_resets_historical_scope() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn conditional_weakening_suffix_does_not_supply_policy() -> TestResult {
+    for suffix in [" when possible", ", if available", "; as needed"] {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        assert!(
+            !output.status.success(),
+            "validator accepted conditional suffix {suffix:?}"
+        );
+        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    }
+    Ok(())
+}
+
+#[test]
+fn safe_conditional_words_after_clause_remain_valid() -> TestResult {
+    for suffix in [
+        " when the deadline arrives",
+        ", if the first attempt fails, MUST retry",
+        "; as documented in the receipt",
+    ] {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        assert!(
+            output.status.success(),
+            "validator rejected safe suffix {suffix:?}: {}",
+            support::stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn excluded_markdown_blocks_do_not_stitch_clause_fragments() -> TestResult {
+    let (prefix, suffix) = CLAUSE.split_once(" solely").ok_or("clause split")?;
+    for block in ["```text\nignored\n```", "    ignored"] {
+        let output = validate_replacement(&format!("{prefix}\n{block}\nsolely{suffix}."))?;
+        assert!(
+            !output.status.success(),
+            "validator stitched a clause across {block:?}"
+        );
+        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    }
+    Ok(())
+}
+
+#[test]
+fn soft_line_wrap_may_complete_required_clause() -> TestResult {
+    let (prefix, suffix) = CLAUSE.split_once(" solely").ok_or("clause split")?;
+    let output = validate_replacement(&format!("{prefix}\nsolely{suffix}."))?;
+    assert!(
+        output.status.success(),
+        "validator rejected a soft-wrapped clause: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}

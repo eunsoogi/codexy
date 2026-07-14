@@ -20,6 +20,7 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
             continue;
         }
         if let Some((marker, count, _)) = structural_line.and_then(fence_delimiter) {
+            visible.push("<markdown-boundary>".to_owned());
             fence = Some((marker, count));
             index += 1;
             continue;
@@ -43,7 +44,9 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
             index += usize::from(setext_level.is_some()) + 1;
             continue;
         }
-        if historical_level.is_none() && structural_line.is_some() {
+        if structural_line.is_none() {
+            visible.push("<markdown-boundary>".to_owned());
+        } else if historical_level.is_none() {
             visible.push(line.to_owned());
         }
         index += 1;

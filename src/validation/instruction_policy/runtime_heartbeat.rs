@@ -128,8 +128,17 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
                     .iter()
                     .any(|marker| prefix.contains(marker))
                 })
-            && !["unless ", "except ", "only if ", "may ", "is not required"]
-                .iter()
-                .any(|marker| after.starts_with(marker))
+            && ![
+                "unless ",
+                "except ",
+                "only if ",
+                "may ",
+                "is not required",
+                "when possible",
+                "if available",
+                "as needed",
+            ]
+            .iter()
+            .any(|marker| after.starts_with(marker))
     })
 }
