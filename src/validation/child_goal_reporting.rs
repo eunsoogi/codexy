@@ -4,6 +4,7 @@ use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
 use super::child_terminal_handoff::{
     check as check_terminal_handoffs, is_local_task_target, is_terminal_goal_call,
+    without_metadata_prefix,
 };
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
@@ -11,7 +12,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = text
         .lines()
         .map(str::trim)
-        .map(without_numbered_metadata_prefix)
+        .map(without_metadata_prefix)
         .collect::<Vec<_>>();
     let mut errors = Vec::new();
     let mut start = 0;
@@ -192,12 +193,6 @@ fn is_local_agent_route(line: &str) -> bool {
                 .next()
                 .is_some_and(|clause| clause.contains("must not use"))
         })
-}
-fn without_numbered_metadata_prefix(line: &str) -> &str {
-    let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());
-    rest.strip_prefix(". ")
-        .or_else(|| rest.strip_prefix(") "))
-        .unwrap_or(line)
 }
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
     if key.is_some_and(|value| field(line, "transition key") == Some(value)) {

@@ -17,8 +17,22 @@ pub(super) fn check(lines: &[&str], source: Option<&str>) -> Vec<String> {
     let mut handoffs = TerminalHandoffs::default();
     lines
         .iter()
-        .filter_map(|line| handoffs.observe(line, source).map(str::to_owned))
+        .filter_map(|line| {
+            handoffs
+                .observe(without_metadata_prefix(line), source)
+                .map(str::to_owned)
+        })
         .collect()
+}
+
+pub(super) fn without_metadata_prefix(line: &str) -> &str {
+    let line = line.trim_start();
+    let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());
+    rest.strip_prefix(". ")
+        .or_else(|| rest.strip_prefix(") "))
+        .or_else(|| line.strip_prefix("- "))
+        .or_else(|| line.strip_prefix("* "))
+        .unwrap_or(line)
 }
 
 pub(super) fn is_local_task_target(value: &str) -> bool {
@@ -114,8 +128,10 @@ fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
     line.strip_prefix("terminal parent handoff:")
         .is_some_and(|_| {
             let parent_task = field(line, "parent task");
+            let child_task = field(line, "child task");
             !parent_task.is_some_and(is_local_task_target)
                 && !parent_task.is_some_and(is_placeholder_task)
+                && !child_task.is_some_and(is_placeholder_task)
                 && source.is_none_or(|expected| parent_task == Some(expected))
                 && field(line, "delivery") == Some("confirmed")
                 && field(line, "task surface") == Some("codex task/thread")
@@ -126,7 +142,10 @@ fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
 }
 
 fn is_placeholder_task(value: &str) -> bool {
-    matches!(value, "codex task/thread" | "parent task" | "task/thread")
+    matches!(
+        value,
+        "codex task/thread" | "parent task" | "child task" | "task/thread"
+    )
 }
 
 fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {

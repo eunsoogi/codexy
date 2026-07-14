@@ -28,6 +28,47 @@ fn validator_rejects_local_parent_tasks_in_terminal_only_handoffs() -> TestResul
 }
 
 #[test]
+fn validator_normalizes_bullet_terminal_records() -> TestResult {
+    let missing_handoff = run_validator(
+        "Lane ownership: child-owned\n- Terminal child transition: action=archive\n",
+    )?;
+    assert!(
+        !missing_handoff.status.success(),
+        "a bullet terminal transition must require a handoff"
+    );
+
+    let bullet = run_validator(&format!(
+        "Lane ownership: child-owned\n- {}- Terminal child transition: action=archive\n",
+        terminal_handoff("archive:bullet")
+    ))?;
+    assert!(
+        bullet.status.success(),
+        "matching bullet records must remain valid: {}",
+        String::from_utf8_lossy(&bullet.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_placeholder_child_tasks_in_terminal_handoffs() -> TestResult {
+    for child_task in ["codex task/thread", "child task"] {
+        let output = run_validator(&terminal_only_evidence_for_tasks("parent-375", child_task))?;
+        assert!(
+            !output.status.success(),
+            "terminal handoff must reject placeholder child task {child_task:?}"
+        );
+    }
+
+    let valid = run_validator(&terminal_only_evidence_for_tasks("parent-375", "child-375"))?;
+    assert!(
+        valid.status.success(),
+        "concrete child task id must remain valid: {}",
+        String::from_utf8_lossy(&valid.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_requires_handoff_for_suffixed_terminal_actions() -> TestResult {
     let output = run_validator(
         "Lane ownership: child-owned\nTerminal child transition: action=archive; reason=done\n",
@@ -144,9 +185,13 @@ fn validator_requires_a_fresh_handoff_for_each_terminal_goal_transition() -> Tes
 }
 
 fn terminal_only_evidence(parent_task: &str) -> String {
+    terminal_only_evidence_for_tasks(parent_task, "child-375")
+}
+
+fn terminal_only_evidence_for_tasks(parent_task: &str, child_task: &str) -> String {
     format!(
         "Lane ownership: child-owned\n{}Terminal child transition: action=archive\n",
-        terminal_handoff_for_parent("archive", parent_task)
+        terminal_handoff_for_tasks("archive", parent_task, child_task)
     )
 }
 
@@ -155,8 +200,12 @@ fn terminal_handoff(event: &str) -> String {
 }
 
 fn terminal_handoff_for_parent(event: &str, parent_task: &str) -> String {
+    terminal_handoff_for_tasks(event, parent_task, "child-375")
+}
+
+fn terminal_handoff_for_tasks(event: &str, parent_task: &str, child_task: &str) -> String {
     format!(
-        "Terminal parent handoff: event id=terminal-child|375|{event}; issue/pr=#375 / PR #376; child task=child-375; parent task={parent_task}; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\n"
+        "Terminal parent handoff: event id=terminal-child|375|{event}; issue/pr=#375 / PR #376; child task={child_task}; parent task={parent_task}; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\n"
     )
 }
 
