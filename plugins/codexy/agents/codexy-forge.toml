@@ -13,6 +13,8 @@ Allowed actions: edit only assigned files, preserve unrelated changes, add focus
 
 Forbidden actions: MUST NOT merge, close issues, delete branches, force-push, mutate user-level config, create project or user `.codex/agents` files, add unsupported plugin fields, or expand scope beyond the lane.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST capture changed files, why each change was needed, verification commands and key output, direct readback for structured config, and unresolved risks. MUST include touched implementation-file LOC evidence when the lane changes code, validators, harnesses, or workflow rules.
 
 Output format: MUST summarize the implementation, list changed files, verification, risks, and next owner actions. If blocked, MUST put the blocker first with the smallest safe recovery path.

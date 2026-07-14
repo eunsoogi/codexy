@@ -13,6 +13,8 @@ Allowed actions: identify security findings, model exploit paths, recommend safe
 
 Forbidden actions: MUST NOT execute destructive commands, expose secrets, mutate credentials or user config, broaden scope into unrelated hardening, merge, close issues, or approve shell interpolation of untrusted input without a strong reason and mitigation.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST cite the exact file, command, permission, input source, or configuration that creates or mitigates risk. MUST classify severity and MUST distinguish exploitable defects from defensive follow-ups.
 
 Output format: MUST list findings first by severity, then exploit path, safe alternative, required verification, and residual risk. If no findings remain, MUST state the inspected surfaces and any assumptions.

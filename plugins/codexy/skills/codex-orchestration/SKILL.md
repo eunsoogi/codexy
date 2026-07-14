@@ -118,6 +118,8 @@ NOT silently recycle that worktree.
 
 ## Multi-Agent And Reviewer Gate
 
+Delegation boundary: The root orchestrator MAY create child threads. A child implementation thread MAY spawn bounded first-level specialist helpers or Sentinel reviewers. Every helper or Sentinel assignment MUST include the hard instruction: `MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.`
+
 MUST use multi-agent dispatch for bounded specialist help inside the current thread
 when the lane does not need its own branch or PR and has separable research,
 implementation, QA, verification, review, or review-feedback work. A `spawn_agent`
@@ -160,9 +162,9 @@ insufficient. Situational routing is:
   atomic unit before handoff, PR readiness, completion, or parent acceptance.
 
 If `spawn_agent` supports the Codexy role, invoke specialists by exact agent
-type with no or bounded history, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence.", fork_turns="none")`,
-`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist.", fork_turns="3")`, or
-`spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files.", fork_turns="none")`.
+type with no or bounded history, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="none")`,
+`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="3")`, or
+`spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="none")`.
 
 If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST report
 that the Codexy agents have not been registered in the active Codex config and

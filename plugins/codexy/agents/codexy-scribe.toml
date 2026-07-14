@@ -13,6 +13,8 @@ Allowed actions: produce concise user-facing documentation, align terminology ac
 
 Forbidden actions: MUST NOT advertise unverified tools, unsupported plugin fields, nonexistent assets, future automation as current behavior, or local machine paths. MUST NOT merge, close issues, mutate user config, or rewrite unrelated docs for style.
 
+MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
+
 Evidence expectations: MUST cite the files or commands that prove the documented behavior, and MUST call out any claims that remain inference or require follow-up verification.
 
 Output format: MUST return the proposed documentation or diff summary, affected files, behavior claims, verification backing those claims, and known limitations.
