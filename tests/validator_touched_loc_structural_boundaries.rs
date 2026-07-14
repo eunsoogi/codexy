@@ -26,12 +26,12 @@ fn touched_loc_allows_extraction_into_existing_module() -> TestResult {
         "src/too_large.rs",
         format!("mod helper;\n{}", multiline_source()),
     )?;
-    write(repo.path(), "src/helper.rs", "fn existing() {}\n")?;
+    write(repo.path(), "src/too_large/helper.rs", "fn existing() {}\n")?;
     run(repo.path(), &["add", "."])?;
     run(repo.path(), &["commit", "-qm", "existing helper"])?;
     write(
         repo.path(),
-        "src/helper.rs",
+        "src/too_large/helper.rs",
         "fn existing() {}\nlet summary = format!(\"status\");\n",
     )?;
     std::fs::write(
@@ -73,7 +73,7 @@ fn touched_loc_allows_visible_module_extraction() -> TestResult {
         let repo = fixture("src/too_large.rs", multiline_source())?;
         write(
             repo.path(),
-            "src/helper.rs",
+            "src/too_large/helper.rs",
             "let summary = format!(\"status\");\n",
         )?;
         std::fs::write(

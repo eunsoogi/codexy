@@ -76,7 +76,7 @@ fn touched_loc_allows_collapse_with_independent_structural_remediation() -> Test
     )?;
     write(
         repo.path(),
-        "src/helper.rs",
+        "src/too_large/helper.rs",
         "fn line_248() {}\nlet summary = format!(\n    \"status\"\n);\n",
     )?;
 
@@ -90,18 +90,18 @@ fn touched_loc_allows_collapse_with_independent_structural_remediation() -> Test
 fn touched_loc_allows_structural_remediation_variants() -> TestResult {
     for (label, path, source, replacement, extracted) in [
         (
-            "helper extraction",
-            "src/too_large.rs",
+            "nested helper extraction from named module",
+            "src/foo.rs",
             regular_lines(252),
             format!("mod helper;\n{}", regular_lines(249)),
-            Some(("src/helper.rs", regular_lines_from(249, 3))),
+            Some(("src/foo/helper.rs", regular_lines_from(249, 3))),
         ),
         (
-            "module splitting",
-            "src/too_large.rs",
+            "nested module splitting from mod.rs",
+            "src/foo/mod.rs",
             regular_lines(252),
             format!("mod extracted;\n{}", regular_lines(249)),
-            Some(("src/extracted.rs", regular_lines_from(249, 3))),
+            Some(("src/foo/extracted.rs", regular_lines_from(249, 3))),
         ),
         (
             "test-target splitting",
@@ -115,7 +115,7 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
             "src/too_large.rs",
             regular_lines(252),
             format!("mod worker;\n{}", regular_lines(249)),
-            Some(("src/worker.rs", regular_lines_from(249, 3))),
+            Some(("src/too_large/worker.rs", regular_lines_from(249, 3))),
         ),
         (
             "real duplication removal",
@@ -141,6 +141,28 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
             "{label} should remain eligible\nstderr:\n{}",
             stderr(&output)
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_sibling_files_for_nested_module_declarations() -> TestResult {
+    for (path, sibling) in [
+        ("src/foo.rs", "src/helper.rs"),
+        ("src/foo/mod.rs", "src/foo.rs"),
+    ] {
+        let repo = fixture(path, multiline_source())?;
+        write(repo.path(), sibling, "let summary = format!(\"status\");\n")?;
+        write(
+            repo.path(),
+            path,
+            &format!("mod helper;\n{}", regular_lines(249)),
+        )?;
+
+        let output = validate(repo.path())?;
+
+        assert!(!output.status.success(), "{path} must ignore {sibling}");
+        assert!(stderr(&output).contains("multiline collapse"));
     }
     Ok(())
 }
