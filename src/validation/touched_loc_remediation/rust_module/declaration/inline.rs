@@ -48,6 +48,18 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
                     continue;
                 };
                 index = next;
+                if token == "pub" {
+                    let cursor = skip_trivia(bytes, index)?;
+                    if bytes.get(cursor) == Some(&b'(') {
+                        let end = matching_delimiter(bytes, cursor)?;
+                        if restricted_visibility(&source[cursor + 1..end]) {
+                            index = end + 1;
+                        } else {
+                            attributed_path = None;
+                        }
+                    }
+                    continue;
+                }
                 if token != "mod" {
                     if matches!(token, "fn" | "struct" | "enum" | "const" | "use") {
                         attributed_path = None;
@@ -173,4 +185,26 @@ fn identifier(source: &str, index: usize) -> Option<(&str, usize)> {
         cursor += 1;
     }
     Some((&source[index..cursor], cursor))
+}
+
+fn restricted_visibility(source: &str) -> bool {
+    let source = source.trim();
+    if matches!(source, "crate" | "self" | "super") {
+        return true;
+    }
+    let Some(path) = source.strip_prefix("in") else {
+        return false;
+    };
+    path.as_bytes().first().is_some_and(u8::is_ascii_whitespace)
+        && path.trim().split("::").all(valid_path_segment)
+}
+
+fn valid_path_segment(segment: &str) -> bool {
+    let segment = segment.trim();
+    let segment = segment.strip_prefix("r#").unwrap_or(segment);
+    let mut bytes = segment.bytes();
+    bytes
+        .next()
+        .is_some_and(|byte| byte == b'_' || byte.is_ascii_alphabetic())
+        && bytes.all(|byte| byte == b'_' || byte.is_ascii_alphanumeric())
 }

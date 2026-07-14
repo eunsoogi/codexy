@@ -36,11 +36,25 @@ fn touched_loc_resolves_children_beside_nested_inline_path_module() -> TestResul
 
 #[test]
 fn touched_loc_honors_path_on_inline_ancestor() -> TestResult {
+    assert_inline_ancestor_path("")
+}
+
+#[test]
+fn touched_loc_honors_path_on_restricted_visibility_inline_ancestor() -> TestResult {
+    for visibility in ["pub(crate) ", "pub(in crate) "] {
+        assert_inline_ancestor_path(visibility)?;
+    }
+    Ok(())
+}
+
+fn assert_inline_ancestor_path(visibility: &str) -> TestResult {
     let repo = fixture("src/thread_files/tls.rs", regular_lines(252))?;
     write(
         repo.path(),
         "src/lib.rs",
-        "#[path = \"thread_files\"]\nmod thread {\n    #[path = \"tls.rs\"]\n    mod local_data;\n}\n",
+        &format!(
+            "#[path = \"thread_files\"]\n{visibility}mod thread {{\n    #[path = \"tls.rs\"]\n    mod local_data;\n}}\n"
+        ),
     )?;
     amend_fixture(repo.path())?;
     write(
