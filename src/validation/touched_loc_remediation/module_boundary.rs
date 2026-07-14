@@ -37,7 +37,7 @@ fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) 
     };
     let parent = path.parent().unwrap_or(Path::new(""));
     let mut modules = std::collections::BTreeSet::new();
-    for target in current.lines().filter_map(markdown_link_target) {
+    for target in current.lines().flat_map(markdown_link_targets) {
         let module = parent.join(target);
         if target
             .split('/')
@@ -75,12 +75,12 @@ fn mechanical_numbered_component(component: &str) -> bool {
     })
 }
 
-fn markdown_link_target(line: &str) -> Option<&str> {
+fn markdown_link_targets(line: &str) -> impl Iterator<Item = &str> {
     line.trim()
-        .split_once("](")
-        .and_then(|(_, target)| target.split_once(')'))
-        .map(|(target, _)| target)
-        .and_then(|target| target.split('#').next())
+        .split("](")
+        .skip(1)
+        .filter_map(|target| target.split_once(')').map(|(target, _)| target))
+        .filter_map(|target| target.split('#').next())
         .filter(|target| !target.is_empty())
 }
 

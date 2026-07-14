@@ -118,7 +118,7 @@ fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
                 || index > 0 && matches!(words[index - 1].as_str(), "may" | "can")
                 || index > 1
                     && words[index - 1] == "to"
-                    && matches!(words[index - 2].as_str(), "allowed" | "permitted")
+                    && is_passive_permission(&words[index - 2])
                     && !passive_permission_is_negated(words, index - 2))
                 && !overage_is_negated(words, index)
         })
