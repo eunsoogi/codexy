@@ -30,6 +30,7 @@ enum TerminalHandoffs {
     #[default]
     Missing,
     Ready,
+    Duplicate,
     Stopped,
 }
 
@@ -37,6 +38,12 @@ impl TerminalHandoffs {
     fn observe(&mut self, line: &str, source: Option<&str>) -> Option<&'static str> {
         if line.starts_with("terminal parent handoff:") {
             if confirmed_handoff(line, source) {
+                if matches!(self, Self::Ready | Self::Duplicate) {
+                    *self = Self::Duplicate;
+                    return Some(
+                        "terminal parent handoff must not be repeated before terminal transition",
+                    );
+                }
                 *self = Self::Ready;
                 return None;
             }

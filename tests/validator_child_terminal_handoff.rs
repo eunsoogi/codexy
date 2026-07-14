@@ -43,6 +43,32 @@ fn validator_requires_handoff_for_suffixed_terminal_actions() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_duplicate_handoffs_before_one_terminal_transition() -> TestResult {
+    let handoff = terminal_handoff("archive:first");
+    let duplicate = run_validator(&format!(
+        "Lane ownership: child-owned\n{handoff}{handoff}Terminal child transition: action=archive\n"
+    ))?;
+    assert!(
+        !duplicate.status.success(),
+        "a terminal transition must reject duplicate confirmed handoffs"
+    );
+    assert!(
+        String::from_utf8_lossy(&duplicate.stderr)
+            .contains("terminal parent handoff must not be repeated before terminal transition")
+    );
+
+    let single = run_validator(&format!(
+        "Lane ownership: child-owned\n{handoff}Terminal child transition: action=archive\n"
+    ))?;
+    assert!(
+        single.status.success(),
+        "exactly one handoff must remain valid: {}",
+        String::from_utf8_lossy(&single.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_keeps_one_handoff_for_related_terminal_transitions() -> TestResult {
     let output = run_validator(
         "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|complete; issue/pr=#375 / PR #376; child task=child-375; parent task=parent-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=stop\nTerminal child transition: action=ownership release\n",
@@ -102,16 +128,25 @@ fn validator_requires_a_fresh_handoff_for_each_terminal_goal_transition() -> Tes
 
 fn terminal_only_evidence(parent_task: &str) -> String {
     format!(
-        "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|archive; issue/pr=#375 / PR #376; child task=child-375; parent task={parent_task}; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=archive\n"
+        "Lane ownership: child-owned\n{}Terminal child transition: action=archive\n",
+        terminal_handoff_for_parent("archive", parent_task)
+    )
+}
+
+fn terminal_handoff(event: &str) -> String {
+    terminal_handoff_for_parent(event, "parent-375")
+}
+
+fn terminal_handoff_for_parent(event: &str, parent_task: &str) -> String {
+    format!(
+        "Terminal parent handoff: event id=terminal-child|375|{event}; issue/pr=#375 / PR #376; child task=child-375; parent task={parent_task}; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\n"
     )
 }
 
 fn terminal_goal_transition(status: &str, key: &str, include_handoff: bool) -> String {
     let operation = format!("update_goal(status=\"{status}\")");
     let transition_key = format!("375:{status}:{key}");
-    let handoff = include_handoff.then(|| format!(
-        "Terminal parent handoff: event id=terminal-child|375|{status}|{key}; issue/pr=#375 / PR #376; child task=child-375; parent task=parent-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\n"
-    ));
+    let handoff = include_handoff.then(|| terminal_handoff(&format!("{status}|{key}")));
     format!(
         "Goal transition key: {transition_key}\nParent goal pre-delivery: operation={operation}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=complete; transition key={transition_key}\n{}Goal tool call: {operation}\nParent goal post-result: operation={operation}; exact tool result={status}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key={transition_key}\n",
         handoff.unwrap_or_default()
