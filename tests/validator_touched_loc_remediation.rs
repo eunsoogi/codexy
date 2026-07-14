@@ -104,6 +104,13 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
             Some(("src/foo/extracted.rs", regular_lines_from(249, 3))),
         ),
         (
+            "binary crate root module splitting",
+            "src/bin/too_large.rs",
+            regular_lines(252),
+            format!("mod worker;\n{}", regular_lines(249)),
+            Some(("src/bin/worker.rs", regular_lines_from(249, 3))),
+        ),
+        (
             "test-target splitting",
             "tests/too_large.rs",
             regular_lines(252),
