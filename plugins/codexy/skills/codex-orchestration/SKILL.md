@@ -236,11 +236,10 @@ The root/orchestrator MUST NOT retain a persistent long-running goal, MUST NOT a
 
 Before creating a child, inspect archive candidates and the active reservation ledger; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head.
 Event-driven refresh MUST update only from qualifying changes; a failed parent message MUST NOT retry the parent message, there MUST be no full agent-tree listing, and orchestration MUST inspect archive candidates and the active reservation ledger.
+Runtime polling evidence and terminal handoff rules are defined in
+`references/goal-transition-reporting.md`; MUST follow that contract.
 
-The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions. Every BLOCK finding MUST map to an in-scope acceptance criterion. Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane. Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
-
-MUST NOT mark a plan step complete until its evidence has been inspected by the
-orchestrator. MUST use `update_goal` only when that tool is available, an active or
-user-requested goal exists, and every explicit requirement has current matching
-proof. Reserve `blocked` for repeated true impasses where meaningful progress
-requires user input or an external state change.
+MUST NOT mark a plan step complete until its evidence has been inspected.
+MUST use `update_goal` only with an active or user-requested goal and current proof;
+MUST reserve `blocked` for repeated true impasses requiring user input or external
+state change.

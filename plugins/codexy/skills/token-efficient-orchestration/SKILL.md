@@ -58,6 +58,30 @@ MUST use this flow after compaction and before handoff:
 5. **Fail once**: a failed parent message MUST emit exactly one terminal unavailable
    report. It MUST include its event identity and MUST NOT retry the parent message.
 6. **Carry one next action**: each lane MUST end with exactly one current action.
+7. **Require runtime polling evidence**: polling/monitoring MUST be reserved for
+   an observation bound to a persistent runtime monitor or wait session id, a
+   scheduled next-observation time or deadline, and a last observed state
+   fingerprint or event identity. Distinct model/assistant turn ids, tool-driven
+   re-entry, goal continuation, or agent invocation without those runtime-issued
+   fields are continuation turns, not polling; unchanged continuation turns MUST
+   NOT reschedule themselves or emit another unchanged turn.
+8. **Suppress unchanged continuation turns**: when an authorized child-local
+   monitor observes no qualifying event and the stable event identity, head,
+   checks, review state, and next action are unchanged, it MUST keep the monitor scheduled
+   but MUST NOT emit a status message or start another model turn.
+   The next scheduled read-only observation MAY run at its bounded interval. A
+   new model turn may start only when that monitor observes a qualifying event,
+   or when an explicit parent/user message arrives.
+   This rule MUST NOT terminate or cancel the underlying wait/monitor session.
+
+Before a child stops, archives, yields ownership, or changes its goal to
+`blocked`, it MUST send exactly one terminal handoff delta to the source parent.
+That delta MUST include the stable event identity, issue/PR, child task id,
+branch/worktree, exact HEAD and dirty/index state, last completed proof, current
+external gate, preserved artifacts or reservation, and one parent-owned next
+action. The child MUST confirm task-surface delivery before the stop/archive or
+goal transition. A failed delivery MUST emit one unavailable receipt and MUST
+NOT retry or transition.
 
 ## Event Delta Shape
 
