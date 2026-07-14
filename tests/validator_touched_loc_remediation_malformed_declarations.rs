@@ -33,8 +33,23 @@ fn touched_loc_preserves_valid_default_and_path_controls() -> TestResult {
 
 #[test]
 fn touched_loc_rejects_inline_origin_after_invalid_visibility() -> TestResult {
-    let repo = inline_fixture("pub(foo) ")?;
+    for visibility in ["pub(foo) ", "pub(in foo) "] {
+        let repo = inline_fixture("", visibility)?;
+        assert_rustc_rejects_and_validator_fails_closed(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_default_scope_after_malformed_inline_path() -> TestResult {
+    let repo = inline_fixture("#[path = \"bad\\u{zz}\"]\n    ", "")?;
     assert_rustc_rejects_and_validator_fails_closed(&repo)
+}
+
+#[test]
+fn touched_loc_preserves_valid_inline_path_control() -> TestResult {
+    let repo = inline_fixture("#[path = \"thread\"]\n    ", "")?;
+    assert_rustc_and_validator_accept(&repo)
 }
 
 #[test]
@@ -46,7 +61,7 @@ fn touched_loc_preserves_valid_restricted_inline_visibility() -> TestResult {
         "pub(self) ",
         "pub(in crate::outer) ",
     ] {
-        let repo = inline_fixture(visibility)?;
+        let repo = inline_fixture("", visibility)?;
         assert_rustc_and_validator_accept(&repo)?;
     }
     Ok(())
@@ -70,13 +85,13 @@ fn outer_fixture(declaration: &str, extracted_path: &str) -> TestResult<tempfile
     Ok(repo)
 }
 
-fn inline_fixture(visibility: &str) -> TestResult<tempfile::TempDir> {
+fn inline_fixture(attribute: &str, visibility: &str) -> TestResult<tempfile::TempDir> {
     let repo = fixture("src/outer/thread/tls.rs", regular_lines(252))?;
     write(
         repo.path(),
         "src/lib.rs",
         &format!(
-            "mod outer {{\n    {visibility}mod thread {{\n        #[path = \"tls.rs\"]\n        mod local_data;\n    }}\n}}\n"
+            "mod outer {{\n    {attribute}{visibility}mod thread {{\n        #[path = \"tls.rs\"]\n        mod local_data;\n    }}\n}}\n"
         ),
     )?;
     amend_fixture(repo.path())?;

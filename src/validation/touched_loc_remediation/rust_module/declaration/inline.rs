@@ -1,5 +1,5 @@
 use super::super::attribute::path_attribute;
-use super::InlineModule;
+use super::{InlineModule, is_path_attribute_start, valid_visibility_path};
 
 mod literal;
 
@@ -22,6 +22,8 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             let end = matching_delimiter(bytes, index + 1)?;
             if let Some(path) = path_attribute(&source[index..=end]) {
                 attributed_path = Some(path);
+            } else if is_path_attribute_start(&source[index..=end]) {
+                return None;
             }
             index = end + 1;
             continue;
@@ -196,15 +198,5 @@ fn restricted_visibility(source: &str) -> bool {
         return false;
     };
     path.as_bytes().first().is_some_and(u8::is_ascii_whitespace)
-        && path.trim().split("::").all(valid_path_segment)
-}
-
-fn valid_path_segment(segment: &str) -> bool {
-    let segment = segment.trim();
-    let segment = segment.strip_prefix("r#").unwrap_or(segment);
-    let mut bytes = segment.bytes();
-    bytes
-        .next()
-        .is_some_and(|byte| byte == b'_' || byte.is_ascii_alphabetic())
-        && bytes.all(|byte| byte == b'_' || byte.is_ascii_alphanumeric())
+        && valid_visibility_path(path.trim())
 }
