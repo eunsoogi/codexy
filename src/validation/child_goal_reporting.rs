@@ -2,13 +2,17 @@ use std::collections::BTreeSet;
 
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
+use super::child_terminal_handoff::{
+    check as check_terminal_handoffs, is_local_task_target, is_terminal_goal_call,
+    without_metadata_prefix,
+};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
     let lines = text
         .lines()
         .map(str::trim)
-        .map(without_numbered_metadata_prefix)
+        .map(without_metadata_prefix)
         .collect::<Vec<_>>();
     let mut errors = Vec::new();
     let mut start = 0;
@@ -24,37 +28,40 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 
 fn check_lane(lines: &[&str]) -> Vec<String> {
-    if !lines.iter().any(|line| {
+    let has_goal_reporting = lines.iter().any(|line| {
         line.starts_with("source thread id:")
             || line.starts_with("goal tool call:")
             || line.starts_with("parent goal pre-delivery:")
             || line.starts_with("parent goal post-result:")
-    }) {
-        return Vec::new();
-    }
-    let Some(source) = lines
+    });
+    let source = lines
         .iter()
         .find_map(|line| line.strip_prefix("source thread id: "))
-        .filter(|value| !value.is_empty())
-    else {
-        return vec!["child goal reporting requires source_thread_id delegation evidence".into()];
+        .filter(|value| !value.is_empty());
+    let mut errors = check_terminal_handoffs(lines, source);
+    if lines.iter().any(|line| is_local_agent_route(line)) {
+        errors.push("child goal reporting must not use local agents /root routing".into());
+    }
+    if !has_goal_reporting {
+        return errors;
+    }
+    let Some(source) = source else {
+        errors.push("child goal reporting requires source_thread_id delegation evidence".into());
+        return errors;
     };
-    if is_local_agent_target(source) {
-        return vec!["source_thread_id must name a Codex task id, not a local agent target".into()];
+    if is_local_task_target(source) {
+        errors.push("source_thread_id must name a Codex task id, not a local agent target".into());
+        return errors;
     }
     let has_control_source = lines.iter().any(|line| {
         line.starts_with("goal control state:") && field(line, "source_thread_id") == Some(source)
     });
-    let mut errors = Vec::new();
     let mut key = None;
     let mut pending = None;
     let mut confirmed_pre = None;
     let mut seen_calls = BTreeSet::new();
 
     for line in lines {
-        if is_local_agent_route(line) {
-            errors.push("child goal reporting must not use local agents /root routing".into());
-        }
         if let Some(value) = line.strip_prefix("goal transition key: ") {
             key = valid_transition_key(value).then_some(value);
             continue;
@@ -72,7 +79,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
             if !has_control_source || !valid_key {
                 errors.push("goal operation lacks a stable transition key and exact source_thread_id control state".into());
             }
-            if needs_pre_delivery(operation) {
+            if operation == "create_goal" || is_terminal_goal_call(operation) {
                 match confirmed_pre {
                     Some((pre_operation, pre_key))
                         if pre_operation == operation && pre_key == key => {}
@@ -80,7 +87,13 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
                         "pre-delivery receipt does not match the goal call stable transition key"
                             .into(),
                     ),
-                    None => errors.push(pre_delivery_error(operation)),
+                    None => errors.push(if operation.contains("blocked") {
+                        "blocked goal operation precedes confirmed parent delivery".into()
+                    } else if operation.contains("complete") {
+                        "complete goal operation precedes confirmed parent delivery".into()
+                    } else {
+                        "goal operation requires confirmed pre-delivery parent report".into()
+                    }),
                 }
             }
             if let Some(value) = key.filter(|_| valid_key) {
@@ -111,23 +124,6 @@ fn event_operation<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
 }
 fn valid_transition_key(key: &str) -> bool {
     key.split(':').count() == 3 && key.split(':').all(|part| !part.is_empty())
-}
-fn needs_pre_delivery(operation: &str) -> bool {
-    matches!(
-        operation,
-        "create_goal" | "update_goal(complete)" | "update_goal(blocked)"
-    )
-}
-fn pre_delivery_error(operation: &str) -> String {
-    match operation {
-        "update_goal(blocked)" => {
-            "blocked goal operation precedes confirmed parent delivery".into()
-        }
-        "update_goal(complete)" => {
-            "complete goal operation precedes confirmed parent delivery".into()
-        }
-        _ => "goal operation requires confirmed pre-delivery parent report".into(),
-    }
 }
 fn pre_delivery_is_confirmed(
     line: &str,
@@ -185,21 +181,18 @@ fn post_result_is_confirmed(
     true
 }
 fn is_local_agent_route(line: &str) -> bool {
-    line.match_indices("agents.send_message").any(|(index, _)| {
-        let prefix = &line[..index];
-        !prefix
-            .rsplit_once(". ")
-            .map_or(prefix, |(_, sentence)| sentence)
-            .rsplit([';', ':'])
-            .next()
-            .is_some_and(|clause| clause.contains("must not use"))
-    })
-}
-fn without_numbered_metadata_prefix(line: &str) -> &str {
-    let rest = line.trim_start_matches(|character: char| character.is_ascii_digit());
-    rest.strip_prefix(". ")
-        .or_else(|| rest.strip_prefix(") "))
-        .unwrap_or(line)
+    line.strip_prefix("parent route: ")
+        .and_then(|route| route.split([';', ',', ' ']).next())
+        .is_some_and(is_local_task_target)
+        || line.match_indices("agents.send_message").any(|(index, _)| {
+            let prefix = &line[..index];
+            !prefix
+                .rsplit_once(". ")
+                .map_or(prefix, |(_, sentence)| sentence)
+                .rsplit([';', ':'])
+                .next()
+                .is_some_and(|clause| clause.contains("must not use"))
+        })
 }
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
     if key.is_some_and(|value| field(line, "transition key") == Some(value)) {
@@ -232,9 +225,6 @@ fn invalid_value(value: Option<&str>) -> bool {
             || matches!(item, "false" | "unavailable" | "none")
             || item.contains(" unavailable")
     })
-}
-fn is_local_agent_target(value: &str) -> bool {
-    value == "/root" || value.starts_with("agents.") || value.contains("send_message")
 }
 fn is_lane_boundary(line: &str) -> bool {
     ["lane ownership", "owner decision"]

@@ -139,9 +139,11 @@ complete.
 - If review feedback is addressed by a child thread, evidence MUST include the
   child thread result, the exact new head, and the rerun verification.
 - If a fresh `@codex review` request for the current head already has `eyes`,
-  MUST NOT send duplicate requests for the same head. MUST continue polling and
-  waiting for review output. If it is unusually stale, document the status and
-  MUST use a distinct escalation rationale instead of repeated blind requests.
+  MUST NOT send duplicate requests for the same head. Once the child has finished
+  its execution work and only review output remains, it MUST send the terminal
+  parent handoff, end its goal and plan, and return control; the parent/runtime
+  monitor owns event-driven waiting. If review is unusually stale, document the
+  status and use a distinct escalation rationale instead of blind requests.
 - If a command was skipped, say so with the reason.
 - If evidence is local and untracked, MUST summarize it or give the ignored evidence
   path; MUST NOT commit scratch artifacts unless requested.
@@ -169,10 +171,11 @@ MUST include:
   current matching proof and no required work remains.
 - MUST NOT call `update_goal(status="blocked")` merely because Codex connector
   review, child-thread work, queued worktree/thread setup, or asynchronous tool
-  completion is pending. MUST continue polling, send follow-up prompts as needed,
-  MUST route review feedback to the owning child thread, and MUST keep the goal active
-  until a repeated true impasse prevents meaningful progress without user input
-  or an external state change.
+  completion is pending. Once code/proof/push/review-request work is finished and
+  only that external gate remains, the child MUST send exactly one terminal parent
+  handoff, end its active goal and plan, and return control; it MUST NOT poll or
+  retain an active goal during the wait. A qualifying event starts a fresh
+  short-lived execution goal.
 - MUST NOT accept a non-trivial child implementation handoff as complete when it
   omits actual goal-tool usage, actual todo/plan tool usage, required
   situational multi-agent usage, a concrete not-useful rationale tied to

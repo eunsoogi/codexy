@@ -17,13 +17,12 @@ on:
       - "Cargo.toml"
       - "src/**"
       - "plugins/codexy/**"
-      - "plugins/codexy/hooks/**"
-      - "plugins/codexy/mcp/**"
-      - "plugins/codexy/agents/**"
-      - "plugins/codexy/skills/codex-orchestration/scripts/**"
-      - "scripts/generate-release-changelog"
-      - ".agents/plugins/release-publish-contract.json"
       - ".agents/plugins/marketplace.json"
+      - "scripts/generate-release-changelog"
+      - "scripts/inspect-release-archive"
+      - "scripts/inspect-mcp-response"
+      - "tests/release_archive_gate.rs"
+      - ".agents/plugins/release-publish-contract.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
   pull_request:
     paths:
@@ -31,13 +30,12 @@ on:
       - "Cargo.toml"
       - "src/**"
       - "plugins/codexy/**"
-      - "plugins/codexy/hooks/**"
-      - "plugins/codexy/mcp/**"
-      - "plugins/codexy/agents/**"
-      - "plugins/codexy/skills/codex-orchestration/scripts/**"
-      - "scripts/generate-release-changelog"
-      - ".agents/plugins/release-publish-contract.json"
       - ".agents/plugins/marketplace.json"
+      - "scripts/generate-release-changelog"
+      - "scripts/inspect-release-archive"
+      - "scripts/inspect-mcp-response"
+      - "tests/release_archive_gate.rs"
+      - ".agents/plugins/release-publish-contract.json"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
 permissions:
@@ -80,6 +78,29 @@ jobs:
           file "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
           file "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
 
+      - name: Smoke test native MCP runtimes
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          for server in lsp codegraph; do
+            response_file="$(mktemp)"
+            RUNTIME="dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" RESPONSE_FILE="$response_file" \
+              python3 - <<'PY'
+          import os, subprocess
+          requests = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}
+          {"jsonrpc":"2.0","method":"notifications/initialized"}
+          {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+          """
+          completed = subprocess.run(
+              [os.environ["RUNTIME"], "--stdio"], input=requests, text=True,
+              capture_output=True, timeout=15, check=True,
+          )
+          open(os.environ["RESPONSE_FILE"], "w", encoding="utf-8").write(completed.stdout)
+          PY
+            scripts/inspect-mcp-response "$response_file" "$server"
+            rm -f "$response_file"
+          done
+
       - name: Upload runtime binaries
         uses: actions/upload-artifact@v4
         with:
@@ -114,6 +135,7 @@ jobs:
           plugin_root="${package_root}/plugins/codexy"
           rm -rf "$package_root"
           mkdir -p "${package_root}/plugins"
+          scripts/validate-plugin-config --plugin-root plugins/codexy --check
           rsync -a --exclude '*.bin' plugins/codexy/ "$plugin_root/"
           mkdir -p "${plugin_root}/runtime"
           cp dist/generated-runtimes/*.bin "${plugin_root}/runtime/"
@@ -122,6 +144,7 @@ jobs:
           scripts/validate-plugin-config --plugin-root "$plugin_root" --check-runtime-artifacts
           scripts/validate-plugin-config --plugin-root "$plugin_root" --check-hooks
           tar -C "$package_root" -czf "dist/codexy-marketplace-plugin.tar.gz" plugins/codexy
+          scripts/inspect-release-archive "dist/codexy-marketplace-plugin.tar.gz" "$plugin_root"
 
       - name: Upload marketplace package artifact
         uses: actions/upload-artifact@v4
