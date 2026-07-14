@@ -51,6 +51,7 @@ fn touched_loc_honors_path_on_restricted_visibility_inline_ancestor() -> TestRes
 fn touched_loc_clears_inline_path_after_completed_intervening_items() -> TestResult {
     for item in [
         "trait Marker {}\n",
+        "struct Marker<const N: usize = { 1 }>;\n",
         "type Alias = ();\n",
         "static MARKER: () = ();\n",
     ] {
@@ -64,7 +65,14 @@ fn touched_loc_clears_inline_path_after_completed_intervening_items() -> TestRes
 
 #[test]
 fn touched_loc_fails_closed_after_malformed_intervening_item_prefixes() -> TestResult {
-    for item in ["trait Marker ", "type Alias = ", "static MARKER: "] {
+    for item in [
+        "trait Marker ",
+        "type Alias = ",
+        "static MARKER: ",
+        "use foo::{bar} ",
+        "type Alias = Array<{ 1 }> ",
+        "struct Marker<const N: usize = { 1 }> ",
+    ] {
         let repo = intervening_item_fixture(item, "thread")?;
         let rustc = compile(repo.path())?;
         assert!(!rustc.status.success());

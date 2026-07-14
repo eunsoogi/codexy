@@ -78,13 +78,7 @@ fn cargo_target_paths_for_manifest(root: &Path, manifest: &Path) -> Vec<PathBuf>
     let Ok(output) = Command::new("cargo")
         .args(["metadata", "--manifest-path"])
         .arg(manifest)
-        .args([
-            "--locked",
-            "--offline",
-            "--no-deps",
-            "--format-version",
-            "1",
-        ])
+        .args(["--offline", "--no-deps", "--format-version", "1"])
         .current_dir(root)
         .output()
     else {
