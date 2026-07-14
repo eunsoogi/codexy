@@ -8,6 +8,10 @@ pub(super) struct ScopeTracker {
 
 impl ScopeTracker {
     pub(super) fn is_outer(&self) -> bool {
+        self.is_outer_scope() && self.block_comments == 0
+    }
+
+    pub(super) fn is_outer_scope(&self) -> bool {
         self.depth == 0 && self.quoted.is_none() && self.raw_hashes.is_none()
     }
 

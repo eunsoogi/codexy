@@ -14,9 +14,14 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
     for line in source.lines() {
         let line = line.trim();
         let is_outer = scope.is_outer();
+        let is_outer_scope = scope.is_outer_scope();
         scope.observe(line);
         if !is_outer {
-            attributed_path = None;
+            if is_outer_scope {
+                is_attribute_trivia(line, &mut block_comment_depth);
+            } else {
+                attributed_path = None;
+            }
             continue;
         }
         if is_attribute_trivia(line, &mut block_comment_depth) {

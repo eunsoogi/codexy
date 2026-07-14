@@ -94,6 +94,22 @@ fn touched_loc_does_not_credit_module_in_block_comment() -> TestResult {
 }
 
 #[test]
+fn touched_loc_does_not_credit_module_in_block_comment_after_code() -> TestResult {
+    assert_module_like_text_not_credited("const X: () = (); /*\nmod helper;\n*/\n")
+}
+
+#[test]
+fn touched_loc_credits_outer_module_after_block_comment_after_code() -> TestResult {
+    let repo = module_fixture(
+        "src/foo/helper.rs",
+        "const X: () = (); /*\nmod ignored;\n*/\nmod helper;\n",
+    )?;
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_credits_outer_module_after_raw_string() -> TestResult {
     let repo = module_fixture(
         "src/foo/helper.rs",
