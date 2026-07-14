@@ -4,7 +4,7 @@ use tempfile::tempdir;
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::{copy_tree, make_executable};
+use release_archive_support::{complete_plugin_fixture, make_executable};
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
     Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
@@ -65,58 +65,8 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
 #[test]
 fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
-    copy_tree(
-        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )
-    .expect("copy plugin fixture");
+    let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
     let runtime = plugin_root.join("runtime");
-    std::fs::create_dir_all(&runtime).expect("runtime directory");
-    let build = Command::new("cargo")
-        .args([
-            "build",
-            "--offline",
-            "--release",
-            "--bin",
-            "codexy-mcp-lsp",
-            "--bin",
-            "codexy-mcp-codegraph",
-        ])
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .status()
-        .expect("release runtime build");
-    assert!(build.success(), "release runtime build failed");
-    let host_platform = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("macos", "aarch64") => "darwin-arm64",
-        ("linux", "x86_64") => "linux-x86_64",
-        _ => panic!("unsupported test host platform"),
-    };
-    for (server, binary) in [
-        ("lsp", "codexy-mcp-lsp"),
-        ("codegraph", "codexy-mcp-codegraph"),
-    ] {
-        for platform in ["darwin-arm64", "linux-x86_64"] {
-            let path = runtime.join(format!("codexy-mcp-{server}-{platform}.bin"));
-            if platform == host_platform {
-                std::fs::copy(
-                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                        .join("target/release")
-                        .join(binary),
-                    &path,
-                )
-                .expect("copy runtime");
-            } else {
-                let header = if platform == "darwin-arm64" {
-                    vec![0xcf, 0xfa, 0xed, 0xfe]
-                } else {
-                    vec![0x7f, b'E', b'L', b'F']
-                };
-                std::fs::write(&path, header.repeat(1024)).expect("runtime fixture");
-            }
-            make_executable(&path).expect("runtime permissions");
-        }
-    }
     let archive = root.path().join("valid.tar.gz");
     create_archive(root.path(), &archive);
     let output = run_gate(&archive, &plugin_root);
@@ -125,6 +75,27 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
         "valid fixture failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
+        let mut permissions = std::fs::metadata(&wrapper)
+            .expect("wrapper metadata")
+            .permissions();
+        permissions.set_mode(0o644);
+        std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
+        let non_executable_wrapper_archive = root.path().join("non-executable-wrapper.tar.gz");
+        create_archive(root.path(), &non_executable_wrapper_archive);
+        let non_executable_wrapper_output = run_gate(&non_executable_wrapper_archive, &plugin_root);
+        assert!(!non_executable_wrapper_output.status.success());
+        assert!(
+            String::from_utf8_lossy(&non_executable_wrapper_output.stderr)
+                .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp")
+        );
+        make_executable(&wrapper).expect("restore executable wrapper");
+    }
 
     std::fs::write(runtime.join("debug.log"), "debug\n").expect("runtime extra fixture");
     let extra_runtime_archive = root.path().join("extra-runtime.tar.gz");
@@ -144,6 +115,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     create_archive(root.path(), &missing_archive);
     assert!(!run_gate(&missing_archive, &plugin_root).status.success());
     std::fs::write(&missing_runtime, missing_bytes).expect("restore runtime");
+    make_executable(&missing_runtime).expect("restore runtime permissions");
 
     let malformed_bytes = std::fs::read(&missing_runtime).expect("read runtime again");
     std::fs::write(&missing_runtime, b"not-a-binary").expect("malform runtime");
@@ -151,6 +123,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     create_archive(root.path(), &malformed_archive);
     assert!(!run_gate(&malformed_archive, &plugin_root).status.success());
     std::fs::write(&missing_runtime, malformed_bytes).expect("restore valid runtime");
+    make_executable(&missing_runtime).expect("restore valid runtime permissions");
 
     std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
         .expect("secret fixture");
@@ -172,6 +145,30 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
             .status
             .success()
     );
+    std::fs::remove_file(plugin_root.join(".rgignore")).expect("remove ignore fixture");
+    std::fs::remove_file(plugin_root.join("hidden-secret.txt")).expect("remove ignored secret");
+
+    for (name, pem) in [
+        ("generic-private-key.pem", "-----BEGIN PRIVATE KEY-----\n"),
+        (
+            "encrypted-private-key.pem",
+            "-----BEGIN ENCRYPTED PRIVATE KEY-----\n",
+        ),
+    ] {
+        let pem_path = plugin_root.join(name);
+        std::fs::write(&pem_path, pem).expect("private-key fixture");
+        let pem_archive = root.path().join(format!("{name}.tar.gz"));
+        create_archive(root.path(), &pem_archive);
+        let pem_output = run_gate(&pem_archive, &plugin_root);
+        assert!(!pem_output.status.success());
+        assert!(
+            String::from_utf8_lossy(&pem_output.stderr)
+                .contains("archive contains a secret or local path"),
+            "private-key fixture was rejected for the wrong reason: {}",
+            String::from_utf8_lossy(&pem_output.stderr)
+        );
+        std::fs::remove_file(pem_path).expect("remove private-key fixture");
+    }
 }
 
 #[test]

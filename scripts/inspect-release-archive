@@ -52,6 +52,24 @@ mkdir "$extract_root"
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
+python3 - "$extract_root/plugins/codexy/.mcp.json" >"$tmp_dir/mcp-entrypoints" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as file:
+    config = json.load(file)
+
+for server in config.values():
+    command = server.get("command") if isinstance(server, dict) else None
+    if isinstance(command, str) and command.startswith("./"):
+        print(command[2:])
+PY
+while IFS= read -r wrapper; do
+  [ -x "$extract_root/plugins/codexy/$wrapper" ] || {
+    echo "packaged MCP wrapper is not executable: $wrapper" >&2
+    exit 1
+  }
+done <"$tmp_dir/mcp-entrypoints"
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 while IFS= read -r relative; do
   case "$relative" in
@@ -94,7 +112,7 @@ if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -qu
   echo "archive contains an oversized file" >&2
   exit 1
 fi
-hygiene_pattern='(BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY|AKIA[0-9A-Z]{16})'
+hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|AKIA[0-9A-Z]{16})'
 local_path_pattern='/(Users|home|tmp|private/var)/'
 if command -v rg >/dev/null 2>&1; then
   set +e
