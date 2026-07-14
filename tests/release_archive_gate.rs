@@ -32,9 +32,11 @@ fn archive_gate_allows_documentation_path_examples() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
     )
     .expect("archive gate script");
-    assert!(script.contains("--exclude='*.bin'"));
-    assert!(script.contains("--exclude='*.md'"));
-    assert!(script.contains("--exclude='*.txt'"));
+    assert!(script.contains("rg -a -n"));
+    assert!(script.contains("grep -a -Hn"));
+    assert!(script.contains("runtime/*.bin"));
+    assert!(script.contains("! -name '*.md'"));
+    assert!(script.contains("! -name '*.txt'"));
     assert!(script.contains("command -v python3"));
     assert!(script.contains("rg or grep is required"));
     assert!(script.contains("hygiene scan failed"));

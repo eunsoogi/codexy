@@ -128,19 +128,25 @@ scan_output="$tmp_dir/archive-scan-output"
 scan_archive_content() {
   "$@" >"$scan_output" 2>&1
 }
+scan_grep_content() {
+  pattern=$1
+  shift
+  find "$extract_root/plugins/codexy" -type f ! -path "$extract_root/plugins/codexy/runtime/*.bin" "$@" \
+    -exec grep -a -Hn -E "$pattern" {} +
+}
 if command -v rg >/dev/null 2>&1; then
   set +e
-  scan_archive_content rg -n --hidden --no-ignore --glob '!runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
-  scan_archive_content rg -n --hidden --no-ignore --glob '!runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
   local_path_status=$?
   set -e
 else
   command -v grep >/dev/null 2>&1 || { echo "rg or grep is required" >&2; exit 127; }
   set +e
-  scan_archive_content grep -RIn --exclude='*.bin' -E "$hygiene_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content scan_grep_content "$hygiene_pattern"
   hygiene_status=$?
-  scan_archive_content grep -RIn --exclude='*.bin' --exclude='*.md' --exclude='*.txt' -E "$local_path_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content scan_grep_content "$local_path_pattern" ! -name '*.md' ! -name '*.txt'
   local_path_status=$?
   set -e
 fi
