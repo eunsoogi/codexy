@@ -119,6 +119,14 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
         ("LOC exceptions are waived after approval.", true),
         ("LOC exceptions are not waived after approval.", false),
         (
+            "Governed files are allowed to exceed 250 LOC with approval.",
+            true,
+        ),
+        (
+            "Governed files MUST NOT be allowed to exceed 250 LOC with approval.",
+            false,
+        ),
+        (
             "The validator is authorized by maintainers to reject any governed file that exceeds 250 LOC.",
             false,
         ),
@@ -127,10 +135,12 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
         let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
+        let output = validator(&plugin_root, "--check")?;
         assert_eq!(
-            !validator(&plugin_root, "--check")?.status.success(),
+            !output.status.success(),
             rejects,
-            "{addition}"
+            "{addition}: {}",
+            stderr(&output)
         );
     }
     Ok(())

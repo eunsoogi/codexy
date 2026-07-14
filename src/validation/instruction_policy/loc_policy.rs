@@ -4,6 +4,8 @@ use crate::paths::display_relative;
 
 mod overage;
 mod surfaces;
+#[cfg(test)]
+mod tests;
 use surfaces::{
     EXCEPTION_PROHIBITION, GOVERNED_AGENT_ROLES, GOVERNED_SKILLS, UNCONDITIONAL_CONTRACT,
 };
@@ -121,7 +123,7 @@ fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
 fn has_governing_passive_permission(words: &[String], exceed: usize) -> bool {
     let Some(subject) = words[..exceed]
         .windows(3)
-        .rposition(|phrase| matches!(phrase, [governed, file, is] if governed == "governed" && file == "file" && is == "is"))
+        .rposition(|phrase| matches!(phrase, [governed, subject, verb] if governed == "governed" && matches!(subject.as_str(), "file" | "files") && matches!(verb.as_str(), "is" | "are")))
     else {
         return false;
     };
