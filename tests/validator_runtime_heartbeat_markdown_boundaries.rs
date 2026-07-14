@@ -56,3 +56,46 @@ fn setext_current_heading_resets_historical_policy() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn indented_atx_heading_does_not_reset_historical_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Historical Example\n    ## Current Policy\nThis policy was retired. {CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn indented_setext_underline_does_not_reset_historical_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Historical Example\nCurrent Policy\n    --------------\nThis policy was retired. {CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn indented_fence_markers_do_not_hide_live_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Current Policy\n    ```text\n{CLAUSE}.\n    ```\n"
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator hid live policy behind indented fence markers: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
+fn tab_indented_heading_does_not_reset_historical_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Historical Example\n\t## Current Policy\nThis policy was retired. {CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}

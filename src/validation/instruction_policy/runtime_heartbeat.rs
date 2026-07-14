@@ -137,17 +137,20 @@ fn normalized_policy_text(text: &str) -> String {
     let mut index = 0;
     while index < lines.len() {
         let line = lines[index];
-        let trimmed = line.trim_start();
+        let structural_line = markdown_structure(line);
         if let Some((marker, minimum)) = fence {
-            if fence_delimiter(trimmed).is_some_and(|(candidate, count, rest)| {
-                candidate == marker && count >= minimum && rest.trim().is_empty()
-            }) {
+            if structural_line
+                .and_then(fence_delimiter)
+                .is_some_and(|(candidate, count, rest)| {
+                    candidate == marker && count >= minimum && rest.trim().is_empty()
+                })
+            {
                 fence = None;
             }
             index += 1;
             continue;
         }
-        if let Some((marker, count, _)) = fence_delimiter(trimmed) {
+        if let Some((marker, count, _)) = structural_line.and_then(fence_delimiter) {
             fence = Some((marker, count));
             index += 1;
             continue;
@@ -155,15 +158,18 @@ fn normalized_policy_text(text: &str) -> String {
         let setext_heading = lines
             .get(index + 1)
             .is_some_and(|next| is_setext_underline(next));
-        let heading = atx_heading(trimmed)
-            .or_else(|| (setext_heading && !trimmed.is_empty()).then_some(trimmed.trim()));
+        let heading = structural_line.and_then(atx_heading).or_else(|| {
+            structural_line
+                .filter(|line| setext_heading && !line.is_empty())
+                .map(str::trim)
+        });
         if let Some(heading) = heading {
             historical_section = is_historical_heading(heading);
             visible.push(format!("<markdown-heading> {heading} </markdown-heading>"));
             index += usize::from(setext_heading) + 1;
             continue;
         }
-        if !historical_section {
+        if !historical_section && structural_line.is_some() {
             visible.push(line.to_owned());
         }
         index += 1;
@@ -203,10 +209,28 @@ fn atx_heading(line: &str) -> Option<&str> {
 }
 
 fn is_setext_underline(line: &str) -> bool {
+    let Some(line) = markdown_structure(line) else {
+        return false;
+    };
     let line = line.trim();
     !line.is_empty()
         && (line.chars().all(|character| character == '=')
             || line.chars().all(|character| character == '-'))
+}
+
+fn markdown_structure(line: &str) -> Option<&str> {
+    let mut columns = 0;
+    for (index, character) in line.char_indices() {
+        match character {
+            ' ' => columns += 1,
+            '\t' => columns += 4 - columns % 4,
+            _ => return (columns <= 3).then(|| &line[index..]),
+        }
+        if columns > 3 {
+            return None;
+        }
+    }
+    Some("")
 }
 
 fn is_historical_heading(heading: &str) -> bool {
