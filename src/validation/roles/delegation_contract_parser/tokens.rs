@@ -21,7 +21,9 @@ pub(super) const DELEGATION_TARGETS: [&str; 20] = [
     "subagents",
 ];
 
-const DELEGATION_ACTIONS: [&str; 10] = [
+const DELEGATION_ACTIONS: [&str; 12] = [
+    "assign",
+    "assigning",
     "spawn",
     "spawning",
     "delegate",

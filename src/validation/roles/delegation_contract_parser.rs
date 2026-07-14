@@ -88,7 +88,7 @@ fn mandatory_prefix<'a>(prefix: &'a [&'a str]) -> &'a [&'a str] {
 fn is_child_thread_action(action: &str) -> bool {
     matches!(
         action,
-        "create" | "creating" | "fork" | "forking" | "start" | "starting"
+        "assign" | "assigning" | "create" | "creating" | "fork" | "forking" | "start" | "starting"
     )
 }
 
@@ -185,6 +185,7 @@ fn has_action_negation(prefix: &str) -> bool {
         }
         "must" => {
             words.get(index + 1) == Some(&"not")
+                || words.get(index + 1) == Some(&"never")
                 || following
                     .windows(2)
                     .any(|pair| pair == ["no", "circumstances"])
@@ -192,7 +193,12 @@ fn has_action_negation(prefix: &str) -> bool {
                     .windows(2)
                     .any(|pair| pair == ["any", "circumstances"])
         }
-        "allowed" | "permitted" => words.get(index.wrapping_sub(1)) == Some(&"not"),
+        "allowed" | "permitted" => {
+            words.get(index.wrapping_sub(1)) == Some(&"not")
+                || following
+                    .iter()
+                    .any(|word| matches!(*word, "not" | "never"))
+        }
         _ => false,
     }
 }

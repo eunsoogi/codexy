@@ -54,6 +54,7 @@ fn validator_rejects_recursive_actions_after_unrelated_negations() -> TestResult
 #[test]
 fn validator_does_not_flag_punctuated_nonrecursive_prohibitions() -> TestResult {
     for prohibition in [
+        "A helper is allowed to edit files, not to spawn another helper.",
         "A helper MAY, under no circumstances, spawn another helper.",
         "A helper MAY not, under any circumstances, spawn another helper.",
         "A helper MAY never, even during recovery, create another reviewer task.",
@@ -78,6 +79,7 @@ fn validator_rejects_qualified_and_extended_recursive_actions() -> TestResult {
         "A helper MAY spawn another subagent.",
         "A helper MAY start another subagent.",
         "A helper MAY fork a child thread.",
+        "A helper MAY assign another reviewer task.",
     ] {
         assert_recursive_role_permission_rejected(permission)?;
     }

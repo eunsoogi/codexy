@@ -35,6 +35,7 @@ fn validator_allows_orchestrator_child_thread_creation() -> TestResult {
     skill.push_str("The root orchestrator MAY create child threads.\n");
     skill.push_str("The root orchestrator MUST start a child thread.\n");
     skill.push_str("The root orchestrator MUST fork a child thread.\n");
+    skill.push_str("The root orchestrator MUST assign a child thread.\n");
     skill
         .push_str("The root orchestrator MUST notify a reviewer before creating a child thread.\n");
     std::fs::write(skill_path, skill)?;
