@@ -124,28 +124,30 @@ fn has_new_module_boundary(
         else {
             continue;
         };
-        let module_path = rust_module_path(path, module);
-        let current_module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
-        let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
-        let base_module_lines = base_module
-            .lines()
-            .collect::<std::collections::HashSet<_>>();
-        let added = current_module
-            .lines()
-            .filter(|line| !line.trim().is_empty() && !base_module_lines.contains(line))
-            .collect::<String>();
-        if added
-            .split_whitespace()
-            .collect::<String>()
-            .contains(&removed)
-        {
-            return Ok(true);
+        for module_path in rust_module_paths(path, module) {
+            let current_module =
+                std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
+            let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
+            let base_module_lines = base_module
+                .lines()
+                .collect::<std::collections::HashSet<_>>();
+            let added = current_module
+                .lines()
+                .filter(|line| !line.trim().is_empty() && !base_module_lines.contains(line))
+                .collect::<String>();
+            if added
+                .split_whitespace()
+                .collect::<String>()
+                .contains(&removed)
+            {
+                return Ok(true);
+            }
         }
     }
     Ok(false)
 }
 
-fn rust_module_path(path: &Path, module: &str) -> PathBuf {
+fn rust_module_paths(path: &Path, module: &str) -> [PathBuf; 2] {
     let parent = path.parent().unwrap_or(Path::new(""));
     let module_parent = match path.file_name().and_then(|name| name.to_str()) {
         Some("lib.rs" | "main.rs" | "mod.rs") => parent.to_owned(),
@@ -158,7 +160,10 @@ fn rust_module_path(path: &Path, module: &str) -> PathBuf {
         }
         _ => parent.join(path.file_stem().unwrap_or_default()),
     };
-    module_parent.join(format!("{module}.rs"))
+    [
+        module_parent.join(format!("{module}.rs")),
+        module_parent.join(module).join("mod.rs"),
+    ]
 }
 
 fn removed_lines_are_duplicates(base: &str, current: &str) -> bool {

@@ -24,6 +24,7 @@ fn touched_loc_rejects_collapse_with_unrelated_added_file() -> TestResult {
 fn touched_loc_allows_extraction_into_existing_module() -> TestResult {
     for (path, module, helper) in [
         ("src/too_large.rs", "helper", "src/too_large/helper.rs"),
+        ("src/foo.rs", "helper", "src/foo/helper/mod.rs"),
         ("tests/foo.rs", "common", "tests/common.rs"),
     ] {
         let repo = fixture(path, format!("mod {module};\n{}", multiline_source()))?;
