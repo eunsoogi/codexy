@@ -1,8 +1,11 @@
 use std::path::Path;
 
 use crate::paths::display_relative;
+const THREAD_ROUTING_PATH: &str =
+    "skills/codex-orchestration/references/thread-and-worktree-routing.md";
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
+    super::runtime_heartbeat::check(path, text, errors);
     if path.ends_with("skills/dreaming/SKILL.md") {
         require_all(
             path,
@@ -99,8 +102,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             "orchestration skill must not replace a usable owner after Sentinel BLOCK",
             &["must create a replacement thread after a sentinel block"],
         );
-    } else if path.ends_with("skills/codex-orchestration/references/thread-and-worktree-routing.md")
-    {
+    } else if path.ends_with(THREAD_ROUTING_PATH) {
         require_all(
             path,
             text,
@@ -136,6 +138,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         );
     }
 }
+
 fn require_all(
     path: &Path,
     text: &str,
@@ -160,7 +163,9 @@ fn has_unweakened_required_clause(text: &str, phrase: &str) -> bool {
         let after = text[index + phrase.len()..]
             .trim_start_matches([',', ':', ';', '-', '—'])
             .trim_start();
-        !appears_in_heading(before) && !has_invalid_prefix(before) && !has_invalid_suffix(after)
+        before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
+            && !has_invalid_prefix(before)
+            && !has_invalid_suffix(after)
     })
 }
 fn has_invalid_prefix(before: &str) -> bool {
@@ -202,10 +207,6 @@ fn has_invalid_suffix(after: &str) -> bool {
         .any(|marker| after.starts_with(marker))
 }
 
-fn appears_in_heading(before: &str) -> bool {
-    before.rfind("<markdown-heading>") > before.rfind("</markdown-heading>")
-}
-
 fn reject_all(
     path: &Path,
     text: &str,
@@ -218,7 +219,8 @@ fn reject_all(
         let phrase = normalized_whitespace(phrase);
         if lower.match_indices(&phrase).any(|(index, _)| {
             let before = &lower[..index];
-            !appears_in_heading(before) && !has_invalid_prefix(before)
+            before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
+                && !has_invalid_prefix(before)
         }) {
             errors.push(format!(
                 "{} {requirement}: forbidden `{phrase}`",

@@ -8,6 +8,7 @@ use crate::paths::display_relative;
 use crate::validation::{instruction_policy_text, load_json, prompt_yaml};
 
 mod child_thread_ledger;
+mod runtime_heartbeat;
 pub(crate) mod sentinel_scope_policy;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {

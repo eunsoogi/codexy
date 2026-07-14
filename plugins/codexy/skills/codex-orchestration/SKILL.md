@@ -43,8 +43,8 @@ MUST read these relative references before acting on the matching surface:
 - `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
-- `references/orchestration-loop.md` for the intake, plan, dispatch,
-  integrate, verify, finish, failure-mode, and handoff-template guidance.
+- `references/orchestration-loop.md` for intake, plan, dispatch, integration,
+  verification, finish, failure modes, handoffs, and `references/runtime-heartbeats.md` for external waits.
 
 ## Classification Gate
 
@@ -79,7 +79,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST treat asynchronous completion as event waits, not blockers. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- MUST treat asynchronous completion as event waits, not blockers. When an eligible external gate outlives the turn, parent orchestrators and child owners MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.

@@ -24,6 +24,17 @@
 - bounded child-local monitoring:
 - parent delta before transition:
 
+## Runtime Heartbeat
+
+- callable discovery/exposure evidence:
+- heartbeat automation id:
+- target thread:
+- bounded schedule:
+- state fingerprint:
+- eligible material events:
+- unchanged observations suppressed:
+- terminal delete/disable action:
+
 ## Sentinel BLOCK Repair
 
 - BLOCK receipt:
