@@ -1,4 +1,10 @@
 pub(super) fn path_attribute(line: &str) -> Option<String> {
+    let (value, suffix) = path_attribute_prefix(line)?;
+    let mut comment_depth = 0;
+    (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(value)
+}
+
+pub(super) fn path_attribute_prefix(line: &str) -> Option<(String, &str)> {
     let literal = line
         .strip_prefix("#[path")?
         .trim_start()
@@ -6,8 +12,7 @@ pub(super) fn path_attribute(line: &str) -> Option<String> {
         .trim_start();
     let (value, suffix) = string_literal(literal)?;
     let suffix = suffix.trim_start().strip_prefix(']')?;
-    let mut comment_depth = 0;
-    (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(value)
+    Some((value, suffix))
 }
 
 pub(super) fn is_attribute_trivia(line: &str, block_comment_depth: &mut usize) -> bool {

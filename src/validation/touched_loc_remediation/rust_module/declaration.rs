@@ -1,4 +1,4 @@
-use super::attribute::{is_attribute_trivia, path_attribute};
+use super::attribute::{is_attribute_trivia, path_attribute_prefix};
 use super::scope::ScopeTracker;
 
 mod inline;
@@ -50,18 +50,20 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         if is_attribute_trivia(line, &mut block_comment_depth) {
             continue;
         }
-        if let Some(path) = path_attribute(line) {
+        if let Some((path, remainder)) = path_attribute_prefix(line) {
+            let mut trailing_comment_depth = 0;
+            if is_attribute_trivia(remainder, &mut trailing_comment_depth) {
+                attributed_path = (trailing_comment_depth == 0).then_some(path);
+                continue;
+            }
             attributed_path = Some(path);
-            continue;
+            line = remainder.trim_start();
         }
         let declaration = line
             .strip_prefix("pub(crate) ")
             .or_else(|| line.strip_prefix("pub "))
             .unwrap_or(line);
-        let Some(module) = declaration
-            .strip_prefix("mod ")
-            .and_then(|name| name.strip_suffix(';'))
-        else {
+        let Some(module) = module_declaration(declaration) else {
             if line.starts_with("#[") {
                 outer_attribute_continuation = !scope.is_outer_scope();
             } else {
@@ -75,4 +77,30 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         });
     }
     declarations
+}
+
+fn module_declaration(declaration: &str) -> Option<&str> {
+    let declaration = declaration.strip_prefix("mod ")?;
+    let (module, suffix) = identifier(declaration)?;
+    let suffix = suffix.trim_start().strip_prefix(';')?;
+    let mut comment_depth = 0;
+    (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(module)
+}
+
+fn identifier(source: &str) -> Option<(&str, &str)> {
+    let bytes = source.as_bytes();
+    let mut cursor = 0;
+    if bytes.get(..2) == Some(b"r#") {
+        cursor = 2;
+    }
+    let first = *bytes.get(cursor)?;
+    (first == b'_' || first.is_ascii_alphabetic() || !first.is_ascii()).then_some(())?;
+    cursor += 1;
+    while bytes
+        .get(cursor)
+        .is_some_and(|byte| *byte == b'_' || byte.is_ascii_alphanumeric() || !byte.is_ascii())
+    {
+        cursor += 1;
+    }
+    Some((&source[..cursor], &source[cursor..]))
 }
