@@ -8,18 +8,25 @@ const GOVERNED_SKILLS: &[&str] = &[
     "skills/proof-driven-completion/SKILL.md",
     "skills/refactoring/SKILL.md",
 ];
+const GOVERNED_AGENT_ROLES: &[&str] = &["agents/codexy-sculptor.toml"];
 const UNCONDITIONAL_CONTRACT: &str = "every governed file MUST stay at or below 250 LOC";
 const EXCEPTION_PROHIBITION: &str = "MUST NOT use or authorize LOC exceptions";
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
-    if !GOVERNED_SKILLS.iter().any(|skill| path.ends_with(skill)) {
+    let governed_skill = GOVERNED_SKILLS.iter().any(|skill| path.ends_with(skill));
+    let governed_agent_role = GOVERNED_AGENT_ROLES.iter().any(|role| path.ends_with(role));
+    if !governed_skill && !governed_agent_role {
         return;
     }
-    if !contains_clause(text, UNCONDITIONAL_CONTRACT)
-        || !contains_clause(text, EXCEPTION_PROHIBITION)
-    {
+    if governed_skill && !contains_clause(text, UNCONDITIONAL_CONTRACT) {
         errors.push(format!(
             "{} LOC exception policy contract failed: missing unconditional governed 250 LOC clause",
+            display_relative(path)
+        ));
+    }
+    if !contains_clause(text, EXCEPTION_PROHIBITION) {
+        errors.push(format!(
+            "{} LOC exception policy contract failed: missing LOC exception prohibition",
             display_relative(path)
         ));
     }
@@ -77,7 +84,10 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
         .any(|word| matches!(word.as_str(), "exception" | "exceptions"));
     let loc_context = words
         .iter()
-        .any(|word| matches!(word.as_str(), "loc" | "250" | "governed"));
+        .any(|word| matches!(word.as_str(), "loc" | "250" | "governed"))
+        || words
+            .windows(2)
+            .any(|pair| matches!(pair, [first, second] if first == "large" && second == "file"));
     let exception_context = inherited_context
         || (exception_term && loc_context)
         || words.iter().any(|word| {

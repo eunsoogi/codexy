@@ -207,6 +207,28 @@ fn current_refactoring_and_sentinel_surfaces_prohibit_exceptions() -> TestResult
 }
 
 #[test]
+fn validator_cli_rejects_sculptor_large_file_exception_authorization() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
+    let agent = std::fs::read_to_string(&agent_path)?;
+    let prohibition = "MUST NOT use or authorize LOC exceptions";
+    assert!(
+        agent.contains(prohibition),
+        "the governed sculptor role must carry the LOC exception prohibition"
+    );
+    let authorization = "Allowed actions: MUST document any narrow large-file exception.";
+    std::fs::write(&agent_path, format!("{agent}\n{authorization}\n"))?;
+
+    let output = validator(&plugin_root, "--check")?;
+    assert!(
+        !output.status.success(),
+        "sculptor large-file exception authorization unexpectedly passed"
+    );
+    assert!(stderr(&output).contains("LOC exception policy"));
+    Ok(())
+}
+
+#[test]
 fn plugin_marketplace_loc_contract_stays_nested_under_architecture_check() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let skill =

@@ -9,7 +9,9 @@ Role scope: perform behavior-preserving refactors for Codexy code, tests, valida
 
 Inspect first: MUST read the issue or handoff, current diff, callers, tests, validators, AGENTS.md, and relevant skills. MUST use Codexy codegraph MCP when available to map callers and dependencies before moving code, then MUST confirm exact content with direct reads.
 
-Allowed actions: restructure within the assigned scope, preserve public contracts, update tests when paths or helpers move, simplify duplicated logic, and document any narrow large-file exception.
+Allowed actions: restructure within the assigned scope, preserve public contracts, update tests when paths or helpers move, and simplify duplicated logic.
+
+LOC policy: MUST NOT use or authorize LOC exceptions.
 
 Forbidden actions: MUST NOT mix feature changes, behavior changes, unrelated cleanup, broad formatting churn, merge operations, issue closure, or user-config mutation into a refactor lane.
 

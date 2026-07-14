@@ -1,8 +1,30 @@
 use super::{
-    candidate_scopes::defect_list_item_lane_label,
-    lane_scope_filters::{mentioned_lane_label, preceding_defect_scope_lines},
+    candidate_scopes::{defect_candidate_scope, defect_list_item_lane_label},
+    fallback_routes::has_handler_handoff_fields,
+    lane_scope_filters::{defect_lane_label, mentioned_lane_label, preceding_defect_scope_lines},
     lane_scope_tokens::{lane_label_prefix, mentions_different_lane},
 };
+
+#[test]
+fn multiline_lane_metadata_heading_keeps_the_enclosing_lane_scope() {
+    let lines = [
+        "Lane A:",
+        "Lane owner:",
+        "- child-owned",
+        "Invocation evidence: missing handler",
+        "Lane A Fallback route: no fallback route was available",
+        "Lane A Tracking issue: #246",
+        "Dogfooding/tool-exposure defect: recorded missing-handler evidence",
+    ];
+    let defect_index = lines.len() - 1;
+
+    assert_eq!(
+        defect_lane_label(&lines, 0, defect_index).as_deref(),
+        Some("a")
+    );
+    let scope = defect_candidate_scope(&lines, defect_index);
+    assert!(has_handler_handoff_fields(&scope), "scope:\n{scope}");
+}
 
 #[test]
 fn detects_a_leading_lane_label_on_a_defect_header() {
