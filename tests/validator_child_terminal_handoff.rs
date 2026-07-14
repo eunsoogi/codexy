@@ -78,6 +78,23 @@ fn validator_keeps_one_handoff_for_related_terminal_transitions() -> TestResult 
 }
 
 #[test]
+fn validator_rejects_handoff_after_stop_before_ownership_release() -> TestResult {
+    let handoff = terminal_handoff("complete:stop");
+    let duplicate = run_validator(&format!(
+        "Lane ownership: child-owned\n{handoff}Terminal child transition: action=stop\n{handoff}Terminal child transition: action=ownership release\n"
+    ))?;
+    assert!(
+        !duplicate.status.success(),
+        "a same-exit ownership release must reject a second handoff after stop"
+    );
+    assert!(
+        String::from_utf8_lossy(&duplicate.stderr)
+            .contains("terminal parent handoff must not be repeated before terminal transition")
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_requires_handoff_for_status_form_goal_transitions() -> TestResult {
     for status in ["complete", "blocked"] {
         let missing = run_validator(&format!(

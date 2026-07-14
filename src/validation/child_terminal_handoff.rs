@@ -38,7 +38,7 @@ impl TerminalHandoffs {
     fn observe(&mut self, line: &str, source: Option<&str>) -> Option<&'static str> {
         if line.starts_with("terminal parent handoff:") {
             if confirmed_handoff(line, source) {
-                if matches!(self, Self::Ready | Self::Duplicate) {
+                if matches!(self, Self::Ready | Self::Duplicate | Self::Stopped) {
                     *self = Self::Duplicate;
                     return Some(
                         "terminal parent handoff must not be repeated before terminal transition",
