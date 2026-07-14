@@ -26,19 +26,38 @@ pub(super) fn is_local_task_target(value: &str) -> bool {
 }
 
 #[derive(Default)]
-struct TerminalHandoffs(usize);
+enum TerminalHandoffs {
+    #[default]
+    Missing,
+    Ready,
+    Stopped,
+}
 
 impl TerminalHandoffs {
     fn observe(&mut self, line: &str, source: Option<&str>) -> Option<&'static str> {
         if line.starts_with("terminal parent handoff:") {
             if confirmed_handoff(line, source) {
-                self.0 = 1;
+                *self = Self::Ready;
                 return None;
             }
             return Some("terminal parent handoff is missing required confirmed delivery fields");
         }
-        if is_terminal_transition(line) {
-            let valid = self.0 == 1;
+        if let Some(transition) = terminal_transition(line) {
+            let valid = match transition {
+                TerminalTransition::Goal
+                | TerminalTransition::Archive
+                | TerminalTransition::Blocked => {
+                    matches!(self, Self::Ready)
+                }
+                TerminalTransition::Stop => matches!(self, Self::Ready),
+                TerminalTransition::OwnershipRelease => matches!(self, Self::Ready | Self::Stopped),
+            };
+            if valid {
+                *self = match transition {
+                    TerminalTransition::Stop => Self::Stopped,
+                    _ => Self::Missing,
+                };
+            }
             return (!valid).then_some(
                 "terminal child transition requires exactly one confirmed terminal parent handoff",
             );
@@ -47,16 +66,31 @@ impl TerminalHandoffs {
     }
 }
 
-fn is_terminal_transition(line: &str) -> bool {
+#[derive(Clone, Copy)]
+enum TerminalTransition {
+    Goal,
+    Stop,
+    Archive,
+    OwnershipRelease,
+    Blocked,
+}
+
+fn terminal_transition(line: &str) -> Option<TerminalTransition> {
     line.strip_prefix("goal tool call: ")
         .and_then(|value| value.split(';').next())
-        .is_some_and(is_terminal_goal_call)
-        || line
-            .strip_prefix("terminal child transition: action=")
-            .and_then(|value| value.split(';').next())
-            .is_some_and(|action| {
-                matches!(action, "stop" | "archive" | "ownership release" | "blocked")
-            })
+        .filter(|operation| is_terminal_goal_call(operation))
+        .map(|_| TerminalTransition::Goal)
+        .or_else(|| {
+            line.strip_prefix("terminal child transition: action=")
+                .and_then(|value| value.split(';').next())
+                .and_then(|action| match action {
+                    "stop" => Some(TerminalTransition::Stop),
+                    "archive" => Some(TerminalTransition::Archive),
+                    "ownership release" => Some(TerminalTransition::OwnershipRelease),
+                    "blocked" => Some(TerminalTransition::Blocked),
+                    _ => None,
+                })
+        })
 }
 
 pub(super) fn is_terminal_goal_call(operation: &str) -> bool {

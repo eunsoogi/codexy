@@ -70,9 +70,51 @@ fn validator_requires_handoff_for_status_form_goal_transitions() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_requires_a_fresh_handoff_for_each_terminal_goal_transition() -> TestResult {
+    let missing_second_handoff = format!(
+        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}{}",
+        terminal_goal_transition("complete", "first", true),
+        terminal_goal_transition("blocked", "second", false),
+    );
+    let rejected = run_validator(&missing_second_handoff)?;
+    assert!(
+        !rejected.status.success(),
+        "a distinct terminal goal transition must consume its handoff"
+    );
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains(
+        "terminal child transition requires exactly one confirmed terminal parent handoff"
+    ));
+
+    let fresh_handoff_per_transition = format!(
+        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}{}",
+        terminal_goal_transition("complete", "first", true),
+        terminal_goal_transition("blocked", "second", true),
+    );
+    let accepted = run_validator(&fresh_handoff_per_transition)?;
+    assert!(
+        accepted.status.success(),
+        "a fresh handoff for each terminal goal transition must remain valid: {}",
+        String::from_utf8_lossy(&accepted.stderr)
+    );
+    Ok(())
+}
+
 fn terminal_only_evidence(parent_task: &str) -> String {
     format!(
         "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|archive; issue/pr=#375 / PR #376; child task=child-375; parent task={parent_task}; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=archive\n"
+    )
+}
+
+fn terminal_goal_transition(status: &str, key: &str, include_handoff: bool) -> String {
+    let operation = format!("update_goal(status=\"{status}\")");
+    let transition_key = format!("375:{status}:{key}");
+    let handoff = include_handoff.then(|| format!(
+        "Terminal parent handoff: event id=terminal-child|375|{status}|{key}; issue/pr=#375 / PR #376; child task=child-375; parent task=parent-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\n"
+    ));
+    format!(
+        "Goal transition key: {transition_key}\nParent goal pre-delivery: operation={operation}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=complete; transition key={transition_key}\n{}Goal tool call: {operation}\nParent goal post-result: operation={operation}; exact tool result={status}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key={transition_key}\n",
+        handoff.unwrap_or_default()
     )
 }
 
