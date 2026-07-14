@@ -199,6 +199,20 @@ fn excluded_markdown_blocks_do_not_stitch_clause_fragments() -> TestResult {
 }
 
 #[test]
+fn blank_markdown_paragraphs_do_not_stitch_clause_fragments() -> TestResult {
+    let (prefix, suffix) = CLAUSE.split_once(" solely").ok_or("clause split")?;
+    for boundary in ["\n\n", "\n   \n"] {
+        let output = validate_replacement(&format!("{prefix}{boundary}solely{suffix}."))?;
+        assert!(
+            !output.status.success(),
+            "validator stitched a clause across paragraph boundary {boundary:?}"
+        );
+        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    }
+    Ok(())
+}
+
+#[test]
 fn soft_line_wrap_may_complete_required_clause() -> TestResult {
     let (prefix, suffix) = CLAUSE.split_once(" solely").ok_or("clause split")?;
     let output = validate_replacement(&format!("{prefix}\nsolely{suffix}."))?;

@@ -44,7 +44,7 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
             index += usize::from(setext_level.is_some()) + 1;
             continue;
         }
-        if structural_line.is_none() {
+        if structural_line.is_none() || structural_line.is_some_and(|line| line.trim().is_empty()) {
             visible.push("<markdown-boundary>".to_owned());
         } else if historical_level.is_none() {
             visible.push(line.to_owned());
