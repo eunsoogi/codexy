@@ -18,7 +18,15 @@ pub(super) fn is_path_attributed_module(root: &Path, target: &Path, roots: Vec<P
             continue;
         };
         let parent = module_parent(&path, children_are_siblings);
-        if visit_source(root, target, &source, &parent, &mut pending) {
+        let attribute_parent = path.parent().unwrap_or(Path::new(""));
+        if visit_source(
+            root,
+            target,
+            &source,
+            &parent,
+            attribute_parent,
+            &mut pending,
+        ) {
             return true;
         }
     }
@@ -30,11 +38,12 @@ fn visit_source(
     target: &Path,
     source: &str,
     parent: &Path,
+    attribute_parent: &Path,
     pending: &mut VecDeque<(PathBuf, bool)>,
 ) -> bool {
     for declaration in declarations(source) {
         if let Some(attribute) = declaration.path {
-            let Some(child) = normalize_relative_path(parent, &attribute) else {
+            let Some(child) = normalize_relative_path(attribute_parent, &attribute) else {
                 continue;
             };
             if child == target {
@@ -49,7 +58,7 @@ fn visit_source(
     }
     for inline in inline_modules(source) {
         let scope = inline_scope(parent, inline.module, inline.path.as_deref());
-        if visit_source(root, target, inline.body, &scope, pending) {
+        if visit_source(root, target, inline.body, &scope, &scope, pending) {
             return true;
         }
     }
