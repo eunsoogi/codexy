@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
-use super::child_terminal_handoff::{check as check_terminal_handoffs, is_local_task_target};
+use super::child_terminal_handoff::{
+    check as check_terminal_handoffs, is_local_task_target, is_terminal_goal_call,
+};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
@@ -76,10 +78,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
             if !has_control_source || !valid_key {
                 errors.push("goal operation lacks a stable transition key and exact source_thread_id control state".into());
             }
-            if matches!(
-                operation,
-                "create_goal" | "update_goal(complete)" | "update_goal(blocked)"
-            ) {
+            if operation == "create_goal" || is_terminal_goal_call(operation) {
                 match confirmed_pre {
                     Some((pre_operation, pre_key))
                         if pre_operation == operation && pre_key == key => {}
@@ -87,14 +86,12 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
                         "pre-delivery receipt does not match the goal call stable transition key"
                             .into(),
                     ),
-                    None => errors.push(match operation {
-                        "update_goal(blocked)" => {
-                            "blocked goal operation precedes confirmed parent delivery".into()
-                        }
-                        "update_goal(complete)" => {
-                            "complete goal operation precedes confirmed parent delivery".into()
-                        }
-                        _ => "goal operation requires confirmed pre-delivery parent report".into(),
+                    None => errors.push(if operation.contains("blocked") {
+                        "blocked goal operation precedes confirmed parent delivery".into()
+                    } else if operation.contains("complete") {
+                        "complete goal operation precedes confirmed parent delivery".into()
+                    } else {
+                        "goal operation requires confirmed pre-delivery parent report".into()
                     }),
                 }
             }

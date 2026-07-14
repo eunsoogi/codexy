@@ -49,21 +49,25 @@ impl TerminalHandoffs {
 }
 
 fn is_terminal_transition(line: &str) -> bool {
-    matches!(
-        line.strip_prefix("goal tool call: ")
-            .and_then(|value| value.split(';').next()),
-        Some(
-            "update_goal(complete)"
-                | "update_goal(blocked)"
-                | "update_goal(status=\"complete\")"
-                | "update_goal(status=\"blocked\")"
-        )
-    ) || line
-        .strip_prefix("terminal child transition: action=")
+    line.strip_prefix("goal tool call: ")
         .and_then(|value| value.split(';').next())
-        .is_some_and(|action| {
-            matches!(action, "stop" | "archive" | "ownership release" | "blocked")
-        })
+        .is_some_and(is_terminal_goal_call)
+        || line
+            .strip_prefix("terminal child transition: action=")
+            .and_then(|value| value.split(';').next())
+            .is_some_and(|action| {
+                matches!(action, "stop" | "archive" | "ownership release" | "blocked")
+            })
+}
+
+pub(super) fn is_terminal_goal_call(operation: &str) -> bool {
+    matches!(
+        operation,
+        "update_goal(complete)"
+            | "update_goal(blocked)"
+            | "update_goal(status=\"complete\")"
+            | "update_goal(status=\"blocked\")"
+    )
 }
 
 fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
