@@ -23,7 +23,7 @@ for raw in open(sys.argv[1], encoding="utf-8"):
     except json.JSONDecodeError:
         raise SystemExit(f"{sys.argv[2]}: non-JSON MCP stdout")
     if not isinstance(message, dict):
-        continue
+        raise SystemExit(f"{sys.argv[2]}: non-object MCP stdout")
     if "id" not in message:
         if (
             message.get("jsonrpc") != "2.0"

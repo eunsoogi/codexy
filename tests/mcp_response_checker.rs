@@ -88,6 +88,29 @@ fn rejects_structured_stdout_noise() {
 }
 
 #[test]
+fn rejects_non_object_json_stdout() {
+    let root = tempdir().expect("tempdir");
+    let checker =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
+    for (name, noise) in [("array", "[]"), ("string", "\"info\""), ("number", "1")] {
+        let response = root.path().join(format!("{name}.jsonl"));
+        std::fs::write(
+            &response,
+            format!(
+                "{noise}\n{{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{{\"serverInfo\":{{\"name\":\"codexy-lsp\"}}}}}}\n{{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{{\"tools\":[{{\"name\":\"lsp_status\"}}]}}}}\n"
+            ),
+        )
+        .expect("response fixture");
+        let output = Command::new(&checker)
+            .args([response.to_str().unwrap(), "lsp"])
+            .output()
+            .expect("checker");
+        assert!(!output.status.success(), "{name} stdout should fail");
+        assert!(String::from_utf8_lossy(&output.stderr).contains("non-object MCP stdout"));
+    }
+}
+
+#[test]
 fn rejects_wrong_mcp_server_and_tool_identity() {
     let root = tempdir().expect("tempdir");
     let checker =
