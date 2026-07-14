@@ -110,7 +110,7 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
     text.match_indices(clause).any(|(index, _)| {
         let before = &text[..index];
         let after = text[index + clause.len()..]
-            .trim_start_matches([',', ':', ';', '-', '—'])
+            .trim_start_matches([',', '.', ':', ';', '-', '—'])
             .trim_start();
         before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
             && !before

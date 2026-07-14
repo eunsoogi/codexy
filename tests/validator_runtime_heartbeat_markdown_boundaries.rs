@@ -117,8 +117,25 @@ fn punctuation_before_weakening_suffix_does_not_supply_policy() -> TestResult {
 }
 
 #[test]
+fn period_before_weakening_suffix_does_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "{CLAUSE}. Unless explicitly approved, the heartbeat may be skipped."
+    ))?;
+    assert!(
+        !output.status.success(),
+        "validator accepted a period-separated weakening suffix"
+    );
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
 fn safe_punctuation_after_required_clause_remains_valid() -> TestResult {
-    for suffix in [", and record the result", "; the result remains auditable"] {
+    for suffix in [
+        ", and record the result",
+        "; the result remains auditable",
+        ". The result remains auditable in the handoff",
+    ] {
         let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
         assert!(
             output.status.success(),
