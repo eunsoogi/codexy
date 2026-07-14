@@ -34,10 +34,11 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
             })
         });
         if let Some((level, heading)) = heading {
+            let heading = heading.replace(['`', '*', '_'], "");
             if historical_level.is_some_and(|historical| level <= historical) {
                 historical_level = None;
             }
-            if historical_level.is_none() && is_historical_heading(heading) {
+            if historical_level.is_none() && is_historical_heading(&heading) {
                 historical_level = Some(level);
             }
             visible.push(format!("<markdown-heading> {heading} </markdown-heading>"));

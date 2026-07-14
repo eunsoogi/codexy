@@ -25,6 +25,39 @@ fn numbered_historical_heading_does_not_supply_policy() -> TestResult {
 }
 
 #[test]
+fn formatted_historical_heading_does_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## **Historical Example**\nThis policy was retired. {CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn numbered_formatted_historical_heading_does_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## 1. **Historical Example**\nThis policy was retired. {CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn formatted_current_heading_resets_historical_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\n## **Current Policy**\n{CLAUSE}."
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator ignored active policy after a formatted heading: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
 fn fenced_pseudo_heading_does_not_reset_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
         "removed heartbeat policy\n\n## Historical Example\n```markdown\n## Current Policy\n```\nThis policy was retired. {CLAUSE}."
