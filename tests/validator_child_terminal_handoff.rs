@@ -50,8 +50,8 @@ fn validator_normalizes_bullet_terminal_records() -> TestResult {
 }
 
 #[test]
-fn validator_rejects_placeholder_child_tasks_in_terminal_handoffs() -> TestResult {
-    for child_task in ["codex task/thread", "child task"] {
+fn validator_rejects_placeholder_or_local_child_tasks_in_terminal_handoffs() -> TestResult {
+    for child_task in ["codex task/thread", "child task", "/root", "agents.worker"] {
         let output = run_validator(&terminal_only_evidence_for_tasks("parent-375", child_task))?;
         assert!(
             !output.status.success(),

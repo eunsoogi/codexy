@@ -131,6 +131,7 @@ fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
             let child_task = field(line, "child task");
             !parent_task.is_some_and(is_local_task_target)
                 && !parent_task.is_some_and(is_placeholder_task)
+                && !child_task.is_some_and(is_local_task_target)
                 && !child_task.is_some_and(is_placeholder_task)
                 && source.is_none_or(|expected| parent_task == Some(expected))
                 && field(line, "delivery") == Some("confirmed")
