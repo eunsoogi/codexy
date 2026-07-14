@@ -26,6 +26,7 @@ fn validator_rejects_allowed_action_bullets_and_circumstantial_must() -> TestRes
     assert_role_recursion_not_reported(
         "A helper MUST, under no circumstances, spawn another helper.",
     )?;
+    assert_role_recursion_not_reported("A helper MUST never spawn another helper.")?;
     Ok(())
 }
 
@@ -159,6 +160,7 @@ fn validator_rejects_worker_and_explorer_recursive_delegation_targets() -> TestR
     for permission in [
         "A helper MAY spawn another worker.",
         "A helper MAY delegate work to another explorer.",
+        "A helper MAY spawn another subagent.",
     ] {
         assert_recursive_role_permission_rejected(permission)?;
     }

@@ -1,4 +1,4 @@
-const DELEGATION_TARGETS: [&str; 18] = [
+const DELEGATION_TARGETS: [&str; 20] = [
     "agent",
     "agents",
     "helper",
@@ -17,6 +17,8 @@ const DELEGATION_TARGETS: [&str; 18] = [
     "workers",
     "explorer",
     "explorers",
+    "subagent",
+    "subagents",
 ];
 
 pub(super) fn has_unnegated_permission(clause: &str) -> bool {
@@ -127,6 +129,7 @@ fn has_unnegated_mandatory_permission(prefix: &str) -> bool {
         return false;
     };
     words.get(index + 1) != Some(&"not")
+        && words.get(index + 1) != Some(&"never")
         && !words[index + 1..]
             .windows(2)
             .any(|pair| pair == ["no", "circumstances"] || pair == ["any", "circumstances"])
@@ -196,11 +199,15 @@ pub(super) fn normalize_instruction_text(text: &str) -> String {
                         .map(|(_, remainder)| remainder)
                 });
             if in_allowed_actions && is_item {
-                format!("Allowed actions: {}", item.unwrap_or(line))
+                allowed_action_item(item.unwrap_or(line))
             } else {
                 item.unwrap_or(line).to_owned()
             }
         })
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn allowed_action_item(item: &str) -> String {
+    format!("Allowed actions: {item}")
 }
