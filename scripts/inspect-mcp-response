@@ -1,0 +1,60 @@
+#!/bin/sh
+set -eu
+
+response_file=${1:?response file required}
+server=${2:?server name required}
+python3 - "$response_file" "$server" <<'PY'
+import json, sys
+
+expected_identities = {
+    "lsp": ("codexy-lsp", "lsp_status"),
+    "codegraph": ("codexy-codegraph", "codegraph_index"),
+}
+expected_identity = expected_identities.get(sys.argv[2])
+if expected_identity is None:
+    raise SystemExit(f"{sys.argv[2]}: unknown MCP smoke target")
+
+responses = {}
+for raw in open(sys.argv[1], encoding="utf-8"):
+    if not raw.strip():
+        continue
+    try:
+        message = json.loads(raw)
+    except json.JSONDecodeError:
+        raise SystemExit(f"{sys.argv[2]}: non-JSON MCP stdout")
+    if not isinstance(message, dict):
+        raise SystemExit(f"{sys.argv[2]}: non-object MCP stdout")
+    if "id" not in message:
+        if (
+            message.get("jsonrpc") != "2.0"
+            or not isinstance(message.get("method"), str)
+            or "result" in message
+            or "error" in message
+        ):
+            raise SystemExit(f"{sys.argv[2]}: unexpected id-less MCP stdout")
+        continue
+    identifier = message["id"]
+    if type(identifier) is not int or identifier not in (1, 2):
+        raise SystemExit(f"{sys.argv[2]}: unexpected MCP response id")
+    if message.get("jsonrpc") != "2.0":
+        raise SystemExit(f"{sys.argv[2]}: invalid JSON-RPC version for response id {identifier}")
+    if identifier in responses:
+        raise SystemExit(f"{sys.argv[2]}: duplicate MCP response id {identifier}")
+    if "error" in message or "result" not in message:
+        raise SystemExit(f"{sys.argv[2]}: MCP response id {identifier} is not a successful result")
+    responses[identifier] = message
+if set(responses) != {1, 2}:
+    raise SystemExit(f"{sys.argv[2]}: MCP response ids were not correlated exactly once")
+
+expected_server, expected_tool = expected_identity
+initialize_result = responses[1]["result"]
+if not isinstance(initialize_result, dict) or initialize_result.get("serverInfo", {}).get("name") != expected_server:
+    raise SystemExit(f"{sys.argv[2]}: unexpected MCP server identity")
+
+tools_result = responses[2]["result"]
+tools = tools_result.get("tools") if isinstance(tools_result, dict) else None
+if not isinstance(tools, list) or not any(
+    isinstance(tool, dict) and tool.get("name") == expected_tool for tool in tools
+):
+    raise SystemExit(f"{sys.argv[2]}: expected MCP tool is missing")
+PY

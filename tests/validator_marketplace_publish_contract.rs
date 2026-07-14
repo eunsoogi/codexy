@@ -58,9 +58,8 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         let trigger_text = workflow_trigger_block(&workflow, trigger)
             .ok_or_else(|| format!("runtime workflow missing {trigger}"))?;
         for required_path in [
-            "plugins/codexy/hooks/**",
-            "plugins/codexy/agents/**",
-            "plugins/codexy/skills/codex-orchestration/scripts/**",
+            "plugins/codexy/**",
+            "scripts/inspect-mcp-response",
             "scripts/generate-release-changelog",
         ] {
             assert!(
