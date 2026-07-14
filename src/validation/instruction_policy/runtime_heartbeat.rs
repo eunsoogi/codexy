@@ -118,10 +118,8 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
 fn has_unweakened_clause(text: &str, clause: &str) -> bool {
     text.match_indices(clause).any(|(index, _)| {
         let before = &text[..index];
-        let after = text[index + clause.len()..].trim_start_matches(|character: char| {
-            character.is_whitespace()
-                || matches!(character, ',' | '.' | ':' | ';' | '-' | '—' | '(')
-        });
+        let after = text[index + clause.len()..]
+            .trim_start_matches(|character: char| !character.is_alphanumeric());
         before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
             && !current_block_prefix(before)
                 .rsplit(['.', ';'])

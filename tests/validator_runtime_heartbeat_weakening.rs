@@ -32,27 +32,45 @@ fn punctuation_before_weakening_suffix_does_not_supply_policy() -> TestResult {
 }
 
 #[test]
-fn parenthesized_weakening_suffix_does_not_supply_policy() -> TestResult {
-    let output = validate_replacement(&format!(
-        "{CLAUSE} (unless explicitly approved, the heartbeat may be skipped)."
-    ))?;
+fn punctuation_wrapped_weakening_suffixes_do_not_supply_policy() -> TestResult {
+    let suffixes = [
+        " (unless explicitly approved, the heartbeat may be skipped)",
+        " [unless explicitly approved, the heartbeat may be skipped]",
+        " {unless explicitly approved, the heartbeat may be skipped}",
+        " ) unless explicitly approved, the heartbeat may be skipped",
+        " [({unless explicitly approved, the heartbeat may be skipped})]",
+    ];
+    let mut accepted = Vec::new();
+    for suffix in suffixes {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        if output.status.success() {
+            accepted.push(suffix);
+        } else {
+            assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+        }
+    }
     assert!(
-        !output.status.success(),
-        "validator accepted a parenthesized weakening suffix"
+        accepted.is_empty(),
+        "validator accepted punctuation-wrapped weakening suffixes: {accepted:?}"
     );
-    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
     Ok(())
 }
 
 #[test]
-fn safe_parenthesized_suffix_remains_valid() -> TestResult {
-    let output =
-        validate_replacement(&format!("{CLAUSE} (and record the result in the handoff)."))?;
-    assert!(
-        output.status.success(),
-        "validator rejected a safe parenthesized suffix: {}",
-        support::stderr(&output)
-    );
+fn safe_punctuation_wrapped_suffixes_remain_valid() -> TestResult {
+    for suffix in [
+        " (and record the result in the handoff)",
+        " [and record the result in the handoff]",
+        " {and record the result in the handoff}",
+        " [({and record the result in the handoff})]",
+    ] {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        assert!(
+            output.status.success(),
+            "validator rejected safe punctuation-wrapped suffix {suffix:?}: {}",
+            support::stderr(&output)
+        );
+    }
     Ok(())
 }
 
