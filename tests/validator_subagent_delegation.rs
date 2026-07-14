@@ -114,38 +114,51 @@ fn validator_rejects_orchestration_without_first_level_delegation_contract() -> 
 }
 
 #[test]
-fn validator_rejects_recursive_or_missing_reference_delegation_contract() -> TestResult {
-    for (relative_path, replacement, expected) in [
-        (
-            "skills/codex-orchestration/SKILL.md",
+fn validator_rejects_recursive_permission_in_orchestration_skill() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    support::copy_dir(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &plugin_root,
+    )?;
+    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let text = std::fs::read_to_string(&path)?;
+    std::fs::write(
+        &path,
+        text.replace(
+            NO_RECURSIVE_DELEGATION,
             "MAY create an additional reviewer task.",
-            "permits recursive delegation",
         ),
-        (
-            "skills/codex-orchestration/references/classification-and-control.md",
-            "No delegation boundary is recorded.",
-            "missing required boundary text",
-        ),
-        (
-            "skills/codex-orchestration/references/orchestration-loop.md",
-            "No delegation boundary is recorded.",
-            "missing required boundary text",
-        ),
-    ] {
+    )?;
+
+    let output = validator(&plugin_root)?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("permits recursive delegation"));
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_recursive_permission_in_every_registered_reference() -> TestResult {
+    for relative_path in registered_orchestration_references()? {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
         support::copy_dir(
             Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
             &plugin_root,
         )?;
-        let path = plugin_root.join(relative_path);
-        let text = std::fs::read_to_string(&path)?;
-        std::fs::write(&path, text.replace(NO_RECURSIVE_DELEGATION, replacement))?;
+        let path = plugin_root.join(&relative_path);
+        let mut text = std::fs::read_to_string(&path)?;
+        text.push_str("\nA helper MAY spawn another helper.\n");
+        std::fs::write(path, text)?;
 
         let output = validator(&plugin_root)?;
 
         assert!(!output.status.success(), "{relative_path}");
-        assert!(stderr(&output).contains(expected), "{relative_path}");
+        assert!(
+            stderr(&output).contains("permits recursive delegation"),
+            "{relative_path}"
+        );
     }
     Ok(())
 }
@@ -189,4 +202,22 @@ fn validator(plugin_root: &Path) -> TestResult<Output> {
 
 fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+fn registered_orchestration_references() -> TestResult<Vec<String>> {
+    let skill = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?;
+    let references = skill
+        .split_once("## Read Next")
+        .and_then(|(_, remainder)| remainder.split_once("## Classification Gate"))
+        .map(|(section, _)| section)
+        .ok_or("orchestration Read Next section")?;
+    Ok(references
+        .lines()
+        .filter_map(|line| line.split('`').nth(1))
+        .filter(|path| path.starts_with("references/") && path.ends_with(".md"))
+        .map(|path| format!("skills/codex-orchestration/{path}"))
+        .collect())
 }

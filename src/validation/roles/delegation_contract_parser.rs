@@ -1,25 +1,9 @@
-const DELEGATION_TARGETS: [&str; 20] = [
-    "agent",
-    "agents",
-    "helper",
-    "helpers",
-    "reviewer",
-    "reviewers",
-    "sentinel",
-    "sentinels",
-    "specialist",
-    "specialists",
-    "task",
-    "tasks",
-    "thread",
-    "threads",
-    "worker",
-    "workers",
-    "explorer",
-    "explorers",
-    "subagent",
-    "subagents",
-];
+mod context;
+mod tokens;
+
+use tokens::{DELEGATION_TARGETS, is_delegation_action, words};
+
+pub(super) use context::normalize_instruction_text;
 
 pub(super) fn has_unnegated_permission(clause: &str) -> bool {
     let words = words(clause);
@@ -38,43 +22,37 @@ pub(super) fn has_unnegated_permission(clause: &str) -> bool {
     })
 }
 
-pub(super) fn has_unnegated_delegation_action(clause: &str) -> bool {
-    [
-        "spawn",
-        "spawning",
-        "delegate",
-        "delegating",
-        "create",
-        "creating",
-    ]
-    .into_iter()
-    .any(|action| {
-        let clause_words = words(clause);
-        clause_words.iter().enumerate().any(|(word_index, word)| {
-            if *word != action {
-                return false;
-            }
-            let prefix_words = &clause_words[..word_index];
-            let prefix = prefix_words.join(" ");
-            let action_prefix = prefix_words
-                .iter()
-                .rposition(|word| *word == "but")
-                .map_or_else(
-                    || prefix.clone(),
-                    |but_index| prefix_words[but_index + 1..].join(" "),
-                );
-            let contrast_starts_with_negation = action_prefix
-                .split_whitespace()
-                .next()
-                .is_some_and(|word| matches!(word, "not" | "never"));
-            !(has_action_negation(&action_prefix)
-                || (contrast_starts_with_negation && has_action_negation(&prefix)))
-                && DELEGATION_TARGETS.iter().any(|target| {
-                    clause_words[word_index..]
-                        .iter()
-                        .any(|candidate| candidate == target)
-                })
-        })
+pub(super) fn has_unnegated_delegation_action(
+    clause: &str,
+    allow_orchestration_owner: bool,
+    allow_inherited_permission: bool,
+) -> bool {
+    let clause_words = words(clause);
+    clause_words.iter().enumerate().any(|(word_index, action)| {
+        if !is_delegation_action(action) {
+            return false;
+        }
+        let prefix_words = &clause_words[..word_index];
+        if !allow_inherited_permission && permission_index(prefix_words).is_none() {
+            return false;
+        }
+        let prefix = prefix_words.join(" ");
+        let action_prefix = prefix_words
+            .iter()
+            .rposition(|word| *word == "but")
+            .map_or_else(
+                || prefix.clone(),
+                |but_index| prefix_words[but_index + 1..].join(" "),
+            );
+        let contrast_starts_with_negation = action_prefix
+            .split_whitespace()
+            .next()
+            .is_some_and(|word| matches!(word, "not" | "never"));
+        !(has_action_negation(&action_prefix)
+            || (contrast_starts_with_negation && has_action_negation(&prefix)))
+            && has_delegation_target(&clause_words[word_index..])
+            && !(allow_orchestration_owner
+                && orchestration_owner_is_actor_for_action(&clause_words, word_index))
     })
 }
 
@@ -82,67 +60,97 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
     clause: &str,
     allow_root_child_thread_creation: bool,
 ) -> bool {
-    [
-        "spawn",
-        "spawning",
-        "delegate",
-        "delegating",
-        "create",
-        "creating",
-    ]
-    .into_iter()
-    .any(|action| {
-        let clause_words = words(clause);
-        clause_words.iter().enumerate().any(|(word_index, word)| {
-            if *word != action {
-                return false;
-            }
-            let prefix = clause_words[..word_index].join(" ");
-            let prefix = prefix
-                .rsplit_once(" but ")
-                .map_or(prefix.as_str(), |(_, contrast)| contrast);
-            let actor_clause = prefix
-                .rsplit_once(" and ")
-                .map_or(prefix, |(_, current)| current);
-            let root_is_actor = actor_clause
-                .trim_start()
-                .starts_with("the root orchestrator must")
-                || actor_clause
-                    .trim_start()
-                    .starts_with("root orchestrator must");
-            let nonroot_actor_precedes_must = prefix
-                .split_whitespace()
-                .take_while(|word| *word != "must")
-                .any(|word| DELEGATION_TARGETS.contains(&word));
-            let root_is_only_actor = root_is_actor
-                && !nonroot_actor_precedes_must
-                && !root_delegates_child_thread_creation(&prefix);
-            let creates_child_thread = allow_root_child_thread_creation
-                && matches!(action, "create" | "creating")
-                && root_is_only_actor
-                && clause_words[word_index..]
-                    .windows(2)
-                    .any(|pair| pair == ["child", "thread"]);
-            has_unnegated_mandatory_permission(prefix)
-                && !creates_child_thread
-                && DELEGATION_TARGETS.iter().any(|target| {
-                    clause_words[word_index..]
-                        .iter()
-                        .any(|candidate| candidate == target)
-                })
-        })
+    let clause_words = words(clause);
+    clause_words.iter().enumerate().any(|(word_index, action)| {
+        if !is_delegation_action(action) {
+            return false;
+        }
+        let mandatory_prefix = mandatory_prefix(&clause_words[..word_index]);
+        let creates_child_thread = allow_root_child_thread_creation
+            && is_child_thread_action(action)
+            && orchestration_owner_is_actor(mandatory_prefix)
+            && clause_words[word_index..]
+                .windows(2)
+                .any(|pair| pair == ["child", "thread"]);
+        has_unnegated_mandatory_permission(&mandatory_prefix.join(" "))
+            && !creates_child_thread
+            && has_delegation_target(&clause_words[word_index..])
     })
 }
 
-fn root_delegates_child_thread_creation(prefix: &str) -> bool {
-    let clause_words = words(prefix);
-    clause_words.iter().enumerate().any(|(index, word)| {
-        DELEGATION_TARGETS.contains(word)
-            && clause_words.get(index + 1) == Some(&"to")
-            && clause_words[..index]
+fn mandatory_prefix<'a>(prefix: &'a [&'a str]) -> &'a [&'a str] {
+    prefix
+        .iter()
+        .rposition(|word| *word == "but")
+        .map_or(prefix, |index| &prefix[index + 1..])
+}
+
+fn is_child_thread_action(action: &str) -> bool {
+    matches!(
+        action,
+        "create" | "creating" | "fork" | "forking" | "start" | "starting"
+    )
+}
+
+fn orchestration_owner_is_actor(prefix: &[&str]) -> bool {
+    let Some(must_index) = prefix.iter().rposition(|word| *word == "must") else {
+        return false;
+    };
+    let subject = &prefix[..must_index];
+    !subject.iter().any(|word| DELEGATION_TARGETS.contains(word))
+        && !delegates_child_creation(&prefix[must_index + 1..])
+}
+
+fn orchestration_owner_is_actor_for_action(words: &[&str], action_index: usize) -> bool {
+    let Some(permission_index) = permission_index(&words[..action_index]) else {
+        return false;
+    };
+    !words[..permission_index]
+        .iter()
+        .any(|word| DELEGATION_TARGETS.contains(word))
+        && !delegates_child_creation(&words[permission_index + 1..action_index])
+}
+
+fn permission_index(words: &[&str]) -> Option<usize> {
+    words
+        .iter()
+        .rposition(|word| matches!(*word, "may" | "can" | "must" | "allowed" | "permitted"))
+}
+
+fn delegates_child_creation(action_prefix: &[&str]) -> bool {
+    action_prefix.iter().enumerate().any(|(index, target)| {
+        DELEGATION_TARGETS.contains(target)
+            && action_prefix[..index]
                 .iter()
-                .any(|verb| matches!(*verb, "ask" | "asks" | "asked" | "tell" | "tells" | "told"))
+                .any(|verb| is_delegation_request(verb))
     })
+}
+
+fn is_delegation_request(word: &str) -> bool {
+    matches!(
+        word,
+        "ask"
+            | "asks"
+            | "asked"
+            | "direct"
+            | "directs"
+            | "directed"
+            | "instruct"
+            | "instructs"
+            | "instructed"
+            | "request"
+            | "requests"
+            | "requested"
+            | "tell"
+            | "tells"
+            | "told"
+    )
+}
+
+fn has_delegation_target(words: &[&str]) -> bool {
+    words
+        .iter()
+        .any(|candidate| DELEGATION_TARGETS.contains(candidate))
 }
 
 fn has_unnegated_mandatory_permission(prefix: &str) -> bool {
@@ -187,49 +195,4 @@ fn has_action_negation(prefix: &str) -> bool {
         "allowed" | "permitted" => words.get(index.wrapping_sub(1)) == Some(&"not"),
         _ => false,
     }
-}
-
-fn words(text: &str) -> Vec<&str> {
-    text.split(|character: char| !character.is_ascii_alphabetic())
-        .filter(|word| !word.is_empty())
-        .collect()
-}
-
-pub(super) fn normalize_instruction_text(text: &str) -> String {
-    let mut in_allowed_actions = false;
-    text.lines()
-        .map(str::trim)
-        .map(|line| {
-            if line.to_ascii_lowercase().starts_with("allowed actions")
-                || line.to_ascii_lowercase().starts_with("permitted actions")
-            {
-                in_allowed_actions = true;
-            }
-            let is_item = line.starts_with("- ")
-                || line.starts_with("* ")
-                || line
-                    .split_once('.')
-                    .is_some_and(|(prefix, _)| prefix.chars().all(|c| c.is_ascii_digit()));
-            let item = line
-                .strip_prefix("- ")
-                .or_else(|| line.strip_prefix("* "))
-                .or_else(|| {
-                    line.split_once(". ")
-                        .filter(|(prefix, _)| {
-                            prefix.chars().all(|character| character.is_ascii_digit())
-                        })
-                        .map(|(_, remainder)| remainder)
-                });
-            if in_allowed_actions && is_item {
-                allowed_action_item(item.unwrap_or(line))
-            } else {
-                item.unwrap_or(line).to_owned()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn allowed_action_item(item: &str) -> String {
-    format!("Allowed actions: {item}")
 }

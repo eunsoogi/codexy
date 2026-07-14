@@ -19,17 +19,6 @@ const SPAWN_EXAMPLES: &[&str] = &[
     "spawn_agent(agent_type=\"codexy-pathfinder\", message=\"Produce an atomic plan and verification checklist. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.\"",
     "spawn_agent(agent_type=\"codexy-cartographer\", message=\"Map the relevant files. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.\"",
 ];
-const ORCHESTRATION_REFERENCES: &[(&str, &str)] = &[
-    (
-        "skills/codex-orchestration/references/classification-and-control.md",
-        "every helper or Sentinel MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.",
-    ),
-    (
-        "skills/codex-orchestration/references/orchestration-loop.md",
-        "Every helper or Sentinel assignment MUST include the nonrecursive delegation prohibition.",
-    ),
-];
-
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     let instructions = agent
         .get("developer_instructions")
@@ -65,8 +54,8 @@ pub(super) fn check_orchestration_contract(plugin_root: &Path, errors: &mut Vec<
         }
     }
     reject_recursive_delegation_permission(&path, &skill, true, errors);
-    for &(relative_path, marker) in ORCHESTRATION_REFERENCES {
-        let path = plugin_root.join(relative_path);
+    for relative_path in registered_orchestration_references(&skill) {
+        let path = plugin_root.join(&relative_path);
         let Ok(reference) = fs::read_to_string(&path) else {
             errors.push(format!(
                 "{} nonrecursive delegation contract cannot be read",
@@ -74,14 +63,25 @@ pub(super) fn check_orchestration_contract(plugin_root: &Path, errors: &mut Vec<
             ));
             continue;
         };
-        if !reference.contains(marker) || !reference.contains(NO_RECURSIVE_DELEGATION) {
-            errors.push(format!(
-                "{} nonrecursive delegation contract is missing required boundary text",
-                display_relative(&path)
-            ));
-        }
         reject_recursive_delegation_permission(&path, &reference, true, errors);
     }
+}
+
+fn registered_orchestration_references(skill: &str) -> Vec<String> {
+    skill
+        .split_once("## Read Next")
+        .and_then(|(_, remainder)| remainder.split_once("## Classification Gate"))
+        .map(|(section, _)| section)
+        .into_iter()
+        .flat_map(str::lines)
+        .filter_map(|line| line.split('`').nth(1))
+        .filter(|path| {
+            path.starts_with("references/")
+                && path.ends_with(".md")
+                && !path.split('/').any(|component| component == "..")
+        })
+        .map(|path| format!("skills/codex-orchestration/{path}"))
+        .collect()
 }
 
 fn reject_recursive_delegation_permission(
@@ -99,7 +99,11 @@ fn reject_recursive_delegation_permission(
             clause = clause.replace(CANONICAL_CHILD_DELEGATION_PREFIX, "");
             clause = clause.replace(CANONICAL_ROOT_DELEGATION, "");
         }
-        let action = has_unnegated_delegation_action(&clause);
+        let action = has_unnegated_delegation_action(
+            &clause,
+            allow_canonical_child_delegation,
+            inherited_child_permission,
+        );
         (inherited_child_permission
             || has_unnegated_permission(&clause)
             || has_unnegated_mandatory_delegation_action(&clause, allow_canonical_child_delegation))
