@@ -116,45 +116,56 @@ fn plural_lane_mentions_different_lane(line: &str, current_lane: &str) -> bool {
     ]
     .into_iter()
     .any(|marker| {
-        let Some(start) = lower.find(marker) else {
-            return false;
-        };
-        if is_negated_lane_marker(&lower, start) {
-            return false;
-        }
-        let lane_expression = line[start + marker.len()..]
-            .replace("and/or", " and ")
-            .replace("and-or", " and ")
-            .replace(',', " , ")
-            .replace('/', " / ")
-            .replace([':', '-', '.'], " ");
-        let mut tokens = lane_expression.split_whitespace();
-        let Some(first) = tokens.next() else {
-            return false;
-        };
-        if !is_lane_label_token(first) && !is_lowercase_lane_label_token(first) {
-            return false;
-        }
-        if !first.eq_ignore_ascii_case(current_lane) {
-            return true;
-        }
-        while let Some(connector) = tokens.next() {
-            if !matches!(
-                connector.to_ascii_lowercase().as_str(),
-                "and" | "or" | "," | "/"
-            ) {
-                return false;
-            }
-            let Some(label) = tokens.next() else {
-                return false;
-            };
-            if !is_lane_label_token(label) && !is_lowercase_lane_label_token(label) {
-                return false;
-            }
-            if !label.eq_ignore_ascii_case(current_lane) {
+        let mut search_start = 0;
+        while let Some(offset) = lower[search_start..].find(marker) {
+            let start = search_start + offset;
+            if !is_negated_lane_marker(&lower, start)
+                && plural_lane_list_mentions_different_lane(
+                    &line[start + marker.len()..],
+                    current_lane,
+                )
+            {
                 return true;
             }
+            search_start = start + marker.len();
         }
         false
     })
+}
+
+fn plural_lane_list_mentions_different_lane(expression: &str, current_lane: &str) -> bool {
+    let lane_expression = expression
+        .replace("and/or", " and ")
+        .replace("and-or", " and ")
+        .replace(',', " , ")
+        .replace('/', " / ")
+        .replace([':', '-', '.'], " ");
+    let mut tokens = lane_expression.split_whitespace();
+    let Some(first) = tokens.next() else {
+        return false;
+    };
+    if !is_lane_label_token(first) && !is_lowercase_lane_label_token(first) {
+        return false;
+    }
+    if !first.eq_ignore_ascii_case(current_lane) {
+        return true;
+    }
+    while let Some(connector) = tokens.next() {
+        if !matches!(
+            connector.to_ascii_lowercase().as_str(),
+            "and" | "or" | "," | "/"
+        ) {
+            return false;
+        }
+        let Some(label) = tokens.next() else {
+            return false;
+        };
+        if !is_lane_label_token(label) && !is_lowercase_lane_label_token(label) {
+            return false;
+        }
+        if !label.eq_ignore_ascii_case(current_lane) {
+            return true;
+        }
+    }
+    false
 }

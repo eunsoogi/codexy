@@ -26,7 +26,9 @@ pub(super) fn has_new_module_boundary(
     let removed = removed.join("\n");
     Ok(token_coverage::without_whitespace(&extracted)
         .contains(&token_coverage::without_whitespace(&removed))
-        || token_coverage::moved_token_coverage(&removed, &extracted) >= 2)
+        || token_coverage::moved_token_coverage(&removed, &extracted) >= 2
+            && token_coverage::nonempty_line_count(&extracted).saturating_mul(4)
+                >= token_coverage::nonempty_line_count(&removed).saturating_mul(3))
 }
 
 fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) -> Result<String> {
@@ -84,8 +86,18 @@ fn rust_module_extraction(
     path: &Path,
     current: &str,
 ) -> Result<String> {
-    let facade_directory = facade_directory(path);
     let mut modules = std::collections::BTreeSet::new();
+    collect_rust_modules(root, path, current, &mut modules);
+    extracted_new_lines(root, base_ref, modules)
+}
+
+fn collect_rust_modules(
+    root: &Path,
+    path: &Path,
+    current: &str,
+    modules: &mut std::collections::BTreeSet<PathBuf>,
+) {
+    let facade_directory = facade_directory(path);
     let mut explicit_path = None;
     for line in current.lines() {
         let line = line.trim();
@@ -101,6 +113,9 @@ fn rust_module_extraction(
             .strip_prefix("mod ")
             .and_then(|name| name.strip_suffix(';'))
         else {
+            if !line.is_empty() && !line.starts_with("#[") && !line.starts_with("//") {
+                explicit_path = None;
+            }
             continue;
         };
         if module.bytes().any(|byte| byte.is_ascii_digit()) {
@@ -120,11 +135,11 @@ fn rust_module_extraction(
                 .filter(|candidate| root.join(candidate).is_file())
                 .unwrap_or(sibling)
         };
-        if root.join(&module_path).is_file() {
-            modules.insert(module_path);
+        if root.join(&module_path).is_file() && modules.insert(module_path.clone()) {
+            let module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
+            collect_rust_modules(root, &module_path, &module, modules);
         }
     }
-    extracted_new_lines(root, base_ref, modules)
 }
 
 fn rust_path_attribute(line: &str) -> Option<&str> {

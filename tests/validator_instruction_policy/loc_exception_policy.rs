@@ -49,6 +49,47 @@ fn validator_cli_allows_negated_loc_exception_prohibition() -> TestResult {
 }
 
 #[test]
+fn validator_cli_rejects_passive_loc_exception_allowances() -> TestResult {
+    for allowance in [
+        "LOC exceptions are allowed when approved.",
+        "LOC exceptions are permitted after review.",
+        "LOC exceptions are authorized by maintainers.",
+    ] {
+        for skill in GOVERNED_SKILLS {
+            let (_temp, plugin_root) = copy_plugin_fixture()?;
+            let skill_path = plugin_root.join(skill);
+            let text = std::fs::read_to_string(&skill_path)?;
+            std::fs::write(&skill_path, format!("{text}\n- {allowance}\n"))?;
+
+            let output = validator(&plugin_root, "--check")?;
+            assert!(
+                !output.status.success(),
+                "{skill:?}: {allowance:?} unexpectedly passed"
+            );
+            assert!(stderr(&output).contains("LOC exception policy"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_allows_negated_passive_loc_exception_wording() -> TestResult {
+    for skill in GOVERNED_SKILLS {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(skill);
+        let text = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(
+            &skill_path,
+            format!("{text}\n- LOC exceptions MUST NOT be allowed or authorized.\n"),
+        )?;
+
+        let output = validator(&plugin_root, "--check")?;
+        assert!(output.status.success(), "{skill:?}: {}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_waiver_after_safe_prohibition_across_clause_boundaries() -> TestResult {
     for skill in GOVERNED_SKILLS {
         for clauses in [

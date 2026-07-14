@@ -81,8 +81,24 @@ fn has_positive_permission(words: &[String]) -> bool {
                 words.get(index + 1).map(String::as_str),
                 Some("allow" | "exempt")
             ),
+            "allowed" | "permitted" | "authorized" => !passive_permission_is_negated(words, index),
             _ => false,
         })
+}
+
+fn passive_permission_is_negated(words: &[String], index: usize) -> bool {
+    let prefix = &words[..index];
+    if prefix.last().is_some_and(|word| word == "not")
+        || prefix.len() >= 2
+            && prefix[prefix.len() - 2] == "not"
+            && prefix[prefix.len() - 1] == "be"
+    {
+        return true;
+    }
+    prefix
+        .iter()
+        .rposition(|word| matches!(word.as_str(), "allowed" | "permitted" | "authorized"))
+        .is_some_and(|previous| passive_permission_is_negated(words, previous))
 }
 
 fn words(text: &str) -> Vec<String> {

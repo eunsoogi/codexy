@@ -82,3 +82,21 @@ fn keeps_same_lane_and_negated_plural_markers_in_scope() {
         "a"
     ));
 }
+
+#[test]
+fn detects_later_plural_marker_after_a_negated_occurrence() {
+    for marker in [
+        "for lanes",
+        "in lanes",
+        "assigned to lanes",
+        "targeting lanes",
+    ] {
+        assert!(
+            mentions_different_lane(
+                &format!("not {marker} A and B; fallback route recorded {marker} A and C"),
+                "a"
+            ),
+            "expected the later {marker} occurrence to retain cross-lane scope"
+        );
+    }
+}
