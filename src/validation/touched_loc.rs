@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -21,10 +20,14 @@ pub(super) fn check(base_ref: &str) -> Vec<String> {
 
 fn check_inner(base_ref: &str) -> Result<()> {
     let root = git_top_level()?;
-    let exceptions = load_exceptions(&root)?;
     let mut errors = Vec::new();
+    if root.join(EXCEPTIONS_PATH).exists() {
+        errors.push(format!(
+            "{EXCEPTIONS_PATH} is not supported; every governed file must stay at or below {LOC_LIMIT} lines"
+        ));
+    }
     for file in changes::scoped(&root, base_ref)? {
-        if !is_implementation_path(&file.path) {
+        if !is_governed_path(&file.path) {
             continue;
         }
         let line_count = count_lines(&root.join(&file.path))?;
@@ -39,13 +42,15 @@ fn check_inner(base_ref: &str) -> Result<()> {
             errors.push(error);
             continue;
         }
-        if line_count <= LOC_LIMIT || exceptions.contains_key(&file.path) {
-            continue;
+    }
+    for path in governed_files(&root)? {
+        let line_count = count_lines(&root.join(&path))?;
+        if line_count > LOC_LIMIT {
+            errors.push(format!(
+                "{} has {line_count} lines; governed human-authored files must stay at or below {LOC_LIMIT} lines",
+                path.display()
+            ));
         }
-        errors.push(format!(
-            "{} has {line_count} lines; touched implementation/test harness files must stay at or below {LOC_LIMIT} LOC",
-            file.path.display()
-        ));
     }
     if errors.is_empty() {
         Ok(())
@@ -89,13 +94,39 @@ fn count_lines(path: &Path) -> Result<usize> {
     Ok(text.lines().count())
 }
 
-fn is_implementation_path(path: &Path) -> bool {
+fn governed_files(root: &Path) -> Result<Vec<PathBuf>> {
+    let output = Command::new("git")
+        .args(["ls-files", "--cached", "--others", "--exclude-standard"])
+        .current_dir(root)
+        .output()
+        .context("listing governed files for LOC validation")?;
+    if !output.status.success() {
+        bail!(
+            "git ls-files for LOC validation failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    let mut files = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(PathBuf::from)
+        .filter(|path| is_governed_path(path))
+        .filter(|path| root.join(path).is_file())
+        .collect::<Vec<_>>();
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
+
+fn is_governed_path(path: &Path) -> bool {
     let path_text = path.to_string_lossy();
     if path_text.starts_with("target/") || path_text.starts_with(".git/") {
         return false;
     }
+    if path.file_name().and_then(|name| name.to_str()) == Some("AGENTS.md") {
+        return true;
+    }
     if path_text.starts_with("plugins/codexy/skills/")
-        && path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md")
+        && path.extension().and_then(|extension| extension.to_str()) == Some("md")
     {
         return true;
     }
@@ -105,78 +136,4 @@ fn is_implementation_path(path: &Path) -> bool {
     ) || path_text.starts_with("plugins/codexy/mcp/")
         || path_text.starts_with("plugins/codexy/hooks/")
         || path_text.starts_with("scripts/")
-}
-
-fn load_exceptions(root: &Path) -> Result<BTreeMap<PathBuf, String>> {
-    let path = root.join(EXCEPTIONS_PATH);
-    if !path.exists() {
-        return Ok(BTreeMap::new());
-    }
-    ensure_tracked_exception_file(root)?;
-    ensure_clean_exception_file(root)?;
-    let mut exceptions = BTreeMap::new();
-    let text =
-        std::fs::read_to_string(&path).with_context(|| format!("reading {}", EXCEPTIONS_PATH))?;
-    for (index, line) in text.lines().enumerate() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-        let Some((file, reason)) = trimmed.split_once(char::is_whitespace) else {
-            bail!(
-                "{}:{} must include a path and rationale",
-                EXCEPTIONS_PATH,
-                index + 1
-            );
-        };
-        let reason = reason.trim();
-        if reason.len() < 12 {
-            bail!("{}:{} rationale is too short", EXCEPTIONS_PATH, index + 1);
-        }
-        exceptions.insert(PathBuf::from(file), reason.to_owned());
-    }
-    Ok(exceptions)
-}
-
-fn ensure_tracked_exception_file(root: &Path) -> Result<()> {
-    let output = Command::new("git")
-        .args(["ls-files", "--error-unmatch", EXCEPTIONS_PATH])
-        .current_dir(root)
-        .output()
-        .context("checking tracked LOC exception file")?;
-    if output.status.success() {
-        return Ok(());
-    }
-    bail!("{EXCEPTIONS_PATH} must be tracked before it can exempt oversized touched files")
-}
-
-fn ensure_clean_exception_file(root: &Path) -> Result<()> {
-    ensure_no_exception_diff(root, false)?;
-    ensure_no_exception_diff(root, true)?;
-    Ok(())
-}
-
-fn ensure_no_exception_diff(root: &Path, cached: bool) -> Result<()> {
-    let mut command = Command::new("git");
-    command.arg("diff");
-    if cached {
-        command.arg("--cached");
-    }
-    command.args(["--quiet", "--", EXCEPTIONS_PATH]);
-    let output = command
-        .current_dir(root)
-        .output()
-        .context("checking clean LOC exception file")?;
-    if output.status.success() {
-        return Ok(());
-    }
-    if output.status.code() == Some(1) {
-        bail!(
-            "{EXCEPTIONS_PATH} has uncommitted changes; commit or discard them before it can exempt oversized touched files"
-        );
-    }
-    bail!(
-        "git diff for LOC exception file failed: {}",
-        String::from_utf8_lossy(&output.stderr).trim()
-    )
 }

@@ -3,6 +3,9 @@ use std::process::{Command, Output};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+#[path = "validator_touched_loc_remediation/conventional_facade.rs"]
+mod conventional_facade;
+
 #[test]
 fn touched_loc_rejects_blank_line_only_remediation() -> TestResult {
     let repo = fixture("src/too_large.rs", blank_line_source())?;
@@ -145,7 +148,7 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
     Ok(())
 }
 
-fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
+pub(crate) fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
     let repo = tempfile::tempdir()?;
     run(repo.path(), &["init", "-q"])?;
     run(
@@ -159,13 +162,13 @@ fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
     Ok(repo)
 }
 
-fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {
+pub(crate) fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {
     let path = root.join(path);
     std::fs::create_dir_all(path.parent().expect("fixture file parent"))?;
     std::fs::write(path, text)
 }
 
-fn validate(root: &Path) -> TestResult<Output> {
+pub(crate) fn validate(root: &Path) -> TestResult<Output> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args(["--check-touched-loc", "--base-ref", "HEAD"])
         .current_dir(root)
@@ -186,7 +189,7 @@ fn blank_line_source() -> String {
     format!("\n\n{}", regular_lines(250))
 }
 
-fn multiline_source() -> String {
+pub(crate) fn multiline_source() -> String {
     format!(
         "{}let summary = format!(\n    \"status\"\n);\n",
         regular_lines(249)
@@ -200,18 +203,18 @@ fn mixed_token_collapse_source() -> String {
     )
 }
 
-fn regular_lines(count: usize) -> String {
+pub(crate) fn regular_lines(count: usize) -> String {
     (0..count)
         .map(|index| format!("fn line_{index}() {{}}\n"))
         .collect()
 }
 
-fn regular_lines_from(start: usize, count: usize) -> String {
+pub(crate) fn regular_lines_from(start: usize, count: usize) -> String {
     (start..start + count)
         .map(|index| format!("fn line_{index}() {{}}\n"))
         .collect()
 }
 
-fn stderr(output: &Output) -> String {
+pub(crate) fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
