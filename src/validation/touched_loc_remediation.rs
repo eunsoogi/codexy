@@ -3,6 +3,8 @@ use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
 
+mod rust_module;
+
 pub(super) fn formatting_only_error(
     root: &Path,
     change_base_ref: &str,
@@ -124,7 +126,7 @@ fn has_new_module_boundary(
         else {
             continue;
         };
-        for module_path in rust_module_paths(path, module) {
+        for module_path in rust_module::paths(root, path, module) {
             let current_module =
                 std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
             let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
@@ -145,26 +147,6 @@ fn has_new_module_boundary(
         }
     }
     Ok(false)
-}
-
-fn rust_module_paths(path: &Path, module: &str) -> [PathBuf; 2] {
-    let parent = path.parent().unwrap_or(Path::new(""));
-    let module_parent = match path.file_name().and_then(|name| name.to_str()) {
-        Some("lib.rs" | "main.rs" | "mod.rs") => parent.to_owned(),
-        Some("build.rs") if parent == Path::new("") => parent.to_owned(),
-        Some(_)
-            if ["src/bin", "tests", "examples", "benches"]
-                .iter()
-                .any(|directory| parent == Path::new(directory)) =>
-        {
-            parent.to_owned()
-        }
-        _ => parent.join(path.file_stem().unwrap_or_default()),
-    };
-    [
-        module_parent.join(format!("{module}.rs")),
-        module_parent.join(module).join("mod.rs"),
-    ]
 }
 
 fn removed_lines_are_duplicates(base: &str, current: &str) -> bool {

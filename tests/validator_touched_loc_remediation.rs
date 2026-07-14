@@ -1,6 +1,5 @@
 use std::path::Path;
 use std::process::{Command, Output};
-
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[test]
 fn touched_loc_rejects_blank_line_only_remediation() -> TestResult {
@@ -72,7 +71,6 @@ fn touched_loc_allows_collapse_with_independent_structural_remediation() -> Test
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
-
 #[test]
 fn touched_loc_allows_structural_remediation_variants() -> TestResult {
     for (label, path, module, extracted_path) in [
@@ -96,15 +94,15 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
         ),
         (
             "build script crate root module splitting",
-            "build.rs",
+            "crates/app/build.rs",
             "worker",
-            "worker.rs",
+            "crates/app/worker.rs",
         ),
         (
             "test-target splitting",
-            "tests/too_large.rs",
+            "crates/app/tests/too_large.rs",
             "scenarios",
-            "tests/scenarios.rs",
+            "crates/app/tests/scenarios.rs",
         ),
         (
             "nested test directory module splitting",
@@ -154,13 +152,15 @@ fn assert_module_split(label: &str, path: &str, module: &str, extracted_path: &s
     );
     Ok(())
 }
-
 #[test]
 fn touched_loc_rejects_sibling_files_for_nested_module_declarations() -> TestResult {
     for (path, sibling) in [
         ("src/foo.rs", "src/helper.rs"),
         ("src/foo/mod.rs", "src/foo.rs"),
-        ("src/parser/tests/case.rs", "src/parser/tests/helper.rs"),
+        (
+            "crates/app/src/parser/tests/case.rs",
+            "crates/app/src/parser/tests/helper.rs",
+        ),
     ] {
         let repo = fixture(path, multiline_source())?;
         write(repo.path(), sibling, "let summary = format!(\"status\");\n")?;
@@ -169,15 +169,12 @@ fn touched_loc_rejects_sibling_files_for_nested_module_declarations() -> TestRes
             path,
             &format!("mod helper;\n{}", regular_lines(249)),
         )?;
-
         let output = validate(repo.path())?;
-
         assert!(!output.status.success(), "{path} must ignore {sibling}");
         assert!(stderr(&output).contains("multiline collapse"));
     }
     Ok(())
 }
-
 fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
     let repo = tempfile::tempdir()?;
     run(repo.path(), &["init", "-q"])?;
@@ -186,25 +183,29 @@ fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
         &["config", "user.email", "codexy@example.test"],
     )?;
     run(repo.path(), &["config", "user.name", "Codexy Test"])?;
+    if path.starts_with("crates/app/") {
+        write(
+            repo.path(),
+            "crates/app/Cargo.toml",
+            "[package]\nname = \"app\"\n",
+        )?;
+    }
     write(repo.path(), path, &source)?;
     run(repo.path(), &["add", "."])?;
     run(repo.path(), &["commit", "-qm", "initial"])?;
     Ok(repo)
 }
-
 fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {
     let path = root.join(path);
     std::fs::create_dir_all(path.parent().expect("fixture file parent"))?;
     std::fs::write(path, text)
 }
-
 fn validate(root: &Path) -> TestResult<Output> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args(["--check-touched-loc", "--base-ref", "HEAD"])
         .current_dir(root)
         .output()?)
 }
-
 fn run(root: &Path, args: &[&str]) -> TestResult {
     let output = Command::new("git").args(args).current_dir(root).output()?;
     assert!(
@@ -214,7 +215,6 @@ fn run(root: &Path, args: &[&str]) -> TestResult {
     );
     Ok(())
 }
-
 fn blank_line_source() -> String {
     format!("\n\n{}", regular_lines(250))
 }
