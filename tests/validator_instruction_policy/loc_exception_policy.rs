@@ -49,21 +49,30 @@ fn validator_cli_allows_negated_loc_exception_prohibition() -> TestResult {
 }
 
 #[test]
-fn validator_cli_rejects_waiver_after_adjacent_safe_prohibition() -> TestResult {
+fn validator_cli_rejects_waiver_after_safe_prohibition_across_clause_boundaries() -> TestResult {
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
-        let text = std::fs::read_to_string(&skill_path)?;
-        std::fs::write(
-            &skill_path,
-            format!(
-                "{text}\n- MUST NOT collapse readable multiline code.\n- A governed file MAY exceed 250 LOC when a waiver is approved.\n- MUST NOT delete blank lines solely to meet the target.\n"
-            ),
-        )?;
+        for clauses in [
+            "MUST NOT collapse readable multiline code.\n- A governed file MAY exceed 250 LOC when a waiver is approved.",
+            "MUST NOT collapse readable multiline code. A governed file MAY exceed 250 LOC when a waiver is approved.",
+            "MUST NOT collapse readable multiline code; A governed file MAY exceed 250 LOC when a waiver is approved.",
+        ] {
+            let (_temp, plugin_root) = copy_plugin_fixture()?;
+            let skill_path = plugin_root.join(skill);
+            let text = std::fs::read_to_string(&skill_path)?;
+            std::fs::write(
+                &skill_path,
+                format!(
+                    "{text}\n- {clauses}\n- MUST NOT delete blank lines solely to meet the target.\n"
+                ),
+            )?;
 
-        let output = validator(&plugin_root, "--check")?;
-        assert!(!output.status.success(), "{skill:?} unexpectedly passed");
-        assert!(stderr(&output).contains("LOC exception policy"));
+            let output = validator(&plugin_root, "--check")?;
+            assert!(
+                !output.status.success(),
+                "{skill:?}: {clauses:?} unexpectedly passed"
+            );
+            assert!(stderr(&output).contains("LOC exception policy"));
+        }
     }
     Ok(())
 }

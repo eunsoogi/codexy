@@ -42,7 +42,7 @@ fn permits_exception_allowance(text: &str) -> bool {
             .checked_sub(1)
             .and_then(|previous| lines.get(previous))
             .is_some_and(|previous| is_exception_heading(previous));
-        permits_in(line, previous)
+        clauses(line).any(|clause| permits_in(clause, previous))
     })
 }
 
@@ -95,10 +95,14 @@ fn words(text: &str) -> Vec<String> {
 
 fn contains_clause(text: &str, clause: &str) -> bool {
     let clause = normalize(clause);
-    text.split(['.', '!', '?']).any(|statement| {
+    clauses(text).any(|statement| {
         let statement = normalize(statement);
         statement.contains(&clause) && !negates_clause(&statement, &clause)
     })
+}
+
+fn clauses(text: &str) -> impl Iterator<Item = &str> {
+    text.split(['.', ';', '!', '?'])
 }
 
 fn normalize(text: &str) -> String {
