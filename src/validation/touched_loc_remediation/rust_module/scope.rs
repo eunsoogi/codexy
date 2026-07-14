@@ -8,7 +8,7 @@ pub(super) struct ScopeTracker {
 
 impl ScopeTracker {
     pub(super) fn is_outer(&self) -> bool {
-        self.depth == 0
+        self.depth == 0 && self.quoted.is_none() && self.raw_hashes.is_none()
     }
 
     pub(super) fn observe(&mut self, line: &str) {
