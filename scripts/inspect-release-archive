@@ -18,14 +18,29 @@ tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 entries="$tmp_dir/entries"
 tar -tzf "$archive" >"$entries"
+canonicalize_entry() {
+  sed '
+:normalize
+s#^\./##
+s#/\./#/#g
+t normalize
+' | tr -s '/'
+}
 canonical_entries="$tmp_dir/canonical-entries"
-sed 's#^\./##; s#//\+#/#g; s#/\./#/#g' "$entries" | sort >"$canonical_entries"
+canonicalize_entry <"$entries" | sort >"$canonical_entries"
 duplicates=$(uniq -d "$canonical_entries")
 [ -z "$duplicates" ] || { echo "duplicate archive entries: $duplicates" >&2; exit 1; }
 
 while IFS= read -r entry; do
   case "$entry" in
-    /*|../*|*/../*|*'/..'|*'//'*) echo "unsafe archive path: $entry" >&2; exit 1 ;;
+    /*|../*|*/../*|*'/..') echo "unsafe archive path: $entry" >&2; exit 1 ;;
+  esac
+  canonical_entry=$(printf '%s\n' "$entry" | canonicalize_entry)
+  case "$entry" in
+    "$canonical_entry") ;;
+    *) echo "unsafe archive path: $entry" >&2; exit 1 ;;
+  esac
+  case "$entry" in
     plugins/codexy/*) ;;
     *) echo "unexpected archive root entry: $entry" >&2; exit 1 ;;
   esac
