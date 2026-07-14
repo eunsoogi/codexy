@@ -10,19 +10,30 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
     let mut declarations = Vec::new();
     let mut attributed_path = None;
     let mut block_comment_depth = 0;
+    let mut outer_attribute_continuation = false;
     let mut scope = ScopeTracker::default();
     for line in source.lines() {
-        let line = line.trim();
+        let mut line = line.trim();
         let is_outer = scope.is_outer();
         let is_outer_scope = scope.is_outer_scope();
-        scope.observe(line);
+        let outer_remainder = scope.observe_with_outer_remainder(line);
         if !is_outer {
-            if is_outer_scope {
+            if outer_attribute_continuation {
+                let Some(remainder) = outer_remainder else {
+                    continue;
+                };
+                outer_attribute_continuation = false;
+                line = remainder.trim();
+                if line.is_empty() {
+                    continue;
+                }
+            } else if is_outer_scope {
                 is_attribute_trivia(line, &mut block_comment_depth);
+                continue;
             } else {
                 attributed_path = None;
+                continue;
             }
-            continue;
         }
         if is_attribute_trivia(line, &mut block_comment_depth) {
             continue;
@@ -39,7 +50,9 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
             .strip_prefix("mod ")
             .and_then(|name| name.strip_suffix(';'))
         else {
-            if !line.starts_with("#[") {
+            if line.starts_with("#[") {
+                outer_attribute_continuation = !scope.is_outer_scope();
+            } else {
                 attributed_path = None;
             }
             continue;

@@ -15,10 +15,15 @@ impl ScopeTracker {
         self.depth == 0 && self.quoted.is_none() && self.raw_hashes.is_none()
     }
 
-    pub(super) fn observe(&mut self, line: &str) {
+    pub(super) fn observe_with_outer_remainder<'a>(&mut self, line: &'a str) -> Option<&'a str> {
+        let started_outer = self.is_outer();
         let bytes = line.as_bytes();
         let mut index = 0;
+        let mut outer_offset = None;
         while index < bytes.len() {
+            if !started_outer && outer_offset.is_none() && self.is_outer() {
+                outer_offset = Some(index);
+            }
             if self.block_comments > 0 {
                 if pair(bytes, index, b'/', b'*') {
                     self.block_comments += 1;
@@ -76,6 +81,10 @@ impl ScopeTracker {
             }
             index += 1;
         }
+        if !started_outer && outer_offset.is_none() && self.is_outer() {
+            outer_offset = Some(bytes.len());
+        }
+        outer_offset.map(|offset| &line[offset..])
     }
 }
 

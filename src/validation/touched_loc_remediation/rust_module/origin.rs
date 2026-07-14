@@ -5,8 +5,11 @@ use std::process::Command;
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 
+mod manifest;
+
 use super::declaration::declarations;
 use super::{TARGET_ROOTS, normalize_relative_path};
+use manifest::cargo_manifest_paths;
 
 pub(super) fn is_manifest_target_root(root: &Path, path: &Path) -> bool {
     cargo_target_paths(root).iter().any(|target| target == path)
@@ -109,9 +112,20 @@ fn default_package_roots(root: &Path, package_root: &Path) -> Vec<PathBuf> {
 }
 
 fn cargo_target_paths(root: &Path) -> Vec<PathBuf> {
+    let mut targets = cargo_manifest_paths(root)
+        .into_iter()
+        .flat_map(|manifest| cargo_target_paths_for_manifest(root, &manifest))
+        .collect::<Vec<_>>();
+    targets.sort();
+    targets.dedup();
+    targets
+}
+
+fn cargo_target_paths_for_manifest(root: &Path, manifest: &Path) -> Vec<PathBuf> {
     let Ok(output) = Command::new("cargo")
+        .args(["metadata", "--manifest-path"])
+        .arg(manifest)
         .args([
-            "metadata",
             "--locked",
             "--offline",
             "--no-deps",
