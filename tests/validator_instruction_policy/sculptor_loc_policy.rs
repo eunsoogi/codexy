@@ -3,34 +3,48 @@ use super::{TestResult, copy_plugin_fixture, stderr, validator};
 const RATIONALE_MARKER: &str = "exceed the LOC target without a narrow rationale";
 const RATIONALE_AUTHORIZATION: &str =
     "MUST stop and escalate when touched files exceed the LOC target without a narrow rationale.";
+const UNRELATED_NEGATION_AUTHORIZATION: &str = "MUST NOT collapse readable code, but touched files MAY exceed the LOC target without a narrow rationale.";
+const UNRELATED_CONJUNCTION_NEGATION_AUTHORIZATION: &str = "MUST NOT collapse readable code, and touched files MAY exceed the LOC target without a narrow rationale.";
 const SAFE_ESCALATION: &str = "MUST stop and escalate when touched files exceed the LOC target.";
 const SAFE_PROHIBITION: &str =
     "MUST NOT allow touched files to exceed the LOC target even with a narrow rationale.";
+const SAFE_POSTPOSED_PROHIBITION: &str =
+    "Touched files exceeding the LOC target without a rationale MUST NOT be accepted.";
 
 #[test]
 fn validator_cli_rejects_sculptor_rationale_based_overage_authorization() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
-    let agent = without_rationale_authorization(&std::fs::read_to_string(&agent_path)?);
-    std::fs::write(
-        &agent_path,
-        inject_developer_instruction(&agent, RATIONALE_AUTHORIZATION),
-    )?;
+    for instruction in [
+        RATIONALE_AUTHORIZATION,
+        UNRELATED_NEGATION_AUTHORIZATION,
+        UNRELATED_CONJUNCTION_NEGATION_AUTHORIZATION,
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
+        let agent = without_rationale_authorization(&std::fs::read_to_string(&agent_path)?);
+        std::fs::write(
+            &agent_path,
+            inject_developer_instruction(&agent, instruction),
+        )?;
 
-    let output = validator(&plugin_root, "--check-roles")?;
-    assert!(
-        !output.status.success(),
-        "rationale-based Sculptor overage authorization unexpectedly passed"
-    );
-    let stderr = stderr(&output);
-    assert!(stderr.contains("codexy-sculptor.toml"), "{stderr}");
-    assert!(stderr.contains("must not allow LOC exceptions"), "{stderr}");
+        let output = validator(&plugin_root, "--check-roles")?;
+        assert!(
+            !output.status.success(),
+            "rationale-based Sculptor overage authorization unexpectedly passed: {instruction}"
+        );
+        let stderr = stderr(&output);
+        assert!(stderr.contains("codexy-sculptor.toml"), "{stderr}");
+        assert!(stderr.contains("must not allow LOC exceptions"), "{stderr}");
+    }
     Ok(())
 }
 
 #[test]
 fn validator_cli_allows_sculptor_unconditional_overage_escalation() -> TestResult {
-    for instruction in [SAFE_ESCALATION, SAFE_PROHIBITION] {
+    for instruction in [
+        SAFE_ESCALATION,
+        SAFE_PROHIBITION,
+        SAFE_POSTPOSED_PROHIBITION,
+    ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
         let agent = without_rationale_authorization(&std::fs::read_to_string(&agent_path)?);

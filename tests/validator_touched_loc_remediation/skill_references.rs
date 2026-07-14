@@ -25,6 +25,28 @@ fn touched_loc_allows_skill_facade_extraction_into_one_linked_reference() -> Tes
 }
 
 #[test]
+fn touched_loc_allows_skill_reference_with_heading_fragment() -> TestResult {
+    let repo = fixture(SKILL_PATH, regular_lines(252))?;
+    write(
+        repo.path(),
+        SKILL_PATH,
+        &format!(
+            "# Example\n\n- [Workflow](references/workflow.md#setup)\n\n{}",
+            regular_lines_from(250, 2)
+        ),
+    )?;
+    write(
+        repo.path(),
+        "plugins/codexy/skills/example/references/workflow.md",
+        &regular_lines(250),
+    )?;
+
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_allows_skill_facade_extraction_into_linked_references() -> TestResult {
     let repo = fixture(SKILL_PATH, regular_lines(252))?;
     write(
@@ -92,6 +114,29 @@ fn touched_loc_ignores_unlinked_canonical_skill_reference() -> TestResult {
     write(
         repo.path(),
         "plugins/codexy/skills/example/references/unlinked.md",
+        &regular_lines(250),
+    )?;
+
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_ignores_anchor_only_skill_link() -> TestResult {
+    let repo = fixture(SKILL_PATH, regular_lines(252))?;
+    write(
+        repo.path(),
+        SKILL_PATH,
+        &format!(
+            "# Example\n\n- [Setup](#setup)\n\n{}",
+            regular_lines_from(250, 2)
+        ),
+    )?;
+    write(
+        repo.path(),
+        "plugins/codexy/skills/example/references/setup.md",
         &regular_lines(250),
     )?;
 

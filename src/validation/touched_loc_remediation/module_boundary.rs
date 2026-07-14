@@ -79,7 +79,8 @@ fn markdown_link_target(line: &str) -> Option<&str> {
     line.trim()
         .split_once("](")
         .and_then(|(_, target)| target.strip_suffix(')'))
-        .filter(|target| !target.contains('#'))
+        .and_then(|target| target.split('#').next())
+        .filter(|target| !target.is_empty())
 }
 
 fn rust_module_extraction(
@@ -102,10 +103,13 @@ fn collect_rust_modules(
     let facade_directory = facade_directory(path);
     let mut explicit_path = None;
     for line in current.lines() {
-        let line = line.trim();
-        if let Some(path) = rust_path_attribute(line) {
+        let mut line = line.trim();
+        if let Some((path, remainder)) = rust_path_attribute(line) {
             explicit_path = Some(path);
-            continue;
+            if remainder.is_empty() {
+                continue;
+            }
+            line = remainder;
         }
         let declaration = line
             .strip_prefix("pub(crate) ")
@@ -144,14 +148,16 @@ fn collect_rust_modules(
     }
 }
 
-fn rust_path_attribute(line: &str) -> Option<&str> {
-    line.strip_prefix("#[path")?
-        .strip_suffix(']')?
+fn rust_path_attribute(line: &str) -> Option<(&str, &str)> {
+    let attribute = line.strip_prefix("#[path")?;
+    let closing = attribute.find(']')?;
+    let path = attribute[..closing]
         .trim()
         .strip_prefix('=')?
         .trim()
         .strip_prefix('"')?
-        .strip_suffix('"')
+        .strip_suffix('"')?;
+    Some((path, attribute[closing + 1..].trim()))
 }
 
 fn facade_directory(path: &Path) -> Option<PathBuf> {
