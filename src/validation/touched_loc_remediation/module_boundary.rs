@@ -50,7 +50,7 @@ fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) 
         }
         modules.insert(module);
     }
-    if modules.len() < 2 {
+    if modules.is_empty() {
         return Ok(String::new());
     }
     extracted_new_lines(root, base_ref, modules)

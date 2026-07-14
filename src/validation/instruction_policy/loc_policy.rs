@@ -80,9 +80,12 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
         .any(|word| matches!(word.as_str(), "loc" | "250" | "governed"));
     let exception_context = inherited_context
         || (exception_term && loc_context)
-        || words
-            .iter()
-            .any(|word| matches!(word.as_str(), "waiver" | "waivers" | "exempt" | "exemption"));
+        || words.iter().any(|word| {
+            matches!(
+                word.as_str(),
+                "waiver" | "waivers" | "exempt" | "exempted" | "exemption"
+            )
+        });
     exception_context && has_positive_permission(&words)
 }
 

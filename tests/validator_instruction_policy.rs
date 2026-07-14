@@ -5,6 +5,8 @@ mod support;
 
 #[path = "validator_instruction_policy/baseline_contract.rs"]
 mod baseline_contract;
+#[path = "validator_instruction_policy/loc_exception_exemptions.rs"]
+mod loc_exception_exemptions;
 #[path = "validator_instruction_policy/loc_exception_policy.rs"]
 mod loc_exception_policy;
 #[path = "validator_instruction_policy/loc_exception_sections.rs"]
