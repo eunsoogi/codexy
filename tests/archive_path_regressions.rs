@@ -34,3 +34,28 @@ with tarfile.open(sys.argv[1], "w:gz") as archive:
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("duplicate archive entries"));
 }
+
+#[test]
+fn rejects_embedded_double_slash_member() {
+    let root = tempdir().expect("tempdir");
+    let plugin_root = root.path().join("plugins/codexy");
+    std::fs::create_dir_all(&plugin_root).expect("plugin directory");
+    let archive = root.path().join("double-slash.tar.gz");
+    let script = r#"import io, sys, tarfile
+with tarfile.open(sys.argv[1], "w:gz") as archive:
+    info = tarfile.TarInfo("plugins/codexy//hooks/foo")
+    payload = b"unsafe"
+    info.size = len(payload)
+    archive.addfile(info, io.BytesIO(payload))
+"#;
+    assert!(
+        Command::new("python3")
+            .args(["-c", script, archive.to_str().unwrap()])
+            .status()
+            .expect("python should start")
+            .success()
+    );
+    let output = run_gate(&archive, &plugin_root);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unsafe archive path"));
+}
