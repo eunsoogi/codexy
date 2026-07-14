@@ -8,10 +8,12 @@ import json, sys
 
 responses = {}
 for raw in open(sys.argv[1], encoding="utf-8"):
+    if not raw.strip():
+        continue
     try:
         message = json.loads(raw)
     except json.JSONDecodeError:
-        continue
+        raise SystemExit(f"{sys.argv[2]}: non-JSON MCP stdout")
     if not isinstance(message, dict):
         continue
     identifier = message.get("id")

@@ -83,9 +83,10 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: |
           for server in lsp codegraph; do
-            RUNTIME="dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" \
+            response_file="$(mktemp)"
+            RUNTIME="dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" RESPONSE_FILE="$response_file" \
               python3 - <<'PY'
-          import json, os, subprocess
+          import os, subprocess
           requests = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}
           {"jsonrpc":"2.0","method":"notifications/initialized"}
           {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
@@ -94,16 +95,10 @@ jobs:
               [os.environ["RUNTIME"], "--stdio"], input=requests, text=True,
               capture_output=True, timeout=15, check=True,
           )
-          ids = {}
-          for line in completed.stdout.splitlines():
-              try: message = json.loads(line)
-              except json.JSONDecodeError: continue
-              if isinstance(message, dict) and type(message.get("id")) is int and message.get("id") in (1, 2):
-                  assert message.get("jsonrpc") == "2.0", "invalid JSON-RPC version"
-                  assert message["id"] not in ids, "duplicate MCP response id"
-                  ids[message["id"]] = message
-          assert set(ids) == {1, 2} and all("result" in item and "error" not in item for item in ids.values())
+          open(os.environ["RESPONSE_FILE"], "w", encoding="utf-8").write(completed.stdout)
           PY
+            scripts/inspect-mcp-response "$response_file" "$server"
+            rm -f "$response_file"
           done
 
       - name: Upload runtime binaries
