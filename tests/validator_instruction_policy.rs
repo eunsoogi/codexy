@@ -7,6 +7,8 @@ mod support;
 mod baseline_contract;
 #[path = "validator_instruction_policy/loc_exception_policy.rs"]
 mod loc_exception_policy;
+#[path = "validator_instruction_policy/loc_exception_sections.rs"]
+mod loc_exception_sections;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[rustfmt::skip]

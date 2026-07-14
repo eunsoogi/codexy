@@ -55,6 +55,8 @@ fn validator_cli_rejects_passive_loc_exception_allowances() -> TestResult {
         "LOC exceptions are permitted after review.",
         "LOC exceptions are authorized by maintainers.",
         "LOC exceptions are acceptable with approval.",
+        "LOC exceptions are exempt from the 250 LOC limit.",
+        "LOC exceptions are exempted from the 250 LOC limit.",
     ] {
         for skill in GOVERNED_SKILLS {
             let (_temp, plugin_root) = copy_plugin_fixture()?;
@@ -82,7 +84,7 @@ fn validator_cli_allows_negated_passive_loc_exception_wording() -> TestResult {
         std::fs::write(
             &skill_path,
             format!(
-                "{text}\n- LOC exceptions MUST NOT be allowed or authorized.\n- LOC exceptions are not acceptable.\n"
+                "{text}\n- LOC exceptions MUST NOT be allowed or authorized.\n- LOC exceptions are not acceptable.\n- LOC exceptions are not exempt from the 250 LOC limit.\n- LOC exceptions MUST NOT be exempted from the 250 LOC limit.\n"
             ),
         )?;
 

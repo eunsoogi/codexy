@@ -32,17 +32,33 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
 }
 
 fn permits_exception_allowance(text: &str) -> bool {
-    let lines = text
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect::<Vec<_>>();
-    lines.iter().enumerate().any(|(index, line)| {
-        let previous = index
-            .checked_sub(1)
-            .and_then(|previous| lines.get(previous))
-            .is_some_and(|previous| is_exception_heading(previous));
-        clauses(line).any(|clause| permits_in(clause, previous))
+    let mut exception_section_level = None;
+    let mut previous_exception_heading = false;
+    text.lines().map(str::trim).any(|line| {
+        if line.is_empty() {
+            return false;
+        }
+        let exception_heading = is_exception_heading(line);
+        if let Some(level) = markdown_heading_level(line) {
+            if exception_section_level.is_some_and(|section| level <= section) {
+                exception_section_level = None;
+            }
+            if exception_heading {
+                exception_section_level = Some(level);
+            }
+        }
+        let inherited_context = exception_section_level.is_some() || previous_exception_heading;
+        previous_exception_heading = exception_heading;
+        clauses(line).any(|clause| permits_in(clause, inherited_context))
+    })
+}
+
+fn markdown_heading_level(text: &str) -> Option<usize> {
+    let level = text.bytes().take_while(|byte| *byte == b'#').count();
+    (1..=6).contains(&level).then_some(level).filter(|level| {
+        text.as_bytes()
+            .get(*level)
+            .is_some_and(u8::is_ascii_whitespace)
     })
 }
 
@@ -90,7 +106,10 @@ fn has_positive_permission(words: &[String]) -> bool {
 }
 
 fn is_passive_permission(word: &str) -> bool {
-    matches!(word, "acceptable" | "allowed" | "authorized" | "permitted")
+    matches!(
+        word,
+        "acceptable" | "allowed" | "authorized" | "exempt" | "exempted" | "permitted"
+    )
 }
 
 fn has_exception_carve_out(words: &[String]) -> bool {
