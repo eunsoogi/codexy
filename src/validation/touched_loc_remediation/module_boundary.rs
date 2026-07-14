@@ -90,7 +90,7 @@ fn rust_module_extraction(
     for line in current.lines() {
         let line = line.trim();
         if let Some(path) = line
-            .strip_prefix("#[path = \\")
+            .strip_prefix("#[path = \"")
             .and_then(|path| path.strip_suffix("\"]"))
         {
             explicit_path = Some(path);

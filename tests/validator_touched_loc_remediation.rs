@@ -5,6 +5,8 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[path = "validator_touched_loc_remediation/conventional_facade.rs"]
 mod conventional_facade;
+#[path = "validator_touched_loc_remediation/custom_module_path.rs"]
+mod custom_module_path;
 
 #[test]
 fn touched_loc_rejects_blank_line_only_remediation() -> TestResult {
