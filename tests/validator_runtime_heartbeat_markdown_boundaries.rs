@@ -99,3 +99,32 @@ fn tab_indented_heading_does_not_reset_historical_policy() -> TestResult {
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
     Ok(())
 }
+
+#[test]
+fn punctuation_before_weakening_suffix_does_not_supply_policy() -> TestResult {
+    for suffix in [
+        ", except during maintenance",
+        "; unless explicitly approved",
+    ] {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        assert!(
+            !output.status.success(),
+            "validator accepted weakened clause ending in {suffix:?}"
+        );
+        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    }
+    Ok(())
+}
+
+#[test]
+fn safe_punctuation_after_required_clause_remains_valid() -> TestResult {
+    for suffix in [", and record the result", "; the result remains auditable"] {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        assert!(
+            output.status.success(),
+            "validator rejected safe punctuation ending in {suffix:?}: {}",
+            support::stderr(&output)
+        );
+    }
+    Ok(())
+}

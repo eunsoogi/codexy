@@ -106,7 +106,9 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
 fn has_unweakened_clause(text: &str, clause: &str) -> bool {
     text.match_indices(clause).any(|(index, _)| {
         let before = &text[..index];
-        let after = text[index + clause.len()..].trim_start();
+        let after = text[index + clause.len()..]
+            .trim_start_matches([',', ':', ';', '-', '—'])
+            .trim_start();
         before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
             && !before
                 .rsplit_once("</markdown-heading>")
@@ -128,7 +130,6 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
                 .any(|marker| after.starts_with(marker))
     })
 }
-
 fn normalized_policy_text(text: &str) -> String {
     let lines = text.lines().collect::<Vec<_>>();
     let mut historical_section = false;
@@ -182,7 +183,6 @@ fn normalized_policy_text(text: &str) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
-
 fn fence_delimiter(line: &str) -> Option<(char, usize, &str)> {
     let marker = line.chars().next()?;
     if !matches!(marker, '`' | '~') {
