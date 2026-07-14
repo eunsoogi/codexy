@@ -113,7 +113,7 @@ fn validator_cli_accepts_neutral_git_preflight_transcript_heading() -> TestResul
     let output = validate_open_pr_handoff(&valid_handoff_with(
         "Git graph/log preflight:\n\
          $ pwd\n\
-         /Users/eunsoo/.codex/worktrees/e219/codexy\n\
+         /synthetic/project-root\n\
          $ git status --short --branch\n\
          ## HEAD (no branch)\n\
          $ git rev-parse HEAD\n\
