@@ -219,3 +219,14 @@ fn current_refactoring_and_sentinel_surfaces_prohibit_exceptions() -> TestResult
     assert!(!sentinel.contains("explicit narrow exception rationale"));
     Ok(())
 }
+
+#[test]
+fn plugin_marketplace_loc_contract_stays_nested_under_architecture_check() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let skill =
+        std::fs::read_to_string(plugin_root.join("skills/plugin-marketplace-prep/SKILL.md"))?;
+    assert!(skill.contains(
+        "\n   - `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`\n     passes for touched implementation and test-harness files. Every governed\n     file MUST stay at or below 250 LOC. MUST NOT use or authorize LOC exceptions,"
+    ));
+    Ok(())
+}

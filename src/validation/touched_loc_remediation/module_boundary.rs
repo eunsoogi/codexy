@@ -60,17 +60,18 @@ fn semantic_markdown_component(component: &str) -> bool {
     if component.is_empty() || matches!(component, "." | "..") {
         return false;
     }
-    if !component.bytes().any(|byte| byte.is_ascii_digit()) {
-        return true;
-    }
-    let Some(rule) = component.strip_prefix('c') else {
-        return false;
-    };
-    let digits = rule.bytes().take_while(u8::is_ascii_digit).count();
-    digits > 0
-        && rule
-            .get(digits..)
-            .is_some_and(|suffix| suffix.starts_with('-'))
+    !mechanical_numbered_component(component)
+}
+
+fn mechanical_numbered_component(component: &str) -> bool {
+    let stem = component.strip_suffix(".md").unwrap_or(component);
+    ["shard", "part", "chunk"].iter().any(|prefix| {
+        stem.strip_prefix(prefix)
+            .map(|suffix| suffix.trim_start_matches(['-', '_']))
+            .is_some_and(|suffix| {
+                !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+            })
+    })
 }
 
 fn markdown_link_target(line: &str) -> Option<&str> {
@@ -118,7 +119,7 @@ fn collect_rust_modules(
             }
             continue;
         };
-        if mechanical_numbered_module(module) {
+        if mechanical_numbered_component(module) {
             explicit_path = None;
             continue;
         }
@@ -140,11 +141,6 @@ fn collect_rust_modules(
             collect_rust_modules(root, &module_path, &module, modules);
         }
     }
-}
-
-fn mechanical_numbered_module(module: &str) -> bool {
-    let stem = module.trim_end_matches(|character: char| character.is_ascii_digit());
-    stem.len() < module.len() && matches!(stem.trim_end_matches('_'), "shard" | "part" | "chunk")
 }
 
 fn rust_path_attribute(line: &str) -> Option<&str> {

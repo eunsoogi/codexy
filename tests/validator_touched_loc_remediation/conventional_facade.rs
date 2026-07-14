@@ -110,6 +110,30 @@ fn touched_loc_allows_named_markdown_reference_modules() -> TestResult {
 }
 
 #[test]
+fn touched_loc_allows_semantic_markdown_reference_names_with_digits() -> TestResult {
+    let repo = fixture(
+        "plugins/codexy/skills/wiki/references/too_large.md",
+        regular_lines(252),
+    )?;
+    write(
+        repo.path(),
+        "plugins/codexy/skills/wiki/references/too_large.md",
+        "# Reference\n\n- [IPv6](too_large/ipv6.md)\n- [HTTP/2](too_large/http2.md)\n- [GPT-5 upgrade](too_large/gpt5-upgrade.md)\n",
+    )?;
+    for (path, start) in [("ipv6.md", 0), ("http2.md", 84), ("gpt5-upgrade.md", 168)] {
+        write(
+            repo.path(),
+            &format!("plugins/codexy/skills/wiki/references/too_large/{path}"),
+            &regular_lines_from(start, 84),
+        )?;
+    }
+
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_rejects_numbered_markdown_reference_fragments() -> TestResult {
     let repo = fixture(
         "plugins/codexy/skills/wiki/references/too_large.md",
