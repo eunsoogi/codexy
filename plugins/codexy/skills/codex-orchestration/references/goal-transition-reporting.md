@@ -19,12 +19,13 @@ as deduplicated; it MUST NOT imply a second goal call.
 
 ## Runtime Polling Boundary
 
-Polling/monitoring is a runtime claim, not an agent label: a child MAY call an
-observation polling only when runtime-issued evidence binds it to a persistent
-monitor or wait session identifier, a scheduled next-observation time or
-deadline, and the last observed state fingerprint or event identity. Repeated
+Polling/monitoring is a runtime claim, not an agent label: a runtime monitor
+MUST live outside an execution goal and MAY call an observation only when
+runtime-issued evidence binds it to a persistent exec/session identifier, a
+scheduled next-observation deadline, the last observed state fingerprint or
+event identity, and same-process resume. Repeated
 model/assistant turn ids, tool-driven re-entry, goal continuation, or agent
-invocation without all three runtime fields MUST be classified as a continuation
+invocation without all runtime fields MUST be classified as a continuation
 turn, even when each turn reports that it is polling. Unchanged continuation
 turns MUST NOT reschedule themselves or emit another unchanged turn.
 
@@ -62,6 +63,13 @@ The terminal handoff receipt exactly once rule applies to every such exit.
 The receipt MUST bind a stable event identity, issue/PR, child task id,
 branch/worktree, exact HEAD, dirty/index state, last proof, current gate,
 preserved reservation or artifacts, and one parent-owned next action.
+Static evidence MUST format that receipt as `Terminal parent handoff:` followed
+by `event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
+`head`, `clean/index`, `last proof`, `current gate`,
+`preserved reservation/artifacts`, `parent next action`, `delivery=confirmed`,
+and `task surface=codex task/thread`. Static evidence MUST format the exit as
+`Terminal child transition: action=stop`, `action=archive`, or
+`action=ownership release` when no goal operation represents it.
 Delivery MUST be confirmed before the stop/archive/release. If delivery is unavailable,
 the child MUST emit one unavailable receipt and MUST NOT retry.
 It MUST preserve the lane instead of transitioning.

@@ -8,9 +8,9 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn validator_requires_child_external_gate_and_archive_preflight_policy() -> TestResult {
     for (required, replacement, error_fragment) in [
         (
-            "child external-gate wait MUST retain active goal and plan",
+            "child external-gate wait MUST end its active goal and plan before waiting",
             "A child\n  external-gate wait is optional",
-            "child external-gate wait must retain active goal and plan",
+            "child external-gate wait must end its active goal and plan before waiting",
         ),
         (
             "inspect archive candidates and the active reservation ledger",
@@ -72,6 +72,24 @@ fn validator_rejects_blocked_goal_or_replacement_thread_policy() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    fs::write(
+        &path,
+        format!(
+            "{}\nChild external-gate wait MUST retain active goal and plan.\n",
+            fs::read_to_string(&path)?
+        ),
+    )?;
+
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("external-gate goal retention"));
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> TestResult {
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
@@ -79,7 +97,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     fs::write(
         &path,
         original.replace(
-            "The root/orchestrator MAY end its goal and plan after dispatch; child external-gate wait MUST retain active goal and plan",
+            "A child external-gate wait MUST end its active goal and plan before waiting",
             "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Historical Example\nThis is retained only for historical context.\nA child\n  external-gate wait MUST retain active goal and plan",
         ),
     )?;
@@ -88,7 +106,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     assert!(!required_only_historically.status.success());
     assert!(
         support::stderr(&required_only_historically)
-            .contains("child external-gate wait must retain active goal and plan")
+            .contains("child external-gate wait must end its active goal and plan before waiting")
     );
 
     fs::write(
@@ -117,25 +135,25 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     fs::write(
         &path,
         original.replace(
-            "The root/orchestrator MAY end its goal and plan after dispatch; child external-gate wait MUST retain active goal and plan, use bounded child-local monitoring, and send a parent delta before transition.",
-            "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Child external-gate wait MUST retain active goal and plan",
+            "A child external-gate wait MUST end its active goal and plan before waiting",
+            "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Child external-gate wait MUST end its active goal and plan before waiting",
         ),
     )?;
     let heading_only = support::validator(&plugin_root, "--check")?;
     assert!(!heading_only.status.success());
     assert!(
         support::stderr(&heading_only)
-            .contains("child external-gate wait must retain active goal and plan")
+            .contains("child external-gate wait must end its active goal and plan before waiting")
     );
 
     for negated_clause in [
-        "A child external-gate wait MUST retain active goal and plan is not required.",
-        "It is not required that child external-gate wait MUST retain active goal and plan.",
+        "A child external-gate wait MUST end its active goal and plan before waiting is not required.",
+        "It is not required that child external-gate wait MUST end its active goal and plan before waiting.",
     ] {
         fs::write(
             &path,
             original.replace(
-                "child external-gate wait MUST retain active goal and plan",
+                "child external-gate wait MUST end its active goal and plan before waiting",
                 negated_clause,
             ),
         )?;

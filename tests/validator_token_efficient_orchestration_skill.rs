@@ -107,10 +107,12 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     let normalized_transition = transition.split_whitespace().collect::<Vec<_>>().join(" ");
     let normalized_contract = format!("{normalized_orchestration} {normalized_transition}");
     for required in [
-        "root/orchestrator MAY end its goal and plan after dispatch",
-        "child external-gate wait MUST retain active goal and plan",
-        "bounded child-local monitoring",
-        "send a parent delta before transition",
+        "A parent or child MUST NOT retain an active goal or plan during an external-gate wait",
+        "child external-gate wait MUST end its active goal and plan before waiting",
+        "runtime monitor lives outside goals",
+        "persistent exec/session id",
+        "same-process resume",
+        "A qualifying event starts a fresh short-lived execution goal",
         "inspect archive candidates and the active reservation ledger",
         "MUST NOT archive PR owners or dirty/reserved candidates",
         "record the decision in setup evidence",
@@ -122,7 +124,7 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "send exactly one terminal handoff delta to the source parent",
         "MUST NOT perform the stop/archive/blocked transition",
         "Polling/monitoring is a runtime claim, not an agent label",
-        "persistent monitor or wait session identifier",
+        "persistent exec/session identifier",
         "Repeated model/assistant turn ids",
         "classified as a continuation turn",
         "MUST NOT reschedule themselves or emit another unchanged turn",

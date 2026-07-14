@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
+use super::child_terminal_handoff::TerminalHandoffs;
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
@@ -39,7 +40,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
     else {
         return vec!["child goal reporting requires source_thread_id delegation evidence".into()];
     };
-    if is_local_agent_target(source) {
+    if source == "/root" || source.starts_with("agents.") || source.contains("send_message") {
         return vec!["source_thread_id must name a Codex task id, not a local agent target".into()];
     }
     let has_control_source = lines.iter().any(|line| {
@@ -50,6 +51,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
     let mut pending = None;
     let mut confirmed_pre = None;
     let mut seen_calls = BTreeSet::new();
+    let mut terminal_handoffs = TerminalHandoffs::default();
 
     for line in lines {
         if is_local_agent_route(line) {
@@ -58,6 +60,9 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
         if let Some(value) = line.strip_prefix("goal transition key: ") {
             key = valid_transition_key(value).then_some(value);
             continue;
+        }
+        if let Some(error) = terminal_handoffs.observe(line, source) {
+            errors.push(error.into());
         }
         if let Some(operation) = event_operation(line, "parent goal pre-delivery: operation=") {
             confirmed_pre = pre_delivery_is_confirmed(line, operation, source, key, &mut errors)
@@ -72,7 +77,10 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
             if !has_control_source || !valid_key {
                 errors.push("goal operation lacks a stable transition key and exact source_thread_id control state".into());
             }
-            if needs_pre_delivery(operation) {
+            if matches!(
+                operation,
+                "create_goal" | "update_goal(complete)" | "update_goal(blocked)"
+            ) {
                 match confirmed_pre {
                     Some((pre_operation, pre_key))
                         if pre_operation == operation && pre_key == key => {}
@@ -80,7 +88,15 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
                         "pre-delivery receipt does not match the goal call stable transition key"
                             .into(),
                     ),
-                    None => errors.push(pre_delivery_error(operation)),
+                    None => errors.push(match operation {
+                        "update_goal(blocked)" => {
+                            "blocked goal operation precedes confirmed parent delivery".into()
+                        }
+                        "update_goal(complete)" => {
+                            "complete goal operation precedes confirmed parent delivery".into()
+                        }
+                        _ => "goal operation requires confirmed pre-delivery parent report".into(),
+                    }),
                 }
             }
             if let Some(value) = key.filter(|_| valid_key) {
@@ -111,23 +127,6 @@ fn event_operation<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
 }
 fn valid_transition_key(key: &str) -> bool {
     key.split(':').count() == 3 && key.split(':').all(|part| !part.is_empty())
-}
-fn needs_pre_delivery(operation: &str) -> bool {
-    matches!(
-        operation,
-        "create_goal" | "update_goal(complete)" | "update_goal(blocked)"
-    )
-}
-fn pre_delivery_error(operation: &str) -> String {
-    match operation {
-        "update_goal(blocked)" => {
-            "blocked goal operation precedes confirmed parent delivery".into()
-        }
-        "update_goal(complete)" => {
-            "complete goal operation precedes confirmed parent delivery".into()
-        }
-        _ => "goal operation requires confirmed pre-delivery parent report".into(),
-    }
 }
 fn pre_delivery_is_confirmed(
     line: &str,
@@ -232,9 +231,6 @@ fn invalid_value(value: Option<&str>) -> bool {
             || matches!(item, "false" | "unavailable" | "none")
             || item.contains(" unavailable")
     })
-}
-fn is_local_agent_target(value: &str) -> bool {
-    value == "/root" || value.starts_with("agents.") || value.contains("send_message")
 }
 fn is_lane_boundary(line: &str) -> bool {
     ["lane ownership", "owner decision"]
