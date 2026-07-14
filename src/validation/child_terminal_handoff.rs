@@ -75,6 +75,7 @@ fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
         .is_some_and(|_| {
             let parent_task = field(line, "parent task");
             !parent_task.is_some_and(is_local_task_target)
+                && !parent_task.is_some_and(is_placeholder_task)
                 && source.is_none_or(|expected| parent_task == Some(expected))
                 && field(line, "delivery") == Some("confirmed")
                 && field(line, "task surface") == Some("codex task/thread")
@@ -82,6 +83,10 @@ fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
                     .iter()
                     .all(|name| field(line, name).is_some_and(valid_value))
         })
+}
+
+fn is_placeholder_task(value: &str) -> bool {
+    matches!(value, "codex task/thread" | "parent task" | "task/thread")
 }
 
 fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {

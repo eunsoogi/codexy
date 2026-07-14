@@ -170,10 +170,11 @@ MUST include:
   current matching proof and no required work remains.
 - MUST NOT call `update_goal(status="blocked")` merely because Codex connector
   review, child-thread work, queued worktree/thread setup, or asynchronous tool
-  completion is pending. MUST continue polling, send follow-up prompts as needed,
-  MUST route review feedback to the owning child thread, and MUST keep the goal active
-  until a repeated true impasse prevents meaningful progress without user input
-  or an external state change.
+  completion is pending. Once code/proof/push/review-request work is finished and
+  only that external gate remains, the child MUST send exactly one terminal parent
+  handoff, end its active goal and plan, and return control; it MUST NOT poll or
+  retain an active goal during the wait. A qualifying event starts a fresh
+  short-lived execution goal.
 - MUST NOT accept a non-trivial child implementation handoff as complete when it
   omits actual goal-tool usage, actual todo/plan tool usage, required
   situational multi-agent usage, a concrete not-useful rationale tied to

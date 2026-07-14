@@ -4,7 +4,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_local_parent_tasks_in_terminal_only_handoffs() -> TestResult {
-    for parent_task in ["/root", "agents.send_message('/root')"] {
+    for parent_task in ["/root", "agents.send_message('/root')", "codex task/thread"] {
         let output = run_validator(&terminal_only_evidence(parent_task))?;
         assert!(
             !output.status.success(),
