@@ -49,9 +49,8 @@ complete.
 - For non-trivial code, validator, harness, or workflow-rule changes, MUST run a
   touched implementation-file LOC gate before PR readiness or handoff:
   `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`.
-  MUST treat files over the 250 LOC target as failing evidence unless the tracked
-  Codexy LOC exception mechanism names the file and rationale. Handoff or PR
-  body prose alone is not proof of an exception.
+  MUST treat files over the 250 LOC target as failing evidence. Every governed
+  file MUST stay at or below 250 LOC. MUST NOT use or authorize LOC exceptions.
 - MUST record why a LOC reduction is structural rather than formatting-only.
   MUST NOT treat blank-line deletion or collapsed readable multiline content as
   structural remediation evidence; MUST name the helper, module, test target,

@@ -3,6 +3,11 @@ use std::process::Command;
 
 mod support;
 
+#[path = "validator_instruction_policy/baseline_contract.rs"]
+mod baseline_contract;
+#[path = "validator_instruction_policy/loc_exception_policy.rs"]
+mod loc_exception_policy;
+
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[rustfmt::skip]
 const ROOT_AGENTS_BARE_CASES: &[(&str, &str)] = &[("MUST use Codexy codegraph MCP", "Use Codexy codegraph MCP"), ("MUST preflight branch refs", "preflight branch refs"), ("MUST wait", "Wait"), ("MUST keep metadata current", "Keep metadata current"), ("MUST add nested", "Add nested"), ("MUST put executable", "Put executable"), ("MUST treat failures", "Treat failures"), ("MUST capture", "Capture"), ("MUST mention unrelated", "Mention unrelated")];
@@ -194,16 +199,6 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
         skill.replace("MUST report the limitation", "report the limitation"),
     )?;
     assert!(!validator(&plugin_root, "--check")?.status.success());
-    Ok(())
-}
-
-#[test]
-fn validator_cli_accepts_current_agent_instruction_policy() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let agent_path = plugin_root.join("agents/codexy-weaver.toml");
-    assert!(std::fs::read_to_string(&agent_path)?.contains("conflicts require domain choices"));
-    let output = validator(&plugin_root, "--check")?;
-    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
