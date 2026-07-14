@@ -17,6 +17,23 @@ same source task id and transition key for its pre-delivery, goal call, and
 post-result records. Repeated delivery evidence for one key MUST be represented
 as deduplicated; it MUST NOT imply a second goal call.
 
+## Runtime Polling Boundary
+
+Polling/monitoring is a runtime claim, not an agent label: a runtime monitor
+MUST live outside an execution goal and MAY call an observation only when
+runtime-issued evidence binds it to a persistent exec/session identifier, a
+scheduled next-observation deadline, the last observed state fingerprint or
+event identity, and same-process resume. Repeated
+model/assistant turn ids, tool-driven re-entry, goal continuation, or agent
+invocation without all runtime fields MUST be classified as a continuation
+turn, even when each turn reports that it is polling. Unchanged continuation
+turns MUST NOT reschedule themselves or emit another unchanged turn.
+
+An authorized child-local monitor that observes no qualifying event MUST keep
+its bounded schedule without emitting status or starting another model turn.
+Only a qualifying event or explicit parent/user message may start a new model
+turn; This MUST NOT terminate the underlying monitor.
+
 ## Ordered Receipts
 
 Before `create_goal`, `update_goal(complete)`, or `update_goal(blocked)`, the
@@ -35,6 +52,29 @@ claim that delivery or a result happened is not a receipt.
 the delivery is unavailable, static evidence MUST show one terminal
 parent-messaging-unavailable receipt and no blocked goal call. The runtime
 delivery mechanics remain owned by #367.
+
+Before stop, archive, ownership release, `update_goal(complete)`, or `update_goal(blocked)`, and before a
+child stops, archives, or releases lane ownership without a goal tool
+call, it MUST send exactly one terminal handoff delta to the source parent (the
+same terminal handoff receipt) exactly once.
+Before a child stops, archives, or releases lane ownership, this receipt is
+mandatory.
+The terminal handoff receipt exactly once rule applies to every such exit.
+The receipt MUST bind a stable event identity, issue/PR, child task id,
+branch/worktree, exact HEAD, dirty/index state, last proof, current gate,
+preserved reservation or artifacts, and one parent-owned next action.
+Static evidence MUST format that receipt as `Terminal parent handoff:` followed
+by `event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
+`head`, `clean/index`, `last proof`, `current gate`,
+`preserved reservation/artifacts`, `parent next action`, `delivery=confirmed`,
+and `task surface=codex task/thread`. Static evidence MUST format the exit as
+`Terminal child transition: action=stop`, `action=archive`, or
+`action=ownership release`, or `action=blocked` when no goal operation represents it.
+Delivery MUST be confirmed before the stop/archive/release. If delivery is unavailable,
+the child MUST emit one unavailable receipt and MUST NOT retry.
+It MUST preserve the lane instead of transitioning.
+It MUST NOT perform the stop/archive/blocked transition when delivery is
+unavailable.
 
 ## Static Recovery Shapes
 

@@ -234,15 +234,14 @@ branch, worktree, PR, durable child context, or review-response ownership:
 
 ## Event-driven token and quota containment
 
-The root/orchestrator MUST NOT retain a persistent long-running goal, MUST NOT autonomously poll, and MUST process only compact deltas for terminal child state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or clean review completion; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry; no full conversation transfer or full agent-tree listing. The root/orchestrator MAY end its goal and plan after dispatch; child external-gate wait MUST retain active goal and plan, use bounded child-local monitoring, and send a parent delta before transition.
+The root/orchestrator MUST NOT retain a persistent long-running goal, MUST NOT autonomously poll, and MUST process only compact deltas for terminal child state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or clean review completion; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry; no full conversation transfer or full agent-tree listing. A parent or child MUST NOT retain an active goal or plan during an external-gate wait. A child MUST use short-lived execution goals only. Once code, proof, push, and review-request work is complete and only an external gate remains, the child MUST send exactly one terminal parent handoff, call `update_goal(complete)`, and end its plan before waiting. A child external-gate wait MUST end its active goal and plan before waiting; when a runtime monitor is absent, it MUST return control. A runtime monitor lives outside goals, requires a persistent exec/session id, next deadline, state fingerprint, and same-process resume, and MUST suppress unchanged observations without assistant turns. A qualifying event starts a fresh short-lived execution goal. `blocked` is reserved for a repeated genuine execution impasse and MUST NOT represent an asynchronous external-gate wait.
 
 Before creating a child, inspect archive candidates and the active reservation ledger; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head.
 Event-driven refresh MUST update only from qualifying changes; a failed parent message MUST NOT retry the parent message, there MUST be no full agent-tree listing, and orchestration MUST inspect archive candidates and the active reservation ledger.
+Runtime polling evidence and terminal handoff rules are defined in
+`references/goal-transition-reporting.md`; MUST follow that contract.
 
-The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions. Every BLOCK finding MUST map to an in-scope acceptance criterion. Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane. Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
-
-MUST NOT mark a plan step complete until its evidence has been inspected by the
-orchestrator. MUST use `update_goal` only when that tool is available, an active or
-user-requested goal exists, and every explicit requirement has current matching
-proof. Reserve `blocked` for repeated true impasses where meaningful progress
-requires user input or an external state change.
+MUST NOT mark a plan step complete until its evidence has been inspected.
+MUST use `update_goal` only with an active or user-requested goal and current proof;
+MUST reserve `blocked` for repeated true impasses requiring user input or external
+state change.

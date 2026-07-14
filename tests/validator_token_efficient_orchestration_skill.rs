@@ -16,6 +16,10 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     ))?;
     let orchestration =
         std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+    let transition = std::fs::read_to_string(root.join(
+        "plugins/codexy/skills/codex-orchestration/references/goal-transition-reporting.md",
+    ))?;
+    let normalized_skill = skill.split_whitespace().collect::<Vec<_>>().join(" ");
 
     for required in [
         "Token-Efficient Orchestration",
@@ -42,8 +46,22 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "review feedback",
         "child age",
         "retries per PR",
+        "Suppress unchanged continuation turns",
+        "MUST keep the monitor scheduled",
+        "MUST NOT emit a status message or start another model turn",
+        "next scheduled read-only observation MAY run at its bounded interval",
+        "MUST NOT terminate or cancel the underlying wait/monitor session",
+        "persistent runtime monitor or wait session id",
+        "scheduled next-observation time or deadline",
+        "last observed state fingerprint or event identity",
+        "Distinct model/assistant turn ids",
+        "continuation turns, not polling",
+        "MUST NOT reschedule themselves or emit another unchanged turn",
+        "send exactly one terminal handoff delta",
+        "calls `update_goal(complete)` or `update_goal(blocked)`",
+        "confirm task-surface delivery before the stop/archive or goal transition",
     ] {
-        assert!(skill.contains(required), "missing {required:?}");
+        assert!(normalized_skill.contains(required), "missing {required:?}");
     }
     for required_slot in [
         "head SHA:",
@@ -87,19 +105,33 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
+    let normalized_transition = transition.split_whitespace().collect::<Vec<_>>().join(" ");
+    let normalized_contract = format!("{normalized_orchestration} {normalized_transition}");
     for required in [
-        "root/orchestrator MAY end its goal and plan after dispatch",
-        "child external-gate wait MUST retain active goal and plan",
-        "bounded child-local monitoring",
-        "send a parent delta before transition",
+        "A parent or child MUST NOT retain an active goal or plan during an external-gate wait",
+        "child external-gate wait MUST end its active goal and plan before waiting",
+        "runtime monitor lives outside goals",
+        "persistent exec/session id",
+        "same-process resume",
+        "A qualifying event starts a fresh short-lived execution goal",
         "inspect archive candidates and the active reservation ledger",
         "MUST NOT archive PR owners or dirty/reserved candidates",
         "record the decision in setup evidence",
         "record the `block` and update the plan to a repair step",
         "add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head",
+        "authorized child-local monitor that observes no qualifying event MUST keep its bounded schedule without emitting status or starting another model turn",
+        "This MUST NOT terminate the underlying monitor",
+        "Before stop, archive, ownership release, `update_goal(complete)`, or `update_goal(blocked)`",
+        "send exactly one terminal handoff delta to the source parent",
+        "MUST NOT perform the stop/archive/blocked transition",
+        "Polling/monitoring is a runtime claim, not an agent label",
+        "persistent exec/session identifier",
+        "Repeated model/assistant turn ids",
+        "classified as a continuation turn",
+        "MUST NOT reschedule themselves or emit another unchanged turn",
     ] {
         assert!(
-            normalized_orchestration.contains(required),
+            normalized_contract.contains(required),
             "missing {required:?}"
         );
     }

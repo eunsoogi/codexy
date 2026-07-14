@@ -3,6 +3,26 @@ use std::process::{Command, Output};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn validator_requires_pre_delivery_for_status_form_terminal_goals() -> TestResult {
+    for (status, expected) in [
+        (
+            "complete",
+            "complete goal operation precedes confirmed parent delivery",
+        ),
+        (
+            "blocked",
+            "blocked goal operation precedes confirmed parent delivery",
+        ),
+    ] {
+        let output = run_validator(&format!(
+            "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: 375:{status}:proof\nGoal tool call: update_goal(status=\"{status}\")\n"
+        ))?;
+        assert!(String::from_utf8_lossy(&output.stderr).contains(expected));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_checks_numbered_child_goal_metadata() -> TestResult {
     let output = run_validator(
         "1. Lane ownership: child-owned\n2. Source thread id: parent-375\n3. Goal control state: source_thread_id=parent-375\n4. Goal transition key: opaque:receipt:key\n5. Goal tool call: update_goal(blocked)\n",

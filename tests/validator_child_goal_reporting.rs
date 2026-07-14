@@ -17,10 +17,12 @@ Goal tool call: get_goal
 Parent goal post-result: operation=get_goal; exact tool result=active goal id goal-375; parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; delivery=confirmed; task surface=codex task/thread; transition key=375:get_goal:inspection
 Goal transition key: 375:complete:proof-bundle
 Parent goal pre-delivery: operation=update_goal(complete); parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375-parent-goal-transition-reporting; worktree=/worktree; HEAD=abc123; clean/index=clean; evidence=proof bundle; next action=complete goal; transition key=375:complete:proof-bundle
+Terminal parent handoff: event id=terminal-child|375|complete; issue/pr=#375 / PR #376; child task=child-375; parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; branch=codexy/375-parent-goal-transition-reporting; worktree=/worktree; head=abc123; clean/index=clean; last proof=proof bundle; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread
 Goal tool call: update_goal(complete)
 Parent goal post-result: operation=update_goal(complete); exact tool result=complete; parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; delivery=confirmed; task surface=codex task/thread; transition key=375:complete:proof-bundle
 Goal transition key: 375:blocked:external-impasse
 Parent goal pre-delivery: operation=update_goal(blocked); parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=await-parent; branch=codexy/375-parent-goal-transition-reporting; worktree=/worktree; HEAD=abc123; clean/index=clean; evidence=parent delivery; next action=block goal; transition key=375:blocked:external-impasse
+Terminal parent handoff: event id=terminal-child|375|blocked; issue/pr=#375 / PR #376; child task=child-375; parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; branch=codexy/375-parent-goal-transition-reporting; worktree=/worktree; head=abc123; clean/index=clean; last proof=parent delivery; current gate=execution impasse; preserved reservation/artifacts=worktree reserved; parent next action=inspect the impasse; delivery=confirmed; task surface=codex task/thread
 Goal tool call: update_goal(blocked)
 Parent goal post-result: operation=update_goal(blocked); exact tool result=blocked; parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; delivery=confirmed; task surface=codex task/thread; transition key=375:blocked:external-impasse
 Representative static fixture: #350 restart audit: task CWD=/stale; canonical reserved worktree=/worktree; mismatch reported before goal continuation.
@@ -177,6 +179,55 @@ fn validator_accepts_source_thread_id_control_field_with_metadata() -> TestResul
         output.status.success(),
         "control-state metadata must retain the exact source_thread_id: {}",
         String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_requires_one_confirmed_terminal_handoff_before_terminal_child_transitions()
+-> TestResult {
+    let output = run_validator(
+        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: 375:complete:proof\nParent goal pre-delivery: operation=update_goal(complete); parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=complete goal; transition key=375:complete:proof\nGoal tool call: update_goal(complete)\nParent goal post-result: operation=update_goal(complete); exact tool result=complete; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=375:complete:proof\n",
+    )?;
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains(
+        "terminal child transition requires exactly one confirmed terminal parent handoff"
+    ));
+
+    let passing = run_validator(
+        "Lane ownership: child-owned\nSource thread id: parent-375\nTerminal parent handoff: event id=terminal-child|375|proof; issue/pr=#375 / PR #376; child task=child-375; parent task=parent-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=ownership release\n",
+    )?;
+    assert!(
+        passing.status.success(),
+        "confirmed handoff before ownership release should pass: {}",
+        String::from_utf8_lossy(&passing.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_terminal_only_child_exits_without_a_handoff() -> TestResult {
+    for action in ["archive", "ownership release", "blocked"] {
+        let output = run_validator(&format!(
+            "Lane ownership: child-owned\nTerminal child transition: action={action}\n"
+        ))?;
+        assert!(
+            !output.status.success(),
+            "terminal-only {action} evidence must not bypass parent-handoff validation"
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains(
+            "terminal child transition requires exactly one confirmed terminal parent handoff"
+        ));
+    }
+
+    let malformed = run_validator(
+        "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|archive; issue/pr=#375 / PR #376; child task=child-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=archive\n",
+    )?;
+    assert!(!malformed.status.success());
+    assert!(
+        String::from_utf8_lossy(&malformed.stderr)
+            .contains("terminal parent handoff is missing required confirmed delivery fields")
     );
     Ok(())
 }
