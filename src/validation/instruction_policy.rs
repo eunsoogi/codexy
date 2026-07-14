@@ -8,6 +8,7 @@ use crate::paths::display_relative;
 use crate::validation::{instruction_policy_text, load_json, prompt_yaml};
 
 mod child_thread_ledger;
+mod clauses;
 mod loc_policy;
 pub(crate) mod sentinel_scope_policy;
 
