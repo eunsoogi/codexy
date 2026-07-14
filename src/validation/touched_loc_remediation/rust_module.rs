@@ -27,7 +27,7 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
                 .strip_prefix("r#")
                 .unwrap_or(&declaration.module);
             let module_parent = default_parent.get_or_insert_with(|| module_parent(root, path));
-            paths.extend(default_paths(module_parent, module));
+            paths.extend(default_paths(root, module_parent, module));
         }
     }
     paths
@@ -42,11 +42,19 @@ fn module_parent(root: &Path, path: &Path) -> PathBuf {
     }
 }
 
-fn default_paths(module_parent: &Path, module: &str) -> [PathBuf; 2] {
-    [
+fn default_paths(root: &Path, module_parent: &Path, module: &str) -> Vec<PathBuf> {
+    let candidates = [
         module_parent.join(format!("{module}.rs")),
         module_parent.join(module).join("mod.rs"),
-    ]
+    ];
+    if candidates
+        .iter()
+        .all(|candidate| root.join(candidate).is_file())
+    {
+        Vec::new()
+    } else {
+        candidates.into()
+    }
 }
 
 fn is_crate_root(root: &Path, path: &Path, parent: &Path) -> bool {
