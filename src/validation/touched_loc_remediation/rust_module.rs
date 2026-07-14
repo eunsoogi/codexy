@@ -2,14 +2,25 @@ use std::path::{Component, Path, PathBuf};
 
 use toml::Value;
 
+mod scope;
+
+use scope::ScopeTracker;
+
 const TARGET_ROOTS: [&str; 4] = ["src/bin", "tests", "examples", "benches"];
 
 pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     let mut attributed_path = None;
     let mut block_comment_depth = 0;
+    let mut scope = ScopeTracker::default();
     for line in source.lines() {
         let line = line.trim();
+        let is_outer = scope.is_outer();
+        scope.observe(line);
+        if !is_outer {
+            attributed_path = None;
+            continue;
+        }
         if is_attribute_trivia(line, &mut block_comment_depth) {
             continue;
         }
@@ -180,12 +191,16 @@ fn normalize_relative_path(base: &Path, path: &str) -> Option<PathBuf> {
 }
 
 fn path_attribute(line: &str) -> Option<&str> {
-    let value = line.strip_prefix("#[path")?.strip_suffix(']')?.trim_start();
-    value
+    let value = line
+        .strip_prefix("#[path")?
+        .trim_start()
         .strip_prefix('=')?
-        .trim()
+        .trim_start()
         .strip_prefix('"')?
-        .strip_suffix('"')
+        .split_once('"')?;
+    let suffix = value.1.trim_start().strip_prefix(']')?;
+    let mut comment_depth = 0;
+    (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(value.0)
 }
 
 fn is_library_or_binary_crate_root(root: &Path, parent: &Path) -> bool {

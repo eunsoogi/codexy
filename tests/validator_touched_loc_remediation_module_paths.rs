@@ -51,6 +51,27 @@ fn touched_loc_honors_attributed_module_path() -> TestResult {
 }
 
 #[test]
+fn touched_loc_honors_attributed_module_path_with_trailing_comment() -> TestResult {
+    let repo = attributed_module_fixture(
+        "src/helper.rs",
+        "#[path = \"helper.rs\"] // generated module\n",
+    )?;
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_malformed_attributed_module_suffix() -> TestResult {
+    let repo =
+        attributed_module_fixture("src/helper.rs", "#[path = \"helper.rs\"] trailing tokens\n")?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_honors_path_through_stacked_outer_attributes() -> TestResult {
     let repo =
         attributed_module_fixture("src/helper.rs", "#[path = \"helper.rs\"]\n#[cfg(unix)]\n")?;
@@ -110,9 +131,32 @@ fn touched_loc_clears_path_after_intervening_item() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn touched_loc_does_not_credit_nested_inline_module_declaration_as_outer() -> TestResult {
+    let repo = module_fixture("src/foo/helper.rs", "mod tests {\n    mod helper;\n}\n")?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_still_credits_outer_module_after_inline_module() -> TestResult {
+    let repo = module_fixture(
+        "src/foo/helper.rs",
+        "mod tests {\n    const OPEN: &str = \"{\";\n    /* } */\n}\nmod helper;\n",
+    )?;
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
 fn attributed_module_fixture(extracted_path: &str, prefix: &str) -> TestResult<tempfile::TempDir> {
+    module_fixture(extracted_path, &format!("{prefix}mod helper;\n"))
+}
+
+fn module_fixture(extracted_path: &str, declaration: &str) -> TestResult<tempfile::TempDir> {
     let repo = fixture("src/foo.rs", regular_lines(252))?;
-    let declaration = format!("{prefix}mod helper;\n");
     let retained_lines = 250 - declaration.lines().count();
     write(
         repo.path(),
