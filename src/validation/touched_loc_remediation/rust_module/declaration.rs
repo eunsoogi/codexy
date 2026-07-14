@@ -23,21 +23,36 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
     let mut attributed_path = None;
     let mut block_comment_depth = 0;
     let mut outer_attribute_continuation = false;
+    let mut multiline_path_attribute: Option<String> = None;
     let mut scope = ScopeTracker::default();
     for line in source.lines() {
         let mut line = line.trim();
+        let mut completed_path_attribute = None;
         let is_outer = scope.is_outer();
         let is_outer_scope = scope.is_outer_scope();
         let outer_remainder = scope.observe_with_outer_remainder(line);
         if !is_outer {
             if outer_attribute_continuation {
+                if let Some(attribute) = multiline_path_attribute.as_mut() {
+                    attribute.push('\n');
+                    attribute.push_str(line);
+                }
                 let Some(remainder) = outer_remainder else {
                     continue;
                 };
                 outer_attribute_continuation = false;
-                line = remainder.trim();
-                if line.is_empty() {
-                    continue;
+                if let Some(attribute) = multiline_path_attribute.take() {
+                    completed_path_attribute = path_attribute_prefix(&attribute)
+                        .map(|(path, remainder)| (path, remainder.to_owned()));
+                    if completed_path_attribute.is_none() {
+                        attributed_path = None;
+                    }
+                }
+                if completed_path_attribute.is_none() {
+                    line = remainder.trim();
+                    if line.is_empty() {
+                        continue;
+                    }
                 }
             } else if is_outer_scope {
                 is_attribute_trivia(line, &mut block_comment_depth);
@@ -47,17 +62,27 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 continue;
             }
         }
-        if is_attribute_trivia(line, &mut block_comment_depth) {
-            continue;
-        }
-        if let Some((path, remainder)) = path_attribute_prefix(line) {
+        if let Some((path, remainder)) = completed_path_attribute.as_ref() {
             let mut trailing_comment_depth = 0;
             if is_attribute_trivia(remainder, &mut trailing_comment_depth) {
-                attributed_path = (trailing_comment_depth == 0).then_some(path);
+                attributed_path = (trailing_comment_depth == 0).then(|| path.clone());
                 continue;
             }
-            attributed_path = Some(path);
+            attributed_path = Some(path.clone());
             line = remainder.trim_start();
+        } else {
+            if is_attribute_trivia(line, &mut block_comment_depth) {
+                continue;
+            }
+            if let Some((path, remainder)) = path_attribute_prefix(line) {
+                let mut trailing_comment_depth = 0;
+                if is_attribute_trivia(remainder, &mut trailing_comment_depth) {
+                    attributed_path = (trailing_comment_depth == 0).then_some(path);
+                    continue;
+                }
+                attributed_path = Some(path);
+                line = remainder.trim_start();
+            }
         }
         let declaration = line
             .strip_prefix("pub(crate) ")
@@ -66,6 +91,9 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         let Some(module) = module_declaration(declaration) else {
             if line.starts_with("#[") {
                 outer_attribute_continuation = !scope.is_outer_scope();
+                if outer_attribute_continuation && line.starts_with("#[path") {
+                    multiline_path_attribute = Some(line.to_owned());
+                }
             } else {
                 attributed_path = None;
             }
