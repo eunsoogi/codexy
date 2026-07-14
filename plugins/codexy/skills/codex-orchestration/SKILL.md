@@ -44,7 +44,8 @@ MUST read these relative references before acting on the matching surface:
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for intake, plan, dispatch, integration,
-  verification, finish, failure modes, handoffs, and `references/runtime-heartbeats.md` for external waits.
+  verification, finish, failure modes, and handoffs.
+- `references/runtime-heartbeats.md` for external waits.
 
 ## Classification Gate
 

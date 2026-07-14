@@ -128,3 +128,28 @@ fn safe_punctuation_after_required_clause_remains_valid() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn nested_heading_inherits_historical_scope() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Historical Example\n### Retired route\n{CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn sibling_or_parent_heading_resets_historical_scope() -> TestResult {
+    for heading in ["## Current Policy", "# Current Policy"] {
+        let output = validate_replacement(&format!(
+            "removed heartbeat policy\n\n## Historical Example\n### Retired route\nOld policy.\n\n{heading}\n{CLAUSE}."
+        ))?;
+        assert!(
+            output.status.success(),
+            "validator failed to reset historical scope at {heading:?}: {}",
+            support::stderr(&output)
+        );
+    }
+    Ok(())
+}
