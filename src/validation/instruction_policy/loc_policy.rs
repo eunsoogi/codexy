@@ -88,15 +88,37 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
         || words
             .windows(2)
             .any(|pair| matches!(pair, [first, second] if first == "large" && second == "file"));
+    let rationale_based_overage = authorizes_rationale_based_overage(&words, loc_context);
     let exception_context = inherited_context
         || (exception_term && loc_context)
+        || rationale_based_overage
         || words.iter().any(|word| {
             matches!(
                 word.as_str(),
                 "waiver" | "waivers" | "exempt" | "exempted" | "exemption"
             )
         });
-    exception_context && has_positive_permission(&words)
+    exception_context && (rationale_based_overage || has_positive_permission(&words))
+}
+
+fn authorizes_rationale_based_overage(words: &[String], loc_context: bool) -> bool {
+    loc_context
+        && words.iter().enumerate().any(|(index, word)| {
+            matches!(
+                word.as_str(),
+                "exceed" | "exceeded" | "exceeding" | "exceeds"
+            ) && !words[..index]
+                .iter()
+                .any(|word| matches!(word.as_str(), "not" | "never"))
+                && words[index + 1..]
+                    .iter()
+                    .position(|word| word == "without")
+                    .is_some_and(|without| {
+                        words[index + 1 + without..].iter().any(|word| {
+                            matches!(word.as_str(), "justification" | "rationale" | "reason")
+                        })
+                    })
+        })
 }
 
 fn has_positive_permission(words: &[String]) -> bool {

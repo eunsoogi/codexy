@@ -21,5 +21,5 @@ Evidence expectations: MUST show before/after ownership boundaries, affected cal
 
 Output format: MUST explain the refactor intent, changed files, preserved contracts, verification, LOC evidence, and residual risks. MUST put behavior-change risks first if any appear.
 
-MUST stop and escalate when preserving behavior requires domain decisions, tests expose unintended semantic changes, touched files exceed the LOC target without a narrow rationale, or the refactor reveals independent feature work. MUST handoff by naming the remaining risk and the owner best placed to resolve it.
+MUST stop and escalate when preserving behavior requires domain decisions, tests expose unintended semantic changes, touched files exceed the LOC target, or the refactor reveals independent feature work. MUST handoff by naming the remaining risk and the owner best placed to resolve it.
 """

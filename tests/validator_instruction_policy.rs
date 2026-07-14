@@ -11,7 +11,8 @@ mod loc_exception_exemptions;
 mod loc_exception_policy;
 #[path = "validator_instruction_policy/loc_exception_sections.rs"]
 mod loc_exception_sections;
-
+#[path = "validator_instruction_policy/sculptor_loc_policy.rs"]
+mod sculptor_loc_policy;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[rustfmt::skip]
 const ROOT_AGENTS_BARE_CASES: &[(&str, &str)] = &[("MUST use Codexy codegraph MCP", "Use Codexy codegraph MCP"), ("MUST preflight branch refs", "preflight branch refs"), ("MUST wait", "Wait"), ("MUST keep metadata current", "Keep metadata current"), ("MUST add nested", "Add nested"), ("MUST put executable", "Put executable"), ("MUST treat failures", "Treat failures"), ("MUST capture", "Capture"), ("MUST mention unrelated", "Mention unrelated")];
