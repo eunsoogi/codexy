@@ -79,6 +79,7 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
         ("src/bin/too_large.rs", "worker", "src/bin/worker.rs"),
         ("src/bin/foo/main.rs", "helper", "src/bin/foo/helper.rs"),
         ("src/custom_bin.rs", "helper", "src/helper.rs"),
+        ("src/custom_dot_bin.rs", "helper", "src/helper.rs"),
         ("crates/app/build.rs", "worker", "crates/app/worker.rs"),
         (
             "crates/app/tests/too_large.rs",
@@ -138,6 +139,7 @@ fn touched_loc_rejects_sibling_files_for_nested_module_declarations() -> TestRes
         ("src/foo/mod.rs", "src/foo.rs"),
         ("src/foo/main.rs", "src/foo/helper.rs"),
         ("src/foo/lib.rs", "src/foo/helper.rs"),
+        ("src/custom_escape.rs", "src/helper.rs"),
         (
             "crates/app/src/parser/tests/case.rs",
             "crates/app/src/parser/tests/helper.rs",
@@ -167,11 +169,18 @@ fn fixture(path: &str, source: String) -> TestResult<tempfile::TempDir> {
     if path.starts_with("src/bin/") {
         write(repo.path(), "Cargo.toml", "[package]\nname = \"app\"\n")?;
     }
-    if path == "src/custom_bin.rs" {
+    if let Some(target) = match path {
+        "src/custom_bin.rs" => Some("src/custom_bin.rs"),
+        "src/custom_dot_bin.rs" => Some("./src//./custom_dot_bin.rs"),
+        "src/custom_escape.rs" => Some("../src/custom_escape.rs"),
+        _ => None,
+    } {
         write(
             repo.path(),
             "Cargo.toml",
-            "[package]\nname = \"app\"\n[[bin]]\nname = \"custom\"\npath = \"src/custom_bin.rs\"\n",
+            &format!(
+                "[package]\nname = \"app\"\n[[bin]]\nname = \"custom\"\npath = \"{target}\"\n"
+            ),
         )?;
     }
     if path.starts_with("crates/app/") {

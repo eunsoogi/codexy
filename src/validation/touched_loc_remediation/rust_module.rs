@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use toml::Value;
 
@@ -87,7 +87,20 @@ fn manifest_declares_target_path(manifest: &Value, path: &Path) -> bool {
 fn target_path_matches(path: &Path, target: Option<&Value>) -> bool {
     target
         .and_then(Value::as_str)
-        .is_some_and(|target| Path::new(target) == path)
+        .and_then(normalize_manifest_target_path)
+        .is_some_and(|target| target == path)
+}
+
+fn normalize_manifest_target_path(target: &str) -> Option<PathBuf> {
+    let mut normalized = PathBuf::new();
+    for component in Path::new(target).components() {
+        match component {
+            Component::CurDir => {}
+            Component::Normal(component) => normalized.push(component),
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+    (!normalized.as_os_str().is_empty()).then_some(normalized)
 }
 
 fn is_library_or_binary_crate_root(root: &Path, parent: &Path) -> bool {
