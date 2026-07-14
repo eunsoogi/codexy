@@ -66,7 +66,7 @@ pub(super) fn has_unnegated_delegation_action(clause: &str) -> bool {
             let contrast_starts_with_negation = action_prefix
                 .split_whitespace()
                 .next()
-                .is_some_and(|word| word == "not");
+                .is_some_and(|word| matches!(word, "not" | "never"));
             !(has_action_negation(&action_prefix)
                 || (contrast_starts_with_negation && has_action_negation(&prefix)))
                 && DELEGATION_TARGETS.iter().any(|target| {
@@ -110,12 +110,15 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
                 || actor_clause
                     .trim_start()
                     .starts_with("root orchestrator must");
+            let nonroot_actor_precedes_must = prefix
+                .split_whitespace()
+                .take_while(|word| *word != "must")
+                .any(|word| DELEGATION_TARGETS.contains(&word));
             let root_is_only_actor = root_is_actor
-                && !DELEGATION_TARGETS
-                    .iter()
-                    .any(|target| prefix.split_whitespace().any(|word| word == *target));
+                && !nonroot_actor_precedes_must
+                && !root_delegates_child_thread_creation(&prefix);
             let creates_child_thread = allow_root_child_thread_creation
-                && action == "create"
+                && matches!(action, "create" | "creating")
                 && root_is_only_actor
                 && clause_words[word_index..]
                     .windows(2)
@@ -128,6 +131,17 @@ pub(super) fn has_unnegated_mandatory_delegation_action(
                         .any(|candidate| candidate == target)
                 })
         })
+    })
+}
+
+fn root_delegates_child_thread_creation(prefix: &str) -> bool {
+    let clause_words = words(prefix);
+    clause_words.iter().enumerate().any(|(index, word)| {
+        DELEGATION_TARGETS.contains(word)
+            && clause_words.get(index + 1) == Some(&"to")
+            && clause_words[..index]
+                .iter()
+                .any(|verb| matches!(*verb, "ask" | "asks" | "asked" | "tell" | "tells" | "told"))
     })
 }
 

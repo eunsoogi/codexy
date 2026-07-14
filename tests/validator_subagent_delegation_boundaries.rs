@@ -4,7 +4,6 @@ use std::process::{Command, Output};
 mod support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
 #[test]
 fn validator_rejects_line_wrapped_recursive_permissions() -> TestResult {
     for permission in [
@@ -82,6 +81,7 @@ fn validator_does_not_flag_punctuated_nonrecursive_prohibitions() -> TestResult 
         "A helper MAY not, under any circumstances, spawn another helper.",
         "A helper MAY never, even during recovery, create another reviewer task.",
         "A helper MAY edit files but not spawn another helper.",
+        "A helper MAY edit files but never spawn another helper.",
         "A helper is not allowed, under this contract, to delegate work to another reviewer.",
         "Allowed actions: map files, but MUST NOT spawn another helper.",
         "Every helper MUST NOT spawn, delegate to, or create any additional agent.",
@@ -99,6 +99,8 @@ fn validator_allows_orchestrator_child_thread_creation() -> TestResult {
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str("\nThe root orchestrator MUST create a child thread.\n");
     skill.push_str("The root orchestrator MAY create child threads.\n");
+    skill
+        .push_str("The root orchestrator MUST notify a reviewer before creating a child thread.\n");
     std::fs::write(skill_path, skill)?;
     assert_validator_succeeds(&plugin_root)?;
     Ok(())
