@@ -21,7 +21,9 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
             .strip_prefix("mod ")
             .and_then(|name| name.strip_suffix(';'))
         else {
-            attributed_path = None;
+            if !line.starts_with("#[") {
+                attributed_path = None;
+            }
             continue;
         };
         if let Some(attribute) = attributed_path.take() {
