@@ -55,6 +55,7 @@ fn validator_cli_rejects_waiver_after_safe_prohibition_across_clause_boundaries(
             "MUST NOT collapse readable multiline code.\n- A governed file MAY exceed 250 LOC when a waiver is approved.",
             "MUST NOT collapse readable multiline code. A governed file MAY exceed 250 LOC when a waiver is approved.",
             "MUST NOT collapse readable multiline code; A governed file MAY exceed 250 LOC when a waiver is approved.",
+            "MUST NOT collapse readable multiline code, but a governed file MAY exceed 250 LOC when a waiver is approved.",
         ] {
             let (_temp, plugin_root) = copy_plugin_fixture()?;
             let skill_path = plugin_root.join(skill);

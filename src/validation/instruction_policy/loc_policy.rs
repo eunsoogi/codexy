@@ -56,12 +56,6 @@ fn is_exception_heading(text: &str) -> bool {
 
 fn permits_in(text: &str, inherited_context: bool) -> bool {
     let words = words(text);
-    let negative = words.windows(2).any(|pair| {
-        matches!(
-            (pair[0].as_str(), pair[1].as_str()),
-            ("must", "not") | ("may", "not")
-        )
-    });
     let exception_term = words
         .iter()
         .any(|word| matches!(word.as_str(), "exception" | "exceptions"));
@@ -73,16 +67,22 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
         || words
             .iter()
             .any(|word| matches!(word.as_str(), "waiver" | "waivers" | "exempt" | "exemption"));
-    let permission = words
+    exception_context && has_positive_permission(&words)
+}
+
+fn has_positive_permission(words: &[String]) -> bool {
+    words
         .iter()
-        .any(|word| matches!(word.as_str(), "may" | "can" | "unless"))
-        || words.windows(2).any(|pair| {
-            matches!(
-                (pair[0].as_str(), pair[1].as_str()),
-                ("must", "allow") | ("must", "exempt")
-            )
-        });
-    exception_context && permission && !negative
+        .enumerate()
+        .any(|(index, word)| match word.as_str() {
+            "may" | "can" => words.get(index + 1).is_none_or(|next| next != "not"),
+            "unless" => true,
+            "must" => matches!(
+                words.get(index + 1).map(String::as_str),
+                Some("allow" | "exempt")
+            ),
+            _ => false,
+        })
 }
 
 fn words(text: &str) -> Vec<String> {
