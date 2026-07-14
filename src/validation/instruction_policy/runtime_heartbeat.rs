@@ -57,6 +57,15 @@ const TRANSITION_CLAUSES: &[&str] = &[
     "persistent exec/session identifier, a scheduled next-observation deadline, the last observed state fingerprint or event identity, and same-process resume",
 ];
 
+const CONDITIONAL_MARKERS: &[&str] = &[
+    "unless ",
+    "except ",
+    "only if ",
+    "when possible",
+    "if available",
+    "as needed",
+];
+
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     let (requirement, clauses) = if path.ends_with("skills/codex-orchestration/SKILL.md") {
         (
@@ -113,9 +122,7 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
             .trim_start_matches([',', '.', ':', ';', '-', '—'])
             .trim_start();
         before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
-            && !before
-                .rsplit_once("</markdown-heading>")
-                .map_or(before, |(_, current_section)| current_section)
+            && !current_block_prefix(before)
                 .rsplit(['.', ';'])
                 .next()
                 .is_some_and(|prefix| {
@@ -128,6 +135,9 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
                     .iter()
                     .any(|marker| prefix.contains(marker))
                 })
+            && !CONDITIONAL_MARKERS
+                .iter()
+                .any(|marker| current_sentence_prefix(before).contains(marker.trim()))
             && ![
                 "unless ",
                 "except ",
@@ -141,4 +151,21 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
             .iter()
             .any(|marker| after.starts_with(marker))
     })
+}
+
+fn current_block_prefix(before: &str) -> &str {
+    let section = before
+        .rsplit_once("</markdown-heading>")
+        .map_or(before, |(_, current_section)| current_section);
+    section
+        .rsplit_once("<markdown-boundary>")
+        .map_or(section, |(_, current_block)| current_block)
+}
+
+fn current_sentence_prefix(before: &str) -> &str {
+    current_block_prefix(before)
+        .rsplit(['.', ';'])
+        .next()
+        .unwrap_or_default()
+        .trim_start()
 }

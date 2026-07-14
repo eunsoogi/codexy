@@ -55,6 +55,8 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
         .join(" ")
         .to_ascii_lowercase()
         .replace('`', "")
+        .replace('*', "")
+        .replace('_', "")
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
