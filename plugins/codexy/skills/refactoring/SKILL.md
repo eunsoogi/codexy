@@ -51,8 +51,8 @@ dependency inversion, naming cleanup, and review-driven maintainability work.
 6. MUST re-run focused verification after every meaningful move. Broaden checks when
    shared code, plugin loading, harness execution, or generated artifacts are
    affected.
-7. MUST report changed files, remaining large-file exceptions, verification evidence,
-   and any follow-up refactors that become separate issues.
+7. MUST report changed files, the structural LOC remediation used, verification
+   evidence, and any follow-up refactors that become separate issues.
 
 ## Guardrails
 
@@ -88,8 +88,8 @@ When a file exceeds the 250 LOC target:
 Refactor goal:
 Behavior preserved:
 Touched implementation LOC:
-Files over 250 LOC:
-Exceptions and rationale:
+Governed LOC compliance (all files <=250 LOC):
+Structural remediation rationale:
 Public contracts checked:
 Tests or regression proof:
 Verification:
