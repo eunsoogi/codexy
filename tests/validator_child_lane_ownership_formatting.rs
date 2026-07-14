@@ -220,7 +220,7 @@ fn validator_keeps_pr_metadata_inside_child_owned_header_worktree_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Lane ownership: child-owned
-Worktree path: /workspace/codexy
+Worktree path: /synthetic/project-root
 PR: #130
 Review response: parent-authored implementation commit abc123 fixed feedback
 Maintainer reassignment: none
