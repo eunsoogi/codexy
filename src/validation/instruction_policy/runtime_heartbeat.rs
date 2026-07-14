@@ -130,29 +130,97 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
 }
 
 fn normalized_policy_text(text: &str) -> String {
+    let lines = text.lines().collect::<Vec<_>>();
     let mut historical_section = false;
-    text.lines()
-        .filter_map(|line| {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('#') {
-                let heading = trimmed.trim_start_matches('#').trim();
-                let heading_lower = heading.to_ascii_lowercase();
-                historical_section = heading_lower == "history"
-                    || heading_lower.starts_with("history ")
-                    || heading_lower == "historical"
-                    || heading_lower.starts_with("historical ");
-                Some(format!("<markdown-heading> {heading} </markdown-heading>"))
-            } else if historical_section {
-                None
-            } else {
-                Some(line.to_owned())
+    let mut fence = None;
+    let mut visible = Vec::new();
+    let mut index = 0;
+    while index < lines.len() {
+        let line = lines[index];
+        let trimmed = line.trim_start();
+        if let Some((marker, minimum)) = fence {
+            if fence_delimiter(trimmed).is_some_and(|(candidate, count, rest)| {
+                candidate == marker && count >= minimum && rest.trim().is_empty()
+            }) {
+                fence = None;
             }
-        })
-        .collect::<Vec<_>>()
+            index += 1;
+            continue;
+        }
+        if let Some((marker, count, _)) = fence_delimiter(trimmed) {
+            fence = Some((marker, count));
+            index += 1;
+            continue;
+        }
+        let setext_heading = lines
+            .get(index + 1)
+            .is_some_and(|next| is_setext_underline(next));
+        let heading = atx_heading(trimmed)
+            .or_else(|| (setext_heading && !trimmed.is_empty()).then_some(trimmed.trim()));
+        if let Some(heading) = heading {
+            historical_section = is_historical_heading(heading);
+            visible.push(format!("<markdown-heading> {heading} </markdown-heading>"));
+            index += usize::from(setext_heading) + 1;
+            continue;
+        }
+        if !historical_section {
+            visible.push(line.to_owned());
+        }
+        index += 1;
+    }
+    visible
         .join(" ")
         .to_ascii_lowercase()
         .replace('`', "")
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn fence_delimiter(line: &str) -> Option<(char, usize, &str)> {
+    let marker = line.chars().next()?;
+    if !matches!(marker, '`' | '~') {
+        return None;
+    }
+    let count = line
+        .chars()
+        .take_while(|candidate| *candidate == marker)
+        .count();
+    (count >= 3).then(|| (marker, count, &line[count..]))
+}
+
+fn atx_heading(line: &str) -> Option<&str> {
+    let count = line
+        .chars()
+        .take_while(|candidate| *candidate == '#')
+        .count();
+    if !(1..=6).contains(&count) {
+        return None;
+    }
+    let rest = &line[count..];
+    (rest.is_empty() || rest.starts_with(char::is_whitespace))
+        .then(|| rest.trim().trim_end_matches('#').trim_end())
+}
+
+fn is_setext_underline(line: &str) -> bool {
+    let line = line.trim();
+    !line.is_empty()
+        && (line.chars().all(|character| character == '=')
+            || line.chars().all(|character| character == '-'))
+}
+
+fn is_historical_heading(heading: &str) -> bool {
+    let heading = heading.to_ascii_lowercase();
+    let mut parts = heading.splitn(2, char::is_whitespace);
+    let first = parts.next().unwrap_or_default();
+    let unnumbered = parts.next().filter(|_| {
+        first.chars().any(|character| character.is_ascii_digit())
+            && first.chars().all(|character| {
+                character.is_ascii_digit() || matches!(character, '.' | '(' | ')' | ':' | '-')
+            })
+    });
+    let title = unnumbered.unwrap_or(&heading);
+    matches!(title, "history" | "historical")
+        || title.starts_with("history ")
+        || title.starts_with("historical ")
 }

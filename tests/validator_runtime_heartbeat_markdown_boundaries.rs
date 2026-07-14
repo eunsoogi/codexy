@@ -1,0 +1,58 @@
+use std::fs;
+
+mod support;
+
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+const CLAUSE: &str = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
+
+fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    let original = fs::read_to_string(&path)?;
+    fs::write(&path, original.replace(CLAUSE, replacement))?;
+    support::validator(&plugin_root, "--check")
+}
+
+#[test]
+fn numbered_historical_heading_does_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## 1. Historical Example\nThis policy was retired. {CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn fenced_pseudo_heading_does_not_reset_historical_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Historical Example\n```markdown\n## Current Policy\n```\nThis policy was retired. {CLAUSE}."
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn fenced_current_clause_does_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Current Policy\n```text\n{CLAUSE}.\n```"
+    ))?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn setext_current_heading_resets_historical_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\nCurrent Policy\n--------------\n{CLAUSE}."
+    ))?;
+    assert!(
+        output.status.success(),
+        "validator ignored active policy after a Setext heading: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
