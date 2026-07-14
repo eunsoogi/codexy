@@ -54,6 +54,7 @@ fn is_terminal_transition(line: &str) -> bool {
         Some("update_goal(complete)" | "update_goal(blocked)")
     ) || line
         .strip_prefix("terminal child transition: action=")
+        .and_then(|value| value.split(';').next())
         .is_some_and(|action| {
             matches!(action, "stop" | "archive" | "ownership release" | "blocked")
         })

@@ -27,6 +27,21 @@ fn validator_rejects_local_parent_tasks_in_terminal_only_handoffs() -> TestResul
     Ok(())
 }
 
+#[test]
+fn validator_requires_handoff_for_suffixed_terminal_actions() -> TestResult {
+    let output = run_validator(
+        "Lane ownership: child-owned\nTerminal child transition: action=archive; reason=done\n",
+    )?;
+    assert!(
+        !output.status.success(),
+        "suffixed terminal action must still require a parent handoff"
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains(
+        "terminal child transition requires exactly one confirmed terminal parent handoff"
+    ));
+    Ok(())
+}
+
 fn terminal_only_evidence(parent_task: &str) -> String {
     format!(
         "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|archive; issue/pr=#375 / PR #376; child task=child-375; parent task={parent_task}; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=archive\n"
