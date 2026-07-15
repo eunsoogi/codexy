@@ -5,7 +5,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
     assert_rejects_child_handoff(
         "Child handoff: branch clean, synced, and pushed at 068dbb247b7755035223c91ee39f26830f3c1609. PR ready for parent handoff; parent will handle merge gates.\n",
-        r#"{"number":204,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"1111111111111111111111111111111111111111","latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `1111111111111111111111111111111111111111`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-07-03T00:00:00Z"}],"worktreeStatus":"M src/validation/instruction_policy.rs\n?? tests/validator_role_instruction_policy.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#
+        r#"{"number":204,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"1111111111111111111111111111111111111111","latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `1111111111111111111111111111111111111111`","author":{"login":"automated-review"},"submittedAt":"2026-07-03T00:00:00Z"}],"worktreeStatus":"M src/validation/instruction_policy.rs\n?? tests/validator_role_instruction_policy.rs","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#
         .to_owned(),
         "child handoff",
     )
@@ -227,7 +227,7 @@ fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -
 
 fn pr_state_with(fields: &str) -> String {
     format!(
-        r#"{{"number":204,"state":"OPEN","isDraft":false,"reviewDecision":"APPROVED","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`","author":{{"login":"chatgpt-codex-connector"}},"submittedAt":"2026-07-03T00:00:00Z"}}],{fields}}}"#
+        r#"{{"number":204,"state":"OPEN","isDraft":false,"reviewDecision":"APPROVED","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`","author":{{"login":"automated-review"}},"submittedAt":"2026-07-03T00:00:00Z"}}],{fields}}}"#
     )
 }
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {

@@ -71,8 +71,8 @@ codexy/
   commit, pushing it, and opening the version-bump PR.
 - MUST record why the workflow is unavailable or insufficient before using a
   manual fallback. After either route, the parent MUST still cover issue
-  linkage, repository labels, full tests, package CI, packaged Sentinel, Codex
-  review, merge-message validation, and post-merge release/install proof.
+  linkage, repository labels, full tests, package CI, packaged Sentinel,
+  merge-message validation, and post-merge release/install proof.
 - MUST keep executable Git and release commands in their canonical skills rather
   than duplicating them here.
 

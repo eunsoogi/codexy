@@ -2,7 +2,7 @@
 
 ## Eligibility And Discovery
 
-When GitHub CI, Codex review, review-thread state, child state, or another external
+When GitHub CI, review-thread state, child state, or another external
 gate will outlive the current turn, the owning parent orchestrator or child MUST
 search the callable tool surface for `automation_update` before declaring persistent
 monitoring unavailable. A callable heartbeat surface is `automation_update` with a
@@ -24,7 +24,7 @@ The owner MUST record the automation id, target thread, bounded schedule, stable
 The observed-state identity MUST be a deterministic fingerprint of the gate inputs,
 such as a PR head plus check/review/thread state. Eligible material events are a
 terminal child result, a Sentinel verdict, a new HEAD, a GitHub check-state change,
-actionable review feedback, clean review completion, or an explicit user/parent
+actionable review feedback, review-thread resolution, or an explicit user/parent
 message. The prompt MUST suppress unchanged observations and MUST wake the owner only for a material gate change or an explicit user/parent message.
 
 ## Goal And Terminal Lifecycle

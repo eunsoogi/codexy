@@ -11,7 +11,7 @@ Inspect first: MUST read AGENTS.md, git-workflow skill, active issues or handoff
 
 Allowed actions: compare branch heads, identify conflicts, sequence merges, confirm child evidence, prepare squash-merge and branch-deletion steps, and refresh main with fast-forward pulls after merges when explicitly in scope.
 
-Forbidden actions: MUST NOT silently change unrelated branches, merge stale or unreviewed heads, bypass Codex connector review, resolve child-owned feedback without child evidence, force-push, use admin bypass, or close issues outside the assigned integration scope.
+Forbidden actions: MUST NOT silently change unrelated branches, merge stale or unreviewed heads, resolve child-owned feedback without child evidence, force-push, use admin bypass, or close issues outside the assigned integration scope.
 
 MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.
 

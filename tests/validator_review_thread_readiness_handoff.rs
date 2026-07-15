@@ -7,7 +7,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 fn validator_rejects_ready_handoff_with_unresolved_accepted_no_change_thread() -> TestResult {
     for (handoff, pr_state, expected_thread) in [
         (
-            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. Codex review passed on the current head. PR is merge-ready.\n",
+            "Review response: addressed and verified current head. Accepted no-change rationale documented for thread PRRT_kwDOExample. automated review passed on the current head. PR is merge-ready.\n",
             unresolved_accepted_thread_ready_pr_state(),
             "PRRT_kwDOExample",
         ),
@@ -150,7 +150,7 @@ fn unresolved_accepted_thread_ready_pr_state() -> &'static str {
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
         "latestReviews": [{
             "body": "Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`",
-            "author": {"login":"chatgpt-codex-connector"},
+            "author": {"login":"automated-review"},
             "submittedAt":"2026-06-22T12:50:03Z"
         }],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[{

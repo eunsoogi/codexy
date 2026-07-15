@@ -52,7 +52,6 @@
 ## Required Gates
 
 - checks:
-- Codex review current-head state:
 - unresolved review thread ids and outdated status:
 - child owner evidence:
 - verification:

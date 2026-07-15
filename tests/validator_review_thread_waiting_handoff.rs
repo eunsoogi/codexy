@@ -131,19 +131,6 @@ fn validator_allows_verification_completed_waiting_until_merge() -> TestResult {
 }
 
 #[test]
-fn validator_preserves_eyes_only_codex_review_as_waiting() -> TestResult {
-    let output = validate_handoff_with_pr_state(
-        "Fresh @codex review requested and waiting for review output. This lane is not blocked and not complete.\n",
-        r#"{"number":174,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"REVIEW_REQUIRED"}"#,
-    )?;
-    assert_success(
-        &output,
-        "validator should preserve eyes-only Codex review as a waiting state",
-    );
-    Ok(())
-}
-
-#[test]
 fn validator_rejects_ready_handoff_synonyms_with_thread_not_fixed_or_accepted() -> TestResult {
     for ready_claim in [
         "PR ready for parent handoff",
@@ -155,10 +142,6 @@ fn validator_rejects_ready_handoff_synonyms_with_thread_not_fixed_or_accepted() 
         "pull request is ready",
         "merge readiness",
         "Merge-readiness handoff",
-        "Codex review passed",
-        "Codex review approved",
-        "Codex review completed",
-        "Codex review complete",
     ] {
         let output = validate_handoff_with_pr_state(
             &format!(
@@ -227,7 +210,7 @@ fn mixed_review_thread_pr_state() -> &'static str {
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "APPROVED",
         "headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893",
-        "latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-06-22T12:50:03Z"}],
+        "latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b3defb2d29dd352283ea2488e60d893`","author":{"login":"automated-review"},"submittedAt":"2026-06-22T12:50:03Z"}],
         "reviewThreads": {"pageInfo":{"hasNextPage":false},
             "nodes": [
                 {

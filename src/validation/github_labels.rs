@@ -2,7 +2,7 @@ mod evidence;
 
 use serde_json::Value;
 
-use super::codex_review_handoff_readiness::has_negative_label_value;
+use super::handoff_claims::has_negative_label_value;
 use evidence::{
     is_codexy_lane, is_open_pr, is_stacked_pr, issue_label_errors, issue_nodes, label_names,
     repository_label_taxonomy, stacked_issue_evidence,

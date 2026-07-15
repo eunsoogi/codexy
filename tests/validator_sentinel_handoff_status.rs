@@ -93,8 +93,8 @@ fn validator_accepts_reviewer_named_sentinel_pass() -> TestResult {
 #[test]
 fn validator_ignores_unrelated_pending_review_after_sentinel_pass() -> TestResult {
     accept_open_pr_handoff(
-        "Push-ready. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Codex review has not returned, so PR ready: no.\n",
-        "validator should not treat unrelated pending Codex review text as Sentinel UNOBSERVABLE",
+        "Push-ready. Packaged Codexy Sentinel Turing: PASS on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Optional review automation has not returned, so PR ready: no.\n",
+        "validator should not treat unrelated pending automation text as Sentinel UNOBSERVABLE",
     )
 }
 #[test]
@@ -245,6 +245,6 @@ fn validate_open_pr_handoff(handoff: &str) -> TestResult<std::process::Output> {
     };
     validate_with_state(
         &handoff,
-        r###"{"number":221,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/221-sentinel-bounded-wait-status","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","localHeadOid":"32b03a210b3defb2d29dd352283ea2488e60d893","remoteHeadOid":"32b03a210b3defb2d29dd352283ea2488e60d893","worktreeStatus":"## codexy/221-sentinel-bounded-wait-status...origin/codexy/221-sentinel-bounded-wait-status","latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b`","author":{"login":"chatgpt-codex-connector"},"submittedAt":"2026-07-03T00:00:00Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"###,
+        r###"{"number":221,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/221-sentinel-bounded-wait-status","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","localHeadOid":"32b03a210b3defb2d29dd352283ea2488e60d893","remoteHeadOid":"32b03a210b3defb2d29dd352283ea2488e60d893","worktreeStatus":"## codexy/221-sentinel-bounded-wait-status...origin/codexy/221-sentinel-bounded-wait-status","latestReviews":[{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b`","author":{"login":"automated-review"},"submittedAt":"2026-07-03T00:00:00Z"}],"reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"###,
     )
 }

@@ -153,16 +153,23 @@ fn explicit_bullet_ready_phrase(line: &str) -> bool {
     line.contains("pr") || line.contains("merge") || line.contains("pull request")
 }
 
-fn has_next_non_claim_bullet(lines: &[&str]) -> bool {
+pub(super) fn has_next_non_claim_bullet(lines: &[&str]) -> bool {
     lines
         .iter()
         .map(|line| line.trim())
         .find(|line| !line.is_empty())
         .and_then(|line| {
-            line.strip_prefix(['-', '*'])
+            line.strip_prefix(['-', '*', '+'])
                 .or_else(|| strip_ordered_list_marker(line))
         })
         .map(str::trim)
+        .map(|line| {
+            line.strip_prefix("[ ]")
+                .or_else(|| line.strip_prefix("[x]"))
+                .or_else(|| line.strip_prefix("[X]"))
+                .unwrap_or(line)
+                .trim()
+        })
         .is_some_and(|line| {
             if line.starts_with("no blockers") {
                 return false;

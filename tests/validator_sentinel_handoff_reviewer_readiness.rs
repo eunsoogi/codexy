@@ -41,14 +41,10 @@ fn validator_rejects_child_handoff_readiness_with_blocked_sentinel() -> TestResu
 }
 
 #[test]
-fn validator_rejects_codex_review_readiness_with_blocked_sentinel() -> TestResult {
+fn validator_rejects_pr_readiness_with_blocked_sentinel() -> TestResult {
     for handoff in [
-        format!(
-            "Codex review passed on the current head. Sentinel: BLOCK on current head {HEAD}.\n"
-        ),
-        format!(
-            "Codex review approved on the current head. Sentinel: UNOBSERVABLE after bounded wait on current head {HEAD}.\n"
-        ),
+        format!("PR is ready. Sentinel: BLOCK on current head {HEAD}.\n"),
+        format!("PR is ready. Sentinel: UNOBSERVABLE after bounded wait on current head {HEAD}.\n"),
     ] {
         assert_rejects_sentinel_handoff(&handoff)?;
     }
@@ -155,6 +151,6 @@ fn path_str(path: &Path) -> Result<&str, Box<dyn std::error::Error>> {
 
 fn open_pr_state() -> String {
     format!(
-        r###"{{"number":221,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/221-sentinel-bounded-wait-status","headRefOid":"{HEAD}","localHeadOid":"{HEAD}","remoteHeadOid":"{HEAD}","worktreeStatus":"## codexy/221-sentinel-bounded-wait-status...origin/codexy/221-sentinel-bounded-wait-status","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b`","author":{{"login":"chatgpt-codex-connector"}},"submittedAt":"2026-07-03T00:00:00Z"}}],"reviewThreads":{{"pageInfo":{{"hasNextPage":false}},"nodes":[]}}}}"###
+        r###"{{"number":221,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/221-sentinel-bounded-wait-status","headRefOid":"{HEAD}","localHeadOid":"{HEAD}","remoteHeadOid":"{HEAD}","worktreeStatus":"## codexy/221-sentinel-bounded-wait-status...origin/codexy/221-sentinel-bounded-wait-status","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `32b03a210b`","author":{{"login":"automated-review"}},"submittedAt":"2026-07-03T00:00:00Z"}}],"reviewThreads":{{"pageInfo":{{"hasNextPage":false}},"nodes":[]}}}}"###
     )
 }

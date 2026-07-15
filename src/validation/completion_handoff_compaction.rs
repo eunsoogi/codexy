@@ -3,14 +3,8 @@ mod evidence_fields;
 mod git_preflight;
 mod git_preflight_commands;
 mod git_preflight_lines;
-mod review_request_context;
 
 use serde_json::Value;
-
-use super::codex_review_handoff_events::{
-    has_codex_review_output, has_latest_eyes_request_without_later_codex_output,
-};
-use review_request_context::{has_codex_review_request_context, has_review_request_context};
 
 const COMPACTION_CONTEXT_PHRASES: &[&str] = &[
     "compacted continuation",
@@ -51,34 +45,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if !git_preflight::has_git_graph_log_preflight(handoff) {
         errors.push("compacted continuation evidence missing git graph/log preflight: include pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph before editing".into());
     }
-    if has_codex_review_request_context(&text) {
-        if !has_pr_comments_and_reviews_evidence(pr_state) {
-            errors.push("duplicate current-head Codex review request evidence missing: include freshly captured PR comments and reviews before planning @codex review".into());
-        } else if !has_current_head_oid_evidence(pr_state) {
-            errors.push("duplicate current-head Codex review request evidence incomplete: include headRefOid before planning @codex review".into());
-        } else if has_codex_review_output(pr_state)
-            || has_latest_eyes_request_without_later_codex_output(pr_state)
-        {
-            errors.push("duplicate current-head Codex review request blocked: re-read latest PR comments/reviews immediately before posting and do not post @codex review when a request or current-head output already exists".into());
-        }
-    }
     errors
-}
-
-fn has_pr_comments_and_reviews_evidence(pr_state: &Value) -> bool {
-    has_array_field(pr_state, "comments")
-        && (has_array_field(pr_state, "reviews") || has_array_field(pr_state, "latestReviews"))
-}
-
-fn has_current_head_oid_evidence(pr_state: &Value) -> bool {
-    pr_state
-        .get("headRefOid")
-        .and_then(Value::as_str)
-        .is_some_and(|head| !head.trim().is_empty())
-}
-
-fn has_array_field(value: &Value, field: &str) -> bool {
-    value.get(field).is_some_and(Value::is_array)
 }
 
 fn claims_compacted_continuation_readiness(text: &str) -> bool {
@@ -87,13 +54,9 @@ fn claims_compacted_continuation_readiness(text: &str) -> bool {
         has_compaction_context(line)
             && (has_continuation_context(line)
                 || has_pending_edit_plan(line)
-                || has_review_request_context(line)
                 || (is_compaction_context_heading(line)
-                    && following_lines(&lines, index).any(|line| {
-                        has_continuation_context(line)
-                            || has_pending_edit_plan(line)
-                            || has_review_request_context(line)
-                    })))
+                    && following_lines(&lines, index)
+                        .any(|line| has_continuation_context(line) || has_pending_edit_plan(line))))
     })
 }
 
@@ -129,7 +92,7 @@ fn has_next_action_continuation_context(line: &str) -> bool {
     has_any(
         action,
         &["continue", "continuing", "resume", "resuming", "edit"],
-    ) || has_review_request_context(action)
+    )
 }
 
 fn has_pending_edit_plan(line: &str) -> bool {

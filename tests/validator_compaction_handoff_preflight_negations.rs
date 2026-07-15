@@ -10,7 +10,7 @@ const CONTRACT: &str =
 const DUPLICATE_STATE: &str = "Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.";
 const OWNERSHIP_BOUNDARY: &str = "Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.";
 const STOP_CONDITION: &str =
-    "Stop condition: no merge; leave PR open until current-head Codex review is clean.";
+    "Stop condition: no merge; leave PR open until parent final acceptance.";
 
 #[test]
 fn validator_cli_rejects_git_preflight_block_with_generic_run_capture_negation() -> TestResult {

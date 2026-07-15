@@ -8,7 +8,8 @@ use super::child_handoff_readiness_status::{
 use super::child_handoff_readiness_text::has_non_claim_phrase_label;
 
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
-    let text = handoff.to_ascii_lowercase();
+    let normalized = handoff.to_ascii_lowercase();
+    let text = super::readiness_context::current_text(&normalized);
     let claims_pr_ready = claims::pr_ready(&text);
     let claims_child_readiness = claims::child_readiness(&text);
     let claims_clean = claims::clean(&text);

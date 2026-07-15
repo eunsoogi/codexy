@@ -48,6 +48,7 @@ fn check_surfaces(surfaces: Vec<PathBuf>, errors: &mut Vec<String>) {
                 runtime_heartbeat::check(&path, &text, errors);
                 child_thread_ledger::check(&path, &text, errors);
                 loc_policy::check(&path, &text, errors);
+                super::connector_review_policy::check(&path, &text, errors);
                 sentinel_scope_policy::check(&path, &text, errors);
             }
             Err(error) => errors.push(format!(

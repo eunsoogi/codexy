@@ -35,7 +35,7 @@ fn validator_cli_accepts_git_status_branch_output_in_preflight_block() -> TestRe
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Git graph/log preflight captured before editing:\n\
          $ pwd\n\
          /repo/codexy\n\
@@ -84,7 +84,7 @@ fn validator_cli_rejects_markdown_heading_after_git_status_command() -> TestResu
              Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
              Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
              Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-             Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+             Stop condition: no merge; leave PR open until parent final acceptance.\n\
              Git graph/log preflight captured before editing:\n\
              $ pwd\n\
              /repo/codexy\n\
@@ -109,7 +109,7 @@ fn validator_cli_rejects_one_word_markdown_heading_after_git_status_command() ->
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Git graph/log preflight captured before editing:\n\
          $ pwd\n\
          /repo/codexy\n\
@@ -136,7 +136,7 @@ fn validator_cli_rejects_arbitrary_markdown_heading_after_git_status_command() -
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Git graph/log preflight captured before editing:\n\
          $ pwd\n\
          /repo/codexy\n\
@@ -163,7 +163,7 @@ fn validator_cli_rejects_git_preflight_block_negated_after_all_commands() -> Tes
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Git graph/log preflight captured before editing:\n\
          - pwd\n\
          - git status --short --branch\n\
@@ -186,7 +186,7 @@ fn validator_cli_rejects_git_preflight_negated_after_git_log_output() -> TestRes
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Git graph/log preflight captured before editing:\n\
          $ pwd\n\
          /repo/codexy\n\
@@ -214,7 +214,7 @@ fn validator_cli_rejects_git_preflight_block_when_not_all_commands_were_run() ->
          Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Git graph/log preflight captured before editing:\n\
          - pwd\n\
          - git status --short --branch\n\

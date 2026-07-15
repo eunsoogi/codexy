@@ -61,7 +61,7 @@ plugin repair until classification evidence exists in the thread.
   child-thread setup, delegation packet creation, or parent coordination.
 - `implementation`: code, skill, validator, documentation, configuration, or
   workflow changes owned by the current implementation lane.
-- `review response`: responding to Codex connector, human review, review
+- `review response`: responding to automated or human review, review
   threads, inline comments, or PR feedback on an existing branch.
 - `GitHub/merge`: PR creation, PR update, review request, label changes,
   branch protection, merge gate inspection, squash merge, branch deletion, or
@@ -150,7 +150,7 @@ Stop/blocker:
   edit files, set up branches or worktrees, delegate lanes, or route review
   feedback.
 - Classification MUST NOT waive root `AGENTS.md`, user stop conditions,
-  selected skills, current-head review gates, or packaged `codexy-sentinel`.
+  selected skills, unresolved review-thread gates, or packaged `codexy-sentinel`.
 - A broad or bundled request MUST be split into atomic lanes before any
   implementation lane begins unless a maintainer explicitly scopes it as one
   atomic lane before edits.

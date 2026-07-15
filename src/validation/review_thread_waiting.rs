@@ -128,7 +128,7 @@ fn dot_inside_path_token(text: &str, dot_index: usize) -> bool {
 
 fn claims_readiness(handoff: &str) -> bool {
     let text = handoff.to_ascii_lowercase();
-    "pr ready|pr-ready|pr is ready|pull request ready|pull-request-ready|pull request is ready|pr readiness|pr-readiness|ready for parent handoff|ready for handoff|ready for merge|ready to merge|merge readiness|merge-readiness|merge ready|merge-ready|codex review passed|codex review completed|codex review complete|codex review approved"
+    "pr ready|pr-ready|pr is ready|pull request ready|pull-request-ready|pull request is ready|pr readiness|pr-readiness|ready for parent handoff|ready for handoff|ready for merge|ready to merge|merge readiness|merge-readiness|merge ready|merge-ready"
         .split('|')
         .any(|phrase| has_unnegated_readiness_phrase(&text, phrase))
 }

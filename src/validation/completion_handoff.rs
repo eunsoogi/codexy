@@ -19,16 +19,15 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
     if !compaction_errors.is_empty() {
         return compaction_errors;
     }
+    if let Some(error) = super::review_thread_readiness::check_handoff(handoff, &pr_state) {
+        return vec![error];
+    }
     let review_thread_errors = super::review_thread_resolution::check(handoff, &pr_state);
     if !review_thread_errors.is_empty() {
         return review_thread_errors;
     }
     if let Some(error) = super::completion_handoff_waiting::check(handoff) {
         return vec![error];
-    }
-    let codex_review_errors = super::codex_review_handoff::check(handoff, &pr_state);
-    if !codex_review_errors.is_empty() {
-        return codex_review_errors;
     }
     if is_open_pr(&pr_state) && claims_completion(handoff) && !states_explicit_deferral(handoff) {
         return vec![format!(

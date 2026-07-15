@@ -125,9 +125,9 @@ fn validator_rejects_review_response_handoff_without_review_thread_state() -> Te
 }
 
 #[test]
-fn validator_allows_clean_codex_review_verification_without_review_threads() -> TestResult {
+fn validator_allows_clean_review_verification_without_review_threads() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Codex review verified on the latest head. No review feedback was addressed in this handoff.\n",
+        "automated review verified on the latest head. No review feedback was addressed in this handoff.\n",
         r#"{"number":134,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}"#,
     )?;
 
