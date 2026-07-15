@@ -1,6 +1,10 @@
-use super::super::attribute::{has_cfg_attr_path, is_path_attribute_start, path_attribute};
+use super::super::attribute::{
+    has_cfg_attr_path, is_cfg_disabled, is_path_attribute_start, path_attribute,
+};
 use super::{InlineModule, valid_visibility_path};
+mod item;
 mod literal;
+use item::{item_boundary, skip_non_module_item};
 pub(super) fn inline_modules(source: &str) -> Vec<InlineModule<'_>> {
     parse(source).unwrap_or_default()
 }
@@ -11,6 +15,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
     let mut index = 0;
     let mut delimiters = Vec::new();
     let mut attributed_path = None;
+    let mut cfg_disabled = false;
     let mut invalid_prefix = false;
     while index < bytes.len() {
         if let Some(next) = skip_non_code(bytes, index)? {
@@ -21,6 +26,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             let attribute_start = skip_trivia(bytes, index + 1)?;
             if bytes.get(attribute_start) == Some(&b'[') {
                 let end = matching_delimiter(bytes, attribute_start)?;
+                cfg_disabled |= is_cfg_disabled(&source[index..=end]);
                 if let Some(path) = path_attribute(&source[index..=end]) {
                     attributed_path = Some(path);
                 } else if is_path_attribute_start(&source[index..=end])
@@ -36,6 +42,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             b'{' | b'(' | b'[' => {
                 if delimiters.is_empty() {
                     attributed_path = None;
+                    cfg_disabled = false;
                     invalid_prefix = false;
                 }
                 delimiters.push(bytes[index]);
@@ -47,6 +54,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             }
             b';' if delimiters.is_empty() => {
                 attributed_path = None;
+                cfg_disabled = false;
                 invalid_prefix = false;
                 index += 1;
             }
@@ -72,78 +80,41 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
                     return None;
                 }
                 if token != "mod" {
-                    if attributed_path.take().is_some() {
+                    if attributed_path.take().is_some() || cfg_disabled {
                         index = skip_non_module_item(bytes, index, item_boundary(token)?)?;
                     }
+                    cfg_disabled = false;
                     invalid_prefix = bytes.get(index) != Some(&b'!');
                     continue;
                 }
                 let cursor = skip_trivia(bytes, index)?;
                 let Some((module, cursor)) = identifier(source, cursor) else {
                     attributed_path = None;
+                    cfg_disabled = false;
                     continue;
                 };
                 let cursor = skip_trivia(bytes, cursor)?;
                 if bytes.get(cursor) != Some(&b'{') {
                     attributed_path = None;
+                    cfg_disabled = false;
                     continue;
                 }
                 let end = matching_delimiter(bytes, cursor)?;
-                modules.push(InlineModule {
-                    module,
-                    body: &source[cursor + 1..end],
-                    path: attributed_path.take(),
-                });
+                if !std::mem::take(&mut cfg_disabled) {
+                    modules.push(InlineModule {
+                        module,
+                        body: &source[cursor + 1..end],
+                        path: attributed_path.take(),
+                    });
+                } else {
+                    attributed_path = None;
+                }
                 index = end + 1;
             }
             _ => index += 1,
         }
     }
     delimiters.is_empty().then_some(modules)
-}
-#[derive(Clone, Copy)]
-enum ItemBoundary {
-    Semicolon,
-    BodyOrSemicolon,
-}
-fn item_boundary(token: &str) -> Option<ItemBoundary> {
-    match token {
-        "use" | "type" | "const" | "static" => Some(ItemBoundary::Semicolon),
-        "trait" | "impl" | "fn" | "struct" | "enum" | "union" | "extern" | "macro_rules" => {
-            Some(ItemBoundary::BodyOrSemicolon)
-        }
-        _ => None,
-    }
-}
-fn skip_non_module_item(bytes: &[u8], mut index: usize, boundary: ItemBoundary) -> Option<usize> {
-    let mut angle_depth = 0usize;
-    while index < bytes.len() {
-        if let Some(next) = skip_non_code(bytes, index)? {
-            index = next;
-            continue;
-        }
-        match bytes[index] {
-            b';' => return Some(index + 1),
-            b'{' => {
-                index = matching_delimiter(bytes, index)? + 1;
-                if angle_depth == 0 && matches!(boundary, ItemBoundary::BodyOrSemicolon) {
-                    return Some(index);
-                }
-            }
-            b'(' | b'[' => index = matching_delimiter(bytes, index)? + 1,
-            b'<' => {
-                angle_depth += 1;
-                index += 1;
-            }
-            b'>' if angle_depth > 0 => {
-                angle_depth -= 1;
-                index += 1;
-            }
-            b'}' | b')' | b']' => return None,
-            _ => index += 1,
-        }
-    }
-    None
 }
 fn matching_delimiter(bytes: &[u8], start: usize) -> Option<usize> {
     let mut delimiters = vec![*bytes.get(start)?];
