@@ -28,3 +28,17 @@ fn wiki_ingestion_facade_requires_relevant_split_reference_reads() -> TestResult
     ));
     Ok(())
 }
+
+#[test]
+fn wiki_dataset_facade_requires_relevant_split_reference_reads() -> TestResult {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let datasets =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/references/datasets.md"))?;
+    let normalized = datasets.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    assert!(normalized.contains(
+        "Before any `dataset` action, MUST read [Boundary](datasets/boundary.md) \
+         and [Index Format](datasets/index-format.md) before acting."
+    ));
+    Ok(())
+}
