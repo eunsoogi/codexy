@@ -34,6 +34,20 @@ fn touched_loc_preserves_plain_declaration_control() -> TestResult {
 }
 
 #[test]
+fn touched_loc_accepts_comment_trivia_after_visibility() -> TestResult {
+    for declaration in [
+        "pub /* exported */ mod outer;\n",
+        "pub(crate) /* exported */ mod outer;\n",
+        "pub\t/* exported */\tmod outer;\n",
+        "pub(in crate) /* exported */ mod outer;\n",
+    ] {
+        let repo = module_fixture(declaration)?;
+        assert_rustc_and_validator_accept(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn touched_loc_does_not_parse_declarations_inside_strings() -> TestResult {
     let repo = module_fixture("const TEXT: &str = \"mod outer; // generated\";\n")?;
     assert_rustc_accepts_validator_rejects(&repo)

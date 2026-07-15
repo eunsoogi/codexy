@@ -170,16 +170,13 @@ fn declaration_after_visibility(source: &str) -> Option<&str> {
     let Some(remainder) = source.strip_prefix("pub") else {
         return Some(source);
     };
-    if remainder
-        .as_bytes()
-        .first()
-        .is_some_and(u8::is_ascii_whitespace)
-    {
-        return Some(remainder.trim_start());
-    }
-    let restricted = remainder.strip_prefix('(')?;
-    let close = restricted.find(')')?;
-    valid_restricted_visibility(&restricted[..close]).then(|| restricted[close + 1..].trim_start())
+    let remainder = if let Some(restricted) = remainder.strip_prefix('(') {
+        let close = restricted.find(')')?;
+        valid_restricted_visibility(&restricted[..close]).then_some(&restricted[close + 1..])?
+    } else {
+        remainder
+    };
+    module_identifier_remainder(remainder)
 }
 
 fn valid_restricted_visibility(scope: &str) -> bool {
