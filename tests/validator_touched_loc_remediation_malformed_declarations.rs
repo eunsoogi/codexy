@@ -32,6 +32,15 @@ fn touched_loc_preserves_valid_default_and_path_controls() -> TestResult {
 }
 
 #[test]
+fn touched_loc_accepts_restricted_visibility_without_trivia_before_mod() -> TestResult {
+    for declaration in ["pub(crate)mod helper;\n", "pub(in crate::foo)mod helper;\n"] {
+        let repo = outer_fixture(declaration, "src/foo/helper.rs")?;
+        assert_rustc_and_validator_accept(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn touched_loc_rejects_inline_origin_after_invalid_visibility() -> TestResult {
     for visibility in ["pub(foo) ", "pub(in foo) "] {
         let repo = inline_fixture("", visibility)?;

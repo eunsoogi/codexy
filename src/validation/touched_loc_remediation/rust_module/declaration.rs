@@ -176,7 +176,10 @@ fn declaration_after_visibility(source: &str) -> Option<&str> {
     } else {
         remainder
     };
-    module_identifier_remainder(remainder)
+    remainder
+        .starts_with("mod")
+        .then_some(remainder)
+        .or_else(|| module_identifier_remainder(remainder))
 }
 
 fn valid_restricted_visibility(scope: &str) -> bool {
@@ -194,37 +197,26 @@ fn valid_visibility_path(path: &str) -> bool {
 fn module_declaration(declaration: &str) -> Option<&str> {
     let declaration = module_identifier_remainder(declaration.strip_prefix("mod")?)?;
     let (module, suffix) = identifier(declaration)?;
-    let suffix = suffix.trim_start().strip_prefix(';')?;
+    let suffix = trivia_remainder(suffix, true)?.strip_prefix(';')?;
     let mut comment_depth = 0;
     (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(module)
 }
 
-fn module_identifier_remainder(mut source: &str) -> Option<&str> {
-    let mut separated = false;
+fn module_identifier_remainder(source: &str) -> Option<&str> {
+    trivia_remainder(source, true)
+}
+
+fn trivia_remainder(mut source: &str, mut separated: bool) -> Option<&str> {
+    let mut comment_depth = 0;
     loop {
         let trimmed = source.trim_start();
         separated |= trimmed.len() != source.len();
         source = trimmed;
-        let Some(after_comment) = source.strip_prefix("/*") else {
+        if !source.starts_with("/*") {
             return separated.then_some(source);
-        };
-        separated = true;
-        let bytes = after_comment.as_bytes();
-        let mut depth = 1;
-        let mut index = 0;
-        while depth > 0 {
-            match bytes.get(index..index + 2) {
-                Some(b"/*") => depth += 1,
-                Some(b"*/") => depth -= 1,
-                Some(_) => {
-                    index += 1;
-                    continue;
-                }
-                None => return None,
-            }
-            index += 2;
         }
-        source = &after_comment[index..];
+        separated = true;
+        source = comment_remainder(source, &mut comment_depth)?;
     }
 }
 

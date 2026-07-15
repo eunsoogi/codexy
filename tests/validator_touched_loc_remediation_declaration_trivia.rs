@@ -17,6 +17,18 @@ fn touched_loc_accepts_trailing_trivia_on_default_declarations() -> TestResult {
 }
 
 #[test]
+fn touched_loc_accepts_trivia_between_module_name_and_semicolon() -> TestResult {
+    for declaration in [
+        "mod outer /* extracted */ ;\n",
+        "mod outer /* extracted /* nested */ comment */ ;\n",
+    ] {
+        let repo = module_fixture(declaration)?;
+        assert_rustc_and_validator_accept(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn touched_loc_accepts_trailing_trivia_on_same_line_path_declarations() -> TestResult {
     for suffix in ["// generated", "/* generated */"] {
         let repo = module_fixture(&format!(
