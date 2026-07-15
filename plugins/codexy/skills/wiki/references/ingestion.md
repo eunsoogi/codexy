@@ -1,6 +1,7 @@
 # Ingestion Protocol
 
-This reference is split into focused, navigable sections:
+Before any `ingest` or `ingest-collection` action, MUST read
+[Overview](ingestion/overview.md) before acting.
 
-- [Overview](ingestion/overview.md)
-- [Wayback CDX Snapshots](ingestion/wayback-cdx-snapshots.md)
+For Wayback CDX snapshot ingestion, MUST also read
+[Wayback CDX Snapshots](ingestion/wayback-cdx-snapshots.md) before acting.
