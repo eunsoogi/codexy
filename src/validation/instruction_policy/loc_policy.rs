@@ -47,7 +47,8 @@ fn permits_exception_allowance(text: &str) -> bool {
         if line.is_empty() {
             return false;
         }
-        let exception_heading = is_exception_heading(line);
+        let exception_heading =
+            markdown_heading_level(line).is_some() && is_exception_heading(line);
         if let Some(level) = markdown_heading_level(line) {
             if exception_section_level.is_some_and(|section| level <= section) {
                 exception_section_level = None;
@@ -206,7 +207,9 @@ fn normalize(text: &str) -> String {
 }
 
 fn negates_clause(statement: &str, clause: &str) -> bool {
-    statement
-        .split_once(clause)
-        .is_some_and(|(prefix, _)| prefix.contains("must not") || prefix.contains("may not"))
+    statement.split_once(clause).is_some_and(|(prefix, _)| {
+        prefix.contains("must not")
+            || prefix.contains("may not")
+            || statement.contains(&format!("not {clause}"))
+    })
 }

@@ -9,6 +9,8 @@ mod baseline_contract;
 mod loc_exception_exemptions;
 #[path = "validator_instruction_policy/loc_exception_policy.rs"]
 mod loc_exception_policy;
+#[path = "validator_instruction_policy/loc_exception_regressions.rs"]
+mod loc_exception_regressions;
 #[path = "validator_instruction_policy/loc_exception_sections.rs"]
 mod loc_exception_sections;
 #[path = "validator_instruction_policy/mandatory_syntax.rs"]
