@@ -98,8 +98,16 @@ fn markdown_link_targets(line: &str) -> impl Iterator<Item = &str> {
         .split("](")
         .skip(1)
         .filter_map(|target| target.split_once(')').map(|(target, _)| target))
+        .filter_map(normalize_markdown_destination)
         .filter_map(|target| target.split('#').next())
         .filter(|target| !target.is_empty())
+}
+
+fn normalize_markdown_destination(target: &str) -> Option<&str> {
+    if target.starts_with('<') || target.ends_with('>') {
+        return target.strip_prefix('<')?.strip_suffix('>');
+    }
+    Some(target)
 }
 
 fn rust_module_extraction(
