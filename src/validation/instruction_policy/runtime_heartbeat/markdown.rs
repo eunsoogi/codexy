@@ -1,6 +1,7 @@
 pub(super) fn normalized_policy_text(text: &str) -> String {
     let lines = text.lines().collect::<Vec<_>>();
     let mut historical_level = None;
+    let mut heading_stack = Vec::new();
     let mut fence = None;
     let mut visible = Vec::new();
     let mut index = 0;
@@ -41,7 +42,21 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
             if historical_level.is_none() && is_historical_heading(&heading) {
                 historical_level = Some(level);
             }
-            visible.push(format!("<markdown-heading> {heading} </markdown-heading>"));
+            while heading_stack
+                .last()
+                .is_some_and(|(ancestor_level, _)| *ancestor_level >= level)
+            {
+                heading_stack.pop();
+            }
+            heading_stack.push((level, heading));
+            let heading_context = heading_stack
+                .iter()
+                .map(|(_, heading)| heading.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            visible.push(format!(
+                "<markdown-heading> {heading_context} </markdown-heading>"
+            ));
             index += usize::from(setext_level.is_some()) + 1;
             continue;
         }
