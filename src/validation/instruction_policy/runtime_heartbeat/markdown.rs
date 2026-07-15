@@ -35,7 +35,7 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
             })
         });
         if let Some((level, heading)) = heading {
-            let heading = heading.replace(['`', '*', '_'], "");
+            let heading = strip_markdown_formatting(heading);
             if historical_level.is_some_and(|historical| level <= historical) {
                 historical_level = None;
             }
@@ -67,15 +67,52 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
         }
         index += 1;
     }
-    visible
-        .join(" ")
-        .to_ascii_lowercase()
-        .replace('`', "")
-        .replace('*', "")
-        .replace('_', "")
+    strip_markdown_formatting(&visible.join(" ").to_ascii_lowercase())
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn strip_markdown_formatting(text: &str) -> String {
+    let text = text.replace(['`', '*'], "");
+    let characters = text.chars().collect::<Vec<_>>();
+    let mut remove = vec![false; characters.len()];
+    let mut open_runs = Vec::new();
+    let mut index = 0;
+    while index < characters.len() {
+        if characters[index] != '_' {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        while index < characters.len() && characters[index] == '_' {
+            index += 1;
+        }
+        let end = index;
+        let previous_is_word = start
+            .checked_sub(1)
+            .is_some_and(|previous| characters[previous].is_alphanumeric());
+        let next_is_word = characters
+            .get(end)
+            .is_some_and(|next| next.is_alphanumeric());
+        if !previous_is_word && next_is_word {
+            open_runs.push((start, end));
+        } else if previous_is_word && !next_is_word {
+            if let Some(open) = open_runs
+                .iter()
+                .rposition(|(open_start, open_end)| open_end - open_start == end - start)
+            {
+                let (open_start, open_end) = open_runs.remove(open);
+                remove[open_start..open_end].fill(true);
+                remove[start..end].fill(true);
+            }
+        }
+    }
+    characters
+        .into_iter()
+        .enumerate()
+        .filter_map(|(index, character)| (!remove[index]).then_some(character))
+        .collect()
 }
 
 fn fence_delimiter(line: &str) -> Option<(char, usize, &str)> {
