@@ -60,15 +60,15 @@ pub(super) fn has_cfg_attr_path(line: &str) -> bool {
 }
 
 fn cfg_attr_path_argument(argument: &str) -> bool {
-    argument
-        .trim_start()
-        .strip_prefix("path")
-        .is_some_and(|suffix| {
-            suffix
-                .as_bytes()
-                .first()
-                .is_some_and(|byte| byte.is_ascii_whitespace() || *byte == b'=')
-        })
+    let Some(suffix) = argument.trim_start().strip_prefix("path") else {
+        return false;
+    };
+    match suffix.as_bytes().first() {
+        None | Some(b'=') => true,
+        Some(byte) if byte.is_ascii_whitespace() => true,
+        Some(b'/') => comment_end(suffix.as_bytes(), 0).is_some(),
+        _ => false,
+    }
 }
 
 pub(super) fn path_attribute_prefix(line: &str) -> Option<(String, &str)> {

@@ -40,6 +40,65 @@ fn touched_loc_does_not_credit_default_path_after_enabled_cfg_attr_path() -> Tes
 }
 
 #[test]
+fn touched_loc_does_not_credit_default_path_after_cfg_attr_path_comment_trivia() -> TestResult {
+    let repo = fixture("src/foo.rs", regular_lines(252))?;
+    write(repo.path(), "src/lib.rs", "mod foo;\n")?;
+    amend(repo.path())?;
+    write(
+        repo.path(),
+        "src/foo.rs",
+        &format!(
+            "#[cfg_attr(unix, path/* generated */ = \"generated.rs\")]\nmod helper;\n{}",
+            regular_lines(248)
+        ),
+    )?;
+    write(
+        repo.path(),
+        "src/generated.rs",
+        "pub const ACTUAL: () = ();\n",
+    )?;
+    write(
+        repo.path(),
+        "src/foo/helper.rs",
+        &regular_lines_from(248, 4),
+    )?;
+
+    let rustc = compile(repo.path())?;
+    assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_unclosed_cfg_attr_path_comment() -> TestResult {
+    let repo = fixture("src/foo.rs", regular_lines(252))?;
+    write(repo.path(), "src/lib.rs", "mod foo;\n")?;
+    amend(repo.path())?;
+    write(
+        repo.path(),
+        "src/foo.rs",
+        &format!(
+            "#[cfg_attr(unix, path/* generated = \"generated.rs\")]\nmod helper;\n{}",
+            regular_lines(248)
+        ),
+    )?;
+    write(
+        repo.path(),
+        "src/foo/helper.rs",
+        &regular_lines_from(248, 4),
+    )?;
+
+    let rustc = compile(repo.path())?;
+    assert!(!rustc.status.success());
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_preserves_balanced_non_path_cfg_attr_and_path_controls() -> TestResult {
     for (attribute, extracted_path) in [
         (
