@@ -2,6 +2,7 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
+mod active;
 mod approval;
 mod overage;
 mod surfaces;
@@ -117,6 +118,7 @@ fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
                     })
                 })
                 || index > 0 && matches!(words[index - 1].as_str(), "may" | "can")
+                || active::governs_overage(words, index)
                 || has_governing_passive_permission(words, index))
                 && !overage::is_negated(words, index)
         })
@@ -145,10 +147,7 @@ fn has_positive_permission(words: &[String]) -> bool {
         .any(|(index, word)| match word.as_str() {
             "may" | "can" => words.get(index + 1).is_none_or(|next| next != "not"),
             "unless" => true,
-            "must" => matches!(
-                words.get(index + 1).map(String::as_str),
-                Some("allow" | "exempt")
-            ),
+            "must" => active::governs_loc_exception(words, index),
             "approve" | "approved" => {
                 approval::governs_loc_exception(words, index)
                     && !passive_permission_is_negated(words, index)

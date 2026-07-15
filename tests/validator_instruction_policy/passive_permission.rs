@@ -165,3 +165,46 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn validator_handles_active_mandatory_permissions() -> TestResult {
+    for (addition, rejects) in [
+        (
+            "Maintainers MUST authorize LOC exceptions after review.",
+            true,
+        ),
+        (
+            "Maintainers MUST NOT authorize LOC exceptions after review.",
+            false,
+        ),
+        (
+            "Maintainers MUST authorize rejecting LOC exceptions after review.",
+            false,
+        ),
+        (
+            "Maintainers MUST allow governed files to exceed 250 LOC with approval.",
+            true,
+        ),
+        (
+            "Maintainers MUST NOT allow governed files to exceed 250 LOC with approval.",
+            false,
+        ),
+        (
+            "Maintainers MUST allow governed files to remain at or below 250 LOC.",
+            false,
+        ),
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
+        let text = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
+        let output = validator(&plugin_root, "--check")?;
+        assert_eq!(
+            !output.status.success(),
+            rejects,
+            "{addition}: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}

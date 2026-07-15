@@ -55,3 +55,35 @@ fn waiver_permissions_need_loc_context() {
         assert_eq!(permits_in(text, false), permits, "{text}");
     }
 }
+
+#[test]
+fn active_mandatory_permissions_respect_object_and_overage_scope() {
+    for (text, permits) in [
+        (
+            "Maintainers MUST authorize LOC exceptions after review.",
+            true,
+        ),
+        (
+            "Maintainers MUST NOT authorize LOC exceptions after review.",
+            false,
+        ),
+        (
+            "Maintainers MUST authorize rejecting LOC exceptions after review.",
+            false,
+        ),
+        (
+            "Maintainers MUST allow governed files to exceed 250 LOC with approval.",
+            true,
+        ),
+        (
+            "Maintainers MUST NOT allow governed files to exceed 250 LOC with approval.",
+            false,
+        ),
+        (
+            "Maintainers MUST allow governed files to remain at or below 250 LOC.",
+            false,
+        ),
+    ] {
+        assert_eq!(permits_in(text, false), permits, "{text}");
+    }
+}
