@@ -150,6 +150,29 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
             "A waiver MAY exempt a governed file from the 250 LOC contract.",
             true,
         ),
+        ("LOC exceptions require maintainer approval.", true),
+        (
+            "Maintainer approval MUST NOT authorize LOC exceptions.",
+            false,
+        ),
+        (
+            "The validator MUST require maintainer approval to reject LOC exceptions.",
+            false,
+        ),
+        (
+            "A governed file MAY go over 250 LOC with maintainer approval.",
+            true,
+        ),
+        ("A governed file MAY be above 250 LOC.", true),
+        ("A governed file MUST NOT go over 250 LOC.", false),
+        ("A governed file MAY remain at or below 250 LOC.", false),
+        (
+            "The validator MAY reject governed files that go above 250 LOC.",
+            false,
+        ),
+        ("LOC exceptions are granted after review.", true),
+        ("LOC exceptions are not granted after review.", false),
+        ("The validator granted rejecting LOC exceptions.", false),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);

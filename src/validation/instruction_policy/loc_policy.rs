@@ -90,7 +90,7 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
         || words
             .windows(2)
             .any(|pair| matches!(pair, [first, second] if first == "large" && second == "file"));
-    let overage_authorization = authorizes_loc_overage(&words, loc_context);
+    let overage_authorization = overage::authorizes(&words, loc_context);
     let exception_context = inherited_context
         || (exception_term && loc_context)
         || overage_authorization
@@ -104,40 +104,6 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
     exception_context && (overage_authorization || has_positive_permission(&words))
 }
 
-fn authorizes_loc_overage(words: &[String], loc_context: bool) -> bool {
-    loc_context
-        && words.iter().enumerate().any(|(index, word)| {
-            matches!(
-                word.as_str(),
-                "exceed" | "exceeded" | "exceeding" | "exceeds"
-            ) && (words[index + 1..]
-                .iter()
-                .position(|word| word == "without")
-                .is_some_and(|without| {
-                    words[index + 1 + without..].iter().any(|word| {
-                        matches!(word.as_str(), "justification" | "rationale" | "reason")
-                    })
-                })
-                || index > 0 && matches!(words[index - 1].as_str(), "may" | "can")
-                || active::governs_overage(words, index)
-                || has_governing_passive_permission(words, index))
-                && !overage::is_negated(words, index)
-        })
-}
-
-fn has_governing_passive_permission(words: &[String], exceed: usize) -> bool {
-    let Some(subject) = words[..exceed]
-        .windows(3)
-        .rposition(|phrase| matches!(phrase, [governed, subject, verb] if governed == "governed" && matches!(subject.as_str(), "file" | "files") && matches!(verb.as_str(), "is" | "are")))
-    else {
-        return false;
-    };
-    words[subject + 3..exceed]
-        .iter()
-        .rposition(|word| is_passive_permission(word))
-        .is_some_and(|permission| !passive_permission_is_negated(words, subject + 3 + permission))
-}
-
 fn has_positive_permission(words: &[String]) -> bool {
     if has_exception_carve_out(words) {
         return true;
@@ -149,7 +115,7 @@ fn has_positive_permission(words: &[String]) -> bool {
             "may" | "can" => words.get(index + 1).is_none_or(|next| next != "not"),
             "unless" => true,
             "must" => active::governs_loc_exception(words, index),
-            "approve" | "approved" => {
+            "approval" | "approve" | "approved" | "grant" | "granted" => {
                 approval::governs_loc_exception(words, index)
                     && !passive_permission_is_negated(words, index)
             }
@@ -168,6 +134,8 @@ fn is_passive_permission(word: &str) -> bool {
             | "authorized"
             | "exempt"
             | "exempted"
+            | "grant"
+            | "granted"
             | "permitted"
             | "waive"
             | "waived"

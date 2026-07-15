@@ -18,5 +18,23 @@ pub(super) fn governs_loc_exception(words: &[String], approval: usize) -> bool {
         [loc, exception, ..]
             if loc == "loc" && matches!(exception.as_str(), "exception" | "exceptions")
     );
-    passive || active
+    passive || active || requires_approval(words, approval)
+}
+
+fn requires_approval(words: &[String], approval: usize) -> bool {
+    if words[approval] != "approval" {
+        return false;
+    }
+    words[..approval]
+        .windows(2)
+        .rposition(|pair| matches!(pair, [loc, exception] if loc == "loc" && matches!(exception.as_str(), "exception" | "exceptions")))
+        .is_some_and(|exception| {
+            let requirement = &words[exception + 2..approval];
+            requirement
+                .iter()
+                .any(|word| matches!(word.as_str(), "require" | "required" | "requires"))
+                && !requirement
+                    .iter()
+                    .any(|word| matches!(word.as_str(), "no" | "not" | "never"))
+        })
 }

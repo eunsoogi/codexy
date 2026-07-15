@@ -37,6 +37,42 @@ fn approval_permissions_respect_negation() {
 }
 
 #[test]
+fn approval_overage_and_grant_variants_respect_safe_controls() {
+    for (text, permits) in [
+        ("LOC exceptions require maintainer approval.", true),
+        (
+            "Maintainer approval MUST NOT authorize LOC exceptions.",
+            false,
+        ),
+        (
+            "The validator MUST require maintainer approval to reject LOC exceptions.",
+            false,
+        ),
+        (
+            "A governed file MAY go over 250 LOC with maintainer approval.",
+            true,
+        ),
+        ("A governed file MAY be above 250 LOC.", true),
+        ("A governed file MUST NOT go over 250 LOC.", false),
+        ("A governed file MAY remain at or below 250 LOC.", false),
+        (
+            "The validator MAY reject governed files that go above 250 LOC.",
+            false,
+        ),
+        ("LOC exceptions are granted after review.", true),
+        ("LOC exceptions are not granted after review.", false),
+        ("Maintainers grant LOC exceptions after review.", true),
+        (
+            "Maintainers do not grant LOC exceptions after review.",
+            false,
+        ),
+        ("The validator granted rejecting LOC exceptions.", false),
+    ] {
+        assert_eq!(permits_in(text, false), permits, "{text}");
+    }
+}
+
+#[test]
 fn waiver_permissions_need_loc_context() {
     for (text, permits) in [
         (
