@@ -18,9 +18,8 @@ dependency inversion, naming cleanup, and review-driven maintainability work.
 - Before PR readiness or handoff, MUST run
   `scripts/validate-plugin-config --check-touched-loc --base-ref <base>` over
   the current branch and include the command output in evidence.
-- If a code or test-harness file MUST exceed 250 LOC, MUST add or reference the
-  tracked Codexy LOC exception entry with a narrow rationale. MUST NOT rely on
-  PR body prose alone, and MUST NOT hide the exception.
+- Every governed file MUST stay at or below 250 LOC. MUST NOT use or authorize
+  LOC exceptions.
 - MUST NOT split files mechanically when the result obscures public contracts,
   makes navigation worse, or creates circular dependencies.
 
@@ -52,8 +51,8 @@ dependency inversion, naming cleanup, and review-driven maintainability work.
 6. MUST re-run focused verification after every meaningful move. Broaden checks when
    shared code, plugin loading, harness execution, or generated artifacts are
    affected.
-7. MUST report changed files, remaining large-file exceptions, verification evidence,
-   and any follow-up refactors that become separate issues.
+7. MUST report changed files, the structural LOC remediation used, verification
+   evidence, and any follow-up refactors that become separate issues.
 
 ## Guardrails
 
@@ -89,8 +88,8 @@ When a file exceeds the 250 LOC target:
 Refactor goal:
 Behavior preserved:
 Touched implementation LOC:
-Files over 250 LOC:
-Exceptions and rationale:
+Governed LOC compliance (all files <=250 LOC):
+Structural remediation rationale:
 Public contracts checked:
 Tests or regression proof:
 Verification:

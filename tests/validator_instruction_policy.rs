@@ -3,6 +3,22 @@ use std::process::Command;
 
 mod support;
 
+#[path = "validator_instruction_policy/baseline_contract.rs"]
+mod baseline_contract;
+#[path = "validator_instruction_policy/loc_exception_exemptions.rs"]
+mod loc_exception_exemptions;
+#[path = "validator_instruction_policy/loc_exception_policy.rs"]
+mod loc_exception_policy;
+#[path = "validator_instruction_policy/loc_exception_regressions.rs"]
+mod loc_exception_regressions;
+#[path = "validator_instruction_policy/loc_exception_sections.rs"]
+mod loc_exception_sections;
+#[path = "validator_instruction_policy/mandatory_syntax.rs"]
+mod mandatory_syntax;
+#[path = "validator_instruction_policy/passive_permission.rs"]
+mod passive_permission;
+#[path = "validator_instruction_policy/sculptor_loc_policy.rs"]
+mod sculptor_loc_policy;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[rustfmt::skip]
 const ROOT_AGENTS_BARE_CASES: &[(&str, &str)] = &[("MUST use Codexy codegraph MCP", "Use Codexy codegraph MCP"), ("MUST preflight branch refs", "preflight branch refs"), ("MUST wait", "Wait"), ("MUST keep metadata current", "Keep metadata current"), ("MUST add nested", "Add nested"), ("MUST put executable", "Put executable"), ("MUST treat failures", "Treat failures"), ("MUST capture", "Capture"), ("MUST mention unrelated", "Mention unrelated")];
@@ -21,35 +37,6 @@ fn validator_cli_rejects_agent_instruction_policy_false_negative() -> TestResult
         assert!(!output.status.success());
         assert!(stderr(&output).contains("MUST NOT"));
     }
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_same_line_prohibition_with_must_not_elsewhere() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
-    let mut skill = std::fs::read_to_string(&skill_path)?;
-    skill.push_str("\n- Do not edit files; this line mentions MUST NOT as policy text.\n");
-    std::fs::write(&skill_path, skill)?;
-    let output = validator(&plugin_root, "--check")?;
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("prohibitions must use MUST NOT"));
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_lowercase_must_and_must_not() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
-    let mut skill = std::fs::read_to_string(&skill_path)?;
-    skill.push_str("\n- must run `git diff --check`.\n- must not edit files.\n");
-    std::fs::write(&skill_path, skill)?;
-
-    let output = validator(&plugin_root, "--check")?;
-    assert!(!output.status.success());
-    let stderr = stderr(&output);
-    assert!(stderr.contains("mandatory instructions must use MUST"));
-    assert!(stderr.contains("prohibitions must use MUST NOT"));
     Ok(())
 }
 
@@ -194,16 +181,6 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
         skill.replace("MUST report the limitation", "report the limitation"),
     )?;
     assert!(!validator(&plugin_root, "--check")?.status.success());
-    Ok(())
-}
-
-#[test]
-fn validator_cli_accepts_current_agent_instruction_policy() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let agent_path = plugin_root.join("agents/codexy-weaver.toml");
-    assert!(std::fs::read_to_string(&agent_path)?.contains("conflicts require domain choices"));
-    let output = validator(&plugin_root, "--check")?;
-    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 

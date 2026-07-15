@@ -24,6 +24,12 @@ fn source_avoids_let_chains_before_rust_1_88() -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
+#[test]
+fn scanner_detects_multiline_leading_let_chain() {
+    let source = "if let Some(value) = value\n    && value.is_valid()\n{";
+    assert_eq!(let_chain_lines(source), vec![1]);
+}
+
 fn collect_let_chain_offenders(
     dir: &Path,
     root: &Path,
@@ -40,18 +46,38 @@ fn collect_let_chain_offenders(
             continue;
         }
         let text = std::fs::read_to_string(&path)?;
-        for (line_index, line) in text.lines().enumerate() {
-            if line.contains("&& let ") || line.contains("|| let ") {
-                offenders.push(format!(
-                    "{}:{}: {}",
-                    path.strip_prefix(root)?.display(),
-                    line_index + 1,
-                    line.trim()
-                ));
-            }
+        for line_number in let_chain_lines(&text) {
+            offenders.push(format!(
+                "{}:{line_number}",
+                path.strip_prefix(root)?.display()
+            ));
         }
     }
     Ok(())
+}
+
+fn let_chain_lines(source: &str) -> Vec<usize> {
+    let lines = source.lines().collect::<Vec<_>>();
+    lines
+        .iter()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            if line.contains("&& let ") || line.contains("|| let ") {
+                return Some(index + 1);
+            }
+            let trimmed = line.trim_start();
+            let leading_let = trimmed.starts_with("if let ") || trimmed.starts_with("while let ");
+            if leading_let && (trimmed.contains(" && ") || trimmed.contains(" || ")) {
+                return Some(index + 1);
+            }
+            let continuation = lines[index + 1..]
+                .iter()
+                .find(|line| !line.trim().is_empty())
+                .map(|line| line.trim_start())?;
+            (leading_let && (continuation.starts_with("&&") || continuation.starts_with("||")))
+                .then_some(index + 1)
+        })
+        .collect()
 }
 
 fn version_at_least(version: &str, major: u64, minor: u64) -> bool {

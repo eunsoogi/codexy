@@ -45,7 +45,8 @@ fn validator_cli_rejects_touched_files_over_loc_target() -> Result<(), Box<dyn s
 }
 
 #[test]
-fn validator_cli_allows_tracked_loc_exception() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_cli_rejects_oversized_files_despite_tracked_loc_exception()
+-> Result<(), Box<dyn std::error::Error>> {
     let repo = touched_loc_fixture(true)?;
     let base = git_head(repo.path())?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -53,113 +54,28 @@ fn validator_cli_allows_tracked_loc_exception() -> Result<(), Box<dyn std::error
         .current_dir(repo.path())
         .output()?;
     assert!(
-        output.status.success(),
-        "validator should accept tracked LOC exceptions\nstderr:\n{}",
+        !output.status.success(),
+        "validator should reject oversized files despite a tracked LOC exception\nstderr:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("src/too_large.rs has 251 lines"));
+    assert!(stderr.contains(".codexy-loc-exceptions is not supported"));
     Ok(())
 }
 
 #[test]
-fn validator_cli_resolves_touched_loc_from_git_root() -> Result<(), Box<dyn std::error::Error>> {
-    let repo = touched_loc_fixture(true)?;
+fn validator_cli_accepts_files_at_exact_loc_target() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = touched_loc_fixture_with_line_count(250, None)?;
     let base = git_head(repo.path())?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args(["--check-touched-loc", "--base-ref", base.trim()])
-        .current_dir(repo.path().join("src"))
+        .current_dir(repo.path())
         .output()?;
     assert!(
         output.status.success(),
-        "validator should resolve repo-relative git paths from subdirectories\nstdout:\n{}\nstderr:\n{}",
+        "validator should accept a governed file at exactly 250 lines\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_untracked_loc_exception() -> Result<(), Box<dyn std::error::Error>> {
-    let repo = touched_loc_fixture(false)?;
-    let base = git_head(repo.path())?;
-    std::fs::write(
-        repo.path().join(".codexy-loc-exceptions"),
-        "src/too_large.rs integration harness needs dedicated follow-up split\n",
-    )?;
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-touched-loc", "--base-ref", base.trim()])
-        .current_dir(repo.path())
-        .output()?;
-
-    assert!(
-        !output.status.success(),
-        "validator should reject untracked LOC exception files"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains(".codexy-loc-exceptions must be tracked"),
-        "stderr should explain the tracked exception requirement, got:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_dirty_loc_exception_entry() -> Result<(), Box<dyn std::error::Error>> {
-    let repo = touched_loc_fixture_with_exception_text(Some(
-        "# tracked exceptions without an oversized-file entry\n",
-    ))?;
-    let base = git_head(repo.path())?;
-    std::fs::write(
-        repo.path().join(".codexy-loc-exceptions"),
-        "src/too_large.rs integration harness needs dedicated follow-up split\n",
-    )?;
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-touched-loc", "--base-ref", base.trim()])
-        .current_dir(repo.path())
-        .output()?;
-
-    assert!(
-        !output.status.success(),
-        "validator should reject dirty LOC exception entries"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains(".codexy-loc-exceptions has uncommitted changes"),
-        "stderr should explain the clean exception requirement, got:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_staged_loc_exception_entry() -> Result<(), Box<dyn std::error::Error>> {
-    let repo = touched_loc_fixture_with_exception_text(Some(
-        "# tracked exceptions without an oversized-file entry\n",
-    ))?;
-    let base = git_head(repo.path())?;
-    std::fs::write(
-        repo.path().join(".codexy-loc-exceptions"),
-        "src/too_large.rs integration harness needs dedicated follow-up split\n",
-    )?;
-    Command::new("git")
-        .args(["add", ".codexy-loc-exceptions"])
-        .current_dir(repo.path())
-        .status()?;
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-touched-loc", "--base-ref", base.trim()])
-        .current_dir(repo.path())
-        .output()?;
-
-    assert!(
-        !output.status.success(),
-        "validator should reject staged LOC exception entries"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains(".codexy-loc-exceptions has uncommitted changes"),
-        "stderr should explain the clean exception requirement, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -170,10 +86,11 @@ fn touched_loc_fixture(
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     let exception_text = with_exception
         .then_some("src/too_large.rs integration harness needs dedicated follow-up split\n");
-    touched_loc_fixture_with_exception_text(exception_text)
+    touched_loc_fixture_with_line_count(251, exception_text)
 }
 
-fn touched_loc_fixture_with_exception_text(
+fn touched_loc_fixture_with_line_count(
+    line_count: usize,
     exception_text: Option<&str>,
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -200,7 +117,7 @@ fn touched_loc_fixture_with_exception_text(
         .args(["commit", "-qm", "initial"])
         .current_dir(repo)
         .status()?;
-    let oversized = (0..251)
+    let oversized = (0..line_count)
         .map(|index| format!("fn line_{index}() {{}}\n"))
         .collect::<String>();
     std::fs::write(repo.join("src/too_large.rs"), oversized)?;

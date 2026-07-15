@@ -128,9 +128,8 @@ changes, MUST run:
 scripts/validate-plugin-config --check-touched-loc --base-ref origin/main
 ```
 
-MUST treat touched implementation, test-harness, and skill `SKILL.md` files over
-the 250 LOC target as review-blocking unless a tracked Codexy LOC exception
-contains a narrow maintained rationale.
+MUST treat every governed file over the 250 LOC target as review-blocking. Every
+governed file MUST stay at or below 250 LOC. MUST NOT use or authorize LOC exceptions.
 MUST treat a formatting-only reduction as review-blocking: blank-line deletion or
 collapsed readable multiline code, tests, or instructions does not prove structural
 LOC remediation.

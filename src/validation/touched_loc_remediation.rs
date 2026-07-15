@@ -3,6 +3,10 @@ use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
 
+mod module_boundary;
+mod rust_module;
+mod token_coverage;
+
 pub(super) fn formatting_only_error(
     root: &Path,
     change_base_ref: &str,
@@ -20,10 +24,18 @@ pub(super) fn formatting_only_error(
     }
     let current_text = std::fs::read_to_string(root.join(path))
         .with_context(|| format!("reading touched file {}", path.display()))?;
-    let same_nonempty_lines = nonempty_line_count(&base_text) == nonempty_line_count(&current_text);
-    let formatting_only = without_whitespace(&base_text) == without_whitespace(&current_text);
+    let same_nonempty_lines = token_coverage::nonempty_line_count(&base_text)
+        == token_coverage::nonempty_line_count(&current_text);
+    let formatting_only = token_coverage::without_whitespace(&base_text)
+        == token_coverage::without_whitespace(&current_text);
     let concealed_collapse = !same_nonempty_lines
-        && !has_new_module_boundary(root, baseline_ref, path, &base_text, &current_text)?
+        && !module_boundary::has_new_module_boundary(
+            root,
+            baseline_ref,
+            path,
+            &base_text,
+            &current_text,
+        )?
         && !has_test_target_split(
             root,
             change_base_ref,
@@ -92,60 +104,9 @@ fn has_test_target_split(
         .iter()
         .map(|(line, count)| count.min(added.get(line).unwrap_or(&0)))
         .sum::<usize>();
-    let required = nonempty_line_count(base).saturating_sub(nonempty_line_count(current));
+    let required = token_coverage::nonempty_line_count(base)
+        .saturating_sub(token_coverage::nonempty_line_count(current));
     Ok(required > 0 && moved.saturating_mul(4) >= required.saturating_mul(3))
-}
-
-fn has_new_module_boundary(
-    root: &Path,
-    base_ref: &str,
-    path: &Path,
-    base: &str,
-    current: &str,
-) -> Result<bool> {
-    let current_lines = current.lines().collect::<std::collections::HashSet<_>>();
-    let removed = base
-        .lines()
-        .filter(|line| !line.trim().is_empty() && !current_lines.contains(line))
-        .collect::<String>();
-    let removed = removed.split_whitespace().collect::<String>();
-    if removed.is_empty() {
-        return Ok(false);
-    }
-    for line in current.lines() {
-        let line = line.trim();
-        let declaration = line
-            .strip_prefix("pub(crate) ")
-            .or_else(|| line.strip_prefix("pub "))
-            .unwrap_or(line);
-        let Some(module) = declaration
-            .strip_prefix("mod ")
-            .and_then(|name| name.strip_suffix(';'))
-        else {
-            continue;
-        };
-        let module_path = path
-            .parent()
-            .unwrap_or(Path::new(""))
-            .join(format!("{module}.rs"));
-        let current_module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
-        let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
-        let base_module_lines = base_module
-            .lines()
-            .collect::<std::collections::HashSet<_>>();
-        let added = current_module
-            .lines()
-            .filter(|line| !line.trim().is_empty() && !base_module_lines.contains(line))
-            .collect::<String>();
-        if added
-            .split_whitespace()
-            .collect::<String>()
-            .contains(&removed)
-        {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 fn removed_lines_are_duplicates(base: &str, current: &str) -> bool {
@@ -157,7 +118,8 @@ fn removed_lines_are_duplicates(base: &str, current: &str) -> bool {
     for line in current.lines().filter(|line| !line.trim().is_empty()) {
         *current_counts.entry(line).or_insert(0usize) += 1;
     }
-    let required_reduction = nonempty_line_count(base).saturating_sub(nonempty_line_count(current));
+    let required_reduction = token_coverage::nonempty_line_count(base)
+        .saturating_sub(token_coverage::nonempty_line_count(current));
     let duplicate_reduction = base_counts
         .iter()
         .map(|(line, count)| {
@@ -212,14 +174,4 @@ fn read_base_text(root: &Path, base_ref: &str, path: &Path) -> Result<Option<Str
         "git show for LOC remediation baseline failed: {}",
         String::from_utf8_lossy(&output.stderr).trim()
     )
-}
-
-fn nonempty_line_count(text: &str) -> usize {
-    text.lines().filter(|line| !line.trim().is_empty()).count()
-}
-
-fn without_whitespace(text: &str) -> String {
-    text.chars()
-        .filter(|character| !character.is_whitespace())
-        .collect()
 }

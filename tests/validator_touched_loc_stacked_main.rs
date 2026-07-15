@@ -19,7 +19,7 @@ fn touched_loc_ignores_reconciled_main_files_but_checks_child_changes() -> TestR
     )?;
 
     run(repo.path(), &["switch", "stacked"])?;
-    write(repo.path(), "src/parent.rs", &regular_lines(251))?;
+    write(repo.path(), "src/parent.rs", &regular_lines(249))?;
     commit(repo.path(), "parent lane change")?;
 
     run(repo.path(), &["switch", "-c", "child", "stacked"])?;
