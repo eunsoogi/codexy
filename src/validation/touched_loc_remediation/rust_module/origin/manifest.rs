@@ -31,12 +31,15 @@ pub(super) fn cargo_manifest_paths(root: &Path) -> Vec<PathBuf> {
         let declares_workspace = manifest
             .as_ref()
             .is_some_and(|path| manifest_declares_workspace(path));
+        let declares_package = manifest
+            .as_ref()
+            .is_some_and(|path| manifest_declares_package(path));
         if let Some(manifest) = manifest.as_ref() {
             if !inside_workspace || declares_workspace {
                 manifests.push(manifest.to_owned());
             }
         }
-        if is_root || manifest.is_none() {
+        if is_root || manifest.is_none() || (declares_workspace && declares_package) {
             let child_inside_workspace = inside_workspace || declares_workspace;
             pending.extend(
                 child_directories
@@ -49,11 +52,19 @@ pub(super) fn cargo_manifest_paths(root: &Path) -> Vec<PathBuf> {
 }
 
 fn manifest_declares_workspace(path: &Path) -> bool {
+    manifest_declares_table(path, "workspace")
+}
+
+fn manifest_declares_package(path: &Path) -> bool {
+    manifest_declares_table(path, "package")
+}
+
+fn manifest_declares_table(path: &Path, section: &str) -> bool {
     let Ok(source) = std::fs::read_to_string(path) else {
         return false;
     };
     let Ok(manifest) = toml::from_str::<TomlValue>(&source) else {
         return false;
     };
-    manifest.get("workspace").is_some_and(TomlValue::is_table)
+    manifest.get(section).is_some_and(TomlValue::is_table)
 }
