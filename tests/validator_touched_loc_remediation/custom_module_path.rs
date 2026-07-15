@@ -12,10 +12,32 @@ fn touched_loc_allows_extraction_through_a_custom_rust_module_path() -> TestResu
         ),
     )?;
     write(repo.path(), "src/custom.rs", &regular_lines_from(248, 4))?;
+    assert_rustc_accepts(repo.path())?;
 
     let output = validate(repo.path())?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_mechanical_custom_rust_module_paths() -> TestResult {
+    let repo = fixture("src/too_large.rs", regular_lines(252))?;
+    write(
+        repo.path(),
+        "src/too_large.rs",
+        &format!(
+            "#[path = \"part-1.rs\"]\nmod extracted;\n{}",
+            regular_lines(248)
+        ),
+    )?;
+    write(repo.path(), "src/part-1.rs", &regular_lines_from(248, 4))?;
+    assert_rustc_accepts(repo.path())?;
+
+    let output = validate(repo.path())?;
+
+    assert!(!output.status.success(), "stderr:\n{}", stderr(&output));
+    assert!(stderr(&output).contains("multiline collapse"));
     Ok(())
 }
 
@@ -132,5 +154,14 @@ fn touched_loc_keeps_default_rust_module_paths_eligible() -> TestResult {
     let output = validate(repo.path())?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+fn assert_rustc_accepts(root: &std::path::Path) -> TestResult {
+    let output = std::process::Command::new("rustc")
+        .args(["--crate-type=lib", "src/too_large.rs", "--out-dir", "."])
+        .current_dir(root)
+        .output()?;
+    assert!(output.status.success(), "rustc: {}", stderr(&output));
     Ok(())
 }

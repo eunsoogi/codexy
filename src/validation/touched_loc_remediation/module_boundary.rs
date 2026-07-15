@@ -64,7 +64,10 @@ fn semantic_markdown_component(component: &str) -> bool {
 }
 
 fn mechanical_numbered_component(component: &str) -> bool {
-    let stem = component.strip_suffix(".md").unwrap_or(component);
+    let stem = Path::new(component)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or(component);
     ["shard", "part", "chunk"].iter().any(|prefix| {
         stem.strip_prefix(prefix)
             .map(|suffix| suffix.trim_start_matches(['-', '_']))
@@ -142,6 +145,13 @@ fn collect_rust_modules(
                 .filter(|candidate| root.join(candidate).is_file())
                 .unwrap_or(sibling)
         };
+        if module_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(mechanical_numbered_component)
+        {
+            continue;
+        }
         if root.join(&module_path).is_file() && modules.insert(module_path.clone()) {
             let module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
             collect_rust_modules(root, &module_path, &module, modules);
