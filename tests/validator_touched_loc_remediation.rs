@@ -9,6 +9,8 @@ mod conventional_facade;
 mod custom_module_path;
 #[path = "validator_touched_loc_remediation/markdown_links.rs"]
 mod markdown_links;
+#[path = "validator_touched_loc_remediation/module_visibility.rs"]
+mod module_visibility;
 #[path = "validator_touched_loc_remediation/partial_extraction.rs"]
 mod partial_extraction;
 #[path = "validator_touched_loc_remediation/skill_references.rs"]

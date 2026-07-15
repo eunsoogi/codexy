@@ -132,6 +132,7 @@ fn collect_rust_modules(
         }
         let declaration = line
             .strip_prefix("pub(crate) ")
+            .or_else(|| line.strip_prefix("pub(super) "))
             .or_else(|| line.strip_prefix("pub "))
             .unwrap_or(line);
         let Some(module) = declaration
