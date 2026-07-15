@@ -205,6 +205,22 @@ fn validator_handles_active_mandatory_permissions() -> TestResult {
             false,
         ),
         (
+            "Maintainers MUST use LOC exceptions for approved overages.",
+            true,
+        ),
+        (
+            "Maintainers MUST NOT use LOC exceptions after review.",
+            false,
+        ),
+        (
+            "The validator MUST use LOC metrics to reject LOC exceptions.",
+            false,
+        ),
+        (
+            "The validator MUST use the 250 LOC below-limit check.",
+            false,
+        ),
+        (
             "Maintainers MUST allow governed files to exceed 250 LOC with approval.",
             true,
         ),
