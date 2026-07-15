@@ -139,6 +139,7 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
                     .any(|marker| prefix.contains(marker))
                 })
             && !has_conditional_context(before)
+            && !has_negated_prefix(before)
             && !has_weakening_suffix(after)
     })
 }
@@ -155,7 +156,13 @@ fn has_clause_boundaries(before: &str, after: &str) -> bool {
 }
 
 fn is_clause_token_character(character: char) -> bool {
-    character.is_alphanumeric() || character == '_'
+    character.is_alphanumeric() || matches!(character, '_' | '-')
+}
+
+fn has_negated_prefix(before: &str) -> bool {
+    current_sentence_prefix(before)
+        .trim_end()
+        .ends_with("must not")
 }
 
 fn has_conditional_context(before: &str) -> bool {

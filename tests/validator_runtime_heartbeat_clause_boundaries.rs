@@ -28,6 +28,17 @@ fn validator_rejects_longer_heartbeat_kind_token() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_hyphen_extended_heartbeat_kind_token() -> TestResult {
+    let output = validate_heartbeat_kind("kind=heartbeat-optional")?;
+    assert!(
+        !output.status.success(),
+        "validator accepted kind=heartbeat-optional as kind=heartbeat"
+    );
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_punctuation_delimited_heartbeat_kind() -> TestResult {
     let output = validate_heartbeat_kind("kind=heartbeat;")?;
     assert!(
