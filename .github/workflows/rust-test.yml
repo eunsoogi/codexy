@@ -18,5 +18,8 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install Rust test dependency
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
+
       - name: Run full Rust test suite
         run: cargo test --locked --all-targets
