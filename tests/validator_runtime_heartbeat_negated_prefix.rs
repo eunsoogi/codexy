@@ -35,31 +35,37 @@ fn validator_rejects_must_not_prefix_for_discovery_clause() -> TestResult {
 
 #[test]
 fn validator_rejects_soft_modal_prefix_for_discovery_clause() -> TestResult {
-    let output = validate_discovery_clause(
+    for replacement in [
         "MUST decide whether the owner MAY search the callable tool surface for `automation_update`",
-    )?;
-    assert!(
-        !output.status.success(),
-        "validator accepted an optional discovery action as required policy"
-    );
-    assert!(
-        support::stderr(&output).contains("runtime heartbeat contract"),
-        "validator rejected the optional discovery action for an unexpected reason: {}",
-        support::stderr(&output)
-    );
+        "MUST decide whether the owner MAY choose to search the callable tool surface for `automation_update`",
+    ] {
+        let output = validate_discovery_clause(replacement)?;
+        assert!(
+            !output.status.success(),
+            "validator accepted optional discovery action {replacement:?} as required policy"
+        );
+        assert!(
+            support::stderr(&output).contains("runtime heartbeat contract"),
+            "validator rejected optional discovery action {replacement:?} for an unexpected reason: {}",
+            support::stderr(&output)
+        );
+    }
     Ok(())
 }
 
 #[test]
 fn validator_accepts_mandatory_modal_prefix_for_discovery_clause() -> TestResult {
-    let output = validate_discovery_clause(
+    for replacement in [
         "the owner MUST search the callable tool surface for `automation_update`",
-    )?;
-    assert!(
-        output.status.success(),
-        "validator rejected a mandatory discovery clause: {}",
-        support::stderr(&output)
-    );
+        "the owner MUST choose to search the callable tool surface for `automation_update`",
+    ] {
+        let output = validate_discovery_clause(replacement)?;
+        assert!(
+            output.status.success(),
+            "validator rejected mandatory discovery action {replacement:?}: {}",
+            support::stderr(&output)
+        );
+    }
     Ok(())
 }
 

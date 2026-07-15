@@ -3,7 +3,9 @@ use std::path::Path;
 mod markdown;
 
 use crate::paths::display_relative;
-use markdown::{contains_word, normalized_policy_text};
+use markdown::{contains_word, last_modal_is_soft, normalized_policy_text};
+
+const NORMALIZED_DISCOVERY_CLAUSE: &str = "search the callable tool surface for automation_update";
 
 const ORCHESTRATION_CLAUSES: &[&str] = &[
     "search the callable tool surface for `automation_update`",
@@ -140,7 +142,8 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
                 })
             && !has_conditional_context(before)
             && !has_negated_prefix(before)
-            && !has_soft_modal_prefix(before)
+            && !(clause == NORMALIZED_DISCOVERY_CLAUSE
+                && last_modal_is_soft(current_sentence_prefix(before)))
             && !has_weakening_suffix(after)
     })
 }
@@ -164,10 +167,6 @@ fn has_negated_prefix(before: &str) -> bool {
     current_sentence_prefix(before)
         .trim_end()
         .ends_with("must not")
-}
-
-fn has_soft_modal_prefix(before: &str) -> bool {
-    current_sentence_prefix(before).trim_end().ends_with("may")
 }
 
 fn has_conditional_context(before: &str) -> bool {

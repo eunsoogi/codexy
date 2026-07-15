@@ -78,6 +78,12 @@ pub(super) fn contains_word(text: &str, word: &str) -> bool {
         .any(|candidate| candidate == word)
 }
 
+pub(super) fn last_modal_is_soft(text: &str) -> bool {
+    text.split(|character: char| !character.is_alphanumeric())
+        .rfind(|candidate| matches!(*candidate, "may" | "must"))
+        .is_some_and(|modal| modal == "may")
+}
+
 fn strip_markdown_formatting(text: &str) -> String {
     let text = text.replace(['`', '*'], "");
     let characters = text.chars().collect::<Vec<_>>();
