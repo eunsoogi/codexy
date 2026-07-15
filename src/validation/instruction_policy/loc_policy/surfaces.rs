@@ -13,3 +13,10 @@ pub(super) const EXCEPTION_PROHIBITION: &str = "MUST NOT use or authorize LOC ex
 pub(super) fn is_governed_root_agents(path: &Path) -> bool {
     path.file_name().is_some_and(|name| name == "AGENTS.md")
 }
+
+pub(super) fn is_governed_skill_document(path: &Path) -> bool {
+    path.extension().is_some_and(|extension| extension == "md")
+        && path
+            .components()
+            .any(|component| component.as_os_str() == "skills")
+}

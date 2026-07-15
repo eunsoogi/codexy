@@ -49,6 +49,27 @@ fn validator_cli_allows_negated_loc_exception_prohibition() -> TestResult {
 }
 
 #[test]
+fn validator_cli_checks_loc_allowances_in_governed_skill_references() -> TestResult {
+    for (addition, rejects) in [
+        ("LOC exceptions MAY be used after review.", true),
+        ("LOC exceptions MUST NOT be used after review.", false),
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let reference = plugin_root.join("skills/wiki/references/loc-policy.md");
+        std::fs::write(reference, format!("# Reference\n\n{addition}\n"))?;
+
+        let output = validator(&plugin_root, "--check")?;
+        assert_eq!(
+            !output.status.success(),
+            rejects,
+            "{addition}: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_passive_loc_exception_allowances() -> TestResult {
     for allowance in [
         "LOC exceptions are allowed when approved.",

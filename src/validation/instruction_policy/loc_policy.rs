@@ -14,9 +14,10 @@ use surfaces::{
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     let governed_skill = GOVERNED_SKILLS.iter().any(|skill| path.ends_with(skill));
+    let governed_skill_document = surfaces::is_governed_skill_document(path);
     let governed_agent_role = GOVERNED_AGENT_ROLES.iter().any(|role| path.ends_with(role));
     let governed_root_agents = surfaces::is_governed_root_agents(path);
-    if !governed_skill && !governed_agent_role && !governed_root_agents {
+    if !governed_skill_document && !governed_agent_role && !governed_root_agents {
         return;
     }
     if governed_skill && !contains_clause(text, UNCONDITIONAL_CONTRACT) {
@@ -25,7 +26,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
-    if !governed_root_agents && !contains_clause(text, EXCEPTION_PROHIBITION) {
+    if (governed_skill || governed_agent_role) && !contains_clause(text, EXCEPTION_PROHIBITION) {
         errors.push(format!(
             "{} LOC exception policy contract failed: missing LOC exception prohibition",
             display_relative(path)
