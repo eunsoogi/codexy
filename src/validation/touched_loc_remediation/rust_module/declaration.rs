@@ -57,8 +57,15 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                     }
                 }
             } else if is_outer_scope {
-                is_attribute_trivia(line, &mut block_comment_depth);
-                continue;
+                let Some(remainder) = outer_remainder else {
+                    is_attribute_trivia(line, &mut block_comment_depth);
+                    continue;
+                };
+                block_comment_depth = 0;
+                line = remainder.trim();
+                if line.is_empty() {
+                    continue;
+                }
             } else {
                 attributed_path = None;
                 continue;
@@ -74,6 +81,12 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
             line = remainder.trim_start();
         }
         loop {
+            if let Some(remainder) = comment_remainder(line, &mut block_comment_depth) {
+                line = remainder.trim_start();
+                if line.is_empty() {
+                    continue 'lines;
+                }
+            }
             if is_attribute_trivia(line, &mut block_comment_depth) {
                 continue 'lines;
             }
@@ -115,6 +128,35 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         });
     }
     declarations
+}
+
+fn comment_remainder<'a>(line: &'a str, depth: &mut usize) -> Option<&'a str> {
+    let (comment, mut comment_depth) = if *depth > 0 {
+        (line, *depth)
+    } else {
+        (line.trim_start().strip_prefix("/*")?, 1)
+    };
+    let bytes = comment.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes.get(index..index + 2) {
+            Some(b"/*") => {
+                comment_depth += 1;
+                index += 2;
+            }
+            Some(b"*/") => {
+                comment_depth -= 1;
+                index += 2;
+                if comment_depth == 0 {
+                    *depth = 0;
+                    return Some(&comment[index..]);
+                }
+            }
+            _ => index += 1,
+        }
+    }
+    *depth = comment_depth;
+    None
 }
 
 fn declaration_after_visibility(source: &str) -> Option<&str> {

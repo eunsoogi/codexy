@@ -82,6 +82,21 @@ fn touched_loc_rejects_unclosed_comment_between_mod_and_identifier() -> TestResu
     Ok(())
 }
 
+#[test]
+fn touched_loc_preserves_path_through_multiline_comment_closing_remainder() -> TestResult {
+    for comment in [
+        "/* generated\n*/ ",
+        "/* generated /* nested */ comment\n*/ ",
+        "/* generated */ ",
+    ] {
+        let repo = module_fixture(&format!(
+            "#[path = \"generated/bar.rs\"]\n{comment}mod bar;\n"
+        ))?;
+        assert_rustc_and_validator_accept(&repo)?;
+    }
+    Ok(())
+}
+
 fn module_fixture(source: &str) -> TestResult<tempfile::TempDir> {
     let repo = fixture("src/generated/bar.rs", regular_lines(252))?;
     write(repo.path(), "src/lib.rs", source)?;
