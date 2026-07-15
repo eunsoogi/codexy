@@ -15,7 +15,7 @@ pub(crate) fn assert_wrapper_installs_packaged_runtime_without_cargo(
         .env("CODEXY_RUNTIME_PACKAGE_PATH", &package_path)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         output.status.success(),

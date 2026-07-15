@@ -3,7 +3,7 @@ mod support;
 use std::process::Command;
 
 use support::{
-    WrapperFixture, assert_wrapper_discovers_default_artifact_without_cargo,
+    WrapperCommandExt, WrapperFixture, assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,
     assert_wrapper_ignores_legacy_cache_before_default_package_refresh_without_cargo,
     assert_wrapper_installs_packaged_runtime_without_cargo,
@@ -151,7 +151,8 @@ fn assert_wrapper_fails_without_cache_after_refresh_failure(
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
     let cache = temp.path().join("runtime-cache");
-    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    command
         .env("HOME", fixture.home)
         .env(
             "PATH",
@@ -161,8 +162,8 @@ fn assert_wrapper_fails_without_cache_after_refresh_failure(
         .env("CODEXY_RUNTIME_GIT_REF", "main")
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .env("FAKE_CARGO_FAIL", "1")
-        .arg("--help")
-        .output()?;
+        .arg("--help");
+    let output = command.output_with_timeout()?;
     assert!(
         !output.status.success(),
         "first install failure without cache should fail\nstdout:\n{}\nstderr:\n{}",

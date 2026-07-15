@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{WrapperFixture, make_executable};
+use super::{WrapperCommandExt, WrapperFixture, make_executable};
 
 pub(crate) fn assert_wrapper_reuses_default_package_git_fallback(
     server: &str,
@@ -49,7 +49,8 @@ fn run_failed_package_with_cargo(
     failed_package_bin: &std::path::Path,
     version: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    command
         .arg("--help")
         .env("HOME", fixture.home)
         .env(
@@ -64,8 +65,8 @@ fn run_failed_package_with_cargo(
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .env("FAKE_RUNTIME_VERSION", version)
         .env_remove("GH_TOKEN")
-        .env_remove("GITHUB_TOKEN")
-        .output()?;
+        .env_remove("GITHUB_TOKEN");
+    let output = command.output_with_timeout()?;
     if !output.status.success() {
         return Err(format!(
             "wrapper failed: {}",

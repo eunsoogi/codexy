@@ -22,7 +22,7 @@ pub(crate) fn assert_wrapper_does_not_reuse_package_override_as_default_without_
             .env("CODEXY_RUNTIME_PACKAGE_PATH", &override_package)
             .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
             .arg("--help")
-            .output()?;
+            .output_with_timeout()?;
     assert!(
         override_output.status.success(),
         "explicit package override should install and run\nstdout:\n{}\nstderr:\n{}",
@@ -49,7 +49,7 @@ pub(crate) fn assert_wrapper_does_not_reuse_package_override_as_default_without_
         .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
     assert!(
         default_output.status.success(),
         "default package lookup should run after override env is removed\nstdout:\n{}\nstderr:\n{}",
@@ -96,7 +96,7 @@ pub(crate) fn assert_wrapper_refreshes_package_before_stale_cache_without_cargo(
         .env("CODEXY_RUNTIME_PACKAGE_PATH", &package_path)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         output.status.success(),
@@ -138,7 +138,7 @@ pub(crate) fn assert_wrapper_keeps_ref_override_exact_without_package_override(
         .env("CODEXY_RUNTIME_GIT_REF", "release-candidate")
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         !output.status.success(),
@@ -160,7 +160,7 @@ pub(crate) fn assert_wrapper_keeps_ref_override_exact_without_package_override(
         .env("CODEXY_RUNTIME_PACKAGE_PATH", &package_path)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
     assert!(
         output.status.success(),
         "explicit package override should satisfy explicit ref without Cargo\nstdout:\n{}\nstderr:\n{}",
