@@ -177,3 +177,18 @@ directories before they exist.
 > [One-line description of what this directory contains]
 
 Last updated: YYYY-MM-DD
+
+## Contents
+
+| File | Summary | Tags | Updated |
+|------|---------|------|---------|
+| [filename.md](filename.md) | One-sentence summary | tag1, tag2 | YYYY-MM-DD |
+
+## Categories
+
+- **category-name**: file1.md, file2.md
+
+## Recent Changes
+
+- YYYY-MM-DD: Description of change
+```
