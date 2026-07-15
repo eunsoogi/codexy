@@ -19,16 +19,21 @@ pub(super) fn has_new_module_boundary(
     if removed.is_empty() {
         return Ok(false);
     }
+    let base_line_count = token_coverage::nonempty_line_count(base);
     let extracted = match path.extension().and_then(|extension| extension.to_str()) {
         Some("md") => markdown_extraction(root, base_ref, path, current)?,
         _ => rust_module_extraction(root, base_ref, path, current)?,
     };
     let removed = removed.join("\n");
+    let extracted_line_count = token_coverage::nonempty_line_count(&extracted);
+    let removed_line_count = token_coverage::nonempty_line_count(&removed);
+    let exact_line_coverage = token_coverage::moved_line_coverage(&removed, &extracted);
     Ok(token_coverage::without_whitespace(&extracted)
         .contains(&token_coverage::without_whitespace(&removed))
-        || token_coverage::moved_line_coverage(&removed, &extracted) >= 3
-            && token_coverage::nonempty_line_count(&extracted).saturating_mul(4)
-                >= token_coverage::nonempty_line_count(&removed).saturating_mul(3))
+        || (exact_line_coverage >= 3
+            || exact_line_coverage >= 2
+                && extracted_line_count.saturating_mul(4) >= base_line_count.saturating_mul(3))
+            && extracted_line_count.saturating_mul(4) >= removed_line_count.saturating_mul(3))
 }
 
 fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) -> Result<String> {
