@@ -35,6 +35,34 @@ fn touched_loc_resolves_children_beside_nested_inline_path_module() -> TestResul
 }
 
 #[test]
+fn touched_loc_resolves_inline_path_from_containing_source_directory() -> TestResult {
+    let repo = fixture("src/generated/tls.rs", regular_lines(252))?;
+    write(repo.path(), "src/lib.rs", "mod foo;\n")?;
+    amend_fixture(repo.path())?;
+    write(
+        repo.path(),
+        "src/foo.rs",
+        "#[path = \"generated\"]\nmod thread {\n    #[path = \"tls.rs\"]\n    mod local_data;\n}\n",
+    )?;
+    write(
+        repo.path(),
+        "src/generated/tls.rs",
+        &format!("mod helper;\n{}", regular_lines(249)),
+    )?;
+    write(
+        repo.path(),
+        "src/generated/helper.rs",
+        &regular_lines_from(249, 3),
+    )?;
+
+    let rustc = compile(repo.path())?;
+    assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_honors_path_on_inline_ancestor() -> TestResult {
     assert_inline_ancestor_path("")
 }

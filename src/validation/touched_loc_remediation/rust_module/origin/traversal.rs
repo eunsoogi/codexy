@@ -57,7 +57,12 @@ fn visit_source(
         enqueue_default_children(root, parent, &declaration.module, pending);
     }
     for inline in inline_modules(source) {
-        let scope = inline_scope(parent, inline.module, inline.path.as_deref());
+        let scope = inline_scope(
+            parent,
+            attribute_parent,
+            inline.module,
+            inline.path.as_deref(),
+        );
         if visit_source(root, target, inline.body, &scope, &scope, pending) {
             return true;
         }
@@ -74,9 +79,14 @@ fn module_parent(path: &Path, children_are_siblings: bool) -> PathBuf {
     }
 }
 
-fn inline_scope(parent: &Path, module: &str, path: Option<&str>) -> PathBuf {
-    path.and_then(|path| normalize_relative_path(parent, path))
-        .unwrap_or_else(|| parent.join(module.strip_prefix("r#").unwrap_or(module)))
+fn inline_scope(
+    default_parent: &Path,
+    attribute_parent: &Path,
+    module: &str,
+    path: Option<&str>,
+) -> PathBuf {
+    path.and_then(|path| normalize_relative_path(attribute_parent, path))
+        .unwrap_or_else(|| default_parent.join(module.strip_prefix("r#").unwrap_or(module)))
 }
 
 fn enqueue_default_children(

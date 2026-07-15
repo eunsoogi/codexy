@@ -48,14 +48,24 @@ fn declared_paths_in_scope(
         }
     }
     for inline in inline_modules(source) {
-        let scope = inline_scope(default_parent, inline.module, inline.path.as_deref());
+        let scope = inline_scope(
+            default_parent,
+            attribute_parent,
+            inline.module,
+            inline.path.as_deref(),
+        );
         declared_paths_in_scope(root, source_path, inline.body, &scope, &scope, paths);
     }
 }
 
-fn inline_scope(parent: &Path, module: &str, path: Option<&str>) -> PathBuf {
-    path.and_then(|path| normalize_relative_path(parent, path))
-        .unwrap_or_else(|| parent.join(module.strip_prefix("r#").unwrap_or(module)))
+fn inline_scope(
+    default_parent: &Path,
+    attribute_parent: &Path,
+    module: &str,
+    path: Option<&str>,
+) -> PathBuf {
+    path.and_then(|path| normalize_relative_path(attribute_parent, path))
+        .unwrap_or_else(|| default_parent.join(module.strip_prefix("r#").unwrap_or(module)))
 }
 
 fn module_parent(root: &Path, path: &Path) -> PathBuf {
