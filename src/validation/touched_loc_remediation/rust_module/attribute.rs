@@ -99,6 +99,10 @@ pub(super) fn is_outer_attribute(source: &str) -> bool {
     outer_attribute_content(source).is_some()
 }
 
+pub(super) fn is_cfg_disabled(source: &str) -> bool {
+    named_attribute_content(source, "cfg").is_some_and(|content| content.trim() == "(any())]")
+}
+
 fn named_attribute_content<'a>(source: &'a str, name: &str) -> Option<&'a str> {
     let remainder = outer_attribute_content(source)?.strip_prefix(name)?;
     let suffix = attribute_name_suffix(remainder)?;

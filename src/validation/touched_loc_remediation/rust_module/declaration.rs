@@ -1,9 +1,8 @@
 use super::attribute::{
-    has_cfg_attr_path, is_outer_attribute, is_path_attribute_start, path_attribute_prefix,
-    trivia::is_attribute_trivia,
+    has_cfg_attr_path, is_cfg_disabled, is_outer_attribute, is_path_attribute_start,
+    path_attribute_prefix, trivia::is_attribute_trivia,
 };
 use super::scope::{ScopeTracker, outer_attribute_remainder};
-
 mod inline;
 
 pub(super) struct InlineModule<'a> {
@@ -24,6 +23,7 @@ pub(super) struct Declaration {
 pub(super) fn declarations(source: &str) -> Vec<Declaration> {
     let mut declarations = Vec::new();
     let mut attributed_path = None;
+    let mut cfg_disabled = false;
     let mut block_comment_depth = 0;
     let mut outer_attribute_continuation = false;
     let mut multiline_outer_attribute: Option<String> = None;
@@ -91,6 +91,7 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
             if is_attribute_trivia(line, &mut block_comment_depth) {
                 continue 'lines;
             }
+            cfg_disabled |= is_cfg_disabled(line);
             if let Some((path, remainder)) = path_attribute_prefix(line) {
                 let mut trailing_comment_depth = 0;
                 if is_attribute_trivia(remainder, &mut trailing_comment_depth) {
@@ -120,9 +121,14 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 }
             } else {
                 attributed_path = None;
+                cfg_disabled = false;
             }
             continue;
         };
+        if std::mem::take(&mut cfg_disabled) {
+            attributed_path = None;
+            continue;
+        }
         declarations.push(Declaration {
             module: module.to_owned(),
             path: attributed_path.take(),

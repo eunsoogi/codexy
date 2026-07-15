@@ -34,6 +34,32 @@ fn touched_loc_preserves_default_child_scope_for_outline_module() -> TestResult 
 }
 
 #[test]
+fn touched_loc_ignores_cfg_disabled_path_alias_for_outline_origin() -> TestResult {
+    let repo = fixture("src/foo.rs", regular_lines(252))?;
+    write(
+        repo.path(),
+        "src/lib.rs",
+        "mod foo;\n#[cfg(any())]\n#[path = \"foo.rs\"]\nmod alias;\n",
+    )?;
+    amend_fixture(repo.path())?;
+    write(
+        repo.path(),
+        "src/foo.rs",
+        &format!("mod helper;\n{}", regular_lines(249)),
+    )?;
+    write(
+        repo.path(),
+        "src/foo/helper.rs",
+        &regular_lines_from(249, 3),
+    )?;
+    let rustc = compile(repo.path())?;
+    assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_does_not_credit_outline_path_against_stem_directory() -> TestResult {
     let repo = outline_module_fixture(
         "#[path = \"../generated/bar.rs\"]\nmod bar;\n",
