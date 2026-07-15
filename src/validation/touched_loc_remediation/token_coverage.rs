@@ -1,13 +1,13 @@
-pub(super) fn moved_token_coverage(removed: &str, extracted: &str) -> usize {
-    let mut extracted_tokens = std::collections::HashMap::<&str, usize>::new();
-    for token in extracted.split_whitespace() {
-        *extracted_tokens.entry(token).or_default() += 1;
+pub(super) fn moved_line_coverage(removed: &str, extracted: &str) -> usize {
+    let mut extracted_lines = std::collections::HashMap::<&str, usize>::new();
+    for line in extracted.lines().filter(|line| !line.trim().is_empty()) {
+        *extracted_lines.entry(line).or_default() += 1;
     }
     let mut total = 0usize;
     let mut moved = 0usize;
-    for token in removed.split_whitespace() {
+    for line in removed.lines().filter(|line| !line.trim().is_empty()) {
         total += 1;
-        if let Some(count) = extracted_tokens.get_mut(token) {
+        if let Some(count) = extracted_lines.get_mut(line) {
             if *count > 0 {
                 *count -= 1;
                 moved += 1;

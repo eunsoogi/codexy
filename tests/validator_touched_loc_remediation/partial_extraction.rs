@@ -21,6 +21,23 @@ fn touched_loc_rejects_half_extraction_with_remaining_multiline_collapse() -> Te
 }
 
 #[test]
+fn touched_loc_rejects_unrelated_extracted_boilerplate() -> TestResult {
+    let repo = fixture("src/too_large.rs", regular_lines(252))?;
+    write(
+        repo.path(),
+        "src/too_large.rs",
+        &format!("mod helper;\n{}", regular_lines(249)),
+    )?;
+    write(repo.path(), "src/helper.rs", &unrelated_lines(3))?;
+
+    let output = validate(repo.path())?;
+
+    assert!(!output.status.success(), "stderr:\n{}", stderr(&output));
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_allows_three_quarter_extraction_coverage() -> TestResult {
     let repo = fixture("src/too_large.rs", regular_lines(252))?;
     write(
@@ -34,4 +51,10 @@ fn touched_loc_allows_three_quarter_extraction_coverage() -> TestResult {
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
+}
+
+fn unrelated_lines(count: usize) -> String {
+    (0..count)
+        .map(|index| format!("fn unrelated_{index}() {{}}\n"))
+        .collect()
 }

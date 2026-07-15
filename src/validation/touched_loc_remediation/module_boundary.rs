@@ -26,7 +26,7 @@ pub(super) fn has_new_module_boundary(
     let removed = removed.join("\n");
     Ok(token_coverage::without_whitespace(&extracted)
         .contains(&token_coverage::without_whitespace(&removed))
-        || token_coverage::moved_token_coverage(&removed, &extracted) >= 2
+        || token_coverage::moved_line_coverage(&removed, &extracted) >= 3
             && token_coverage::nonempty_line_count(&extracted).saturating_mul(4)
                 >= token_coverage::nonempty_line_count(&removed).saturating_mul(3))
 }
