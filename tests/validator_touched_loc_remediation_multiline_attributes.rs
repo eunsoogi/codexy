@@ -1,5 +1,8 @@
 mod support;
 
+use std::path::Path;
+use std::process::{Command, Output};
+
 use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -57,6 +60,29 @@ fn touched_loc_rejects_malformed_path_before_multiline_attribute() -> TestResult
     Ok(())
 }
 
+#[test]
+fn touched_loc_honors_path_through_same_line_stacked_outer_attributes() -> TestResult {
+    let repo = attributed_module_fixture("#[path = \"helper.rs\"] #[cfg(unix)] ")?;
+    let rustc = compile(repo.path())?;
+    assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_clears_path_at_same_line_attribute_item_boundary() -> TestResult {
+    let repo = attributed_module_fixture(
+        "#[path = \"helper.rs\"] #[cfg(unix)] const INTERVENING: () = ();\n",
+    )?;
+    let rustc = compile(repo.path())?;
+    assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
 fn attributed_module_fixture(prefix: &str) -> TestResult<tempfile::TempDir> {
     let repo = fixture("src/foo.rs", regular_lines(252))?;
     let declaration = format!("{prefix}mod helper;\n");
@@ -72,4 +98,11 @@ fn attributed_module_fixture(prefix: &str) -> TestResult<tempfile::TempDir> {
         &regular_lines_from(retained_lines, 252 - retained_lines),
     )?;
     Ok(repo)
+}
+
+fn compile(root: &Path) -> std::io::Result<Output> {
+    Command::new("rustc")
+        .args(["--crate-type", "lib", "src/foo.rs"])
+        .current_dir(root)
+        .output()
 }

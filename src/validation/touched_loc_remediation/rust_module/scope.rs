@@ -88,6 +88,15 @@ impl ScopeTracker {
     }
 }
 
+pub(super) fn outer_attribute_remainder(source: &str) -> Option<&str> {
+    let source = source.strip_prefix('#')?.trim_start().strip_prefix('[')?;
+    let mut scope = ScopeTracker {
+        depth: 1,
+        ..Default::default()
+    };
+    scope.observe_with_outer_remainder(source)
+}
+
 fn pair(bytes: &[u8], index: usize, first: u8, second: u8) -> bool {
     bytes.get(index) == Some(&first) && bytes.get(index + 1) == Some(&second)
 }

@@ -2,7 +2,7 @@ use super::attribute::{
     has_cfg_attr_path, is_attribute_trivia, is_outer_attribute, is_path_attribute_start,
     path_attribute_prefix,
 };
-use super::scope::ScopeTracker;
+use super::scope::{ScopeTracker, outer_attribute_remainder};
 
 mod inline;
 
@@ -28,7 +28,7 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
     let mut outer_attribute_continuation = false;
     let mut multiline_path_attribute: Option<String> = None;
     let mut scope = ScopeTracker::default();
-    for line in source.lines() {
+    'lines: for line in source.lines() {
         let mut line = line.trim();
         let mut completed_path_attribute = None;
         let is_outer = scope.is_outer();
@@ -72,15 +72,16 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
             }
             attributed_path = Some(path.clone());
             line = remainder.trim_start();
-        } else {
+        }
+        loop {
             if is_attribute_trivia(line, &mut block_comment_depth) {
-                continue;
+                continue 'lines;
             }
             if let Some((path, remainder)) = path_attribute_prefix(line) {
                 let mut trailing_comment_depth = 0;
                 if is_attribute_trivia(remainder, &mut trailing_comment_depth) {
                     attributed_path = (trailing_comment_depth == 0).then_some(path);
-                    continue;
+                    continue 'lines;
                 }
                 attributed_path = Some(path);
                 line = remainder.trim_start();
@@ -88,6 +89,13 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 return Vec::new();
             } else if has_cfg_attr_path(line) {
                 return Vec::new();
+            }
+            let Some(remainder) = outer_attribute_remainder(line) else {
+                break;
+            };
+            line = remainder.trim_start();
+            if line.is_empty() {
+                continue 'lines;
             }
         }
         let Some(module) = declaration_after_visibility(line).and_then(module_declaration) else {
