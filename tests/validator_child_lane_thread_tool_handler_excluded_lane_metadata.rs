@@ -64,6 +64,53 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_allows_multiline_lane_metadata_headings_inside_current_lane()
+-> Result<(), Box<dyn std::error::Error>> {
+    for heading in ["Lane owner:", "Lane ownership:", "Lane metadata:"] {
+        let output = run_ownership_validator(&format!(
+            r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane A Fallback route: no fallback route was available
+Lane A Tracking issue: #246
+{heading}
+- child-owned
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Maintainer reassignment: none
+"#,
+        ))?;
+
+        assert!(
+            output.status.success(),
+            "{heading:?} must remain metadata rather than becoming a lane identifier\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let inline = run_ownership_validator(
+        r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
+Tool search: discovered codex_app.read_thread as an available thread tool.
+Lane A:
+Invocation evidence: codex_app.read_thread failed with `No handler registered for tool: read_thread`.
+Lane A Fallback route: no fallback route was available
+Lane A Tracking issue: #246
+Lane owner: child-owned
+Dogfooding/tool-exposure defect: recorded runtime missing-handler evidence for codex_app.read_thread.
+Maintainer reassignment: none
+"#,
+    )?;
+    assert!(
+        inline.status.success(),
+        "inline lane-owner metadata must remain valid\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&inline.stdout),
+        String::from_utf8_lossy(&inline.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_handoff_metadata_that_names_a_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     for (field, qualifier) in [

@@ -58,8 +58,8 @@ validation proves the packaged paths match the repository layout.
    - lifecycle hooks use plugin-root-relative commands, stay read-only unless
      explicitly scoped otherwise, and MUST NOT use user-state mutation paths,
    - `scripts/validate-plugin-config --check-touched-loc --base-ref <base>`
-     passes for touched implementation and test-harness files unless the
-     tracked Codexy LOC exception mechanism names the file and rationale,
+     passes for touched implementation and test-harness files. Every governed
+     file MUST stay at or below 250 LOC. MUST NOT use or authorize LOC exceptions,
    - Codexy MCP config includes packaged `lsp` and `codegraph` servers when
      the plugin advertises LSP or code exploration behavior,
    - specialist agent or custom agent TOMLs parse and MUST NOT define a child

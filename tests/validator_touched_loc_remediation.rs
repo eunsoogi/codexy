@@ -3,6 +3,19 @@ mod support;
 use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[path = "validator_touched_loc_remediation/conventional_facade.rs"]
+mod conventional_facade;
+#[path = "validator_touched_loc_remediation/custom_module_path.rs"]
+mod custom_module_path;
+#[path = "validator_touched_loc_remediation/markdown_links.rs"]
+mod markdown_links;
+#[path = "validator_touched_loc_remediation/module_visibility.rs"]
+mod module_visibility;
+#[path = "validator_touched_loc_remediation/partial_extraction.rs"]
+mod partial_extraction;
+#[path = "validator_touched_loc_remediation/skill_references.rs"]
+mod skill_references;
 #[test]
 fn touched_loc_rejects_blank_line_only_remediation() -> TestResult {
     let repo = fixture("src/too_large.rs", blank_line_source())?;
@@ -168,7 +181,7 @@ fn blank_line_source() -> String {
     format!("\n\n{}", regular_lines(250))
 }
 
-fn multiline_source() -> String {
+pub(crate) fn multiline_source() -> String {
     format!(
         "{}let summary = format!(\n    \"status\"\n);\n",
         regular_lines(249)

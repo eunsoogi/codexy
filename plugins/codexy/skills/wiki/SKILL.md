@@ -138,7 +138,7 @@ query, MUST use the Audit workflow instead of treating it as plain Q&A.
 MUST choose the smallest workflow that matches the request, then load only the
 reference material you need for that workflow:
 
-- `ingest` and `ingest-collection` → `references/ingestion.md`
+- `ingest` and `ingest-collection` → MUST read `references/ingestion.md`
 - `collect` → `references/inventory.md` and `references/research-infrastructure.md`
 - `inventory` → `references/inventory.md`
 - `dataset` → `references/datasets.md`

@@ -4,7 +4,7 @@ use std::process::{Command, Output};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
-fn touched_loc_follows_child_side_of_synthetic_pr_merge() -> TestResult {
+fn touched_loc_rejects_parent_side_oversized_file_after_synthetic_pr_merge() -> TestResult {
     let repo = tempfile::tempdir()?;
     init_repo(repo.path())?;
     write(repo.path(), "src/reconciled.rs", &multiline_source())?;
@@ -34,10 +34,11 @@ fn touched_loc_follows_child_side_of_synthetic_pr_merge() -> TestResult {
 
     let output = validate(repo.path());
     assert!(
-        output.status.success(),
-        "synthetic PR merge must retain child reconciliation provenance\nstderr:\n{}",
+        !output.status.success(),
+        "unconditional governed LOC enforcement must reject the parent-side oversized file\nstderr:\n{}",
         stderr(&output)
     );
+    assert!(stderr(&output).contains("src/parent.rs has 251 lines"));
     Ok(())
 }
 

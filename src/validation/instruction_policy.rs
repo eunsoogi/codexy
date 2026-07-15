@@ -9,6 +9,7 @@ use crate::validation::{instruction_policy_text, load_json, prompt_yaml};
 
 mod child_thread_ledger;
 mod clauses;
+mod loc_policy;
 pub(crate) mod sentinel_scope_policy;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
@@ -44,6 +45,7 @@ fn check_surfaces(surfaces: Vec<PathBuf>, errors: &mut Vec<String>) {
                 }
                 check_structured_prompts(&path, &text, errors);
                 child_thread_ledger::check(&path, &text, errors);
+                loc_policy::check(&path, &text, errors);
                 sentinel_scope_policy::check(&path, &text, errors);
             }
             Err(error) => errors.push(format!(

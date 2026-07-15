@@ -1,0 +1,183 @@
+use std::path::{Path, PathBuf};
+
+use anyhow::Result;
+
+use super::{read_base_text, rust_module, token_coverage};
+
+pub(super) fn has_new_module_boundary(
+    root: &Path,
+    base_ref: &str,
+    path: &Path,
+    base: &str,
+    current: &str,
+) -> Result<bool> {
+    let current_lines = current.lines().collect::<std::collections::HashSet<_>>();
+    let removed = base
+        .lines()
+        .filter(|line| !line.trim().is_empty() && !current_lines.contains(line))
+        .collect::<Vec<_>>();
+    if removed.is_empty() {
+        return Ok(false);
+    }
+    let base_line_count = token_coverage::nonempty_line_count(base);
+    let extracted = match path.extension().and_then(|extension| extension.to_str()) {
+        Some("md") => markdown_extraction(root, base_ref, path, current)?,
+        _ => rust_module_extraction(root, base_ref, path, current)?,
+    };
+    let removed = removed.join("\n");
+    let extracted_line_count = token_coverage::nonempty_line_count(&extracted);
+    let removed_line_count = token_coverage::nonempty_line_count(&removed);
+    let exact_line_coverage = token_coverage::moved_line_coverage(&removed, &extracted);
+    Ok(token_coverage::without_whitespace(&extracted)
+        .contains(&token_coverage::without_whitespace(&removed))
+        || (exact_line_coverage >= 3
+            || exact_line_coverage >= 2
+                && extracted_line_count.saturating_mul(4) >= base_line_count.saturating_mul(3))
+            && extracted_line_count.saturating_mul(4) >= removed_line_count.saturating_mul(3))
+}
+
+fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) -> Result<String> {
+    let Some(directory) = markdown_facade_directory(path) else {
+        return Ok(String::new());
+    };
+    let parent = path.parent().unwrap_or(Path::new(""));
+    let mut modules = std::collections::BTreeSet::new();
+    for target in current
+        .lines()
+        .flat_map(markdown_link_targets)
+        .filter_map(normalize_markdown_target)
+    {
+        let module = parent.join(&target);
+        if module.extension().and_then(|extension| extension.to_str()) != Some("md")
+            || !module.starts_with(&directory)
+            || !root.join(&module).is_file()
+        {
+            continue;
+        }
+        modules.insert(module);
+    }
+    if modules.is_empty() {
+        return Ok(String::new());
+    }
+    extracted_new_lines(root, base_ref, modules)
+}
+
+fn semantic_markdown_component(component: &str) -> bool {
+    if component.is_empty() || component == ".." {
+        return false;
+    }
+    !mechanical_numbered_component(component)
+}
+
+fn normalize_markdown_target(target: &str) -> Option<PathBuf> {
+    let mut normalized = PathBuf::new();
+    for component in target.split('/') {
+        if component == "." {
+            continue;
+        }
+        if !semantic_markdown_component(component) {
+            return None;
+        }
+        normalized.push(component);
+    }
+    (!normalized.as_os_str().is_empty()).then_some(normalized)
+}
+
+fn mechanical_numbered_component(component: &str) -> bool {
+    let stem = Path::new(component)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or(component);
+    ["shard", "part", "chunk"].iter().any(|prefix| {
+        stem.strip_prefix(prefix)
+            .map(|suffix| suffix.trim_start_matches(['-', '_']))
+            .is_some_and(|suffix| {
+                let digits = suffix.strip_prefix('v').unwrap_or(suffix);
+                !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit())
+            })
+    })
+}
+
+fn markdown_link_targets(line: &str) -> impl Iterator<Item = &str> {
+    line.trim()
+        .split("](")
+        .skip(1)
+        .filter_map(|target| target.split_once(')').map(|(target, _)| target))
+        .filter_map(normalize_markdown_destination)
+        .filter_map(|target| target.split('#').next())
+        .filter(|target| !target.is_empty())
+}
+
+fn normalize_markdown_destination(target: &str) -> Option<&str> {
+    if target.starts_with('<') || target.ends_with('>') {
+        return target.strip_prefix('<')?.strip_suffix('>');
+    }
+    Some(target)
+}
+
+fn rust_module_extraction(
+    root: &Path,
+    base_ref: &str,
+    path: &Path,
+    current: &str,
+) -> Result<String> {
+    let mut modules = std::collections::BTreeSet::new();
+    collect_rust_modules(root, path, current, &mut modules);
+    extracted_new_lines(root, base_ref, modules)
+}
+
+fn collect_rust_modules(
+    root: &Path,
+    path: &Path,
+    current: &str,
+    modules: &mut std::collections::BTreeSet<PathBuf>,
+) {
+    for module_path in rust_module::declared_paths(root, path, current) {
+        if module_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(mechanical_numbered_component)
+        {
+            continue;
+        }
+        if root.join(&module_path).is_file() && modules.insert(module_path.clone()) {
+            let module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
+            collect_rust_modules(root, &module_path, &module, modules);
+        }
+    }
+}
+
+fn facade_directory(path: &Path) -> Option<PathBuf> {
+    path.file_stem()
+        .map(|stem| path.parent().unwrap_or(Path::new("")).join(stem))
+}
+
+fn markdown_facade_directory(path: &Path) -> Option<PathBuf> {
+    if path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md") {
+        return path.parent().map(|parent| parent.join("references"));
+    }
+    facade_directory(path)
+}
+
+fn extracted_new_lines(
+    root: &Path,
+    base_ref: &str,
+    modules: std::collections::BTreeSet<PathBuf>,
+) -> Result<String> {
+    let mut extracted = String::new();
+    for module_path in modules {
+        let current_module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
+        let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
+        let base_module_lines = base_module
+            .lines()
+            .collect::<std::collections::HashSet<_>>();
+        extracted.push_str(
+            &current_module
+                .lines()
+                .filter(|line| !line.trim().is_empty() && !base_module_lines.contains(line))
+                .map(|line| format!("{line}\n"))
+                .collect::<String>(),
+        );
+    }
+    Ok(extracted)
+}
