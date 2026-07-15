@@ -18,7 +18,7 @@ fn touched_loc_handles_rust_module_visibility_forms() -> TestResult {
         )?;
         write(
             repo.path(),
-            "src/extracted.rs",
+            "src/too_large/extracted.rs",
             "let summary = format!(\n    \"status\"\n);\n",
         )?;
 

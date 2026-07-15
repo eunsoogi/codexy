@@ -149,7 +149,11 @@ fn touched_loc_keeps_default_rust_module_paths_eligible() -> TestResult {
         "src/too_large.rs",
         &format!("mod extracted;\n{}", regular_lines(249)),
     )?;
-    write(repo.path(), "src/extracted.rs", &regular_lines_from(249, 3))?;
+    write(
+        repo.path(),
+        "src/too_large/extracted.rs",
+        &regular_lines_from(249, 3),
+    )?;
 
     let output = validate(repo.path())?;
 

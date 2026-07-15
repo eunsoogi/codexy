@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use super::{read_base_text, token_coverage};
+use super::{read_base_text, rust_module, token_coverage};
 
 pub(super) fn has_new_module_boundary(
     root: &Path,
@@ -132,48 +132,7 @@ fn collect_rust_modules(
     current: &str,
     modules: &mut std::collections::BTreeSet<PathBuf>,
 ) {
-    let facade_directory = facade_directory(path);
-    let mut explicit_path = None;
-    for line in current.lines() {
-        let mut line = line.trim();
-        if let Some((path, remainder)) = rust_path_attribute(line) {
-            explicit_path = Some(path);
-            if remainder.is_empty() {
-                continue;
-            }
-            line = remainder;
-        }
-        let declaration = line
-            .strip_prefix("pub(crate) ")
-            .or_else(|| line.strip_prefix("pub(super) "))
-            .or_else(|| line.strip_prefix("pub "))
-            .unwrap_or(line);
-        let Some(module) = declaration
-            .strip_prefix("mod ")
-            .and_then(|name| name.strip_suffix(';'))
-        else {
-            if !line.is_empty() && !line.starts_with("#[") && !line.starts_with("//") {
-                explicit_path = None;
-            }
-            continue;
-        };
-        if mechanical_numbered_component(module) {
-            explicit_path = None;
-            continue;
-        }
-        let module_path = if let Some(explicit_path) = explicit_path.take() {
-            path.parent().unwrap_or(Path::new("")).join(explicit_path)
-        } else {
-            let sibling = path
-                .parent()
-                .unwrap_or(Path::new(""))
-                .join(format!("{module}.rs"));
-            facade_directory
-                .as_ref()
-                .map(|directory| directory.join(format!("{module}.rs")))
-                .filter(|candidate| root.join(candidate).is_file())
-                .unwrap_or(sibling)
-        };
+    for module_path in rust_module::declared_paths(root, path, current) {
         if module_path
             .file_name()
             .and_then(|name| name.to_str())
@@ -186,18 +145,6 @@ fn collect_rust_modules(
             collect_rust_modules(root, &module_path, &module, modules);
         }
     }
-}
-
-fn rust_path_attribute(line: &str) -> Option<(&str, &str)> {
-    let attribute = line.strip_prefix("#[path")?;
-    let closing = attribute.find(']')?;
-    let path = attribute[..closing]
-        .trim()
-        .strip_prefix('=')?
-        .trim()
-        .strip_prefix('"')?
-        .strip_suffix('"')?;
-    Some((path, attribute[closing + 1..].trim()))
 }
 
 fn facade_directory(path: &Path) -> Option<PathBuf> {

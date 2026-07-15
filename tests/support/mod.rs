@@ -14,6 +14,7 @@ mod release_cache_git_fallback;
 mod release_cache_release_match;
 mod release_cache_resources;
 mod release_version;
+pub(crate) mod touched_loc;
 pub(super) mod worktree_reservation_harness;
 
 #[cfg(unix)]

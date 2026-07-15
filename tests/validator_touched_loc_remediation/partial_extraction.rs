@@ -11,7 +11,11 @@ fn touched_loc_rejects_half_extraction_with_remaining_multiline_collapse() -> Te
             regular_lines(247)
         ),
     )?;
-    write(repo.path(), "src/helper.rs", &regular_lines_from(247, 2))?;
+    write(
+        repo.path(),
+        "src/too_large/helper.rs",
+        &regular_lines_from(247, 2),
+    )?;
 
     let output = validate(repo.path())?;
 
@@ -28,7 +32,7 @@ fn touched_loc_rejects_unrelated_extracted_boilerplate() -> TestResult {
         "src/too_large.rs",
         &format!("mod helper;\n{}", regular_lines(249)),
     )?;
-    write(repo.path(), "src/helper.rs", &unrelated_lines(3))?;
+    write(repo.path(), "src/too_large/helper.rs", &unrelated_lines(3))?;
 
     let output = validate(repo.path())?;
 
@@ -45,7 +49,11 @@ fn touched_loc_allows_three_quarter_extraction_coverage() -> TestResult {
         "src/too_large.rs",
         &format!("mod helper;\n{}", regular_lines(248)),
     )?;
-    write(repo.path(), "src/helper.rs", &regular_lines_from(248, 3))?;
+    write(
+        repo.path(),
+        "src/too_large/helper.rs",
+        &regular_lines_from(248, 3),
+    )?;
 
     let output = validate(repo.path())?;
 
@@ -63,7 +71,7 @@ fn touched_loc_allows_large_transformed_extraction_with_exact_line_coverage() ->
     )?;
     write(
         repo.path(),
-        "src/helper.rs",
+        "src/too_large/helper.rs",
         &(regular_lines_from(52, 108) + &unrelated_lines(92)),
     )?;
 

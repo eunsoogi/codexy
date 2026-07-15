@@ -4,6 +4,7 @@ use std::process::Command;
 use anyhow::{Context as _, Result, bail};
 
 mod module_boundary;
+mod rust_module;
 mod token_coverage;
 
 pub(super) fn formatting_only_error(
