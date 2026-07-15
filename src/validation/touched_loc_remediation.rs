@@ -3,6 +3,8 @@ use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
 
+mod rust_module;
+
 pub(super) fn formatting_only_error(
     root: &Path,
     change_base_ref: &str,
@@ -112,22 +114,7 @@ fn has_new_module_boundary(
     if removed.is_empty() {
         return Ok(false);
     }
-    for line in current.lines() {
-        let line = line.trim();
-        let declaration = line
-            .strip_prefix("pub(crate) ")
-            .or_else(|| line.strip_prefix("pub "))
-            .unwrap_or(line);
-        let Some(module) = declaration
-            .strip_prefix("mod ")
-            .and_then(|name| name.strip_suffix(';'))
-        else {
-            continue;
-        };
-        let module_path = path
-            .parent()
-            .unwrap_or(Path::new(""))
-            .join(format!("{module}.rs"));
+    for module_path in rust_module::declared_paths(root, path, current) {
         let current_module = std::fs::read_to_string(root.join(&module_path)).unwrap_or_default();
         let base_module = read_base_text(root, base_ref, &module_path)?.unwrap_or_default();
         let base_module_lines = base_module
