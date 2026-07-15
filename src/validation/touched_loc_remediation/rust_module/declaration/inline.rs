@@ -1,8 +1,7 @@
-use super::super::attribute::path_attribute;
+use super::super::attribute::{has_cfg_attr_path, path_attribute};
 use super::{InlineModule, is_path_attribute_start, valid_visibility_path};
 
 mod literal;
-
 pub(super) fn inline_modules(source: &str) -> Vec<InlineModule<'_>> {
     parse(source).unwrap_or_default()
 }
@@ -22,7 +21,9 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             let end = matching_delimiter(bytes, index + 1)?;
             if let Some(path) = path_attribute(&source[index..=end]) {
                 attributed_path = Some(path);
-            } else if is_path_attribute_start(&source[index..=end]) {
+            } else if is_path_attribute_start(&source[index..=end])
+                || has_cfg_attr_path(&source[index..=end])
+            {
                 return None;
             }
             index = end + 1;

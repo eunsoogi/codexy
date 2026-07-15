@@ -1,4 +1,4 @@
-use super::attribute::{is_attribute_trivia, path_attribute_prefix};
+use super::attribute::{has_cfg_attr_path, is_attribute_trivia, path_attribute_prefix};
 use super::scope::ScopeTracker;
 
 mod inline;
@@ -82,6 +82,8 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 attributed_path = Some(path);
                 line = remainder.trim_start();
             } else if is_path_attribute_start(line) && scope.is_outer_scope() {
+                return Vec::new();
+            } else if has_cfg_attr_path(line) {
                 return Vec::new();
             }
         }

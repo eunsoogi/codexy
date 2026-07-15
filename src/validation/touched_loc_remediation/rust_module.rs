@@ -5,19 +5,37 @@ mod declaration;
 mod origin;
 mod scope;
 
-use declaration::declarations;
+use declaration::{declarations, inline_modules};
 
 pub(super) const TARGET_ROOTS: [&str; 4] = ["src/bin", "tests", "examples", "benches"];
 
 pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<PathBuf> {
     let mut paths = Vec::new();
-    let mut default_parent = None;
+    let default_parent = module_parent(root, path);
+    let attribute_parent = path.parent().unwrap_or(Path::new(""));
+    declared_paths_in_scope(
+        root,
+        path,
+        source,
+        &default_parent,
+        attribute_parent,
+        &mut paths,
+    );
+    paths
+}
+
+fn declared_paths_in_scope(
+    root: &Path,
+    source_path: &Path,
+    source: &str,
+    default_parent: &Path,
+    attribute_parent: &Path,
+    paths: &mut Vec<PathBuf>,
+) {
     for declaration in declarations(source) {
         if let Some(attribute) = declaration.path {
-            if let Some(module_path) =
-                normalize_relative_path(path.parent().unwrap_or(Path::new("")), &attribute)
-            {
-                if module_path != path {
+            if let Some(module_path) = normalize_relative_path(attribute_parent, &attribute) {
+                if module_path != source_path {
                     paths.push(module_path);
                 }
             }
@@ -26,11 +44,18 @@ pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<Path
                 .module
                 .strip_prefix("r#")
                 .unwrap_or(&declaration.module);
-            let module_parent = default_parent.get_or_insert_with(|| module_parent(root, path));
-            paths.extend(default_paths(root, module_parent, module));
+            paths.extend(default_paths(root, default_parent, module));
         }
     }
-    paths
+    for inline in inline_modules(source) {
+        let scope = inline_scope(default_parent, inline.module, inline.path.as_deref());
+        declared_paths_in_scope(root, source_path, inline.body, &scope, &scope, paths);
+    }
+}
+
+fn inline_scope(parent: &Path, module: &str, path: Option<&str>) -> PathBuf {
+    path.and_then(|path| normalize_relative_path(parent, path))
+        .unwrap_or_else(|| parent.join(module.strip_prefix("r#").unwrap_or(module)))
 }
 
 fn module_parent(root: &Path, path: &Path) -> PathBuf {

@@ -4,6 +4,23 @@ pub(super) fn path_attribute(line: &str) -> Option<String> {
     (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(value)
 }
 
+pub(super) fn has_cfg_attr_path(line: &str) -> bool {
+    let Some(attributes) = line.strip_prefix("#[cfg_attr") else {
+        return false;
+    };
+    attributes.split(',').skip(1).any(|attribute| {
+        attribute
+            .trim_start()
+            .strip_prefix("path")
+            .is_some_and(|suffix| {
+                suffix
+                    .as_bytes()
+                    .first()
+                    .is_some_and(|byte| byte.is_ascii_whitespace() || *byte == b'=')
+            })
+    })
+}
+
 pub(super) fn path_attribute_prefix(line: &str) -> Option<(String, &str)> {
     let literal = line
         .strip_prefix("#[path")?
