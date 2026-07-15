@@ -1,6 +1,5 @@
-use super::super::attribute::{has_cfg_attr_path, path_attribute};
-use super::{InlineModule, is_path_attribute_start, valid_visibility_path};
-
+use super::super::attribute::{has_cfg_attr_path, is_path_attribute_start, path_attribute};
+use super::{InlineModule, valid_visibility_path};
 mod literal;
 pub(super) fn inline_modules(source: &str) -> Vec<InlineModule<'_>> {
     parse(source).unwrap_or_default()
@@ -17,17 +16,20 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             index = next;
             continue;
         }
-        if delimiters.is_empty() && bytes.get(index..index + 2) == Some(b"#[") {
-            let end = matching_delimiter(bytes, index + 1)?;
-            if let Some(path) = path_attribute(&source[index..=end]) {
-                attributed_path = Some(path);
-            } else if is_path_attribute_start(&source[index..=end])
-                || has_cfg_attr_path(&source[index..=end])
-            {
-                return None;
+        if delimiters.is_empty() && bytes.get(index) == Some(&b'#') {
+            let attribute_start = skip_trivia(bytes, index + 1)?;
+            if bytes.get(attribute_start) == Some(&b'[') {
+                let end = matching_delimiter(bytes, attribute_start)?;
+                if let Some(path) = path_attribute(&source[index..=end]) {
+                    attributed_path = Some(path);
+                } else if is_path_attribute_start(&source[index..=end])
+                    || has_cfg_attr_path(&source[index..=end])
+                {
+                    return None;
+                }
+                index = end + 1;
+                continue;
             }
-            index = end + 1;
-            continue;
         }
         match bytes[index] {
             b'{' | b'(' | b'[' => {
@@ -92,13 +94,11 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
     }
     delimiters.is_empty().then_some(modules)
 }
-
 #[derive(Clone, Copy)]
 enum ItemBoundary {
     Semicolon,
     BodyOrSemicolon,
 }
-
 fn item_boundary(token: &str) -> Option<ItemBoundary> {
     match token {
         "use" | "type" | "const" | "static" => Some(ItemBoundary::Semicolon),

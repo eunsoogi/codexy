@@ -5,7 +5,7 @@ pub(super) fn path_attribute(line: &str) -> Option<String> {
 }
 
 pub(super) fn has_cfg_attr_path(line: &str) -> bool {
-    let Some(arguments) = line.strip_prefix("#[cfg_attr") else {
+    let Some(arguments) = named_attribute_content(line, "cfg_attr") else {
         return false;
     };
     let Some(arguments) = arguments.trim_start().strip_prefix('(') else {
@@ -16,6 +16,13 @@ pub(super) fn has_cfg_attr_path(line: &str) -> bool {
     let mut argument_index = 0;
     let mut delimiters = Vec::new();
     while index < arguments.len() {
+        if let Some(next) = comment_end(arguments.as_bytes(), index) {
+            let Some(next) = next else {
+                return true;
+            };
+            index = next;
+            continue;
+        }
         if matches!(arguments.as_bytes()[index], b'"' | b'r') {
             if let Some((_, suffix)) = string_literal(&arguments[index..]) {
                 index = arguments.len() - suffix.len();
@@ -65,14 +72,38 @@ fn cfg_attr_path_argument(argument: &str) -> bool {
 }
 
 pub(super) fn path_attribute_prefix(line: &str) -> Option<(String, &str)> {
-    let literal = line
-        .strip_prefix("#[path")?
+    let literal = named_attribute_content(line, "path")?
         .trim_start()
         .strip_prefix('=')?
         .trim_start();
     let (value, suffix) = string_literal(literal)?;
     let suffix = suffix.trim_start().strip_prefix(']')?;
     Some((value, suffix))
+}
+
+pub(super) fn is_path_attribute_start(source: &str) -> bool {
+    named_attribute_content(source, "path").is_some()
+}
+
+pub(super) fn is_outer_attribute(source: &str) -> bool {
+    outer_attribute_content(source).is_some()
+}
+
+fn named_attribute_content<'a>(source: &'a str, name: &str) -> Option<&'a str> {
+    let remainder = outer_attribute_content(source)?.strip_prefix(name)?;
+    remainder
+        .as_bytes()
+        .first()
+        .is_none_or(|byte| byte.is_ascii_whitespace() || matches!(byte, b'=' | b']' | b'('))
+        .then_some(remainder)
+}
+
+fn outer_attribute_content(source: &str) -> Option<&str> {
+    source
+        .strip_prefix('#')?
+        .trim_start()
+        .strip_prefix('[')
+        .map(str::trim_start)
 }
 
 pub(super) fn is_attribute_trivia(line: &str, block_comment_depth: &mut usize) -> bool {
@@ -116,6 +147,37 @@ fn string_literal(input: &str) -> Option<(String, &str)> {
     } else {
         raw_string(input)
     }
+}
+
+fn comment_end(bytes: &[u8], index: usize) -> Option<Option<usize>> {
+    if bytes.get(index..index + 2) == Some(b"//") {
+        return Some(Some(
+            bytes[index + 2..]
+                .iter()
+                .position(|byte| *byte == b'\n')
+                .map_or(bytes.len(), |offset| index + offset + 3),
+        ));
+    }
+    if bytes.get(index..index + 2) != Some(b"/*") {
+        return None;
+    }
+    let mut depth = 1;
+    let mut cursor = index + 2;
+    while cursor < bytes.len() {
+        if bytes.get(cursor..cursor + 2) == Some(b"/*") {
+            depth += 1;
+            cursor += 2;
+        } else if bytes.get(cursor..cursor + 2) == Some(b"*/") {
+            depth -= 1;
+            cursor += 2;
+            if depth == 0 {
+                return Some(Some(cursor));
+            }
+        } else {
+            cursor += 1;
+        }
+    }
+    Some(None)
 }
 
 fn raw_string(input: &str) -> Option<(String, &str)> {

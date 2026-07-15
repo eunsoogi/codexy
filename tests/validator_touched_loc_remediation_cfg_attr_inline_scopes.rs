@@ -68,6 +68,62 @@ fn touched_loc_preserves_balanced_non_path_cfg_attr_and_path_controls() -> TestR
 }
 
 #[test]
+fn touched_loc_honors_path_attributes_with_token_whitespace() -> TestResult {
+    for attribute in [
+        "# [path = \"generated.rs\"]\n",
+        "#[ path = \"generated.rs\"]\n",
+    ] {
+        let repo = fixture("src/foo.rs", regular_lines(250))?;
+        write(repo.path(), "src/lib.rs", "mod foo;\n")?;
+        amend(repo.path())?;
+        write(
+            repo.path(),
+            "src/foo.rs",
+            &format!("{attribute}mod helper;\n{}", regular_lines(248)),
+        )?;
+        write(repo.path(), "src/generated.rs", &regular_lines_from(248, 2))?;
+
+        let rustc = compile(repo.path())?;
+        assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+        let output = validate(repo.path())?;
+        assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_preserves_cfg_attr_with_comment_delimiters() -> TestResult {
+    for attribute in [
+        "#[cfg_attr(all(unix /* ( */, windows), allow(dead_code))]",
+        "#[cfg_attr(all(\n        unix, // (\n        windows\n    ), allow(dead_code))]",
+    ] {
+        let retained = 250 - attribute.lines().count() - 3;
+        let repo = fixture("src/foo/outer/helper.rs", regular_lines(250))?;
+        write(repo.path(), "src/lib.rs", "mod foo;\n")?;
+        amend(repo.path())?;
+        write(
+            repo.path(),
+            "src/foo.rs",
+            &format!(
+                "mod outer {{\n    {attribute}\n    mod helper;\n}}\n{}",
+                regular_lines(retained)
+            ),
+        )?;
+        write(
+            repo.path(),
+            "src/foo/outer/helper.rs",
+            &regular_lines_from(retained, 250 - retained),
+        )?;
+
+        let rustc = compile(repo.path())?;
+        assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+        let output = validate(repo.path())?;
+        assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
 fn touched_loc_discovers_default_module_inside_inline_scope() -> TestResult {
     let repo = fixture("src/foo.rs", regular_lines(252))?;
     write(repo.path(), "src/lib.rs", "mod foo;\n")?;

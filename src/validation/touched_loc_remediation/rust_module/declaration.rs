@@ -1,4 +1,7 @@
-use super::attribute::{has_cfg_attr_path, is_attribute_trivia, path_attribute_prefix};
+use super::attribute::{
+    has_cfg_attr_path, is_attribute_trivia, is_outer_attribute, is_path_attribute_start,
+    path_attribute_prefix,
+};
 use super::scope::ScopeTracker;
 
 mod inline;
@@ -88,7 +91,7 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
             }
         }
         let Some(module) = declaration_after_visibility(line).and_then(module_declaration) else {
-            if line.starts_with("#[") {
+            if is_outer_attribute(line) {
                 outer_attribute_continuation = !scope.is_outer_scope();
                 if outer_attribute_continuation && is_path_attribute_start(line) {
                     multiline_path_attribute = Some(line.to_owned());
@@ -104,17 +107,6 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         });
     }
     declarations
-}
-
-fn is_path_attribute_start(source: &str) -> bool {
-    let Some(remainder) = source.strip_prefix("#[path") else {
-        return false;
-    };
-    remainder.is_empty()
-        || remainder
-            .as_bytes()
-            .first()
-            .is_some_and(|byte| byte.is_ascii_whitespace() || matches!(byte, b'=' | b']'))
 }
 
 fn declaration_after_visibility(source: &str) -> Option<&str> {
