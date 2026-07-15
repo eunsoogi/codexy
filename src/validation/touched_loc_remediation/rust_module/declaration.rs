@@ -26,7 +26,7 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
     let mut attributed_path = None;
     let mut block_comment_depth = 0;
     let mut outer_attribute_continuation = false;
-    let mut multiline_path_attribute: Option<String> = None;
+    let mut multiline_outer_attribute: Option<String> = None;
     let mut scope = ScopeTracker::default();
     'lines: for line in source.lines() {
         let mut line = line.trim();
@@ -36,7 +36,7 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         let outer_remainder = scope.observe_with_outer_remainder(line);
         if !is_outer {
             if outer_attribute_continuation {
-                if let Some(attribute) = multiline_path_attribute.as_mut() {
+                if let Some(attribute) = multiline_outer_attribute.as_mut() {
                     attribute.push('\n');
                     attribute.push_str(line);
                 }
@@ -44,11 +44,12 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                     continue;
                 };
                 outer_attribute_continuation = false;
-                if let Some(attribute) = multiline_path_attribute.take() {
-                    let Some((path, remainder)) = path_attribute_prefix(&attribute) else {
+                if let Some(attribute) = multiline_outer_attribute.take() {
+                    if let Some((path, remainder)) = path_attribute_prefix(&attribute) {
+                        completed_path_attribute = Some((path, remainder.to_owned()));
+                    } else if is_path_attribute_start(&attribute) || has_cfg_attr_path(&attribute) {
                         return Vec::new();
-                    };
-                    completed_path_attribute = Some((path, remainder.to_owned()));
+                    }
                 }
                 if completed_path_attribute.is_none() {
                     line = remainder.trim();
@@ -100,7 +101,7 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 line = remainder.trim_start();
             } else if is_path_attribute_start(line) && scope.is_outer_scope() {
                 return Vec::new();
-            } else if has_cfg_attr_path(line) {
+            } else if scope.is_outer_scope() && has_cfg_attr_path(line) {
                 return Vec::new();
             }
             let Some(remainder) = outer_attribute_remainder(line) else {
@@ -114,8 +115,8 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
         let Some(module) = declaration_after_visibility(line).and_then(module_declaration) else {
             if is_outer_attribute(line) {
                 outer_attribute_continuation = !scope.is_outer_scope();
-                if outer_attribute_continuation && is_path_attribute_start(line) {
-                    multiline_path_attribute = Some(line.to_owned());
+                if outer_attribute_continuation {
+                    multiline_outer_attribute = Some(line.to_owned());
                 }
             } else {
                 attributed_path = None;
