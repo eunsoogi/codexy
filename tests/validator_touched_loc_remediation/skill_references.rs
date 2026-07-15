@@ -25,6 +25,28 @@ fn touched_loc_allows_skill_facade_extraction_into_one_linked_reference() -> Tes
 }
 
 #[test]
+fn touched_loc_allows_skill_facade_extraction_into_dot_linked_reference() -> TestResult {
+    let repo = fixture(SKILL_PATH, regular_lines(252))?;
+    write(
+        repo.path(),
+        SKILL_PATH,
+        &format!(
+            "# Example\n\n- [Workflow](./references/workflow.md)\n\n{}",
+            regular_lines_from(250, 2)
+        ),
+    )?;
+    write(
+        repo.path(),
+        "plugins/codexy/skills/example/references/workflow.md",
+        &regular_lines(250),
+    )?;
+
+    let output = validate(repo.path())?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn touched_loc_allows_prose_embedded_skill_reference() -> TestResult {
     let repo = fixture(SKILL_PATH, regular_lines(252))?;
     write(

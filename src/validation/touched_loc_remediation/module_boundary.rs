@@ -37,12 +37,13 @@ fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) 
     };
     let parent = path.parent().unwrap_or(Path::new(""));
     let mut modules = std::collections::BTreeSet::new();
-    for target in current.lines().flat_map(markdown_link_targets) {
-        let module = parent.join(target);
-        if target
-            .split('/')
-            .any(|part| !semantic_markdown_component(part))
-            || module.extension().and_then(|extension| extension.to_str()) != Some("md")
+    for target in current
+        .lines()
+        .flat_map(markdown_link_targets)
+        .filter_map(normalize_markdown_target)
+    {
+        let module = parent.join(&target);
+        if module.extension().and_then(|extension| extension.to_str()) != Some("md")
             || !module.starts_with(&directory)
             || !root.join(&module).is_file()
         {
@@ -57,10 +58,24 @@ fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) 
 }
 
 fn semantic_markdown_component(component: &str) -> bool {
-    if component.is_empty() || matches!(component, "." | "..") {
+    if component.is_empty() || component == ".." {
         return false;
     }
     !mechanical_numbered_component(component)
+}
+
+fn normalize_markdown_target(target: &str) -> Option<PathBuf> {
+    let mut normalized = PathBuf::new();
+    for component in target.split('/') {
+        if component == "." {
+            continue;
+        }
+        if !semantic_markdown_component(component) {
+            return None;
+        }
+        normalized.push(component);
+    }
+    (!normalized.as_os_str().is_empty()).then_some(normalized)
 }
 
 fn mechanical_numbered_component(component: &str) -> bool {
