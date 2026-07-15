@@ -18,6 +18,7 @@ pub(super) fn has_cfg_attr_path(line: &str) -> bool {
     let mut index = 0;
     let mut argument_start = 0;
     let mut argument_index = 0;
+    let mut disabled = false;
     let mut delimiters = Vec::new();
     while index < arguments.len() {
         if let Some(next) = comment_end(arguments.as_bytes(), index) {
@@ -42,6 +43,7 @@ pub(super) fn has_cfg_attr_path(line: &str) -> bool {
             b'{' => delimiters.push(b'}'),
             b')' if delimiters.is_empty() => {
                 return argument_index > 0
+                    && !disabled
                     && cfg_attr_path_argument(&arguments[argument_start..index]);
             }
             b')' | b']' | b'}' => {
@@ -50,7 +52,15 @@ pub(super) fn has_cfg_attr_path(line: &str) -> bool {
                 }
             }
             b',' if delimiters.is_empty() => {
-                if argument_index > 0 && cfg_attr_path_argument(&arguments[argument_start..index]) {
+                if argument_index == 0
+                    && cfg_attr_predicate_is_disabled(&arguments[argument_start..index])
+                {
+                    disabled = true;
+                }
+                if argument_index > 0
+                    && !disabled
+                    && cfg_attr_path_argument(&arguments[argument_start..index])
+                {
                     return true;
                 }
                 argument_index += 1;
@@ -61,6 +71,10 @@ pub(super) fn has_cfg_attr_path(line: &str) -> bool {
         index += 1;
     }
     true
+}
+
+fn cfg_attr_predicate_is_disabled(predicate: &str) -> bool {
+    predicate.trim() == "any()"
 }
 
 fn cfg_attr_path_argument(argument: &str) -> bool {

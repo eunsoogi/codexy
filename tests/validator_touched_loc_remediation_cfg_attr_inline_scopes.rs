@@ -105,6 +105,10 @@ fn touched_loc_preserves_balanced_non_path_cfg_attr_and_path_controls() -> TestR
             "#[cfg_attr(all(unix, path = \"x\"), allow(dead_code))]\n",
             "src/foo/helper.rs",
         ),
+        (
+            "#[cfg_attr(any(), path = \"generated.rs\")]\n",
+            "src/foo/helper.rs",
+        ),
         ("#[cfg_attr(unix, allow(dead_code))]\n", "src/foo/helper.rs"),
         ("#[path = \"generated.rs\"]\n", "src/generated.rs"),
     ] {
