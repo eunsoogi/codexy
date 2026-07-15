@@ -35,3 +35,23 @@ fn approval_permissions_respect_negation() {
         assert_eq!(permits_in(text, false), permits, "{text}");
     }
 }
+
+#[test]
+fn waiver_permissions_need_loc_context() {
+    for (text, permits) in [
+        (
+            "A PR label waiver MAY be used when labels are disabled.",
+            false,
+        ),
+        (
+            "A PR label waiver MAY NOT be used when labels are disabled.",
+            false,
+        ),
+        (
+            "A waiver MAY exempt a governed file from the 250 LOC contract.",
+            true,
+        ),
+    ] {
+        assert_eq!(permits_in(text, false), permits, "{text}");
+    }
+}

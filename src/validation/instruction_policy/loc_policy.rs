@@ -92,12 +92,13 @@ fn permits_in(text: &str, inherited_context: bool) -> bool {
     let exception_context = inherited_context
         || (exception_term && loc_context)
         || overage_authorization
-        || words.iter().any(|word| {
-            matches!(
-                word.as_str(),
-                "waiver" | "waivers" | "exempt" | "exempted" | "exemption"
-            )
-        });
+        || (loc_context
+            && words.iter().any(|word| {
+                matches!(
+                    word.as_str(),
+                    "waiver" | "waivers" | "exempt" | "exempted" | "exemption"
+                )
+            }));
     exception_context && (overage_authorization || has_positive_permission(&words))
 }
 

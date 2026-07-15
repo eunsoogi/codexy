@@ -138,6 +138,18 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
             "The validator is authorized by maintainers to reject any governed file that exceeds 250 LOC.",
             false,
         ),
+        (
+            "A PR label waiver MAY be used when labels are disabled.",
+            false,
+        ),
+        (
+            "A PR label waiver MAY NOT be used when labels are disabled.",
+            false,
+        ),
+        (
+            "A waiver MAY exempt a governed file from the 250 LOC contract.",
+            true,
+        ),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
