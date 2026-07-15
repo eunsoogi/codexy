@@ -123,7 +123,8 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
     text.match_indices(clause).any(|(index, _)| {
         let before = &text[..index];
         let after = &text[index + clause.len()..];
-        before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
+        has_clause_boundaries(before, after)
+            && before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
             && !current_block_prefix(before)
                 .rsplit(['.', ';'])
                 .next()
@@ -140,6 +141,21 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
             && !has_conditional_context(before)
             && !has_weakening_suffix(after)
     })
+}
+
+fn has_clause_boundaries(before: &str, after: &str) -> bool {
+    before
+        .chars()
+        .next_back()
+        .is_none_or(|character| !is_clause_token_character(character))
+        && after
+            .chars()
+            .next()
+            .is_none_or(|character| !is_clause_token_character(character))
+}
+
+fn is_clause_token_character(character: char) -> bool {
+    character.is_alphanumeric() || character == '_'
 }
 
 fn has_conditional_context(before: &str) -> bool {
