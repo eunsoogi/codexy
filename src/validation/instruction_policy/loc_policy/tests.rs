@@ -30,6 +30,7 @@ fn approval_permissions_respect_negation() {
             "Maintainers do not approve LOC exceptions after review.",
             false,
         ),
+        ("The validator approved rejecting LOC exceptions.", false),
     ] {
         assert_eq!(permits_in(text, false), permits, "{text}");
     }

@@ -2,6 +2,7 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
+mod approval;
 mod overage;
 mod surfaces;
 #[cfg(test)]
@@ -147,6 +148,10 @@ fn has_positive_permission(words: &[String]) -> bool {
                 words.get(index + 1).map(String::as_str),
                 Some("allow" | "exempt")
             ),
+            "approve" | "approved" => {
+                approval::governs_loc_exception(words, index)
+                    && !passive_permission_is_negated(words, index)
+            }
             word if is_passive_permission(word) => !passive_permission_is_negated(words, index),
             _ => false,
         })
