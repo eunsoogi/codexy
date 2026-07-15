@@ -45,39 +45,43 @@ fn validator_rejects_missing_no_change_rationale_labels() -> TestResult {
 }
 #[test]
 fn validator_treats_review_comments_as_review_response() -> TestResult {
-    assert_requires_threads("Addressed Codex review comments on the current head.\n")?;
+    assert_requires_threads("Addressed automated review comments on the current head.\n")?;
     assert_requires_threads("Addressed reviewer comments on the current head.\n")?;
     assert_requires_threads("Addressed reviewer feedback on the current head.\n")
 }
 #[test]
 fn validator_treats_review_suggestions_as_review_response() -> TestResult {
-    assert_requires_threads("Applied Codex review suggestions on the current head.\n")?;
-    assert_requires_threads("Addressed the Codex review suggestion on the current head.\n")
+    assert_requires_threads("Applied automated review suggestions on the current head.\n")?;
+    assert_requires_threads("Addressed the automated review suggestion on the current head.\n")
 }
 #[test]
-fn validator_treats_codex_review_feedback_as_review_response() -> TestResult {
-    assert_requires_threads("Codex review:\n- Fixed the requested changes.\n")?;
+fn validator_treats_actionable_reviewer_feedback_as_review_response() -> TestResult {
+    assert_requires_threads("Review response:\n- Fixed the requested changes.\n")?;
     assert_requires_threads("Updated actionable Codex feedback.\n")?;
-    assert_requires_threads("Handled actionable Codex feedback.\n")
+    assert_requires_threads("Handled actionable Codex feedback.\n")?;
+    assert_requires_threads("Updated actionable reviewer feedback.\n")?;
+    assert_requires_threads("Handled actionable reviewer feedback.\n")
 }
 #[test]
 fn validator_treats_resolved_review_comments_as_review_response() -> TestResult {
-    assert_requires_threads("Implemented Codex review comments on the current head.\n")
+    assert_requires_threads("Implemented automated review comments on the current head.\n")
 }
 #[test]
 fn validator_treats_present_tense_review_actions_as_review_response() -> TestResult {
-    assert_requires_threads("This addresses Codex review feedback.\n")?;
-    assert_requires_threads("Addressing Codex review feedback.\n")
+    assert_requires_threads("This addresses automated review feedback.\n")?;
+    assert_requires_threads("Addressing automated review feedback.\n")
 }
 #[test]
 fn validator_preserves_review_response_context_across_follow_up_sentences() -> TestResult {
     assert_requires_threads("## Review response\n- Fixed the requested changes.\n")?;
     assert_requires_threads("Review response: current head verified. Addressed all feedback.\n")?;
-    assert_requires_threads("Codex review left comments. Addressed the feedback.\n")
+    assert_requires_threads("Review feedback left comments. Addressed the feedback.\n")
 }
 #[test]
 fn validator_preserves_review_feedback_context_across_all_bullets() -> TestResult {
-    assert_requires_threads("Review feedback:\n- Verification rerun.\n- Fixed the Codex comment.\n")
+    assert_requires_threads(
+        "Review feedback:\n- Verification rerun.\n- Fixed the reviewer comment.\n",
+    )
 }
 #[test]
 fn validator_allows_unresolved_status_without_action_word_match() -> TestResult {
@@ -103,33 +107,25 @@ fn validator_rejects_partial_review_thread_evidence() -> TestResult {
     )
 }
 #[test]
-fn validator_rejects_clean_codex_review_without_head_ref_oid() -> TestResult {
-    assert_handoff_fails(
-        "Codex review passed. Fixed the failing test.\n",
-        NORMAL_OPEN_PR_STATE,
-        "headRefOid",
-    )
-}
-#[test]
 fn validator_allows_no_review_feedback_with_unrelated_fix_without_threads() -> TestResult {
     assert_handoff_succeeds(
-        "## Review feedback: none from Codex\n- Fixed the failing test.\n",
+        "## Review feedback: none\n- Fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
     )
 }
 #[test]
 fn validator_limits_no_feedback_negation_to_current_clause() -> TestResult {
     assert_requires_threads(
-        "No review feedback was left unresolved. Review response: fixed the Codex review feedback.\n",
+        "No review feedback was left unresolved. Review response: fixed the automated review feedback.\n",
     )?;
     assert_requires_threads(
-        "Review response: no review feedback was left unresolved, fixed the Codex review feedback.\n",
+        "Review response: no review feedback was left unresolved, fixed the automated review feedback.\n",
     )
 }
 #[test]
 fn validator_allows_comma_separated_no_review_feedback_with_unrelated_fix() -> TestResult {
     assert_handoff_succeeds(
-        "Reviewer feedback: none from Codex, fixed the failing test.\n",
+        "Reviewer feedback: none from the reviewer, fixed the failing test.\n",
         NORMAL_OPEN_PR_STATE,
     )
 }
@@ -140,7 +136,7 @@ fn validator_limits_negation_to_matched_review_action() -> TestResult {
 #[test]
 fn validator_rejects_unresolved_outdated_review_thread_after_response() -> TestResult {
     assert_handoff_fails(
-        "Review response: fixed the Codex review feedback on the current head.\n",
+        "Review response: fixed the automated review feedback on the current head.\n",
         unresolved_review_thread_with_id_pr_state("PRRT_kwDOOutdated")
             .replace("\"isOutdated\": false", "\"isOutdated\": true"),
         "PRRT_kwDOOutdated",

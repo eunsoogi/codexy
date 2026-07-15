@@ -133,8 +133,6 @@ runtime package build unless they change one of those package inputs.
 
 - **Current-head proof**: ties readiness to the exact commit or PR head being
   claimed, not to stale review output from an older diff.
-- **Codex review gate**: requires substantive Codex review evidence and treats
-  an `eyes` reaction as a review-in-progress signal, not a merge approval.
 - **Thread resolution checks**: keeps actionable, non-outdated review comments
   visible until they are fixed, accepted, or explicitly explained.
 

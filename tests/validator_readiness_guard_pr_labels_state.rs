@@ -206,12 +206,12 @@ fn readiness_guard_accepts_unicode_review_and_comment_bodies()
         "repositoryLabels": [{"name": "type/fix"}, {"name": "area/workflow"}],
         "reviews": [
             {
-                "author": {"login": "chatgpt-codex-connector[bot]"}, "body": "확인했습니다 ✅ multibyte review body", "state": "COMMENTED"
+                "author": {"login": "automated-review[bot]"}, "body": "확인했습니다 ✅ multibyte review body", "state": "COMMENTED"
             }
         ],
         "comments": [
             {
-                "author": {"login": "chatgpt-codex-connector[bot]"}, "body": "Codex review contains emoji 🚀 and Korean 텍스트.",
+                "author": {"login": "automated-review[bot]"}, "body": "automated review contains emoji 🚀 and Korean 텍스트.",
                 "url": "https://github.com/eunsoogi/codexy/pull/247#issuecomment-1"
             }
         ]

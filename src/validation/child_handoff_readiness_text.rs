@@ -59,7 +59,7 @@ fn has_non_claim_label_value(suffix: &str) -> bool {
     }) {
         return false;
     }
-    super::codex_review_handoff_readiness::has_negative_label_value(suffix)
+    super::handoff_claims::has_negative_label_value(suffix)
         || [
             "not verified",
             "not yet verified",

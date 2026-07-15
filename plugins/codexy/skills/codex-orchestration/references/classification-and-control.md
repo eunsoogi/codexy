@@ -4,8 +4,7 @@
 
 - The plugin-invoking Codex thread is the orchestrator. It creates or confirms
   issues, assigns branches, delegates lanes, opens PRs when appropriate,
-  requests Codex review, performs parent verification, coordinates squash
-  merge, and syncs `main`.
+  performs parent verification, coordinates squash merge, and syncs `main`.
 - A child Codex worktree thread owns implementation edits, local verification,
   and review-response fixes for its assigned issue or lane.
 - Independent requested outcomes MUST be decomposed into separate issue-sized

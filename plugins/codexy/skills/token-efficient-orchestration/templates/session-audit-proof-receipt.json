@@ -30,10 +30,9 @@
     "duplicateEventsSkipped": 0
   },
   "metrics": {
-    "reviewRequests": 0,
     "reviewFeedback": 0,
     "childAgeSeconds": 0,
-    "retriesByKind": { "parentMessage": 0, "reviewRequest": 0, "ci": 0, "sentinel": 0 },
+    "retriesByKind": { "parentMessage": 0, "ci": 0, "sentinel": 0 },
     "eventIds": ["<kind>|<lane>|<subject>"]
   },
   "goalPlanReceipts": ["<create_goal-or-update_plan-event-id>"],

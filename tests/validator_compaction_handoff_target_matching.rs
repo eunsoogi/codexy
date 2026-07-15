@@ -19,7 +19,7 @@ fn validator_cli_rejects_duplicate_state_for_stale_pr_number() -> TestResult {
          {STALE_DUPLICATE_STATE}\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {GIT_PREFLIGHT}\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Next action: stop.\n"
     ))?;
     assert!(
@@ -164,7 +164,7 @@ fn valid_handoff_with_duplicate_state(duplicate_state: &str) -> String {
          {duplicate_state}\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {GIT_PREFLIGHT}\n\
-         Stop condition: no merge; leave PR open until current-head Codex review is clean.\n\
+         Stop condition: no merge; leave PR open until parent final acceptance.\n\
          Next action: stop.\n"
     )
 }

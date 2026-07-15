@@ -26,7 +26,6 @@ MUST NOT compress away these current facts for an active lane:
 - owner boundary and child thread id,
 - current head SHA and base SHA,
 - current check state,
-- Codex review state for the current head,
 - unresolved review thread ids and whether they are outdated,
 - verification commands and results,
 - merge readiness or explicit wait/stop condition.
@@ -48,7 +47,7 @@ MUST use this flow after compaction and before handoff:
 2. **Accept qualifying events only**: root/orchestrator MUST NOT autonomously poll.
    Children MUST send a compact delta only for terminal child state, Sentinel
    verdict, PR creation, new HEAD, GitHub check-state change, actionable
-   review-feedback change, or clean review completion.
+   review-feedback change, or review-thread resolution.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated identity
    before it changes counters or next actions.
@@ -93,7 +92,7 @@ event kind: terminal-child | sentinel | pr-created | new-head | check-state | re
 owner: child thread <id> | worktree <path>
 head: <sha> | base: <sha>
 delta: <one changed fact>
-required gates: checks=<state>; codex-review=<state>; threads=<state>; child=<state>
+required gates: checks=<state>; threads=<state>; child=<state>
 active obligations: <only current unresolved work>
 stale/demoted: <old heads, resolved threads, superseded comments>
 next action: <one action>
@@ -142,7 +141,7 @@ and ignore orphan outputs.
 MUST capture before/after aggregate output for one real lane using a comparable
 window and owner boundary. MUST use
 `templates/session-audit-proof-receipt.json` as the metadata-only receipt: it
-MUST include review requests, review feedback, child age, retries per PR, stable
+MUST include review feedback, child age, retries per PR, stable
 event ids, goal/plan receipts, helper ownership, sanitized audit input digest,
 and command exits. The comparison MUST report observations only; it MUST NOT
 claim a causal driver without a controlled comparison. Historical text, negated
@@ -162,7 +161,7 @@ failure and MUST NOT attribute the candidate behavior to the installed plugin.
 After compaction, rebuild only the working set:
 
 - active lanes and their latest known SHAs,
-- unresolved current-head review thread ids,
+- unresolved review thread ids,
 - child ownership and stop condition,
 - commands already run only when their result still proves a current gate,
 - known tool exposure mismatches that affect the next action.
@@ -188,7 +187,6 @@ MUST stop and refresh rather than summarizing when a qualifying event reports:
 
 - the head SHA changed,
 - a check moved from pending to pass/fail;
-- a new Codex review arrived;
 - a review thread changed resolved or outdated state;
 - child ownership is unclear; or
 - the next action would merge, resolve a review thread, or claim readiness.

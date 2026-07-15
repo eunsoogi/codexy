@@ -58,7 +58,7 @@ complete.
 - For plugin skills, MUST confirm every `SKILL.md` has valid YAML frontmatter with
   `name` and `description`.
 - For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews,
-  review threads, and Codex connector output on the current head.
+  and review threads.
 - When a handoff or final answer reports addressed review feedback, MUST include
   GraphQL `reviewThreads.nodes` in the PR state evidence and MUST run
   `scripts/validate-plugin-config --check-completion-handoff`; addressed
@@ -129,21 +129,9 @@ complete.
 - Evidence MUST be current for the file state, commit, PR head, runtime, or
   external setting being claimed.
 - Narrow evidence proves only narrow claims. A parser check does not prove UX; a
-  unit test does not prove GitHub settings; an `eyes` reaction does not prove
-  Codex review completion.
-- Eyes-only current-head `@codex review` evidence is not merge-ready. MUST require
-  actual Codex review output, an explicit completion signal, or a maintainer
-  override before reporting review completion or readiness to merge.
-- If new commits land after review, request or wait for fresh review on the new
-  head.
+  unit test does not prove GitHub settings.
 - If review feedback is addressed by a child thread, evidence MUST include the
   child thread result, the exact new head, and the rerun verification.
-- If a fresh `@codex review` request for the current head already has `eyes`,
-  MUST NOT send duplicate requests for the same head. Once the child has finished
-  its execution work and only review output remains, it MUST send the terminal
-  parent handoff, end its goal and plan, and return control; the parent/runtime
-  monitor owns event-driven waiting. If review is unusually stale, document the
-  status and use a distinct escalation rationale instead of blind requests.
 - If a command was skipped, say so with the reason.
 - If evidence is local and untracked, MUST summarize it or give the ignored evidence
   path; MUST NOT commit scratch artifacts unless requested.
@@ -169,9 +157,9 @@ MUST include:
   destructive operation, or human-only decision.
 - MUST NOT call `update_goal(status="complete")` until every requirement has
   current matching proof and no required work remains.
-- MUST NOT call `update_goal(status="blocked")` merely because Codex connector
-  review, child-thread work, queued worktree/thread setup, or asynchronous tool
-  completion is pending. Once code/proof/push/review-request work is finished and
+- MUST NOT call `update_goal(status="blocked")` merely because child-thread work,
+  queued worktree/thread setup, or asynchronous tool
+  completion is pending. Once code/proof/push/review-response work is finished and
   only that external gate remains, the child MUST send exactly one terminal parent
   handoff, end its active goal and plan, and return control; it MUST NOT poll or
   retain an active goal during the wait. A qualifying event starts a fresh
@@ -192,8 +180,8 @@ MUST include:
 - Reporting a merge before verifying branch deletion and main sync.
 - Reporting completion after opening a clean PR while merge gates are not
   intentionally deferred.
-- Ignoring Codex connector comments because they are top-level PR comments
-  instead of GitHub review objects.
+- Ignoring actionable top-level PR comments because they are not GitHub review
+  objects.
 - Treating ordinary review or child-thread wait time as a blocker instead of an
   active goal state.
 - Treating generated files as valid without parsing or inspecting them.

@@ -15,7 +15,7 @@ const REVIEWER_GATE_MARKERS: &[&str] = &[
     "The validator/parser edge-case pass MUST search",
     "The workflow/ownership compliance pass MUST verify",
     "The regression coverage and proof pass MUST verify",
-    "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
+    "For review-feedback lanes, repeated-automated-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
     "Every approval MUST reference the current diff or head",
     "lane scope",
     "touched implementation-file LOC evidence when applicable",

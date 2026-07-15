@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Codexy plugin GitHub issue, branch, worktree, push, pull request, verification, repository-settings, branch-protection, Codex review, and squash-merge workflow. MUST use before Git, issue, PR, label, review, protection, merge, or post-merge sync work in this repository.
+description: Codexy plugin GitHub issue, branch, worktree, push, pull request, verification, repository-settings, branch-protection, review-thread resolution, and squash-merge workflow. MUST use before Git, issue, PR, label, review, protection, merge, or post-merge sync work in this repository.
 ---
 
 # Git Workflow
@@ -17,7 +17,7 @@ MUST read these relative references before acting on the matching surface:
   change discipline, commit messages, conflict resolution, and pre-PR Git
   checks.
 - `references/issue-intake.md` before any Codexy-created GitHub issue mutation.
-- `references/pr-review-and-handoff.md` for PR bodies, Codex connector review,
+- `references/pr-review-and-handoff.md` for PR bodies, review-thread handling,
   child-owned review feedback, and completion-handoff PR state capture,
   including review thread comment `commit { oid }` evidence.
 - `references/merge-and-main-sync.md` for merge gates, squash merge body
@@ -192,7 +192,7 @@ worker for that lane.
 - Before returning a non-trivial atomic lane as ready, the owning thread
   MUST run the packaged Codexy reviewer agent defined by
   `plugins/codexy/agents/codexy-sentinel.toml`.
-- If Codex connector or human review feedback flags a child-owned PR, the
+- If human or automated review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
 - If the owning child thread is unresponsive or is unable to return evidence, the
@@ -233,6 +233,5 @@ when domain intent is unclear, and MUST stage only resolved files.
   approval from `plugins/codexy/agents/codexy-sentinel.toml`.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
 - PR title has been validated with `--check-pr-title`.
-- Expected Codex review completed on the latest PR head, with no unresolved
-  actionable Codex feedback.
+- No unresolved actionable review feedback or review threads remain.
 - Squash merge bodies preserve the PR body exactly; branch deletion and main sync are verified after merge.

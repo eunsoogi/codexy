@@ -25,7 +25,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         return Vec::new();
     };
     vec![format!(
-        "unresolved review thread remains after addressed review feedback: {}; resolve fixed threads after current-head verification or document an accepted no-change rationale",
+        "unresolved review thread remains after addressed review feedback: {}; resolve fixed threads after thread-state verification or document an accepted no-change rationale",
         thread_label(unresolved)
     )]
 }
@@ -66,12 +66,12 @@ fn review_feedback_segments(text: &str) -> impl Iterator<Item = &str> {
     text.split_inclusive(['.', '\n', ';'])
         .filter(move |segment| {
             let has_context =
-                "codex review|codex feedback|review response|review feedback|reviewer feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions"
+                "review response|review feedback|reviewer feedback|codex feedback|review thread|review comment|review comments|reviewer comments|review suggestion|review suggestions"
                     .split('|')
                     .any(|term| segment.contains(term));
             let trimmed = segment.trim_start();
             let no_feedback = segment.contains(": none")
-                || "none from codex|no review feedback|no feedback|no comment|no comments|no suggestion|no suggestions"
+                || "no review feedback|no feedback|no comment|no comments|no suggestion|no suggestions"
                     .split('|')
                     .any(|term| segment.contains(term));
             let output = "comment|feedback|suggestion|thread".split('|').any(|t| segment.contains(t));
@@ -97,10 +97,7 @@ fn has_unnegated_action(text: &str, phrase: &str) -> bool {
         }
         let prefix = &text[..start];
         let local_prefix = local_action_prefix(prefix);
-        let clean_review_prefix = prefix.trim_end().ends_with("codex review passed,")
-            && !text[start..].contains("review");
-        if !clean_review_prefix
-            && !"review response: none|review feedback: none|reviewer feedback: none|review thread: none|review comments: none|reviewer comments: none|none from codex"
+        if !"review response: none|review feedback: none|reviewer feedback: none|review thread: none|review comments: none|reviewer comments: none"
                 .split('|')
                 .any(|term| prefix.contains(term))
             && !"no review feedback was |no review feedback |no feedback was |no feedback |not "

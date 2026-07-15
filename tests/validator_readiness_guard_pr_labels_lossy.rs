@@ -24,7 +24,7 @@ fn readiness_guard_accepts_full_pr_state_with_lossy_review_thread_body()
                     "comments": {
                         "nodes": [
                             {
-                                "author": {"login": "chatgpt-codex-connector[bot]"},
+                                "author": {"login": "automated-review[bot]"},
                                 "body": "unrelated review text with lossy byte "#
         .to_vec();
     json.push(0x80);

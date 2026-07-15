@@ -56,8 +56,7 @@ against the authoritative surface first.
    current stop condition.
 
 For Codexy GitHub lanes, current evidence usually means `git status`, `git log
---graph`, PR head SHA, checks, review threads, latest Codex review output, and
-child owner state.
+--graph`, PR head SHA, checks, review threads, and child owner state.
 
 ## Active Child Thread Ledger
 

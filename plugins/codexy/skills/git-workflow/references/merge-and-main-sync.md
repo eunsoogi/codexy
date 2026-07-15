@@ -3,8 +3,7 @@
 ## Merge Rules
 
 MUST NOT merge a PR until every review surface has been inspected and resolved.
-Codex connector reviews are merge-blocking reviews. MUST treat requested changes,
-actionable suggestions, unresolved review threads, stale concerns after new
+MUST treat requested changes, actionable suggestions, unresolved review threads, stale concerns after new
 commits, and PR comments that identify defects as blockers until addressed or
 covered by an accepted no-change rationale.
 
@@ -16,8 +15,7 @@ protected `main` history:
   subject.
 - PR #200 used PR title and squash subject
   `Require separate issues for dogfooding defects`.
-- PR #201 used PR title and squash subject
-  `Address LSP and codegraph Codex review follow-up`.
+- PR #201 used a non-Conventional PR title and squash subject.
 - PR #202 used PR title and squash subject
   `Require descriptive child thread titles`.
 - PR #203 used PR title `Refactor oversized Codexy skill instructions` and
@@ -46,8 +44,7 @@ query($owner:String!, $name:String!, $number:Int!) {
 ```
 
 The review gate is satisfied only when `reviewDecision` is not
-`CHANGES_REQUESTED`, no latest maintainer/GitHub app/Codex connector review
-requests changes, expected Codex review completed on latest `headRefOid`,
+`CHANGES_REQUESTED`, no latest maintainer or GitHub app review requests changes,
 required checks have passed or been accepted as non-required, actionable PR
 comments are addressed, and fixed or accepted review threads are resolved.
 Every unresolved actionable review thread remains merge-blocking until the
@@ -156,9 +153,8 @@ if ! gh pr merge "$pr_number" \
 fi
 ```
 
-`gh pr merge` has no flag that means "Codex review passed." `--auto` only waits
-for configured GitHub requirements, and `--admin` bypasses requirements. MUST
-NOT use `--admin` to skip Codex review, required checks, or review-thread
+`--auto` only waits for configured GitHub requirements, and `--admin` bypasses
+requirements. MUST NOT use `--admin` to skip required checks or review-thread
 cleanup.
 
 ## Post-Merge Main Sync

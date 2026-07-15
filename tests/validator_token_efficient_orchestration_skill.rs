@@ -25,7 +25,6 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "Token-Efficient Orchestration",
         "Required Proof Gates",
         "current head SHA and base SHA",
-        "Codex review state for the current head",
         "unresolved review thread ids",
         "not-created or not-applicable",
         "refresh existing gates",
@@ -42,7 +41,6 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "not a shortcut around `$proof-driven-completion`",
         "content equivalence",
         "codex plugin add codexy@codexy",
-        "review requests",
         "review feedback",
         "child age",
         "retries per PR",
@@ -75,7 +73,6 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "event kind:",
         "changed ids:",
         "stale or demoted:",
-        "Codex review current-head state:",
         "unresolved review thread ids and outdated status:",
         "child owner evidence:",
         "merge readiness or stop condition:",
@@ -93,7 +90,6 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     assert!(!skill.contains("installed Codexy plugin is version `1.1.0`"));
     for field in [
         "\"metadataOnly\": true",
-        "\"reviewRequests\"",
         "\"reviewFeedback\"",
         "\"childAgeSeconds\"",
         "\"retriesByKind\"",
@@ -104,6 +100,10 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     ] {
         assert!(receipt.contains(field), "receipt missing {field:?}");
     }
+    assert!(!normalized_skill.contains("Codex review"));
+    assert!(!template.contains("Codex review"));
+    assert!(!receipt.contains("reviewRequests"));
+    assert!(!receipt.contains("reviewRequest"));
     assert!(orchestration.contains("$token-efficient-orchestration"));
     assert!(orchestration.contains("preserving all proof gates"));
     let normalized_orchestration = orchestration

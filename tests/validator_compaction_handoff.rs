@@ -109,7 +109,7 @@ fn validator_cli_rejects_empty_or_negated_stop_condition() -> TestResult {
 #[test]
 fn validator_cli_accepts_substantive_no_stop_conditions() -> TestResult {
     for stop_condition in [
-        "Stop condition: no merge; leave PR open until current-head Codex review is clean.",
+        "Stop condition: no merge; leave PR open until parent final acceptance.",
         "Stop condition: no implementation edits until the duplicate lane is closed.",
     ] {
         let output = validate_open_pr_handoff(&valid_handoff_with(
@@ -133,7 +133,7 @@ fn validator_cli_accepts_multiline_git_preflight_evidence() -> TestResult {
          - git rev-parse origin/main\n\
          - git log --graph --oneline --decorate --all --max-count=50\n\
          * abc1234 fix(validation): reject missing review thread evidence",
-        "Stop condition: no merge; leave PR open until current-head Codex review is clean.",
+        "Stop condition: no merge; leave PR open until parent final acceptance.",
     ))?;
     assert_valid(&output);
     Ok(())
@@ -145,7 +145,7 @@ fn validator_cli_rejects_uncaptured_duplicate_state() -> TestResult {
         valid_handoff_with(
             "Duplicate/no-active-work state: not captured.",
             GIT_PREFLIGHT,
-            "Stop condition: no merge; leave PR open until current-head Codex review is clean.",
+            "Stop condition: no merge; leave PR open until parent final acceptance.",
         ),
         valid_handoff_with(
             "Continuation state: current GitHub state was checked.",

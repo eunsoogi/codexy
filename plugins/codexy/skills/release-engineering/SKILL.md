@@ -53,7 +53,6 @@ aligned before publishing or tagging.
    - skill metadata checks,
    - asset existence checks,
    - workflow syntax checks when GitHub Actions changed,
-   - Codex review on latest PR head,
    - release notes or changelog when a user-facing version changes.
 6. Validate artifact or package shape from the release unit, not only source
    files.

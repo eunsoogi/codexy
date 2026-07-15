@@ -112,10 +112,10 @@ fn validator_cli_accepts_wrapped_approval_evidence_sentence() -> TestResult {
 #[test]
 fn validator_cli_rejects_sentinel_with_weakened_review_example_replay() -> TestResult {
     let output = validate_sentinel_replacement(
-        "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
-        "For review-feedback lanes, repeated-Codex-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MAY skip replaying",
+        "For review-feedback lanes, repeated-automated-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MUST replay",
+        "For review-feedback lanes, repeated-automated-feedback lanes, parser-heavy lanes, and validator-heavy lanes, MAY skip replaying",
     )?;
     assert!(!output.status.success());
-    assert!(stderr(&output).contains("repeated-Codex-feedback lanes"));
+    assert!(stderr(&output).contains("repeated-automated-feedback lanes"));
     Ok(())
 }
