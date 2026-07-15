@@ -3,8 +3,10 @@ use super::super::attribute::{
 };
 use super::{InlineModule, valid_visibility_path};
 mod item;
+mod keyword;
 mod literal;
 use item::{item_boundary, skip_non_module_item};
+use keyword::is_rust_keyword;
 pub(super) fn inline_modules(source: &str) -> Vec<InlineModule<'_>> {
     parse(source).unwrap_or_default()
 }
@@ -93,6 +95,9 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
                     cfg_disabled = false;
                     continue;
                 };
+                if is_rust_keyword(module) {
+                    return None;
+                }
                 let cursor = skip_trivia(bytes, cursor)?;
                 if bytes.get(cursor) != Some(&b'{') {
                     attributed_path = None;

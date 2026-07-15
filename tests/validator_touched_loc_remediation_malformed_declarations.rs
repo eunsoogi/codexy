@@ -73,6 +73,19 @@ fn touched_loc_preserves_valid_restricted_inline_visibility() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn touched_loc_rejects_keyword_inline_module_names_and_accepts_raw_identifiers() -> TestResult {
+    for module in ["fn", "match"] {
+        let repo = inline_named_fixture(module)?;
+        assert_rustc_rejects_and_validator_fails_closed(&repo)?;
+    }
+    for module in ["thread", "r#fn"] {
+        let repo = inline_named_fixture(module)?;
+        assert_rustc_and_validator_accept(&repo)?;
+    }
+    Ok(())
+}
+
 fn outer_fixture(declaration: &str, extracted_path: &str) -> TestResult<tempfile::TempDir> {
     let repo = fixture("src/foo.rs", regular_lines(252))?;
     write(repo.path(), "src/lib.rs", "mod foo;\n")?;
@@ -98,6 +111,29 @@ fn inline_fixture(attribute: &str, visibility: &str) -> TestResult<tempfile::Tem
         "src/lib.rs",
         &format!(
             "mod outer {{\n    {attribute}{visibility}mod thread {{\n        #[path = \"tls.rs\"]\n        mod local_data;\n    }}\n}}\n"
+        ),
+    )?;
+    amend_fixture(repo.path())?;
+    write(
+        repo.path(),
+        "src/outer/thread/tls.rs",
+        &format!("mod helper;\n{}", regular_lines(249)),
+    )?;
+    write(
+        repo.path(),
+        "src/outer/thread/helper.rs",
+        &regular_lines_from(249, 3),
+    )?;
+    Ok(repo)
+}
+
+fn inline_named_fixture(module: &str) -> TestResult<tempfile::TempDir> {
+    let repo = fixture("src/outer/thread/tls.rs", regular_lines(252))?;
+    write(
+        repo.path(),
+        "src/lib.rs",
+        &format!(
+            "mod outer {{\n    #[path = \"thread\"]\n    mod {module} {{\n        #[path = \"tls.rs\"]\n        mod local_data;\n    }}\n}}\n"
         ),
     )?;
     amend_fixture(repo.path())?;
