@@ -5,20 +5,63 @@ pub(super) fn path_attribute(line: &str) -> Option<String> {
 }
 
 pub(super) fn has_cfg_attr_path(line: &str) -> bool {
-    let Some(attributes) = line.strip_prefix("#[cfg_attr") else {
+    let Some(arguments) = line.strip_prefix("#[cfg_attr") else {
         return false;
     };
-    attributes.split(',').skip(1).any(|attribute| {
-        attribute
-            .trim_start()
-            .strip_prefix("path")
-            .is_some_and(|suffix| {
-                suffix
-                    .as_bytes()
-                    .first()
-                    .is_some_and(|byte| byte.is_ascii_whitespace() || *byte == b'=')
-            })
-    })
+    let Some(arguments) = arguments.trim_start().strip_prefix('(') else {
+        return true;
+    };
+    let mut index = 0;
+    let mut argument_start = 0;
+    let mut argument_index = 0;
+    let mut delimiters = Vec::new();
+    while index < arguments.len() {
+        if matches!(arguments.as_bytes()[index], b'"' | b'r') {
+            if let Some((_, suffix)) = string_literal(&arguments[index..]) {
+                index = arguments.len() - suffix.len();
+                continue;
+            }
+            if arguments.as_bytes()[index] == b'"' {
+                return true;
+            }
+        }
+        match arguments.as_bytes()[index] {
+            b'(' => delimiters.push(b')'),
+            b'[' => delimiters.push(b']'),
+            b'{' => delimiters.push(b'}'),
+            b')' if delimiters.is_empty() => {
+                return argument_index > 0
+                    && cfg_attr_path_argument(&arguments[argument_start..index]);
+            }
+            b')' | b']' | b'}' => {
+                if delimiters.pop() != Some(arguments.as_bytes()[index]) {
+                    return true;
+                }
+            }
+            b',' if delimiters.is_empty() => {
+                if argument_index > 0 && cfg_attr_path_argument(&arguments[argument_start..index]) {
+                    return true;
+                }
+                argument_index += 1;
+                argument_start = index + 1;
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    true
+}
+
+fn cfg_attr_path_argument(argument: &str) -> bool {
+    argument
+        .trim_start()
+        .strip_prefix("path")
+        .is_some_and(|suffix| {
+            suffix
+                .as_bytes()
+                .first()
+                .is_some_and(|byte| byte.is_ascii_whitespace() || *byte == b'=')
+        })
 }
 
 pub(super) fn path_attribute_prefix(line: &str) -> Option<(String, &str)> {

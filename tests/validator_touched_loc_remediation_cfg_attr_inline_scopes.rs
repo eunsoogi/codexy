@@ -40,6 +40,34 @@ fn touched_loc_does_not_credit_default_path_after_enabled_cfg_attr_path() -> Tes
 }
 
 #[test]
+fn touched_loc_preserves_balanced_non_path_cfg_attr_and_path_controls() -> TestResult {
+    for (attribute, extracted_path) in [
+        (
+            "#[cfg_attr(all(unix, path = \"x\"), allow(dead_code))]\n",
+            "src/foo/helper.rs",
+        ),
+        ("#[cfg_attr(unix, allow(dead_code))]\n", "src/foo/helper.rs"),
+        ("#[path = \"generated.rs\"]\n", "src/generated.rs"),
+    ] {
+        let repo = fixture("src/foo.rs", regular_lines(252))?;
+        write(repo.path(), "src/lib.rs", "mod foo;\n")?;
+        amend(repo.path())?;
+        write(
+            repo.path(),
+            "src/foo.rs",
+            &format!("{attribute}mod helper;\n{}", regular_lines(248)),
+        )?;
+        write(repo.path(), extracted_path, &regular_lines_from(248, 4))?;
+
+        let rustc = compile(repo.path())?;
+        assert!(rustc.status.success(), "rustc stderr:\n{}", stderr(&rustc));
+        let output = validate(repo.path())?;
+        assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
 fn touched_loc_discovers_default_module_inside_inline_scope() -> TestResult {
     let repo = fixture("src/foo.rs", regular_lines(252))?;
     write(repo.path(), "src/lib.rs", "mod foo;\n")?;
