@@ -153,11 +153,15 @@ fn current_heading(before: &str) -> Option<&str> {
 }
 
 fn has_weakening_suffix(after: &str) -> bool {
-    let after = after
-        .trim_start_matches(|character: char| !character.is_alphanumeric() && character != '<');
-    let after = after
-        .strip_prefix("<markdown-boundary>")
-        .map_or(after, str::trim_start);
+    let mut after = after;
+    loop {
+        after = after
+            .trim_start_matches(|character: char| !character.is_alphanumeric() && character != '<');
+        let Some(after_boundary) = after.strip_prefix("<markdown-boundary>") else {
+            break;
+        };
+        after = after_boundary;
+    }
     let after = after.trim_start_matches(|character: char| !character.is_alphanumeric());
     [
         "unless ",

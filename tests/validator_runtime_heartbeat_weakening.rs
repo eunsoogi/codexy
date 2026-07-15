@@ -157,6 +157,19 @@ fn markdown_boundary_before_weakening_suffix_does_not_supply_policy() -> TestRes
 }
 
 #[test]
+fn consecutive_markdown_boundaries_before_weakening_suffix_do_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "{CLAUSE}\n\n\n\nUnless explicitly approved, the heartbeat may be skipped."
+    ))?;
+    assert!(
+        !output.status.success(),
+        "validator accepted a required clause before consecutive weakening blocks"
+    );
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
 fn conditional_markdown_heading_does_not_supply_policy() -> TestResult {
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
