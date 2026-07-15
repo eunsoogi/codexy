@@ -1,0 +1,222 @@
+use std::fs;
+
+mod support;
+
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+const ORCHESTRATION_CLAUSES: &[&str] = &[
+    "search the callable tool surface for `automation_update`",
+    "register a thread-targeted `kind=heartbeat`",
+    "creation MUST use `destination=\"thread\"`",
+    "automation id, target thread, bounded schedule, stable observed-state identity, eligible material events, and terminal delete/disable action",
+    "prompt MUST suppress unchanged observations and MUST wake the owner only for a material gate change or an explicit user/parent message",
+    "MUST end its active goal and plan before waiting",
+    "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat",
+    "qualifying event MUST start a fresh short-lived execution goal and plan",
+    "MUST consume the event in the same turn",
+    "MUST delete or disable the heartbeat when no further observation is required",
+    "MUST record the exact discovery/exposure evidence and use a bounded fallback",
+    "without fabricating a monitor identity",
+    "MUST mark automation id, schedule, and lifecycle as not-created",
+    "MUST NOT fold a live packaged Sentinel into heartbeat observation",
+    "read-only, event-driven, and subject to its no-poll/no-message boundary",
+];
+
+const TOKEN_CLAUSES: &[&str] = &[
+    "polling/monitoring MUST be reserved for an observation bound to one complete runtime-issued monitor identity",
+    "heartbeat route MUST bind the observation to its heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity",
+    "heartbeat route MUST NOT require a persistent exec/session identifier or same-process resume",
+    "separate process-backed monitor MUST bind the observation to a persistent runtime monitor or wait session id, a scheduled next-observation time or deadline, the last observed state fingerprint or event identity, and same-process resume",
+    "without either complete runtime-issued identity are continuation turns, not polling",
+    "bounded schedule, state fingerprint, material-event set, and delete/disable state",
+    "MUST suppress unchanged observations",
+    "material gate change or an explicit user/parent message",
+    "active goal and plan MUST end before runtime-owned waiting",
+    "qualifying event MUST start a fresh short-lived execution goal and plan",
+];
+
+const TEMPLATE_CLAUSES: &[&str] = &[
+    "callable discovery/exposure evidence:",
+    "heartbeat automation id:",
+    "target thread:",
+    "bounded schedule:",
+    "state fingerprint:",
+    "eligible material events:",
+    "unchanged observations suppressed:",
+    "terminal delete/disable action:",
+];
+
+const TRANSITION_CLAUSES: &[&str] = &[
+    "heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity",
+    "MUST NOT require a persistent exec/session identifier or same-process resume",
+    "persistent exec/session identifier, a scheduled next-observation deadline, the last observed state fingerprint or event identity, and same-process resume",
+];
+
+#[test]
+fn validator_requires_runtime_heartbeat_contract() -> TestResult {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let heartbeat = fs::read_to_string(
+        root.join("plugins/codexy/skills/codex-orchestration/references/runtime-heartbeats.md"),
+    )?;
+    let token = fs::read_to_string(
+        root.join("plugins/codexy/skills/token-efficient-orchestration/SKILL.md"),
+    )?;
+    let template = fs::read_to_string(
+        root.join("plugins/codexy/skills/token-efficient-orchestration/templates/delta-poll.md"),
+    )?;
+    let transition = fs::read_to_string(root.join(
+        "plugins/codexy/skills/codex-orchestration/references/goal-transition-reporting.md",
+    ))?;
+
+    for clause in ORCHESTRATION_CLAUSES {
+        assert!(heartbeat.contains(clause), "missing {clause:?}");
+    }
+    for clause in TOKEN_CLAUSES {
+        assert!(token.contains(clause), "missing {clause:?}");
+    }
+    for clause in TEMPLATE_CLAUSES {
+        assert!(template.contains(clause), "missing {clause:?}");
+    }
+    for clause in TRANSITION_CLAUSES {
+        assert!(transition.contains(clause), "missing {clause:?}");
+    }
+
+    for clause in ORCHESTRATION_CLAUSES {
+        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+        let original = fs::read_to_string(&path)?;
+        fs::write(&path, original.replace(clause, "removed heartbeat policy"))?;
+
+        let output = support::validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "validator accepted {clause:?}");
+        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    }
+    for clause in TOKEN_CLAUSES {
+        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let path = plugin_root.join("skills/token-efficient-orchestration/SKILL.md");
+        let original = fs::read_to_string(&path)?;
+        fs::write(&path, original.replace(clause, "removed heartbeat policy"))?;
+
+        let output = support::validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "validator accepted {clause:?}");
+        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    }
+    for clause in TEMPLATE_CLAUSES {
+        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let path = plugin_root.join("skills/token-efficient-orchestration/templates/delta-poll.md");
+        let original = fs::read_to_string(&path)?;
+        fs::write(&path, original.replace(clause, "removed heartbeat slot"))?;
+
+        let output = support::validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "validator accepted {clause:?}");
+        assert!(support::stderr(&output).contains("runtime heartbeat"));
+    }
+    for clause in TRANSITION_CLAUSES {
+        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let path =
+            plugin_root.join("skills/codex-orchestration/references/goal-transition-reporting.md");
+        let original = fs::read_to_string(&path)?;
+        fs::write(
+            &path,
+            original.replace(clause, "removed monitor identity policy"),
+        )?;
+
+        let output = support::validator(&plugin_root, "--check")?;
+        assert!(!output.status.success(), "validator accepted {clause:?}");
+        assert!(support::stderr(&output).contains("monitor identities"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    let original = fs::read_to_string(&path)?;
+    for replacement in [
+        "\n## MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat",
+        "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat is not required.",
+    ] {
+        fs::write(
+            &path,
+            original.replace(
+                "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat",
+                replacement,
+            ),
+        )?;
+        assert!(
+            !support::validator(&plugin_root, "--check")?
+                .status
+                .success()
+        );
+    }
+
+    let clause = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
+    fs::write(
+        &path,
+        original.replace(
+            clause,
+            &format!(
+                "removed heartbeat policy\n\n## Historical Example\nThis policy was retired. {clause}."
+            ),
+        ),
+    )?;
+    assert!(
+        !support::validator(&plugin_root, "--check")?
+            .status
+            .success(),
+        "validator accepted a required clause from historical prose"
+    );
+
+    for heading in ["Current Policy", "Non-Historical Requirements"] {
+        fs::write(
+            &path,
+            original.replace(
+                clause,
+                &format!(
+                    "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\n## {heading}\n{clause}."
+                ),
+            ),
+        )?;
+        let output = support::validator(&plugin_root, "--check")?;
+        assert!(
+            output.status.success(),
+            "validator ignored active policy under {heading:?}: {}",
+            support::stderr(&output)
+        );
+    }
+
+    fs::write(
+        &path,
+        format!(
+            "{original}\nThe owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
+        ),
+    )?;
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("must not permit Sentinel"));
+
+    fs::write(
+        &path,
+        format!(
+            "{original}\n## Historical Example\nThis old policy is retained for context. The owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
+        ),
+    )?;
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(
+        output.status.success(),
+        "validator rejected historical-only Sentinel wording: {}",
+        support::stderr(&output)
+    );
+
+    fs::write(
+        &path,
+        format!(
+            "{original}\n## Historical Example\nThis old policy is retained for context.\n## Current Policy\nThe owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
+        ),
+    )?;
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("must not permit Sentinel"));
+    Ok(())
+}

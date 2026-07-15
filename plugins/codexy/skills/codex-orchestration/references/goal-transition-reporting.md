@@ -20,13 +20,12 @@ as deduplicated; it MUST NOT imply a second goal call.
 ## Runtime Polling Boundary
 
 Polling/monitoring is a runtime claim, not an agent label: a runtime monitor
-MUST live outside an execution goal and MAY call an observation only when
-runtime-issued evidence binds it to a persistent exec/session identifier, a
-scheduled next-observation deadline, the last observed state fingerprint or
-event identity, and same-process resume. Repeated
+MUST live outside an execution goal. A Codex heartbeat route is bound by its
+heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity; it MUST NOT require a persistent exec/session identifier or same-process resume. A separate process-backed monitor MAY call an
+observation only when runtime-issued evidence binds it to a persistent exec/session identifier, a scheduled next-observation deadline, the last observed state fingerprint or event identity, and same-process resume. Repeated
 model/assistant turn ids, tool-driven re-entry, goal continuation, or agent
 invocation without all runtime fields MUST be classified as a continuation
-turn, even when each turn reports that it is polling. Unchanged continuation
+turn unless it is a registered heartbeat automation route, even when each turn reports that it is polling. Unchanged continuation
 turns MUST NOT reschedule themselves or emit another unchanged turn.
 
 An authorized child-local monitor that observes no qualifying event MUST keep

@@ -58,13 +58,11 @@ MUST use this flow after compaction and before handoff:
 5. **Fail once**: a failed parent message MUST emit exactly one terminal unavailable
    report. It MUST include its event identity and MUST NOT retry the parent message.
 6. **Carry one next action**: each lane MUST end with exactly one current action.
-7. **Require runtime polling evidence**: polling/monitoring MUST be reserved for
-   an observation bound to a persistent runtime monitor or wait session id, a
-   scheduled next-observation time or deadline, and a last observed state
-   fingerprint or event identity. Distinct model/assistant turn ids, tool-driven
-   re-entry, goal continuation, or agent invocation without those runtime-issued
-   fields are continuation turns, not polling; unchanged continuation turns MUST
-   NOT reschedule themselves or emit another unchanged turn.
+7. **Require runtime polling evidence**: polling/monitoring MUST be reserved for an observation bound to one complete runtime-issued monitor identity.
+   A heartbeat route MUST bind the observation to its heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity.
+   The heartbeat route MUST NOT require a persistent exec/session identifier or same-process resume.
+   A separate process-backed monitor MUST bind the observation to a persistent runtime monitor or wait session id, a scheduled next-observation time or deadline, the last observed state fingerprint or event identity, and same-process resume.
+   Distinct model/assistant turn ids, tool-driven re-entry, goal continuation, or agent invocation without either complete runtime-issued identity are continuation turns, not polling; unchanged continuation turns MUST NOT reschedule themselves or emit another unchanged turn.
 8. **Suppress unchanged continuation turns**: when an authorized child-local
    monitor observes no qualifying event and the stable event identity, head,
    checks, review state, and next action are unchanged, it MUST keep the monitor scheduled
@@ -103,6 +101,23 @@ next action: <one action>
 
 When no qualifying event arrived, MUST NOT wake the implementation lane. The
 orchestrator MAY retain its compact ledger without re-reading old details.
+
+## Runtime Heartbeats
+
+For an eligible external gate that outlives the current turn, parent orchestrators
+and child owners MUST follow `$codex-orchestration`'s runtime-heartbeat contract.
+The compact lane ledger MUST retain the heartbeat automation id, target thread,
+bounded schedule, state fingerprint, material-event set, and delete/disable state.
+Heartbeat prompts MUST suppress unchanged observations and MUST wake the owner only
+for a material gate change or an explicit user/parent message. A stable event
+identity MUST deduplicate repeated wakeups before the owner changes its plan.
+The awakened owner MUST consume a material event in the same turn and MUST delete
+or disable its heartbeat when no further observation is required. A successfully
+registered heartbeat is runtime-owned waiting; an execution goal MUST NOT remain
+active solely to preserve it. The active goal and plan MUST end before runtime-owned waiting,
+and a qualifying event MUST start a fresh short-lived execution goal and plan. A live
+packaged Sentinel remains outside heartbeat
+observation and retains its no-poll/no-message boundary.
 
 For repeat handoffs, copy `templates/delta-poll.md` and fill only the current
 slots. MUST keep the template output in the thread or handoff; MUST NOT attach old
