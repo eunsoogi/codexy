@@ -1,3 +1,7 @@
+pub(super) mod trivia;
+
+use trivia::{attribute_name_suffix, is_attribute_trivia};
+
 pub(super) fn path_attribute(line: &str) -> Option<String> {
     let (value, suffix) = path_attribute_prefix(line)?;
     let mut comment_depth = 0;
@@ -82,7 +86,13 @@ pub(super) fn path_attribute_prefix(line: &str) -> Option<(String, &str)> {
 }
 
 pub(super) fn is_path_attribute_start(source: &str) -> bool {
-    named_attribute_content(source, "path").is_some()
+    outer_attribute_content(source)
+        .and_then(|content| content.strip_prefix("path"))
+        .is_some_and(|suffix| {
+            suffix.as_bytes().first().is_none_or(|byte| {
+                byte.is_ascii_whitespace() || matches!(byte, b'=' | b']' | b'(' | b'/')
+            })
+        })
 }
 
 pub(super) fn is_outer_attribute(source: &str) -> bool {
@@ -91,11 +101,13 @@ pub(super) fn is_outer_attribute(source: &str) -> bool {
 
 fn named_attribute_content<'a>(source: &'a str, name: &str) -> Option<&'a str> {
     let remainder = outer_attribute_content(source)?.strip_prefix(name)?;
-    remainder
-        .as_bytes()
-        .first()
-        .is_none_or(|byte| byte.is_ascii_whitespace() || matches!(byte, b'=' | b']' | b'('))
-        .then_some(remainder)
+    let suffix = attribute_name_suffix(remainder)?;
+    (suffix.len() != remainder.len()
+        || suffix
+            .as_bytes()
+            .first()
+            .is_none_or(|byte| byte.is_ascii_whitespace() || matches!(byte, b'=' | b']' | b'(')))
+    .then_some(suffix)
 }
 
 fn outer_attribute_content(source: &str) -> Option<&str> {
@@ -104,41 +116,6 @@ fn outer_attribute_content(source: &str) -> Option<&str> {
         .trim_start()
         .strip_prefix('[')
         .map(str::trim_start)
-}
-
-pub(super) fn is_attribute_trivia(line: &str, block_comment_depth: &mut usize) -> bool {
-    let mut remainder = line;
-    loop {
-        let trimmed = remainder.trim_start();
-        if *block_comment_depth == 0 {
-            if trimmed.is_empty() || trimmed.starts_with("//") {
-                return true;
-            }
-            let Some(after_comment) = trimmed.strip_prefix("/*") else {
-                return false;
-            };
-            *block_comment_depth += 1;
-            remainder = after_comment;
-            continue;
-        }
-        let next_start = remainder.find("/*");
-        let next_end = remainder.find("*/");
-        match (next_start, next_end) {
-            (Some(start), Some(end)) if start < end => {
-                *block_comment_depth += 1;
-                remainder = &remainder[start + 2..];
-            }
-            (_, Some(end)) => {
-                *block_comment_depth -= 1;
-                remainder = &remainder[end + 2..];
-            }
-            (Some(start), None) => {
-                *block_comment_depth += 1;
-                remainder = &remainder[start + 2..];
-            }
-            (None, None) => return true,
-        }
-    }
 }
 
 fn string_literal(input: &str) -> Option<(String, &str)> {

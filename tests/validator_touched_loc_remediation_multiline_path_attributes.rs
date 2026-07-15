@@ -20,6 +20,30 @@ fn touched_loc_accepts_multiline_path_attributes() -> TestResult {
 }
 
 #[test]
+fn touched_loc_accepts_path_attributes_with_block_comment_trivia() -> TestResult {
+    for source in [
+        "#[path/* generated */ = \"generated/bar.rs\"]\nmod bar;\n",
+        "#[path/* generated /* nested */ comment */ = \"generated/bar.rs\"]\nmod bar;\n",
+    ] {
+        let repo = module_fixture(source)?;
+        assert_rustc_and_validator_accept(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_malformed_direct_path_comment_trivia() -> TestResult {
+    for source in [
+        "#[path/* generated = \"generated/bar.rs\"]\nmod bar;\n",
+        "#[path/not_a_comment = \"generated/bar.rs\"]\nmod bar;\n",
+    ] {
+        let repo = module_fixture(source)?;
+        assert_rustc_and_validator_reject(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn touched_loc_resets_multiline_path_after_prior_declaration() -> TestResult {
     let repo = nested_module_fixture("#[path =\n    \"unused.rs\"] mod skipped;\nmod outer;\n")?;
     assert_rustc_and_validator_accept(&repo)

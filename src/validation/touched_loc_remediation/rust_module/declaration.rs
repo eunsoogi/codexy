@@ -1,6 +1,6 @@
 use super::attribute::{
-    has_cfg_attr_path, is_attribute_trivia, is_outer_attribute, is_path_attribute_start,
-    path_attribute_prefix,
+    has_cfg_attr_path, is_outer_attribute, is_path_attribute_start, path_attribute_prefix,
+    trivia::is_attribute_trivia,
 };
 use super::scope::{ScopeTracker, outer_attribute_remainder};
 
