@@ -17,6 +17,7 @@ mod release_version;
 pub(crate) mod touched_loc;
 pub(super) mod worktree_reservation_harness;
 mod wrapper;
+mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
     TestResult, assert_privacy_diagnostic, public_contract_import_check,
@@ -55,5 +56,6 @@ pub(super) use release_cache_resources::assert_wrapper_rejects_nonexecutable_hel
 pub(crate) use wrapper::{
     WrapperCommandExt, WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo, copy_dir,
     make_executable, run_wrapper, run_wrapper_command, run_wrapper_command_with_timeout,
-    run_wrapper_with_optional_failure, wait_for_default_wrapper_output, wait_for_wrapper_output,
+    run_wrapper_with_optional_failure, spawn_wrapper_command, wait_for_default_wrapper_output,
+    wait_for_wrapper_output,
 };

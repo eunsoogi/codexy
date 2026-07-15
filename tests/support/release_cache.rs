@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 use super::{
     WrapperCommandExt, WrapperFixture, make_executable, release_cache_fixture::set_plugin_release,
-    release_version, wait_for_default_wrapper_output,
+    release_version, spawn_wrapper_command, wait_for_default_wrapper_output,
 };
 
 pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_refresh(
@@ -85,11 +85,13 @@ pub(super) fn initialize_wrapper(
     cache: &std::path::Path,
     fake_bin: &std::path::Path,
 ) -> Result<Value, Box<dyn std::error::Error>> {
-    let mut child = wrapper_command(fixture, server, cache, fake_bin)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+    let mut command = wrapper_command(fixture, server, cache, fake_bin);
+    let mut child = spawn_wrapper_command(
+        command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped()),
+    )?;
     let request = json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}});
     child
         .stdin

@@ -1,9 +1,12 @@
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt as _;
 use std::process::{Child, Command, Output, Stdio};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use super::package_fixture::create_runtime_package;
+pub(crate) use super::wrapper_process::wait_for_wrapper_output;
 
 const WRAPPER_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -125,11 +128,15 @@ pub(crate) fn run_wrapper_command_with_timeout(
     timeout: Duration,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     let description = format!("{command:?}");
-    let child = command
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+    let child = spawn_wrapper_command(command.stdout(Stdio::piped()).stderr(Stdio::piped()))?;
     wait_for_wrapper_output(child, description, timeout)
+}
+
+/// Spawns a wrapper as a process-group leader so the timeout helper can reap its descendants.
+pub(crate) fn spawn_wrapper_command(command: &mut Command) -> std::io::Result<Child> {
+    #[cfg(unix)]
+    command.process_group(0);
+    command.spawn()
 }
 
 pub(crate) trait WrapperCommandExt {
@@ -139,32 +146,6 @@ pub(crate) trait WrapperCommandExt {
 impl WrapperCommandExt for Command {
     fn output_with_timeout(&mut self) -> Result<Output, Box<dyn std::error::Error>> {
         run_wrapper_command(self)
-    }
-}
-
-pub(crate) fn wait_for_wrapper_output(
-    mut child: Child,
-    description: String,
-    timeout: Duration,
-) -> Result<Output, Box<dyn std::error::Error>> {
-    let started = Instant::now();
-
-    loop {
-        if child.try_wait()?.is_some() {
-            return Ok(child.wait_with_output()?);
-        }
-        if started.elapsed() >= timeout {
-            let _ = child.kill();
-            let output = child.wait_with_output()?;
-            let message = format!(
-                "wrapper subprocess timed out after {}s: {description}\nstdout:\n{}\nstderr:\n{}",
-                timeout.as_secs(),
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr),
-            );
-            return Err(std::io::Error::new(std::io::ErrorKind::TimedOut, message).into());
-        }
-        std::thread::sleep(Duration::from_millis(10));
     }
 }
 

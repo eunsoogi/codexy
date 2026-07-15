@@ -53,6 +53,58 @@ fn wrapper_subprocess_timeout_is_actionable() -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn wrapper_timeout_kills_non_exec_descendant_with_inherited_output()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+    let marker = format!("codexy-wrapper-descendant-{}", std::process::id());
+    fixture.replace_wrapper(
+        "lsp",
+        &format!("#!/bin/sh\nsh -c 'sleep 4 & wait' {marker} &\nwait\n"),
+    )?;
+
+    let mut command = Command::new(fixture.plugin_root.join("mcp/codexy-mcp-lsp"));
+    let started = std::time::Instant::now();
+    let error = run_wrapper_command_with_timeout(&mut command, Duration::from_secs(1))
+        .expect_err("wrapper subprocess must time out instead of blocking the test harness");
+    assert!(
+        started.elapsed() < Duration::from_secs(3),
+        "timeout cleanup waited for a non-exec descendant: {error}"
+    );
+    assert!(
+        error.to_string().contains("timed out"),
+        "timeout should be actionable: {error}"
+    );
+    assert!(
+        matching_pids(&marker)?.is_empty(),
+        "timeout cleanup left a descendant process behind"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+fn matching_pids(marker: &str) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
+    let output = Command::new("pgrep").args(["-f", marker]).output()?;
+    if output.status.code() == Some(1) {
+        return Ok(Vec::new());
+    }
+    if !output.status.success() {
+        return Err(format!("pgrep failed for {marker:?}").into());
+    }
+    output
+        .stdout
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            std::str::from_utf8(line)?
+                .parse::<u32>()
+                .map_err(Into::into)
+        })
+        .collect()
+}
+
 fn assert_package_fallback_precedes_cargo_bootstrap(
     wrapper: &str,
     wrapper_path: &Path,
