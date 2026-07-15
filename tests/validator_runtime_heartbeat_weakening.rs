@@ -144,6 +144,40 @@ fn conditional_weakening_suffix_does_not_supply_policy() -> TestResult {
 }
 
 #[test]
+fn markdown_boundary_before_weakening_suffix_does_not_supply_policy() -> TestResult {
+    let output = validate_replacement(&format!(
+        "{CLAUSE}\n\nUnless explicitly approved, the heartbeat may be skipped."
+    ))?;
+    assert!(
+        !output.status.success(),
+        "validator accepted a required clause before a separate weakening block"
+    );
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
+fn conditional_markdown_heading_does_not_supply_policy() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    let original = fs::read_to_string(&path)?;
+    let sentence = format!(
+        "The owner {CLAUSE}; it MAY keep a goal only while an implementation obligation remains."
+    );
+    fs::write(
+        &path,
+        original.replace(&sentence, &format!("\n\n## If available\n{sentence}")),
+    )?;
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(
+        !output.status.success(),
+        "validator accepted a required clause beneath a conditional heading"
+    );
+    assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+#[test]
 fn safe_conditional_words_after_clause_remain_valid() -> TestResult {
     for suffix in [
         " when the deadline arrives",

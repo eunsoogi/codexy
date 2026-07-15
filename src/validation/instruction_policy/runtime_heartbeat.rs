@@ -118,8 +118,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
 fn has_unweakened_clause(text: &str, clause: &str) -> bool {
     text.match_indices(clause).any(|(index, _)| {
         let before = &text[..index];
-        let after = text[index + clause.len()..]
-            .trim_start_matches(|character: char| !character.is_alphanumeric());
+        let after = &text[index + clause.len()..];
         before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
             && !current_block_prefix(before)
                 .rsplit(['.', ';'])
@@ -134,22 +133,44 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
                     .iter()
                     .any(|marker| prefix.contains(marker))
                 })
-            && !CONDITIONAL_MARKERS
-                .iter()
-                .any(|marker| current_sentence_prefix(before).contains(marker.trim()))
-            && ![
-                "unless ",
-                "except ",
-                "only if ",
-                "may ",
-                "is not required",
-                "when possible",
-                "if available",
-                "as needed",
-            ]
-            .iter()
-            .any(|marker| after.starts_with(marker))
+            && !has_conditional_context(before)
+            && !has_weakening_suffix(after)
     })
+}
+
+fn has_conditional_context(before: &str) -> bool {
+    CONDITIONAL_MARKERS.iter().any(|marker| {
+        current_sentence_prefix(before).contains(marker.trim())
+            || current_heading(before).is_some_and(|heading| heading.contains(marker.trim()))
+    })
+}
+
+fn current_heading(before: &str) -> Option<&str> {
+    let (_, heading) = before.rsplit_once("<markdown-heading>")?;
+    heading
+        .split_once("</markdown-heading>")
+        .map(|(heading, _)| heading)
+}
+
+fn has_weakening_suffix(after: &str) -> bool {
+    let after = after
+        .trim_start_matches(|character: char| !character.is_alphanumeric() && character != '<');
+    let after = after
+        .strip_prefix("<markdown-boundary>")
+        .map_or(after, str::trim_start);
+    let after = after.trim_start_matches(|character: char| !character.is_alphanumeric());
+    [
+        "unless ",
+        "except ",
+        "only if ",
+        "may ",
+        "is not required",
+        "when possible",
+        "if available",
+        "as needed",
+    ]
+    .iter()
+    .any(|marker| after.starts_with(marker))
 }
 
 fn current_block_prefix(before: &str) -> &str {
