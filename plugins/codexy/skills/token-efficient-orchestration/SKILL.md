@@ -58,13 +58,11 @@ MUST use this flow after compaction and before handoff:
 5. **Fail once**: a failed parent message MUST emit exactly one terminal unavailable
    report. It MUST include its event identity and MUST NOT retry the parent message.
 6. **Carry one next action**: each lane MUST end with exactly one current action.
-7. **Require runtime polling evidence**: polling/monitoring MUST be reserved for
-   an observation bound to a persistent runtime monitor or wait session id, a
-   scheduled next-observation time or deadline, and a last observed state
-   fingerprint or event identity. Distinct model/assistant turn ids, tool-driven
-   re-entry, goal continuation, or agent invocation without those runtime-issued
-   fields are continuation turns, not polling; unchanged continuation turns MUST
-   NOT reschedule themselves or emit another unchanged turn.
+7. **Require runtime polling evidence**: polling/monitoring MUST be reserved for an observation bound to one complete runtime-issued monitor identity.
+   A heartbeat route MUST bind the observation to its heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity.
+   The heartbeat route MUST NOT require a persistent exec/session identifier or same-process resume.
+   A separate process-backed monitor MUST bind the observation to a persistent runtime monitor or wait session id, a scheduled next-observation time or deadline, the last observed state fingerprint or event identity, and same-process resume.
+   Distinct model/assistant turn ids, tool-driven re-entry, goal continuation, or agent invocation without either complete runtime-issued identity are continuation turns, not polling; unchanged continuation turns MUST NOT reschedule themselves or emit another unchanged turn.
 8. **Suppress unchanged continuation turns**: when an authorized child-local
    monitor observes no qualifying event and the stable event identity, head,
    checks, review state, and next action are unchanged, it MUST keep the monitor scheduled

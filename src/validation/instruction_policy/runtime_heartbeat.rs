@@ -24,7 +24,11 @@ const ORCHESTRATION_CLAUSES: &[&str] = &[
 ];
 
 const TOKEN_CLAUSES: &[&str] = &[
-    "heartbeat automation id",
+    "polling/monitoring MUST be reserved for an observation bound to one complete runtime-issued monitor identity",
+    "heartbeat route MUST bind the observation to its heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity",
+    "heartbeat route MUST NOT require a persistent exec/session identifier or same-process resume",
+    "separate process-backed monitor MUST bind the observation to a persistent runtime monitor or wait session id, a scheduled next-observation time or deadline, the last observed state fingerprint or event identity, and same-process resume",
+    "without either complete runtime-issued identity are continuation turns, not polling",
     "bounded schedule, state fingerprint, material-event set, and delete/disable state",
     "MUST suppress unchanged observations",
     "material gate change or an explicit user/parent message",
