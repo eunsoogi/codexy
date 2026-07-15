@@ -99,15 +99,17 @@ fn is_crate_root(root: &Path, path: &Path, parent: &Path) -> bool {
             Some("lib.rs") => is_library_or_binary_crate_root(root, parent),
             Some("main.rs") => {
                 is_library_or_binary_crate_root(root, parent)
-                    || is_directory_target_crate_root(root, parent)
+                    || (origin::allows_default_target_roots(root, parent)
+                        && is_directory_target_crate_root(root, parent))
             }
             Some("build.rs") => parent == Path::new("") || is_package_root(root, parent),
             _ => false,
         })
-        || TARGET_ROOTS
-            .iter()
-            .any(|directory| parent == Path::new(directory))
-        || is_package_target_root(root, parent)
+        || (origin::allows_default_target_roots(root, parent)
+            && (TARGET_ROOTS
+                .iter()
+                .any(|directory| parent == Path::new(directory))
+                || is_package_target_root(root, parent)))
 }
 
 pub(super) fn normalize_relative_path(base: &Path, path: &str) -> Option<PathBuf> {

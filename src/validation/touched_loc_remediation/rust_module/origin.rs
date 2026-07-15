@@ -11,7 +11,10 @@ use super::{TARGET_ROOTS, normalize_relative_path};
 use manifest::cargo_manifest_paths;
 
 pub(super) fn is_manifest_target_root(root: &Path, path: &Path) -> bool {
-    cargo_target_paths(root).iter().any(|target| target == path)
+    cargo_target_paths(root)
+        .paths
+        .iter()
+        .any(|target| target == path)
         || ancestor_manifest_declares_target(root, path)
 }
 
@@ -19,14 +22,34 @@ pub(super) fn is_path_attributed_module(root: &Path, target: &Path) -> bool {
     traversal::is_path_attributed_module(root, target, crate_roots(root, target))
 }
 
+pub(super) fn allows_default_target_roots(root: &Path, path: &Path) -> bool {
+    let Some(package_root) = path
+        .ancestors()
+        .find(|candidate| is_package_root(root, candidate))
+    else {
+        return true;
+    };
+    !cargo_target_paths(root)
+        .package_roots
+        .iter()
+        .any(|known_root| known_root == package_root)
+}
+
 fn crate_roots(root: &Path, target: &Path) -> Vec<PathBuf> {
-    let mut roots = cargo_target_paths(root);
+    let cargo_targets = cargo_target_paths(root);
+    let mut roots = cargo_targets.paths;
     if roots.is_empty() {
         roots.extend(default_package_roots(root, Path::new("")));
     }
     if let Some(package_root) = target
         .ancestors()
         .find(|candidate| is_package_root(root, candidate))
+        .filter(|package_root| {
+            !cargo_targets
+                .package_roots
+                .iter()
+                .any(|known_root| known_root == package_root)
+        })
     {
         roots.extend(default_package_roots(root, package_root));
     }
@@ -64,17 +87,34 @@ fn default_package_roots(root: &Path, package_root: &Path) -> Vec<PathBuf> {
     roots
 }
 
-fn cargo_target_paths(root: &Path) -> Vec<PathBuf> {
+struct CargoTargets {
+    paths: Vec<PathBuf>,
+    package_roots: Vec<PathBuf>,
+}
+
+fn cargo_target_paths(root: &Path) -> CargoTargets {
     let mut targets = cargo_manifest_paths(root)
         .into_iter()
-        .flat_map(|manifest| cargo_target_paths_for_manifest(root, &manifest))
-        .collect::<Vec<_>>();
-    targets.sort();
-    targets.dedup();
+        .map(|manifest| cargo_target_paths_for_manifest(root, &manifest))
+        .fold(
+            CargoTargets {
+                paths: Vec::new(),
+                package_roots: Vec::new(),
+            },
+            |mut targets, discovered| {
+                targets.paths.extend(discovered.paths);
+                targets.package_roots.extend(discovered.package_roots);
+                targets
+            },
+        );
+    targets.paths.sort();
+    targets.paths.dedup();
+    targets.package_roots.sort();
+    targets.package_roots.dedup();
     targets
 }
 
-fn cargo_target_paths_for_manifest(root: &Path, manifest: &Path) -> Vec<PathBuf> {
+fn cargo_target_paths_for_manifest(root: &Path, manifest: &Path) -> CargoTargets {
     let Ok(output) = Command::new("cargo")
         .args(["metadata", "--manifest-path"])
         .arg(manifest)
@@ -82,35 +122,54 @@ fn cargo_target_paths_for_manifest(root: &Path, manifest: &Path) -> Vec<PathBuf>
         .current_dir(root)
         .output()
     else {
-        return Vec::new();
+        return CargoTargets {
+            paths: Vec::new(),
+            package_roots: Vec::new(),
+        };
     };
     if !output.status.success() {
-        return Vec::new();
+        return CargoTargets {
+            paths: Vec::new(),
+            package_roots: Vec::new(),
+        };
     }
     let Ok(metadata) = serde_json::from_slice::<JsonValue>(&output.stdout) else {
-        return Vec::new();
+        return CargoTargets {
+            paths: Vec::new(),
+            package_roots: Vec::new(),
+        };
     };
-    metadata
+    let mut discovered = CargoTargets {
+        paths: Vec::new(),
+        package_roots: Vec::new(),
+    };
+    for package in metadata
         .get("packages")
         .and_then(JsonValue::as_array)
         .into_iter()
         .flatten()
-        .filter(|package| {
-            package
-                .get("manifest_path")
-                .and_then(JsonValue::as_str)
-                .is_some_and(|manifest| repository_relative_path(root, manifest).is_some())
-        })
-        .flat_map(|package| {
+    {
+        let Some(manifest) = package
+            .get("manifest_path")
+            .and_then(JsonValue::as_str)
+            .and_then(|manifest| repository_relative_path(root, manifest))
+        else {
+            continue;
+        };
+        discovered
+            .package_roots
+            .push(manifest.parent().unwrap_or(Path::new("")).to_owned());
+        discovered.paths.extend(
             package
                 .get("targets")
                 .and_then(JsonValue::as_array)
                 .into_iter()
                 .flatten()
-        })
-        .filter_map(|target| target.get("src_path").and_then(JsonValue::as_str))
-        .filter_map(|target| repository_relative_path(root, target))
-        .collect()
+                .filter_map(|target| target.get("src_path").and_then(JsonValue::as_str))
+                .filter_map(|target| repository_relative_path(root, target)),
+        );
+    }
+    discovered
 }
 
 fn repository_relative_path(root: &Path, target: &str) -> Option<PathBuf> {
