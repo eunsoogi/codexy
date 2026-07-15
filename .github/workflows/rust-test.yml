@@ -1,0 +1,25 @@
+name: Rust tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  rust-test:
+    name: Rust test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Rust test dependency
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
+
+      - name: Run full Rust test suite
+        run: cargo test --locked --all-targets
