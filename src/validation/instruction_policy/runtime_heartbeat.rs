@@ -1,9 +1,11 @@
 use std::path::Path;
 
 mod markdown;
+mod weakening;
 
 use crate::paths::display_relative;
-use markdown::{contains_word, last_modal_is_soft, normalized_policy_text};
+use markdown::{last_modal_is_soft, normalized_policy_text};
+use weakening::has_weakening_suffix;
 
 const NORMALIZED_DISCOVERY_CLAUSE: &str = "search the callable tool surface for automation_update";
 
@@ -144,7 +146,7 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
             && !has_negated_prefix(before)
             && !(clause == NORMALIZED_DISCOVERY_CLAUSE
                 && last_modal_is_soft(current_sentence_prefix(before)))
-            && !has_weakening_suffix(after)
+            && !has_weakening_suffix(after, CONDITIONAL_MARKERS)
     })
 }
 
@@ -181,52 +183,6 @@ fn current_heading(before: &str) -> Option<&str> {
     heading
         .split_once("</markdown-heading>")
         .map(|(heading, _)| heading)
-}
-
-fn has_weakening_suffix(after: &str) -> bool {
-    let mut after = after;
-    loop {
-        after = after
-            .trim_start_matches(|character: char| !character.is_alphanumeric() && character != '<');
-        let Some(after_boundary) = after.strip_prefix("<markdown-boundary>") else {
-            break;
-        };
-        after = after_boundary;
-    }
-    let after = after.trim_start_matches(|character: char| !character.is_alphanumeric());
-    let (after, follows_adversative) = ["but", "however"]
-        .iter()
-        .find_map(|connector| {
-            let remainder = after.strip_prefix(connector)?;
-            remainder
-                .chars()
-                .next()
-                .is_some_and(|character| !character.is_alphanumeric())
-                .then_some(remainder)
-        })
-        .map_or((after, false), |remainder| {
-            (
-                remainder.trim_start_matches(|character: char| !character.is_alphanumeric()),
-                true,
-            )
-        });
-    [
-        "unless ",
-        "except ",
-        "only if ",
-        "may ",
-        "is not required",
-        "when possible",
-        "if available",
-        "as needed",
-    ]
-    .iter()
-    .any(|marker| after.starts_with(marker))
-        || follows_adversative
-            && after
-                .split(['.', ';'])
-                .next()
-                .is_some_and(|clause| contains_word(clause, "may"))
 }
 
 fn current_block_prefix(before: &str) -> &str {
