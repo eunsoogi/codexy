@@ -73,6 +73,11 @@ pub(super) fn normalized_policy_text(text: &str) -> String {
         .join(" ")
 }
 
+pub(super) fn contains_word(text: &str, word: &str) -> bool {
+    text.split(|character: char| !character.is_alphanumeric())
+        .any(|candidate| candidate == word)
+}
+
 fn strip_markdown_formatting(text: &str) -> String {
     let text = text.replace(['`', '*'], "");
     let characters = text.chars().collect::<Vec<_>>();

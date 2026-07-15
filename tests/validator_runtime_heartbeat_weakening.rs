@@ -196,6 +196,7 @@ fn adversative_weakening_suffix_does_not_supply_policy() -> TestResult {
     for suffix in [
         ", but MAY skip the heartbeat",
         "; however, MAY skip the heartbeat",
+        ", but the owner MAY skip the heartbeat",
     ] {
         let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
         if output.status.success() {
@@ -213,6 +214,7 @@ fn safe_adversative_suffixes_remain_valid() -> TestResult {
     for suffix in [
         ", but MUST record the result",
         "; however, MUST preserve the evidence",
+        ", but the owner MUST record the result",
     ] {
         let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
         assert!(

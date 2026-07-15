@@ -3,7 +3,7 @@ use std::path::Path;
 mod markdown;
 
 use crate::paths::display_relative;
-use markdown::normalized_policy_text;
+use markdown::{contains_word, normalized_policy_text};
 
 const ORCHESTRATION_CLAUSES: &[&str] = &[
     "search the callable tool surface for `automation_update`",
@@ -140,6 +140,7 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
                 })
             && !has_conditional_context(before)
             && !has_negated_prefix(before)
+            && !has_soft_modal_prefix(before)
             && !has_weakening_suffix(after)
     })
 }
@@ -163,6 +164,10 @@ fn has_negated_prefix(before: &str) -> bool {
     current_sentence_prefix(before)
         .trim_end()
         .ends_with("must not")
+}
+
+fn has_soft_modal_prefix(before: &str) -> bool {
+    current_sentence_prefix(before).trim_end().ends_with("may")
 }
 
 fn has_conditional_context(before: &str) -> bool {
@@ -190,7 +195,7 @@ fn has_weakening_suffix(after: &str) -> bool {
         after = after_boundary;
     }
     let after = after.trim_start_matches(|character: char| !character.is_alphanumeric());
-    let after = ["but", "however"]
+    let (after, follows_adversative) = ["but", "however"]
         .iter()
         .find_map(|connector| {
             let remainder = after.strip_prefix(connector)?;
@@ -200,8 +205,11 @@ fn has_weakening_suffix(after: &str) -> bool {
                 .is_some_and(|character| !character.is_alphanumeric())
                 .then_some(remainder)
         })
-        .map_or(after, |remainder| {
-            remainder.trim_start_matches(|character: char| !character.is_alphanumeric())
+        .map_or((after, false), |remainder| {
+            (
+                remainder.trim_start_matches(|character: char| !character.is_alphanumeric()),
+                true,
+            )
         });
     [
         "unless ",
@@ -215,6 +223,11 @@ fn has_weakening_suffix(after: &str) -> bool {
     ]
     .iter()
     .any(|marker| after.starts_with(marker))
+        || follows_adversative
+            && after
+                .split(['.', ';'])
+                .next()
+                .is_some_and(|clause| contains_word(clause, "may"))
 }
 
 fn current_block_prefix(before: &str) -> &str {

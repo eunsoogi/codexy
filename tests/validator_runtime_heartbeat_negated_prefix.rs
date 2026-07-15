@@ -34,6 +34,36 @@ fn validator_rejects_must_not_prefix_for_discovery_clause() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_soft_modal_prefix_for_discovery_clause() -> TestResult {
+    let output = validate_discovery_clause(
+        "MUST decide whether the owner MAY search the callable tool surface for `automation_update`",
+    )?;
+    assert!(
+        !output.status.success(),
+        "validator accepted an optional discovery action as required policy"
+    );
+    assert!(
+        support::stderr(&output).contains("runtime heartbeat contract"),
+        "validator rejected the optional discovery action for an unexpected reason: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_accepts_mandatory_modal_prefix_for_discovery_clause() -> TestResult {
+    let output = validate_discovery_clause(
+        "the owner MUST search the callable tool surface for `automation_update`",
+    )?;
+    assert!(
+        output.status.success(),
+        "validator rejected a mandatory discovery clause: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_accepts_unnegated_discovery_clause() -> TestResult {
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;
     let output = support::validator(&plugin_root, "--check")?;
