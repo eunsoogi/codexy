@@ -41,6 +41,12 @@ fn touched_loc_rejects_inline_origin_after_invalid_visibility() -> TestResult {
 }
 
 #[test]
+fn touched_loc_rejects_inline_origin_after_unknown_prefix() -> TestResult {
+    let repo = inline_fixture("", "async ")?;
+    assert_rustc_rejects_and_validator_fails_closed(&repo)
+}
+
+#[test]
 fn touched_loc_rejects_default_scope_after_malformed_inline_path() -> TestResult {
     let repo = inline_fixture("#[path = \"bad\\u{zz}\"]\n    ", "")?;
     assert_rustc_rejects_and_validator_fails_closed(&repo)

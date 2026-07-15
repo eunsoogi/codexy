@@ -11,6 +11,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
     let mut index = 0;
     let mut delimiters = Vec::new();
     let mut attributed_path = None;
+    let mut invalid_prefix = false;
     while index < bytes.len() {
         if let Some(next) = skip_non_code(bytes, index)? {
             index = next;
@@ -35,6 +36,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             b'{' | b'(' | b'[' => {
                 if delimiters.is_empty() {
                     attributed_path = None;
+                    invalid_prefix = false;
                 }
                 delimiters.push(bytes[index]);
                 index += 1;
@@ -45,6 +47,7 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
             }
             b';' if delimiters.is_empty() => {
                 attributed_path = None;
+                invalid_prefix = false;
                 index += 1;
             }
             _ if delimiters.is_empty() => {
@@ -65,10 +68,14 @@ fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
                     }
                     continue;
                 }
+                if invalid_prefix && token == "mod" {
+                    return None;
+                }
                 if token != "mod" {
                     if attributed_path.take().is_some() {
                         index = skip_non_module_item(bytes, index, item_boundary(token)?)?;
                     }
+                    invalid_prefix = bytes.get(index) != Some(&b'!');
                     continue;
                 }
                 let cursor = skip_trivia(bytes, index)?;
@@ -108,7 +115,6 @@ fn item_boundary(token: &str) -> Option<ItemBoundary> {
         _ => None,
     }
 }
-
 fn skip_non_module_item(bytes: &[u8], mut index: usize, boundary: ItemBoundary) -> Option<usize> {
     let mut angle_depth = 0usize;
     while index < bytes.len() {
@@ -139,7 +145,6 @@ fn skip_non_module_item(bytes: &[u8], mut index: usize, boundary: ItemBoundary) 
     }
     None
 }
-
 fn matching_delimiter(bytes: &[u8], start: usize) -> Option<usize> {
     let mut delimiters = vec![*bytes.get(start)?];
     let mut index = start + 1;
@@ -162,7 +167,6 @@ fn matching_delimiter(bytes: &[u8], start: usize) -> Option<usize> {
     }
     None
 }
-
 fn close_delimiter(delimiters: &mut Vec<u8>, close: u8) -> Option<()> {
     let expected = match close {
         b'}' => b'{',
@@ -172,7 +176,6 @@ fn close_delimiter(delimiters: &mut Vec<u8>, close: u8) -> Option<()> {
     };
     (delimiters.pop() == Some(expected)).then_some(())
 }
-
 fn skip_non_code(bytes: &[u8], index: usize) -> Option<Option<usize>> {
     if bytes.get(index..index + 2) == Some(b"//") {
         return Some(Some(
@@ -187,7 +190,6 @@ fn skip_non_code(bytes: &[u8], index: usize) -> Option<Option<usize>> {
     }
     literal::skip(bytes, index)
 }
-
 fn skip_block_comment(bytes: &[u8], mut index: usize) -> Option<usize> {
     let mut depth = 1;
     while index < bytes.len() {
@@ -206,7 +208,6 @@ fn skip_block_comment(bytes: &[u8], mut index: usize) -> Option<usize> {
     }
     None
 }
-
 fn skip_trivia(bytes: &[u8], mut index: usize) -> Option<usize> {
     loop {
         while bytes.get(index).is_some_and(u8::is_ascii_whitespace) {
@@ -218,7 +219,6 @@ fn skip_trivia(bytes: &[u8], mut index: usize) -> Option<usize> {
         index = next;
     }
 }
-
 fn identifier(source: &str, index: usize) -> Option<(&str, usize)> {
     let bytes = source.as_bytes();
     let mut cursor = index;
@@ -236,7 +236,6 @@ fn identifier(source: &str, index: usize) -> Option<(&str, usize)> {
     }
     Some((&source[index..cursor], cursor))
 }
-
 fn restricted_visibility(source: &str) -> bool {
     let source = source.trim();
     if matches!(source, "crate" | "self" | "super") {
