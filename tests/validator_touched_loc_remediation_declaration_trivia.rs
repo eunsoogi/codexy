@@ -57,6 +57,31 @@ fn touched_loc_resets_path_after_prior_declaration() -> TestResult {
     assert_rustc_and_validator_accept(&repo)
 }
 
+#[test]
+fn touched_loc_accepts_rust_trivia_between_mod_and_identifier() -> TestResult {
+    for declaration in [
+        "mod\touter;\n",
+        "mod /* generated */ outer;\n",
+        "pub(crate)\tmod outer;\n",
+        "mod r#outer;\n",
+    ] {
+        let repo = module_fixture(declaration)?;
+        assert_rustc_and_validator_accept(&repo)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn touched_loc_rejects_unclosed_comment_between_mod_and_identifier() -> TestResult {
+    let repo = module_fixture("mod /* generated outer;\n")?;
+    let rustc = compile(repo.path())?;
+    assert!(!rustc.status.success());
+    let output = validate(repo.path())?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("multiline collapse"));
+    Ok(())
+}
+
 fn module_fixture(source: &str) -> TestResult<tempfile::TempDir> {
     let repo = fixture("src/generated/bar.rs", regular_lines(252))?;
     write(repo.path(), "src/lib.rs", source)?;

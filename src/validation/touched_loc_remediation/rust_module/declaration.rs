@@ -146,11 +146,40 @@ fn valid_visibility_path(path: &str) -> bool {
 }
 
 fn module_declaration(declaration: &str) -> Option<&str> {
-    let declaration = declaration.strip_prefix("mod ")?;
+    let declaration = module_identifier_remainder(declaration.strip_prefix("mod")?)?;
     let (module, suffix) = identifier(declaration)?;
     let suffix = suffix.trim_start().strip_prefix(';')?;
     let mut comment_depth = 0;
     (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(module)
+}
+
+fn module_identifier_remainder(mut source: &str) -> Option<&str> {
+    let mut separated = false;
+    loop {
+        let trimmed = source.trim_start();
+        separated |= trimmed.len() != source.len();
+        source = trimmed;
+        let Some(after_comment) = source.strip_prefix("/*") else {
+            return separated.then_some(source);
+        };
+        separated = true;
+        let bytes = after_comment.as_bytes();
+        let mut depth = 1;
+        let mut index = 0;
+        while depth > 0 {
+            match bytes.get(index..index + 2) {
+                Some(b"/*") => depth += 1,
+                Some(b"*/") => depth -= 1,
+                Some(_) => {
+                    index += 1;
+                    continue;
+                }
+                None => return None,
+            }
+            index += 2;
+        }
+        source = &after_comment[index..];
+    }
 }
 
 fn identifier(source: &str) -> Option<(&str, &str)> {
