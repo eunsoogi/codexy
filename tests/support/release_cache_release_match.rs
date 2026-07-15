@@ -4,7 +4,7 @@ use super::release_cache::{
     assert_server_info, create_fake_curl_bin, create_runtime_package, initialize_wrapper,
     wrapper_command,
 };
-use super::{WrapperFixture, make_executable, release_version};
+use super::{WrapperCommandExt, WrapperFixture, make_executable, release_version};
 
 pub(crate) fn assert_wrapper_rejects_stale_default_release_then_accepts_matching_release(
     server: &str,
@@ -18,9 +18,9 @@ pub(crate) fn assert_wrapper_rejects_stale_default_release_then_accepts_matching
     let stale_package = create_runtime_package(&stale_root, server, stale_release)?;
     let stale_bin = create_fake_curl_bin(&stale_root, &stale_package)?;
 
-    let stale_output = wrapper_command(&fixture, server, &cache, &stale_bin)
-        .arg("--help")
-        .output()?;
+    let mut stale_command = wrapper_command(&fixture, server, &cache, &stale_bin);
+    stale_command.arg("--help");
+    let stale_output = stale_command.output_with_timeout()?;
     let stale_stderr = String::from_utf8_lossy(&stale_output.stderr);
     assert!(
         !stale_output.status.success(),
@@ -57,14 +57,15 @@ pub(crate) fn assert_wrapper_allows_explicit_package_release_mismatch(
     let cache = temp.path().join("runtime-cache");
     let package = create_runtime_package(temp.path(), server, "0.0.0")?;
 
-    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    command
         .arg("--help")
         .env("HOME", fixture.home)
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
         .env("CODEXY_RUNTIME_PACKAGE_PATH", &package)
-        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
-        .output()?;
+        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64");
+    let output = command.output_with_timeout()?;
     assert!(
         output.status.success(),
         "explicit package override is an isolated opt-in and may use a mismatched release\nstdout:\n{}\nstderr:\n{}",
@@ -98,9 +99,9 @@ pub(crate) fn assert_wrapper_recovers_from_poisoned_v2_cache_with_matching_relea
     let release_root = temp.path().join("matching-release");
     let release = create_runtime_package(&release_root, server, &expected_release)?;
     let fake_bin = create_fake_curl_bin(&release_root, &release)?;
-    let help = wrapper_command(&fixture, server, &cache, &fake_bin)
-        .arg("--help")
-        .output()?;
+    let mut command = wrapper_command(&fixture, server, &cache, &fake_bin);
+    command.arg("--help");
+    let help = command.output_with_timeout()?;
     assert!(
         help.status.success()
             && String::from_utf8_lossy(&help.stdout).contains(&format!(

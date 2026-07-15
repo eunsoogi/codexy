@@ -5,7 +5,7 @@ use super::release_cache::{
     create_fake_curl_bin, create_runtime_package, create_runtime_package_with_release,
     run_wrapper_help,
 };
-use super::{WrapperFixture, make_executable};
+use super::{WrapperCommandExt, WrapperFixture, make_executable};
 
 const REPOSITORY: &str = "https://github.com/eunsoogi/codexy";
 const PLATFORM: &str = "darwin-arm64";
@@ -100,7 +100,9 @@ pub(crate) fn assert_wrapper_rejects_invalid_top_level_plugin_versions(
         let temp = tempfile::tempdir()?;
         let fixture = WrapperFixture::new(temp.path())?;
         write_manifest(&fixture.plugin_root, manifest)?;
-        let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+        let mut command =
+            Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+        command
             .arg("--help")
             .env("HOME", fixture.home)
             .env(
@@ -112,8 +114,8 @@ pub(crate) fn assert_wrapper_rejects_invalid_top_level_plugin_versions(
                 temp.path().join("runtime-cache"),
             )
             .env("CODEXY_RUNTIME_GIT_REF", "main")
-            .env("CODEXY_RUNTIME_PLATFORM", PLATFORM)
-            .output()?;
+            .env("CODEXY_RUNTIME_PLATFORM", PLATFORM);
+        let output = command.output_with_timeout()?;
         assert!(
             !output.status.success(),
             "{label} plugin manifest must fail before runtime bootstrapping"
@@ -196,7 +198,8 @@ pub(super) fn assert_wrapper_failure(
     path: &str,
     expected: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    command
         .arg("--help")
         .env("HOME", fixture.home)
         .env("PATH", path)
@@ -204,8 +207,8 @@ pub(super) fn assert_wrapper_failure(
             "CODEXY_RUNTIME_CACHE_DIR",
             fixture.home.join("runtime-cache"),
         )
-        .env("CODEXY_RUNTIME_PLATFORM", PLATFORM)
-        .output()?;
+        .env("CODEXY_RUNTIME_PLATFORM", PLATFORM);
+    let output = command.output_with_timeout()?;
     assert_eq!(output.status.code(), Some(127));
     assert!(
         String::from_utf8_lossy(&output.stderr).contains(expected),

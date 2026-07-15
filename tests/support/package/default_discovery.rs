@@ -17,7 +17,7 @@ pub(crate) fn assert_wrapper_discovers_default_artifact_without_cargo(
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .env("GH_TOKEN", "fake-token")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         output.status.success(),
@@ -60,7 +60,7 @@ pub(crate) fn assert_wrapper_requires_token_for_default_artifact_without_cargo(
         .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         !output.status.success(),
@@ -111,7 +111,7 @@ pub(crate) fn assert_wrapper_prefers_durable_default_package_without_cargo(
         .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         output.status.success(),

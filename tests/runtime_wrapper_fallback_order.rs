@@ -1,7 +1,13 @@
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt as _;
+mod support;
+
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
+
+use support::{
+    WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo,
+    run_wrapper_command_with_timeout,
+};
 
 #[test]
 fn mcp_wrappers_try_packaged_runtime_before_cargo_bootstrap()
@@ -14,7 +20,36 @@ fn mcp_wrappers_try_packaged_runtime_before_cargo_bootstrap()
 
         assert_package_fallback_precedes_cargo_bootstrap(&wrapper, &wrapper_path)?;
     }
+    Ok(())
+}
 
+#[test]
+fn mcp_wrappers_use_package_runtime_without_invoking_cargo_when_package_exists()
+-> Result<(), Box<dyn std::error::Error>> {
+    for server in ["lsp", "codegraph"] {
+        assert_wrapper_uses_package_runtime_without_cargo(server)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn wrapper_subprocess_timeout_is_actionable() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+    fixture.replace_wrapper("lsp", "#!/bin/sh\nexec sleep 45\n")?;
+
+    let mut command = Command::new(fixture.plugin_root.join("mcp/codexy-mcp-lsp"));
+    let error = run_wrapper_command_with_timeout(&mut command, Duration::from_secs(2))
+        .expect_err("wrapper subprocess must time out instead of blocking the test harness");
+    let message = error.to_string();
+    assert!(
+        message.contains("timed out"),
+        "timeout should be actionable: {message}"
+    );
+    assert!(
+        message.contains("codexy-mcp-lsp"),
+        "timeout should name the wrapper: {message}"
+    );
     Ok(())
 }
 
@@ -51,7 +86,6 @@ fn assert_package_fallback_precedes_cargo_bootstrap(
         "{} should try packaged runtime fallback before Cargo bootstrap",
         wrapper_path.display()
     );
-
     Ok(())
 }
 
@@ -63,134 +97,4 @@ fn find_required(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     text.find(needle)
         .ok_or_else(|| format!("{} missing {label}: {needle}", wrapper_path.display()).into())
-}
-
-#[test]
-fn mcp_wrappers_use_package_runtime_without_invoking_cargo_when_package_exists()
--> Result<(), Box<dyn std::error::Error>> {
-    for server in ["lsp", "codegraph"] {
-        assert_wrapper_uses_package_runtime_without_invoking_cargo(server)?;
-    }
-    Ok(())
-}
-
-fn assert_wrapper_uses_package_runtime_without_invoking_cargo(
-    server: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("installed-plugin");
-    let wrapper_dir = plugin_root.join("mcp");
-    std::fs::create_dir_all(&wrapper_dir)?;
-    let wrapper_path = wrapper_dir.join(format!("codexy-mcp-{server}"));
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join(format!("plugins/codexy/mcp/codexy-mcp-{server}")),
-        &wrapper_path,
-    )?;
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/mcp/codexy-runtime-cache-key.py"),
-        wrapper_dir.join("codexy-runtime-cache-key.py"),
-    )?;
-    make_executable(&wrapper_path)?;
-
-    let package_archive = temp.path().join("codexy-marketplace-plugin.tar.gz");
-    create_fake_runtime_package(temp.path(), &package_archive, server)?;
-    let fake_cargo_dir = temp.path().join("fake-bin");
-    let cargo_sentinel = temp.path().join("cargo-was-called");
-    create_fake_cargo(&fake_cargo_dir)?;
-
-    let output = Command::new(&wrapper_path)
-        .arg("--stdio")
-        .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
-        .env("CODEXY_RUNTIME_PACKAGE_PATH", &package_archive)
-        .env(
-            "CODEXY_RUNTIME_CACHE_DIR",
-            temp.path().join("runtime-cache"),
-        )
-        .env("CARGO_SENTINEL", &cargo_sentinel)
-        .env(
-            "PATH",
-            format!(
-                "{}:{}",
-                fake_cargo_dir.display(),
-                std::env::var("PATH").unwrap_or_default()
-            ),
-        )
-        .output()?;
-
-    assert_eq!(
-        output.status.code(),
-        Some(42),
-        "wrapper should exec the packaged runtime\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("PACKAGED_RUNTIME_USED"),
-        "packaged runtime marker missing\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        !String::from_utf8_lossy(&output.stderr).contains("plugin.json"),
-        "sparse package override should not emit a manifest-read error\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        !cargo_sentinel.exists(),
-        "Cargo should not be invoked when the packaged runtime is available"
-    );
-
-    Ok(())
-}
-
-fn create_fake_runtime_package(
-    temp_root: &Path,
-    archive_path: &Path,
-    server: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let package_root = temp_root.join("package-root");
-    let runtime_dir = package_root.join("runtime");
-    std::fs::create_dir_all(&runtime_dir)?;
-    let runtime_path = runtime_dir.join(format!("codexy-mcp-{server}-darwin-arm64.bin"));
-    std::fs::write(
-        &runtime_path,
-        "#!/bin/sh\necho PACKAGED_RUNTIME_USED \"$@\" >&2\nexit 42\n",
-    )?;
-    make_executable(&runtime_path)?;
-
-    let status = Command::new("tar")
-        .args(["-czf"])
-        .arg(archive_path)
-        .arg("-C")
-        .arg(&package_root)
-        .arg(".")
-        .status()?;
-    assert!(status.success(), "tar should create runtime package");
-
-    Ok(())
-}
-
-fn create_fake_cargo(fake_bin_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    std::fs::create_dir_all(fake_bin_dir)?;
-    let cargo_path = fake_bin_dir.join("cargo");
-    std::fs::write(
-        &cargo_path,
-        "#!/bin/sh\necho cargo > \"$CARGO_SENTINEL\"\nexit 86\n",
-    )?;
-    make_executable(&cargo_path)?;
-    Ok(())
-}
-
-fn make_executable(path: &Path) -> std::io::Result<()> {
-    #[cfg(unix)]
-    {
-        let mut permissions = std::fs::metadata(path)?.permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(path, permissions)?;
-    }
-    #[cfg(not(unix))]
-    let _ = path;
-    Ok(())
 }

@@ -28,7 +28,7 @@ pub(crate) fn assert_wrapper_reuses_cache_before_default_package_refresh_without
         .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         output.status.success(),
@@ -76,7 +76,7 @@ pub(crate) fn assert_wrapper_ignores_legacy_cache_before_default_package_refresh
         .env("CODEXY_RUNTIME_CACHE_DIR", &cache)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .arg("--help")
-        .output()?;
+        .output_with_timeout()?;
 
     assert!(
         output.status.success(),

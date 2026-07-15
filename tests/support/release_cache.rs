@@ -6,7 +6,8 @@ use std::{
 use serde_json::{Value, json};
 
 use super::{
-    WrapperFixture, make_executable, release_cache_fixture::set_plugin_release, release_version,
+    WrapperCommandExt, WrapperFixture, make_executable, release_cache_fixture::set_plugin_release,
+    release_version, wait_for_default_wrapper_output,
 };
 
 pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_refresh(
@@ -96,7 +97,7 @@ pub(super) fn initialize_wrapper(
         .ok_or("missing wrapper stdin")?
         .write_all(format!("{request}\n").as_bytes())?;
     drop(child.stdin.take());
-    let output = child.wait_with_output()?;
+    let output = wait_for_default_wrapper_output(child, format!("codexy-mcp-{server} initialize"))?;
     if !output.status.success() {
         return Err(format!(
             "wrapper initialize failed\nstdout:\n{}\nstderr:\n{}",
@@ -114,9 +115,9 @@ pub(super) fn run_wrapper_help(
     cache: &std::path::Path,
     fake_bin: &std::path::Path,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let output = wrapper_command(fixture, server, cache, fake_bin)
-        .arg("--help")
-        .output()?;
+    let mut command = wrapper_command(fixture, server, cache, fake_bin);
+    command.arg("--help");
+    let output = command.output_with_timeout()?;
     if !output.status.success() {
         return Err(format!(
             "wrapper --help failed: {}",

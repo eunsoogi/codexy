@@ -1,5 +1,6 @@
 use std::process::Command;
 
+use super::WrapperCommandExt;
 use super::WrapperFixture;
 use super::package_fixture::{
     create_artifact_api_response, create_fake_curl_bin, create_fake_curl_bin_with_release_package,
