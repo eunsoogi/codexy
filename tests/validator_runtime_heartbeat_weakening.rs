@@ -191,6 +191,40 @@ fn conditional_markdown_heading_does_not_supply_policy() -> TestResult {
 }
 
 #[test]
+fn adversative_weakening_suffix_does_not_supply_policy() -> TestResult {
+    let mut accepted = Vec::new();
+    for suffix in [
+        ", but MAY skip the heartbeat",
+        "; however, MAY skip the heartbeat",
+    ] {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        if output.status.success() {
+            accepted.push(suffix);
+        } else {
+            assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+        }
+    }
+    assert!(accepted.is_empty(), "validator accepted {accepted:?}");
+    Ok(())
+}
+
+#[test]
+fn safe_adversative_suffixes_remain_valid() -> TestResult {
+    for suffix in [
+        ", but MUST record the result",
+        "; however, MUST preserve the evidence",
+    ] {
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        assert!(
+            output.status.success(),
+            "validator rejected safe adversative suffix {suffix:?}: {}",
+            support::stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn safe_conditional_words_after_clause_remain_valid() -> TestResult {
     for suffix in [
         " when the deadline arrives",

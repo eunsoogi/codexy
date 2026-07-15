@@ -163,6 +163,19 @@ fn has_weakening_suffix(after: &str) -> bool {
         after = after_boundary;
     }
     let after = after.trim_start_matches(|character: char| !character.is_alphanumeric());
+    let after = ["but", "however"]
+        .iter()
+        .find_map(|connector| {
+            let remainder = after.strip_prefix(connector)?;
+            remainder
+                .chars()
+                .next()
+                .is_some_and(|character| !character.is_alphanumeric())
+                .then_some(remainder)
+        })
+        .map_or(after, |remainder| {
+            remainder.trim_start_matches(|character: char| !character.is_alphanumeric())
+        });
     [
         "unless ",
         "except ",
