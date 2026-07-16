@@ -137,12 +137,13 @@ pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> 
     assignment
         .match_indices(&marker)
         .filter(|(start, _)| assignment[..*start].ends_with('`'))
+        .filter(|(start, _)| !inside_html_comment(assignment, *start))
         .filter_map(|(start, _)| {
             let before = &assignment[..start];
             let clause_start = before
                 .rfind(';')
                 .map_or(0, |index| index + 1)
-                .max(before.rfind(". ").map_or(0, |index| index + 2));
+                .max(sentence_start(before));
             let clause = &before[clause_start..];
             (!clause.contains("MUST NOT")).then(|| {
                 let value = &assignment[start + marker.len()..];
@@ -150,6 +151,22 @@ pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> 
             })
         })
         .collect()
+}
+
+fn inside_html_comment(text: &str, index: usize) -> bool {
+    text[..index]
+        .rfind("<!--")
+        .is_some_and(|open| text[..index].rfind("-->").is_none_or(|close| close < open))
+}
+
+fn sentence_start(text: &str) -> usize {
+    text.match_indices(". ").fold(0, |last, (index, _)| {
+        text[index + 2..]
+            .chars()
+            .next()
+            .filter(|character| character.is_uppercase())
+            .map_or(last, |_| index + 2)
+    })
 }
 
 fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {

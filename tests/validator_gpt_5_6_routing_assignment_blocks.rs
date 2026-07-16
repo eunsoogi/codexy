@@ -156,6 +156,22 @@ fn validator_rejects_prohibited_parent_fields_after_dotted_tokens() -> TestResul
     )
 }
 
+#[test]
+fn validator_rejects_prohibited_fields_after_abbreviation() -> TestResult {
+    assert_rejected(
+        "child-to-root delivery MUST pass the recipient route. MUST NOT pass sender fields, e.g. `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_rejects_fields_hidden_in_inline_comments() -> TestResult {
+    assert_rejected(
+        "Parent-to-generic-child delivery MUST pass <!-- `model: \"gpt-5.6-terra\"` and `thinking: \"high\"` -->.",
+        "gpt-5.6-terra/high",
+    )
+}
+
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
     let output = validate(duplicate_recipient_section(policy)?)?;
     assert!(
