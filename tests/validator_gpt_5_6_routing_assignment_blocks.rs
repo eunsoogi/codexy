@@ -1,10 +1,9 @@
-use std::process::Command;
-
 mod support;
 
-use support::copy_dir;
-
-type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+use support::routing_validator::{
+    TestResult, assert_accepted, assert_policy_rejected, assert_rejected,
+    duplicate_recipient_section,
+};
 
 #[test]
 fn validator_rejects_parent_assignment_with_model_only_in_later_paragraph() -> TestResult {
@@ -32,15 +31,9 @@ fn validator_rejects_numbered_child_assignment_with_negated_sol_model() -> TestR
 
 #[test]
 fn validator_accepts_negated_reporting_prose_with_delivery_marker() -> TestResult {
-    let output = validate(duplicate_recipient_section(
+    assert_accepted(duplicate_recipient_section(
         "- Historical prose quotes child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
-    )?)?;
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+    )?)
 }
 
 #[test]
@@ -73,15 +66,9 @@ fn validator_rejects_conflicting_child_effort() -> TestResult {
 
 #[test]
 fn validator_accepts_correct_fields_after_unrelated_prohibition() -> TestResult {
-    let output = validate(duplicate_recipient_section(
+    assert_accepted(duplicate_recipient_section(
         "child-to-root delivery MUST pass the recipient route; MUST NOT derive it from the sender; explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
-    )?)?;
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+    )?)
 }
 
 #[test]
@@ -129,15 +116,9 @@ fn validator_rejects_standalone_negated_delivery_assignment() -> TestResult {
 
 #[test]
 fn validator_accepts_correct_fields_after_period_separated_prohibition() -> TestResult {
-    let output = validate(duplicate_recipient_section(
+    assert_accepted(duplicate_recipient_section(
         "child-to-root delivery MUST pass the recipient route. MUST NOT derive it from the sender. Explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
-    )?)?;
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+    )?)
 }
 
 #[test]
@@ -190,6 +171,8 @@ fn validator_rejects_later_incomplete_active_message_instruction() -> TestResult
         "- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
         "1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
         "Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
+        "  1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
+        "   Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
     ] {
         assert_policy_rejected(
             duplicate_recipient_section(policy)?,
@@ -198,53 +181,16 @@ fn validator_rejects_later_incomplete_active_message_instruction() -> TestResult
     }
     Ok(())
 }
-fn assert_rejected(policy: &str, expected: &str) -> TestResult {
-    assert_policy_rejected(duplicate_recipient_section(policy)?, expected)
-}
 
-fn assert_policy_rejected(skill: String, expected: &str) -> TestResult {
-    let output = validate(skill)?;
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !output.status.success(),
-        "routing bypass unexpectedly passed"
-    );
-    assert!(
-        stderr.find(expected).is_some(),
-        "routing rejection must name {expected}: {}",
-        stderr
-    );
-    Ok(())
-}
-
-fn duplicate_recipient_section(policy: &str) -> TestResult<String> {
-    let skill = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
-    )?;
-    Ok(skill.replacen(
-        "## Read Next",
-        &format!("## Recipient Model Routing\n\n{policy}\n\n## Read Next"),
-        1,
-    ))
-}
-
-fn validate(skill: String) -> TestResult<std::process::Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    std::fs::write(
-        plugin_root.join("skills/codex-orchestration/SKILL.md"),
-        skill,
-    )?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?)
+#[test]
+fn validator_preserves_wrapped_instructions_and_chained_comments() -> TestResult {
+    assert_accepted(duplicate_recipient_section(
+        "1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`\n   and `thinking`. MUST NOT infer either from historical actual `turn_context` state, the sender, or ambient defaults.",
+    )?)?;
+    assert_accepted(duplicate_recipient_section(
+        "Active <!-- closed --> <!--\n1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.\n--> prose.",
+    )?)?;
+    assert_accepted(duplicate_recipient_section(
+        "\u{2003}1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
+    )?)
 }

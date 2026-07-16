@@ -10,7 +10,6 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let mut fence: Option<Fence> = None;
     let mut in_comment = false;
     for line in skill.lines() {
-        let mut section_line = line;
         if line.starts_with("    ") || line.starts_with('\t') {
             continue;
         }
@@ -21,30 +20,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             }
             continue;
         }
-        if in_comment {
-            let Some((_, after)) = trimmed.split_once("-->") else {
-                continue;
-            };
-            in_comment = false;
-            trimmed = after.trim_start();
-            section_line = trimmed;
-        }
-        if let Some(comment) = trimmed.strip_prefix("<!--") {
-            let Some((_, after)) = comment.split_once("-->") else {
-                in_comment = true;
-                continue;
-            };
-            trimmed = after.trim_start();
-            section_line = trimmed;
-        }
-        if section_line
-            .split_once("<!--")
-            .is_some_and(|(_, after)| !after.contains("-->"))
-        {
-            section_line = section_line.split_once("<!--").expect("comment start").0;
-            in_comment = true;
-        }
-        let active_line = strip_inline_comments(section_line);
+        let active_line = strip_comments(line, &mut in_comment);
         trimmed = active_line.trim_start();
         if trimmed.is_empty() {
             if let Some(section) = &mut section {
@@ -100,16 +76,32 @@ pub(super) fn policy_bullets(section: &str) -> Vec<String> {
     bullets
 }
 
-pub(super) fn recipient_policy_instructions(section: &str) -> Vec<String> {
-    let mut instructions = policy_bullets(section);
-    instructions.extend(section.lines().filter_map(|line| {
-        let trimmed = line.trim();
-        (!line.starts_with(' ') && !line.starts_with('\t') && !trimmed.starts_with("- "))
-            .then(|| policy_line(trimmed))
-            .flatten()
-            .filter(|instruction| !instruction.is_empty() && !instruction.starts_with('#'))
-            .map(str::to_owned)
-    }));
+pub(super) fn recipient_policy_instructions(section: &str, starts: &[&str]) -> Vec<String> {
+    let mut instructions = Vec::new();
+    let mut current = None;
+    for line in section.lines() {
+        let indentation = line.bytes().take_while(|byte| *byte == b' ').count();
+        let trimmed = line.trim_start_matches(' ').trim_end();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            finish_block(&mut instructions, &mut current);
+            continue;
+        }
+        let instruction = policy_line(trimmed).filter(|instruction| {
+            trimmed.starts_with("- ") || starts.iter().any(|start| instruction.starts_with(start))
+        });
+        if indentation < 4 && instruction.is_some() {
+            finish_block(&mut instructions, &mut current);
+            current = instruction.map(str::to_owned);
+        } else if (1..4).contains(&indentation) {
+            if let Some(current) = &mut current {
+                current.push(' ');
+                current.push_str(trimmed);
+            }
+        } else {
+            finish_block(&mut instructions, &mut current);
+        }
+    }
+    finish_block(&mut instructions, &mut current);
     instructions
 }
 
@@ -196,18 +188,25 @@ fn sentence_start(text: &str) -> usize {
     })
 }
 
-fn strip_inline_comments(line: &str) -> String {
+fn strip_comments(line: &str, in_comment: &mut bool) -> String {
     let mut active = String::new();
     let mut remainder = line;
-    while let Some((before, commented)) = remainder.split_once("<!--") {
-        active.push_str(before);
-        let Some((_, after)) = commented.split_once("-->") else {
+    loop {
+        if *in_comment {
+            let Some((_, after)) = remainder.split_once("-->") else {
+                return active;
+            };
+            *in_comment = false;
+            remainder = after;
+        } else if let Some((before, after)) = remainder.split_once("<!--") {
+            active.push_str(before);
+            *in_comment = true;
+            remainder = after;
+        } else {
+            active.push_str(remainder);
             return active;
-        };
-        remainder = after;
+        }
     }
-    active.push_str(remainder);
-    active
 }
 
 fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {

@@ -110,7 +110,15 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     }
     let recipient_bullets = recipient_sections
         .iter()
-        .flat_map(|section| recipient_policy_instructions(section))
+        .flat_map(|section| {
+            recipient_policy_instructions(
+                section,
+                &RECIPIENT_ROUTING_BULLETS
+                    .iter()
+                    .map(|(start, _, _)| *start)
+                    .collect::<Vec<_>>(),
+            )
+        })
         .collect::<Vec<_>>();
     errors.extend(missing_required_bullets(
         &path,
