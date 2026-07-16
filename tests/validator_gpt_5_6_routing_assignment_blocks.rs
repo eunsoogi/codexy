@@ -165,7 +165,7 @@ fn validator_rejects_prohibited_fields_after_abbreviations() -> TestResult {
         assert_rejected(policy, "gpt-5.6-sol/high")?;
     }
     assert_rejected(
-        "Parent-to-generic-child delivery MUST pass <!-- `model: \"gpt-5.6-terra\"` and `thinking: \"high\"` -->.",
+        "Parent-to-generic-child delivery MUST pass <!-- `model: \"gpt-5.6-terra\"` and\n`thinking: \"high\"` -->.",
         "gpt-5.6-terra/high",
     )
 }
@@ -187,6 +187,7 @@ fn validator_rejects_required_clause_hidden_in_inline_comment() -> TestResult {
 #[test]
 fn validator_rejects_later_incomplete_active_message_instruction() -> TestResult {
     for policy in [
+        "- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
         "1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
         "Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
     ] {
@@ -197,7 +198,6 @@ fn validator_rejects_later_incomplete_active_message_instruction() -> TestResult
     }
     Ok(())
 }
-
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
     assert_policy_rejected(duplicate_recipient_section(policy)?, expected)
 }

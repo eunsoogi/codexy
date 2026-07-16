@@ -37,6 +37,13 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             trimmed = after.trim_start();
             section_line = trimmed;
         }
+        if section_line
+            .split_once("<!--")
+            .is_some_and(|(_, after)| !after.contains("-->"))
+        {
+            section_line = section_line.split_once("<!--").expect("comment start").0;
+            in_comment = true;
+        }
         let active_line = strip_inline_comments(section_line);
         trimmed = active_line.trim_start();
         if trimmed.is_empty() {
