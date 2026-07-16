@@ -34,6 +34,20 @@ execution loop and MUST be read with root `AGENTS.md`.
   Custom-agent invocations MUST use `fork_turns="none"` or a positive bounded
   count with a self-contained handoff.
 
+## Recipient Model Routing
+
+- Configured UI model is authoritative; active child/parent thread ledger entries MUST
+  record each destination owner's configured UI `model` and `thinking` separately
+  from historical actual `turn_context` model and per-message overrides.
+- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST
+  explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT
+  infer either from historical actual `turn_context` state, the sender, or ambient defaults.
+- Parent-to-generic-child delivery MUST pass `model: "gpt-5.6-terra"` and
+  `thinking: "high"`; child-to-root delivery MUST pass `model: "gpt-5.6-sol"`
+  and `thinking: "high"`.
+- Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
+- Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "high" }).
+
 ## Read Next
 
 MUST read these relative references before acting on the matching surface:
