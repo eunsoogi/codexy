@@ -57,50 +57,68 @@ fn validator_rejects_duplicate_recipient_heading_after_valid_section() -> TestRe
 
 #[test]
 fn validator_rejects_later_child_to_root_wrong_recipient_model() -> TestResult {
-    assert_recipient_assignment_rejected(duplicate_recipient_section(
-        routing_skill()?,
-        "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`\n  and `thinking: \"high\"`.",
-    )?)
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section(
+            routing_skill()?,
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`\n  and `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-sol/high",
+    )
 }
 
 #[test]
 fn validator_rejects_later_child_to_root_without_thinking() -> TestResult {
-    assert_recipient_assignment_rejected(duplicate_recipient_section(
-        routing_skill()?,
-        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`.",
-    )?)
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section(
+            routing_skill()?,
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`.",
+        )?,
+        "gpt-5.6-sol/high",
+    )
 }
 
 #[test]
 fn validator_rejects_later_parent_to_child_without_model() -> TestResult {
-    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
-        routing_skill()?,
-        "- Parent-to-generic-child delivery MUST pass `thinking: \"high\"`.",
-    )?)
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "- Parent-to-generic-child delivery MUST pass `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-terra/high",
+    )
 }
 
 #[test]
 fn validator_rejects_later_parent_to_child_without_thinking() -> TestResult {
-    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
-        routing_skill()?,
-        "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"`.",
-    )?)
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"`.",
+        )?,
+        "gpt-5.6-terra/high",
+    )
 }
 
 #[test]
 fn validator_rejects_numbered_child_to_root_wrong_recipient_model() -> TestResult {
-    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
-        routing_skill()?,
-        "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
-    )?)
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-sol/high",
+    )
 }
 
 #[test]
 fn validator_rejects_plain_child_to_root_wrong_recipient_model() -> TestResult {
-    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
-        routing_skill()?,
-        "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
-    )?)
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-sol/high",
+    )
 }
 
 #[test]
@@ -149,11 +167,16 @@ fn assert_rejected(skill: String) -> TestResult {
     Ok(())
 }
 
-fn assert_recipient_assignment_rejected(skill: String) -> TestResult {
+fn assert_recipient_assignment_rejected(skill: String, expected: &str) -> TestResult {
     let output = validate(skill)?;
     assert!(
         !output.status.success(),
         "routing bypass unexpectedly passed"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(expected),
+        "routing rejection must name {expected}: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
 }
