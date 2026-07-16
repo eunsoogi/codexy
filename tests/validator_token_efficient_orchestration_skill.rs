@@ -44,9 +44,17 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     assert_eq!(prompt.display_name(), "Token-Efficient Orchestration");
     assert!(prompt.allow_implicit_invocation());
     structured_contract::assert_rules(
-        &structured_contract::Contract::markdown_for_subject(prompt.default_prompt(), "you"),
+        &structured_contract::Contract::markdown(prompt.default_prompt()),
         structured_contract_rules::TOKEN_PROMPT,
     );
+    structured_contract_artifacts::TextShape::new(prompt.default_prompt())
+        .assert_absent_concepts("token.prompt.no-polling-language", &["poll", "polling"]);
+    structured_contract_artifacts::TextShape::new(&token_skill).assert_absent_concepts(
+        "token.skill.no-stale-version-or-review-gate",
+        &["installed Codexy plugin is version 1.1.0", "Codex review"],
+    );
+    structured_contract_artifacts::TextShape::new(&template)
+        .assert_absent_concepts("token.delta-template.no-review-gate", &["Codex review"]);
 
     structured_contract_artifacts::Template::parse(&template).assert_slots(
         "token.delta-template.required-slots",

@@ -152,7 +152,7 @@ fn token_policy_forbids_root_goal_and_autonomous_polling_regressions() -> TestRe
     );
     let token_prompt = structured_contract_artifacts::Prompt::parse(&token_prompt)?;
     structured_contract::assert_rules(
-        &structured_contract::Contract::markdown_for_subject(token_prompt.default_prompt(), "you"),
+        &structured_contract::Contract::markdown(token_prompt.default_prompt()),
         structured_contract_rules::TOKEN_PROMPT,
     );
     Ok(())

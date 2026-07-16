@@ -66,6 +66,14 @@ fn guard_allows_diagnostics_and_requires_a_substantive_rationale() {
         "assert!(skill.contains(\"heading\"));"
     );
     assert_eq!(scan_source(governed).len(), 1);
+
+    let indirect = concat!(
+        "let path = root.join(\"plugins/codexy/skills/demo/SKILL.md\");\n",
+        "let skill = std::fs::read_to_string(path)?;\n",
+        "// structured-contract: non-contract substring rationale: verifies rendered CLI output\n",
+        "assert!(skill.contains(\"MUST retain\"));"
+    );
+    assert_eq!(scan_source(indirect).len(), 1);
 }
 
 #[test]
@@ -75,4 +83,13 @@ fn guard_ignores_assertion_text_inside_raw_strings_and_block_comments() {
         "/* assert!(snapshot.contains(\"heading\")); */\n"
     );
     assert!(scan_source(source).is_empty());
+}
+
+#[test]
+fn guard_handles_character_literal_parentheses_inside_assertions() {
+    let source = concat!(
+        "let skill = std::fs::read_to_string(\"plugins/codexy/skills/demo/SKILL.md\")?;\n",
+        "assert!(skill.contains('('));"
+    );
+    assert_eq!(scan_source(source).len(), 1);
 }

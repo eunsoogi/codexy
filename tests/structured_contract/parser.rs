@@ -1,5 +1,8 @@
 use super::Modality;
 
+#[path = "markdown.rs"]
+mod markdown;
+
 #[derive(Debug)]
 pub(super) struct Block {
     headings: Vec<String>,
@@ -16,23 +19,7 @@ pub(super) struct Clause {
 }
 
 pub(super) fn blocks(text: &str) -> Vec<Block> {
-    let mut blocks = Vec::new();
-    let mut headings: Vec<(usize, String)> = Vec::new();
-    let mut lines = Vec::new();
-    for line in text.lines() {
-        if let Some((level, heading)) = atx_heading(line) {
-            push_block(&mut blocks, &headings, &lines);
-            while headings.last().is_some_and(|(prior, _)| *prior >= level) {
-                headings.pop();
-            }
-            headings.push((level, canonical(heading)));
-            lines.clear();
-        } else {
-            lines.push(line);
-        }
-    }
-    push_block(&mut blocks, &headings, &lines);
-    blocks
+    markdown::blocks(text)
 }
 
 impl Block {
@@ -51,8 +38,8 @@ impl Block {
 
     pub(super) fn clauses(&self) -> Vec<Clause> {
         let mut clauses = Vec::new();
-        let mut inherited_subject = None;
         for sentence in self.text.split(['.', ';']) {
+            let mut inherited_subject = None;
             for raw in split_repeated_modals(sentence) {
                 let Some(mut clause) = Clause::parse(raw) else {
                     continue;
@@ -75,17 +62,9 @@ impl Clause {
     fn parse(raw: &str) -> Option<Self> {
         let text = canonical(raw);
         let (subject, modality, tail) = split_modality(&text)?;
-        let conditional = [
-            "if available",
-            "if possible",
-            "unless",
-            "only if",
-            "provided that",
-            "when possible",
-            "where available",
-        ]
-        .iter()
-        .any(|marker| contains_phrase(&text, marker));
+        let conditional = ["if", "when", "unless", "provided"]
+            .iter()
+            .any(|marker| contains_phrase(&text, marker));
         let inverted = modality == Modality::Prohibited
             && ["not", "never", "fail", "failed", "fails", "avoid", "avoids"]
                 .iter()
@@ -109,9 +88,6 @@ impl Clause {
         let expected = canonical(expected);
         subject == expected
             || subject
-                .strip_prefix(&expected)
-                .is_some_and(|tail| tail.starts_with(' '))
-            || subject
                 .strip_suffix(&expected)
                 .is_some_and(|prefix| prefix.ends_with(' '))
     }
@@ -122,31 +98,6 @@ impl Clause {
 
     pub(super) fn tail_has(&self, terms: &[&str]) -> bool {
         terms.iter().all(|term| contains_phrase(&self.tail, term))
-    }
-}
-
-fn atx_heading(line: &str) -> Option<(usize, &str)> {
-    let trimmed = line.trim_start();
-    let level = trimmed
-        .chars()
-        .take_while(|character| *character == '#')
-        .count();
-    if level == 0 || level > 6 || !trimmed[level..].starts_with(char::is_whitespace) {
-        return None;
-    }
-    Some((level, trimmed[level..].trim().trim_end_matches('#').trim()))
-}
-
-fn push_block(blocks: &mut Vec<Block>, headings: &[(usize, String)], lines: &[&str]) {
-    let text = lines.join(" ");
-    if !text.trim().is_empty() {
-        blocks.push(Block {
-            headings: headings
-                .iter()
-                .map(|(_, heading)| heading.clone())
-                .collect(),
-            text,
-        });
     }
 }
 
@@ -224,6 +175,7 @@ pub(super) fn contains_phrase(text: &str, phrase: &str) -> bool {
 
 pub(super) fn canonical(text: &str) -> String {
     text.to_ascii_lowercase()
+        .replace("not-created", "notcreated")
         .split(|character: char| !character.is_ascii_alphanumeric() && character != '$')
         .filter(|token| !token.is_empty())
         .map(|token| match token {

@@ -114,10 +114,11 @@ impl Contract {
 
     fn matches(&self, rule: Rule, clause: &Clause, evidence: &mut Evidence) -> bool {
         let subject = clause.subject_matches(rule.subject)
-            || self
-                .implicit_subject
-                .as_deref()
-                .is_some_and(|subject| contains_phrase(subject, rule.subject));
+            || clause.subject_is_implicit()
+                && self
+                    .implicit_subject
+                    .as_deref()
+                    .is_some_and(|subject| contains_phrase(subject, rule.subject));
         let modality = clause.modality == rule.modality;
         let conditionality = !clause.conditional;
         let negation = !clause.inverted;

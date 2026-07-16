@@ -10,11 +10,35 @@ pub(super) fn sanitize(source: &str) -> String {
             index = blank_raw_string(&mut bytes, index, hashes, content);
         } else if bytes[index] == b'"' {
             index = blank_string(&mut bytes, index);
+        } else if bytes[index] == b'\'' {
+            index = blank_character(&mut bytes, index).unwrap_or(index + 1);
         } else {
             index += 1;
         }
     }
     String::from_utf8(bytes).expect("sanitizing UTF-8 preserves valid bytes")
+}
+
+fn blank_character(bytes: &mut [u8], start: usize) -> Option<usize> {
+    let content = start + 1;
+    let close = if bytes.get(content) == Some(&b'\\') {
+        bytes[content + 1..]
+            .iter()
+            .take(10)
+            .position(|byte| *byte == b'\'')
+            .map(|offset| content + offset + 1)
+    } else {
+        std::str::from_utf8(bytes.get(content..)?)
+            .ok()
+            .and_then(|tail| {
+                tail.chars()
+                    .next()
+                    .map(|character| content + character.len_utf8())
+                    .filter(|close| bytes.get(*close) == Some(&b'\''))
+            })
+    }?;
+    blank_range(bytes, start, close + 1);
+    Some(close + 1)
 }
 
 fn raw_string_start(bytes: &[u8], index: usize) -> Option<(usize, usize)> {

@@ -119,16 +119,23 @@ fn has_contains_call(text: &str) -> bool {
 
 fn governed_bindings(source: &str) -> Vec<String> {
     let mut governed: Vec<String> = Vec::new();
+    let mut governed_paths: Vec<String> = Vec::new();
     for statement in source.split(';') {
         let Some(name) = let_binding(statement) else {
             continue;
         };
-        let direct = statement.contains("read_to_string") && is_governed_path(statement);
+        let reads_document = statement.contains("read_to_string");
+        let governed_path = is_governed_path(statement)
+            || governed_paths
+                .iter()
+                .any(|bound| contains_identifier(statement, bound));
         let alias = governed
             .iter()
             .any(|bound| contains_identifier(statement, bound));
-        if direct || alias {
+        if reads_document && governed_path || alias {
             governed.push(name.to_owned());
+        } else if governed_path {
+            governed_paths.push(name.to_owned());
         }
     }
     governed

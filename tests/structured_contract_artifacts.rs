@@ -2,6 +2,45 @@
 
 use std::collections::BTreeSet;
 
+pub(crate) struct TextShape {
+    normalized: String,
+}
+
+impl TextShape {
+    pub(crate) fn new(text: &str) -> Self {
+        Self {
+            normalized: normalize(text),
+        }
+    }
+
+    pub(crate) fn assert_absent_concepts(&self, rule_id: &str, forbidden: &[&str]) {
+        let present: Vec<_> = forbidden
+            .iter()
+            .filter(|concept| contains_phrase(&self.normalized, &normalize(concept)))
+            .collect();
+        assert!(
+            present.is_empty(),
+            "structured contract {rule_id} has forbidden concepts {present:?}"
+        );
+    }
+}
+
+fn normalize(text: &str) -> String {
+    text.to_ascii_lowercase()
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '$')
+        .filter(|token| !token.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn contains_phrase(text: &str, phrase: &str) -> bool {
+    text.match_indices(phrase).any(|(index, _)| {
+        let before = text[..index].chars().next_back();
+        let after = text[index + phrase.len()..].chars().next();
+        before.is_none_or(char::is_whitespace) && after.is_none_or(char::is_whitespace)
+    })
+}
+
 pub(crate) struct Prompt {
     display_name: String,
     default_prompt: String,
