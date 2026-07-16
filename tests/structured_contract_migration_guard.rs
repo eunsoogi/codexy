@@ -3,6 +3,14 @@ mod structured_contract_guard;
 
 use structured_contract_guard::{comparison_counts, repository_violations, scan_source};
 
+fn migration_counts_preserve_guard(before: usize, after: usize) -> bool {
+    if before == 0 {
+        after == 0
+    } else {
+        after < before
+    }
+}
+
 #[test]
 fn new_contract_tests_cannot_add_unstructured_substring_assertions() {
     let violations = repository_violations().expect("migration guard must inspect test changes");
@@ -23,9 +31,18 @@ fn governed_migration_reduces_direct_substring_assertions() {
     let (before, after) = comparison_counts(&paths).expect("comparison must inspect origin/main");
     eprintln!("governed direct substring assertions: {before} -> {after}");
     assert!(
-        after < before,
-        "migration did not reduce {before} -> {after}"
+        migration_counts_preserve_guard(before, after),
+        "migration must reduce a positive baseline and preserve a zero baseline: {before} -> {after}"
     );
+}
+
+#[test]
+fn migration_control_requires_reduction_before_steady_state() {
+    assert!(migration_counts_preserve_guard(33, 0));
+    assert!(!migration_counts_preserve_guard(33, 33));
+    assert!(!migration_counts_preserve_guard(33, 34));
+    assert!(migration_counts_preserve_guard(0, 0));
+    assert!(!migration_counts_preserve_guard(0, 1));
 }
 
 #[test]
