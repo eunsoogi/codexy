@@ -2,6 +2,10 @@ use std::{fs, process::Command};
 
 use serde_json::Value;
 
+#[path = "structured_contract.rs"]
+mod structured_contract;
+#[path = "structured_contract_rules/mod.rs"]
+mod structured_contract_rules;
 mod support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -136,31 +140,15 @@ fn token_policy_forbids_root_goal_and_autonomous_polling_regressions() -> TestRe
         root.join("plugins/codexy/skills/token-efficient-orchestration/agents/openai.yaml"),
     )?;
 
-    let normalized = orchestration
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-    for required in [
-        "short-lived child implementation goal",
-        "MUST NOT retain a persistent long-running goal",
-        "MUST NOT autonomously poll",
-        "terminal child state",
-        "Sentinel verdict",
-        "GitHub check-state change",
-        "actionable review-feedback change",
-        "exactly one terminal unavailable report",
-        "MUST NOT retry the parent message",
-        "no full conversation transfer",
-        "no full agent-tree listing",
-    ] {
-        assert!(normalized.contains(required), "missing {required:?}");
-    }
-    assert!(!orchestration.contains("MUST keep polling and keep the goal active"));
-    assert!(!token_skill.contains("Poll by delta"));
-    assert!(token_skill.contains("Event-driven delta"));
-    assert!(token_skill.contains("stable event identity"));
-    assert!(token_prompt.contains("event-driven"));
-    assert!(!token_prompt.to_ascii_lowercase().contains("poll"));
+    structured_contract::assert_rules(
+        &structured_contract::Contract::markdown(&orchestration),
+        structured_contract_rules::ORCHESTRATION,
+    );
+    structured_contract::assert_rules(
+        &structured_contract::Contract::markdown(&token_skill),
+        structured_contract_rules::TOKEN_CONTAINMENT,
+    );
+    let _token_prompt = structured_contract::Contract::markdown(&token_prompt);
     Ok(())
 }
 

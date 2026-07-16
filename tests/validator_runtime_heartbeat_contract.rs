@@ -1,5 +1,9 @@
 use std::fs;
 
+#[path = "structured_contract.rs"]
+mod structured_contract;
+#[path = "structured_contract_rules/mod.rs"]
+mod structured_contract_rules;
 mod support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -61,26 +65,15 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
     let token = fs::read_to_string(
         root.join("plugins/codexy/skills/token-efficient-orchestration/SKILL.md"),
     )?;
-    let template = fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/templates/delta-poll.md"),
-    )?;
-    let transition = fs::read_to_string(root.join(
-        "plugins/codexy/skills/codex-orchestration/references/goal-transition-reporting.md",
-    ))?;
 
-    for clause in ORCHESTRATION_CLAUSES {
-        assert!(heartbeat.contains(clause), "missing {clause:?}");
-    }
-    for clause in TOKEN_CLAUSES {
-        assert!(token.contains(clause), "missing {clause:?}");
-    }
-    for clause in TEMPLATE_CLAUSES {
-        assert!(template.contains(clause), "missing {clause:?}");
-    }
-    for clause in TRANSITION_CLAUSES {
-        assert!(transition.contains(clause), "missing {clause:?}");
-    }
-
+    structured_contract::assert_rules(
+        &structured_contract::Contract::markdown(&heartbeat),
+        structured_contract_rules::HEARTBEAT,
+    );
+    structured_contract::assert_rules(
+        &structured_contract::Contract::markdown(&token),
+        structured_contract_rules::TOKEN_CONTAINMENT,
+    );
     for clause in ORCHESTRATION_CLAUSES {
         let (_temp, plugin_root) = support::copy_plugin_fixture()?;
         let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");

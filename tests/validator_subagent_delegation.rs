@@ -1,6 +1,10 @@
 use std::path::Path;
 use std::process::{Command, Output};
 
+#[path = "structured_contract.rs"]
+mod structured_contract;
+#[path = "structured_contract_rules/mod.rs"]
+mod structured_contract_rules;
 mod support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -26,7 +30,10 @@ fn validator_accepts_all_packaged_roles_with_nonrecursive_delegation() -> TestRe
     ] {
         let role =
             std::fs::read_to_string(root.join(format!("plugins/codexy/agents/{role}.toml")))?;
-        assert!(role.contains(NO_RECURSIVE_DELEGATION), "{role}");
+        structured_contract::assert_rules(
+            &structured_contract::Contract::markdown(&role),
+            &structured_contract_rules::DELEGATION[..1],
+        );
     }
     Ok(())
 }
@@ -172,21 +179,14 @@ fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> Test
         root.join("plugins/codexy/skills/codex-orchestration/references/orchestration-loop.md"),
     )?;
 
-    assert!(orchestration.contains(
-        "A child implementation thread MAY spawn bounded first-level specialist helpers or Sentinel reviewers."
-    ));
-    assert!(orchestration.contains(NO_RECURSIVE_DELEGATION));
-    assert!(loop_reference.contains(
-        "Every helper or Sentinel assignment MUST include the nonrecursive delegation prohibition."
-    ));
-    assert!(loop_reference.contains(NO_RECURSIVE_DELEGATION));
-    for example in [
-        "spawn_agent(agent_type=\"codexy-sentinel\", message=\"Review the current diff, exact head, scope, verification output, and evidence. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.\"",
-        "spawn_agent(agent_type=\"codexy-pathfinder\", message=\"Produce an atomic plan and verification checklist. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.\"",
-        "spawn_agent(agent_type=\"codexy-cartographer\", message=\"Map the relevant files. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.\"",
-    ] {
-        assert!(orchestration.contains(example), "{example}");
-    }
+    structured_contract::assert_rules(
+        &structured_contract::Contract::markdown(&orchestration),
+        &structured_contract_rules::DELEGATION[1..2],
+    );
+    structured_contract::assert_rules(
+        &structured_contract::Contract::markdown(&loop_reference),
+        &structured_contract_rules::DELEGATION[2..],
+    );
     Ok(())
 }
 
