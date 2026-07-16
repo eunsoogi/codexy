@@ -140,6 +140,22 @@ fn validator_accepts_correct_fields_after_period_separated_prohibition() -> Test
     Ok(())
 }
 
+#[test]
+fn validator_rejects_prohibited_child_fields_after_dotted_tokens() -> TestResult {
+    assert_rejected(
+        "child-to-root delivery MUST pass the recipient route. MUST NOT pass `sender.model` or `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_rejects_prohibited_parent_fields_after_dotted_tokens() -> TestResult {
+    assert_rejected(
+        "Parent-to-generic-child delivery MUST pass the recipient route. MUST NOT pass `sender.model` or `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "gpt-5.6-terra/high",
+    )
+}
+
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
     let output = validate(duplicate_recipient_section(policy)?)?;
     assert!(

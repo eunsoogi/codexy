@@ -138,10 +138,12 @@ pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> 
         .match_indices(&marker)
         .filter(|(start, _)| assignment[..*start].ends_with('`'))
         .filter_map(|(start, _)| {
-            let clause = assignment[..start]
-                .rsplit(|character| character == ';' || character == '.')
-                .next()
-                .unwrap_or_default();
+            let before = &assignment[..start];
+            let clause_start = before
+                .rfind(';')
+                .map_or(0, |index| index + 1)
+                .max(before.rfind(". ").map_or(0, |index| index + 2));
+            let clause = &before[clause_start..];
             (!clause.contains("MUST NOT")).then(|| {
                 let value = &assignment[start + marker.len()..];
                 value.split_once('"').map_or(value, |(value, _)| value)
