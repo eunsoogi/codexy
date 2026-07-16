@@ -26,7 +26,11 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         "execution-budget contract must preserve finite acceptance-based termination",
         REQUIRED_CLAUSES,
     );
-    if text.lines().any(permits_countermand) {
+    let mut in_html_comment = false;
+    if text
+        .lines()
+        .any(|line| permits_countermand(line, &mut in_html_comment))
+    {
         errors.push(format!(
             "{} execution-budget contract must reject countermanding churn, blocked-goal, and wait policy",
             crate::paths::display_relative(path)
@@ -34,11 +38,11 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     }
 }
 
-fn permits_countermand(line: &str) -> bool {
-    let Some(policy_text) = policy_text(line) else {
+fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
+    let Some(policy_text) = policy_text(line, in_html_comment) else {
         return false;
     };
-    policy_clauses(policy_text).into_iter().any(|clause| {
+    policy_clauses(&policy_text).into_iter().any(|clause| {
         let words = words(clause);
         !is_negated(&words)
             && (permits_budget_renewal(&words)
@@ -47,16 +51,32 @@ fn permits_countermand(line: &str) -> bool {
     })
 }
 
-fn policy_text(line: &str) -> Option<&str> {
-    let trimmed = line.trim_start();
-    if trimmed.starts_with("<!--") {
+fn policy_text(line: &str, in_html_comment: &mut bool) -> Option<String> {
+    let mut remainder = line;
+    let mut policy = String::new();
+    loop {
+        if *in_html_comment {
+            let end = remainder.find("-->")?;
+            *in_html_comment = false;
+            remainder = &remainder[end + 3..];
+        } else if let Some(start) = remainder.find("<!--") {
+            policy.push_str(&remainder[..start]);
+            *in_html_comment = true;
+            remainder = &remainder[start + 4..];
+        } else {
+            policy.push_str(remainder);
+            break;
+        }
+    }
+    let trimmed = policy.trim_start();
+    if trimmed.is_empty() {
         return None;
     }
     let Some(after_marker) = trimmed.strip_prefix('#') else {
-        return Some(line);
+        return Some(trimmed.to_owned());
     };
     if after_marker.starts_with(|character: char| character.is_ascii_digit()) {
-        return Some(after_marker);
+        return Some(after_marker.to_owned());
     }
     None
 }

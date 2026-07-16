@@ -1,6 +1,10 @@
 use std::fs;
 
+#[path = "structured_contract.rs"]
+mod structured_contract;
 mod support;
+
+use structured_contract::{Contract, Modality, Rule};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -45,8 +49,16 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
     let contract = fs::read_to_string(
         root.join("plugins/codexy/skills/codex-orchestration/references/execution-budget.md"),
     )?;
+    Contract::markdown(&contract)
+        .assert_rule(Rule::new(
+            "execution-budget.child.finite-budget",
+            "child lane",
+            Modality::Required,
+            &["declare"],
+            &["finite execution budget"],
+        ))
+        .expect("execution-budget contract must require a finite child-lane budget");
     for clause in REQUIRED_CLAUSES {
-        assert!(contract.contains(clause), "missing {clause:?}");
         let (_temp, plugin_root) = support::copy_plugin_fixture()?;
         let path = budget_path(&plugin_root);
         let original = fs::read_to_string(&path)?;
@@ -162,6 +174,25 @@ fn validator_allows_benign_markdown_heading_and_comment() -> TestResult {
     assert!(
         output.status.success(),
         "validator rejected benign Markdown: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_allows_multiline_html_comment() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = budget_path(&plugin_root);
+    let original = fs::read_to_string(&path)?;
+    fs::write(
+        &path,
+        format!("{original}\n<!--\nArtifact churn MAY renew the budget.\n-->\n"),
+    )?;
+
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(
+        output.status.success(),
+        "validator rejected a multiline HTML comment: {}",
         support::stderr(&output)
     );
     Ok(())
