@@ -17,11 +17,15 @@ const REQUIRED_CLAUSES: &[&str] = &[
     "Repeated child waiting turns, goal refreshes, polling, duplicate narrative, unbounded reasoning, or status-only parent receipts MUST consume budget and MUST NOT qualify as acceptance progress.",
     "The execution-budget contract MUST apply to GPT-5.6 Terra child lanes while remaining model-agnostic and MUST NOT hard-code model-specific prose into the state machine.",
 ];
-const COUNTERMANDING_CLAUSES: &[&str] = &[
+const RENEWAL_COUNTERMANDS: &[&str] = &[
     "Artifact churn MAY renew or reset the budget.",
     "Artifact churn or a repeated wait refresh MAY renew the budget.",
     "artifact churn or repeated wait refreshes MAY reset the budget.",
     "A child MAY self-renew the budget from changed artifacts alone.",
+    "Repeated wait refreshes MAY renew the budget.",
+    "Artifact churn and a repeated wait refresh MAY renew the budget.",
+];
+const OTHER_COUNTERMANDS: &[&str] = &[
     "Budget exhaustion MAY call `update_goal(blocked)`.",
     "Repeated child waiting turns, goal refreshes, or polling MAY qualify as acceptance progress.",
 ];
@@ -55,7 +59,7 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
 
 #[test]
 fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult {
-    for countermand in COUNTERMANDING_CLAUSES {
+    for countermand in RENEWAL_COUNTERMANDS.iter().chain(OTHER_COUNTERMANDS) {
         let (_temp, plugin_root) = support::copy_plugin_fixture()?;
         let path = budget_path(&plugin_root);
         let original = fs::read_to_string(&path)?;
@@ -71,6 +75,27 @@ fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult 
         );
         assert!(support::stderr(&output).contains("execution-budget contract"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_negated_countermand_examples() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = budget_path(&plugin_root);
+    let original = fs::read_to_string(&path)?;
+    fs::write(
+        &path,
+        format!(
+            "{original}\nThe statement \"Artifact churn MAY renew or reset the budget.\" MUST NOT be permitted.\n"
+        ),
+    )?;
+
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(
+        output.status.success(),
+        "validator rejected a negated countermand example: {}",
+        support::stderr(&output)
+    );
     Ok(())
 }
 

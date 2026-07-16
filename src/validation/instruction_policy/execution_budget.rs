@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::clauses::{reject_all, require_all};
+use super::clauses::require_all;
 
 const REQUIRED_CLAUSES: &[&str] = &[
     "Every non-trivial child lane MUST declare a finite execution budget before edits begin.",
@@ -15,15 +15,6 @@ const REQUIRED_CLAUSES: &[&str] = &[
     "Repeated child waiting turns, goal refreshes, polling, duplicate narrative, unbounded reasoning, or status-only parent receipts MUST consume budget and MUST NOT qualify as acceptance progress.",
     "The execution-budget contract MUST apply to GPT-5.6 Terra child lanes while remaining model-agnostic and MUST NOT hard-code model-specific prose into the state machine.",
 ];
-const COUNTERMANDING_CLAUSES: &[&str] = &[
-    "Artifact churn MAY renew or reset the budget.",
-    "Artifact churn or a repeated wait refresh MAY renew the budget.",
-    "artifact churn or repeated wait refreshes MAY reset the budget.",
-    "A child MAY self-renew the budget from changed artifacts alone.",
-    "Budget exhaustion MAY call `update_goal(blocked)`.",
-    "Repeated child waiting turns, goal refreshes, or polling MAY qualify as acceptance progress.",
-];
-
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     if !path.ends_with("skills/codex-orchestration/references/execution-budget.md") {
         return;
@@ -35,11 +26,83 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         "execution-budget contract must preserve finite acceptance-based termination",
         REQUIRED_CLAUSES,
     );
-    reject_all(
-        path,
-        text,
-        errors,
-        "execution-budget contract must reject countermanding churn, blocked-goal, and wait policy",
-        COUNTERMANDING_CLAUSES,
-    );
+    if text.lines().any(permits_countermand) {
+        errors.push(format!(
+            "{} execution-budget contract must reject countermanding churn, blocked-goal, and wait policy",
+            crate::paths::display_relative(path)
+        ));
+    }
+}
+
+fn permits_countermand(line: &str) -> bool {
+    if line.trim_start().starts_with('#') {
+        return false;
+    }
+    let words = words(line);
+    !is_negated(&words)
+        && (permits_budget_renewal(&words)
+            || permits_blocked_goal(&words)
+            || permits_wait_progress(&words))
+}
+
+fn permits_budget_renewal(words: &[String]) -> bool {
+    let churn = has_pair(words, "artifact", "churn");
+    let wait_refresh = has_pair(words, "wait", "refresh") || has_pair(words, "wait", "refreshes");
+    let child_self = contains(words, "child") && contains(words, "self");
+    (churn || wait_refresh || child_self)
+        && words.iter().any(|word| matches!(word.as_str(), "renew" | "reset"))
+        && permits(words)
+}
+
+fn permits_blocked_goal(words: &[String]) -> bool {
+    ["budget", "exhaustion", "update", "goal", "blocked"]
+        .iter()
+        .all(|word| contains(words, word))
+        && permits(words)
+}
+
+fn permits_wait_progress(words: &[String]) -> bool {
+    contains(words, "repeated")
+        && words
+            .iter()
+            .any(|word| matches!(word.as_str(), "wait" | "waiting" | "refresh" | "refreshes"))
+        && words
+            .iter()
+            .any(|word| matches!(word.as_str(), "qualify" | "qualifies"))
+        && contains(words, "progress")
+        && permits(words)
+}
+
+fn permits(words: &[String]) -> bool {
+    words.iter().enumerate().any(|(index, word)| {
+        matches!(word.as_str(), "may" | "can" | "must")
+            && words.get(index + 1).is_none_or(|next| next != "not")
+    })
+}
+
+fn is_negated(words: &[String]) -> bool {
+    words.windows(2).any(|pair| {
+        matches!(pair, [first, second] if matches!(first.as_str(), "may" | "can" | "must") && second == "not")
+            || matches!(pair, [first, second] if first == "not" && matches!(second.as_str(), "allowed" | "permitted"))
+    }) || words
+        .iter()
+        .any(|word| matches!(word.as_str(), "forbidden" | "prohibited"))
+}
+
+fn has_pair(words: &[String], first: &str, second: &str) -> bool {
+    words
+        .windows(2)
+        .any(|pair| pair[0] == first && pair[1] == second)
+}
+
+fn contains(words: &[String], value: &str) -> bool {
+    words.iter().any(|word| word == value)
+}
+
+fn words(line: &str) -> Vec<String> {
+    line.to_ascii_lowercase()
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
