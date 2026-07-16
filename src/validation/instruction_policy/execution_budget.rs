@@ -100,15 +100,13 @@ fn contrast_clauses(clause: &str) -> Vec<&str> {
 
 fn contrast_tail_start(tail: &str) -> Option<usize> {
     let trimmed = tail.trim_start();
-    let prefix = trimmed.get(..3)?;
-    let after_but = trimmed.get(3..)?;
-    if prefix.eq_ignore_ascii_case("but")
-        && after_but.starts_with(|character: char| character.is_ascii_whitespace())
-    {
-        Some(tail.len() - after_but.trim_start().len())
-    } else {
-        None
-    }
+    ["but", "and", "while"].iter().find_map(|conjunction| {
+        let prefix = trimmed.get(..conjunction.len())?;
+        let after_conjunction = trimmed.get(conjunction.len()..)?;
+        (prefix.eq_ignore_ascii_case(conjunction)
+            && after_conjunction.starts_with(|character: char| character.is_ascii_whitespace()))
+        .then(|| tail.len() - after_conjunction.trim_start().len())
+    })
 }
 
 fn permits_budget_renewal(words: &[String]) -> bool {

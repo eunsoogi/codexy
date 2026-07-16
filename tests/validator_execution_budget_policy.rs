@@ -41,6 +41,8 @@ const MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget, but repeated wait refreshes MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget, BUT repeated wait refreshes MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget, BuT repeated wait refreshes MAY renew the budget.",
+    "Artifact churn MUST NOT renew the budget, and file churn MAY renew the budget.",
+    "Artifact churn MUST NOT renew the budget, while file churn MAY renew the budget.",
 ];
 const ADJACENT_MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget. File churn MAY renew the budget.",
