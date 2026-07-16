@@ -125,20 +125,23 @@ pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)>
         .collect()
 }
 
+pub(super) fn has_negated_delivery_assignment(section: &str, direction: &str) -> bool {
+    let negated = direction.replacen(" MUST pass", " MUST NOT pass", 1);
+    section
+        .lines()
+        .any(|line| policy_line(line.trim()).is_some_and(|line| line.starts_with(&negated)))
+}
+
 pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> Vec<&'a str> {
     let marker = format!("{field}: \"");
     assignment
         .match_indices(&marker)
-        .filter(|(start, _)| {
-            assignment[..*start]
-                .chars()
-                .next_back()
-                .is_none_or(|character| !character.is_ascii_alphanumeric() && character != '_')
-        })
+        .filter(|(start, _)| assignment[..*start].ends_with('`'))
         .filter_map(|(start, _)| {
             let clause = assignment[..start]
-                .rsplit_once(';')
-                .map_or(&assignment[..start], |(_, clause)| clause);
+                .rsplit(|character| character == ';' || character == '.')
+                .next()
+                .unwrap_or_default();
             (!clause.contains("MUST NOT")).then(|| {
                 let value = &assignment[start + marker.len()..];
                 value.split_once('"').map_or(value, |(value, _)| value)

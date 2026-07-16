@@ -10,8 +10,8 @@ mod evidence;
 mod policy;
 
 use policy::{
-    affirmative_field_values, delivery_assignments, policy_bullets, section_for_heading,
-    sections_for_heading,
+    affirmative_field_values, delivery_assignments, has_negated_delivery_assignment,
+    policy_bullets, section_for_heading, sections_for_heading,
 };
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
@@ -142,6 +142,12 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
                     || !efforts.contains(&"high")
                     || efforts.iter().any(|value| *value != "high"))
         }) {
+            errors.push(format!("{} {error}", display_relative(&path)));
+        }
+        if recipient_sections
+            .iter()
+            .any(|section| has_negated_delivery_assignment(section, direction))
+        {
             errors.push(format!("{} {error}", display_relative(&path)));
         }
     }

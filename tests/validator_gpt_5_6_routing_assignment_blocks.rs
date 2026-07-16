@@ -108,6 +108,38 @@ fn validator_rejects_each_required_field_replaced_by_a_prefixed_decoy() -> TestR
     )
 }
 
+#[test]
+fn validator_rejects_hyphenated_and_dotted_field_decoys() -> TestResult {
+    for policy in [
+        "child-to-root delivery MUST pass `recipient-model: \"gpt-5.6-sol\"` and `configured-thinking: \"high\"`.",
+        "child-to-root delivery MUST pass `recipient.model: \"gpt-5.6-sol\"` and `configured.thinking: \"high\"`.",
+    ] {
+        assert_rejected(policy, "gpt-5.6-sol/high")?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_standalone_negated_delivery_assignment() -> TestResult {
+    assert_rejected(
+        "child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_accepts_correct_fields_after_period_separated_prohibition() -> TestResult {
+    let output = validate(duplicate_recipient_section(
+        "child-to-root delivery MUST pass the recipient route. MUST NOT derive it from the sender. Explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    )?)?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
     let output = validate(duplicate_recipient_section(policy)?)?;
     assert!(
