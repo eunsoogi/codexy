@@ -6,6 +6,7 @@ use crate::validation::orchestration_routing_semantics::{
     has_conflicting_specialist_override, has_conflicting_tier_assignment,
 };
 
+mod assignments;
 mod evidence;
 mod policy;
 

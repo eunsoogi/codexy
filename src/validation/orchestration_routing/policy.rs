@@ -1,4 +1,5 @@
 use super::super::markdown::{Fence, fence_marker};
+use super::assignments;
 
 pub(super) fn section_for_heading(skill: &str, heading: &str) -> Option<String> {
     sections_for_heading(skill, heading).into_iter().next()
@@ -58,13 +59,18 @@ pub(super) fn policy_bullets(section: &str) -> Vec<String> {
     let mut bullets = Vec::new();
     let mut continues = false;
     for line in section.lines() {
-        let trimmed = line.trim();
-        if let Some(bullet) = trimmed.strip_prefix("- ") {
-            bullets.push(bullet.to_owned());
-            continues = true;
-        } else if trimmed.starts_with('#') || trimmed.is_empty() {
+        let indentation = leading_ascii_spaces(line);
+        let trimmed = line.trim_start_matches(' ').trim_end();
+        if indentation < 4 {
+            if let Some(bullet) = trimmed.strip_prefix("- ") {
+                bullets.push(bullet.to_owned());
+                continues = true;
+                continue;
+            }
+        }
+        if trimmed.starts_with('#') || trimmed.is_empty() {
             continues = false;
-        } else if continues && (line.starts_with(' ') || line.starts_with('\t')) {
+        } else if continues && (1..4).contains(&indentation) {
             if let Some(bullet) = bullets.last_mut() {
                 bullet.push(' ');
                 bullet.push_str(trimmed);
@@ -80,7 +86,7 @@ pub(super) fn recipient_policy_instructions(section: &str, starts: &[&str]) -> V
     let mut instructions = Vec::new();
     let mut current = None;
     for line in section.lines() {
-        let indentation = line.bytes().take_while(|byte| *byte == b' ').count();
+        let indentation = leading_ascii_spaces(line);
         let trimmed = line.trim_start_matches(' ').trim_end();
         if trimmed.is_empty() || trimmed.starts_with('#') {
             finish_block(&mut instructions, &mut current);
@@ -113,18 +119,21 @@ pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)>
     let mut blocks = Vec::new();
     let mut block = None;
     for line in section.lines() {
-        let trimmed = line.trim();
+        let indentation = leading_ascii_spaces(line);
+        let trimmed = line.trim_start_matches(' ').trim_end();
         if trimmed.is_empty() || trimmed.starts_with('#') {
             finish_block(&mut blocks, &mut block);
-        } else if policy_line(trimmed).is_some_and(|line| {
-            DIRECTIONS
-                .iter()
-                .any(|direction| line.starts_with(direction))
-        }) {
+        } else if indentation < 4
+            && policy_line(trimmed).is_some_and(|line| {
+                DIRECTIONS
+                    .iter()
+                    .any(|direction| line.starts_with(direction))
+            })
+        {
             finish_block(&mut blocks, &mut block);
             block = policy_line(trimmed).map(str::to_owned);
         } else if let Some(current) = &mut block {
-            if line.starts_with(' ') || line.starts_with('\t') {
+            if (1..4).contains(&indentation) {
                 current.push(' ');
                 current.push_str(trimmed);
             } else {
@@ -135,15 +144,17 @@ pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)>
     finish_block(&mut blocks, &mut block);
     blocks
         .into_iter()
-        .flat_map(|block| split_assignments(&block, &DIRECTIONS))
+        .flat_map(|block| assignments::split(&block, &DIRECTIONS))
         .collect()
 }
 
 pub(super) fn has_negated_delivery_assignment(section: &str, direction: &str) -> bool {
     let negated = direction.replacen(" MUST pass", " MUST NOT pass", 1);
-    section
-        .lines()
-        .any(|line| policy_line(line.trim()).is_some_and(|line| line.starts_with(&negated)))
+    section.lines().any(|line| {
+        leading_ascii_spaces(line) < 4
+            && policy_line(line.trim_start_matches(' ').trim_end())
+                .is_some_and(|line| line.starts_with(&negated))
+    })
 }
 
 pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> Vec<&'a str> {
@@ -209,6 +220,10 @@ fn strip_comments(line: &str, in_comment: &mut bool) -> String {
     }
 }
 
+fn leading_ascii_spaces(line: &str) -> usize {
+    line.bytes().take_while(|byte| *byte == b' ').count()
+}
+
 fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
     if let Some(block) = block.take() {
         blocks.push(block);
@@ -224,24 +239,4 @@ fn policy_line(line: &str) -> Option<&str> {
                 .filter(|_| digits > 0)
         })
         .or(Some(line))
-}
-
-fn split_assignments(block: &str, directions: &[&'static str]) -> Vec<(&'static str, String)> {
-    let mut starts = directions
-        .iter()
-        .flat_map(|direction| {
-            block
-                .match_indices(direction)
-                .map(move |(start, _)| (start, *direction))
-        })
-        .collect::<Vec<_>>();
-    starts.sort_by_key(|(start, _)| *start);
-    starts
-        .iter()
-        .enumerate()
-        .map(|(index, (start, direction))| {
-            let end = starts.get(index + 1).map_or(block.len(), |(next, _)| *next);
-            (*direction, block[start + direction.len()..end].to_owned())
-        })
-        .collect()
 }
