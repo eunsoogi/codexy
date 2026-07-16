@@ -10,7 +10,7 @@ mod evidence;
 mod policy;
 
 use policy::{
-    delivery_assignments, has_affirmative_field, policy_bullets, section_for_heading,
+    affirmative_field_values, delivery_assignments, policy_bullets, section_for_heading,
     sections_for_heading,
 };
 
@@ -124,19 +124,23 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     for (direction, model, error) in [
         (
             "Parent-to-generic-child delivery MUST pass",
-            "model: \"gpt-5.6-terra\"",
+            "gpt-5.6-terra",
             "parent-to-generic-child messages must use recipient gpt-5.6-terra/high",
         ),
         (
             "child-to-root delivery MUST pass",
-            "model: \"gpt-5.6-sol\"",
+            "gpt-5.6-sol",
             "child-to-root messages must use recipient gpt-5.6-sol/high",
         ),
     ] {
         if delivery_assignments.iter().any(|(found, assignment)| {
+            let models = affirmative_field_values(assignment, "model");
+            let efforts = affirmative_field_values(assignment, "thinking");
             *found == direction
-                && (!has_affirmative_field(assignment, model)
-                    || !has_affirmative_field(assignment, "thinking: \"high\""))
+                && (!models.contains(&model)
+                    || models.iter().any(|value| *value != model)
+                    || !efforts.contains(&"high")
+                    || efforts.iter().any(|value| *value != "high"))
         }) {
             errors.push(format!("{} {error}", display_relative(&path)));
         }

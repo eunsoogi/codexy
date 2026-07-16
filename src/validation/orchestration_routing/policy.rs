@@ -125,12 +125,20 @@ pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)>
         .collect()
 }
 
-pub(super) fn has_affirmative_field(assignment: &str, field: &str) -> bool {
-    assignment.match_indices(field).any(|(start, _)| {
-        assignment[..start]
-            .rfind("MUST ")
-            .is_none_or(|must| !assignment[must..].starts_with("MUST NOT "))
-    })
+pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> Vec<&'a str> {
+    let marker = format!("{field}: \"");
+    assignment
+        .match_indices(&marker)
+        .filter_map(|(start, _)| {
+            let clause = assignment[..start]
+                .rsplit_once(';')
+                .map_or(&assignment[..start], |(_, clause)| clause);
+            (!clause.contains("MUST NOT")).then(|| {
+                let value = &assignment[start + marker.len()..];
+                value.split_once('"').map_or(value, |(value, _)| value)
+            })
+        })
+        .collect()
 }
 
 fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {

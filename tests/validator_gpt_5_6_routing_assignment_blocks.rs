@@ -43,6 +43,47 @@ fn validator_accepts_negated_reporting_prose_with_delivery_marker() -> TestResul
     Ok(())
 }
 
+#[test]
+fn validator_rejects_conflicting_child_models_in_every_active_form() -> TestResult {
+    for policy in [
+        "- child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`, `model: \"gpt-5.6-sol\"`, and `thinking: \"high\"`.",
+        "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`, `model: \"gpt-5.6-sol\"`, and `thinking: \"high\"`.",
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`, `model: \"gpt-5.6-sol\"`, and `thinking: \"high\"`.",
+    ] {
+        assert_rejected(policy, "gpt-5.6-sol/high")?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_conflicting_parent_model_and_effort() -> TestResult {
+    assert_rejected(
+        "1. Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-sol\"`, `model: \"gpt-5.6-terra\"`, `thinking: \"low\"`, and `thinking: \"high\"`.",
+        "gpt-5.6-terra/high",
+    )
+}
+
+#[test]
+fn validator_rejects_conflicting_child_effort() -> TestResult {
+    assert_rejected(
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`, `thinking: \"low\"`, and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_accepts_correct_fields_after_unrelated_prohibition() -> TestResult {
+    let output = validate(duplicate_recipient_section(
+        "child-to-root delivery MUST pass the recipient route; MUST NOT derive it from the sender; explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    )?)?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
     let output = validate(duplicate_recipient_section(policy)?)?;
     assert!(
