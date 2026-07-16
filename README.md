@@ -43,7 +43,9 @@ Install Codexy through your Codex plugin marketplace. If this repository is not
 already registered as a marketplace source, add it first:
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref main
+codex plugin marketplace add \
+  eunsoogi/codexy \
+  --ref main
 ```
 
 Then install the plugin:
