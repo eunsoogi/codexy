@@ -31,7 +31,7 @@ fn validator_accepts_all_packaged_roles_with_nonrecursive_delegation() -> TestRe
         let role =
             std::fs::read_to_string(root.join(format!("plugins/codexy/agents/{role}.toml")))?;
         structured_contract::assert_rules(
-            &structured_contract::Contract::markdown(&role),
+            &structured_contract::Contract::markdown_for_subject(&role, "agent"),
             &structured_contract_rules::DELEGATION[..1],
         );
     }

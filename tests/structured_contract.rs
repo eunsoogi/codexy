@@ -1,5 +1,10 @@
 #![allow(dead_code)]
 
+#[path = "structured_contract/parser.rs"]
+mod parser;
+
+use parser::{Block, Clause, canonical, contains_phrase};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Modality {
     Required,
@@ -14,6 +19,7 @@ pub(crate) struct Rule {
     pub(crate) modality: Modality,
     pub(crate) action: &'static [&'static str],
     pub(crate) scope: &'static [&'static str],
+    pub(crate) lifecycle: &'static [&'static str],
     pub(crate) heading: Option<&'static str>,
 }
 
@@ -31,6 +37,7 @@ impl Rule {
             modality,
             action,
             scope,
+            lifecycle: &[],
             heading: None,
         }
     }
@@ -39,17 +46,17 @@ impl Rule {
         self.heading = Some(heading);
         self
     }
+
+    pub(crate) const fn in_lifecycle(mut self, lifecycle: &'static [&'static str]) -> Self {
+        self.lifecycle = lifecycle;
+        self
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct Contract {
     blocks: Vec<Block>,
-}
-
-#[derive(Debug)]
-struct Block {
-    heading: String,
-    text: String,
+    implicit_subject: Option<String>,
 }
 
 #[derive(Debug)]
@@ -58,71 +65,97 @@ pub(crate) struct ContractError {
     pub(crate) missing: &'static str,
 }
 
+#[derive(Default)]
+struct Evidence {
+    heading: bool,
+    subject: bool,
+    modality: bool,
+    conditionality: bool,
+    negation: bool,
+    action: bool,
+    scope: bool,
+    lifecycle: bool,
+}
+
 impl Contract {
     pub(crate) fn markdown(text: &str) -> Self {
-        let mut blocks = Vec::new();
-        let mut heading = String::new();
-        let mut lines = Vec::new();
-        for line in text.lines() {
-            if let Some(next_heading) = line.trim_start().strip_prefix('#') {
-                push_block(&mut blocks, &heading, &lines);
-                heading = normalize(next_heading.trim_start_matches('#'));
-                lines.clear();
-            } else {
-                lines.push(line);
-            }
+        Self::with_subject(text, None)
+    }
+
+    pub(crate) fn markdown_for_subject(text: &str, subject: &str) -> Self {
+        Self::with_subject(text, Some(canonical(subject)))
+    }
+
+    fn with_subject(text: &str, implicit_subject: Option<String>) -> Self {
+        Self {
+            blocks: parser::blocks(text),
+            implicit_subject,
         }
-        push_block(&mut blocks, &heading, &lines);
-        Self { blocks }
     }
 
     pub(crate) fn assert_rule(&self, rule: Rule) -> Result<(), ContractError> {
-        let candidates = self.blocks.iter().filter(|block| {
-            !block.heading.contains("historical")
-                && rule
-                    .heading
-                    .is_none_or(|heading| block.heading.contains(&normalize(heading)))
-        });
-        let mut has_subject = false;
-        let mut has_modality = false;
-        let mut has_action = false;
-        let mut has_scope = false;
-        for block in candidates {
-            for clause in clauses(&block.text) {
-                let subject = clause.contains(&normalize(rule.subject));
-                let modality = parse_modality(clause) == Some(rule.modality);
-                let action = rule
-                    .action
-                    .iter()
-                    .all(|term| clause.contains(&normalize(term)));
-                let scope = rule
-                    .scope
-                    .iter()
-                    .all(|term| clause.contains(&normalize(term)));
-                has_subject |= subject;
-                has_modality |= modality;
-                has_action |= action;
-                has_scope |= scope;
-                if subject && modality && action && scope {
+        let mut evidence = Evidence::default();
+        for block in self.blocks.iter().filter(|block| block.is_active()) {
+            if !block.matches_heading(rule.heading) {
+                continue;
+            }
+            evidence.heading = true;
+            for clause in block.clauses() {
+                if self.matches(rule, &clause, &mut evidence) {
                     return Ok(());
                 }
             }
         }
-        let missing = if !has_subject {
-            "subject"
-        } else if !has_modality {
-            "modality"
-        } else if !has_action {
-            "action"
-        } else if !has_scope {
-            "scope"
-        } else {
-            "co-located semantics"
-        };
         Err(ContractError {
             rule_id: rule.id,
-            missing,
+            missing: evidence.missing(rule),
         })
+    }
+
+    fn matches(&self, rule: Rule, clause: &Clause, evidence: &mut Evidence) -> bool {
+        let subject = clause.subject_matches(rule.subject)
+            || self
+                .implicit_subject
+                .as_deref()
+                .is_some_and(|subject| contains_phrase(subject, rule.subject));
+        let modality = clause.modality == rule.modality;
+        let conditionality = !clause.conditional;
+        let negation = !clause.inverted;
+        let action = clause.tail_has(rule.action);
+        let scope = clause.tail_has(rule.scope);
+        let lifecycle = clause.tail_has(rule.lifecycle);
+        evidence.subject |= subject;
+        evidence.modality |= modality;
+        evidence.conditionality |= conditionality;
+        evidence.negation |= negation;
+        evidence.action |= action;
+        evidence.scope |= scope;
+        evidence.lifecycle |= lifecycle;
+        subject && modality && conditionality && negation && action && scope && lifecycle
+    }
+}
+
+impl Evidence {
+    fn missing(&self, rule: Rule) -> &'static str {
+        if !self.heading {
+            "heading"
+        } else if !self.conditionality {
+            "conditionality"
+        } else if !self.subject {
+            "subject"
+        } else if !self.modality {
+            "modality"
+        } else if !self.negation {
+            "negation"
+        } else if !self.action {
+            "action"
+        } else if !self.scope {
+            "scope"
+        } else if !rule.lifecycle.is_empty() && !self.lifecycle {
+            "lifecycle"
+        } else {
+            "co-located semantics"
+        }
     }
 }
 
@@ -135,38 +168,4 @@ pub(crate) fn assert_rules(contract: &Contract, rules: &[Rule]) {
             )
         });
     }
-}
-
-fn push_block(blocks: &mut Vec<Block>, heading: &str, lines: &[&str]) {
-    let text = normalize(&lines.join(" "));
-    if !text.is_empty() {
-        blocks.push(Block {
-            heading: heading.to_owned(),
-            text,
-        });
-    }
-}
-
-fn clauses(text: &str) -> impl Iterator<Item = &str> {
-    text.split(['.', ';'])
-        .filter(|clause| !clause.trim().is_empty())
-}
-
-fn parse_modality(clause: &str) -> Option<Modality> {
-    if clause.contains("must not") {
-        Some(Modality::Prohibited)
-    } else if clause.contains("must") {
-        Some(Modality::Required)
-    } else if clause.contains("may") || clause.contains("can") {
-        Some(Modality::Permitted)
-    } else {
-        None
-    }
-}
-
-fn normalize(text: &str) -> String {
-    text.to_ascii_lowercase()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
 }

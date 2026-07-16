@@ -4,6 +4,8 @@ use serde_json::Value;
 
 #[path = "structured_contract.rs"]
 mod structured_contract;
+#[path = "structured_contract_artifacts.rs"]
+mod structured_contract_artifacts;
 #[path = "structured_contract_rules/mod.rs"]
 mod structured_contract_rules;
 mod support;
@@ -148,7 +150,11 @@ fn token_policy_forbids_root_goal_and_autonomous_polling_regressions() -> TestRe
         &structured_contract::Contract::markdown(&token_skill),
         structured_contract_rules::TOKEN_CONTAINMENT,
     );
-    let _token_prompt = structured_contract::Contract::markdown(&token_prompt);
+    let token_prompt = structured_contract_artifacts::Prompt::parse(&token_prompt)?;
+    structured_contract::assert_rules(
+        &structured_contract::Contract::markdown_for_subject(token_prompt.default_prompt(), "you"),
+        structured_contract_rules::TOKEN_PROMPT,
+    );
     Ok(())
 }
 

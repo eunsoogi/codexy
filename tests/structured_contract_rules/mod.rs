@@ -8,15 +8,17 @@ pub(crate) const ORCHESTRATION: &[Rule] = &[
         "root/orchestrator",
         Modality::Prohibited,
         &["autonomously", "poll"],
-        &["terminal child state", "sentinel verdict"],
-    ),
+        &[],
+    )
+    .under_heading("event-driven token and quota containment"),
     Rule::new(
         "orchestration.external-wait.no-active-goal",
         "parent or child",
         Modality::Prohibited,
-        &["retain", "active goal", "plan"],
-        &["external-gate wait"],
-    ),
+        &["retain"],
+        &["active goal", "plan"],
+    )
+    .in_lifecycle(&["external-gate wait"]),
 ];
 
 pub(crate) const HEARTBEAT: &[Rule] = &[
@@ -32,8 +34,9 @@ pub(crate) const HEARTBEAT: &[Rule] = &[
         "owner",
         Modality::Prohibited,
         &["retain", "recreate", "execution goal"],
-        &["registered heartbeat"],
-    ),
+        &[],
+    )
+    .in_lifecycle(&["registered heartbeat"]),
     Rule::new(
         "heartbeat.sentinel.read-only",
         "owner",
@@ -63,8 +66,9 @@ pub(crate) const TOKEN_CONTAINMENT: &[Rule] = &[
         "root/orchestrator",
         Modality::Prohibited,
         &["autonomously", "poll"],
-        &["qualifying events"],
-    ),
+        &[],
+    )
+    .under_heading("event-driven delta"),
 ];
 
 pub(crate) const DELEGATION: &[Rule] = &[
@@ -89,4 +93,39 @@ pub(crate) const DELEGATION: &[Rule] = &[
         &["include"],
         &["nonrecursive delegation prohibition"],
     ),
+];
+
+pub(crate) const TOKEN_PROMPT: &[Rule] = &[Rule::new(
+    "token.prompt.required-invocation",
+    "you",
+    Modality::Required,
+    &["use"],
+    &["$token-efficient-orchestration", "event-driven handoffs"],
+)];
+
+pub(crate) const TRANSITION: &[Rule] = &[
+    Rule::new(
+        "transition.runtime-monitor.outside-goal",
+        "runtime monitor",
+        Modality::Required,
+        &["live"],
+        &["outside", "execution goal"],
+    )
+    .under_heading("runtime polling boundary"),
+    Rule::new(
+        "transition.continuation.no-reschedule",
+        "unchanged continuation turns",
+        Modality::Prohibited,
+        &["reschedule", "emit"],
+        &["another unchanged turn"],
+    )
+    .under_heading("runtime polling boundary"),
+    Rule::new(
+        "transition.delivery.before-exit",
+        "delivery",
+        Modality::Required,
+        &["confirmed"],
+        &["stop", "archive", "release"],
+    )
+    .under_heading("ordered receipts"),
 ];
