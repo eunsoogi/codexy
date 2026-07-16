@@ -17,6 +17,8 @@ const REQUIRED_CLAUSES: &[&str] = &[
 ];
 const COUNTERMANDING_CLAUSES: &[&str] = &[
     "Artifact churn MAY renew or reset the budget.",
+    "Artifact churn or a repeated wait refresh MAY renew the budget.",
+    "artifact churn or repeated wait refreshes MAY reset the budget.",
     "A child MAY self-renew the budget from changed artifacts alone.",
     "Budget exhaustion MAY call `update_goal(blocked)`.",
     "Repeated child waiting turns, goal refreshes, or polling MAY qualify as acceptance progress.",
