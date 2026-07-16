@@ -33,6 +33,13 @@ execution loop and MUST be read with root `AGENTS.md`.
 - `codexy-sentinel` remains `gpt-5.6-sol` / `xhigh`. MUST NOT use Ultra.
   Custom-agent invocations MUST use `fork_turns="none"` or a positive bounded
   count with a self-contained handoff.
+- Every `send_message_to_thread` call MUST specify the recipient's intended model
+  and reasoning effort in its message payload, for both parent→child and child→parent directions.
+- Parent or orchestrator recipients MUST use `gpt-5.6-sol` / `high`.
+- Generic implementation child recipients MUST use `gpt-5.6-terra` / `high` unless
+  the lane contract says otherwise.
+- Configured UI model, active `turn_context` model, and per-message override evidence
+  MUST remain separate in status and handoff records.
 
 ## Read Next
 
@@ -46,6 +53,8 @@ MUST read these relative references before acting on the matching surface:
 - `references/orchestration-loop.md` for intake, plan, dispatch, integration,
   verification, finish, failure modes, and handoffs.
 - `references/runtime-heartbeats.md` for external waits.
+- `references/parent-stop-preflight.md` for ownership checks before implementation edits.
+- `references/execution-budget.md` for finite child execution and termination.
 
 ## Classification Gate
 
@@ -210,26 +219,8 @@ presenting a quiet fallback as normal.
 
 ## Parent Stop Preflight
 
-MUST run this checkpoint before any implementation edit when a lane may need a
-branch, worktree, PR, durable child context, or review-response ownership:
-
-1. MUST name the atomic lane and decide ownership as `parent-owned` or
-   `child-owned`.
-2. If the lane is `child-owned`, the parent may prepare issue text, branch
-   names, worktree requests, handoff text, and acceptance criteria, but it
-   MUST NOT patch implementation files, create implementation branches or
-   worktrees in the parent context, or read implementation surfaces as setup
-   for a parent patch.
-3. If parent draft implementation diff or setup artifacts already exist for a
-   child-owned lane, MUST preserve the evidence, disclose the workflow defect,
-   MUST inspect overlap with user or other-agent work, and MUST route the draft state
-   to the child instead of continuing implementation.
-4. When handoff or final-answer evidence for a child-owned PR includes
-   parent-authored implementation, implementation setup, or review-response
-   commits, MUST run
-   `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`.
-5. A failed first search for thread or worktree tooling is not proof that the
-   tooling is unavailable. MUST continue discovery before reporting a blocker.
+MUST follow `references/parent-stop-preflight.md` before implementation edits.
+MUST run `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>` when that reference requires ownership evidence.
 
 ## Completion Guard
 
