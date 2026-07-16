@@ -37,6 +37,8 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             trimmed = after.trim_start();
             section_line = trimmed;
         }
+        let active_line = strip_inline_comments(section_line);
+        trimmed = active_line.trim_start();
         if trimmed.is_empty() {
             if let Some(section) = &mut section {
                 section.push('\n');
@@ -59,7 +61,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             continue;
         }
         if let Some(section) = &mut section {
-            section.push_str(section_line);
+            section.push_str(&active_line);
             section.push('\n');
         }
     }
@@ -161,12 +163,31 @@ fn inside_html_comment(text: &str, index: usize) -> bool {
 
 fn sentence_start(text: &str) -> usize {
     text.match_indices(". ").fold(0, |last, (index, _)| {
-        text[index + 2..]
-            .chars()
-            .next()
-            .filter(|character| character.is_uppercase())
-            .map_or(last, |_| index + 2)
+        let abbreviation = text[..index].ends_with("e.g") || text[..index].ends_with("i.e");
+        if abbreviation {
+            last
+        } else {
+            text[index + 2..]
+                .chars()
+                .next()
+                .filter(|character| character.is_uppercase())
+                .map_or(last, |_| index + 2)
+        }
     })
+}
+
+fn strip_inline_comments(line: &str) -> String {
+    let mut active = String::new();
+    let mut remainder = line;
+    while let Some((before, commented)) = remainder.split_once("<!--") {
+        active.push_str(before);
+        let Some((_, after)) = commented.split_once("-->") else {
+            return active;
+        };
+        remainder = after;
+    }
+    active.push_str(remainder);
+    active
 }
 
 fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {

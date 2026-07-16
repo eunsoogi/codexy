@@ -223,10 +223,11 @@ fn missing_required_bullets(
     required
         .iter()
         .filter(|(start, clauses, _)| {
-            bullets
+            let mut matches = bullets
                 .iter()
-                .find(|bullet| required_clause_matches(bullet, start))
-                .is_none_or(|bullet| clauses.iter().any(|clause| !bullet.contains(clause)))
+                .filter(|bullet| required_clause_matches(bullet, start));
+            matches.clone().next().is_none()
+                || matches.any(|bullet| clauses.iter().any(|clause| !bullet.contains(clause)))
         })
         .map(|(_, _, error)| format!("{} {error}", display_relative(path)))
         .collect()

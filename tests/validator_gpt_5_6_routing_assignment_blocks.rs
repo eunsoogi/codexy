@@ -157,31 +157,58 @@ fn validator_rejects_prohibited_parent_fields_after_dotted_tokens() -> TestResul
 }
 
 #[test]
-fn validator_rejects_prohibited_fields_after_abbreviation() -> TestResult {
-    assert_rejected(
+fn validator_rejects_prohibited_fields_after_abbreviations() -> TestResult {
+    for policy in [
         "child-to-root delivery MUST pass the recipient route. MUST NOT pass sender fields, e.g. `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
-    )
-}
-
-#[test]
-fn validator_rejects_fields_hidden_in_inline_comments() -> TestResult {
+        "child-to-root delivery MUST pass the recipient route. MUST NOT pass sender fields, e.g. Model route `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    ] {
+        assert_rejected(policy, "gpt-5.6-sol/high")?;
+    }
     assert_rejected(
         "Parent-to-generic-child delivery MUST pass <!-- `model: \"gpt-5.6-terra\"` and `thinking: \"high\"` -->.",
         "gpt-5.6-terra/high",
     )
 }
 
+#[test]
+fn validator_rejects_required_clause_hidden_in_inline_comment() -> TestResult {
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?
+    .replacen(
+        "explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT",
+        "<!-- explicitly pass the recipient's configured UI `model` and `thinking`. --> MUST NOT",
+        1,
+    );
+    assert_policy_rejected(skill, "thread messages must explicitly pass")
+}
+
+#[test]
+fn validator_rejects_later_incomplete_active_message_instruction() -> TestResult {
+    assert_policy_rejected(
+        duplicate_recipient_section(
+            "- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
+        )?,
+        "thread messages must explicitly pass",
+    )
+}
+
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
-    let output = validate(duplicate_recipient_section(policy)?)?;
+    assert_policy_rejected(duplicate_recipient_section(policy)?, expected)
+}
+
+fn assert_policy_rejected(skill: String, expected: &str) -> TestResult {
+    let output = validate(skill)?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         !output.status.success(),
         "routing bypass unexpectedly passed"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains(expected),
+        stderr.find(expected).is_some(),
         "routing rejection must name {expected}: {}",
-        String::from_utf8_lossy(&output.stderr)
+        stderr
     );
     Ok(())
 }
