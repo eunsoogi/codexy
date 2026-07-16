@@ -35,10 +35,10 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
 }
 
 fn permits_countermand(line: &str) -> bool {
-    if line.trim_start().starts_with('#') {
+    let Some(policy_text) = policy_text(line) else {
         return false;
-    }
-    policy_clauses(line).any(|clause| {
+    };
+    policy_clauses(policy_text).into_iter().any(|clause| {
         let words = words(clause);
         !is_negated(&words)
             && (permits_budget_renewal(&words)
@@ -47,8 +47,50 @@ fn permits_countermand(line: &str) -> bool {
     })
 }
 
-fn policy_clauses(line: &str) -> impl Iterator<Item = &str> {
-    line.split(';').flat_map(|clause| clause.split(", but "))
+fn policy_text(line: &str) -> Option<&str> {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("<!--") {
+        return None;
+    }
+    let Some(after_marker) = trimmed.strip_prefix('#') else {
+        return Some(line);
+    };
+    if after_marker.starts_with(|character: char| character.is_ascii_digit()) {
+        return Some(after_marker);
+    }
+    None
+}
+
+fn policy_clauses(line: &str) -> Vec<&str> {
+    line.split(';').flat_map(contrast_clauses).collect()
+}
+
+fn contrast_clauses(clause: &str) -> Vec<&str> {
+    let mut clauses = Vec::new();
+    let mut start = 0;
+    for (index, character) in clause.char_indices() {
+        if character == ','
+            && let Some(next_start) = contrast_tail_start(&clause[index + 1..])
+        {
+            clauses.push(&clause[start..index]);
+            start = index + 1 + next_start;
+        }
+    }
+    clauses.push(&clause[start..]);
+    clauses
+}
+
+fn contrast_tail_start(tail: &str) -> Option<usize> {
+    let trimmed = tail.trim_start();
+    let prefix = trimmed.get(..3)?;
+    let after_but = trimmed.get(3..)?;
+    if prefix.eq_ignore_ascii_case("but")
+        && after_but.starts_with(|character: char| character.is_ascii_whitespace())
+    {
+        Some(tail.len() - after_but.trim_start().len())
+    } else {
+        None
+    }
 }
 
 fn permits_budget_renewal(words: &[String]) -> bool {

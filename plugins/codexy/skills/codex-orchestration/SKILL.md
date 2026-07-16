@@ -33,13 +33,6 @@ execution loop and MUST be read with root `AGENTS.md`.
 - `codexy-sentinel` remains `gpt-5.6-sol` / `xhigh`. MUST NOT use Ultra.
   Custom-agent invocations MUST use `fork_turns="none"` or a positive bounded
   count with a self-contained handoff.
-- Every `send_message_to_thread` call MUST specify the recipient's intended model
-  and reasoning effort in its message payload, for both parent→child and child→parent directions.
-- Parent or orchestrator recipients MUST use `gpt-5.6-sol` / `high`.
-- Generic implementation child recipients MUST use `gpt-5.6-terra` / `high` unless
-  the lane contract says otherwise.
-- Configured UI model, active `turn_context` model, and per-message override evidence
-  MUST remain separate in status and handoff records.
 
 ## Read Next
 
