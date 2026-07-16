@@ -9,7 +9,7 @@ use crate::validation::orchestration_routing_semantics::{
 mod evidence;
 mod policy;
 
-use policy::{policy_bullets, section_for_heading, sections_for_heading};
+use policy::{delivery_assignments, policy_bullets, section_for_heading, sections_for_heading};
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
 const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
@@ -114,12 +114,13 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         &recipient_bullets,
         RECIPIENT_ROUTING_BULLETS,
     ));
-    if recipient_bullets
+    if recipient_sections
         .iter()
-        .any(|bullet| invalid_child_to_root_assignment(bullet))
+        .flat_map(|section| delivery_assignments(section))
+        .any(invalid_recipient_delivery_assignment)
     {
         errors.push(format!(
-            "{} child-to-root messages must use recipient gpt-5.6-sol/high",
+            "{} delivery messages must use the recipient model/high",
             display_relative(&path)
         ));
     }
@@ -209,12 +210,11 @@ fn required_clause_matches(bullet: &str, prefix: &str) -> bool {
         && (!prefix.ends_with("MUST") || !bullet[prefix.len()..].trim_start().starts_with("NOT"))
 }
 
-fn invalid_child_to_root_assignment(bullet: &str) -> bool {
-    bullet
-        .split("child-to-root delivery MUST pass")
-        .skip(1)
-        .any(|assignment| {
-            !assignment.contains("model: \"gpt-5.6-sol\"")
-                || !assignment.contains("thinking: \"high\"")
-        })
+fn invalid_recipient_delivery_assignment((direction, assignment): (&str, &str)) -> bool {
+    let model = match direction {
+        "Parent-to-generic-child delivery MUST pass" => "model: \"gpt-5.6-terra\"",
+        "child-to-root delivery MUST pass" => "model: \"gpt-5.6-sol\"",
+        _ => return false,
+    };
+    !assignment.contains(model) || !assignment.contains("thinking: \"high\"")
 }

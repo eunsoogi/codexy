@@ -87,3 +87,29 @@ pub(super) fn policy_bullets(section: &str) -> Vec<String> {
     }
     bullets
 }
+
+pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, &str)> {
+    const DIRECTIONS: [&str; 2] = [
+        "Parent-to-generic-child delivery MUST pass",
+        "child-to-root delivery MUST pass",
+    ];
+    let mut starts = DIRECTIONS
+        .into_iter()
+        .flat_map(|direction| {
+            section
+                .match_indices(direction)
+                .map(move |(start, _)| (start, direction))
+        })
+        .collect::<Vec<_>>();
+    starts.sort_by_key(|(start, _)| *start);
+    starts
+        .iter()
+        .enumerate()
+        .map(|(index, (start, direction))| {
+            let end = starts
+                .get(index + 1)
+                .map_or(section.len(), |(next, _)| *next);
+            (*direction, &section[start + direction.len()..end])
+        })
+        .collect()
+}

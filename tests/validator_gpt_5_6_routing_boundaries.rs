@@ -72,6 +72,38 @@ fn validator_rejects_later_child_to_root_without_thinking() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_later_parent_to_child_without_model() -> TestResult {
+    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
+        routing_skill()?,
+        "- Parent-to-generic-child delivery MUST pass `thinking: \"high\"`.",
+    )?)
+}
+
+#[test]
+fn validator_rejects_later_parent_to_child_without_thinking() -> TestResult {
+    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
+        routing_skill()?,
+        "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"`.",
+    )?)
+}
+
+#[test]
+fn validator_rejects_numbered_child_to_root_wrong_recipient_model() -> TestResult {
+    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
+        routing_skill()?,
+        "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+    )?)
+}
+
+#[test]
+fn validator_rejects_plain_child_to_root_wrong_recipient_model() -> TestResult {
+    assert_recipient_assignment_rejected(duplicate_recipient_section_with_active_policy(
+        routing_skill()?,
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+    )?)
+}
+
+#[test]
 fn validator_rejects_active_policy_after_closed_html_comment() -> TestResult {
     assert_rejected(routing_skill()?.replacen(
         "## Read Next",
@@ -127,6 +159,13 @@ fn assert_recipient_assignment_rejected(skill: String) -> TestResult {
 }
 
 fn duplicate_recipient_section(skill: String, child_to_root: &str) -> TestResult<String> {
+    duplicate_recipient_section_with_active_policy(skill, &format!("- {child_to_root}"))
+}
+
+fn duplicate_recipient_section_with_active_policy(
+    skill: String,
+    policy: &str,
+) -> TestResult<String> {
     assert!(
         skill.find("## Recipient Model Routing").is_some(),
         "recipient routing heading missing"
@@ -135,7 +174,7 @@ fn duplicate_recipient_section(skill: String, child_to_root: &str) -> TestResult
         skill.find("## Read Next").is_some(),
         "read next heading missing"
     );
-    let duplicate = format!("## Recipient Model Routing\n\n- {child_to_root}\n\n");
+    let duplicate = format!("## Recipient Model Routing\n\n{policy}\n\n");
     Ok(skill.replacen("## Read Next", &format!("{duplicate}## Read Next"), 1))
 }
 
