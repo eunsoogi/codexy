@@ -129,6 +129,12 @@ pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> 
     let marker = format!("{field}: \"");
     assignment
         .match_indices(&marker)
+        .filter(|(start, _)| {
+            assignment[..*start]
+                .chars()
+                .next_back()
+                .is_none_or(|character| !character.is_ascii_alphanumeric() && character != '_')
+        })
         .filter_map(|(start, _)| {
             let clause = assignment[..start]
                 .rsplit_once(';')

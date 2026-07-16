@@ -84,6 +84,30 @@ fn validator_accepts_correct_fields_after_unrelated_prohibition() -> TestResult 
     Ok(())
 }
 
+#[test]
+fn validator_rejects_prefixed_field_decoys_in_every_active_child_form() -> TestResult {
+    for policy in [
+        "- child-to-root delivery MUST pass `recipient_model: \"gpt-5.6-sol\"` and `configured_thinking: \"high\"`.",
+        "1. child-to-root delivery MUST pass `recipient_model: \"gpt-5.6-sol\"` and `configured_thinking: \"high\"`.",
+        "child-to-root delivery MUST pass `recipient_model: \"gpt-5.6-sol\"` and `configured_thinking: \"high\"`.",
+    ] {
+        assert_rejected(policy, "gpt-5.6-sol/high")?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_each_required_field_replaced_by_a_prefixed_decoy() -> TestResult {
+    assert_rejected(
+        "Parent-to-generic-child delivery MUST pass `recipient_model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "gpt-5.6-terra/high",
+    )?;
+    assert_rejected(
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `configured_thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
     let output = validate(duplicate_recipient_section(policy)?)?;
     assert!(
