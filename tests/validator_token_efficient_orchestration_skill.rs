@@ -48,7 +48,7 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         structured_contract_rules::TOKEN_PROMPT,
     );
     structured_contract_artifacts::TextShape::new(prompt.default_prompt())
-        .assert_absent_concepts("token.prompt.no-polling-language", &["poll", "polling"]);
+        .assert_absent_inflections("token.prompt.no-polling-language", &["poll"]);
     structured_contract_artifacts::TextShape::new(&token_skill).assert_absent_concepts(
         "token.skill.no-stale-version-or-review-gate",
         &["installed Codexy plugin is version 1.1.0", "Codex review"],

@@ -4,7 +4,7 @@ mod sanitize;
 
 use std::{collections::HashMap, fs, path::Path, process::Command};
 
-use sanitize::sanitize;
+use sanitize::{sanitize, strip_comments};
 
 const RATIONALE: &str = "structured-contract: non-contract substring rationale:";
 
@@ -76,7 +76,8 @@ fn counts(violations: &[String]) -> HashMap<String, usize> {
 
 pub(crate) fn scan_source(source: &str) -> Vec<String> {
     let clean = sanitize(source);
-    let governed = governed_bindings(source);
+    let provenance = strip_comments(source);
+    let governed = governed_bindings(&provenance);
     assertions(&clean)
         .into_iter()
         .filter_map(|(start, body)| {

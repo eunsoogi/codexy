@@ -23,6 +23,25 @@ impl TextShape {
             "structured contract {rule_id} has forbidden concepts {present:?}"
         );
     }
+
+    pub(crate) fn assert_absent_inflections(&self, rule_id: &str, stems: &[&str]) {
+        let present: Vec<_> = self
+            .normalized
+            .split_whitespace()
+            .filter(|token| stems.iter().any(|stem| is_inflection(token, stem)))
+            .collect();
+        assert!(
+            present.is_empty(),
+            "structured contract {rule_id} has forbidden inflections {present:?}"
+        );
+    }
+}
+
+fn is_inflection(token: &str, stem: &str) -> bool {
+    token == stem
+        || ["s", "ed", "er", "ers", "ing"]
+            .iter()
+            .any(|suffix| token == format!("{stem}{suffix}"))
 }
 
 fn normalize(text: &str) -> String {

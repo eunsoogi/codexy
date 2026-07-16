@@ -93,3 +93,15 @@ fn guard_handles_character_literal_parentheses_inside_assertions() {
     );
     assert_eq!(scan_source(source).len(), 1);
 }
+
+#[test]
+fn guard_ignores_governed_paths_that_appear_only_in_comments() {
+    let source = concat!(
+        "// example path: plugins/codexy/skills/demo/SKILL.md\n",
+        "let path = root.join(\"README.md\");\n",
+        "let snapshot = std::fs::read_to_string(path)?;\n",
+        "// structured-contract: non-contract substring rationale: verifies README heading output\n",
+        "assert!(snapshot.contains(\"heading\"));"
+    );
+    assert!(scan_source(source).is_empty());
+}

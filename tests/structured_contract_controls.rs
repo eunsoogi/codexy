@@ -173,3 +173,18 @@ fn forbidden_artifact_concepts_fail_with_their_rule_id() {
     structured_contract_artifacts::TextShape::new("The prompt keeps polling forever.")
         .assert_absent_concepts("token.prompt.no-polling-language", &["polling"]);
 }
+
+#[test]
+fn forbidden_artifact_inflections_reject_poll_forms_without_prefix_false_positives() {
+    for word in ["poll", "polls", "polled", "poller", "pollers", "polling"] {
+        let result = std::panic::catch_unwind(|| {
+            structured_contract_artifacts::TextShape::new(word)
+                .assert_absent_inflections("token.prompt.no-polling-language", &["poll"]);
+        });
+        assert!(result.is_err(), "accepted {word}");
+    }
+    for safe in ["pollution", "pollinate", "pollen"] {
+        structured_contract_artifacts::TextShape::new(safe)
+            .assert_absent_inflections("token.prompt.no-polling-language", &["poll"]);
+    }
+}
