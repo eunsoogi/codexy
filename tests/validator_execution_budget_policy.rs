@@ -17,7 +17,12 @@ const REQUIRED_CLAUSES: &[&str] = &[
     "Repeated child waiting turns, goal refreshes, polling, duplicate narrative, unbounded reasoning, or status-only parent receipts MUST consume budget and MUST NOT qualify as acceptance progress.",
     "The execution-budget contract MUST apply to GPT-5.6 Terra child lanes while remaining model-agnostic and MUST NOT hard-code model-specific prose into the state machine.",
 ];
-const NON_RESET_CLAUSE: &str = "File, diff, test, or fingerprint churn without reducing remaining acceptance work MUST NOT renew or reset the budget.";
+const COUNTERMANDING_CLAUSES: &[&str] = &[
+    "Artifact churn MAY renew or reset the budget.",
+    "A child MAY self-renew the budget from changed artifacts alone.",
+    "Budget exhaustion MAY call `update_goal(blocked)`.",
+    "Repeated child waiting turns, goal refreshes, or polling MAY qualify as acceptance progress.",
+];
 
 fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
     plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
@@ -47,32 +52,41 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
 }
 
 #[test]
-fn validator_rejects_426_churn_and_repeated_wait_refreshes() -> TestResult {
+fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult {
+    for countermand in COUNTERMANDING_CLAUSES {
+        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let path = budget_path(&plugin_root);
+        let original = fs::read_to_string(&path)?;
+        let sequence = format!(
+            "\n#426 sequence: a small adjacent edit, proof rerun, new edge, and changed fingerprint leave the same acceptance work.\n#434 sequence: repeated child waiting turns, goal refreshes, and polling occur without a material transition.\n{countermand}\n"
+        );
+        fs::write(&path, format!("{original}{sequence}"))?;
+
+        let output = support::validator(&plugin_root, "--check")?;
+        assert!(
+            !output.status.success(),
+            "validator accepted countermanding #426/#434 policy {countermand:?}"
+        );
+        assert!(support::stderr(&output).contains("execution-budget contract"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_convergent_progress_and_post_proof_termination() -> TestResult {
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;
     let path = budget_path(&plugin_root);
     let original = fs::read_to_string(&path)?;
-    let churn = "#426 sequence: small adjacent edit, proof rerun, new edge, changed fingerprint, same remaining acceptance work.";
-    let repeated_wait = "#434 sequence: repeated child waiting turns, goal refreshes, and polling without a material transition.";
     fs::write(
         &path,
-        original.replace(
-            NON_RESET_CLAUSE,
-            &format!("{churn}\n{repeated_wait}\nArtifact churn or a repeated wait refresh MAY renew the budget."),
+        format!(
+            "{original}\nConvergent control: an explicit acceptance criterion was newly satisfied, required proof completed, and the lane terminates implementation.\n"
         ),
     )?;
-
-    let output = support::validator(&plugin_root, "--check")?;
-    assert!(
-        !output.status.success(),
-        "validator accepted a changing-but-nonconvergent #426 or repeated wait refresh"
-    );
-    assert!(support::stderr(&output).contains("execution-budget contract"));
-
-    fs::write(&path, original)?;
     let output = support::validator(&plugin_root, "--check")?;
     assert!(
         output.status.success(),
-        "validator rejected the convergent post-proof termination control: {}",
+        "validator rejected convergent progress and post-proof termination: {}",
         support::stderr(&output)
     );
     Ok(())
