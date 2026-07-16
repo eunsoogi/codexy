@@ -38,11 +38,17 @@ fn permits_countermand(line: &str) -> bool {
     if line.trim_start().starts_with('#') {
         return false;
     }
-    let words = words(line);
-    !is_negated(&words)
-        && (permits_budget_renewal(&words)
-            || permits_blocked_goal(&words)
-            || permits_wait_progress(&words))
+    policy_clauses(line).any(|clause| {
+        let words = words(clause);
+        !is_negated(&words)
+            && (permits_budget_renewal(&words)
+                || permits_blocked_goal(&words)
+                || permits_wait_progress(&words))
+    })
+}
+
+fn policy_clauses(line: &str) -> impl Iterator<Item = &str> {
+    line.split(';').flat_map(|clause| clause.split(", but "))
 }
 
 fn permits_budget_renewal(words: &[String]) -> bool {
@@ -50,7 +56,9 @@ fn permits_budget_renewal(words: &[String]) -> bool {
     let wait_refresh = has_pair(words, "wait", "refresh") || has_pair(words, "wait", "refreshes");
     let child_self = contains(words, "child") && contains(words, "self");
     (churn || wait_refresh || child_self)
-        && words.iter().any(|word| matches!(word.as_str(), "renew" | "reset"))
+        && words
+            .iter()
+            .any(|word| matches!(word.as_str(), "renew" | "reset"))
         && permits(words)
 }
 

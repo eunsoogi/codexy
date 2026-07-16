@@ -29,6 +29,8 @@ const OTHER_COUNTERMANDS: &[&str] = &[
     "Budget exhaustion MAY call `update_goal(blocked)`.",
     "Repeated child waiting turns, goal refreshes, or polling MAY qualify as acceptance progress.",
 ];
+const MIXED_POLARITY_COUNTERMAND: &str =
+    "Artifact churn MUST NOT renew the budget, but repeated wait refreshes MAY renew the budget.";
 
 fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
     plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
@@ -96,6 +98,27 @@ fn validator_allows_negated_countermand_examples() -> TestResult {
         "validator rejected a negated countermand example: {}",
         support::stderr(&output)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_mixed_polarity_countermand() -> TestResult {
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = budget_path(&plugin_root);
+    let original = fs::read_to_string(&path)?;
+    fs::write(
+        &path,
+        format!(
+            "{original}\n#426 sequence: a small adjacent edit, proof rerun, new edge, and changed fingerprint leave the same acceptance work.\n#434 sequence: repeated child waiting turns, goal refreshes, and polling occur without a material transition.\n{MIXED_POLARITY_COUNTERMAND}\n"
+        ),
+    )?;
+
+    let output = support::validator(&plugin_root, "--check")?;
+    assert!(
+        !output.status.success(),
+        "validator accepted mixed-polarity countermand"
+    );
+    assert!(support::stderr(&output).contains("execution-budget contract"));
     Ok(())
 }
 
