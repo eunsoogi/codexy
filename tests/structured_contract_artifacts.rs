@@ -28,7 +28,11 @@ impl TextShape {
         let present: Vec<_> = self
             .normalized
             .split_whitespace()
-            .filter(|token| stems.iter().any(|stem| is_inflection(token, stem)))
+            .filter(|token| {
+                stems
+                    .iter()
+                    .any(|stem| contains_inflected_lexeme(token, stem))
+            })
             .collect();
         assert!(
             present.is_empty(),
@@ -37,11 +41,13 @@ impl TextShape {
     }
 }
 
-fn is_inflection(token: &str, stem: &str) -> bool {
-    token == stem
-        || ["s", "ed", "er", "ers", "ing"]
-            .iter()
-            .any(|suffix| token == format!("{stem}{suffix}"))
+fn contains_inflected_lexeme(token: &str, stem: &str) -> bool {
+    token.match_indices(stem).any(|(index, _)| {
+        matches!(
+            &token[index + stem.len()..],
+            "" | "s" | "ed" | "er" | "ers" | "ing"
+        )
+    })
 }
 
 fn normalize(text: &str) -> String {

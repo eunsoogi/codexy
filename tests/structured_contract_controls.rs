@@ -176,7 +176,20 @@ fn forbidden_artifact_concepts_fail_with_their_rule_id() {
 
 #[test]
 fn forbidden_artifact_inflections_reject_poll_forms_without_prefix_false_positives() {
-    for word in ["poll", "polls", "polled", "poller", "pollers", "polling"] {
+    for word in [
+        "poll",
+        "polls",
+        "polled",
+        "poller",
+        "pollers",
+        "polling",
+        "repoll",
+        "repolls",
+        "repolled",
+        "repoller",
+        "repollers",
+        "repolling",
+    ] {
         let result = std::panic::catch_unwind(|| {
             structured_contract_artifacts::TextShape::new(word)
                 .assert_absent_inflections("token.prompt.no-polling-language", &["poll"]);
