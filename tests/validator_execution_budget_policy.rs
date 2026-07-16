@@ -23,6 +23,10 @@ const REQUIRED_CLAUSES: &[&str] = &[
 ];
 const RENEWAL_COUNTERMANDS: &[&str] = &[
     "Artifact churn MAY renew or reset the budget.",
+    "File churn MAY renew the budget.",
+    "Diff churn MAY reset the budget.",
+    "Test churn MAY renew the budget.",
+    "Fingerprint churn MAY reset the budget.",
     "Artifact churn or a repeated wait refresh MAY renew the budget.",
     "artifact churn or repeated wait refreshes MAY reset the budget.",
     "A child MAY self-renew the budget from changed artifacts alone.",
@@ -37,6 +41,10 @@ const MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget, but repeated wait refreshes MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget, BUT repeated wait refreshes MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget, BuT repeated wait refreshes MAY renew the budget.",
+];
+const ADJACENT_MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
+    "Artifact churn MUST NOT renew the budget. File churn MAY renew the budget.",
+    "Artifact churn MUST NOT renew the budget.\n## File churn MAY renew the budget.",
 ];
 
 fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
@@ -133,6 +141,24 @@ fn validator_rejects_mixed_polarity_countermand() -> TestResult {
         assert!(
             !output.status.success(),
             "validator accepted mixed-polarity countermand {countermand:?}"
+        );
+        assert!(support::stderr(&output).contains("execution-budget contract"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_adjacent_mixed_polarity_countermand() -> TestResult {
+    for countermand in ADJACENT_MIXED_POLARITY_COUNTERMANDS {
+        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let path = budget_path(&plugin_root);
+        let original = fs::read_to_string(&path)?;
+        fs::write(&path, format!("{original}\n{countermand}\n"))?;
+
+        let output = support::validator(&plugin_root, "--check")?;
+        assert!(
+            !output.status.success(),
+            "validator accepted adjacent mixed-polarity countermand {countermand:?}"
         );
         assert!(support::stderr(&output).contains("execution-budget contract"));
     }

@@ -72,28 +72,26 @@ fn policy_text(line: &str, in_html_comment: &mut bool) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    let Some(after_marker) = trimmed.strip_prefix('#') else {
-        return Some(trimmed.to_owned());
-    };
-    if after_marker.starts_with(|character: char| character.is_ascii_digit()) {
-        return Some(after_marker.to_owned());
-    }
-    None
+    let policy = trimmed.trim_start_matches('#').trim_start();
+    (!policy.is_empty()).then(|| policy.to_owned())
 }
 
 fn policy_clauses(line: &str) -> Vec<&str> {
-    line.split(';').flat_map(contrast_clauses).collect()
+    line.split(';')
+        .flat_map(|clause| clause.split(". "))
+        .flat_map(contrast_clauses)
+        .collect()
 }
 
 fn contrast_clauses(clause: &str) -> Vec<&str> {
     let mut clauses = Vec::new();
     let mut start = 0;
     for (index, character) in clause.char_indices() {
-        if character == ','
-            && let Some(next_start) = contrast_tail_start(&clause[index + 1..])
-        {
-            clauses.push(&clause[start..index]);
-            start = index + 1 + next_start;
+        if character == ',' {
+            if let Some(next_start) = contrast_tail_start(&clause[index + 1..]) {
+                clauses.push(&clause[start..index]);
+                start = index + 1 + next_start;
+            }
         }
     }
     clauses.push(&clause[start..]);
@@ -114,7 +112,9 @@ fn contrast_tail_start(tail: &str) -> Option<usize> {
 }
 
 fn permits_budget_renewal(words: &[String]) -> bool {
-    let churn = has_pair(words, "artifact", "churn");
+    let churn = ["artifact", "file", "diff", "test", "fingerprint"]
+        .iter()
+        .any(|kind| has_pair(words, kind, "churn"));
     let wait_refresh = has_pair(words, "wait", "refresh") || has_pair(words, "wait", "refreshes");
     let child_self = contains(words, "child") && contains(words, "self");
     (churn || wait_refresh || child_self)
