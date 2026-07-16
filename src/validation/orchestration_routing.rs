@@ -11,7 +11,7 @@ mod policy;
 
 use policy::{
     affirmative_field_values, delivery_assignments, has_negated_delivery_assignment,
-    policy_bullets, section_for_heading, sections_for_heading,
+    policy_bullets, recipient_policy_instructions, section_for_heading, sections_for_heading,
 };
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
@@ -110,7 +110,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     }
     let recipient_bullets = recipient_sections
         .iter()
-        .flat_map(|section| policy_bullets(section))
+        .flat_map(|section| recipient_policy_instructions(section))
         .collect::<Vec<_>>();
     errors.extend(missing_required_bullets(
         &path,

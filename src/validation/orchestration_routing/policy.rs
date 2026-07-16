@@ -93,6 +93,19 @@ pub(super) fn policy_bullets(section: &str) -> Vec<String> {
     bullets
 }
 
+pub(super) fn recipient_policy_instructions(section: &str) -> Vec<String> {
+    let mut instructions = policy_bullets(section);
+    instructions.extend(section.lines().filter_map(|line| {
+        let trimmed = line.trim();
+        (!line.starts_with(' ') && !line.starts_with('\t') && !trimmed.starts_with("- "))
+            .then(|| policy_line(trimmed))
+            .flatten()
+            .filter(|instruction| !instruction.is_empty() && !instruction.starts_with('#'))
+            .map(str::to_owned)
+    }));
+    instructions
+}
+
 pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)> {
     const DIRECTIONS: [&str; 2] = [
         "Parent-to-generic-child delivery MUST pass",

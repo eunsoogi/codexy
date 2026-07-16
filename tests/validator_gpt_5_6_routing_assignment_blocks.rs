@@ -186,12 +186,16 @@ fn validator_rejects_required_clause_hidden_in_inline_comment() -> TestResult {
 
 #[test]
 fn validator_rejects_later_incomplete_active_message_instruction() -> TestResult {
-    assert_policy_rejected(
-        duplicate_recipient_section(
-            "- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
-        )?,
-        "thread messages must explicitly pass",
-    )
+    for policy in [
+        "1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
+        "Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
+    ] {
+        assert_policy_rejected(
+            duplicate_recipient_section(policy)?,
+            "thread messages must explicitly pass",
+        )?;
+    }
+    Ok(())
 }
 
 fn assert_rejected(policy: &str, expected: &str) -> TestResult {
