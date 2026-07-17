@@ -49,6 +49,21 @@ fn validator_rejects_conflicting_child_models_in_every_active_form() -> TestResu
 }
 
 #[test]
+fn validator_validates_parenthesized_ordered_assignments() -> TestResult {
+    assert_rejected(
+        "1) child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )?;
+    assert_rejected(
+        "1) child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`.",
+        "gpt-5.6-sol/high",
+    )?;
+    assert_accepted(duplicate_recipient_section(
+        "1) child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    )?)
+}
+
+#[test]
 fn validator_rejects_conflicting_parent_model_and_effort() -> TestResult {
     assert_rejected(
         "1. Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-sol\"`, `model: \"gpt-5.6-terra\"`, `thinking: \"low\"`, and `thinking: \"high\"`.",

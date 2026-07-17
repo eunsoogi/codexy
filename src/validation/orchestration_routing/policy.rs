@@ -243,7 +243,7 @@ fn policy_line(line: &str) -> Option<&str> {
         .or_else(|| {
             let digits = line.chars().take_while(char::is_ascii_digit).count();
             line.get(digits..)
-                .and_then(|rest| rest.strip_prefix(". "))
+                .and_then(|rest| rest.strip_prefix(". ").or_else(|| rest.strip_prefix(") ")))
                 .filter(|_| digits > 0)
         })
         .or(Some(line))
