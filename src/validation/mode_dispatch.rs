@@ -14,8 +14,8 @@ use super::{
 ///
 /// Returns an error when any selected validation surface reports contract
 /// failures.
-pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
-    let errors = match mode {
+pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
+    match mode {
         Mode::All => {
             let mut all = Vec::new();
             all.extend(manifest::check(plugin_root));
@@ -27,6 +27,8 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             all.extend(orchestration_routing::check(plugin_root));
             all
         }
+        Mode::InstructionPolicy => instruction_policy::check(plugin_root),
+        Mode::OrchestrationRouting => orchestration_routing::check(plugin_root),
         Mode::Lsp => lsp::check(plugin_root),
         Mode::RustLspReadiness => lsp::check_rust_readiness(plugin_root),
         Mode::MergeMessage {
@@ -56,7 +58,17 @@ pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
             errors
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),
-    };
+    }
+}
+
+/// Runs plugin contract validation for the selected mode.
+///
+/// # Errors
+///
+/// Returns an error when any selected validation surface reports contract
+/// failures.
+pub fn run(plugin_root: &Path, mode: Mode) -> Result<()> {
+    let errors = errors(plugin_root, mode);
     if errors.is_empty() {
         Ok(())
     } else {

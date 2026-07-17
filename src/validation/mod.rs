@@ -98,11 +98,13 @@ use std::path::Path;
 
 use anyhow::Result;
 
-pub use mode_dispatch::run;
+pub use mode_dispatch::{errors, run};
 
 #[derive(Debug, Clone)]
 pub enum Mode {
     All,
+    InstructionPolicy,
+    OrchestrationRouting,
     Lsp,
     RustLspReadiness,
     MergeMessage {

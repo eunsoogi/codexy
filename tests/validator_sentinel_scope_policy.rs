@@ -1,6 +1,6 @@
 mod support;
 
-use support::{TestResult, copy_plugin_fixture, stderr, validator};
+use support::{TestResult, copy_plugin_fixture, stderr};
 
 const SENTINEL_SCOPE_CLAUSES: &[&str] = &[
     "MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.",
@@ -223,4 +223,14 @@ fn validator_cli_rejects_missing_or_contradictory_live_policy_in_every_skill() -
         );
     }
     Ok(())
+}
+
+fn validator(
+    plugin_root: &std::path::Path,
+    mode: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    if mode == "--check" {
+        return support::validator_instruction_policy(plugin_root);
+    }
+    support::validator(plugin_root, mode)
 }

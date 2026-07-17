@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 mod support;
 
@@ -79,7 +78,11 @@ fn validator_cli_allows_tilde_fenced_command_examples() -> TestResult {
 fn validator_cli_rejects_root_agents_policy_false_negative() -> TestResult {
     let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
     let agents = std::fs::read_to_string(&agents_path)?;
-    assert!(agents.contains("MUST NOT` for prohibitions"));
+    support::assert_structured_literals(
+        &agents,
+        "root AGENTS prohibition policy",
+        &["MUST NOT` for prohibitions"],
+    );
     std::fs::write(
         &agents_path,
         agents.replace("MUST NOT` for prohibitions", "do not` for prohibitions"),
@@ -95,7 +98,7 @@ fn validator_cli_rejects_root_agents_bare_use_instruction() -> TestResult {
     let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
     let agents = std::fs::read_to_string(&agents_path)?;
     for (required, bare) in ROOT_AGENTS_BARE_CASES {
-        assert!(agents.contains(required));
+        support::assert_structured_literals(&agents, "root AGENTS mandatory policy", &[required]);
         std::fs::write(&agents_path, agents.replace(required, bare))?;
         let output = validator(&plugin_root, "--check")?;
         assert!(!output.status.success());
@@ -142,7 +145,11 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let prompt_path = plugin_root.join("agents/openai.yaml");
     let original = std::fs::read_to_string(&prompt_path)?;
-    assert!(original.contains("You MUST run $task-classification"));
+    support::assert_structured_literals(
+        &original,
+        "agent default prompt policy",
+        &["You MUST run $task-classification"],
+    );
     for prompt in [
         "Run $task-classification before setup, then create a branch.",
         "You MUST run $task-classification, then use $codex-orchestration.",
@@ -216,10 +223,10 @@ fn validator(
     plugin_root: &Path,
     mode: &str,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    let root = plugin_root.to_str().ok_or("plugin root path")?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--plugin-root", root, mode])
-        .output()?)
+    if mode == "--check" {
+        return support::validator_instruction_policy(plugin_root);
+    }
+    support::validator(plugin_root, mode)
 }
 
 fn stderr(output: &std::process::Output) -> String {

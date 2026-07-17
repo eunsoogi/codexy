@@ -57,6 +57,20 @@ const TRANSITION_CLAUSES: &[&str] = &[
 ];
 
 #[test]
+fn plugin_fixture_reset_restores_a_mutated_skill() -> TestResult {
+    let fixture = support::plugin_fixture()?;
+    let relative = std::path::Path::new("skills/token-efficient-orchestration/SKILL.md");
+    let path = fixture.root().join(relative);
+    let original = fs::read_to_string(&path)?;
+
+    fs::write(&path, "mutated fixture")?;
+    fixture.reset_file(relative)?;
+
+    assert_eq!(fs::read_to_string(path)?, original);
+    Ok(())
+}
+
+#[test]
 fn validator_requires_runtime_heartbeat_contract() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let heartbeat = fs::read_to_string(
@@ -74,49 +88,49 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
         &structured_contract::Contract::markdown(&token),
         structured_contract_rules::TOKEN_CONTAINMENT,
     );
-    for clause in ORCHESTRATION_CLAUSES {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
-        let original = fs::read_to_string(&path)?;
-        fs::write(&path, original.replace(clause, "removed heartbeat policy"))?;
+    assert_rejected_clauses(
+        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        ORCHESTRATION_CLAUSES,
+        "removed heartbeat policy",
+        "runtime heartbeat contract",
+    )?;
+    assert_rejected_clauses(
+        "skills/token-efficient-orchestration/SKILL.md",
+        TOKEN_CLAUSES,
+        "removed heartbeat policy",
+        "runtime heartbeat contract",
+    )?;
+    assert_rejected_clauses(
+        "skills/token-efficient-orchestration/templates/delta-poll.md",
+        TEMPLATE_CLAUSES,
+        "removed heartbeat slot",
+        "runtime heartbeat",
+    )?;
+    assert_rejected_clauses(
+        "skills/codex-orchestration/references/goal-transition-reporting.md",
+        TRANSITION_CLAUSES,
+        "removed monitor identity policy",
+        "monitor identities",
+    )?;
+    Ok(())
+}
 
-        let output = support::validator(&plugin_root, "--check")?;
-        assert!(!output.status.success(), "validator accepted {clause:?}");
-        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
-    }
-    for clause in TOKEN_CLAUSES {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path = plugin_root.join("skills/token-efficient-orchestration/SKILL.md");
+fn assert_rejected_clauses(
+    relative: &str,
+    clauses: &[&str],
+    replacement: &str,
+    expected_error: &str,
+) -> TestResult {
+    let fixture = support::plugin_fixture()?;
+    let relative = std::path::Path::new(relative);
+    let path = fixture.root().join(relative);
+    for clause in clauses {
+        fixture.reset_file(relative)?;
         let original = fs::read_to_string(&path)?;
-        fs::write(&path, original.replace(clause, "removed heartbeat policy"))?;
-
-        let output = support::validator(&plugin_root, "--check")?;
+        fs::write(&path, original.replace(clause, replacement))?;
+        let output = support::validator_instruction_policy(fixture.root())?;
         assert!(!output.status.success(), "validator accepted {clause:?}");
-        assert!(support::stderr(&output).contains("runtime heartbeat contract"));
-    }
-    for clause in TEMPLATE_CLAUSES {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path = plugin_root.join("skills/token-efficient-orchestration/templates/delta-poll.md");
-        let original = fs::read_to_string(&path)?;
-        fs::write(&path, original.replace(clause, "removed heartbeat slot"))?;
-
-        let output = support::validator(&plugin_root, "--check")?;
-        assert!(!output.status.success(), "validator accepted {clause:?}");
-        assert!(support::stderr(&output).contains("runtime heartbeat"));
-    }
-    for clause in TRANSITION_CLAUSES {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path =
-            plugin_root.join("skills/codex-orchestration/references/goal-transition-reporting.md");
-        let original = fs::read_to_string(&path)?;
-        fs::write(
-            &path,
-            original.replace(clause, "removed monitor identity policy"),
-        )?;
-
-        let output = support::validator(&plugin_root, "--check")?;
-        assert!(!output.status.success(), "validator accepted {clause:?}");
-        assert!(support::stderr(&output).contains("monitor identities"));
+        assert!(support::stderr(&output).contains(expected_error));
     }
     Ok(())
 }
@@ -138,7 +152,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             ),
         )?;
         assert!(
-            !support::validator(&plugin_root, "--check")?
+            !support::validator_instruction_policy(&plugin_root)?
                 .status
                 .success()
         );
@@ -155,7 +169,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
         ),
     )?;
     assert!(
-        !support::validator(&plugin_root, "--check")?
+        !support::validator_instruction_policy(&plugin_root)?
             .status
             .success(),
         "validator accepted a required clause from historical prose"
@@ -171,7 +185,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
                 ),
             ),
         )?;
-        let output = support::validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy(&plugin_root)?;
         assert!(
             output.status.success(),
             "validator ignored active policy under {heading:?}: {}",
@@ -185,7 +199,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             "{original}\nThe owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
         ),
     )?;
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("must not permit Sentinel"));
 
@@ -195,7 +209,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             "{original}\n## Historical Example\nThis old policy is retained for context. The owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
         ),
     )?;
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         output.status.success(),
         "validator rejected historical-only Sentinel wording: {}",
@@ -208,7 +222,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             "{original}\n## Historical Example\nThis old policy is retained for context.\n## Current Policy\nThe owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
         ),
     )?;
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("must not permit Sentinel"));
     Ok(())

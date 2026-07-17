@@ -4,7 +4,9 @@ use tempfile::tempdir;
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::complete_plugin_fixture;
+use release_archive_support::{
+    assert_structured_literals, complete_plugin_fixture, create_archive,
+};
 
 fn run_gate_at(
     gate: &std::path::Path,
@@ -16,18 +18,6 @@ fn run_gate_at(
         .arg(plugin_root)
         .output()
         .expect("archive gate should start")
-}
-
-fn create_archive(root: &std::path::Path, archive: &std::path::Path) {
-    let status = Command::new("tar")
-        .args(["-C"])
-        .arg(root)
-        .args(["-czf"])
-        .arg(archive)
-        .arg("plugins/codexy")
-        .status()
-        .expect("tar should start");
-    assert!(status.success(), "tar failed: {status}");
 }
 
 #[cfg(unix)]
@@ -48,7 +38,7 @@ fn grep_backend_gate(root: &std::path::Path) -> std::path::PathBuf {
         "if false; then",
         1,
     );
-    assert!(script.contains("if false; then"));
+    assert_structured_literals(&script, "grep backend selection", &["if false; then"]);
     let gate = root.join("inspect-release-archive-grep");
     std::fs::write(&gate, script).expect("grep backend gate");
     let mut permissions = std::fs::metadata(&gate)
@@ -71,7 +61,7 @@ fn archive_gate_scans_nul_prefixed_binary_assets_in_both_backends() {
 
     std::fs::write(&asset, b"\0safe binary asset\n").expect("safe binary fixture");
     let valid_archive = root.path().join("valid-binary-asset.tar.gz");
-    create_archive(root.path(), &valid_archive);
+    create_archive(root.path(), &valid_archive).expect("archive fixture");
     for (backend, gate) in [("rg", &source_gate), ("grep", &grep_gate)] {
         let output = run_gate_at(gate, &valid_archive, &plugin_root);
         assert!(
@@ -84,7 +74,7 @@ fn archive_gate_scans_nul_prefixed_binary_assets_in_both_backends() {
     let marker = "AKIA1234567890ABCDEF";
     std::fs::write(&asset, format!("\0{marker}\n")).expect("NUL-prefixed marker fixture");
     let marker_archive = root.path().join("nul-prefixed-marker.tar.gz");
-    create_archive(root.path(), &marker_archive);
+    create_archive(root.path(), &marker_archive).expect("archive fixture");
 
     for gate in [&source_gate, &grep_gate] {
         let output = run_gate_at(gate, &marker_archive, &plugin_root);

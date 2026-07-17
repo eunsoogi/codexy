@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Report warm Rust test-binary timings for a reproducible performance baseline."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import statistics
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+def test_binaries(root: Path) -> list[str]:
+    command = [
+        "cargo",
+        "test",
+        "--offline",
+        "--all-targets",
+        "--no-run",
+        "--message-format=json",
+    ]
+    result = subprocess.run(command, cwd=root, capture_output=True, text=True, check=False)
+    if result.returncode:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(result.returncode)
+    binaries = {
+        message["executable"]
+        for line in result.stdout.splitlines()
+        if (message := json.loads(line)).get("profile", {}).get("test")
+        and message.get("executable")
+    }
+    return sorted(binaries)
+
+
+def run_binary(path: str, root: Path) -> tuple[float, int]:
+    started = time.perf_counter()
+    result = subprocess.run([path, "--quiet"], cwd=root, check=False)
+    return time.perf_counter() - started, result.returncode
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
+    arguments = parser.parse_args()
+    if arguments.iterations < 1:
+        parser.error("--iterations must be at least 1")
+    root = arguments.root.resolve()
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    binaries = test_binaries(root)
+    print(f"# codexy-rust-test-profile commit={commit} samples={arguments.iterations}")
+    print("sample\tbinary\tseconds\texit")
+    sample_totals: list[float] = []
+    for iteration in range(1, arguments.iterations + 1):
+        sample_total = 0.0
+        for binary in binaries:
+            elapsed, status = run_binary(binary, root)
+            print(f"{iteration}\t{Path(binary).name}\t{elapsed:.3f}\t{status}")
+            if status:
+                return status
+            sample_total += elapsed
+        sample_totals.append(sample_total)
+        print(f"sample-total\tTOTAL\t{sample_total:.3f}\t0")
+    print(f"median\tTOTAL\t{statistics.median(sample_totals):.3f}\t0")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
