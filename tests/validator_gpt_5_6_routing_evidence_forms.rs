@@ -81,6 +81,41 @@ fn validator_accepts_complete_embedded_evidence() -> TestResult {
     )?)
 }
 
+#[test]
+fn validator_checks_case_insensitive_evidence_markers() -> TestResult {
+    let markers = [
+        "captured #433 parent-to-generic-child evidence",
+        "rEvErSe ChIlD-tO-rOoT eViDeNcE",
+    ];
+    for ((_, recipient, sender, thread, expected), marker) in ROUTES.into_iter().zip(markers) {
+        assert_rejected(
+            &embedded_evidence(marker, recipient, sender, thread, false),
+            expected,
+        )?;
+        assert_accepted(duplicate_recipient_section(&embedded_evidence(
+            marker, recipient, sender, thread, true,
+        ))?)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_bounds_case_insensitive_evidence_records() -> TestResult {
+    let first = embedded_record(markers(0), 0, true);
+    let second = embedded_record(markers(1), 1, false);
+    assert_rejected(
+        &format!("{} {first} {second}", instruction_start()),
+        ROUTES[1].4,
+    )?;
+
+    let first = embedded_record(markers(0), 0, false);
+    let second = embedded_record(markers(1), 1, true);
+    assert_rejected(
+        &format!("{} {first} {second}", instruction_start()),
+        ROUTES[0].4,
+    )
+}
+
 fn embedded_evidence(
     marker: &str,
     recipient: &str,
@@ -92,6 +127,28 @@ fn embedded_evidence(
         .then_some(", thinking: \"high\"")
         .unwrap_or_default();
     format!(
-        "- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT infer either from historical actual `turn_context` state, the sender, or ambient defaults. {marker}: configured_ui_model=\"{recipient}\"; actual_turn_context_model=\"{sender}\"; per_message_model=\"{recipient}\"; send_message_to_thread({{ threadId: \"{thread}\", model: \"{recipient}\"{thinking} }})."
+        "{} {marker}: configured_ui_model=\"{recipient}\"; actual_turn_context_model=\"{sender}\"; per_message_model=\"{recipient}\"; send_message_to_thread({{ threadId: \"{thread}\", model: \"{recipient}\"{thinking} }}).",
+        instruction_start()
+    )
+}
+
+fn instruction_start() -> &'static str {
+    "- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT infer either from historical actual `turn_context` state, the sender, or ambient defaults."
+}
+
+fn markers(index: usize) -> &'static str {
+    [
+        "captured #433 parent-to-generic-child evidence",
+        "rEvErSe ChIlD-tO-rOoT eViDeNcE",
+    ][index]
+}
+
+fn embedded_record(marker: &str, route: usize, complete: bool) -> String {
+    let (_, recipient, sender, thread, _) = ROUTES[route];
+    let thinking = complete
+        .then_some(", thinking: \"high\"")
+        .unwrap_or_default();
+    format!(
+        "{marker}: configured_ui_model=\"{recipient}\"; actual_turn_context_model=\"{sender}\"; per_message_model=\"{recipient}\"; send_message_to_thread({{ threadId: \"{thread}\", model: \"{recipient}\"{thinking} }})."
     )
 }

@@ -44,15 +44,17 @@ fn is_active_instruction(instruction: &str, starts: &[&str]) -> bool {
 }
 
 fn records<'a>(instruction: &'a str, marker: &str) -> Vec<&'a str> {
-    instruction
-        .match_indices(marker)
+    let normalized = instruction.to_ascii_lowercase();
+    let marker = marker.to_ascii_lowercase();
+    normalized
+        .match_indices(&marker)
         .map(|(start, _)| {
             let after_marker = start + marker.len();
             let end = ROUTES
                 .iter()
                 .filter_map(|(next, ..)| {
-                    instruction[after_marker..]
-                        .find(next)
+                    normalized[after_marker..]
+                        .find(&next.to_ascii_lowercase())
                         .map(|index| after_marker + index)
                 })
                 .min()
@@ -63,8 +65,13 @@ fn records<'a>(instruction: &'a str, marker: &str) -> Vec<&'a str> {
 }
 
 fn valid(bullet: &str, marker: &str, recipient: &str, sender: &str, thread: &str) -> bool {
-    let Some(metadata) = bullet
-        .strip_prefix(marker)
+    let (Some(found_marker), Some(rest)) = (bullet.get(..marker.len()), bullet.get(marker.len()..))
+    else {
+        return false;
+    };
+    let Some(metadata) = found_marker
+        .eq_ignore_ascii_case(marker)
+        .then_some(rest)
         .and_then(|rest| rest.strip_prefix(':'))
     else {
         return false;

@@ -5,13 +5,8 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let (mut section, mut fence) = (None::<String>, None::<Fence>);
     let section_level = heading_level(heading).expect("validated heading");
     let mut in_comment = false;
+    let (mut list_context, mut nested_list_indent) = (false, None::<usize>);
     for line in skill.lines() {
-        if line.starts_with("    ") || line.starts_with('\t') {
-            if in_comment && line.contains("-->") {
-                in_comment = false;
-            }
-            continue;
-        }
         let mut trimmed = line.trim_start_matches(' ');
         if let Some(marker) = fence {
             if has_active_content(line, leading_ascii_spaces(line)) && marker.closes(trimmed) {
@@ -19,38 +14,68 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             }
             continue;
         }
+        let indentation = leading_ascii_spaces(line);
+        let nested_marker = indentation >= 4
+            && (list_context || nested_list_indent.is_some())
+            && has_list_marker(trimmed);
+        let nested_continuation = indentation >= 4
+            && nested_list_indent.is_some_and(|list_indent| indentation > list_indent);
+        if line.starts_with('\t') || (indentation >= 4 && !nested_marker && !nested_continuation) {
+            if in_comment && line.contains("-->") {
+                in_comment = false;
+            }
+            (list_context, nested_list_indent) = (false, None);
+            continue;
+        }
         let active_line = strip_comments(line, &mut in_comment);
+        let indentation = leading_ascii_spaces(&active_line);
         trimmed = active_line.trim_start_matches(' ');
+        let logical_line = if nested_marker {
+            nested_list_indent = Some(indentation);
+            trimmed
+        } else if let Some(list_indent) = nested_list_indent.filter(|_| nested_continuation) {
+            &active_line[list_indent..]
+        } else {
+            active_line.as_str()
+        };
+        trimmed = logical_line.trim_start_matches(' ');
         let structural = trimmed.trim_end();
         if trimmed.is_empty() {
             if let Some(section) = &mut section {
                 section.push('\n');
             }
+            (list_context, nested_list_indent) = (false, None);
             continue;
         }
-        if !has_active_content(&active_line, leading_ascii_spaces(&active_line)) {
+        if !has_active_content(logical_line, leading_ascii_spaces(logical_line)) {
             continue;
         }
         if let Some(marker) = fence_marker(trimmed) {
             fence = Some(marker);
             continue;
         }
-        if structural == heading {
+        if heading_without_closing_hashes(structural) == heading {
             if let Some(section) = section.take() {
                 sections.push(section);
             }
             section = Some(String::new());
+            (list_context, nested_list_indent) = (false, None);
             continue;
         }
         if section.is_some()
             && heading_level(structural).is_some_and(|level| level <= section_level)
         {
             sections.push(section.take().expect("active section"));
+            (list_context, nested_list_indent) = (false, None);
             continue;
         }
         if let Some(section) = &mut section {
-            section.push_str(&active_line);
+            section.push_str(logical_line);
             section.push('\n');
+        }
+        list_context = has_list_marker(trimmed);
+        if indentation < 4 {
+            nested_list_indent = None;
         }
     }
     sections.extend(section);
@@ -128,6 +153,15 @@ fn inside_html_comment(text: &str, index: usize) -> bool {
 fn heading_level(line: &str) -> Option<usize> {
     let level = line.bytes().take_while(|byte| *byte == b'#').count();
     (level > 0 && line.as_bytes().get(level) == Some(&b' ')).then_some(level)
+}
+
+fn heading_without_closing_hashes(line: &str) -> &str {
+    let without_hashes = line.trim_end_matches('#');
+    if without_hashes.len() < line.len() && without_hashes.ends_with(' ') {
+        without_hashes.trim_end()
+    } else {
+        line
+    }
 }
 
 pub(super) fn normalized_instruction(text: &str) -> String {
