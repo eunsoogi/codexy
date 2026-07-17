@@ -18,6 +18,13 @@ use policy::{
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
 const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
 const DELIVERY_POLICY: &str = "Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.";
+const ACTIVE_TIER_STARTS: &[&str] = &[
+    "Root/orchestrator",
+    "Generic implementation",
+    "A named custom specialist",
+    "`codexy-sentinel`",
+    "`gpt-5.6-luna`",
+];
 
 const REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
     (
@@ -112,6 +119,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let recipient_starts = RECIPIENT_ROUTING_BULLETS
         .iter()
         .map(|(start, _, _)| *start)
+        .chain(ACTIVE_TIER_STARTS.iter().copied())
         .chain(evidence::ROUTES.iter().map(|(marker, ..)| *marker))
         .collect::<Vec<_>>();
     let recipient_bullets = recipient_sections
