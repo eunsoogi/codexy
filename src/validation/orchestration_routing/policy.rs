@@ -19,7 +19,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             && (list_context || nested_list_indent.is_some())
             && has_list_marker(trimmed);
         let nested_continuation = indentation >= 4
-            && nested_list_indent.is_some_and(|list_indent| indentation > list_indent);
+            && nested_list_indent.is_some_and(|list_indent| indentation >= list_indent);
         if line.starts_with('\t') || (indentation >= 4 && !nested_marker && !nested_continuation) {
             if in_comment && line.contains("-->") {
                 in_comment = false;
@@ -31,10 +31,11 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
         let indentation = leading_ascii_spaces(&active_line);
         trimmed = active_line.trim_start_matches(' ');
         let logical_line = if nested_marker {
-            nested_list_indent = Some(indentation);
+            nested_list_indent = policy_line(trimmed)
+                .map(|instruction| indentation + trimmed.len() - instruction.len());
             trimmed
-        } else if let Some(list_indent) = nested_list_indent.filter(|_| nested_continuation) {
-            &active_line[list_indent..]
+        } else if nested_continuation {
+            &active_line[indentation - 2..]
         } else {
             active_line.as_str()
         };
@@ -44,7 +45,6 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             if let Some(section) = &mut section {
                 section.push('\n');
             }
-            (list_context, nested_list_indent) = (false, None);
             continue;
         }
         if !has_active_content(logical_line, leading_ascii_spaces(logical_line)) {
@@ -157,7 +157,8 @@ fn heading_level(line: &str) -> Option<usize> {
 
 fn heading_without_closing_hashes(line: &str) -> &str {
     let without_hashes = line.trim_end_matches('#');
-    if without_hashes.len() < line.len() && without_hashes.ends_with(' ') {
+    let separator = without_hashes.chars().next_back();
+    if without_hashes.len() < line.len() && separator.is_some_and(char::is_whitespace) {
         without_hashes.trim_end()
     } else {
         line
