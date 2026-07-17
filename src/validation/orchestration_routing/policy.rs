@@ -61,7 +61,7 @@ pub(super) fn policy_bullets(section: &str) -> Vec<String> {
     for line in section.lines() {
         let indentation = leading_ascii_spaces(line);
         let trimmed = line.trim_start_matches(' ').trim_end();
-        if indentation < 4 {
+        if has_active_content(line, indentation) {
             if let Some(bullet) = trimmed.strip_prefix("- ") {
                 bullets.push(bullet.to_owned());
                 continues = true;
@@ -70,7 +70,7 @@ pub(super) fn policy_bullets(section: &str) -> Vec<String> {
         }
         if trimmed.starts_with('#') || trimmed.is_empty() {
             continues = false;
-        } else if continues && (1..4).contains(&indentation) {
+        } else if continues && has_active_content(line, indentation) && indentation > 0 {
             if let Some(bullet) = bullets.last_mut() {
                 bullet.push(' ');
                 bullet.push_str(trimmed);
@@ -95,10 +95,10 @@ pub(super) fn recipient_policy_instructions(section: &str, starts: &[&str]) -> V
         let instruction = policy_line(trimmed).filter(|instruction| {
             trimmed.starts_with("- ") || starts.iter().any(|start| instruction.starts_with(start))
         });
-        if indentation < 4 && instruction.is_some() {
+        if has_active_content(line, indentation) && instruction.is_some() {
             finish_block(&mut instructions, &mut current);
             current = instruction.map(str::to_owned);
-        } else if (1..4).contains(&indentation) {
+        } else if has_active_content(line, indentation) && indentation > 0 {
             if let Some(current) = &mut current {
                 current.push(' ');
                 current.push_str(trimmed);
@@ -123,7 +123,7 @@ pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)>
         let trimmed = line.trim_start_matches(' ').trim_end();
         if trimmed.is_empty() || trimmed.starts_with('#') {
             finish_block(&mut blocks, &mut block);
-        } else if indentation < 4
+        } else if has_active_content(line, indentation)
             && policy_line(trimmed).is_some_and(|line| {
                 DIRECTIONS
                     .iter()
@@ -133,7 +133,7 @@ pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)>
             finish_block(&mut blocks, &mut block);
             block = policy_line(trimmed).map(str::to_owned);
         } else if let Some(current) = &mut block {
-            if (1..4).contains(&indentation) {
+            if has_active_content(line, indentation) && indentation > 0 {
                 current.push(' ');
                 current.push_str(trimmed);
             } else {
@@ -151,7 +151,7 @@ pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)>
 pub(super) fn has_negated_delivery_assignment(section: &str, direction: &str) -> bool {
     let negated = direction.replacen(" MUST pass", " MUST NOT pass", 1);
     section.lines().any(|line| {
-        leading_ascii_spaces(line) < 4
+        has_active_content(line, leading_ascii_spaces(line))
             && policy_line(line.trim_start_matches(' ').trim_end())
                 .is_some_and(|line| line.starts_with(&negated))
     })
@@ -222,6 +222,14 @@ fn strip_comments(line: &str, in_comment: &mut bool) -> String {
 
 fn leading_ascii_spaces(line: &str) -> usize {
     line.bytes().take_while(|byte| *byte == b' ').count()
+}
+
+fn has_active_content(line: &str, indentation: usize) -> bool {
+    indentation < 4
+        && line[indentation..]
+            .chars()
+            .next()
+            .is_some_and(|character| !character.is_whitespace())
 }
 
 fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {

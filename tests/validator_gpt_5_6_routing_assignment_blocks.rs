@@ -192,6 +192,9 @@ fn validator_preserves_wrapped_instructions_and_chained_comments() -> TestResult
     )?)?;
     assert_accepted(duplicate_recipient_section(
         "\u{2003}1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
+    )?)?;
+    assert_accepted(duplicate_recipient_section(
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.\n \u{2003}child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
     )?)
 }
 
@@ -200,7 +203,7 @@ fn validator_limits_directional_rules_to_ascii_indentation() -> TestResult {
     for policy in [
         "\u{2003}Parent-to-generic-child delivery MUST pass `thinking: \"high\"`.",
         "\u{2003}child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
-        "\u{2003}child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        " \u{2003}child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
     ] {
         assert_accepted(duplicate_recipient_section(policy)?)?;
     }
@@ -222,7 +225,7 @@ fn validator_ignores_unicode_prefixed_matrix_rules() -> TestResult {
     )?
     .replacen(
         "## Recipient Model Routing",
-        "\u{2003}- Root/orchestrator: MUST use `gpt-5.6-luna`.\n\n## Recipient Model Routing",
+        "- Root/orchestrator: MUST use `gpt-5.6-sol`.\n \u{2003}- Root/orchestrator: MUST use `gpt-5.6-luna`.\n\n## Recipient Model Routing",
         1,
     );
     assert_accepted(skill)
