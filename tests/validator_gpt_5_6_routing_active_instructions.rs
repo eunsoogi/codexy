@@ -63,6 +63,45 @@ fn validator_rejects_embedded_affirmative_delivery_clause() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_violation_after_indented_comment_close() -> TestResult {
+    assert_rejected(
+        "<!-- historical\n    -->\n- child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_rejects_wrapped_negated_delivery_clause() -> TestResult {
+    assert_rejected(
+        "- child-to-root delivery MUST\n  NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_rejects_wrapped_affirmative_delivery_clause() -> TestResult {
+    assert_rejected(
+        "- child-to-root delivery MUST\n  pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_keeps_indented_comment_openers_inactive() -> TestResult {
+    assert_rejected(
+        "    <!-- inactive opener\n- child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
+
+#[test]
+fn validator_ignores_wrapped_historical_reporting_prose() -> TestResult {
+    assert_accepted(duplicate_recipient_section(
+        "- Historical prose quotes child-to-root delivery MUST\n  pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+    )?)
+}
+
+#[test]
 fn validator_ignores_historical_heading_instructions() -> TestResult {
     assert_accepted(duplicate_recipient_section(
         "### Historical: Root/orchestrator: MUST use `gpt-5.6-luna`; child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",

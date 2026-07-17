@@ -1,46 +1,49 @@
-use super::policy::{finish_block, has_active_content, leading_ascii_spaces, policy_line};
+const DIRECTIONS: [&str; 2] = [
+    "Parent-to-generic-child delivery MUST pass",
+    "child-to-root delivery MUST pass",
+];
 
-pub(super) fn delivery(section: &str, instruction_starts: &[&str]) -> Vec<(&'static str, String)> {
-    const DIRECTIONS: [&str; 2] = [
-        "Parent-to-generic-child delivery MUST pass",
-        "child-to-root delivery MUST pass",
-    ];
-    let mut blocks = Vec::new();
-    let mut block = None;
-    for line in section.lines() {
-        let indentation = leading_ascii_spaces(line);
-        let trimmed = line.trim_start_matches(' ').trim_end();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            finish_block(&mut blocks, &mut block);
-        } else if has_active_content(line, indentation)
-            && policy_line(trimmed).is_some_and(|instruction| {
-                DIRECTIONS
-                    .iter()
-                    .any(|direction| instruction.starts_with(direction))
-                    || instruction_starts
-                        .iter()
-                        .any(|start| instruction.starts_with(start))
-                        && DIRECTIONS
-                            .iter()
-                            .any(|direction| instruction.contains(direction))
-            })
-        {
-            finish_block(&mut blocks, &mut block);
-            block = policy_line(trimmed).map(str::to_owned);
-        } else if let Some(current) = &mut block {
-            if has_active_content(line, indentation) && indentation > 0 {
-                current.push(' ');
-                current.push_str(trimmed);
-            } else {
-                finish_block(&mut blocks, &mut block);
-            }
-        }
-    }
-    finish_block(&mut blocks, &mut block);
-    blocks
-        .into_iter()
-        .flat_map(|block| split(&block, &DIRECTIONS))
+pub(super) const INSTRUCTION_STARTS: &[&str] = &[
+    "Parent-to-generic-child delivery MUST",
+    "child-to-root delivery MUST",
+];
+
+pub(super) fn delivery(
+    instructions: &[String],
+    instruction_starts: &[&str],
+) -> Vec<(&'static str, String)> {
+    instructions
+        .iter()
+        .filter(|instruction| has_direction(instruction, instruction_starts, &DIRECTIONS))
+        .flat_map(|instruction| split(instruction, &DIRECTIONS))
         .collect()
+}
+
+pub(super) fn has_negated(
+    instructions: &[String],
+    instruction_starts: &[&str],
+    direction: &str,
+) -> bool {
+    let negated = direction.replacen(" MUST pass", " MUST NOT pass", 1);
+    instructions.iter().any(|instruction| {
+        instruction.starts_with(&negated)
+            || instruction_starts
+                .iter()
+                .any(|start| instruction.starts_with(start))
+                && instruction.contains(&negated)
+    })
+}
+
+fn has_direction(instruction: &str, instruction_starts: &[&str], directions: &[&str]) -> bool {
+    directions
+        .iter()
+        .any(|direction| instruction.starts_with(direction))
+        || instruction_starts
+            .iter()
+            .any(|start| instruction.starts_with(start))
+            && directions
+                .iter()
+                .any(|direction| instruction.contains(direction))
 }
 
 pub(super) fn split(block: &str, directions: &[&'static str]) -> Vec<(&'static str, String)> {

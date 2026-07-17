@@ -6,6 +6,9 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let mut in_comment = false;
     for line in skill.lines() {
         if line.starts_with("    ") || line.starts_with('\t') {
+            if in_comment && line.contains("-->") {
+                in_comment = false;
+            }
             continue;
         }
         let mut trimmed = line.trim_start_matches(' ');
@@ -106,15 +109,6 @@ pub(super) fn recipient_policy_instructions(section: &str, starts: &[&str]) -> V
     instructions
 }
 
-pub(super) fn has_negated_delivery_assignment(section: &str, direction: &str) -> bool {
-    let negated = direction.replacen(" MUST pass", " MUST NOT pass", 1);
-    section.lines().any(|line| {
-        has_active_content(line, leading_ascii_spaces(line))
-            && policy_line(line.trim_start_matches(' ').trim_end())
-                .is_some_and(|line| line.contains(&negated))
-    })
-}
-
 pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> Vec<&'a str> {
     let marker = format!("{field}: \"");
     assignment
@@ -178,11 +172,11 @@ fn strip_comments(line: &str, in_comment: &mut bool) -> String {
     }
 }
 
-pub(super) fn leading_ascii_spaces(line: &str) -> usize {
+fn leading_ascii_spaces(line: &str) -> usize {
     line.bytes().take_while(|byte| *byte == b' ').count()
 }
 
-pub(super) fn has_active_content(line: &str, indentation: usize) -> bool {
+fn has_active_content(line: &str, indentation: usize) -> bool {
     indentation < 4
         && line[indentation..]
             .chars()
@@ -190,11 +184,11 @@ pub(super) fn has_active_content(line: &str, indentation: usize) -> bool {
             .is_some_and(|character| !character.is_whitespace())
 }
 
-pub(super) fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
+fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
     blocks.extend(block.take());
 }
 
-pub(super) fn policy_line(line: &str) -> Option<&str> {
+fn policy_line(line: &str) -> Option<&str> {
     line.strip_prefix("- ")
         .or_else(|| {
             let digits = line.chars().take_while(char::is_ascii_digit).count();

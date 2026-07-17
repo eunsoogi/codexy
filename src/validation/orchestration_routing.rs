@@ -11,8 +11,7 @@ mod evidence;
 mod policy;
 
 use policy::{
-    affirmative_field_values, has_negated_delivery_assignment, policy_bullets,
-    recipient_policy_instructions, sections_for_heading,
+    affirmative_field_values, policy_bullets, recipient_policy_instructions, sections_for_heading,
 };
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
@@ -111,11 +110,6 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         .iter()
         .map(|section| policy_bullets(section))
         .collect::<Vec<_>>();
-    let bullets = routing_bullets
-        .iter()
-        .flatten()
-        .cloned()
-        .collect::<Vec<_>>();
     let mut errors = routing_bullets
         .iter()
         .flat_map(|bullets| missing_required_bullets(&path, bullets, REQUIRED_BULLETS))
@@ -132,6 +126,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         .iter()
         .map(|(start, _, _)| *start)
         .chain(ACTIVE_TIER_STARTS.iter().copied())
+        .chain(assignments::INSTRUCTION_STARTS.iter().copied())
         .chain(evidence::ROUTES.iter().map(|(marker, ..)| *marker))
         .collect::<Vec<_>>();
     let recipient_bullets = recipient_sections
@@ -143,10 +138,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         &recipient_bullets,
         RECIPIENT_ROUTING_BULLETS,
     ));
-    let delivery_assignments = recipient_sections
-        .iter()
-        .flat_map(|section| assignments::delivery(section, &recipient_starts))
-        .collect::<Vec<_>>();
+    let delivery_assignments = assignments::delivery(&recipient_bullets, &recipient_starts);
     for (direction, model, error) in [
         (
             "Parent-to-generic-child delivery MUST pass",
@@ -170,10 +162,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         }) {
             errors.push(format!("{} {error}", display_relative(&path)));
         }
-        if recipient_sections
-            .iter()
-            .any(|section| has_negated_delivery_assignment(section, direction))
-        {
+        if assignments::has_negated(&recipient_bullets, &recipient_starts, direction) {
             errors.push(format!("{} {error}", display_relative(&path)));
         }
     }
@@ -195,8 +184,9 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             "codexy-sentinel must remain gpt-5.6-sol/xhigh",
         ),
     ] {
-        if bullets
+        if routing_bullets
             .iter()
+            .flatten()
             .map(String::as_str)
             .chain(recipient_bullets.iter().filter_map(|bullet| {
                 if bullet.starts_with("Captured #433 parent-to-generic-child evidence")
