@@ -109,17 +109,14 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         ));
         return errors;
     }
+    let recipient_starts = RECIPIENT_ROUTING_BULLETS
+        .iter()
+        .map(|(start, _, _)| *start)
+        .chain(evidence::ROUTES.iter().map(|(marker, ..)| *marker))
+        .collect::<Vec<_>>();
     let recipient_bullets = recipient_sections
         .iter()
-        .flat_map(|section| {
-            recipient_policy_instructions(
-                section,
-                &RECIPIENT_ROUTING_BULLETS
-                    .iter()
-                    .map(|(start, _, _)| *start)
-                    .collect::<Vec<_>>(),
-            )
-        })
+        .flat_map(|section| recipient_policy_instructions(section, &recipient_starts))
         .collect::<Vec<_>>();
     errors.extend(missing_required_bullets(
         &path,
@@ -198,22 +195,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             errors.push(format!("{} {message}", display_relative(&path)));
         }
     }
-    for (marker, recipient, sender, thread, direction) in [
-        (
-            "Captured #433 parent-to-generic-child evidence",
-            "gpt-5.6-terra",
-            "gpt-5.6-sol",
-            "child-433",
-            "parent-to-generic-child",
-        ),
-        (
-            "Reverse child-to-root evidence",
-            "gpt-5.6-sol",
-            "gpt-5.6-terra",
-            "root-433",
-            "child-to-root",
-        ),
-    ] {
+    for (marker, recipient, sender, thread, direction) in evidence::ROUTES {
         if evidence::invalid(&recipient_bullets, marker, recipient, sender, thread) {
             errors.push(format!(
                 "{} {direction} evidence must pass recipient {recipient}/high",

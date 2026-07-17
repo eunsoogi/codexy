@@ -1,3 +1,20 @@
+pub(super) const ROUTES: [(&str, &str, &str, &str, &str); 2] = [
+    (
+        "Captured #433 parent-to-generic-child evidence",
+        "gpt-5.6-terra",
+        "gpt-5.6-sol",
+        "child-433",
+        "parent-to-generic-child",
+    ),
+    (
+        "Reverse child-to-root evidence",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "root-433",
+        "child-to-root",
+    ),
+];
+
 pub(super) fn invalid(
     bullets: &[String],
     marker: &str,
