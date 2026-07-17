@@ -51,3 +51,10 @@ fn validator_rejects_combined_negated_delivery_assignment() -> TestResult {
         "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
     )?)
 }
+
+#[test]
+fn validator_ignores_heading_negated_delivery_assignment() -> TestResult {
+    assert_accepted(duplicate_recipient_section(
+        "### Historical: child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    )?)
+}
