@@ -1,5 +1,3 @@
-use std::process::Command;
-
 mod support;
 
 use support::copy_dir;
@@ -199,21 +197,15 @@ fn assert_rejected(skill: String, expected: &str) -> TestResult {
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     std::fs::write(path, &skill)?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?;
+    let output = support::validator_routing(&plugin_root)?;
     assert!(
         !output.status.success(),
         "routing bypass unexpectedly passed:\n{skill}"
     );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains(expected),
-        "stderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
+    support::assert_structured_literals(
+        &String::from_utf8_lossy(&output.stderr),
+        "routing rejection diagnostic",
+        &[expected],
     );
     Ok(())
 }
@@ -229,13 +221,7 @@ fn assert_accepted(skill: String) -> TestResult {
         plugin_root.join("skills/codex-orchestration/SKILL.md"),
         skill,
     )?;
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?;
+    let output = support::validator_routing(&plugin_root)?;
     assert!(
         output.status.success(),
         "valid routing policy rejected:\n{}",

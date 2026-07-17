@@ -5,7 +5,7 @@ use tempfile::tempdir;
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::{complete_plugin_fixture, make_executable};
+use release_archive_support::{complete_plugin_fixture, create_archive, make_executable};
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
     Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
@@ -13,18 +13,6 @@ fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::pr
         .arg(plugin_root)
         .output()
         .expect("archive gate should start")
-}
-
-fn create_archive(root: &std::path::Path, archive: &std::path::Path) {
-    let status = Command::new("tar")
-        .args(["-C"])
-        .arg(root)
-        .args(["-czf"])
-        .arg(archive)
-        .arg("plugins/codexy")
-        .status()
-        .expect("tar should start");
-    assert!(status.success(), "tar failed: {status}");
 }
 
 fn write_mcp_config(plugin_root: &std::path::Path, nested: bool, argv: bool) {
@@ -64,7 +52,7 @@ fn archive_gate_checks_wrapper_modes_for_supported_mcp_config_shapes() {
         write_mcp_config(&plugin_root, nested, argv);
 
         let valid_archive = root.path().join(format!("{label}-valid.tar.gz"));
-        create_archive(root.path(), &valid_archive);
+        create_archive(root.path(), &valid_archive).expect("archive fixture");
         let valid_output = run_gate(&valid_archive, &plugin_root);
         assert!(
             valid_output.status.success(),
@@ -79,7 +67,7 @@ fn archive_gate_checks_wrapper_modes_for_supported_mcp_config_shapes() {
         permissions.set_mode(0o644);
         std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
         let invalid_archive = root.path().join(format!("{label}-invalid.tar.gz"));
-        create_archive(root.path(), &invalid_archive);
+        create_archive(root.path(), &invalid_archive).expect("archive fixture");
         let invalid_output = run_gate(&invalid_archive, &plugin_root);
         assert!(!invalid_output.status.success());
         assert!(

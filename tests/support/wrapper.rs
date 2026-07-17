@@ -204,10 +204,29 @@ pub(crate) fn copy_dir(
         if source_path.is_dir() {
             copy_dir(&source_path, &target_path)?;
         } else {
-            std::fs::copy(source_path, target_path)?;
+            clone_seed_file(&source_path, &target_path)?;
         }
     }
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+
+    let source_c = CString::new(source.as_os_str().as_bytes())?;
+    let target_c = CString::new(target.as_os_str().as_bytes())?;
+    // SAFETY: both pointers are NUL-terminated paths valid for this call.
+    if unsafe { libc::clonefile(source_c.as_ptr(), target_c.as_ptr(), 0) } == 0 {
+        return Ok(());
+    }
+    std::fs::copy(source, target).map(|_| ())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
+    std::fs::copy(source, target).map(|_| ())
 }
 
 pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {

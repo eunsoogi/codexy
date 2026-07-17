@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Report warm Rust test-binary timings for a reproducible performance baseline."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import statistics
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+REGRESSION_BUDGET_SECONDS = 523.261
+SUBPROCESS_TIMEOUT_SECONDS = 120.0
+
+
+def test_binaries(root: Path, timeout: float) -> list[tuple[str, str]]:
+    command = [
+        "cargo",
+        "test",
+        "--offline",
+        "--all-targets",
+        "--no-run",
+        "--message-format=json",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        sys.stderr.write(f"cargo test discovery timed out after {timeout:.3f} seconds\n")
+        raise SystemExit(124) from None
+    if result.returncode:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(result.returncode)
+    binaries = {
+        (message["executable"], message.get("target", {}).get("src_path", ""))
+        for line in result.stdout.splitlines()
+        if (message := json.loads(line)).get("profile", {}).get("test")
+        and message.get("executable")
+    }
+    return sorted(binaries)
+
+
+def run_binary(path: str, root: Path, timeout: float) -> tuple[float, int]:
+    started = time.perf_counter()
+    try:
+        result = subprocess.run([path, "--quiet"], cwd=root, check=False, timeout=timeout)
+        return time.perf_counter() - started, result.returncode
+    except subprocess.TimeoutExpired:
+        return time.perf_counter() - started, 124
+
+
+def report_path(source: str, root: Path) -> str:
+    try:
+        return str(Path(source).resolve().relative_to(root))
+    except ValueError:
+        return Path(source).name
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument(
+        "--max-median-seconds",
+        type=float,
+        default=REGRESSION_BUDGET_SECONDS,
+        help="must remain the repository's fixed warmed-suite regression budget",
+    )
+    parser.add_argument(
+        "--slowest",
+        type=int,
+        default=10,
+        help="number of slowest integration binaries to report for each sample",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=SUBPROCESS_TIMEOUT_SECONDS,
+        help="bounded timeout for each discovery and integration-binary subprocess",
+    )
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
+    arguments = parser.parse_args()
+    if arguments.iterations < 1:
+        parser.error("--iterations must be at least 1")
+    if arguments.max_median_seconds != REGRESSION_BUDGET_SECONDS:
+        parser.error(
+            f"--max-median-seconds must remain {REGRESSION_BUDGET_SECONDS:.3f} for reproducible CI policy"
+        )
+    if arguments.slowest < 1:
+        parser.error("--slowest must be at least 1")
+    if arguments.timeout_seconds <= 0:
+        parser.error("--timeout-seconds must be positive")
+    root = arguments.root.resolve()
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    binaries = test_binaries(root, arguments.timeout_seconds)
+    print(f"# codexy-rust-test-profile commit={commit} samples={arguments.iterations}")
+    print("sample\tbinary\tseconds\texit")
+    sample_totals: list[float] = []
+    for iteration in range(1, arguments.iterations + 1):
+        sample_total = 0.0
+        timings: list[tuple[float, str, str, int]] = []
+        for binary, source in binaries:
+            elapsed, status = run_binary(binary, root, arguments.timeout_seconds)
+            print(f"{iteration}\t{Path(binary).name}\t{elapsed:.3f}\t{status}")
+            if status:
+                return status
+            sample_total += elapsed
+            timings.append((elapsed, binary, source, status))
+        for elapsed, binary, source, status in sorted(timings, reverse=True)[: arguments.slowest]:
+            print(
+                f"slowest\t{iteration}\t{Path(binary).name}\t{report_path(source, root)}\t{elapsed:.3f}\t{status}"
+            )
+        sample_totals.append(sample_total)
+        print(f"sample-total\tTOTAL\t{sample_total:.3f}\t0")
+    median = statistics.median(sample_totals)
+    print(f"median\tTOTAL\t{median:.3f}\t0")
+    status = 0 if median <= REGRESSION_BUDGET_SECONDS else 1
+    result = "PASS" if status == 0 else "FAIL"
+    print(
+        "budget\tMAX_MEDIAN_SECONDS\t"
+        f"{REGRESSION_BUDGET_SECONDS:.3f}\t{median:.3f}\t{result}"
+    )
+    return status
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

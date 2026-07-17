@@ -7,6 +7,7 @@ mod child_thread_ledger_skill;
 mod package;
 mod package_archive;
 mod package_fixture;
+mod release_archive;
 mod release_cache;
 mod release_cache_audit;
 mod release_cache_fixture;
@@ -24,7 +25,10 @@ pub(crate) use agent_model_assignments::{
     TestResult, assert_privacy_diagnostic, public_contract_import_check,
     validate_agent_replacement, validate_catalog_replacement,
 };
-pub(crate) use child_thread_ledger_skill::{copy_plugin_fixture, stderr, validator};
+pub(crate) use child_thread_ledger_skill::{
+    copy_plugin_fixture, plugin_fixture, stderr, validator, validator_in_process,
+    validator_instruction_policy, validator_routing,
+};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,
@@ -36,6 +40,7 @@ pub(super) use package::{
     assert_wrapper_requires_token_for_default_artifact_without_cargo,
     assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo,
 };
+pub(crate) use release_archive::assert_structured_literals;
 pub(super) use release_cache::{
     assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
     assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,

@@ -4,7 +4,10 @@ use tempfile::tempdir;
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::{complete_plugin_fixture, make_executable};
+use release_archive_support::{
+    assert_archive_scanner_contract, assert_runtime_workflow_contract, complete_plugin_fixture,
+    create_archive, make_executable,
+};
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
     Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
@@ -14,43 +17,20 @@ fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::pr
         .expect("archive gate should start")
 }
 
-fn create_archive(root: &std::path::Path, archive: &std::path::Path) {
-    let status = Command::new("tar")
-        .args(["-C"])
-        .arg(root)
-        .args(["-czf"])
-        .arg(archive)
-        .arg("plugins/codexy")
-        .status()
-        .expect("tar should start");
-    assert!(status.success(), "tar failed: {status}");
-}
-
 #[test]
 fn archive_gate_allows_documentation_path_examples() {
     let script = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
     )
     .expect("archive gate script");
-    assert!(script.contains("rg -a -n"));
-    assert!(script.contains("grep -a -Hn"));
-    assert!(script.contains("runtime/*.bin"));
-    assert!(script.contains("! -name '*.md'"));
-    assert!(script.contains("! -name '*.txt'"));
-    assert!(script.contains("command -v python3"));
-    assert!(script.contains("rg or grep is required"));
-    assert!(script.contains("hygiene scan failed"));
-    assert!(script.contains("duplicate archive entries"));
-    assert!(script.contains("unexpected runtime artifact"));
     let checker = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response"),
     )
     .expect("MCP response checker");
-    assert!(checker.contains("invalid JSON-RPC version for response id"));
-    assert!(script.contains("unsafe archive path"));
-    assert!(checker.contains("set(responses) != {1, 2}"));
+    assert_archive_scanner_contract(&script, &checker);
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
 }
+
 #[test]
 fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     let workflow = std::fs::read_to_string(
@@ -59,10 +39,7 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     )
     .expect("runtime workflow");
     assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
-    assert!(workflow.contains(
-        "scripts/validate-plugin-config --plugin-root plugins/codexy --check\n          rsync -a"
-    ));
-    assert!(workflow.contains("Smoke test native MCP runtimes"));
+    assert_runtime_workflow_contract(&workflow);
 }
 #[test]
 fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
@@ -70,7 +47,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
     let runtime = plugin_root.join("runtime");
     let archive = root.path().join("valid.tar.gz");
-    create_archive(root.path(), &archive);
+    create_archive(root.path(), &archive).expect("archive fixture");
     let output = run_gate(&archive, &plugin_root);
     assert!(
         output.status.success(),
@@ -89,7 +66,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
         permissions.set_mode(0o644);
         std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
         let non_executable_wrapper_archive = root.path().join("non-executable-wrapper.tar.gz");
-        create_archive(root.path(), &non_executable_wrapper_archive);
+        create_archive(root.path(), &non_executable_wrapper_archive).expect("archive fixture");
         let non_executable_wrapper_output = run_gate(&non_executable_wrapper_archive, &plugin_root);
         assert!(!non_executable_wrapper_output.status.success());
         assert!(
@@ -101,7 +78,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
 
     std::fs::write(runtime.join("debug.log"), "debug\n").expect("runtime extra fixture");
     let extra_runtime_archive = root.path().join("extra-runtime.tar.gz");
-    create_archive(root.path(), &extra_runtime_archive);
+    create_archive(root.path(), &extra_runtime_archive).expect("archive fixture");
     let extra_runtime_output = run_gate(&extra_runtime_archive, &plugin_root);
     assert!(!extra_runtime_output.status.success());
     assert!(
@@ -114,7 +91,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let missing_bytes = std::fs::read(&missing_runtime).expect("read runtime");
     std::fs::remove_file(&missing_runtime).expect("remove runtime");
     let missing_archive = root.path().join("missing-runtime.tar.gz");
-    create_archive(root.path(), &missing_archive);
+    create_archive(root.path(), &missing_archive).expect("archive fixture");
     assert!(!run_gate(&missing_archive, &plugin_root).status.success());
     std::fs::write(&missing_runtime, missing_bytes).expect("restore runtime");
     make_executable(&missing_runtime).expect("restore runtime permissions");
@@ -122,7 +99,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let malformed_bytes = std::fs::read(&missing_runtime).expect("read runtime again");
     std::fs::write(&missing_runtime, b"not-a-binary").expect("malform runtime");
     let malformed_archive = root.path().join("malformed-runtime.tar.gz");
-    create_archive(root.path(), &malformed_archive);
+    create_archive(root.path(), &malformed_archive).expect("archive fixture");
     assert!(!run_gate(&malformed_archive, &plugin_root).status.success());
     std::fs::write(&missing_runtime, malformed_bytes).expect("restore valid runtime");
     make_executable(&missing_runtime).expect("restore valid runtime permissions");
@@ -130,7 +107,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
         .expect("secret fixture");
     let secret_archive = root.path().join("secret.tar.gz");
-    create_archive(root.path(), &secret_archive);
+    create_archive(root.path(), &secret_archive).expect("archive fixture");
     assert!(!run_gate(&secret_archive, &plugin_root).status.success());
     std::fs::remove_file(plugin_root.join("README.md")).expect("remove visible secret");
 
@@ -141,7 +118,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     )
     .expect("ignored secret fixture");
     let ignored_secret_archive = root.path().join("ignored-secret.tar.gz");
-    create_archive(root.path(), &ignored_secret_archive);
+    create_archive(root.path(), &ignored_secret_archive).expect("archive fixture");
     assert!(
         !run_gate(&ignored_secret_archive, &plugin_root)
             .status
@@ -160,7 +137,7 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
         let pem_path = plugin_root.join(name);
         std::fs::write(&pem_path, pem).expect("private-key fixture");
         let pem_archive = root.path().join(format!("{name}.tar.gz"));
-        create_archive(root.path(), &pem_archive);
+        create_archive(root.path(), &pem_archive).expect("archive fixture");
         let pem_output = run_gate(&pem_archive, &plugin_root);
         assert!(!pem_output.status.success());
         assert!(
@@ -180,7 +157,7 @@ fn archive_gate_rejects_incomplete_packaged_surface() {
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     std::fs::write(plugin_root.join("plugin.txt"), "incomplete\n").expect("fixture");
     let archive = root.path().join("incomplete.tar.gz");
-    create_archive(root.path(), &archive);
+    create_archive(root.path(), &archive).expect("archive fixture");
 
     let output = run_gate(&archive, &plugin_root);
     assert!(!output.status.success());
@@ -217,7 +194,7 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
     let file = plugin_root.join("plugin.txt");
     std::fs::write(&file, "version=1.1.0\n").expect("fixture");
     let archive = root.path().join("stale.tar.gz");
-    create_archive(root.path(), &archive);
+    create_archive(root.path(), &archive).expect("archive fixture");
     std::fs::write(&file, "version=1.1.1\n").expect("stale fixture");
     assert!(!run_gate(&archive, &plugin_root).status.success());
 
@@ -227,7 +204,7 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
     std::fs::write(extra_plugin.join("plugin.txt"), "version=1.1.0\n").expect("fixture");
     std::fs::write(extra_plugin.join("unexpected.txt"), "extra\n").expect("fixture");
     let extra_archive = extra_root.path().join("extra.tar.gz");
-    create_archive(extra_root.path(), &extra_archive);
+    create_archive(extra_root.path(), &extra_archive).expect("archive fixture");
     std::fs::remove_file(extra_plugin.join("unexpected.txt")).expect("stage mutation");
     assert!(!run_gate(&extra_archive, &extra_plugin).status.success());
 }
@@ -242,7 +219,7 @@ fn archive_gate_rejects_symlink_entries() {
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     symlink("/etc/passwd", plugin_root.join("bad-link")).expect("symlink fixture");
     let archive = root.path().join("symlink.tar.gz");
-    create_archive(root.path(), &archive);
+    create_archive(root.path(), &archive).expect("archive fixture");
 
     let output = run_gate(&archive, &plugin_root);
     assert!(!output.status.success());

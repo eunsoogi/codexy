@@ -1,8 +1,6 @@
-use std::process::Command;
-
 mod support;
 
-use support::copy_dir;
+use support::{copy_dir, validator_routing};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -181,13 +179,7 @@ fn assert_routing_rejected(mutate: impl FnOnce(String) -> String, expected: &str
     )?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     std::fs::write(&path, mutate(std::fs::read_to_string(&path)?))?;
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?;
+    let output = validator_routing(&plugin_root)?;
     assert!(
         !output.status.success(),
         "routing bypass unexpectedly passed"
@@ -209,13 +201,7 @@ fn assert_routing_accepted(mutate: impl FnOnce(String) -> String) -> TestResult 
     )?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     std::fs::write(&path, mutate(std::fs::read_to_string(&path)?))?;
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?;
+    let output = validator_routing(&plugin_root)?;
     assert!(
         output.status.success(),
         "reporting prose unexpectedly failed:\n{}",

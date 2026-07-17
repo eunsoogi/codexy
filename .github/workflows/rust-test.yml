@@ -24,3 +24,6 @@ jobs:
 
       - name: Run full Rust test suite
         run: cargo test --locked --all-targets
+
+      - name: Enforce warmed Rust profile budget
+        run: scripts/profile-rust-tests --iterations 3 --slowest 5

@@ -8,7 +8,7 @@ use tempfile::{TempDir, tempdir};
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::complete_plugin_fixture;
+use release_archive_support::{complete_plugin_fixture, create_archive};
 
 const AKIA_SECRET: &str = "AKIA1234567890ABCDEF";
 const ASIA_SECRET: &str = "ASIA1234567890ABCDEF";
@@ -24,18 +24,6 @@ fn run_gate(archive: &Path, plugin_root: &Path, path: Option<&Path>) -> Output {
     command.output().expect("archive gate should start")
 }
 
-fn create_archive(root: &Path, archive: &Path) {
-    let status = Command::new("tar")
-        .args(["-C"])
-        .arg(root)
-        .args(["-czf"])
-        .arg(archive)
-        .arg("plugins/codexy")
-        .status()
-        .expect("tar should start");
-    assert!(status.success(), "tar failed: {status}");
-}
-
 fn secret_archive(secret: &str) -> (TempDir, PathBuf, PathBuf) {
     let root = tempdir().expect("tempdir");
     let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
@@ -45,7 +33,7 @@ fn secret_archive(secret: &str) -> (TempDir, PathBuf, PathBuf) {
     )
     .expect("secret fixture");
     let archive = root.path().join("secret.tar.gz");
-    create_archive(root.path(), &archive);
+    create_archive(root.path(), &archive).expect("archive fixture");
     (root, plugin_root, archive)
 }
 

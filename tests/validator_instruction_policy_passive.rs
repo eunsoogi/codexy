@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 mod support;
 
@@ -239,10 +238,10 @@ fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> 
 }
 
 fn validator(plugin_root: &Path, mode: &str) -> TestResult<std::process::Output> {
-    let root = plugin_root.to_str().ok_or("plugin root path")?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--plugin-root", root, mode])
-        .output()?)
+    if mode != "--check" {
+        return Err(format!("unsupported instruction-policy mode: {mode}").into());
+    }
+    support::validator_instruction_policy(plugin_root)
 }
 
 fn stderr(output: &std::process::Output) -> String {
