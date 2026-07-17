@@ -1,8 +1,10 @@
 use super::super::markdown::{Fence, fence_marker};
 use super::assignments;
+
 pub(super) fn section_for_heading(skill: &str, heading: &str) -> Option<String> {
     sections_for_heading(skill, heading).into_iter().next()
 }
+
 pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let mut sections = Vec::new();
     let (mut section, mut fence) = (None::<String>, None::<Fence>);
@@ -153,7 +155,7 @@ pub(super) fn has_negated_delivery_assignment(section: &str, direction: &str) ->
             && policy_line(line.trim_start_matches(' ').trim_end())
                 .is_some_and(|line| line.starts_with(&negated))
     }) || delivery_assignments(section)
-        .iter()
+        .into_iter()
         .any(|(_, assignment)| assignment.contains(&negated))
 }
 
@@ -233,9 +235,7 @@ fn has_active_content(line: &str, indentation: usize) -> bool {
 }
 
 fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
-    if let Some(block) = block.take() {
-        blocks.push(block);
-    }
+    blocks.extend(block.take());
 }
 
 fn policy_line(line: &str) -> Option<&str> {
