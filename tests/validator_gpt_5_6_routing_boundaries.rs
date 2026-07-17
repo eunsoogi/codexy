@@ -139,6 +139,20 @@ fn validator_accepts_heading_and_paragraph_after_exact_evidence() -> TestResult 
     ))
 }
 
+#[test]
+fn validator_matches_recipient_heading_with_trailing_spaces() -> TestResult {
+    let section = |model| {
+        format!(
+            "## Recipient Model Routing   \n\n- child-to-root delivery MUST pass `model: \"{model}\"` and `thinking: \"high\"`.\n\n## Read Next"
+        )
+    };
+    assert_recipient_assignment_rejected(
+        routing_skill()?.replacen("## Read Next", &section("gpt-5.6-terra"), 1),
+        "gpt-5.6-sol/high",
+    )?;
+    assert_accepted(routing_skill()?.replacen("## Read Next", &section("gpt-5.6-sol"), 1))
+}
+
 fn routing_skill() -> TestResult<String> {
     Ok(std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

@@ -21,6 +21,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
         }
         let active_line = strip_comments(line, &mut in_comment);
         trimmed = active_line.trim_start_matches(' ');
+        let structural = trimmed.trim_end();
         if trimmed.is_empty() {
             if let Some(section) = &mut section {
                 section.push('\n');
@@ -34,14 +35,16 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             fence = Some(marker);
             continue;
         }
-        if trimmed == heading {
+        if structural == heading {
             if let Some(section) = section.take() {
                 sections.push(section);
             }
             section = Some(String::new());
             continue;
         }
-        if section.is_some() && heading_level(trimmed).is_some_and(|level| level <= section_level) {
+        if section.is_some()
+            && heading_level(structural).is_some_and(|level| level <= section_level)
+        {
             sections.push(section.take().expect("active section"));
             continue;
         }

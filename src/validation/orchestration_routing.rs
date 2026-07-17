@@ -209,7 +209,14 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         }
     }
     for (marker, recipient, sender, thread, direction) in evidence::ROUTES {
-        if evidence::invalid(&recipient_bullets, marker, recipient, sender, thread) {
+        if evidence::invalid(
+            &recipient_bullets,
+            &recipient_starts,
+            marker,
+            recipient,
+            sender,
+            thread,
+        ) {
             errors.push(format!(
                 "{} {direction} evidence must pass recipient {recipient}/high",
                 display_relative(&path)

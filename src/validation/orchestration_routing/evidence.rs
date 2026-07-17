@@ -1,3 +1,5 @@
+use super::policy::normalized_instruction;
+
 pub(super) const ROUTES: [(&str, &str, &str, &str, &str); 2] = [
     (
         "Captured #433 parent-to-generic-child evidence",
@@ -17,6 +19,7 @@ pub(super) const ROUTES: [(&str, &str, &str, &str, &str); 2] = [
 
 pub(super) fn invalid(
     bullets: &[String],
+    instruction_starts: &[&str],
     marker: &str,
     recipient: &str,
     sender: &str,
@@ -24,12 +27,39 @@ pub(super) fn invalid(
 ) -> bool {
     let evidence = bullets
         .iter()
-        .filter(|bullet| bullet.starts_with(marker))
+        .filter(|bullet| is_active_instruction(bullet, instruction_starts))
+        .flat_map(|bullet| records(bullet, marker))
         .collect::<Vec<_>>();
     evidence.is_empty()
         || evidence
             .into_iter()
             .any(|bullet| !valid(bullet, marker, recipient, sender, thread))
+}
+
+fn is_active_instruction(instruction: &str, starts: &[&str]) -> bool {
+    let instruction = normalized_instruction(instruction).to_ascii_lowercase();
+    starts
+        .iter()
+        .any(|start| instruction.starts_with(&normalized_instruction(start).to_ascii_lowercase()))
+}
+
+fn records<'a>(instruction: &'a str, marker: &str) -> Vec<&'a str> {
+    instruction
+        .match_indices(marker)
+        .map(|(start, _)| {
+            let after_marker = start + marker.len();
+            let end = ROUTES
+                .iter()
+                .filter_map(|(next, ..)| {
+                    instruction[after_marker..]
+                        .find(next)
+                        .map(|index| after_marker + index)
+                })
+                .min()
+                .unwrap_or(instruction.len());
+            instruction[start..end].trim_end()
+        })
+        .collect()
 }
 
 fn valid(bullet: &str, marker: &str, recipient: &str, sender: &str, thread: &str) -> bool {
