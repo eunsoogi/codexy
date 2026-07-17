@@ -44,10 +44,25 @@ def run_binary(path: str, root: Path) -> tuple[float, int]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument(
+        "--max-median-seconds",
+        type=float,
+        help="fail when the warmed-suite median exceeds this deterministic regression budget",
+    )
+    parser.add_argument(
+        "--slowest",
+        type=int,
+        default=10,
+        help="number of slowest integration binaries to report for each sample",
+    )
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
     arguments = parser.parse_args()
     if arguments.iterations < 1:
         parser.error("--iterations must be at least 1")
+    if arguments.max_median_seconds is not None and arguments.max_median_seconds < 0:
+        parser.error("--max-median-seconds must be non-negative")
+    if arguments.slowest < 1:
+        parser.error("--slowest must be at least 1")
     root = arguments.root.resolve()
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     binaries = test_binaries(root)
@@ -56,15 +71,28 @@ def main() -> int:
     sample_totals: list[float] = []
     for iteration in range(1, arguments.iterations + 1):
         sample_total = 0.0
+        timings: list[tuple[float, str, int]] = []
         for binary in binaries:
             elapsed, status = run_binary(binary, root)
             print(f"{iteration}\t{Path(binary).name}\t{elapsed:.3f}\t{status}")
             if status:
                 return status
             sample_total += elapsed
+            timings.append((elapsed, binary, status))
+        for elapsed, binary, status in sorted(timings, reverse=True)[: arguments.slowest]:
+            print(f"slowest\t{iteration}\t{Path(binary).name}\t{elapsed:.3f}\t{status}")
         sample_totals.append(sample_total)
         print(f"sample-total\tTOTAL\t{sample_total:.3f}\t0")
-    print(f"median\tTOTAL\t{statistics.median(sample_totals):.3f}\t0")
+    median = statistics.median(sample_totals)
+    print(f"median\tTOTAL\t{median:.3f}\t0")
+    if arguments.max_median_seconds is not None:
+        status = 0 if median <= arguments.max_median_seconds else 1
+        result = "PASS" if status == 0 else "FAIL"
+        print(
+            "budget\tMAX_MEDIAN_SECONDS\t"
+            f"{arguments.max_median_seconds:.3f}\t{median:.3f}\t{result}"
+        )
+        return status
     return 0
 
 
