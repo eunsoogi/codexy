@@ -1,9 +1,4 @@
 use super::super::markdown::{Fence, fence_marker};
-use super::assignments;
-
-pub(super) fn section_for_heading(skill: &str, heading: &str) -> Option<String> {
-    sections_for_heading(skill, heading).into_iter().next()
-}
 
 pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let mut sections = Vec::new();
@@ -111,52 +106,13 @@ pub(super) fn recipient_policy_instructions(section: &str, starts: &[&str]) -> V
     instructions
 }
 
-pub(super) fn delivery_assignments(section: &str) -> Vec<(&'static str, String)> {
-    const DIRECTIONS: [&str; 2] = [
-        "Parent-to-generic-child delivery MUST pass",
-        "child-to-root delivery MUST pass",
-    ];
-    let mut blocks = Vec::new();
-    let mut block = None;
-    for line in section.lines() {
-        let indentation = leading_ascii_spaces(line);
-        let trimmed = line.trim_start_matches(' ').trim_end();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            finish_block(&mut blocks, &mut block);
-        } else if has_active_content(line, indentation)
-            && policy_line(trimmed).is_some_and(|line| {
-                DIRECTIONS
-                    .iter()
-                    .any(|direction| line.starts_with(direction))
-            })
-        {
-            finish_block(&mut blocks, &mut block);
-            block = policy_line(trimmed).map(str::to_owned);
-        } else if let Some(current) = &mut block {
-            if has_active_content(line, indentation) && indentation > 0 {
-                current.push(' ');
-                current.push_str(trimmed);
-            } else {
-                finish_block(&mut blocks, &mut block);
-            }
-        }
-    }
-    finish_block(&mut blocks, &mut block);
-    blocks
-        .into_iter()
-        .flat_map(|block| assignments::split(&block, &DIRECTIONS))
-        .collect()
-}
-
 pub(super) fn has_negated_delivery_assignment(section: &str, direction: &str) -> bool {
     let negated = direction.replacen(" MUST pass", " MUST NOT pass", 1);
     section.lines().any(|line| {
         has_active_content(line, leading_ascii_spaces(line))
             && policy_line(line.trim_start_matches(' ').trim_end())
                 .is_some_and(|line| line.contains(&negated))
-    }) || delivery_assignments(section)
-        .into_iter()
-        .any(|(_, assignment)| assignment.contains(&negated))
+    })
 }
 
 pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> Vec<&'a str> {
@@ -222,11 +178,11 @@ fn strip_comments(line: &str, in_comment: &mut bool) -> String {
     }
 }
 
-fn leading_ascii_spaces(line: &str) -> usize {
+pub(super) fn leading_ascii_spaces(line: &str) -> usize {
     line.bytes().take_while(|byte| *byte == b' ').count()
 }
 
-fn has_active_content(line: &str, indentation: usize) -> bool {
+pub(super) fn has_active_content(line: &str, indentation: usize) -> bool {
     indentation < 4
         && line[indentation..]
             .chars()
@@ -234,11 +190,11 @@ fn has_active_content(line: &str, indentation: usize) -> bool {
             .is_some_and(|character| !character.is_whitespace())
 }
 
-fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
+pub(super) fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
     blocks.extend(block.take());
 }
 
-fn policy_line(line: &str) -> Option<&str> {
+pub(super) fn policy_line(line: &str) -> Option<&str> {
     line.strip_prefix("- ")
         .or_else(|| {
             let digits = line.chars().take_while(char::is_ascii_digit).count();

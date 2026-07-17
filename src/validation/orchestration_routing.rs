@@ -11,8 +11,8 @@ mod evidence;
 mod policy;
 
 use policy::{
-    affirmative_field_values, delivery_assignments, has_negated_delivery_assignment,
-    policy_bullets, recipient_policy_instructions, section_for_heading, sections_for_heading,
+    affirmative_field_values, has_negated_delivery_assignment, policy_bullets,
+    recipient_policy_instructions, sections_for_heading,
 };
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
@@ -100,14 +100,26 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(&path)
         )];
     };
-    let Some(section) = section_for_heading(&skill, "## GPT-5.6 Routing Matrix") else {
+    let routing_sections = sections_for_heading(&skill, "## GPT-5.6 Routing Matrix");
+    if routing_sections.is_empty() {
         return vec![format!(
             "{} must define the GPT-5.6 routing matrix",
             display_relative(&path)
         )];
-    };
-    let bullets = policy_bullets(&section);
-    let mut errors = missing_required_bullets(&path, &bullets, REQUIRED_BULLETS);
+    }
+    let routing_bullets = routing_sections
+        .iter()
+        .map(|section| policy_bullets(section))
+        .collect::<Vec<_>>();
+    let bullets = routing_bullets
+        .iter()
+        .flatten()
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut errors = routing_bullets
+        .iter()
+        .flat_map(|bullets| missing_required_bullets(&path, bullets, REQUIRED_BULLETS))
+        .collect::<Vec<_>>();
     let recipient_sections = sections_for_heading(&skill, RECIPIENT_ROUTING_HEADING);
     if recipient_sections.is_empty() {
         errors.push(format!(
@@ -133,7 +145,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     ));
     let delivery_assignments = recipient_sections
         .iter()
-        .flat_map(|section| delivery_assignments(section))
+        .flat_map(|section| assignments::delivery(section, &recipient_starts))
         .collect::<Vec<_>>();
     for (direction, model, error) in [
         (
