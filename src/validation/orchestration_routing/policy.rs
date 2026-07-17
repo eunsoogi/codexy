@@ -7,26 +7,28 @@ pub(super) fn section_for_heading(skill: &str, heading: &str) -> Option<String> 
 
 pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let mut sections = Vec::new();
-    let mut section: Option<String> = None;
-    let mut fence: Option<Fence> = None;
+    let (mut section, mut fence) = (None::<String>, None::<Fence>);
     let mut in_comment = false;
     for line in skill.lines() {
         if line.starts_with("    ") || line.starts_with('\t') {
             continue;
         }
-        let mut trimmed = line.trim_start();
+        let mut trimmed = line.trim_start_matches(' ');
         if let Some(marker) = fence {
-            if marker.closes(trimmed) {
+            if has_active_content(line, leading_ascii_spaces(line)) && marker.closes(trimmed) {
                 fence = None;
             }
             continue;
         }
         let active_line = strip_comments(line, &mut in_comment);
-        trimmed = active_line.trim_start();
+        trimmed = active_line.trim_start_matches(' ');
         if trimmed.is_empty() {
             if let Some(section) = &mut section {
                 section.push('\n');
             }
+            continue;
+        }
+        if !has_active_content(&active_line, leading_ascii_spaces(&active_line)) {
             continue;
         }
         if let Some(marker) = fence_marker(trimmed) {
@@ -49,9 +51,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             section.push('\n');
         }
     }
-    if let Some(section) = section {
-        sections.push(section);
-    }
+    sections.extend(section);
     sections
 }
 

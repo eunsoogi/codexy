@@ -1,6 +1,6 @@
 mod support;
 
-use support::routing_validator::{TestResult, assert_policy_rejected};
+use support::routing_validator::{TestResult, assert_policy_rejected, assert_rejected};
 
 #[test]
 fn validator_rejects_mixed_unicode_supplied_matrix_clause() -> TestResult {
@@ -19,6 +19,21 @@ fn validator_rejects_mixed_unicode_supplied_matrix_clause() -> TestResult {
             ),
             "generic child thread must explicitly request",
         )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_mixed_unicode_structural_markers() -> TestResult {
+    for prefix in [" ", "  ", "   "] {
+        for (marker, closing) in [("## Historical", ""), ("```", "\n```")] {
+            assert_rejected(
+                &format!(
+                    "{prefix}\u{2003}{marker}\nchild-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.{closing}"
+                ),
+                "gpt-5.6-sol/high",
+            )?;
+        }
     }
     Ok(())
 }
