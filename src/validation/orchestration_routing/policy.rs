@@ -216,8 +216,17 @@ fn list_separator(rest: &str) -> Option<&str> {
 }
 
 fn strip_task_marker(line: &str) -> &str {
-    ["[ ] ", "[x] ", "[X] "]
-        .iter()
-        .find_map(|marker| line.strip_prefix(marker))
+    let content = line.trim_start_matches([' ', '\t']);
+    let Some(rest) = content.strip_prefix('[') else {
+        return line;
+    };
+    let Some(marker) = rest.chars().next() else {
+        return line;
+    };
+    let Some(after) = rest[marker.len_utf8()..].strip_prefix(']') else {
+        return line;
+    };
+    (matches!(marker, 'x' | 'X') || marker.is_whitespace())
+        .then(|| after.trim_start_matches([' ', '\t']))
         .unwrap_or(line)
 }

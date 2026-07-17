@@ -128,13 +128,14 @@ fn validator_checks_commonmark_lazy_continuations() -> TestResult {
 
 #[test]
 fn validator_checks_active_task_list_items() -> TestResult {
-    let item = |marker: &str, model: &str| {
+    let item = |prefix: &str, model: &str| {
         duplicate_recipient_section(&format!(
-            "- [{marker}] child-to-root delivery MUST pass `model: \"{model}\"` and `thinking: \"high\"`."
+            "-{prefix}child-to-root delivery MUST pass `model: \"{model}\"` and `thinking: \"high\"`."
         ))
     };
-    assert_policy_rejected(item("x", "gpt-5.6-terra")?, "gpt-5.6-sol/high")?;
-    assert_policy_rejected(item(" ", "gpt-5.6-terra")?, "gpt-5.6-sol/high")?;
-    assert_accepted(item("x", "gpt-5.6-sol")?)?;
-    assert_accepted(item(" ", "gpt-5.6-sol")?)
+    for prefix in [" [x] ", " [ ] ", " [x]\t", "  [x] ", " [\t] "] {
+        assert_policy_rejected(item(prefix, "gpt-5.6-terra")?, "gpt-5.6-sol/high")?;
+        assert_accepted(item(prefix, "gpt-5.6-sol")?)?;
+    }
+    Ok(())
 }
