@@ -30,6 +30,7 @@ fn archive_gate_allows_documentation_path_examples() {
     assert_archive_scanner_contract(&script, &checker);
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
 }
+
 #[test]
 fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     let workflow = std::fs::read_to_string(
