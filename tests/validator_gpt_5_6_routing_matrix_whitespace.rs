@@ -1,6 +1,9 @@
 mod support;
 
-use support::routing_validator::{TestResult, assert_policy_rejected, assert_rejected};
+use support::routing_validator::{
+    TestResult, assert_accepted, assert_policy_rejected, assert_rejected,
+    duplicate_recipient_section,
+};
 
 #[test]
 fn validator_rejects_mixed_unicode_supplied_matrix_clause() -> TestResult {
@@ -36,4 +39,15 @@ fn validator_rejects_mixed_unicode_structural_markers() -> TestResult {
         }
     }
     Ok(())
+}
+
+#[test]
+fn validator_rejects_combined_negated_delivery_assignment() -> TestResult {
+    assert_rejected(
+        "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )?;
+    assert_accepted(duplicate_recipient_section(
+        "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    )?)
 }

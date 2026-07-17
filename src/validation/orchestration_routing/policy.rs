@@ -153,7 +153,7 @@ pub(super) fn has_negated_delivery_assignment(section: &str, direction: &str) ->
     section.lines().any(|line| {
         has_active_content(line, leading_ascii_spaces(line))
             && policy_line(line.trim_start_matches(' ').trim_end())
-                .is_some_and(|line| line.starts_with(&negated))
+                .is_some_and(|line| line.contains(&negated))
     })
 }
 
