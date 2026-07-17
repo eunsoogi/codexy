@@ -207,6 +207,20 @@ fn validator_limits_directional_rules_to_ascii_indentation() -> TestResult {
     ] {
         assert_accepted(duplicate_recipient_section(policy)?)?;
     }
+    for prefix in [" ", "  ", "   "] {
+        assert_policy_rejected(
+            duplicate_recipient_section(&format!(
+                "Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST\n{prefix}\u{2003}explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT infer either from historical actual `turn_context` state, the sender, or ambient defaults."
+            ))?,
+            "thread messages must explicitly pass",
+        )?;
+        assert_rejected(
+            &format!(
+                "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n{prefix}\u{2003}and `thinking: \"high\"`."
+            ),
+            "gpt-5.6-sol/high",
+        )?;
+    }
     assert_rejected(
         "  Parent-to-generic-child delivery MUST pass `thinking: \"high\"`.",
         "gpt-5.6-terra/high",
@@ -215,18 +229,4 @@ fn validator_limits_directional_rules_to_ascii_indentation() -> TestResult {
         "   child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
         "gpt-5.6-sol/high",
     )
-}
-
-#[test]
-fn validator_ignores_unicode_prefixed_matrix_rules() -> TestResult {
-    let skill = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
-    )?
-    .replacen(
-        "## Recipient Model Routing",
-        "- Root/orchestrator: MUST use `gpt-5.6-sol`.\n \u{2003}- Root/orchestrator: MUST use `gpt-5.6-luna`.\n\n## Recipient Model Routing",
-        1,
-    );
-    assert_accepted(skill)
 }
