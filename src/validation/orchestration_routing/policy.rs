@@ -1,5 +1,7 @@
 use super::super::markdown::{Fence, fence_marker};
 
+pub(super) use super::assignments::affirmative_field_values;
+
 pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let mut sections = Vec::new();
     let (mut section, mut fence) = (None::<String>, None::<Fence>);
@@ -54,7 +56,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             fence = Some(marker);
             continue;
         }
-        if heading_without_closing_hashes(structural) == heading {
+        if heading_matches(structural, heading) {
             if let Some(section) = section.take() {
                 sections.push(section);
             }
@@ -103,7 +105,7 @@ pub(super) fn policy_instructions(section: &str, starts: &[&str]) -> Vec<String>
         if has_active_content(line, indentation) && instruction.is_some() {
             finish_block(&mut instructions, &mut current);
             current = instruction.map(str::to_owned);
-        } else if has_active_content(line, indentation) && indentation > 0 {
+        } else if has_active_content(line, indentation) {
             if let Some(current) = &mut current {
                 current.push(' ');
                 current.push_str(trimmed);
@@ -116,43 +118,14 @@ pub(super) fn policy_instructions(section: &str, starts: &[&str]) -> Vec<String>
     instructions
 }
 
-pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> Vec<&'a str> {
-    let marker = format!("{field}: \"");
-    assignment
-        .match_indices(&marker)
-        .filter(|(start, _)| {
-            assignment[..*start]
-                .chars()
-                .next_back()
-                .is_none_or(|character| {
-                    !character.is_ascii_alphanumeric() && !matches!(character, '_' | '-' | '.')
-                })
-        })
-        .filter(|(start, _)| !inside_html_comment(assignment, *start))
-        .filter_map(|(start, _)| {
-            let before = &assignment[..start];
-            let clause_start = before
-                .rfind(';')
-                .map_or(0, |index| index + 1)
-                .max(sentence_start(before));
-            let clause = &before[clause_start..];
-            (!clause.contains("MUST NOT")).then(|| {
-                let value = &assignment[start + marker.len()..];
-                value.split_once('"').map_or(value, |(value, _)| value)
-            })
-        })
-        .collect()
-}
-
-fn inside_html_comment(text: &str, index: usize) -> bool {
-    text[..index]
-        .rfind("<!--")
-        .is_some_and(|open| text[..index].rfind("-->").is_none_or(|close| close < open))
-}
-
 fn heading_level(line: &str) -> Option<usize> {
     let level = line.bytes().take_while(|byte| *byte == b'#').count();
-    (level > 0 && line.as_bytes().get(level) == Some(&b' ')).then_some(level)
+    (level > 0
+        && line[level..]
+            .chars()
+            .next()
+            .is_some_and(char::is_whitespace))
+    .then_some(level)
 }
 
 fn heading_without_closing_hashes(line: &str) -> &str {
@@ -165,23 +138,17 @@ fn heading_without_closing_hashes(line: &str) -> &str {
     }
 }
 
-pub(super) fn normalized_instruction(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
+fn heading_matches(line: &str, expected: &str) -> bool {
+    let Some(level) = heading_level(line) else {
+        return false;
+    };
+    heading_level(expected) == Some(level)
+        && heading_without_closing_hashes(line)[level..].trim_start()
+            == expected[level..].trim_start()
 }
 
-fn sentence_start(text: &str) -> usize {
-    text.match_indices(". ").fold(0, |last, (index, _)| {
-        let abbreviation = text[..index].ends_with("e.g") || text[..index].ends_with("i.e");
-        if abbreviation {
-            last
-        } else {
-            text[index + 2..]
-                .chars()
-                .next()
-                .filter(|character| character.is_uppercase())
-                .map_or(last, |_| index + 2)
-        }
-    })
+pub(super) fn normalized_instruction(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn strip_comments(line: &str, in_comment: &mut bool) -> String {
@@ -222,27 +189,35 @@ fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
 }
 
 fn policy_line(line: &str) -> Option<&str> {
-    line.strip_prefix("- ")
-        .or_else(|| line.strip_prefix("* "))
-        .or_else(|| line.strip_prefix("+ "))
-        .or_else(|| {
-            let digits = line.chars().take_while(char::is_ascii_digit).count();
-            line.get(digits..)
-                .and_then(|rest| rest.strip_prefix(". ").or_else(|| rest.strip_prefix(") ")))
-                .filter(|_| digits > 0)
-        })
+    list_item(line)
+        .map(strip_task_marker)
         .or((!line.starts_with('#')).then_some(line))
 }
 
 fn has_list_marker(line: &str) -> bool {
-    ["- ", "* ", "+ "]
+    list_item(line).is_some()
+}
+
+fn list_item(line: &str) -> Option<&str> {
+    ["-", "*", "+"]
         .iter()
-        .any(|marker| line.starts_with(marker))
-        || line
-            .chars()
-            .take_while(char::is_ascii_digit)
-            .count()
-            .checked_sub(1)
-            .and_then(|index| line.as_bytes().get(index + 1..index + 3))
-            .is_some_and(|marker| marker == b". " || marker == b") ")
+        .find_map(|marker| line.strip_prefix(marker).and_then(list_separator))
+        .or_else(|| {
+            let digits = line.chars().take_while(char::is_ascii_digit).count();
+            line.get(digits..)
+                .and_then(|rest| rest.strip_prefix('.').or_else(|| rest.strip_prefix(')')))
+                .and_then(list_separator)
+                .filter(|_| digits > 0)
+        })
+}
+
+fn list_separator(rest: &str) -> Option<&str> {
+    rest.strip_prefix(' ').or_else(|| rest.strip_prefix('\t'))
+}
+
+fn strip_task_marker(line: &str) -> &str {
+    ["[ ] ", "[x] ", "[X] "]
+        .iter()
+        .find_map(|marker| line.strip_prefix(marker))
+        .unwrap_or(line)
 }
