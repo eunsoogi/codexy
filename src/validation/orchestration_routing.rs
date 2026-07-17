@@ -6,9 +6,22 @@ use crate::validation::orchestration_routing_semantics::{
     has_conflicting_specialist_override, has_conflicting_tier_assignment,
 };
 
-use super::markdown::{Fence, fence_marker};
+mod assignments;
+mod evidence;
+mod policy;
+
+use policy::{affirmative_field_values, policy_instructions, sections_for_heading};
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
+const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
+const DELIVERY_POLICY: &str = "Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.";
+const ACTIVE_TIER_STARTS: &[&str] = &[
+    "Root/orchestrator",
+    "Generic implementation",
+    "A named custom specialist",
+    "`codexy-sentinel`",
+    "`gpt-5.6-luna`",
+];
 
 const REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
     (
@@ -49,6 +62,33 @@ const REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
     ),
 ];
 
+const RECIPIENT_ROUTING_BULLETS: &[(&str, &[&str], &str)] = &[
+    (
+        "Configured UI model is authoritative; active child/parent thread ledger entries MUST",
+        &[
+            "record each destination owner's configured UI `model` and `thinking`",
+            "separately from historical actual `turn_context` model and per-message overrides.",
+        ],
+        "active child/parent thread ledger must record the configured UI model and thinking",
+    ),
+    (
+        "Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST",
+        &[
+            "explicitly pass the recipient's configured UI `model` and `thinking`.",
+            "MUST NOT infer either from historical actual `turn_context` state, the sender, or ambient defaults.",
+        ],
+        "thread messages must explicitly pass the recipient model and thinking",
+    ),
+    (
+        "Parent-to-generic-child delivery MUST pass",
+        &[
+            "`model: \"gpt-5.6-terra\"` and `thinking: \"high\"`",
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        ],
+        "parent-to-generic-child messages must use recipient gpt-5.6-terra/high; child-to-root messages must use recipient gpt-5.6-sol/high",
+    ),
+];
+
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let path = plugin_root.join(SKILL_PATH);
     let Ok(skill) = fs::read_to_string(&path) else {
@@ -57,124 +97,154 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(&path)
         )];
     };
-
-    let Some(section) = routing_section(&skill) else {
+    let routing_sections = sections_for_heading(&skill, "## GPT-5.6 Routing Matrix");
+    if routing_sections.is_empty() {
         return vec![format!(
             "{} must define the GPT-5.6 routing matrix",
             display_relative(&path)
         )];
-    };
-    let bullets = policy_bullets(&section);
-    let mut errors = REQUIRED_BULLETS
+    }
+    let routing_starts = REQUIRED_BULLETS
         .iter()
-        .filter(|(start, clauses, _)| {
-            bullets
-                .iter()
-                .find(|bullet| required_clause_matches(bullet, start))
-                .is_none_or(|bullet| clauses.iter().any(|clause| !bullet.contains(clause)))
-        })
-        .map(|(_, _, error)| format!("{} {error}", display_relative(&path)))
+        .map(|(start, _, _)| *start)
+        .chain(ACTIVE_TIER_STARTS.iter().copied())
         .collect::<Vec<_>>();
-    if bullets
+    let routing_bullets = routing_sections
         .iter()
-        .any(|bullet| has_conflicting_specialist_override(bullet))
-    {
+        .map(|section| policy_instructions(section, &routing_starts))
+        .collect::<Vec<_>>();
+    let mut errors = routing_bullets
+        .iter()
+        .flat_map(|bullets| missing_required_bullets(&path, bullets, REQUIRED_BULLETS))
+        .collect::<Vec<_>>();
+    let recipient_sections = sections_for_heading(&skill, RECIPIENT_ROUTING_HEADING);
+    if recipient_sections.is_empty() {
         errors.push(format!(
-            "{} named custom specialists must keep their TOML model and reasoning effort",
+            "{} must define recipient model routing policy",
             display_relative(&path)
         ));
+        return errors;
     }
-    if bullets
+    let recipient_starts = RECIPIENT_ROUTING_BULLETS
         .iter()
-        .any(|bullet| has_conflicting_tier_assignment(bullet))
-    {
-        errors.push(format!(
-            "{} root/orchestrator must use gpt-5.6-sol; generic child thread must explicitly request gpt-5.6-terra/high",
-            display_relative(&path)
-        ));
+        .map(|(start, _, _)| *start)
+        .chain(ACTIVE_TIER_STARTS.iter().copied())
+        .chain(assignments::INSTRUCTION_STARTS.iter().copied())
+        .chain(evidence::ROUTES.iter().map(|(marker, ..)| *marker))
+        .collect::<Vec<_>>();
+    let recipient_bullets = recipient_sections
+        .iter()
+        .flat_map(|section| policy_instructions(section, &recipient_starts))
+        .collect::<Vec<_>>();
+    errors.extend(missing_required_bullets(
+        &path,
+        &recipient_bullets,
+        RECIPIENT_ROUTING_BULLETS,
+    ));
+    let delivery_assignments = assignments::delivery(&recipient_bullets, &recipient_starts);
+    for (direction, model, error) in [
+        (
+            "parent-to-generic-child delivery must pass",
+            "gpt-5.6-terra",
+            "parent-to-generic-child messages must use recipient gpt-5.6-terra/high",
+        ),
+        (
+            "child-to-root delivery must pass",
+            "gpt-5.6-sol",
+            "child-to-root messages must use recipient gpt-5.6-sol/high",
+        ),
+    ] {
+        if delivery_assignments.iter().any(|(found, assignment)| {
+            let models = affirmative_field_values(assignment, "model");
+            let efforts = affirmative_field_values(assignment, "thinking");
+            *found == direction
+                && (!models.contains(&model)
+                    || models.iter().any(|value| *value != model)
+                    || !efforts.contains(&"high")
+                    || efforts.iter().any(|value| *value != "high"))
+        }) {
+            errors.push(format!("{} {error}", display_relative(&path)));
+        }
+        if assignments::has_negated(&recipient_bullets, &recipient_starts, direction) {
+            errors.push(format!("{} {error}", display_relative(&path)));
+        }
     }
-    if bullets
-        .iter()
-        .any(|bullet| has_conflicting_luna_default(bullet))
-    {
-        errors.push(format!(
-            "{} Luna must remain limited to bounded mechanical work",
-            display_relative(&path)
-        ));
+    for (conflict, message) in [
+        (
+            has_conflicting_specialist_override as fn(&str) -> bool,
+            "named custom specialists must keep their TOML model and reasoning effort",
+        ),
+        (
+            has_conflicting_tier_assignment,
+            "root/orchestrator must use gpt-5.6-sol; generic child thread must explicitly request gpt-5.6-terra/high",
+        ),
+        (
+            has_conflicting_luna_default,
+            "Luna must remain limited to bounded mechanical work",
+        ),
+        (
+            has_conflicting_sentinel_tier,
+            "codexy-sentinel must remain gpt-5.6-sol/xhigh",
+        ),
+    ] {
+        if routing_bullets
+            .iter()
+            .flatten()
+            .map(String::as_str)
+            .chain(recipient_bullets.iter().filter_map(|bullet| {
+                if bullet.starts_with("Captured #433 parent-to-generic-child evidence")
+                    || bullet.starts_with("Reverse child-to-root evidence")
+                {
+                    None
+                } else {
+                    bullet
+                        .strip_prefix(DELIVERY_POLICY)
+                        .filter(|suffix| !suffix.trim().is_empty())
+                        .or((!bullet.starts_with(DELIVERY_POLICY)).then_some(bullet))
+                }
+            }))
+            .any(|bullet| conflict(bullet))
+        {
+            errors.push(format!("{} {message}", display_relative(&path)));
+        }
     }
-    if bullets
-        .iter()
-        .any(|bullet| has_conflicting_sentinel_tier(bullet))
-    {
-        errors.push(format!(
-            "{} codexy-sentinel must remain gpt-5.6-sol/xhigh",
-            display_relative(&path)
-        ));
+    for (marker, recipient, sender, thread, direction) in evidence::ROUTES {
+        if evidence::invalid(
+            &recipient_bullets,
+            &recipient_starts,
+            marker,
+            recipient,
+            sender,
+            thread,
+        ) {
+            errors.push(format!(
+                "{} {direction} evidence must pass recipient {recipient}/high",
+                display_relative(&path)
+            ));
+        }
     }
     errors
+}
+
+fn missing_required_bullets(
+    path: &Path,
+    bullets: &[String],
+    required: &[(&str, &[&str], &str)],
+) -> Vec<String> {
+    required
+        .iter()
+        .filter(|(start, clauses, _)| {
+            let mut matches = bullets
+                .iter()
+                .filter(|bullet| required_clause_matches(bullet, start));
+            matches.clone().next().is_none()
+                || matches.any(|bullet| clauses.iter().any(|clause| !bullet.contains(clause)))
+        })
+        .map(|(_, _, error)| format!("{} {error}", display_relative(path)))
+        .collect()
 }
 
 fn required_clause_matches(bullet: &str, prefix: &str) -> bool {
     bullet.starts_with(prefix)
         && (!prefix.ends_with("MUST") || !bullet[prefix.len()..].trim_start().starts_with("NOT"))
-}
-
-fn routing_section(skill: &str) -> Option<String> {
-    let mut section = None;
-    let mut fence: Option<Fence> = None;
-    let mut in_comment = false;
-    for line in skill.lines() {
-        if line.starts_with("    ") || line.starts_with('\t') {
-            continue;
-        }
-        let trimmed = line.trim_start();
-        if let Some(marker) = fence {
-            if marker.closes(trimmed) {
-                fence = None;
-            }
-            continue;
-        }
-        if in_comment {
-            if trimmed.contains("-->") {
-                in_comment = false;
-            }
-            continue;
-        }
-        if trimmed.starts_with("<!--") {
-            in_comment = !trimmed.contains("-->");
-            continue;
-        }
-        if let Some(marker) = fence_marker(trimmed) {
-            fence = Some(marker);
-            continue;
-        }
-        if trimmed == "## GPT-5.6 Routing Matrix" {
-            section = Some(String::new());
-            continue;
-        }
-        if section.is_some() && trimmed.starts_with("## ") {
-            break;
-        }
-        if let Some(section) = &mut section {
-            section.push_str(line);
-            section.push('\n');
-        }
-    }
-    section
-}
-
-fn policy_bullets(section: &str) -> Vec<String> {
-    let mut bullets = Vec::new();
-    for line in section.lines() {
-        let trimmed = line.trim();
-        if let Some(bullet) = trimmed.strip_prefix("- ") {
-            bullets.push(bullet.to_owned());
-        } else if !trimmed.is_empty() {
-            if let Some(bullet) = bullets.last_mut() {
-                bullet.push(' ');
-                bullet.push_str(trimmed);
-            }
-        }
-    }
-    bullets
 }
