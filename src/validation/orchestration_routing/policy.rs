@@ -3,6 +3,7 @@ use super::super::markdown::{Fence, fence_marker};
 pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     let mut sections = Vec::new();
     let (mut section, mut fence) = (None::<String>, None::<Fence>);
+    let section_level = heading_level(heading).expect("validated heading");
     let mut in_comment = false;
     for line in skill.lines() {
         if line.starts_with("    ") || line.starts_with('\t') {
@@ -40,7 +41,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
             section = Some(String::new());
             continue;
         }
-        if section.is_some() && trimmed.starts_with("## ") {
+        if section.is_some() && heading_level(trimmed).is_some_and(|level| level <= section_level) {
             sections.push(section.take().expect("active section"));
             continue;
         }
@@ -53,34 +54,7 @@ pub(super) fn sections_for_heading(skill: &str, heading: &str) -> Vec<String> {
     sections
 }
 
-pub(super) fn policy_bullets(section: &str) -> Vec<String> {
-    let mut bullets = Vec::new();
-    let mut continues = false;
-    for line in section.lines() {
-        let indentation = leading_ascii_spaces(line);
-        let trimmed = line.trim_start_matches(' ').trim_end();
-        if has_active_content(line, indentation) {
-            if let Some(bullet) = trimmed.strip_prefix("- ") {
-                bullets.push(bullet.to_owned());
-                continues = true;
-                continue;
-            }
-        }
-        if trimmed.starts_with('#') || trimmed.is_empty() {
-            continues = false;
-        } else if continues && has_active_content(line, indentation) && indentation > 0 {
-            if let Some(bullet) = bullets.last_mut() {
-                bullet.push(' ');
-                bullet.push_str(trimmed);
-            }
-        } else {
-            continues = false;
-        }
-    }
-    bullets
-}
-
-pub(super) fn recipient_policy_instructions(section: &str, starts: &[&str]) -> Vec<String> {
+pub(super) fn policy_instructions(section: &str, starts: &[&str]) -> Vec<String> {
     let mut instructions = Vec::new();
     let mut current = None;
     for line in section.lines() {
@@ -91,7 +65,12 @@ pub(super) fn recipient_policy_instructions(section: &str, starts: &[&str]) -> V
             continue;
         }
         let instruction = policy_line(trimmed).filter(|instruction| {
-            trimmed.starts_with("- ") || starts.iter().any(|start| instruction.starts_with(start))
+            has_list_marker(trimmed)
+                || starts.iter().any(|start| {
+                    normalized_instruction(instruction)
+                        .to_ascii_lowercase()
+                        .starts_with(&normalized_instruction(start).to_ascii_lowercase())
+                })
         });
         if has_active_content(line, indentation) && instruction.is_some() {
             finish_block(&mut instructions, &mut current);
@@ -113,7 +92,14 @@ pub(super) fn affirmative_field_values<'a>(assignment: &'a str, field: &str) -> 
     let marker = format!("{field}: \"");
     assignment
         .match_indices(&marker)
-        .filter(|(start, _)| assignment[..*start].ends_with('`'))
+        .filter(|(start, _)| {
+            assignment[..*start]
+                .chars()
+                .next_back()
+                .is_none_or(|character| {
+                    !character.is_ascii_alphanumeric() && !matches!(character, '_' | '-' | '.')
+                })
+        })
         .filter(|(start, _)| !inside_html_comment(assignment, *start))
         .filter_map(|(start, _)| {
             let before = &assignment[..start];
@@ -134,6 +120,15 @@ fn inside_html_comment(text: &str, index: usize) -> bool {
     text[..index]
         .rfind("<!--")
         .is_some_and(|open| text[..index].rfind("-->").is_none_or(|close| close < open))
+}
+
+fn heading_level(line: &str) -> Option<usize> {
+    let level = line.bytes().take_while(|byte| *byte == b'#').count();
+    (level > 0 && line.as_bytes().get(level) == Some(&b' ')).then_some(level)
+}
+
+pub(super) fn normalized_instruction(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn sentence_start(text: &str) -> usize {
@@ -190,6 +185,8 @@ fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
 
 fn policy_line(line: &str) -> Option<&str> {
     line.strip_prefix("- ")
+        .or_else(|| line.strip_prefix("* "))
+        .or_else(|| line.strip_prefix("+ "))
         .or_else(|| {
             let digits = line.chars().take_while(char::is_ascii_digit).count();
             line.get(digits..)
@@ -197,4 +194,17 @@ fn policy_line(line: &str) -> Option<&str> {
                 .filter(|_| digits > 0)
         })
         .or((!line.starts_with('#')).then_some(line))
+}
+
+fn has_list_marker(line: &str) -> bool {
+    ["- ", "* ", "+ "]
+        .iter()
+        .any(|marker| line.starts_with(marker))
+        || line
+            .chars()
+            .take_while(char::is_ascii_digit)
+            .count()
+            .checked_sub(1)
+            .and_then(|index| line.as_bytes().get(index + 1..index + 3))
+            .is_some_and(|marker| marker == b". " || marker == b") ")
 }

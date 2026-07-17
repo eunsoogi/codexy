@@ -10,9 +10,7 @@ mod assignments;
 mod evidence;
 mod policy;
 
-use policy::{
-    affirmative_field_values, policy_bullets, recipient_policy_instructions, sections_for_heading,
-};
+use policy::{affirmative_field_values, policy_instructions, sections_for_heading};
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
 const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
@@ -106,9 +104,14 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(&path)
         )];
     }
+    let routing_starts = REQUIRED_BULLETS
+        .iter()
+        .map(|(start, _, _)| *start)
+        .chain(ACTIVE_TIER_STARTS.iter().copied())
+        .collect::<Vec<_>>();
     let routing_bullets = routing_sections
         .iter()
-        .map(|section| policy_bullets(section))
+        .map(|section| policy_instructions(section, &routing_starts))
         .collect::<Vec<_>>();
     let mut errors = routing_bullets
         .iter()
@@ -131,7 +134,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         .collect::<Vec<_>>();
     let recipient_bullets = recipient_sections
         .iter()
-        .flat_map(|section| recipient_policy_instructions(section, &recipient_starts))
+        .flat_map(|section| policy_instructions(section, &recipient_starts))
         .collect::<Vec<_>>();
     errors.extend(missing_required_bullets(
         &path,
@@ -141,12 +144,12 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let delivery_assignments = assignments::delivery(&recipient_bullets, &recipient_starts);
     for (direction, model, error) in [
         (
-            "Parent-to-generic-child delivery MUST pass",
+            "parent-to-generic-child delivery must pass",
             "gpt-5.6-terra",
             "parent-to-generic-child messages must use recipient gpt-5.6-terra/high",
         ),
         (
-            "child-to-root delivery MUST pass",
+            "child-to-root delivery must pass",
             "gpt-5.6-sol",
             "child-to-root messages must use recipient gpt-5.6-sol/high",
         ),

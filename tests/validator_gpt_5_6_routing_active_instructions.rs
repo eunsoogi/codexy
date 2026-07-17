@@ -114,3 +114,99 @@ fn validator_ignores_commented_and_fenced_matrix_headings() -> TestResult {
         "```markdown\n## GPT-5.6 Routing Matrix\n- Root/orchestrator: MUST use `gpt-5.6-luna`.\n```\n<!--\n## GPT-5.6 Routing Matrix\n- Root/orchestrator: MUST use `gpt-5.6-luna`.\n-->",
     )?)
 }
+
+#[test]
+fn validator_rejects_all_active_markdown_instruction_markers() -> TestResult {
+    for policy in [
+        "Root/orchestrator: MUST use `gpt-5.6-luna`.",
+        "1. Root/orchestrator: MUST use `gpt-5.6-luna`.",
+    ] {
+        assert_policy_rejected(
+            before_recipient(policy)?,
+            "root/orchestrator must use gpt-5.6-sol",
+        )?;
+    }
+    for policy in [
+        "* child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "+ child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+    ] {
+        assert_rejected(policy, "gpt-5.6-sol/high")?;
+    }
+    assert_accepted(before_recipient(
+        "Root/orchestrator: MUST use `gpt-5.6-sol`.\n1. Root/orchestrator: MUST use `gpt-5.6-sol`.",
+    )?)?;
+    for policy in [
+        "* child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "+ child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    ] {
+        assert_accepted(duplicate_recipient_section(policy)?)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_normalizes_active_delivery_directions() -> TestResult {
+    for (policy, expected) in [
+        (
+            "- Child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+            "gpt-5.6-sol/high",
+        ),
+        (
+            "- Child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+            "gpt-5.6-sol/high",
+        ),
+        (
+            "- parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"`.",
+            "gpt-5.6-terra/high",
+        ),
+        (
+            "- parent-to-generic-child delivery MUST NOT pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+            "gpt-5.6-terra/high",
+        ),
+        (
+            "- child-to-root  delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+            "gpt-5.6-sol/high",
+        ),
+        (
+            "- child-to-root <!-- active annotation --> delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+            "gpt-5.6-sol/high",
+        ),
+    ] {
+        assert_rejected(policy, expected)?;
+    }
+    for policy in [
+        "- Child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "- child-to-root  delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "- child-to-root <!-- active annotation --> delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+    ] {
+        assert_accepted(duplicate_recipient_section(policy)?)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_unspanned_conflicting_delivery_fields() -> TestResult {
+    for policy in [
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`, model: \"gpt-5.6-terra\", and `thinking: \"high\"`.",
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`, `thinking: \"high\"`, and thinking: \"low\".",
+    ] {
+        assert_rejected(policy, "gpt-5.6-sol/high")?;
+    }
+    assert_accepted(duplicate_recipient_section(
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`; MUST NOT pass model: \"gpt-5.6-terra\" or thinking: \"low\".",
+    )?)?;
+    assert_accepted(duplicate_recipient_section(
+        "- Historical prose quotes child-to-root delivery MUST pass model: \"gpt-5.6-terra\" and thinking: \"low\".",
+    )?)
+}
+
+#[test]
+fn validator_stops_h2_policy_at_h1_boundaries() -> TestResult {
+    assert_accepted(duplicate_recipient_section(
+        "# Unrelated Appendix\n\n- child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+    )?)?;
+    assert_rejected(
+        "### Active detail\n\n- child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "gpt-5.6-sol/high",
+    )
+}
