@@ -76,10 +76,10 @@ fn validator_cli_rejects_node_script_with_tab_separator() -> Result<(), Box<dyn 
         !output.status.success(),
         "validator should reject node token"
     );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("must not run \"node\""),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    support::assert_structured_literals(
+        &String::from_utf8_lossy(&output.stderr),
+        "noncanonical node hook rejection",
+        &["compiled read-only package before execution"],
     );
     Ok(())
 }
@@ -99,10 +99,10 @@ fn validator_cli_rejects_nodejs_script_alias() -> Result<(), Box<dyn std::error:
         !output.status.success(),
         "validator should reject nodejs script alias"
     );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("must not run \"nodejs\""),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    support::assert_structured_literals(
+        &String::from_utf8_lossy(&output.stderr),
+        "noncanonical nodejs hook rejection",
+        &["compiled read-only package before execution"],
     );
     Ok(())
 }
@@ -124,10 +124,10 @@ fn validator_cli_rejects_node_script_behind_shell_wrappers()
             !output.status.success(),
             "validator should reject wrapped node token in {line}"
         );
-        assert!(
-            String::from_utf8_lossy(&output.stderr).contains("must not run \"node\""),
-            "unexpected stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
+        support::assert_structured_literals(
+            &String::from_utf8_lossy(&output.stderr),
+            "noncanonical wrapped-node hook rejection",
+            &["compiled read-only package before execution"],
         );
     }
     Ok(())

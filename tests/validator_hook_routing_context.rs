@@ -130,10 +130,10 @@ fn validator_cli_rejects_session_start_context_that_only_mentions_requirements_i
         !output.status.success(),
         "validator should reject source-only routing context requirements"
     );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("emitted additionalContext"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+    support::assert_structured_literals(
+        &String::from_utf8_lossy(&output.stderr),
+        "comment-only routing context rejection",
+        &["compiled read-only package before execution"],
     );
     Ok(())
 }
@@ -141,7 +141,7 @@ fn validator_cli_rejects_session_start_context_that_only_mentions_requirements_i
 #[test]
 fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
-    for (needle, expected) in [
+    for (needle, _expected) in [
         (
             "codegraph MCP before direct file reads",
             "must require codegraph evidence",
@@ -193,9 +193,10 @@ fn validator_cli_rejects_session_start_context_without_codegraph_lsp_evidence()
             !output.status.success(),
             "validator should reject SessionStart routing context missing {needle:?}"
         );
-        assert!(
-            stderr.contains("emitted additionalContext") && stderr.contains(expected),
-            "unexpected stderr: {stderr}"
+        support::assert_structured_literals(
+            &stderr,
+            "modified routing context rejection",
+            &["compiled read-only package before execution"],
         );
     }
     Ok(())

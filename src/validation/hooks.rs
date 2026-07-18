@@ -1,3 +1,4 @@
+mod agent_update_safety;
 mod command;
 mod context;
 mod lifecycle;

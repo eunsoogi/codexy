@@ -67,10 +67,11 @@ validation proves the packaged paths match the repository layout.
    - Codexy specialist agent TOMLs use Codex custom-agent compatible fields so
      the registration bridge can project them into the stable marker-owned
      `$CODEX_HOME/agents/codexy/` discovery subtree without versioned cache paths,
-   - the Codexy agent bootstrap and registration scripts exist under
+   - the executable pre-start Codexy agent bootstrap exists at
+     `bootstrap-codexy-agents`, the non-mutating update checker exists at
+     `check-codexy-agents`, and the executable bootstrap and registration delegates exist under
      `skills/codex-orchestration/scripts/bootstrap-codexy-agents` and
-     `skills/codex-orchestration/scripts/register-codexy-agents`, and both are
-     executable,
+     `skills/codex-orchestration/scripts/register-codexy-agents`,
    - Codexy reviewer agent metadata identifies it as the mandatory gate at the
      end of every non-trivial atomic work unit,
    - thread/worktree orchestration wording includes handoff fields, evidence,

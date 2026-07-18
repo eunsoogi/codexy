@@ -2,6 +2,15 @@
 
 ## Installed First-Use Bootstrap
 
+After marketplace installation or an official plugin update, users SHOULD run
+the plugin-root `bootstrap-codexy-agents` before starting Codex. The README
+one-line command resolves the enabled plugin from `codex plugin list --json`
+without requiring users to know the marketplace snapshot or cache path. `--check`
+MUST remain read-only and MUST report `UPDATE_REQUIRED` when installed role
+projections differ from the current package.
+SessionStart MUST invoke only the packaged `check-codexy-agents` entrypoint,
+which has no registration mode and performs only read-only file comparisons.
+
 When an exact Codexy `agent_type` is unavailable, MUST resolve this selected
 skill's installed directory and run its sibling
 `scripts/bootstrap-codexy-agents` entrypoint. MUST NOT resolve the entrypoint
@@ -20,10 +29,11 @@ unavailable, registration is not the defect. MUST record the active tool-schema
 or host-exposure mismatch and fail closed. MUST NOT substitute `default`,
 `worker`, or `explorer` for a Codexy specialist or Sentinel.
 
-The bootstrap and registration bridge MUST NOT run from SessionStart,
-UserPromptSubmit, or another lifecycle hook. Hooks remain read-only. Codexy
-MUST NOT commit generated MCP binaries to the source plugin; the existing
-GitHub Release runtime bootstrap remains the supported MCP installation path.
+The registration bridge MUST NOT run from SessionStart, UserPromptSubmit, or
+another lifecycle hook. SessionStart MAY rerun only the plugin-root `--check`
+mode and MUST NOT mutate user state. Codexy MUST NOT commit generated MCP
+binaries to the source plugin; the existing GitHub Release runtime bootstrap
+remains the supported MCP installation path.
 
 ## Registration Lifecycle
 

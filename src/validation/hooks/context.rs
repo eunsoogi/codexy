@@ -1,5 +1,7 @@
 pub(super) mod process;
 mod process_finish;
+#[cfg(test)]
+mod process_tests;
 
 use std::path::Path;
 use std::time::Duration;

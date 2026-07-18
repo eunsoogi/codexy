@@ -6,7 +6,11 @@ if [ -L "$0" ]; then
   exit 2
 fi
 
-self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+case "$0" in
+  */*) script_dir=${0%/*} ;;
+  *) script_dir=. ;;
+esac
+self_dir=$(CDPATH= cd -- "$script_dir" && pwd -P)
 registrar="$self_dir/register-codexy-agents"
 if [ -L "$registrar" ] || [ ! -f "$registrar" ] || [ ! -x "$registrar" ]; then
   echo "bootstrap-codexy-agents requires a regular executable sibling registrar" >&2
@@ -44,6 +48,11 @@ validate_arguments() {
   done
 }
 
+check_only=0
+if [ "${1:-}" = "--check" ]; then
+  check_only=1
+  shift
+fi
 validate_arguments "$@"
 
 before=$("$registrar" "$@" --diagnose)
@@ -54,6 +63,11 @@ case "$before" in
     exit 0
     ;;
 esac
+
+if [ "$check_only" -eq 1 ]; then
+  printf '%s\n' "D bootstrap: UPDATE_REQUIRED (run the installed plugin-root bootstrap, then restart Codex)"
+  exit 1
+fi
 
 "$registrar" "$@"
 after=$("$registrar" "$@" --diagnose)
