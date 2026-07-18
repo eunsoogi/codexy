@@ -72,12 +72,54 @@ fn gate_rejects_a_full_workload_after_a_folded_scalar_paragraph_break(
 
 #[cfg(unix)]
 #[test]
+fn gate_rejects_a_full_workload_after_a_more_indented_folded_scalar_line(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: >\n          echo setup\n            cargo test --locked --all-targets\n",
+    )?;
+
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn gate_rejects_the_command_wrapper_for_the_full_workload()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
         "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: command cargo test --locked --all-targets\n",
+    )?;
+
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_rejects_an_environment_prefixed_full_workload(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: FLAG=1 cargo test --locked --all-targets\n",
+    )?;
+
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_rejects_an_exec_prefixed_full_workload()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: exec cargo test --locked --all-targets\n",
     )?;
 
     assert!(!fixture.run(&[])?.status.success());

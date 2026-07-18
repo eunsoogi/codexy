@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
+ASSIGNMENT_WORD_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 
 
 def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
@@ -58,13 +59,24 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
 def block_scalar_command(style: str, lines: list[str]) -> str:
     if style == "|":
         return "\n".join(lines)
-    paragraphs: list[list[str]] = [[]]
+    content_indentation = min(
+        len(line) - len(line.lstrip(" ")) for line in lines if line.strip()
+    )
+    paragraphs: list[list[str]] = []
+    paragraph: list[str] = []
     for line in lines:
-        if line.strip():
-            paragraphs[-1].append(line)
-        else:
-            paragraphs.append([])
-    return "\n".join(" ".join(paragraph) for paragraph in paragraphs)
+        indentation = len(line) - len(line.lstrip(" "))
+        if not line.strip() or indentation > content_indentation:
+            if paragraph:
+                paragraphs.append(paragraph)
+                paragraph = []
+            if line.strip():
+                paragraphs.append([line])
+            continue
+        paragraph.append(line)
+    if paragraph:
+        paragraphs.append(paragraph)
+    return "\n".join(" ".join(lines) for lines in paragraphs)
 
 
 def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
@@ -141,19 +153,31 @@ def invocation_count(command: str, invocation: tuple[str, ...]) -> int:
 
 
 def executable_tokens(tokens: list[str]) -> list[str]:
-    if tokens[:1] != ["command"]:
-        return tokens
-    index = 1
+    index = 0
     while index < len(tokens):
-        option = tokens[index]
-        if option == "--":
-            return tokens[index + 1 :]
-        if not option.startswith("-") or option == "-":
+        token = tokens[index]
+        if ASSIGNMENT_WORD_PATTERN.fullmatch(token):
+            index += 1
+            continue
+        if token == "exec":
+            index += 1
+            if index < len(tokens) and tokens[index] == "--":
+                index += 1
+            continue
+        if token != "command":
             return tokens[index:]
-        flags = option[1:]
-        if not flags or set(flags) - {"p", "v", "V"} or set(flags) & {"v", "V"}:
-            return []
         index += 1
+        while index < len(tokens):
+            option = tokens[index]
+            if option == "--":
+                index += 1
+                break
+            if not option.startswith("-") or option == "-":
+                break
+            flags = option[1:]
+            if not flags or set(flags) - {"p", "v", "V"} or set(flags) & {"v", "V"}:
+                return []
+            index += 1
     return []
 
 
