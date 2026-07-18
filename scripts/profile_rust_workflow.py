@@ -56,15 +56,15 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
     runs: list[str] = []
     in_steps = False
     step_open = False
-    block_run: tuple[int, list[str]] | None = None
+    block_run: tuple[int, str, list[str]] | None = None
     for line in lines:
         indentation = len(line) - len(line.lstrip(" "))
         if block_run is not None:
             if not line.strip() or indentation > block_run[0]:
                 if line.strip():
-                    block_run[1].append(line)
+                    block_run[2].append(line)
                 continue
-            runs.append("\n".join(block_run[1]))
+            runs.append((" " if block_run[1] == ">" else "\n").join(block_run[2]))
             block_run = None
         entry = yaml_mapping_entry(line)
         if indentation == 4:
@@ -86,11 +86,11 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
         ):
             command = step_run_command(line)
             if command in {"|", "|-", "|+", ">", ">-", ">+"}:
-                block_run = indentation, []
+                block_run = indentation, command[0], []
             elif command is not None:
                 runs.append(command)
     if block_run is not None:
-        runs.append("\n".join(block_run[1]))
+        runs.append((" " if block_run[1] == ">" else "\n").join(block_run[2]))
     return timeouts, runs
 
 
@@ -114,7 +114,14 @@ def shell_commands(command: str) -> list[list[str]]:
 
 
 def invocation_count(command: str, invocation: tuple[str, ...]) -> int:
-    return sum(tokens[: len(invocation)] == list(invocation) for tokens in shell_commands(command))
+    return sum(
+        executable_tokens(tokens)[: len(invocation)] == list(invocation)
+        for tokens in shell_commands(command)
+    )
+
+
+def executable_tokens(tokens: list[str]) -> list[str]:
+    return tokens[1:] if tokens[:1] == ["command"] else tokens
 
 
 def enforce_workflow_contract(
