@@ -94,11 +94,12 @@ fn make_script(root: &Path, body: &str) -> TestResult<PathBuf> {
     let mut file = std::fs::File::create(&staging)?;
     file.write_all(format!("#!/bin/sh\n{body}").as_bytes())?;
     file.sync_all()?;
-    let mut permissions = file.metadata()?.permissions();
-    permissions.set_mode(0o755);
-    file.set_permissions(permissions)?;
     drop(file);
+    let mut permissions = std::fs::metadata(&staging)?.permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&staging, permissions)?;
     std::fs::rename(staging, &script)?;
+    std::fs::File::open(root)?.sync_all()?;
     Ok(script)
 }
 
@@ -109,7 +110,7 @@ fn replaces_a_running_script_without_writing_its_executable_path() -> TestResult
     use std::process::Stdio;
 
     let temp = tempfile::tempdir()?;
-    let script = make_script(temp.path(), "printf 'ready\\n'\nread _\n")?;
+    let script = make_script(temp.path(), "printf 'ready\\n'\nread _ || true\n")?;
     let mut child = Command::new(&script)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
