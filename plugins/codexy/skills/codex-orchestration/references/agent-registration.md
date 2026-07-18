@@ -1,8 +1,33 @@
 # Agent Registration And Invocation
 
-MUST run `skills/codex-orchestration/scripts/register-codexy-agents` from the
-installed plugin to register or update specialists, then MUST restart Codex or
-MUST start a fresh task. The bridge projects marker-owned TOMLs into
+## Installed First-Use Bootstrap
+
+When an exact Codexy `agent_type` is unavailable, MUST resolve this selected
+skill's installed directory and run its sibling
+`scripts/bootstrap-codexy-agents` entrypoint. MUST NOT resolve the entrypoint
+from the target repository, a Codexy source checkout, or a hard-coded plugin
+cache path. The bootstrap diagnoses the installed state before mutation and
+invokes `register-codexy-agents` only when packaged role discovery is incomplete.
+
+If the bootstrap reports `D bootstrap: RESTART_REQUIRED`, MUST stop specialist
+dispatch in the current task and MUST tell the user to restart Codex or start a
+fresh task. The stale task MUST NOT claim that newly projected roles are
+callable. In the fresh task, MUST observe `agent_type` and invoke the exact
+packaged role before claiming success.
+
+If the bootstrap reports `D bootstrap: READY` but the exact role is still
+unavailable, registration is not the defect. MUST record the active tool-schema
+or host-exposure mismatch and fail closed. MUST NOT substitute `default`,
+`worker`, or `explorer` for a Codexy specialist or Sentinel.
+
+The bootstrap and registration bridge MUST NOT run from SessionStart,
+UserPromptSubmit, or another lifecycle hook. Hooks remain read-only. Codexy
+MUST NOT commit generated MCP binaries to the source plugin; the existing
+GitHub Release runtime bootstrap remains the supported MCP installation path.
+
+## Registration Lifecycle
+
+The packaged bridge projects marker-owned TOMLs into
 `$CODEX_HOME/agents/codexy/`, which Codex recursively discovers without retaining
 versioned plugin-cache paths.
 

@@ -20,6 +20,7 @@ from agent_registration_support import (
 REQUIRED = {"codexy-sentinel", "codexy-pathfinder"}
 def main() -> int:
     parser = argparse.ArgumentParser(
+        allow_abbrev=False,
         description="Install Codexy agents in Codex's standalone-agent discovery directory."
     )
     parser.add_argument("--plugin-root", type=Path, default=default_plugin_root())

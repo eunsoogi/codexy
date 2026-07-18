@@ -64,6 +64,12 @@ codex mcp list
 Restart Codex or open a fresh Codex session if newly installed plugin, skill, or
 MCP surfaces do not appear in the active session.
 
+The first Codexy workflow that needs specialist agents runs the installed
+plugin's registration bootstrap. If it reports `RESTART_REQUIRED`, open one
+fresh task before specialist dispatch; you do not need to locate or run a
+repository setup command. Codexy keeps MCP binaries out of the source plugin and
+bootstraps matching runtimes from GitHub Release assets.
+
 ## A Codexy workflow
 
 1. **Classify the task.** Identify the lane, owner, scope, proof, and stop
