@@ -82,6 +82,8 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
     current_job: str | None = None
     in_jobs = False
     for line in source.splitlines():
+        if not line.strip():
+            continue
         indentation = len(line) - len(line.lstrip(" "))
         entry = yaml_mapping_entry(line)
         if indentation == 0:

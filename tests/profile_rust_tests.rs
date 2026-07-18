@@ -139,6 +139,18 @@ fn gate_rejects_a_block_scalar_that_only_mentions_the_profiler(
 }
 
 #[cfg(unix)]
+#[test]
+fn gate_accepts_the_profiler_step_after_a_blank_line() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - name: setup\n        run: echo setup\n\n      - run: scripts/profile-rust-tests\n",
+    )?;
+    assert!(fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
 struct GateFixture {
     temp: tempfile::TempDir,
     marker: PathBuf,
