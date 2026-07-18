@@ -28,10 +28,14 @@ validate_arguments() {
         echo "bootstrap-codexy-agents does not accept lifecycle mode $1" >&2
         exit 2
         ;;
-      --codex-home=?*|--config=?*)
+      --config|--config=*)
+        echo "bootstrap-codexy-agents does not support --config because SessionStart checks the active CODEX_HOME discovery root" >&2
+        exit 2
+        ;;
+      --codex-home=?*)
         shift
         ;;
-      --codex-home|--config)
+      --codex-home)
         option=$1
         shift
         if [ "$#" -eq 0 ] || [ "${1#--}" != "$1" ]; then

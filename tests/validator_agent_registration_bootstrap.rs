@@ -99,6 +99,29 @@ fn installed_bootstrap_rejects_plugin_root_overrides() -> TestResult {
 }
 
 #[test]
+fn pre_start_bootstrap_rejects_custom_config_discovery_roots() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("installed-codexy");
+    support::copy_dir(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &plugin_root,
+    )?;
+    let custom_root = temp.path().join("custom-profile");
+    let config = custom_root.join("config.toml");
+    let output = Command::new(plugin_root.join("bootstrap-codexy-agents"))
+        .args(["--config", path(&config)?])
+        .output()?;
+
+    assert!(!output.status.success(), "bootstrap accepted --config");
+    assert!(stderr(&output).contains("does not support --config"));
+    assert!(
+        !custom_root.exists(),
+        "rejected custom config mutated its discovery root"
+    );
+    Ok(())
+}
+
+#[test]
 fn orchestration_guidance_bootstraps_exact_roles_without_generic_fallback() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let skill =
