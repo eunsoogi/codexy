@@ -19,7 +19,17 @@ def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
     match = WORKFLOW_KEY_PATTERN.match(stripped)
     if match is None:
         return None
-    return match.group("key").strip(), match.group("value").split("#", 1)[0].strip()
+    return match.group("key").strip(), yaml_value_without_comment(match.group("value")).strip()
+
+
+def yaml_value_without_comment(value: str) -> str:
+    quote: str | None = None
+    for index, character in enumerate(value):
+        if character in "'\"":
+            quote = None if character == quote else character if quote is None else quote
+        elif character == "#" and quote is None and (index == 0 or value[index - 1].isspace()):
+            return value[:index]
+    return value
 
 
 def step_run_command(line: str) -> str | None:

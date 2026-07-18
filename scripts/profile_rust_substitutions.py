@@ -17,7 +17,7 @@ def command_substitutions(command: str) -> list[str]:
         elif character in "'\"":
             quote = None if character == quote else character
             index += 1
-        elif character == "#":
+        elif character == "#" and (index == 0 or command[index - 1].isspace()):
             newline = command.find("\n", index)
             index = len(command) if newline < 0 else newline + 1
         elif character == "`":
