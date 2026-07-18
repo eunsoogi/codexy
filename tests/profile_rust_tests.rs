@@ -147,6 +147,28 @@ fn gate_accepts_the_profiler_step_after_a_blank_line() -> Result<(), Box<dyn std
         "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - name: setup\n        run: echo setup\n\n      - run: scripts/profile-rust-tests\n",
     )?;
     assert!(fixture.run(&[])?.status.success());
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: |\n          scripts/profile-rust-tests\n",
+    )?;
+    assert!(fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_handles_profiler_block_scalars_and_jobs_comments() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  unrelated:\n    steps:\n      - run: |\n          scripts/profile-rust-tests\n",
+    )?;
+    assert!(!fixture.run(&[])?.status.success());
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n# keep this ordinary comment inside the jobs mapping\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n",
+    )?;
+    assert!(fixture.run(&[])?.status.success());
     Ok(())
 }
 

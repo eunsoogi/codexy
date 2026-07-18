@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -25,8 +26,6 @@ RESULT_PATTERN = re.compile(
 )
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
-
-
 def integration_target_count(root: Path) -> int:
     try:
         result = subprocess.run(
@@ -54,7 +53,6 @@ def integration_target_count(root: Path) -> int:
         sys.stderr.write("cargo metadata returned an invalid target inventory\n")
         raise SystemExit(1) from None
 def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
-    """Read a plain mapping entry; unsupported workflow syntax fails closed."""
     stripped = line.strip()
     if not stripped or stripped.startswith("#") or stripped.startswith("-"):
         return None
@@ -65,24 +63,25 @@ def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
     value = match.group("value").split("#", 1)[0].strip()
     return key, value
 def step_run_command(line: str) -> str | None:
-    """Return a direct step `run` scalar, never text inside a block scalar."""
     stripped = line.strip()
     if stripped.startswith("-"):
         stripped = stripped[1:].lstrip()
     entry = yaml_mapping_entry(stripped)
     if entry is None or entry[0] != "run":
         return None
-    value = entry[1]
-    if value in {"|", "|-", "|+", ">", ">-", ">+"}:
-        return None
-    return value
+    return entry[1]
+
+
+def invokes_profiler(command: str) -> bool:
+    return any(shlex.split(line, comments=True)[:1] == ["scripts/profile-rust-tests"] for line in command.splitlines())
+
+
 def workflow_jobs(source: str) -> dict[str, list[str]]:
-    """Parse root `jobs` block mappings and retain each job's own lines."""
     jobs: dict[str, list[str]] = {}
     current_job: str | None = None
     in_jobs = False
     for line in source.splitlines():
-        if not line.strip():
+        if not line.strip() or line.lstrip().startswith("#"):
             continue
         indentation = len(line) - len(line.lstrip(" "))
         entry = yaml_mapping_entry(line)
@@ -104,13 +103,20 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
             jobs[current_job].append(line)
     return jobs
 def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
-    """Collect direct job timeout fields and direct `steps[*].run` scalars."""
     timeouts: list[str] = []
     runs: list[str] = []
     in_steps = False
     step_open = False
+    block_run: tuple[int, list[str]] | None = None
     for line in lines:
         indentation = len(line) - len(line.lstrip(" "))
+        if block_run is not None:
+            if not line.strip() or indentation > block_run[0]:
+                if line.strip():
+                    block_run[1].append(line)
+                continue
+            runs.append("\n".join(block_run[1]))
+            block_run = None
         entry = yaml_mapping_entry(line)
         if indentation == 4:
             step_open = False
@@ -126,14 +132,14 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
             continue
         if indentation == 6 and line.lstrip().startswith("-"):
             step_open = True
+        if (indentation == 6 and line.lstrip().startswith("-")) or (indentation == 8 and step_open):
             command = step_run_command(line)
-            if command is not None:
+            if command in {"|", "|-", "|+", ">", ">-", ">+"}:
+                block_run = (indentation, [])
+            elif command is not None:
                 runs.append(command)
-            continue
-        if indentation == 8 and step_open:
-            command = step_run_command(line)
-            if command is not None:
-                runs.append(command)
+    if block_run is not None:
+        runs.append("\n".join(block_run[1]))
     return timeouts, runs
 def enforce_workflow_contract(workflow: Path) -> None:
     try:
@@ -156,16 +162,14 @@ def enforce_workflow_contract(workflow: Path) -> None:
         command
         for lines in jobs.values()
         for command in job_contract(lines)[1]
-        if "scripts/profile-rust-tests" in command
+        if invokes_profiler(command)
     ]
-    if rust_runs.count("scripts/profile-rust-tests") != 1 or len(profiler_runs) != 1:
+    if sum(invokes_profiler(command) for command in rust_runs) != 1 or len(profiler_runs) != 1:
         sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
         raise SystemExit(1)
     if "cargo test --locked --all-targets" in source:
         sys.stderr.write("Rust workflow must not run the full workload outside its gate\n")
         raise SystemExit(1)
-
-
 def nested_build_count(root: Path) -> int:
     helper = root / "tests/support/release_archive.rs"
     try:
@@ -174,8 +178,6 @@ def nested_build_count(root: Path) -> int:
         sys.stderr.write(f"archive fixture helper is unreadable: {error}\n")
         raise SystemExit(1) from None
     return source.count('Command::new("cargo")')
-
-
 def run_workload(root: Path) -> tuple[str, float, int]:
     started = time.perf_counter()
     process = subprocess.Popen(
@@ -203,8 +205,6 @@ def run_workload(root: Path) -> tuple[str, float, int]:
     elapsed = time.perf_counter() - started
     sys.stdout.write(output)
     return output, elapsed, process.returncode
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
@@ -243,7 +243,5 @@ def main() -> int:
     success = status == 0 and target_pass and tests_pass and nested_pass and budget_pass
     print(f"result\t{'PASS' if success else 'FAIL'}")
     return 0 if success else status or 1
-
-
 if __name__ == "__main__":
     raise SystemExit(main())
