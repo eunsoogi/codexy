@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -26,7 +27,21 @@ def step_run_command(line: str) -> str | None:
     if stripped.startswith("-"):
         stripped = stripped[1:].lstrip()
     entry = yaml_mapping_entry(stripped)
-    return entry[1] if entry is not None and entry[0] == "run" else None
+    return yaml_scalar_value(entry[1]) if entry is not None and entry[0] == "run" else None
+
+
+def yaml_scalar_value(value: str) -> str:
+    if len(value) < 2 or value[0] != value[-1]:
+        return value
+    if value[0] == "'":
+        return value[1:-1].replace("''", "'")
+    if value[0] != '"':
+        return value
+    try:
+        decoded = json.loads(value)
+    except json.JSONDecodeError:
+        return value[1:-1]
+    return decoded if isinstance(decoded, str) else value
 
 
 def workflow_jobs(source: str) -> dict[str, list[str]]:

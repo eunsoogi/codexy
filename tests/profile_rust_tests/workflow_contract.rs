@@ -222,6 +222,10 @@ fn gate_rejects_shell_wrapped_or_reordered_full_workloads(
         "nice -n 1 cargo test --locked --all-targets",
         "if true; then cargo test --locked --all-targets; fi",
         "sh -c 'cargo test --locked --all-targets'",
+        r#""cargo test --locked --all-targets""#,
+        "/usr/bin/cargo test --locked --all-targets",
+        r#"echo "$(cargo test --locked --all-targets)""#,
+        "echo `cargo test --locked --all-targets`",
     ] {
         std::fs::write(
             &fixture.workflow,

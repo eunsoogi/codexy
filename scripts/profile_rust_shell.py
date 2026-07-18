@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 import shlex
 
+from profile_rust_substitutions import command_substitutions
+
 ASSIGNMENT_WORD_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 SHELL_SEPARATORS = frozenset("();&|{}")
 VALUE_OPTIONS = frozenset({"-a", "--argv0", "-C", "--chdir", "-u", "--unset"})
@@ -34,11 +36,12 @@ def shell_commands(command: str) -> list[list[str]]:
 
 
 def invocation_count(command: str, invocation: tuple[str, ...]) -> int:
-    return sum(
+    direct = sum(
         matches_invocation(candidate, invocation)
         for tokens in shell_commands(command)
         for candidate in executable_token_sets(tokens)
     )
+    return direct + sum(invocation_count(nested, invocation) for nested in command_substitutions(command))
 
 
 def executable_token_sets(tokens: list[str]) -> list[list[str]]:
@@ -59,7 +62,7 @@ def matches_invocation(tokens: list[str], invocation: tuple[str, ...]) -> bool:
         return True
     return (
         invocation[:1] == ("cargo",)
-        and tokens[:1] == ["cargo"]
+        and tokens[:1] and executable_name(tokens[0]) == "cargo"
         and set(invocation[1:]).issubset(tokens[1:])
     )
 
