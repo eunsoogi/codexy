@@ -172,6 +172,14 @@ def executable_tokens(tokens: list[str]) -> list[str]:
                 if option in {"-u", "--unset"}:
                     index += 2
                     continue
+                if option in {"-C", "--chdir"}:
+                    index += 2
+                    continue
+                if option in {"-S", "--split-string"}:
+                    return executable_tokens(shlex.split(tokens[index + 1]))
+                if option.startswith("--chdir="):
+                    index += 1
+                    continue
                 if option.startswith("-") and option != "-":
                     index += 1
                     continue

@@ -127,6 +127,25 @@ fn gate_rejects_an_env_wrapper_for_the_full_workload() -> Result<(), Box<dyn std
 
 #[cfg(unix)]
 #[test]
+fn gate_rejects_env_option_wrapped_full_workloads() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    for command in [
+        "env -C . cargo test --locked --all-targets",
+        "env -S 'cargo test --locked --all-targets'",
+    ] {
+        std::fs::write(
+            &fixture.workflow,
+            format!(
+                "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"
+            ),
+        )?;
+        assert!(!fixture.run(&[])?.status.success(), "{command}");
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn gate_rejects_an_exec_prefixed_full_workload()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
