@@ -44,6 +44,19 @@ fn gate_ignores_a_comment_that_mentions_the_full_workload()
 
 #[cfg(unix)]
 #[test]
+fn gate_ignores_echoed_full_workload_text() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: echo cargo test --locked --all-targets\n",
+    )?;
+
+    assert!(fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn gate_does_not_count_a_folded_profiler_token_as_a_command()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
@@ -190,5 +203,33 @@ fn gate_rejects_the_command_path_wrapper_for_the_full_workload(
     )?;
 
     assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_rejects_shell_wrapped_or_reordered_full_workloads(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    for command in [
+        "timeout 180 cargo test --locked --all-targets",
+        "time cargo test --locked --all-targets",
+        "(cargo test --locked --all-targets)",
+        "{ cargo test --locked --all-targets; }",
+        "cargo --locked test --all-targets",
+        "exec -a cargo0 cargo test --locked --all-targets",
+        "/usr/bin/timeout 180 cargo test --locked --all-targets",
+        "nice -n 1 cargo test --locked --all-targets",
+        "if true; then cargo test --locked --all-targets; fi",
+        "sh -c 'cargo test --locked --all-targets'",
+    ] {
+        std::fs::write(
+            &fixture.workflow,
+            format!(
+                "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"
+            ),
+        )?;
+        assert!(!fixture.run(&[])?.status.success(), "{command}");
+    }
     Ok(())
 }

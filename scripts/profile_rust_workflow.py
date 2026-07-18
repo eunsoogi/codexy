@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import re
-import shlex
 import sys
 from pathlib import Path
 
+from profile_rust_shell import invocation_count
+
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
-ASSIGNMENT_WORD_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 
 
 def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
@@ -124,94 +124,6 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
     if block_run is not None:
         runs.append(block_scalar_command(block_run[1], block_run[2]))
     return timeouts, runs
-
-
-def shell_commands(command: str) -> list[list[str]]:
-    commands: list[list[str]] = []
-    for line in command.splitlines():
-        lexer = shlex.shlex(line, posix=True, punctuation_chars=";&|")
-        lexer.whitespace_split = True
-        lexer.commenters = "#"
-        current: list[str] = []
-        for token in lexer:
-            if token and set(token) <= {";", "&", "|"}:
-                if current:
-                    commands.append(current)
-                    current = []
-            else:
-                current.append(token)
-        if current:
-            commands.append(current)
-    return commands
-
-
-def invocation_count(command: str, invocation: tuple[str, ...]) -> int:
-    return sum(
-        executable_tokens(tokens)[: len(invocation)] == list(invocation)
-        for tokens in shell_commands(command)
-    )
-
-
-def executable_tokens(tokens: list[str]) -> list[str]:
-    index = 0
-    while index < len(tokens):
-        token = tokens[index]
-        if ASSIGNMENT_WORD_PATTERN.fullmatch(token):
-            index += 1
-            continue
-        if token == "env":
-            index += 1
-            while index < len(tokens):
-                option = tokens[index]
-                if option == "--":
-                    index += 1
-                    break
-                if ASSIGNMENT_WORD_PATTERN.fullmatch(option):
-                    index += 1
-                    continue
-                if option in {"-u", "--unset", "-C", "--chdir", "-a", "--argv0"}:
-                    index += 2
-                    continue
-                if option in {"-S", "--split-string"}:
-                    return executable_tokens(
-                        ["env"] + shlex.split(tokens[index + 1]) + tokens[index + 2 :]
-                    )
-                if option.startswith("--split-string="):
-                    return executable_tokens(
-                        ["env"]
-                        + shlex.split(option.partition("=")[2])
-                        + tokens[index + 1 :]
-                    )
-                if option.startswith("-S") and len(option) > 2:
-                    return executable_tokens(["env"] + shlex.split(option[2:]) + tokens[index + 1 :])
-                if option.startswith(("--chdir=", "--unset=", "--argv0=")):
-                    index += 1
-                    continue
-                if option.startswith("-") and option != "-":
-                    index += 1
-                    continue
-                break
-            continue
-        if token == "exec":
-            index += 1
-            if index < len(tokens) and tokens[index] == "--":
-                index += 1
-            continue
-        if token != "command":
-            return tokens[index:]
-        index += 1
-        while index < len(tokens):
-            option = tokens[index]
-            if option == "--":
-                index += 1
-                break
-            if not option.startswith("-") or option == "-":
-                break
-            flags = option[1:]
-            if not flags or set(flags) - {"p", "v", "V"} or set(flags) & {"v", "V"}:
-                return []
-            index += 1
-    return []
 
 
 def enforce_workflow_contract(
