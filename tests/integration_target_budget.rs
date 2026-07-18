@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+#[cfg(unix)]
+use std::os::unix::fs::MetadataExt as _;
+
 #[test]
 fn cargo_declares_at_most_eight_integration_suites() {
     let manifest_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
@@ -110,5 +113,24 @@ fn cargo_declares_at_most_eight_integration_suites() {
     assert!(
         routes.is_empty(),
         "suite routes unknown test roots: {routes:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn plugin_fixtures_reuse_the_immutable_large_asset() {
+    let temp = tempfile::tempdir().expect("temporary fixture root");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
+    let fixture = temp.path().join("codexy");
+    crate::support::copy_dir(&source, &fixture).expect("plugin fixture copy");
+
+    let source_asset = source.join("assets/codexy-agent-hero.png");
+    let fixture_asset = fixture.join("assets/codexy-agent-hero.png");
+    let source_metadata = std::fs::metadata(source_asset).expect("source asset metadata");
+    let fixture_metadata = std::fs::metadata(fixture_asset).expect("fixture asset metadata");
+    assert_eq!(
+        (fixture_metadata.dev(), fixture_metadata.ino()),
+        (source_metadata.dev(), source_metadata.ino()),
+        "immutable large fixture assets must be hard-linked instead of copied per test"
     );
 }

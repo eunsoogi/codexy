@@ -84,7 +84,7 @@ fn plugin_fixture_mutations_do_not_leak_between_copy_on_write_overlays()
 fn shared_fixture_copy_routes_files_through_the_copy_on_write_overlay()
 -> Result<(), Box<dyn std::error::Error>> {
     let source = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/wrapper.rs"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/wrapper_copy.rs"),
     )?;
     let copy_dir = source
         .split("pub(crate) fn copy_dir")

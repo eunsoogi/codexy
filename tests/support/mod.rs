@@ -19,6 +19,7 @@ pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
 pub(super) mod worktree_reservation_harness;
 mod wrapper;
+mod wrapper_copy;
 mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
@@ -61,8 +62,9 @@ pub(super) use release_cache_release_match::{
 };
 pub(super) use release_cache_resources::assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest;
 pub(crate) use wrapper::{
-    WrapperCommandExt, WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo, copy_dir,
+    WrapperCommandExt, WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo,
     make_executable, run_wrapper, run_wrapper_command, run_wrapper_command_with_timeout,
     run_wrapper_with_optional_failure, spawn_wrapper_command, wait_for_default_wrapper_output,
     wait_for_wrapper_output,
 };
+pub(crate) use wrapper_copy::copy_dir;
