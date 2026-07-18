@@ -20,6 +20,20 @@ pub(super) fn check(base_ref: &str) -> Vec<String> {
 
 fn check_inner(base_ref: &str) -> Result<()> {
     let root = git_top_level()?;
+    let errors = diagnostics_at(&root, base_ref)?;
+    if errors.is_empty() {
+        return Ok(());
+    }
+    for error in &errors {
+        eprintln!("error: {error}");
+    }
+    bail!(
+        "touched LOC validation failed with {} error(s)",
+        errors.len()
+    )
+}
+
+pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>> {
     let mut errors = Vec::new();
     if root.join(EXCEPTIONS_PATH).exists() {
         errors.push(format!(
@@ -52,17 +66,7 @@ fn check_inner(base_ref: &str) -> Result<()> {
             ));
         }
     }
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        for error in &errors {
-            eprintln!("error: {error}");
-        }
-        bail!(
-            "touched LOC validation failed with {} error(s)",
-            errors.len()
-        )
-    }
+    Ok(errors)
 }
 
 fn git_top_level() -> Result<PathBuf> {

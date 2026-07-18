@@ -62,7 +62,46 @@ pub(crate) fn validator(
 pub(crate) fn validator_instruction_policy(
     plugin_root: &Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {
-    validator_in_process_mode(plugin_root, Mode::InstructionPolicy)
+    let canonical = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
+    let mut changed = Vec::new();
+    collect_changed_surfaces(plugin_root, &canonical, &mut changed)?;
+    if let Some(repo_root) = plugin_root.parent().and_then(Path::parent) {
+        let current_agents = repo_root.join("AGENTS.md");
+        let canonical_agents = Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md");
+        if current_agents.is_file()
+            && std::fs::read(&current_agents)? != std::fs::read(canonical_agents)?
+        {
+            changed.push(current_agents);
+        }
+    }
+    if changed.is_empty() {
+        return validator_in_process_mode(plugin_root, Mode::InstructionPolicy);
+    }
+    let mut errors = Vec::new();
+    for path in changed {
+        errors.extend(validation::instruction_policy_diagnostics(&path)?);
+    }
+    Ok(output_from_errors(plugin_root, errors))
+}
+
+fn collect_changed_surfaces(
+    current: &Path,
+    canonical: &Path,
+    changed: &mut Vec<PathBuf>,
+) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(current)? {
+        let entry = entry?;
+        let current_path = entry.path();
+        let canonical_path = canonical.join(entry.file_name());
+        if current_path.is_dir() {
+            collect_changed_surfaces(&current_path, &canonical_path, changed)?;
+        } else if std::fs::read(&current_path)?
+            != std::fs::read(&canonical_path).unwrap_or_default()
+        {
+            changed.push(current_path);
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn validator_routing(plugin_root: &Path) -> Result<Output, Box<dyn std::error::Error>> {
@@ -110,6 +149,10 @@ fn validator_in_process_mode(
     mode: Mode,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     let errors = validation::errors(plugin_root, mode);
+    Ok(output_from_errors(plugin_root, errors))
+}
+
+fn output_from_errors(plugin_root: &Path, errors: Vec<String>) -> Output {
     let stderr = errors
         .iter()
         .map(|error| format!("error: {error}"))
@@ -121,7 +164,7 @@ fn validator_in_process_mode(
         }))
         .collect::<Vec<_>>()
         .join("\n");
-    Ok(Output {
+    Output {
         status: exit_status(errors.is_empty()),
         stdout: errors
             .is_empty()
@@ -137,7 +180,7 @@ fn validator_in_process_mode(
             .then(|| format!("{stderr}\n"))
             .unwrap_or_default()
             .into_bytes(),
-    })
+    }
 }
 
 fn exit_status(success: bool) -> ExitStatus {

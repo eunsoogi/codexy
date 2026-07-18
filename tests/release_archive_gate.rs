@@ -6,7 +6,7 @@ use tempfile::tempdir;
 mod release_archive_support;
 use release_archive_support::{
     assert_archive_scanner_contract, assert_runtime_workflow_contract, complete_plugin_fixture,
-    create_archive, make_executable,
+    complete_plugin_fixture_with_stubbed_runtime, create_archive, make_executable,
 };
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
@@ -45,14 +45,17 @@ fn complete_archive_fixture(
     name: &str,
 ) -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let root = tempdir().expect("tempdir");
-    let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
+    let plugin_root =
+        complete_plugin_fixture_with_stubbed_runtime(root.path()).expect("complete plugin fixture");
     let archive = root.path().join(format!("{name}.tar.gz"));
     (root, plugin_root, archive)
 }
 
 #[test]
 fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
-    let (root, plugin_root, archive) = complete_archive_fixture("valid");
+    let root = tempdir().expect("tempdir");
+    let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
+    let archive = root.path().join("valid.tar.gz");
     create_archive(root.path(), &archive).expect("archive fixture");
     let output = run_gate(&archive, &plugin_root);
     assert!(

@@ -1,17 +1,17 @@
 use std::path::Path;
 use std::process::{Command, Output};
 
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt as _;
+#[cfg(windows)]
+use std::os::windows::process::ExitStatusExt as _;
+
 pub(crate) fn fixture(
     path: &str,
     source: String,
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     let repo = tempfile::tempdir()?;
     run(repo.path(), &["init", "-q"])?;
-    run(
-        repo.path(),
-        &["config", "user.email", "codexy@example.test"],
-    )?;
-    run(repo.path(), &["config", "user.name", "Codexy Test"])?;
     if ["src/bin/", "tests/", "examples/", "benches/"]
         .iter()
         .any(|prefix| path.starts_with(prefix))
@@ -42,7 +42,18 @@ pub(crate) fn fixture(
     }
     write(repo.path(), path, &source)?;
     run(repo.path(), &["add", "."])?;
-    run(repo.path(), &["commit", "-qm", "initial"])?;
+    run(
+        repo.path(),
+        &[
+            "-c",
+            "user.email=codexy@example.test",
+            "-c",
+            "user.name=Codexy Test",
+            "commit",
+            "-qm",
+            "initial",
+        ],
+    )?;
     Ok(repo)
 }
 
@@ -53,10 +64,31 @@ pub(crate) fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> 
 }
 
 pub(crate) fn validate(root: &Path) -> Result<Output, Box<dyn std::error::Error>> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-touched-loc", "--base-ref", "HEAD"])
-        .current_dir(root)
-        .output()?)
+    let diagnostics = codexy_runtime::validation::touched_loc_diagnostics(root, "HEAD")?;
+    let success = diagnostics.is_empty();
+    let stderr = if success {
+        String::new()
+    } else {
+        diagnostics
+            .iter()
+            .map(|diagnostic| format!("error: {diagnostic}"))
+            .chain(std::iter::once(format!(
+                "Error: touched LOC validation failed with {} error(s)",
+                diagnostics.len()
+            )))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n"
+    };
+    Ok(Output {
+        status: exit_status(success),
+        stdout: success
+            .then_some("plugin config validation ok: plugins/codexy\n")
+            .unwrap_or_default()
+            .as_bytes()
+            .to_vec(),
+        stderr: stderr.into_bytes(),
+    })
 }
 
 pub(crate) fn regular_lines(count: usize) -> String {
@@ -83,4 +115,11 @@ fn run(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
         stderr(&output)
     );
     Ok(())
+}
+
+fn exit_status(success: bool) -> std::process::ExitStatus {
+    #[cfg(unix)]
+    return std::process::ExitStatus::from_raw(if success { 0 } else { 1 << 8 });
+    #[cfg(windows)]
+    std::process::ExitStatus::from_raw(i32::from(!success))
 }

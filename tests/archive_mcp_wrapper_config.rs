@@ -39,41 +39,47 @@ fn write_mcp_config(plugin_root: &std::path::Path, nested: bool, argv: bool) {
 }
 
 #[cfg(unix)]
-#[test]
-fn archive_gate_checks_wrapper_modes_for_supported_mcp_config_shapes() {
+fn assert_wrapper_mode(label: &str, nested: bool, argv: bool) {
     use std::os::unix::fs::PermissionsExt;
 
-    for (label, nested, argv) in [
-        ("direct-argv", false, true),
-        ("nested-server-map", true, false),
-    ] {
-        let root = tempdir().expect("tempdir");
-        let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
-        write_mcp_config(&plugin_root, nested, argv);
+    let root = tempdir().expect("tempdir");
+    let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
+    write_mcp_config(&plugin_root, nested, argv);
 
-        let valid_archive = root.path().join(format!("{label}-valid.tar.gz"));
-        create_archive(root.path(), &valid_archive).expect("archive fixture");
-        let valid_output = run_gate(&valid_archive, &plugin_root);
-        assert!(
-            valid_output.status.success(),
-            "valid {label} fixture failed: {}",
-            String::from_utf8_lossy(&valid_output.stderr)
-        );
+    let valid_archive = root.path().join(format!("{label}-valid.tar.gz"));
+    create_archive(root.path(), &valid_archive).expect("archive fixture");
+    let valid_output = run_gate(&valid_archive, &plugin_root);
+    assert!(
+        valid_output.status.success(),
+        "valid {label} fixture failed: {}",
+        String::from_utf8_lossy(&valid_output.stderr)
+    );
 
-        let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
-        let mut permissions = std::fs::metadata(&wrapper)
-            .expect("wrapper metadata")
-            .permissions();
-        permissions.set_mode(0o644);
-        std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
-        let invalid_archive = root.path().join(format!("{label}-invalid.tar.gz"));
-        create_archive(root.path(), &invalid_archive).expect("archive fixture");
-        let invalid_output = run_gate(&invalid_archive, &plugin_root);
-        assert!(!invalid_output.status.success());
-        assert!(
-            String::from_utf8_lossy(&invalid_output.stderr)
-                .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp")
-        );
-        make_executable(&wrapper).expect("restore executable wrapper");
-    }
+    let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
+    let mut permissions = std::fs::metadata(&wrapper)
+        .expect("wrapper metadata")
+        .permissions();
+    permissions.set_mode(0o644);
+    std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
+    let invalid_archive = root.path().join(format!("{label}-invalid.tar.gz"));
+    create_archive(root.path(), &invalid_archive).expect("archive fixture");
+    let invalid_output = run_gate(&invalid_archive, &plugin_root);
+    assert!(!invalid_output.status.success());
+    assert!(
+        String::from_utf8_lossy(&invalid_output.stderr)
+            .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp")
+    );
+    make_executable(&wrapper).expect("restore executable wrapper");
+}
+
+#[cfg(unix)]
+#[test]
+fn archive_gate_checks_direct_argv_wrapper_mode() {
+    assert_wrapper_mode("direct-argv", false, true);
+}
+
+#[cfg(unix)]
+#[test]
+fn archive_gate_checks_nested_server_map_wrapper_mode() {
+    assert_wrapper_mode("nested-server-map", true, false);
 }

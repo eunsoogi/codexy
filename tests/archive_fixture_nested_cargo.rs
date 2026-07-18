@@ -10,16 +10,19 @@ fn archive_fixture_reuses_cargo_built_test_binaries() {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/release_archive.rs"),
     )
     .expect("release archive fixture helper");
-    assert!(
-        !helper.contains("Command::new(\"cargo\")"),
+    assert_eq!(
+        helper.matches("Command::new(\"cargo\")").count(),
+        0,
         "archive fixtures must not launch nested Cargo builds"
     );
-    for binary in ["codexy-mcp-lsp", "codexy-mcp-codegraph"] {
-        assert!(
-            helper.contains(&format!("CARGO_BIN_EXE_{binary}")),
-            "archive fixture must reuse Cargo-built {binary}"
-        );
-    }
+    release_archive_support::assert_structured_literals(
+        &helper,
+        "Cargo-built archive fixture binaries",
+        &[
+            "CARGO_BIN_EXE_codexy-mcp-lsp",
+            "CARGO_BIN_EXE_codexy-mcp-codegraph",
+        ],
+    );
 }
 
 #[cfg(unix)]

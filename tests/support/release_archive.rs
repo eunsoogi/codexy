@@ -172,6 +172,19 @@ fn reap_archive_process(child: &mut Child) {
 pub(crate) fn complete_plugin_fixture(
     root: &std::path::Path,
 ) -> std::io::Result<std::path::PathBuf> {
+    complete_plugin_fixture_with_runtime(root, true)
+}
+
+pub(crate) fn complete_plugin_fixture_with_stubbed_runtime(
+    root: &std::path::Path,
+) -> std::io::Result<std::path::PathBuf> {
+    complete_plugin_fixture_with_runtime(root, false)
+}
+
+fn complete_plugin_fixture_with_runtime(
+    root: &std::path::Path,
+    native_host_runtime: bool,
+) -> std::io::Result<std::path::PathBuf> {
     let plugin_root = root.join("plugins/codexy");
     copy_tree(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
@@ -194,7 +207,7 @@ pub(crate) fn complete_plugin_fixture(
     ] {
         for platform in ["darwin-arm64", "linux-x86_64"] {
             let path = runtime.join(format!("codexy-mcp-{server}-{platform}.bin"));
-            if platform == host_platform {
+            if native_host_runtime && platform == host_platform {
                 std::fs::copy(binary, &path)?;
             } else {
                 let header = if platform == "darwin-arm64" {
