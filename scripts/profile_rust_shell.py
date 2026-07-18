@@ -8,6 +8,7 @@ import shlex
 from profile_rust_substitutions import command_substitutions
 
 ASSIGNMENT_WORD_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+HEREDOC_PATTERN = re.compile(r"<<-?\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)")
 SHELL_SEPARATORS = frozenset("();&|{}")
 VALUE_OPTIONS = frozenset({"-a", "--argv0", "-C", "--chdir", "-u", "--unset"})
 TIMEOUT_VALUE_OPTIONS = frozenset({"-k", "--kill-after", "-s", "--signal"})
@@ -18,18 +19,29 @@ SHELL_EXECUTABLES = frozenset({"bash", "dash", "ksh", "sh", "zsh"})
 
 def shell_commands(command: str) -> list[list[str]]:
     commands: list[list[str]] = []
+    heredoc: str | None = None
     for line in command.splitlines():
+        if heredoc is not None:
+            if line.strip() == heredoc:
+                heredoc = None
+            continue
+        match = HEREDOC_PATTERN.search(line)
+        if match is not None:
+            heredoc = match.group(1)
         lexer = shlex.shlex(line, posix=True, punctuation_chars="();&|{}")
         lexer.whitespace_split = True
         lexer.commenters = "#"
         current: list[str] = []
-        for token in lexer:
-            if token and set(token) <= SHELL_SEPARATORS:
-                if current:
-                    commands.append(current)
-                    current = []
-            else:
-                current.append(token)
+        try:
+            for token in lexer:
+                if token and set(token) <= SHELL_SEPARATORS:
+                    if current:
+                        commands.append(current)
+                        current = []
+                else:
+                    current.append(token)
+        except ValueError:
+            continue
         if current:
             commands.append(current)
     return commands

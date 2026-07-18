@@ -49,6 +49,8 @@ fn gate_ignores_echoed_full_workload_text() -> Result<(), Box<dyn std::error::Er
     for command in [
         "echo cargo test --locked --all-targets",
         "echo ok;# $(cargo test --locked --all-targets)",
+        "|\n          cat <<'EOF'\n          cargo test --locked --all-targets\n          EOF",
+        "|\n          echo \"$(\n          printf harmless\n          )\"",
     ] {
         std::fs::write(
             &fixture.workflow,
@@ -234,6 +236,7 @@ fn gate_rejects_shell_wrapped_or_reordered_full_workloads(
         "|\n          echo prefix#$(cargo test --locked --all-targets)",
         "|\n          echo \"text # $(cargo test --locked --all-targets)\"",
         "|\n          echo \"it's $(cargo test --locked --all-targets)\"",
+        "|\n          echo \"$(\n          cargo test --locked --all-targets\n          )\"",
     ] {
         std::fs::write(
             &fixture.workflow,
