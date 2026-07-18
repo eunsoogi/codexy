@@ -199,7 +199,9 @@ def _segment_forbidden(tokens: list[str], depth: int) -> bool:
     if not tokens:
         return False
     command = Path(tokens[0]).name.lower()
-    if command in SHELLS and depth < 3:
+    if command in SHELLS:
+        if depth >= 3:
+            return True
         return _shell_forbidden(tokens[1:], depth, command in {"pwsh", "powershell"})
     if command == "git":
         arguments = _global_options(tokens[1:], GIT_SWITCHES, GIT_VALUE_SWITCHES)

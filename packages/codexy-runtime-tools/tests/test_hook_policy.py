@@ -1,4 +1,5 @@
 import json
+import shlex
 import time
 import unittest
 from pathlib import Path
@@ -135,6 +136,16 @@ class HookPolicyTests(unittest.TestCase):
             "gh --repo example/elsewhere pr merge 453 --squash",
         ]:
             self.assertFalse(shell_forbidden(command), command)
+
+    def test_shell_recursion_limit_fails_closed(self) -> None:
+        def nested(command: str, layers: int) -> str:
+            for _ in range(layers):
+                command = f"sh -c {shlex.quote(command)}"
+            return command
+
+        self.assertFalse(shell_forbidden(nested("git status", 3)))
+        self.assertTrue(shell_forbidden(nested("git push --force origin main", 4)))
+        self.assertTrue(shell_forbidden(nested("git status", 4)))
 
     def test_thread_routing_requires_nonblank_model_and_thinking_only(self) -> None:
         base = {
