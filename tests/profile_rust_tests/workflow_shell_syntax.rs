@@ -80,6 +80,32 @@ fn gate_rejects_a_backslash_continued_full_workload(
 }
 
 #[test]
+fn gate_rejects_a_full_workload_after_an_escaped_heredoc_delimiter(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = trailing_workload_after_heredoc(r#"\EOF"#)?;
+
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
+fn gate_rejects_a_full_workload_after_an_adjacent_quoted_heredoc_delimiter(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = trailing_workload_after_heredoc(r#"E"OF""#)?;
+
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
+fn gate_accepts_an_assignment_only_shell_step() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = fixture_with("FLAG=value")?;
+
+    assert!(fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
 fn gate_rejects_shell_wrapped_or_reordered_full_workloads(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
@@ -129,4 +155,12 @@ fn fixture_with(command: &str) -> Result<GateFixture, Box<dyn std::error::Error>
         format!("jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
     )?;
     Ok(fixture)
+}
+
+fn trailing_workload_after_heredoc(
+    delimiter: &str,
+) -> Result<GateFixture, Box<dyn std::error::Error>> {
+    fixture_with(&format!(
+        "|\n          cat <<{delimiter}\n          harmless\n          EOF\n          cargo test --locked --all-targets"
+    ))
 }

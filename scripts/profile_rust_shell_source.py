@@ -37,12 +37,14 @@ def strip_heredoc_data(command: str) -> str:
     output: list[str] = []
     pending: list[tuple[str, bool]] = []
     quote: str | None = None
+    indentation = shell_indentation(command)
     for line in command.splitlines(keepends=True):
         body = line.rstrip("\r\n")
         ending = line[len(body) :]
         if pending:
             delimiter, strip_tabs = pending[0]
-            candidate = body.lstrip("\t") if strip_tabs else body
+            candidate = body[indentation:]
+            candidate = candidate.lstrip("\t") if strip_tabs else candidate
             if candidate == delimiter:
                 pending.pop(0)
             output.append(ending)
@@ -51,6 +53,15 @@ def strip_heredoc_data(command: str) -> str:
         pending.extend(delimiters)
         output.append(line)
     return "".join(output)
+
+
+def shell_indentation(command: str) -> int:
+    indents = [
+        len(line) - len(line.lstrip(" "))
+        for line in command.splitlines()
+        if line.strip()
+    ]
+    return min(indents, default=0)
 
 
 def heredoc_delimiters(
@@ -85,14 +96,29 @@ def heredoc_delimiters(
 def heredoc_delimiter(line: str, index: int) -> tuple[str, int]:
     if index >= len(line):
         return "", index
-    quote = line[index] if line[index] in "'\"" else None
-    if quote is not None:
-        end = line.find(quote, index + 1)
-        return (line[index + 1 : end], end + 1) if end >= 0 else ("", len(line))
-    end = index
-    while end < len(line) and not line[end].isspace() and line[end] not in ";|&(){}<>":
-        end += 1
-    return line[index:end], end
+    characters: list[str] = []
+    quote: str | None = None
+    while index < len(line):
+        character = line[index]
+        if character == "\\":
+            if index + 1 >= len(line):
+                return "", len(line)
+            characters.append(line[index + 1])
+            index += 2
+        elif quote is not None:
+            quote = None if character == quote else quote
+            if quote is not None:
+                characters.append(character)
+            index += 1
+        elif character in "'\"":
+            quote = character
+            index += 1
+        elif character.isspace() or character in ";|&(){}<>":
+            break
+        else:
+            characters.append(character)
+            index += 1
+    return ("".join(characters), index) if quote is None else ("", len(line))
 
 
 def mask_multiline_quotes(source: str) -> str:

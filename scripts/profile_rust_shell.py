@@ -44,9 +44,10 @@ def executable_token_sets(tokens: list[str]) -> list[list[str]]:
 def matches_invocation(tokens: list[str], invocation: tuple[str, ...]) -> bool:
     if tokens[: len(invocation)] == list(invocation):
         return True
-    return (
+    return bool(
         invocation[:1] == ("cargo",)
-        and tokens[:1] and executable_name(tokens[0]) == "cargo"
+        and tokens
+        and executable_name(tokens[0]) == "cargo"
         and set(invocation[1:]).issubset(tokens[1:])
     )
 
