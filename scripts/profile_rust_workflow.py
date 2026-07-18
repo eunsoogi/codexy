@@ -173,11 +173,17 @@ def executable_tokens(tokens: list[str]) -> list[str]:
                     index += 2
                     continue
                 if option in {"-S", "--split-string"}:
-                    return executable_tokens(shlex.split(tokens[index + 1]) + tokens[index + 2 :])
+                    return executable_tokens(
+                        ["env"] + shlex.split(tokens[index + 1]) + tokens[index + 2 :]
+                    )
                 if option.startswith("--split-string="):
                     return executable_tokens(
-                        shlex.split(option.partition("=")[2]) + tokens[index + 1 :]
+                        ["env"]
+                        + shlex.split(option.partition("=")[2])
+                        + tokens[index + 1 :]
                     )
+                if option.startswith("-S") and len(option) > 2:
+                    return executable_tokens(["env"] + shlex.split(option[2:]) + tokens[index + 1 :])
                 if option.startswith(("--chdir=", "--unset=", "--argv0=")):
                     index += 1
                     continue

@@ -136,6 +136,9 @@ fn gate_rejects_env_option_wrapped_full_workloads() -> Result<(), Box<dyn std::e
         "env -S cargo test --locked --all-targets",
         "env -S 'cargo test' --locked --all-targets",
         "env -a cargo0 cargo test --locked --all-targets",
+        "env -S'cargo test --locked --all-targets'",
+        "env -S '-C . cargo test --locked --all-targets'",
+        "env -S '-- cargo test --locked --all-targets'",
     ] {
         std::fs::write(
             &fixture.workflow,
