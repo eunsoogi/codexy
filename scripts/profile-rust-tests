@@ -15,6 +15,39 @@ from pathlib import Path
 REGRESSION_BUDGET_SECONDS = 60.0
 SUBPROCESS_TIMEOUT_SECONDS = 120.0
 PROFILE_TARGET_SOURCES = frozenset(("tests/validator_gpt_5_6_routing_assignment_blocks.rs",))
+REQUIRED_WORKLOAD_TIMEOUT_MINUTES = 10
+
+
+def enforce_required_workload_timeout(workflow: Path) -> None:
+    try:
+        lines = workflow.read_text().splitlines()
+    except OSError as error:
+        sys.stderr.write(f"required Rust workload policy is unreadable: {workflow}: {error}\n")
+        raise SystemExit(1) from None
+
+    in_rust_test_job = False
+    timeout_minutes: int | None = None
+    for line in lines:
+        if line == "  rust-test:":
+            in_rust_test_job = True
+            continue
+        if in_rust_test_job and line.startswith("  ") and not line.startswith("    "):
+            break
+        if in_rust_test_job and line.startswith("    timeout-minutes:"):
+            value = line.removeprefix("    timeout-minutes:").strip()
+            try:
+                timeout_minutes = int(value)
+            except ValueError:
+                break
+            break
+
+    if timeout_minutes != REQUIRED_WORKLOAD_TIMEOUT_MINUTES:
+        found = "missing" if timeout_minutes is None else str(timeout_minutes)
+        sys.stderr.write(
+            "required Rust workload timeout must remain "
+            f"{REQUIRED_WORKLOAD_TIMEOUT_MINUTES} minutes; found {found}\n"
+        )
+        raise SystemExit(1)
 
 
 def test_binaries(root: Path, timeout: float) -> list[tuple[str, str]]:
@@ -101,6 +134,11 @@ def main() -> int:
         help="bounded timeout for each discovery and integration-binary subprocess",
     )
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
+    parser.add_argument(
+        "--workflow-file",
+        type=Path,
+        help="required-workload policy file; defaults to the Rust CI workflow under --root",
+    )
     arguments = parser.parse_args()
     if arguments.iterations < 1:
         parser.error("--iterations must be at least 1")
@@ -113,6 +151,8 @@ def main() -> int:
     if arguments.timeout_seconds <= 0:
         parser.error("--timeout-seconds must be positive")
     root = arguments.root.resolve()
+    workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
+    enforce_required_workload_timeout(workflow)
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     binaries = test_binaries(root, arguments.timeout_seconds)
     print(f"# codexy-rust-test-profile commit={commit} samples={arguments.iterations}")

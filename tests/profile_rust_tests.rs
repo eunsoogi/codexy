@@ -210,6 +210,29 @@ fn profile_fails_a_controlled_over_budget_fixture() -> Result<(), Box<dyn std::e
 }
 
 #[cfg(unix)]
+#[test]
+fn profile_rejects_a_relaxed_full_workload_timeout() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let workflow = temp.path().join("rust-test.yml");
+    std::fs::write(&workflow, "jobs:\n  rust-test:\n    timeout-minutes: 11\n")?;
+
+    let output = Command::new("python3")
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests"))
+        .args([
+            "--root",
+            env!("CARGO_MANIFEST_DIR"),
+            "--workflow-file",
+            workflow.to_str().expect("UTF-8 temporary path"),
+        ])
+        .output()?;
+
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let stderr = String::from_utf8(output.stderr)?;
+    assert!(stderr.contains("must remain 10 minutes"), "{stderr}");
+    Ok(())
+}
+
+#[cfg(unix)]
 fn write_executable(path: &Path, contents: &str) -> Result<(), Box<dyn std::error::Error>> {
     use std::os::unix::fs::PermissionsExt;
 
