@@ -130,6 +130,31 @@ class HookPolicyTests(unittest.TestCase):
         ]:
             self.assertFalse(shell_forbidden(command), command)
 
+    def test_thread_routing_requires_nonblank_model_and_thinking_only(self) -> None:
+        base = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "codex_app__send_message_to_thread",
+            "tool_input": {"threadId": "019f7440-c9ae-7872-a422-96fe5e395692"},
+        }
+        invalid = [
+            {},
+            {"model": "gpt-5.6-sol"},
+            {"thinking": "medium"},
+            {"model": None, "thinking": "medium"},
+            {"model": "gpt-5.6-sol", "thinking": "   "},
+            {"model": "", "thinking": "medium"},
+        ]
+        for fields in invalid:
+            payload = {**base, "tool_input": {**base["tool_input"], **fields}}
+            receipt = json.loads(evaluate("PreToolUse", encoded(payload)))
+            self.assertEqual(receipt["hookSpecificOutput"]["permissionDecision"], "deny")
+        for fields in [
+            {"model": "gpt-5.6-sol", "thinking": "medium"},
+            {"model": "unvalidated-value", "thinking": "anything-nonblank"},
+        ]:
+            payload = {**base, "tool_input": {**base["tool_input"], **fields}}
+            self.assertEqual(evaluate("PreToolUse", encoded(payload)), b"")
+
     def test_wrong_event_and_secret_fields_deny_without_echoing_input(self) -> None:
         secret = "CODEXY_SECRET_CANARY_453"
         payload = {

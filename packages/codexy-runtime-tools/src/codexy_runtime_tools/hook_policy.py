@@ -20,6 +20,7 @@ GITHUB_TOOLS = {
     "mcp__codex_apps__github_merge_pull_request",
     "mcp__codex_apps__github_enable_auto_merge",
 }
+THREAD_ROUTING_TOOL = "codex_app__send_message_to_thread"
 GITHUB_FIELDS = {
     "mcp__codex_apps__github_create_issue": {
         "repository_full_name", "title", "body", "labels", "assignees", "milestone"
@@ -99,6 +100,11 @@ def _valid_issue_title(title: str) -> bool:
     )
 
 
+def _nonblank_string(data: dict[str, Any], field: str) -> bool:
+    value = data.get(field)
+    return isinstance(value, str) and bool(value.strip())
+
+
 def _github_forbidden(tool: str, tool_input: dict[str, Any]) -> bool:
     if not set(tool_input).issubset(GITHUB_FIELDS[tool]):
         return True
@@ -148,6 +154,16 @@ def _evaluate_object(event: Event, payload: dict[str, Any]) -> bytes:
     tool = payload.get("tool_name")
     if not isinstance(tool, str):
         return _deny(event)
+    if tool == THREAD_ROUTING_TOOL:
+        tool_input = payload.get("tool_input")
+        if not isinstance(tool_input, dict):
+            return _deny(event)
+        return (
+            b""
+            if _nonblank_string(tool_input, "model")
+            and _nonblank_string(tool_input, "thinking")
+            else _deny(event)
+        )
     if tool in GITHUB_TOOLS:
         tool_input = payload.get("tool_input")
         if not isinstance(tool_input, dict):
