@@ -5,7 +5,7 @@ use tempfile::tempdir;
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::{complete_plugin_fixture, create_archive, make_executable};
+use release_archive_support::{complete_plugin_fixture_with_stubbed_runtime, create_archive};
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
     Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
@@ -38,21 +38,37 @@ fn write_mcp_config(plugin_root: &std::path::Path, nested: bool, argv: bool) {
     .expect("write MCP config");
 }
 
+fn entrypoints(config: &std::path::Path) -> Vec<String> {
+    let output = Command::new(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-entrypoints"),
+    )
+    .arg(config)
+    .output()
+    .expect("MCP entrypoint inspector should start");
+    assert!(
+        output.status.success(),
+        "MCP entrypoint inspector failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout)
+        .expect("MCP entrypoint output")
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
 #[cfg(unix)]
 fn assert_wrapper_mode(label: &str, nested: bool, argv: bool) {
     use std::os::unix::fs::PermissionsExt;
 
     let root = tempdir().expect("tempdir");
-    let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
+    let plugin_root =
+        complete_plugin_fixture_with_stubbed_runtime(root.path()).expect("complete plugin fixture");
     write_mcp_config(&plugin_root, nested, argv);
-
-    let valid_archive = root.path().join(format!("{label}-valid.tar.gz"));
-    create_archive(root.path(), &valid_archive).expect("archive fixture");
-    let valid_output = run_gate(&valid_archive, &plugin_root);
-    assert!(
-        valid_output.status.success(),
-        "valid {label} fixture failed: {}",
-        String::from_utf8_lossy(&valid_output.stderr)
+    assert_eq!(
+        entrypoints(&plugin_root.join(".mcp.json")),
+        ["mcp/codexy-mcp-lsp", "mcp/codexy-mcp-codegraph"],
+        "{label} MCP config must expose both packaged wrappers"
     );
 
     let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
@@ -69,7 +85,6 @@ fn assert_wrapper_mode(label: &str, nested: bool, argv: bool) {
         String::from_utf8_lossy(&invalid_output.stderr)
             .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp")
     );
-    make_executable(&wrapper).expect("restore executable wrapper");
 }
 
 #[cfg(unix)]

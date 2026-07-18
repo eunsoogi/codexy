@@ -29,6 +29,7 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
             "! -name '*.md'",
             "! -name '*.txt'",
             "command -v python3",
+            "inspect-mcp-entrypoints",
             "rg or grep is required",
             "hygiene scan failed",
             "duplicate archive entries",
