@@ -12,8 +12,9 @@ import sys
 import time
 from pathlib import Path
 
-REGRESSION_BUDGET_SECONDS = 523.261
+REGRESSION_BUDGET_SECONDS = 60.0
 SUBPROCESS_TIMEOUT_SECONDS = 120.0
+PROFILE_TARGET_SOURCES = frozenset(("tests/validator_gpt_5_6_routing_assignment_blocks.rs",))
 
 
 def test_binaries(root: Path, timeout: float) -> list[tuple[str, str]]:
@@ -46,7 +47,20 @@ def test_binaries(root: Path, timeout: float) -> list[tuple[str, str]]:
         if (message := json.loads(line)).get("profile", {}).get("test")
         and message.get("executable")
     }
-    return sorted(binaries)
+    targets = [
+        binary
+        for binary in binaries
+        if report_path(binary[1], root) in PROFILE_TARGET_SOURCES
+    ]
+    profiled_sources = {report_path(source, root) for _, source in targets}
+    missing_sources = PROFILE_TARGET_SOURCES - profiled_sources
+    if missing_sources:
+        sys.stderr.write(
+            "profile target binaries were not built: "
+            f"{', '.join(sorted(missing_sources))}\n"
+        )
+        raise SystemExit(1)
+    return sorted(targets)
 
 
 def run_binary(path: str, root: Path, timeout: float) -> tuple[float, int]:
@@ -102,6 +116,7 @@ def main() -> int:
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     binaries = test_binaries(root, arguments.timeout_seconds)
     print(f"# codexy-rust-test-profile commit={commit} samples={arguments.iterations}")
+    print(f"# profile-targets={','.join(sorted(PROFILE_TARGET_SOURCES))}")
     print("sample\tbinary\tseconds\texit")
     sample_totals: list[float] = []
     for iteration in range(1, arguments.iterations + 1):

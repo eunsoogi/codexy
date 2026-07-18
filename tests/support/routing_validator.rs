@@ -1,4 +1,4 @@
-use std::{path::Path, process::Command};
+use std::path::Path;
 
 use super::copy_dir;
 
@@ -55,11 +55,5 @@ pub(crate) fn validate(skill: String) -> TestResult<std::process::Output> {
         plugin_root.join("skills/codex-orchestration/SKILL.md"),
         skill,
     )?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?)
+    super::validator_routing(&plugin_root)
 }
