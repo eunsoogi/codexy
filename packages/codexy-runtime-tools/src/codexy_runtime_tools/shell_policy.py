@@ -1,58 +1,12 @@
 from __future__ import annotations
 
-import configparser
-import re
 import shlex
 from pathlib import Path
 
+from .repository_policy import repository_owned
 
-CODEXY_REMOTE = re.compile(r"(?:github\.com[/:])eunsoogi/codexy(?:\.git)?$")
 OPERATORS = {";", "&&", "||", "|", "&"}
 SHELLS = {"sh", "bash", "zsh", "dash", "pwsh", "powershell"}
-
-
-def _repository_config(cwd: Path) -> Path | None:
-    for root in (cwd, *cwd.parents):
-        dot_git = root / ".git"
-        if dot_git.is_dir():
-            return dot_git / "config"
-        if dot_git.is_file():
-            text = dot_git.read_text(encoding="utf-8", errors="strict").strip()
-            prefix = "gitdir: "
-            if not text.startswith(prefix):
-                return None
-            git_dir = Path(text[len(prefix) :])
-            if not git_dir.is_absolute():
-                git_dir = dot_git.parent / git_dir
-            common = git_dir / "commondir"
-            if common.is_file():
-                common_dir = Path(common.read_text(encoding="utf-8").strip())
-                if not common_dir.is_absolute():
-                    common_dir = git_dir / common_dir
-                return common_dir.resolve() / "config"
-            return git_dir.resolve() / "config"
-    return None
-
-
-def repository_owned(cwd: str) -> bool | None:
-    path = Path(cwd)
-    if not path.is_absolute():
-        return None
-    try:
-        config_path = _repository_config(path)
-        if config_path is None or not config_path.is_file():
-            return None if path.name == "codexy" else False
-        config = configparser.ConfigParser(interpolation=None)
-        config.read(config_path, encoding="utf-8")
-        urls = [
-            section.get("url", "")
-            for name in config.sections()
-            if name.startswith('remote "')
-            for section in [config[name]]
-        ]
-        return any(CODEXY_REMOTE.search(url) for url in urls)
-    except (OSError, UnicodeError, configparser.Error, ValueError):
-        return None
 
 
 def _tokens(command: str) -> list[str]:

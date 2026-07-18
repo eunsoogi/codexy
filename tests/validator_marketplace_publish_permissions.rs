@@ -6,9 +6,7 @@ fn runtime_workflow_rejects_every_untrusted_write_permission()
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow =
         std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml"))?;
-
     assert_release_write_permissions_are_trusted(&workflow)?;
-
     for mutation in [
         workflow.replacen(
             "      contents: write",
@@ -45,7 +43,6 @@ fn runtime_workflow_rejects_semantic_write_bypasses_and_checks_each_checkout()
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow =
         std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml"))?;
-
     for mutation in [
         workflow.replacen(
             "    steps:\n",
@@ -97,7 +94,6 @@ fn runtime_workflow_rejects_semantic_write_bypasses_and_checks_each_checkout()
             "the workflow contract must reject semantic permission and checkout bypasses"
         );
     }
-
     for control in [
         workflow.replacen(
             "      - name: Build MCP runtime binaries",
@@ -129,7 +125,6 @@ fn assert_release_write_permissions_are_trusted(workflow: &str) -> Result<(), St
     let root = mapping(&document, "workflow")?;
     let top_permissions = mapping_field(root, "permissions", "workflow")?;
     require_exact_permission(top_permissions, "contents", "read", "top-level")?;
-
     let jobs = mapping_field(root, "jobs", "workflow")?;
     let mut checkout_count = 0;
     for (name, job) in jobs {
@@ -140,20 +135,18 @@ fn assert_release_write_permissions_are_trusted(workflow: &str) -> Result<(), St
         let permissions = field(job, "permissions");
         if job_name == "publish-release" {
             let permissions =
-                permissions.ok_or_else(|| "publish-release must declare permissions".to_owned())?;
+                permissions.ok_or("publish-release permissions missing".to_owned())?;
             let permissions = mapping(permissions, "publish-release permissions")?;
             require_exact_permission(permissions, "contents", "write", "publish-release")?;
             require_trusted_release_condition(job)?;
         } else if job_name == "publish-runtime-tool" {
-            let permissions = permissions
-                .ok_or_else(|| "publish-runtime-tool must declare permissions".to_owned())?;
+            let permissions = permissions.ok_or("runtime-tool permissions missing".to_owned())?;
             let permissions = mapping(permissions, "publish-runtime-tool permissions")?;
             require_exact_permission(permissions, "id-token", "write", "publish-runtime-tool")?;
             require_trusted_release_condition(job)?;
         } else if let Some(permissions) = permissions {
             reject_write_permissions(permissions, job_name)?;
         }
-
         let Some(steps) = field(job, "steps") else {
             continue;
         };
