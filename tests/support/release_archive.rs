@@ -48,7 +48,19 @@ pub(crate) fn archive_gate_with_test_validator(
 ) -> std::io::Result<std::path::PathBuf> {
     let scripts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts");
     let gate = root.join("inspect-release-archive");
-    std::fs::copy(scripts.join("inspect-release-archive"), &gate)?;
+    let max_runtime_bytes = max_test_runtime_bytes()?;
+    let source = std::fs::read_to_string(scripts.join("inspect-release-archive"))?;
+    let source = source
+        .strip_prefix("#!/bin/sh\n")
+        .expect("archive gate must use a POSIX shell shebang");
+    std::fs::write(
+        &gate,
+        format!(
+            "#!/bin/sh\n# Cargo test binaries include debug metadata; production defaults remain in the source gate.\nMAX_ARCHIVE_FILE_BYTES={}\nMAX_ARCHIVE_TOTAL_BYTES={}\nexport MAX_ARCHIVE_FILE_BYTES MAX_ARCHIVE_TOTAL_BYTES\n{source}",
+            max_runtime_bytes,
+            max_runtime_bytes.saturating_mul(3),
+        ),
+    )?;
     std::fs::copy(
         scripts.join("inspect-mcp-response"),
         root.join("inspect-mcp-response"),
@@ -183,17 +195,17 @@ pub(crate) fn complete_plugin_fixture(
                 "bin"
             };
             let path = runtime.join(format!("codexy-mcp-{server}-{platform}.{extension}"));
-            if platform == host_platform {
-                std::fs::copy(binary, &path)?;
+            let bytes = if platform == host_platform {
+                std::fs::read(binary)?
             } else {
-                let bytes = match platform {
-                    "darwin-arm64" => vec![0xcf, 0xfa, 0xed, 0xfe].repeat(1024),
-                    "linux-x86_64" => vec![0x7f, b'E', b'L', b'F'].repeat(1024),
+                match platform {
+                    "darwin-arm64" => vec![0xcf, 0xfa, 0xed, 0xfe],
+                    "linux-x86_64" => vec![0x7f, b'E', b'L', b'F'],
                     "windows-x86_64" => pe_fixture::x86_64_executable(),
                     _ => unreachable!(),
-                };
-                std::fs::write(&path, bytes)?;
-            }
+                }
+            };
+            std::fs::write(&path, bytes)?;
             make_executable(&path)?;
             if platform == "windows-x86_64" {
                 std::fs::copy(
@@ -204,4 +216,15 @@ pub(crate) fn complete_plugin_fixture(
         }
     }
     Ok(plugin_root)
+}
+
+fn max_test_runtime_bytes() -> std::io::Result<u64> {
+    [
+        env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
+        env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
+    ]
+    .into_iter()
+    .map(|binary| std::fs::metadata(binary).map(|metadata| metadata.len().saturating_add(1)))
+    .collect::<std::io::Result<Vec<_>>>()
+    .map(|sizes| sizes.into_iter().max().unwrap_or(1))
 }
