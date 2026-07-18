@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from codexy_runtime_tools.hook_policy import MAX_INPUT_BYTES, evaluate
+from codexy_runtime_tools.shell_policy import shell_forbidden
 
 
 def encoded(value: object) -> bytes:
@@ -82,6 +83,12 @@ class HookPolicyTests(unittest.TestCase):
             'pwsh -Command "git push --force origin main"',
             "echo ok && git reset --hard HEAD~1",
             "rm -rf /",
+            "command -- git push --force origin main",
+            "sudo -u root git push --force origin main",
+            "git -C /tmp push --force origin main",
+            "git --no-pager reset --hard HEAD~1",
+            "env -u GIT_CONFIG git push --force origin main",
+            "gh --repo eunsoogi/codexy pr merge 453 --admin",
         ]
         allowed = [
             "printf '%s\\n' 'git push --force'",
@@ -105,6 +112,23 @@ class HookPolicyTests(unittest.TestCase):
                 "tool_input": {"command": command},
             }
             self.assertEqual(evaluate("PreToolUse", encoded(payload)), b"", command)
+
+    def test_wrapper_and_global_option_shapes_are_structural(self) -> None:
+        for command in [
+            "env --unknown git push --force origin main",
+            "sudo --unknown git push --force origin main",
+            "git --unknown push --force origin main",
+            "gh --unknown pr merge 453 --admin",
+        ]:
+            self.assertTrue(shell_forbidden(command), command)
+        for command in [
+            "command -- git push origin feature/force-push-docs",
+            "sudo -u runner git push origin feature/force-push-docs",
+            "git -C /tmp push origin feature/force-push-docs",
+            "env -u GIT_CONFIG git push origin feature/force-push-docs",
+            "gh --repo example/elsewhere pr merge 453 --squash",
+        ]:
+            self.assertFalse(shell_forbidden(command), command)
 
     def test_wrong_event_and_secret_fields_deny_without_echoing_input(self) -> None:
         secret = "CODEXY_SECRET_CANARY_453"

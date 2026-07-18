@@ -7,6 +7,25 @@ from .repository_policy import repository_owned
 
 OPERATORS = {";", "&&", "||", "|", "&"}
 SHELLS = {"sh", "bash", "zsh", "dash", "pwsh", "powershell"}
+ENV_SWITCHES = {"-i", "-0", "--ignore-environment", "--null"}
+ENV_VALUE_SWITCHES = {"-u", "-C", "--unset", "--chdir"}
+SUDO_SWITCHES = {"-b", "-E", "-H", "-K", "-k", "-n", "-S"}
+SUDO_VALUE_SWITCHES = {
+    "-C", "-D", "-g", "-h", "-r", "-R", "-t", "-T", "-u",
+    "--chdir", "--chroot", "--closefrom", "--group", "--host", "--role",
+    "--type", "--command-timeout", "--user",
+}
+GIT_SWITCHES = {
+    "--bare", "--literal-pathspecs", "--glob-pathspecs", "--noglob-pathspecs",
+    "--icase-pathspecs", "--no-lazy-fetch", "--no-optional-locks", "--no-pager",
+    "--no-replace-objects", "--paginate", "--version",
+}
+GIT_VALUE_SWITCHES = {
+    "-C", "-c", "--config-env", "--exec-path", "--git-dir", "--namespace",
+    "--super-prefix", "--work-tree",
+}
+GH_SWITCHES = {"--help", "--no-pager", "--paginate", "--version"}
+GH_VALUE_SWITCHES = {"-R", "--config", "--hostname", "--repo"}
 
 
 def _tokens(command: str) -> list[str]:
@@ -31,36 +50,127 @@ def _segments(tokens: list[str]) -> list[list[str]]:
     return result
 
 
-def _unwrap(tokens: list[str]) -> list[str]:
+def _required_value(tokens: list[str], index: int) -> tuple[str, int] | None:
+    if index + 1 >= len(tokens) or tokens[index + 1] == "--":
+        return None
+    return tokens[index + 1], index + 2
+
+
+def _option_value(token: str, options: set[str]) -> bool:
+    return any(token.startswith(f"{option}=") and token != f"{option}=" for option in options)
+
+
+def _env_command(tokens: list[str]) -> list[str] | None:
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            return tokens[index + 1 :]
+        if not token.startswith("-"):
+            if "=" in token and not token.startswith("="):
+                index += 1
+                continue
+            return tokens[index:]
+        if token in ENV_SWITCHES or _option_value(token, {"--unset", "--chdir"}):
+            index += 1
+        elif token in ENV_VALUE_SWITCHES:
+            value = _required_value(tokens, index)
+            if value is None:
+                return None
+            _, index = value
+        else:
+            return None
+    return []
+
+
+def _sudo_command(tokens: list[str]) -> list[str] | None:
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            return tokens[index + 1 :]
+        if not token.startswith("-"):
+            return tokens[index:]
+        if token in SUDO_SWITCHES or _option_value(token, {"--preserve-env"}):
+            index += 1
+        elif token in SUDO_VALUE_SWITCHES or _option_value(token, SUDO_VALUE_SWITCHES):
+            value = _required_value(tokens, index)
+            if value is None:
+                return None
+            _, index = value
+        else:
+            return None
+    return []
+
+
+def _command_command(tokens: list[str]) -> list[str] | None:
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            return tokens[index + 1 :]
+        if token in {"-p", "-v", "-V"}:
+            index += 1
+            continue
+        return None if token.startswith("-") else tokens[index:]
+    return []
+
+
+def _unwrap(tokens: list[str]) -> list[str] | None:
     remaining = list(tokens)
-    while remaining:
+    for _ in range(8):
+        if not remaining:
+            return remaining
         command = Path(remaining[0]).name.lower()
         if command == "env":
-            remaining.pop(0)
-            while remaining and ("=" in remaining[0] or remaining[0].startswith("-")):
-                remaining.pop(0)
+            remaining = _env_command(remaining)
         elif command == "command":
-            remaining.pop(0)
+            remaining = _command_command(remaining)
         elif command == "sudo":
-            remaining.pop(0)
-            while remaining and remaining[0].startswith("-"):
-                remaining.pop(0)
+            remaining = _sudo_command(remaining)
         else:
-            break
-    return remaining
+            return remaining
+        if remaining is None:
+            return None
+    return None
+
+
+def _global_options(
+    tokens: list[str], switches: set[str], value_switches: set[str]
+) -> list[str] | None:
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            return tokens[index + 1 :]
+        if not token.startswith("-"):
+            return tokens[index:]
+        if token in switches or _option_value(token, value_switches):
+            index += 1
+        elif token in value_switches:
+            value = _required_value(tokens, index)
+            if value is None:
+                return None
+            _, index = value
+        else:
+            return None
+    return []
 
 
 def _has_flag(tokens: list[str], long: str, short: str = "") -> bool:
-    return any(
-        token == long
-        or token.startswith(f"{long}=")
-        or (short and token.startswith("-") and not token.startswith("--") and short in token[1:])
-        for token in tokens
-    )
+    for token in tokens:
+        if token == long or token.startswith(f"{long}="):
+            return True
+        if short and token.startswith("-") and not token.startswith("--"):
+            if any(option == short for option in token[1:] if option.isalpha()):
+                return True
+    return False
 
 
 def _segment_forbidden(tokens: list[str], depth: int) -> bool:
     tokens = _unwrap(tokens)
+    if tokens is None:
+        return True
     if not tokens:
         return False
     command = Path(tokens[0]).name.lower()
@@ -70,8 +180,13 @@ def _segment_forbidden(tokens: list[str], depth: int) -> bool:
             if selector in lowered:
                 index = lowered.index(selector)
                 return index + 1 >= len(tokens) or shell_forbidden(tokens[index + 1], depth + 1)
-    if command == "git" and len(tokens) >= 2:
-        operation, arguments = tokens[1], tokens[2:]
+    if command == "git":
+        arguments = _global_options(tokens[1:], GIT_SWITCHES, GIT_VALUE_SWITCHES)
+        if arguments is None:
+            return True
+        if not arguments:
+            return False
+        operation, arguments = arguments[0], arguments[1:]
         if operation == "push":
             return _has_flag(arguments, "--force", "f") or _has_flag(
                 arguments, "--force-with-lease"
@@ -80,8 +195,13 @@ def _segment_forbidden(tokens: list[str], depth: int) -> bool:
             return "--hard" in arguments
         if operation == "clean":
             return _has_flag(arguments, "--force", "f")
-    if command == "gh" and tokens[1:3] == ["pr", "merge"]:
-        return "--admin" in tokens[3:]
+    if command == "gh":
+        arguments = _global_options(tokens[1:], GH_SWITCHES, GH_VALUE_SWITCHES)
+        if arguments is None:
+            return True
+        return arguments[:2] == ["pr", "merge"] and any(
+            argument == "--admin" for argument in arguments[2:]
+        )
     if command == "rm":
         recursive = _has_flag(tokens[1:], "--recursive", "r")
         force = _has_flag(tokens[1:], "--force", "f")
