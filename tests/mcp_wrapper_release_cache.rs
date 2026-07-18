@@ -18,7 +18,7 @@ fn runtime_cache_helper_avoids_python_39_builtin_generic_annotations()
 
 use support::{
     assert_wrapper_allows_explicit_package_release_mismatch,
-    assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
+    assert_wrapper_ignores_unversioned_cache_before_default_package_refresh, WrapperFixture,
     assert_wrapper_recovers_from_mismatched_cache_marker,
     assert_wrapper_recovers_from_poisoned_v2_cache_with_matching_release,
     assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,
@@ -34,8 +34,14 @@ use support::{
 #[test]
 fn wrappers_ignore_unversioned_cache_before_default_package_refresh()
 -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
     for server in ["lsp", "codegraph"] {
-        assert_wrapper_ignores_unversioned_cache_before_default_package_refresh(server)?;
+        assert_wrapper_ignores_unversioned_cache_before_default_package_refresh(
+            &fixture,
+            temp.path(),
+            server,
+        )?;
     }
     Ok(())
 }
