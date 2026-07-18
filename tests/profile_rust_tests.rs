@@ -100,6 +100,45 @@ fn gate_rejects_timeout_or_profiler_in_an_unrelated_job() -> Result<(), Box<dyn 
 }
 
 #[cfg(unix)]
+#[test]
+fn gate_rejects_a_second_profiler_invocation_in_another_job(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  unrelated:\n    steps:\n      - run: scripts/profile-rust-tests\n",
+    )?;
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_rejects_contract_fields_leaked_from_an_underscore_job(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    steps:\n      - run: echo not-the-gate\n  _unrelated:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n",
+    )?;
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_rejects_a_block_scalar_that_only_mentions_the_profiler(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    env: |\n      run: scripts/profile-rust-tests\n    steps:\n      - run: echo not-the-gate\n",
+    )?;
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
 struct GateFixture {
     temp: tempfile::TempDir,
     marker: PathBuf,

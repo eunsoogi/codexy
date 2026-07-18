@@ -24,6 +24,7 @@ RESULT_PATTERN = re.compile(
     r"(\d+) ignored; \d+ measured; \d+ filtered out"
 )
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
+WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 
 
 def integration_target_count(root: Path) -> int:
@@ -52,33 +53,110 @@ def integration_target_count(root: Path) -> int:
     except (json.JSONDecodeError, TypeError):
         sys.stderr.write("cargo metadata returned an invalid target inventory\n")
         raise SystemExit(1) from None
-
-
+def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
+    """Read a plain mapping entry; unsupported workflow syntax fails closed."""
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or stripped.startswith("-"):
+        return None
+    match = WORKFLOW_KEY_PATTERN.match(stripped)
+    if match is None:
+        return None
+    key = match.group("key").strip()
+    value = match.group("value").split("#", 1)[0].strip()
+    return key, value
+def step_run_command(line: str) -> str | None:
+    """Return a direct step `run` scalar, never text inside a block scalar."""
+    stripped = line.strip()
+    if stripped.startswith("-"):
+        stripped = stripped[1:].lstrip()
+    entry = yaml_mapping_entry(stripped)
+    if entry is None or entry[0] != "run":
+        return None
+    value = entry[1]
+    if value in {"|", "|-", "|+", ">", ">-", ">+"}:
+        return None
+    return value
+def workflow_jobs(source: str) -> dict[str, list[str]]:
+    """Parse root `jobs` block mappings and retain each job's own lines."""
+    jobs: dict[str, list[str]] = {}
+    current_job: str | None = None
+    in_jobs = False
+    for line in source.splitlines():
+        indentation = len(line) - len(line.lstrip(" "))
+        entry = yaml_mapping_entry(line)
+        if indentation == 0:
+            in_jobs = entry == ("jobs", "")
+            current_job = None
+            continue
+        if not in_jobs:
+            continue
+        if indentation == 2 and entry is not None and entry[1] == "":
+            name = entry[0]
+            if name in jobs:
+                sys.stderr.write(f"Rust workflow defines job {name!r} more than once\n")
+                raise SystemExit(1)
+            jobs[name] = []
+            current_job = name
+            continue
+        if current_job is not None:
+            jobs[current_job].append(line)
+    return jobs
+def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
+    """Collect direct job timeout fields and direct `steps[*].run` scalars."""
+    timeouts: list[str] = []
+    runs: list[str] = []
+    in_steps = False
+    step_open = False
+    for line in lines:
+        indentation = len(line) - len(line.lstrip(" "))
+        entry = yaml_mapping_entry(line)
+        if indentation == 4:
+            step_open = False
+            in_steps = entry == ("steps", "")
+            if entry is not None and entry[0] == "timeout-minutes":
+                timeouts.append(entry[1])
+            continue
+        if not in_steps:
+            continue
+        if indentation < 6:
+            in_steps = False
+            step_open = False
+            continue
+        if indentation == 6 and line.lstrip().startswith("-"):
+            step_open = True
+            command = step_run_command(line)
+            if command is not None:
+                runs.append(command)
+            continue
+        if indentation == 8 and step_open:
+            command = step_run_command(line)
+            if command is not None:
+                runs.append(command)
+    return timeouts, runs
 def enforce_workflow_contract(workflow: Path) -> None:
     try:
         source = workflow.read_text()
     except OSError as error:
         sys.stderr.write(f"Rust workflow is unreadable: {workflow}: {error}\n")
         raise SystemExit(1) from None
-    job = re.search(
-        r"(?ms)^  rust-test:\n(?P<body>.*?)(?=^  [A-Za-z][A-Za-z0-9_-]*:\n|\Z)",
-        source,
-    )
-    if job is None:
+    jobs = workflow_jobs(source)
+    if "rust-test" not in jobs:
         sys.stderr.write("Rust workflow must define the rust-test job\n")
         raise SystemExit(1)
-    body = job.group("body")
-    timeout = re.search(r"(?m)^    timeout-minutes:\s*(\d+)\s*$", body)
-    found = int(timeout.group(1)) if timeout else None
+    timeouts, rust_runs = job_contract(jobs["rust-test"])
+    found = int(timeouts[0]) if len(timeouts) == 1 and timeouts[0].isdigit() else None
     if found != REQUIRED_JOB_TIMEOUT_MINUTES:
         sys.stderr.write(
             f"Rust job timeout must be {REQUIRED_JOB_TIMEOUT_MINUTES} minutes; found {found}\n"
         )
         raise SystemExit(1)
-    profiler_runs = re.findall(
-        r"(?m)^\s*(?:-\s*)?run:\s*scripts/profile-rust-tests\s*(?:#.*)?$", body
-    )
-    if len(profiler_runs) != 1:
+    profiler_runs = [
+        command
+        for lines in jobs.values()
+        for command in job_contract(lines)[1]
+        if "scripts/profile-rust-tests" in command
+    ]
+    if rust_runs.count("scripts/profile-rust-tests") != 1 or len(profiler_runs) != 1:
         sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
         raise SystemExit(1)
     if "cargo test --locked --all-targets" in source:
