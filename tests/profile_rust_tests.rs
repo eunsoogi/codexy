@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[cfg(unix)]
 #[path = "profile_rust_tests/workflow_contract.rs"]
 mod workflow_contract;
 

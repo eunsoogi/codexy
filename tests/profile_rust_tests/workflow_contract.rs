@@ -1,3 +1,4 @@
+#[cfg(unix)]
 use super::GateFixture;
 
 #[cfg(unix)]
