@@ -1,7 +1,7 @@
 use super::super::*;
 
 #[test]
-fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
+fn codegraph_wrapper_reports_missing_declared_windows_runtime_without_running_macos_binary()
 -> Result<(), Box<dyn std::error::Error>> {
     let installed_plugin = installed_plugin_copy()?;
     let output = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"))
@@ -19,8 +19,8 @@ fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
         "unsupported platform failure should name the missing runtime, got {stderr:?}"
     );
     assert!(
-        stderr.contains("bundled runtime supports: darwin-arm64 linux-x86_64"),
-        "unsupported platform failure should declare the bundled platform contract, got {stderr:?}"
+        stderr.contains("codexy-mcp-codegraph-windows-x86_64.exe"),
+        "missing-runtime failure should name the declared Windows executable, got {stderr:?}"
     );
     assert!(
         !stderr.contains("Exec format"),
@@ -30,7 +30,7 @@ fn codegraph_wrapper_rejects_unsupported_platform_without_running_macos_binary()
 }
 
 #[test]
-fn lsp_wrapper_rejects_unsupported_platform_without_running_macos_binary()
+fn lsp_wrapper_reports_missing_declared_windows_runtime_without_running_macos_binary()
 -> Result<(), Box<dyn std::error::Error>> {
     let installed_plugin = installed_plugin_copy()?;
     let output = Command::new(installed_plugin.path.join("mcp/codexy-mcp-lsp"))
@@ -44,8 +44,8 @@ fn lsp_wrapper_rejects_unsupported_platform_without_running_macos_binary()
     assert_eq!(output.status.code(), Some(127));
     let stderr = String::from_utf8(output.stderr)?;
     assert!(
-        stderr.contains("bundled runtime supports: darwin-arm64 linux-x86_64"),
-        "unsupported platform failure should declare the bundled platform contract, got {stderr:?}"
+        stderr.contains("codexy-mcp-lsp-windows-x86_64.exe"),
+        "missing-runtime failure should name the declared Windows executable, got {stderr:?}"
     );
     assert!(
         !stderr.contains("Exec format"),

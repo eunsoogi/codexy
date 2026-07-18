@@ -17,6 +17,7 @@ mod release_cache_resources;
 mod release_version;
 pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
+pub(crate) mod workflow_contract;
 pub(super) mod worktree_reservation_harness;
 mod wrapper;
 mod wrapper_process;

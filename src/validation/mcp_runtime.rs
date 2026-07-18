@@ -14,12 +14,17 @@ pub(super) fn check_no_script_runtime(path: &Path, name: &str, command: &[String
     let Some(first) = command.first() else {
         return Ok(());
     };
-    let command_name = Path::new(first)
-        .file_name()
-        .and_then(std::ffi::OsStr::to_str)
+    let command_name = first
+        .rsplit(['/', '\\'])
+        .next()
         .unwrap_or(first)
         .to_ascii_lowercase();
-    if DISALLOWED_RUNTIME_COMMANDS.contains(&command_name.as_str()) {
+    let command_stem = command_name
+        .strip_suffix(".exe")
+        .or_else(|| command_name.strip_suffix(".cmd"))
+        .or_else(|| command_name.strip_suffix(".bat"))
+        .unwrap_or(&command_name);
+    if DISALLOWED_RUNTIME_COMMANDS.contains(&command_stem) {
         bail!(
             "{} {name}.command must not use JS/Python runtime command {first}",
             display_relative(path)

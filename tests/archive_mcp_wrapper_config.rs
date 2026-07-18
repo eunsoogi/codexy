@@ -5,10 +5,16 @@ use tempfile::tempdir;
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::{complete_plugin_fixture, create_archive, make_executable};
+use release_archive_support::{
+    archive_gate_with_test_validator, complete_plugin_fixture, create_archive, make_executable,
+};
 
-fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
-    Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
+fn run_gate(
+    gate: &std::path::Path,
+    archive: &std::path::Path,
+    plugin_root: &std::path::Path,
+) -> std::process::Output {
+    Command::new(gate)
         .arg(archive)
         .arg(plugin_root)
         .output()
@@ -16,13 +22,13 @@ fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::pr
 }
 
 fn write_mcp_config(plugin_root: &std::path::Path, nested: bool, argv: bool) {
-    let lsp_command = if argv {
-        json!(["./mcp/codexy-mcp-lsp", "--stdio"])
+    let lsp = if argv {
+        json!({"command": ["./mcp/codexy-mcp-lsp", "--stdio"], "cwd": "."})
     } else {
-        json!("./mcp/codexy-mcp-lsp")
+        json!({"command": "./mcp/codexy-mcp-lsp", "args": ["--stdio"], "cwd": "."})
     };
     let mut servers = json!({
-        "lsp": {"command": lsp_command, "cwd": "."},
+        "lsp": lsp,
         "codegraph": {"command": "./mcp/codexy-mcp-codegraph", "args": ["--stdio"], "cwd": "."},
         "grep_app": {"url": "https://mcp.grep.app"}
     });
@@ -48,12 +54,13 @@ fn archive_gate_checks_wrapper_modes_for_supported_mcp_config_shapes() {
         ("nested-server-map", true, false),
     ] {
         let root = tempdir().expect("tempdir");
+        let gate = archive_gate_with_test_validator(root.path()).expect("archive gate fixture");
         let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
         write_mcp_config(&plugin_root, nested, argv);
 
         let valid_archive = root.path().join(format!("{label}-valid.tar.gz"));
         create_archive(root.path(), &valid_archive).expect("archive fixture");
-        let valid_output = run_gate(&valid_archive, &plugin_root);
+        let valid_output = run_gate(&gate, &valid_archive, &plugin_root);
         assert!(
             valid_output.status.success(),
             "valid {label} fixture failed: {}",
@@ -68,7 +75,7 @@ fn archive_gate_checks_wrapper_modes_for_supported_mcp_config_shapes() {
         std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
         let invalid_archive = root.path().join(format!("{label}-invalid.tar.gz"));
         create_archive(root.path(), &invalid_archive).expect("archive fixture");
-        let invalid_output = run_gate(&invalid_archive, &plugin_root);
+        let invalid_output = run_gate(&gate, &invalid_archive, &plugin_root);
         assert!(!invalid_output.status.success());
         assert!(
             String::from_utf8_lossy(&invalid_output.stderr)

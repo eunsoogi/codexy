@@ -82,6 +82,12 @@ fn check_entry(path: &Path, plugin_root: &Path, name: &str, entry: &Value) -> Re
     let object = entry
         .as_object()
         .with_context(|| format!("{} {name} must be an object", display_relative(path)))?;
+    if object.contains_key("commandWindows") || object.contains_key("command_windows") {
+        bail!(
+            "{} {name} must not use hook-only commandWindows in MCP config",
+            display_relative(path)
+        );
+    }
     if let Some(fragment) = disallowed_value_fragments(entry).into_iter().next() {
         bail!(
             "{} disallowed MCP value fragment {fragment:?} present for {name}",
@@ -111,6 +117,7 @@ fn check_entry(path: &Path, plugin_root: &Path, name: &str, entry: &Value) -> Re
     }
     if let Some(command_value) = command {
         let command_items = command_items(path, name, command_value, object.get("args"))?;
+        super::mcp_required::check(path, name, object, &command_items)?;
         super::mcp_runtime::check_no_script_runtime(path, name, &command_items)?;
         check_plugin_relative_entrypoint(path, plugin_root, name, &command_items)?;
     }

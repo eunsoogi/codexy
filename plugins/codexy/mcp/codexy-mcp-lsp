@@ -4,11 +4,9 @@ self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
 repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
 export CODEXY_PLUGIN_ROOT="$plugin_root"
-bundled_platforms="darwin-arm64 linux-x86_64"
+bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"
 cargo_available=0
-if command -v cargo >/dev/null 2>&1; then
-  cargo_available=1
-fi
+command -v cargo >/dev/null 2>&1 && cargo_available=1
 runtime_git_repository_was_set=0
 runtime_git_ref_was_set=0
 if [ -n "${CODEXY_RUNTIME_GIT_REPOSITORY+x}" ]; then
@@ -58,7 +56,10 @@ if [ -z "$platform" ]; then
   esac
   platform="$os-$arch"
 fi
-runtime_name="codexy-mcp-lsp-$platform.bin"
+case "$platform" in
+  windows-*) runtime_name="codexy-mcp-lsp-$platform.exe" ;;
+  *) runtime_name="codexy-mcp-lsp-$platform.bin" ;;
+esac
 bundled_runtime="$plugin_root/runtime/$runtime_name"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   case "$CODEXY_RUNTIME_DIR" in

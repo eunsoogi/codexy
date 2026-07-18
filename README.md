@@ -61,6 +61,11 @@ codex plugin list
 codex mcp list
 ```
 
+Release packages contain native MCP runtimes for macOS ARM64, Linux x86_64,
+and Windows x86_64. The Windows package gate installs Codexy under a drive-letter
+path containing spaces and Unicode, then starts both MCP servers through Codex
+without WSL, Git Bash, a POSIX shell, or ambient Python.
+
 Restart Codex or open a fresh Codex session if newly installed plugin, skill, or
 MCP surfaces do not appear in the active session.
 

@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json, manifest_path, require_string};
 
-const REQUIRED_SUPPORTED_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64"];
+const REQUIRED_SUPPORTED_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64", "windows-x86_64"];
 
 pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
     let path = manifest_path(plugin_root);

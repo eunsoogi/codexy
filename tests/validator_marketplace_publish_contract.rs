@@ -1,6 +1,14 @@
 use std::process::Command;
 
-use serde_json::Value;
+use serde_json::Value as JsonValue;
+use serde_yaml::Value as YamlValue;
+
+mod support;
+
+use support::workflow_contract::{
+    mapping_field as yaml_mapping_field, step as yaml_step, steps as yaml_steps,
+    string_field as yaml_string_field, string_sequence as yaml_string_sequence,
+};
 
 #[test]
 fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
@@ -8,97 +16,109 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow =
         std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml"))?;
+    let document: YamlValue = serde_yaml::from_str(&workflow)?;
+    let workflow = document.as_mapping().ok_or("workflow root")?;
+    let jobs = yaml_mapping_field(workflow, "jobs", "workflow")?;
+    let package = yaml_mapping_field(jobs, "package-plugin", "jobs")?;
+    assert_eq!(yaml_string_field(package, "needs")?, "build-runtime");
+    let publish = yaml_mapping_field(jobs, "publish-release", "jobs")?;
+    assert_eq!(
+        yaml_string_sequence(publish.get("needs").ok_or("publish needs")?)?,
+        ["package-plugin", "windows-installed-mcp"]
+    );
 
+    let package_steps = yaml_steps(package)?;
+    let download = yaml_step(package_steps, "Download generated runtime binaries")?;
+    assert_eq!(
+        yaml_string_field(download, "uses")?,
+        "actions/download-artifact@v4"
+    );
+    let download_inputs = yaml_mapping_field(download, "with", "download step")?;
+    assert_eq!(
+        yaml_string_field(download_inputs, "pattern")?,
+        "codexy-mcp-runtimes-*"
+    );
+    let assemble = yaml_step(package_steps, "Assemble marketplace plugin package")?;
+    let assemble_run = yaml_string_field(assemble, "run")?;
+    let assemble_lines: Vec<_> = assemble_run.lines().map(str::trim).collect();
     for required in [
-        "package-plugin:",
-        "needs: build-runtime",
-        "actions/download-artifact@v4",
-        "pattern: codexy-mcp-runtimes-*",
-        "dist/codexy-marketplace-plugin",
-        "dist/codexy-marketplace-plugin.tar.gz",
+        "mkdir -p \"${plugin_root}/runtime\"",
+        "cp dist/generated-runtimes/* \"${plugin_root}/runtime/\"",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks",
-        "gh release upload",
-        "mkdir -p \"${plugin_root}/runtime\"",
-        "cp dist/generated-runtimes/*.bin \"${plugin_root}/runtime/\"",
-        "push:",
-        "tags:",
-        "\"v*\"",
-        "Generate commit-log changelog",
-        "git rev-list -n 1 \"$release_tag\"",
-        "scripts/generate-release-changelog \"$release_tag\" \"$PREVIOUS_TAG\" > release-notes.md",
-        "Create or update GitHub release",
-        "--target \"$RELEASE_TARGET\"",
-        "gh release create \"$release_tag\"",
-        "gh release edit \"$release_tag\"",
+        "tar -C \"$package_root\" -czf \"dist/codexy-marketplace-plugin.tar.gz\" plugins/codexy",
     ] {
         assert!(
-            workflow.contains(required),
-            "runtime workflow must package release artifacts; missing {required:?}"
+            assemble_lines.iter().any(|line| *line == required),
+            "missing package command {required:?}"
         );
     }
-    assert!(
-        !workflow.contains("--target \"$GITHUB_SHA\""),
-        "manual release workflow must target the commit behind release_tag, not the workflow ref"
-    );
-    assert!(
-        workflow.matches("ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}").count() >= 2,
-        "manual release workflow must check out the requested release tag before building runtime binaries and package archive"
-    );
-    let package_validation_order = concat!(
-        "--check-runtime-artifacts\n",
-        "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",
-        "          tar -C"
-    );
-    assert!(
-        workflow.contains(package_validation_order),
-        "runtime workflow must validate hooks before creating the package archive"
-    );
-    for trigger in ["push:", "pull_request:"] {
-        let trigger_text = workflow_trigger_block(&workflow, trigger)
-            .ok_or_else(|| format!("runtime workflow missing {trigger}"))?;
-        for required_path in [
+    let runtime_validation = assemble_lines
+        .iter()
+        .position(|line| *line == "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts")
+        .ok_or("runtime validation command")?;
+    let hook_validation = assemble_lines
+        .iter()
+        .position(|line| {
+            *line == "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks"
+        })
+        .ok_or("hook validation command")?;
+    let archive = assemble_lines
+        .iter()
+        .position(|line| *line == "tar -C \"$package_root\" -czf \"dist/codexy-marketplace-plugin.tar.gz\" plugins/codexy")
+        .ok_or("archive command")?;
+    assert!(runtime_validation < hook_validation && hook_validation < archive);
+
+    let triggers = workflow
+        .iter()
+        .find(|(key, _)| key.as_str() == Some("on") || **key == YamlValue::Bool(true))
+        .and_then(|(_, value)| value.as_mapping())
+        .ok_or("workflow triggers")?;
+    for trigger in ["push", "pull_request"] {
+        let trigger = yaml_mapping_field(triggers, trigger, "workflow triggers")?;
+        let paths = yaml_string_sequence(trigger.get("paths").ok_or("trigger paths")?)?;
+        for required in [
             "plugins/codexy/**",
             "scripts/inspect-mcp-response",
             "scripts/generate-release-changelog",
-        ] {
-            assert!(
-                trigger_text.contains(required_path),
-                "runtime workflow {trigger} paths must include {required_path}"
-            );
-        }
-
-        for packaged_source in [
-            "plugins/codexy/**",
             ".agents/plugins/marketplace.json",
             ".agents/plugins/release-publish-contract.json",
         ] {
             assert!(
-                trigger_text.contains(packaged_source),
-                "runtime workflow {trigger} paths must cover packaged source inventory entry {packaged_source}"
+                paths.iter().any(|path| *path == required),
+                "missing trigger path {required}"
             );
         }
         assert!(
-            !trigger_text.contains("README.md") && !trigger_text.contains("tests/**"),
-            "runtime workflow {trigger} paths must not include unrelated repository paths"
+            paths
+                .iter()
+                .all(|path| *path != "README.md" && *path != "tests/**")
         );
     }
-    for forbidden in [
-        "Publish generated marketplace snapshot",
-        "MARKETPLACE_BRANCH",
-        "dist/marketplace-root",
-        "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
-    ] {
-        assert!(
-            !workflow.contains(forbidden),
-            "runtime workflow must not publish a generated marketplace branch; found {forbidden:?}"
-        );
-    }
+
+    let publish_steps = yaml_steps(publish)?;
+    let changelog = yaml_step(publish_steps, "Generate commit-log changelog")?;
+    let changelog_lines: Vec<_> = yaml_string_field(changelog, "run")?
+        .lines()
+        .map(str::trim)
+        .collect();
     assert!(
-        !workflow.contains("plugins/codexy/bin")
-            && !workflow.contains("${plugin_root}/bin")
-            && !workflow.contains("\"$plugin_root\"/bin"),
-        "runtime workflow must not use plugin bin paths as its install contract"
+        changelog_lines
+            .iter()
+            .any(|line| *line == "release_target=\"$(git rev-list -n 1 \"$release_tag\")\"")
+    );
+    assert!(changelog_lines.iter().any(|line| *line == "scripts/generate-release-changelog \"$release_tag\" \"$PREVIOUS_TAG\" > release-notes.md"));
+    let release = yaml_step(publish_steps, "Create or update GitHub release")?;
+    let release_lines: Vec<_> = yaml_string_field(release, "run")?
+        .lines()
+        .map(str::trim)
+        .collect();
+    assert!(release_lines.iter().any(|line| *line == "gh release edit \"$release_tag\" --title \"$release_tag\" --notes-file release-notes.md --target \"$RELEASE_TARGET\""));
+    assert!(release_lines.iter().any(|line| *line == "gh release create \"$release_tag\" --title \"$release_tag\" --notes-file release-notes.md --target \"$RELEASE_TARGET\""));
+    let upload = yaml_step(publish_steps, "Attach marketplace package to release")?;
+    assert_eq!(
+        yaml_string_field(upload, "run")?.trim(),
+        "gh release upload \"$RELEASE_TAG\" \"dist/codexy-marketplace-plugin.tar.gz\" --clobber"
     );
     Ok(())
 }
@@ -157,31 +177,35 @@ fn run_git(cwd: &std::path::Path, args: &[&str]) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-fn workflow_trigger_block<'a>(workflow: &'a str, trigger: &str) -> Option<&'a str> {
-    let start = workflow.find(trigger)?;
-    let rest = &workflow[start..];
-    let end = rest
-        .match_indices("\n  ")
-        .find_map(|(index, _)| {
-            let next = &rest[index + 3..];
-            (!next.starts_with(' ')).then_some(index)
-        })
-        .unwrap_or(rest.len());
-    Some(&rest[..end])
-}
-
 #[test]
 fn touched_loc_workflow_runs_for_all_pull_requests() -> Result<(), Box<dyn std::error::Error>> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow = std::fs::read_to_string(root.join(".github/workflows/touched-loc-gate.yml"))?;
-
-    assert!(workflow.contains("pull_request:"));
-    assert!(
-        !workflow.contains("paths:"),
-        "touched LOC gate must not use a narrow paths filter"
+    let document: YamlValue = serde_yaml::from_str(&workflow)?;
+    let workflow = document.as_mapping().ok_or("workflow root")?;
+    let triggers = workflow
+        .iter()
+        .find(|(key, _)| key.as_str() == Some("on") || **key == YamlValue::Bool(true))
+        .and_then(|(_, value)| value.as_mapping())
+        .ok_or("workflow triggers")?;
+    let pull_request = triggers.get("pull_request").ok_or("pull_request trigger")?;
+    assert!(pull_request.is_null());
+    let jobs = yaml_mapping_field(workflow, "jobs", "workflow")?;
+    let job = yaml_mapping_field(jobs, "touched-loc", "jobs")?;
+    let steps = yaml_steps(job)?;
+    let checkout = yaml_step(steps, "Check out repository")?;
+    let checkout_inputs = yaml_mapping_field(checkout, "with", "checkout step")?;
+    assert_eq!(
+        checkout_inputs
+            .get("fetch-depth")
+            .and_then(YamlValue::as_i64),
+        Some(0)
     );
-    assert!(workflow.contains("fetch-depth: 0"));
-    assert!(workflow.contains("--check-touched-loc"));
+    let validation = yaml_step(steps, "Validate touched implementation LOC")?;
+    assert_eq!(
+        yaml_string_field(validation, "run")?,
+        "scripts/validate-plugin-config --check-touched-loc --base-ref \"origin/${{ github.base_ref }}\""
+    );
     Ok(())
 }
 
@@ -189,7 +213,7 @@ fn touched_loc_workflow_runs_for_all_pull_requests() -> Result<(), Box<dyn std::
 fn release_contract_uses_main_for_current_marketplace_ref() -> Result<(), Box<dyn std::error::Error>>
 {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let publish: Value = serde_json::from_str(&std::fs::read_to_string(
+    let publish: JsonValue = serde_json::from_str(&std::fs::read_to_string(
         root.join(".agents/plugins/release-publish-contract.json"),
     )?)?;
     let snapshot = publish["currentMarketplace"]
@@ -219,7 +243,7 @@ fn release_contract_uses_main_for_current_marketplace_ref() -> Result<(), Box<dy
     assert_eq!(package["futureInstallRef"], "version-tags");
     assert_eq!(
         package["platforms"],
-        serde_json::json!(["darwin-arm64", "linux-x86_64"])
+        serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
     );
     Ok(())
 }

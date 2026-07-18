@@ -5,7 +5,8 @@ use tempfile::tempdir;
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
 use release_archive_support::{
-    assert_structured_literals, complete_plugin_fixture, create_archive,
+    archive_gate_with_test_validator, assert_structured_literals, complete_plugin_fixture,
+    create_archive,
 };
 
 fn run_gate_at(
@@ -21,13 +22,11 @@ fn run_gate_at(
 }
 
 #[cfg(unix)]
-fn grep_backend_gate(root: &std::path::Path) -> std::path::PathBuf {
+fn grep_backend_gate(root: &std::path::Path, source: &std::path::Path) -> std::path::PathBuf {
     use std::os::unix::fs::PermissionsExt;
 
-    let source =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive");
     let source_dir = source.parent().expect("script directory");
-    let script = std::fs::read_to_string(&source).expect("archive gate script");
+    let script = std::fs::read_to_string(source).expect("archive gate script");
     let script = script.replacen(
         "script_dir=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)",
         &format!("script_dir={}", source_dir.display()),
@@ -54,10 +53,9 @@ fn grep_backend_gate(root: &std::path::Path) -> std::path::PathBuf {
 fn archive_gate_scans_nul_prefixed_binary_assets_in_both_backends() {
     let root = tempdir().expect("tempdir");
     let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
+    let source_gate = archive_gate_with_test_validator(root.path()).expect("archive gate fixture");
     let asset = plugin_root.join("assets/binary-asset.png");
-    let source_gate =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive");
-    let grep_gate = grep_backend_gate(root.path());
+    let grep_gate = grep_backend_gate(root.path(), &source_gate);
 
     std::fs::write(&asset, b"\0safe binary asset\n").expect("safe binary fixture");
     let valid_archive = root.path().join("valid-binary-asset.tar.gz");
