@@ -88,17 +88,29 @@ fn bounds_continuous_hook_output() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn publishes_each_script_at_a_distinct_executable_path() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let first = make_script(temp.path(), "exit 11\n")?;
+    let second = make_script(temp.path(), "exit 22\n")?;
+
+    assert_ne!(first, second);
+    assert!(std::fs::read_to_string(first)?.contains("exit 11"));
+    assert!(std::fs::read_to_string(second)?.contains("exit 22"));
+    Ok(())
+}
+
 fn make_script(root: &Path, body: &str) -> TestResult<PathBuf> {
-    let script = root.join("probe.sh");
-    let staging = root.join(".probe.sh.tmp");
-    let mut file = std::fs::File::create(&staging)?;
+    let mut file = tempfile::Builder::new()
+        .prefix(".probe-")
+        .suffix(".sh")
+        .tempfile_in(root)?;
     file.write_all(format!("#!/bin/sh\n{body}").as_bytes())?;
-    file.sync_all()?;
-    drop(file);
-    let mut permissions = std::fs::metadata(&staging)?.permissions();
+    file.as_file().sync_all()?;
+    let mut permissions = file.as_file().metadata()?.permissions();
     permissions.set_mode(0o755);
-    std::fs::set_permissions(&staging, permissions)?;
-    std::fs::rename(staging, &script)?;
+    std::fs::set_permissions(file.path(), permissions)?;
+    let (_, script) = file.keep()?;
     std::fs::File::open(root)?.sync_all()?;
     Ok(script)
 }
