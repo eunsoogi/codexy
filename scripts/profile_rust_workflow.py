@@ -33,7 +33,11 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
     current_job: str | None = None
     in_jobs = False
     for line in source.splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
+        if not line.strip():
+            if in_jobs and current_job is not None:
+                jobs[current_job].append("")
+            continue
+        if line.lstrip().startswith("#"):
             continue
         indentation = len(line) - len(line.lstrip(" "))
         entry = yaml_mapping_entry(line)
@@ -51,6 +55,18 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
     return jobs
 
 
+def block_scalar_command(style: str, lines: list[str]) -> str:
+    if style == "|":
+        return "\n".join(lines)
+    paragraphs: list[list[str]] = [[]]
+    for line in lines:
+        if line.strip():
+            paragraphs[-1].append(line)
+        else:
+            paragraphs.append([])
+    return "\n".join(" ".join(paragraph) for paragraph in paragraphs)
+
+
 def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
     timeouts: list[str] = []
     runs: list[str] = []
@@ -60,12 +76,16 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
     for line in lines:
         indentation = len(line) - len(line.lstrip(" "))
         if block_run is not None:
-            if not line.strip() or indentation > block_run[0]:
-                if line.strip():
-                    block_run[2].append(line)
+            if not line.strip():
+                block_run[2].append("")
                 continue
-            runs.append((" " if block_run[1] == ">" else "\n").join(block_run[2]))
+            if indentation > block_run[0]:
+                block_run[2].append(line)
+                continue
+            runs.append(block_scalar_command(block_run[1], block_run[2]))
             block_run = None
+        if not line.strip():
+            continue
         entry = yaml_mapping_entry(line)
         if indentation == 4:
             step_open = False
@@ -90,7 +110,7 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
             elif command is not None:
                 runs.append(command)
     if block_run is not None:
-        runs.append((" " if block_run[1] == ">" else "\n").join(block_run[2]))
+        runs.append(block_scalar_command(block_run[1], block_run[2]))
     return timeouts, runs
 
 
@@ -121,7 +141,20 @@ def invocation_count(command: str, invocation: tuple[str, ...]) -> int:
 
 
 def executable_tokens(tokens: list[str]) -> list[str]:
-    return tokens[1:] if tokens[:1] == ["command"] else tokens
+    if tokens[:1] != ["command"]:
+        return tokens
+    index = 1
+    while index < len(tokens):
+        option = tokens[index]
+        if option == "--":
+            return tokens[index + 1 :]
+        if not option.startswith("-") or option == "-":
+            return tokens[index:]
+        flags = option[1:]
+        if not flags or set(flags) - {"p", "v", "V"} or set(flags) & {"v", "V"}:
+            return []
+        index += 1
+    return []
 
 
 def enforce_workflow_contract(
