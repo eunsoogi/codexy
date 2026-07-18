@@ -159,6 +159,24 @@ def executable_tokens(tokens: list[str]) -> list[str]:
         if ASSIGNMENT_WORD_PATTERN.fullmatch(token):
             index += 1
             continue
+        if token == "env":
+            index += 1
+            while index < len(tokens):
+                option = tokens[index]
+                if option == "--":
+                    index += 1
+                    break
+                if ASSIGNMENT_WORD_PATTERN.fullmatch(option):
+                    index += 1
+                    continue
+                if option in {"-u", "--unset"}:
+                    index += 2
+                    continue
+                if option.startswith("-") and option != "-":
+                    index += 1
+                    continue
+                break
+            continue
         if token == "exec":
             index += 1
             if index < len(tokens) and tokens[index] == "--":
