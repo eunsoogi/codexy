@@ -46,12 +46,16 @@ fn gate_ignores_a_comment_that_mentions_the_full_workload()
 #[test]
 fn gate_ignores_echoed_full_workload_text() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
-    std::fs::write(
-        &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: echo cargo test --locked --all-targets\n",
-    )?;
-
-    assert!(fixture.run(&[])?.status.success());
+    for command in [
+        "echo cargo test --locked --all-targets",
+        "echo ok;# $(cargo test --locked --all-targets)",
+    ] {
+        std::fs::write(
+            &fixture.workflow,
+            format!("jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
+        )?;
+        assert!(fixture.run(&[])?.status.success(), "{command}");
+    }
     Ok(())
 }
 
@@ -228,6 +232,8 @@ fn gate_rejects_shell_wrapped_or_reordered_full_workloads(
         "echo `cargo test --locked --all-targets`",
         "|\n          echo \"# $(cargo test --locked --all-targets)\"",
         "|\n          echo prefix#$(cargo test --locked --all-targets)",
+        "|\n          echo \"text # $(cargo test --locked --all-targets)\"",
+        "|\n          echo \"it's $(cargo test --locked --all-targets)\"",
     ] {
         std::fs::write(
             &fixture.workflow,

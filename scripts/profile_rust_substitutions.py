@@ -11,13 +11,15 @@ def command_substitutions(command: str) -> list[str]:
         character = command[index]
         if character == "\\":
             index += 2
+        elif quote is not None and character == quote:
+            quote = None
+            index += 1
         elif quote == "'":
-            quote = None if character == "'" else quote
             index += 1
-        elif character in "'\"":
-            quote = None if character == quote else character
+        elif quote is None and character in "'\"":
+            quote = character
             index += 1
-        elif character == "#" and (index == 0 or command[index - 1].isspace()):
+        elif quote is None and character == "#" and comment_start(command, index):
             newline = command.find("\n", index)
             index = len(command) if newline < 0 else newline + 1
         elif character == "`":
@@ -37,6 +39,10 @@ def command_substitutions(command: str) -> list[str]:
         else:
             index += 1
     return substitutions
+
+
+def comment_start(command: str, index: int) -> bool:
+    return index == 0 or command[index - 1].isspace() or command[index - 1] in ";|&(){}"
 
 
 def closing_substitution(command: str, index: int) -> int:
