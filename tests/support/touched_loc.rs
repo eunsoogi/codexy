@@ -12,6 +12,14 @@ pub(crate) fn fixture(
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     let repo = tempfile::tempdir()?;
     run(repo.path(), &["init", "-q"])?;
+    // Later mutation cases amend the initial commit. Keep the identity in the
+    // repository (rather than only on the initial command) so those cases do
+    // not inherit a runner's absent or malformed global Git configuration.
+    run(
+        repo.path(),
+        &["config", "user.email", "codexy@example.test"],
+    )?;
+    run(repo.path(), &["config", "user.name", "Codexy Test"])?;
     if ["src/bin/", "tests/", "examples/", "benches/"]
         .iter()
         .any(|prefix| path.starts_with(prefix))
@@ -42,18 +50,7 @@ pub(crate) fn fixture(
     }
     write(repo.path(), path, &source)?;
     run(repo.path(), &["add", "."])?;
-    run(
-        repo.path(),
-        &[
-            "-c",
-            "user.email=codexy@example.test",
-            "-c",
-            "user.name=Codexy Test",
-            "commit",
-            "-qm",
-            "initial",
-        ],
-    )?;
+    run(repo.path(), &["commit", "-qm", "initial"])?;
     Ok(repo)
 }
 
