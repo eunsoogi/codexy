@@ -62,6 +62,9 @@ jobs:
           if [ -f plugins/codexy/hooks/codexy-admission.sh ]; then
             git add plugins/codexy/hooks/codexy-admission.sh
           fi
+          if [ -f plugins/codexy/hooks/codexy-admission.cmd ]; then
+            git add plugins/codexy/hooks/codexy-admission.cmd
+          fi
           git commit -m "chore(plugin): bump version to ${VERSION}"
           git push origin "${branch}"
           body_file="$(mktemp)"

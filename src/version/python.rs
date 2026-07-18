@@ -5,9 +5,22 @@ use anyhow::{Context as _, Result, bail};
 use crate::paths::{display_relative, repo_root};
 
 const PACKAGE_NAME: &str = "codexy-runtime-tools";
-const LAUNCHER_MARKER: &str = "# codexy-version-sync:runtime-tool";
-const LAUNCHER_PREFIX: &str = "CODEXY_RUNTIME_TOOL_SPEC='codexy-runtime-tools==";
-const LAUNCHER_SUFFIX: &str = "' # codexy-version-sync:runtime-tool";
+const LAUNCHER_MARKER: &str = "codexy-version-sync:runtime-tool";
+
+#[derive(Clone, Copy)]
+struct LauncherMarker {
+    prefix: &'static str,
+    suffix: &'static str,
+}
+
+const POSIX_MARKER: LauncherMarker = LauncherMarker {
+    prefix: "CODEXY_RUNTIME_TOOL_SPEC='codexy-runtime-tools==",
+    suffix: "' # codexy-version-sync:runtime-tool",
+};
+const CMD_MARKER: LauncherMarker = LauncherMarker {
+    prefix: "set \"CODEXY_RUNTIME_TOOL_SPEC=codexy-runtime-tools==",
+    suffix: "\" & REM codexy-version-sync:runtime-tool",
+};
 
 fn pyproject() -> Result<std::path::PathBuf> {
     Ok(repo_root()?.join("packages/codexy-runtime-tools/pyproject.toml"))
@@ -21,13 +34,17 @@ fn wrappers() -> Result<Vec<std::path::PathBuf>> {
         .collect())
 }
 
-fn optional_hook_launcher() -> Result<std::path::PathBuf> {
-    Ok(repo_root()?.join("plugins/codexy/hooks/codexy-admission.sh"))
+fn optional_hook_launchers() -> Result<Vec<(std::path::PathBuf, LauncherMarker)>> {
+    let root = repo_root()?.join("plugins/codexy/hooks");
+    Ok(vec![
+        (root.join("codexy-admission.sh"), POSIX_MARKER),
+        (root.join("codexy-admission.cmd"), CMD_MARKER),
+    ])
 }
 
-fn launcher_marker_version(line: &str) -> Option<&str> {
-    line.strip_prefix(LAUNCHER_PREFIX)?
-        .strip_suffix(LAUNCHER_SUFFIX)
+fn launcher_marker_version<'a>(line: &'a str, marker: LauncherMarker) -> Option<&'a str> {
+    line.strip_prefix(marker.prefix)?
+        .strip_suffix(marker.suffix)
 }
 
 fn valid_marker_version(version: &str) -> bool {
@@ -38,7 +55,11 @@ fn valid_marker_version(version: &str) -> bool {
                 .all(|part| !part.is_empty() && part.chars().all(|ch| ch.is_ascii_digit())))
 }
 
-fn launcher_marker_line<'a>(text: &'a str, allow_placeholder: bool) -> Result<(&'a str, &'a str)> {
+fn launcher_marker_line(
+    text: &str,
+    allow_placeholder: bool,
+    marker: LauncherMarker,
+) -> Result<(&str, &str)> {
     if text.matches(LAUNCHER_MARKER).count() != 1 {
         bail!("optional hook launcher must contain exactly one {LAUNCHER_MARKER:?} marker");
     }
@@ -46,7 +67,7 @@ fn launcher_marker_line<'a>(text: &'a str, allow_placeholder: bool) -> Result<(&
         .lines()
         .find(|line| line.contains(LAUNCHER_MARKER))
         .context("optional hook launcher version marker line is missing")?;
-    let version = launcher_marker_version(line)
+    let version = launcher_marker_version(line, marker)
         .context("optional hook launcher version marker is malformed")?;
     if !valid_marker_version(version) || (!allow_placeholder && version == "__CODEXY_VERSION__") {
         bail!("optional hook launcher runtime-tool version is invalid: {version:?}");
@@ -54,11 +75,15 @@ fn launcher_marker_line<'a>(text: &'a str, allow_placeholder: bool) -> Result<(&
     Ok((line, version))
 }
 
-fn check_launcher_contents(text: Option<&str>, expected: &str) -> Result<()> {
+fn check_launcher_contents(
+    text: Option<&str>,
+    expected: &str,
+    marker: LauncherMarker,
+) -> Result<()> {
     let Some(text) = text else {
         return Ok(());
     };
-    let (_, observed) = launcher_marker_line(text, false)?;
+    let (_, observed) = launcher_marker_line(text, false, marker)?;
     if observed != expected {
         bail!(
             "optional hook launcher runtime-tool version mismatch: observed={observed}, expected={expected}"
@@ -67,9 +92,15 @@ fn check_launcher_contents(text: Option<&str>, expected: &str) -> Result<()> {
     Ok(())
 }
 
-fn rewrite_launcher(text: &str, requested: &str) -> Result<String> {
-    let (current_line, _) = launcher_marker_line(text, true)?;
-    let requested_line = format!("{LAUNCHER_PREFIX}{requested}{LAUNCHER_SUFFIX}");
+#[cfg(test)]
+fn check_launcher_set(posix: Option<&str>, cmd: Option<&str>, expected: &str) -> Result<()> {
+    check_launcher_contents(posix, expected, POSIX_MARKER)?;
+    check_launcher_contents(cmd, expected, CMD_MARKER)
+}
+
+fn rewrite_launcher(text: &str, requested: &str, marker: LauncherMarker) -> Result<String> {
+    let (current_line, _) = launcher_marker_line(text, true, marker)?;
+    let requested_line = format!("{}{requested}{}", marker.prefix, marker.suffix);
     Ok(text.replacen(current_line, &requested_line, 1))
 }
 
@@ -101,19 +132,20 @@ pub(super) fn check_version(expected: &str) -> Result<()> {
             );
         }
     }
-    let launcher = optional_hook_launcher()?;
-    let launcher_text = launcher
-        .exists()
-        .then(|| {
-            fs::read_to_string(&launcher).with_context(|| {
-                format!(
-                    "reading optional hook launcher: {}",
-                    display_relative(&launcher)
-                )
+    for (launcher, marker) in optional_hook_launchers()? {
+        let launcher_text = launcher
+            .exists()
+            .then(|| {
+                fs::read_to_string(&launcher).with_context(|| {
+                    format!(
+                        "reading optional hook launcher: {}",
+                        display_relative(&launcher)
+                    )
+                })
             })
-        })
-        .transpose()?;
-    check_launcher_contents(launcher_text.as_deref(), expected)?;
+            .transpose()?;
+        check_launcher_contents(launcher_text.as_deref(), expected, marker)?;
+    }
     Ok(())
 }
 
@@ -144,54 +176,66 @@ pub(super) fn set_version(current: &str, requested: &str) -> Result<()> {
         }
         fs::write(&wrapper, text.replace(&current_pin, &requested_pin))?;
     }
-    let launcher = optional_hook_launcher()?;
-    if launcher.exists() {
-        let text = fs::read_to_string(&launcher).with_context(|| {
-            format!(
-                "reading optional hook launcher: {}",
-                display_relative(&launcher)
-            )
-        })?;
-        fs::write(&launcher, rewrite_launcher(&text, requested)?).with_context(|| {
-            format!(
-                "writing optional hook launcher: {}",
-                display_relative(&launcher)
-            )
-        })?;
+    for (launcher, marker) in optional_hook_launchers()? {
+        if launcher.exists() {
+            let text = fs::read_to_string(&launcher).with_context(|| {
+                format!(
+                    "reading optional hook launcher: {}",
+                    display_relative(&launcher)
+                )
+            })?;
+            fs::write(&launcher, rewrite_launcher(&text, requested, marker)?).with_context(
+                || {
+                    format!(
+                        "writing optional hook launcher: {}",
+                        display_relative(&launcher)
+                    )
+                },
+            )?;
+        }
     }
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{check_launcher_contents, rewrite_launcher};
+    use super::{CMD_MARKER, POSIX_MARKER, check_launcher_set, rewrite_launcher};
 
-    const VALID: &str = "#!/bin/sh\nCODEXY_RUNTIME_TOOL_SPEC='codexy-runtime-tools==1.2.1' # codexy-version-sync:runtime-tool\n";
+    const POSIX: &str = "#!/bin/sh\nCODEXY_RUNTIME_TOOL_SPEC='codexy-runtime-tools==1.2.1' # codexy-version-sync:runtime-tool\n";
+    const CMD: &str = "@echo off\r\nset \"CODEXY_RUNTIME_TOOL_SPEC=codexy-runtime-tools==1.2.1\" & REM codexy-version-sync:runtime-tool\r\n";
 
     #[test]
-    fn optional_launcher_contract_accepts_absent_and_matching_marker() {
-        assert!(check_launcher_contents(None, "1.2.1").is_ok());
-        assert!(check_launcher_contents(Some(VALID), "1.2.1").is_ok());
+    fn optional_launcher_contract_accepts_absent_posix_cmd_and_both() {
+        assert!(check_launcher_set(None, None, "1.2.1").is_ok());
+        assert!(check_launcher_set(Some(POSIX), None, "1.2.1").is_ok());
+        assert!(check_launcher_set(None, Some(CMD), "1.2.1").is_ok());
+        assert!(check_launcher_set(Some(POSIX), Some(CMD), "1.2.1").is_ok());
     }
 
     #[test]
-    fn optional_launcher_contract_rejects_malformed_mismatched_and_duplicate_markers() {
-        assert!(check_launcher_contents(Some(VALID), "1.3.0").is_err());
+    fn optional_launcher_contract_rejects_pin_mismatch_and_duplicate_markers() {
+        assert!(check_launcher_set(Some(POSIX), None, "1.3.0").is_err());
+        assert!(check_launcher_set(None, Some(CMD), "1.3.0").is_err());
         assert!(
-            check_launcher_contents(
+            check_launcher_set(
                 Some("#!/bin/sh\n# codexy-version-sync:runtime-tool\n"),
+                None,
                 "1.2.1"
             )
             .is_err()
         );
-        assert!(check_launcher_contents(Some(&format!("{VALID}{VALID}")), "1.2.1").is_err());
+        assert!(check_launcher_set(Some(&format!("{POSIX}{POSIX}")), None, "1.2.1").is_err());
+        assert!(check_launcher_set(None, Some(&format!("{CMD}{CMD}")), "1.2.1").is_err());
     }
 
     #[test]
-    fn optional_launcher_placeholder_rewrites_from_the_requested_version() {
-        let placeholder = "#!/bin/sh\nCODEXY_RUNTIME_TOOL_SPEC='codexy-runtime-tools==__CODEXY_VERSION__' # codexy-version-sync:runtime-tool\n";
-        let rewritten = rewrite_launcher(placeholder, "1.3.0").expect("rewrite marker");
-        assert!(rewritten.contains("codexy-runtime-tools==1.3.0"));
-        assert!(!rewritten.contains("__CODEXY_VERSION__"));
+    fn optional_launcher_placeholders_rewrite_from_the_same_requested_version() {
+        let posix = POSIX.replace("1.2.1", "__CODEXY_VERSION__");
+        let cmd = CMD.replace("1.2.1", "__CODEXY_VERSION__");
+        for (text, marker) in [(posix, POSIX_MARKER), (cmd, CMD_MARKER)] {
+            let rewritten = rewrite_launcher(&text, "1.3.0", marker).expect("rewrite marker");
+            assert!(rewritten.contains("codexy-runtime-tools==1.3.0"));
+            assert!(!rewritten.contains("__CODEXY_VERSION__"));
+        }
     }
 }
