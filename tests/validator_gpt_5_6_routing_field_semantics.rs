@@ -1,8 +1,6 @@
-use std::process::Command;
-
 use crate::support;
 
-use support::copy_dir;
+use support::routing_validator::validate;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -92,31 +90,19 @@ fn allows_selection_of_unchanged_toml_values() -> TestResult {
 }
 
 fn assert_status(addition: &str, accepted: bool) -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    let skill = std::fs::read_to_string(&path)?.replacen(
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?
+    .replacen(
         "## Read Next",
         &format!("{addition}\n\n## Read Next"),
         1,
     );
-    std::fs::write(path, skill)?;
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?;
     assert_eq!(
-        output.status.success(),
+        validate(skill)?.is_empty(),
         accepted,
-        "stderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
+        "routing diagnostics did not match the expected status"
     );
     Ok(())
 }

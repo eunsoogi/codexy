@@ -70,6 +70,7 @@ mod mcp_runtime;
 mod merge_message;
 mod mode_dispatch;
 mod orchestration_routing;
+mod orchestration_routing_api;
 mod orchestration_routing_assignment;
 mod orchestration_routing_effort;
 mod orchestration_routing_luna_policy;
@@ -99,6 +100,7 @@ use std::path::Path;
 use anyhow::Result;
 
 pub use mode_dispatch::{errors, run};
+pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
 
 #[derive(Debug, Clone)]
 pub enum Mode {

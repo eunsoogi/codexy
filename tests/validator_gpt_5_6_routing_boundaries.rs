@@ -1,11 +1,9 @@
-use std::process::Command;
-
 #[path = "structured_contract.rs"]
 mod structured_contract;
 use crate::support;
 
 use structured_contract::{Contract, Modality, Rule};
-use support::copy_dir;
+use support::routing_validator::validate;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -173,24 +171,23 @@ fn assert_rejected(skill: String) -> TestResult {
             .under_heading("recipient model routing"),
         )
         .expect("routing fixture must contain the forbidden recipient policy");
-    let output = validate(skill)?;
+    let errors = validate(skill)?;
     assert!(
-        !output.status.success(),
+        !errors.is_empty(),
         "routing bypass unexpectedly passed"
     );
     Ok(())
 }
 
 fn assert_recipient_assignment_rejected(skill: String, expected: &str) -> TestResult {
-    let output = validate(skill)?;
+    let errors = validate(skill)?;
     assert!(
-        !output.status.success(),
+        !errors.is_empty(),
         "routing bypass unexpectedly passed"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains(expected),
-        "routing rejection must name {expected}: {}",
-        String::from_utf8_lossy(&output.stderr)
+        errors.iter().any(|error| error.contains(expected)),
+        "routing rejection must name {expected}: {errors:#?}"
     );
     Ok(())
 }
@@ -216,31 +213,10 @@ fn duplicate_recipient_section_with_active_policy(
 }
 
 fn assert_accepted(skill: String) -> TestResult {
-    let output = validate(skill)?;
+    let errors = validate(skill)?;
     assert!(
-        output.status.success(),
-        "valid routing policy rejected:\n{}",
-        String::from_utf8_lossy(&output.stderr)
+        errors.is_empty(),
+        "valid routing policy rejected: {errors:#?}"
     );
     Ok(())
-}
-
-fn validate(skill: String) -> TestResult<std::process::Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    std::fs::write(
-        plugin_root.join("skills/codex-orchestration/SKILL.md"),
-        skill,
-    )?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            "--check",
-        ])
-        .output()?)
 }

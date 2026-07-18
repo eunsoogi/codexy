@@ -1,6 +1,6 @@
 use crate::support;
 
-use support::{copy_dir, validator_routing};
+use support::routing_validator::{assert_accepted, assert_policy_rejected};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -171,41 +171,16 @@ fn validator_rejects_normalized_luna_blanket_default_assignments() -> TestResult
 }
 
 fn assert_routing_rejected(mutate: impl FnOnce(String) -> String, expected: &str) -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    std::fs::write(&path, mutate(std::fs::read_to_string(&path)?))?;
-    let output = validator_routing(&plugin_root)?;
-    assert!(
-        !output.status.success(),
-        "routing bypass unexpectedly passed"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains(expected),
-        "stderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+    assert_policy_rejected(mutate(routing_skill()?), expected)
 }
 
 fn assert_routing_accepted(mutate: impl FnOnce(String) -> String) -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    std::fs::write(&path, mutate(std::fs::read_to_string(&path)?))?;
-    let output = validator_routing(&plugin_root)?;
-    assert!(
-        output.status.success(),
-        "reporting prose unexpectedly failed:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+    assert_accepted(mutate(routing_skill()?))
+}
+
+fn routing_skill() -> TestResult<String> {
+    Ok(std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?)
 }
