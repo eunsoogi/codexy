@@ -88,6 +88,18 @@ fn gate_has_no_relaxable_budget_option() -> Result<(), Box<dyn std::error::Error
 }
 
 #[cfg(unix)]
+#[test]
+fn gate_rejects_timeout_or_profiler_in_an_unrelated_job() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  unrelated:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  rust-test:\n    timeout-minutes: 10\n    steps:\n      - run: echo not-the-gate\n",
+    )?;
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[cfg(unix)]
 struct GateFixture {
     temp: tempfile::TempDir,
     marker: PathBuf,

@@ -17,6 +17,12 @@ fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::pr
         .expect("archive gate should start")
 }
 
+fn assert_gate_error(archive: &std::path::Path, plugin_root: &std::path::Path, expected: &str) {
+    let output = run_gate(archive, plugin_root);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains(expected));
+}
+
 #[test]
 fn archive_gate_allows_documentation_path_examples() {
     let script = std::fs::read_to_string(
@@ -107,7 +113,7 @@ fn archive_gate_rejects_a_missing_runtime() {
     let missing_runtime = runtime.join("codexy-mcp-lsp-linux-x86_64.bin");
     std::fs::remove_file(&missing_runtime).expect("remove runtime");
     create_archive(root.path(), &archive).expect("archive fixture");
-    assert!(!run_gate(&archive, &plugin_root).status.success());
+    assert_gate_error(&archive, &plugin_root, "bundled MCP runtime missing");
 }
 
 #[test]
@@ -119,7 +125,7 @@ fn archive_gate_rejects_a_malformed_runtime() {
     std::fs::write(&missing_runtime, b"not-a-binary").expect("malform runtime");
     make_executable(&missing_runtime).expect("runtime permissions");
     create_archive(root.path(), &archive).expect("archive fixture");
-    assert!(!run_gate(&archive, &plugin_root).status.success());
+    assert_gate_error(&archive, &plugin_root, "invalid binary format");
 }
 
 #[test]
@@ -128,7 +134,11 @@ fn archive_gate_rejects_an_access_key() {
     std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
         .expect("secret fixture");
     create_archive(root.path(), &archive).expect("archive fixture");
-    assert!(!run_gate(&archive, &plugin_root).status.success());
+    assert_gate_error(
+        &archive,
+        &plugin_root,
+        "archive contains a secret or local path",
+    );
 }
 
 #[test]
@@ -141,32 +151,10 @@ fn archive_gate_rejects_an_ignored_secret() {
     )
     .expect("ignored secret fixture");
     create_archive(root.path(), &archive).expect("archive fixture");
-    assert!(!run_gate(&archive, &plugin_root).status.success());
-}
-
-fn assert_private_key_rejected(name: &str, pem: &str) {
-    let (root, plugin_root, archive) = complete_archive_fixture(name);
-    std::fs::write(plugin_root.join(name), pem).expect("private-key fixture");
-    create_archive(root.path(), &archive).expect("archive fixture");
-    let output = run_gate(&archive, &plugin_root);
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("archive contains a secret or local path"),
-        "private-key fixture was rejected for the wrong reason: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-}
-
-#[test]
-fn archive_gate_rejects_a_generic_private_key() {
-    assert_private_key_rejected("generic-private-key.pem", "-----BEGIN PRIVATE KEY-----\n");
-}
-
-#[test]
-fn archive_gate_rejects_an_encrypted_private_key() {
-    assert_private_key_rejected(
-        "encrypted-private-key.pem",
-        "-----BEGIN ENCRYPTED PRIVATE KEY-----\n",
+    assert_gate_error(
+        &archive,
+        &plugin_root,
+        "archive contains a secret or local path",
     );
 }
 

@@ -13,6 +13,9 @@ mod archive_mcp_wrapper_config;
 #[path = "../archive_path_regressions.rs"]
 mod archive_path_regressions;
 
+#[path = "../archive_private_key.rs"]
+mod archive_private_key;
+
 #[path = "../archive_secret_scan.rs"]
 mod archive_secret_scan;
 

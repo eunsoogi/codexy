@@ -60,14 +60,25 @@ def enforce_workflow_contract(workflow: Path) -> None:
     except OSError as error:
         sys.stderr.write(f"Rust workflow is unreadable: {workflow}: {error}\n")
         raise SystemExit(1) from None
-    timeout = re.search(r"(?m)^    timeout-minutes:\s*(\d+)\s*$", source)
+    job = re.search(
+        r"(?ms)^  rust-test:\n(?P<body>.*?)(?=^  [A-Za-z][A-Za-z0-9_-]*:\n|\Z)",
+        source,
+    )
+    if job is None:
+        sys.stderr.write("Rust workflow must define the rust-test job\n")
+        raise SystemExit(1)
+    body = job.group("body")
+    timeout = re.search(r"(?m)^    timeout-minutes:\s*(\d+)\s*$", body)
     found = int(timeout.group(1)) if timeout else None
     if found != REQUIRED_JOB_TIMEOUT_MINUTES:
         sys.stderr.write(
             f"Rust job timeout must be {REQUIRED_JOB_TIMEOUT_MINUTES} minutes; found {found}\n"
         )
         raise SystemExit(1)
-    if source.count("scripts/profile-rust-tests") != 1:
+    profiler_runs = re.findall(
+        r"(?m)^\s*(?:-\s*)?run:\s*scripts/profile-rust-tests\s*(?:#.*)?$", body
+    )
+    if len(profiler_runs) != 1:
         sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
         raise SystemExit(1)
     if "cargo test --locked --all-targets" in source:
