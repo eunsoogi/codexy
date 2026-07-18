@@ -85,10 +85,14 @@ class HookPolicyTests(unittest.TestCase):
             "rm -rf /",
             "command -- git push --force origin main",
             "sudo -u root git push --force origin main",
+            "sudo --user=root git push --force origin main",
+            "sudo --chdir=/tmp git push --force origin main",
             "git -C /tmp push --force origin main",
             "git --no-pager reset --hard HEAD~1",
             "env -u GIT_CONFIG git push --force origin main",
             "gh --repo eunsoogi/codexy pr merge 453 --admin",
+            "bash -lc 'git push --force origin main'",
+            "sh -xc 'git reset --hard HEAD~1'",
         ]
         allowed = [
             "printf '%s\\n' 'git push --force'",
@@ -124,7 +128,9 @@ class HookPolicyTests(unittest.TestCase):
         for command in [
             "command -- git push origin feature/force-push-docs",
             "sudo -u runner git push origin feature/force-push-docs",
+            "sudo --user=runner git push origin feature/force-push-docs",
             "git -C /tmp push origin feature/force-push-docs",
+            "bash -lc 'git push origin feature/force-push-docs'",
             "env -u GIT_CONFIG git push origin feature/force-push-docs",
             "gh --repo example/elsewhere pr merge 453 --squash",
         ]:

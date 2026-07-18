@@ -7,6 +7,7 @@ from .repository_policy import repository_owned
 
 OPERATORS = {";", "&&", "||", "|", "&"}
 SHELLS = {"sh", "bash", "zsh", "dash", "pwsh", "powershell"}
+POSIX_SHELL_SWITCHES = {"a", "b", "c", "e", "f", "h", "i", "l", "m", "n", "u", "v", "x"}
 ENV_SWITCHES = {"-i", "-0", "--ignore-environment", "--null"}
 ENV_VALUE_SWITCHES = {"-u", "-C", "--unset", "--chdir"}
 SUDO_SWITCHES = {"-b", "-E", "-H", "-K", "-k", "-n", "-S"}
@@ -93,7 +94,9 @@ def _sudo_command(tokens: list[str]) -> list[str] | None:
             return tokens[index:]
         if token in SUDO_SWITCHES or _option_value(token, {"--preserve-env"}):
             index += 1
-        elif token in SUDO_VALUE_SWITCHES or _option_value(token, SUDO_VALUE_SWITCHES):
+        elif _option_value(token, SUDO_VALUE_SWITCHES):
+            index += 1
+        elif token in SUDO_VALUE_SWITCHES:
             value = _required_value(tokens, index)
             if value is None:
                 return None
@@ -167,6 +170,28 @@ def _has_flag(tokens: list[str], long: str, short: str = "") -> bool:
     return False
 
 
+def _shell_forbidden(arguments: list[str], depth: int, powershell: bool) -> bool:
+    for index, token in enumerate(arguments):
+        lowered = token.lower()
+        if token == "--":
+            return False
+        if lowered in {"-c", "-command"}:
+            return index + 1 >= len(arguments) or shell_forbidden(arguments[index + 1], depth + 1)
+        if powershell:
+            if token.startswith("-"):
+                return True
+            return False
+        if token.startswith("-") and token != "-":
+            switches = token[1:]
+            if not switches or any(switch not in POSIX_SHELL_SWITCHES for switch in switches):
+                return True
+            if "c" in switches:
+                return index + 1 >= len(arguments) or shell_forbidden(arguments[index + 1], depth + 1)
+            continue
+        return False
+    return False
+
+
 def _segment_forbidden(tokens: list[str], depth: int) -> bool:
     tokens = _unwrap(tokens)
     if tokens is None:
@@ -175,11 +200,7 @@ def _segment_forbidden(tokens: list[str], depth: int) -> bool:
         return False
     command = Path(tokens[0]).name.lower()
     if command in SHELLS and depth < 3:
-        lowered = [token.lower() for token in tokens]
-        for selector in ("-c", "-command"):
-            if selector in lowered:
-                index = lowered.index(selector)
-                return index + 1 >= len(tokens) or shell_forbidden(tokens[index + 1], depth + 1)
+        return _shell_forbidden(tokens[1:], depth, command in {"pwsh", "powershell"})
     if command == "git":
         arguments = _global_options(tokens[1:], GIT_SWITCHES, GIT_VALUE_SWITCHES)
         if arguments is None:
