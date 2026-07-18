@@ -1,7 +1,14 @@
 use std::path::Path;
 use std::process::Command;
 
+#[path = "structured_contract.rs"]
+mod structured_contract;
+#[path = "structured_contract_artifacts.rs"]
+mod structured_contract_artifacts;
 mod support;
+
+use structured_contract::{Contract, Modality, Rule, assert_rules};
+use structured_contract_artifacts::TextShape;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -21,9 +28,15 @@ fn installed_bootstrap_registers_agents_and_then_becomes_idempotent() -> TestRes
         .output()?;
     assert!(first.status.success(), "stderr:\n{}", stderr(&first));
     let first_stdout = stdout(&first);
-    assert!(first_stdout.contains("A role-discovery: FAIL (0/12"));
-    assert!(first_stdout.contains("A role-discovery: PASS (12 marker-owned"));
-    assert!(first_stdout.contains("D bootstrap: RESTART_REQUIRED"));
+    support::assert_structured_literals(
+        &first_stdout,
+        "agent registration bootstrap transition",
+        &[
+            "A role-discovery: FAIL (0/12",
+            "A role-discovery: PASS (12 marker-owned",
+            "D bootstrap: RESTART_REQUIRED",
+        ],
+    );
     assert!(
         codex_home
             .join("agents/codexy/codexy-sentinel.toml")
@@ -34,8 +47,14 @@ fn installed_bootstrap_registers_agents_and_then_becomes_idempotent() -> TestRes
         .args(["--codex-home", path(&codex_home)?])
         .output()?;
     assert!(second.status.success(), "stderr:\n{}", stderr(&second));
-    assert!(stdout(&second).contains("D bootstrap: READY"));
-    assert!(!stdout(&second).contains("RESTART_REQUIRED"));
+    let second_stdout = stdout(&second);
+    support::assert_structured_literals(
+        &second_stdout,
+        "idempotent agent bootstrap state",
+        &["D bootstrap: READY"],
+    );
+    TextShape::new(&second_stdout)
+        .assert_absent_concepts("idempotent bootstrap restart state", &["restart_required"]);
     Ok(())
 }
 
@@ -88,22 +107,55 @@ fn orchestration_guidance_bootstraps_exact_roles_without_generic_fallback() -> T
         root.join("plugins/codexy/skills/codex-orchestration/references/agent-registration.md"),
     )?;
 
-    for required in [
-        "bootstrap-codexy-agents",
-        "installed plugin",
-        "RESTART_REQUIRED",
-        "fresh task",
-        "MUST NOT substitute",
-        "`default`",
-        "`worker`",
-        "`explorer`",
-    ] {
-        assert!(
-            skill.contains(required) || registration.contains(required),
-            "missing bootstrap contract: {required}"
-        );
-    }
-    assert!(!skill.contains("fall back to packaged TOML/catalog context"));
+    let guidance = format!("{skill}\n{registration}");
+    let contract = Contract::markdown_for_subject(&guidance, "you");
+    assert_rules(
+        &contract,
+        &[
+            Rule::new(
+                "agent-bootstrap.installed-entrypoint",
+                "you",
+                Modality::Required,
+                &["run"],
+                &["installed plugin", "bootstrap-codexy-agents"],
+            ),
+            Rule::new(
+                "agent-bootstrap.fresh-task-proof",
+                "you",
+                Modality::Required,
+                &["observe", "invoke"],
+                &["agent_type", "exact packaged role"],
+            ),
+            Rule::new(
+                "agent-bootstrap.no-generic-substitute",
+                "you",
+                Modality::Prohibited,
+                &["substitute"],
+                &[
+                    "default",
+                    "worker",
+                    "explorer",
+                    "Codexy specialist",
+                    "Sentinel",
+                ],
+            ),
+        ],
+    );
+    support::assert_structured_literals(
+        &guidance,
+        "agent bootstrap state protocol",
+        &[
+            "RESTART_REQUIRED",
+            "fresh task",
+            "`default`",
+            "`worker`",
+            "`explorer`",
+        ],
+    );
+    TextShape::new(&skill).assert_absent_concepts(
+        "generic fallback prohibition",
+        &["fall back to packaged TOML catalog context"],
+    );
     Ok(())
 }
 
@@ -135,8 +187,10 @@ fn validator_requires_the_installed_bootstrap_entrypoint() -> TestResult {
 fn lifecycle_hooks_do_not_run_the_registration_bootstrap() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let hooks = std::fs::read_to_string(root.join("plugins/codexy/hooks/hooks.json"))?;
-    assert!(!hooks.contains("bootstrap-codexy-agents"));
-    assert!(!hooks.contains("register-codexy-agents"));
+    TextShape::new(&hooks).assert_absent_concepts(
+        "registration lifecycle hook boundary",
+        &["bootstrap-codexy-agents", "register-codexy-agents"],
+    );
     Ok(())
 }
 
