@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 0 ] || [ -L "$0" ]; then
+  echo "check-codexy-agents accepts no arguments or symbolic-link invocation" >&2
+  exit 2
+fi
+
+case "$0" in
+  */*) script_dir=${0%/*} ;;
+  *) script_dir=. ;;
+esac
+plugin_root=$(CDPATH= cd -- "$script_dir" && pwd -P)
+agents_root="${CODEX_HOME:-${HOME:?HOME is required}/.codex}/agents/codexy"
+expected=0
+exact=0
+managed=0
+
+for packaged in "$plugin_root"/agents/codexy-*.toml; do
+  [ -f "$packaged" ] || continue
+  expected=$((expected + 1))
+  projected="$agents_root/${packaged##*/}"
+  if [ ! -L "$projected" ] && [ -f "$projected" ]; then
+    IFS= read -r first_line < "$projected" || true
+    if [ "$first_line" = "# CODEXY MANAGED AGENT" ] && \
+      /usr/bin/tail -n +2 "$projected" | /usr/bin/cmp -s - "$packaged"; then
+      exact=$((exact + 1))
+    fi
+  fi
+done
+
+if [ -d "$agents_root" ]; then
+  for projected in "$agents_root"/codexy-*.toml; do
+    [ -f "$projected" ] || continue
+    IFS= read -r first_line < "$projected" || true
+    if [ "$first_line" = "# CODEXY MANAGED AGENT" ]; then
+      managed=$((managed + 1))
+    fi
+  done
+fi
+
+if [ "$expected" -eq 12 ] && [ "$exact" -eq "$expected" ] && [ "$managed" -eq "$expected" ]; then
+  printf '%s\n' "D bootstrap: READY"
+  exit 0
+fi
+printf '%s\n' "D bootstrap: UPDATE_REQUIRED (run the README pre-start bootstrap command, then restart Codex)"
+exit 1

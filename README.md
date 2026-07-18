@@ -64,6 +64,20 @@ codex mcp list
 Restart Codex or open a fresh Codex session if newly installed plugin, skill, or
 MCP surfaces do not appear in the active session.
 
+Before opening Codex after first install or an official plugin update, run the
+installed plugin-root bootstrap once:
+
+```sh
+codex plugin list --marketplace codexy --json | python3 -c 'import json,os,stat,sys; d=json.load(sys.stdin); xs=[p for p in d["installed"] if p.get("pluginId")=="codexy@codexy" and p.get("name")=="codexy" and p.get("marketplaceName")=="codexy" and p.get("installed") is True and p.get("enabled") is True and p.get("source",{}).get("source")=="local" and p.get("marketplaceSource")=={"sourceType":"git","source":"https://github.com/eunsoogi/codexy.git"}]; len(xs)==1 or sys.exit("expected one enabled official Codexy install"); root=os.path.normpath(xs[0]["source"]["path"]); (os.path.isabs(root) and os.path.realpath(root)==root) or sys.exit("unsafe plugin path"); manifest=json.load(open(os.path.join(root,".codex-plugin","plugin.json"))); (manifest.get("name")=="codexy" and manifest.get("repository")=="https://github.com/eunsoogi/codexy") or sys.exit("unexpected plugin identity"); path=os.path.join(root,"bootstrap-codexy-agents"); mode=os.lstat(path).st_mode; (stat.S_ISREG(mode) and not stat.S_ISLNK(mode) and os.access(path,os.X_OK)) or sys.exit("unsafe bootstrap"); os.execv(path,[path])'
+```
+
+This prepares exact specialist agents before the first task. If it reports
+`RESTART_REQUIRED`, start or restart Codex once. The read-only `SessionStart`
+check detects projections made stale by an official update and points back to
+the same command; hooks never rewrite user state. The in-task bootstrap remains
+a safety net. Codexy keeps MCP binaries out of the source plugin and bootstraps
+matching runtimes from GitHub Release assets.
+
 ## A Codexy workflow
 
 1. **Classify the task.** Identify the lane, owner, scope, proof, and stop

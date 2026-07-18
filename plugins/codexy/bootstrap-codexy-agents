@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+if [ -L "$0" ]; then
+  echo "bootstrap-codexy-agents refuses invocation through a symbolic link" >&2
+  exit 2
+fi
+
+case "$0" in
+  */*) script_dir=${0%/*} ;;
+  *) script_dir=. ;;
+esac
+plugin_root=$(CDPATH= cd -- "$script_dir" && pwd -P)
+delegate="$plugin_root/skills/codex-orchestration/scripts/bootstrap-codexy-agents"
+if [ ! -f "$plugin_root/.codex-plugin/plugin.json" ]; then
+  echo "bootstrap-codexy-agents must run from an installed Codexy plugin root" >&2
+  exit 2
+fi
+if [ -L "$delegate" ] || [ ! -f "$delegate" ] || [ ! -x "$delegate" ]; then
+  echo "bootstrap-codexy-agents requires a regular executable packaged delegate" >&2
+  exit 2
+fi
+
+exec "$delegate" "$@"

@@ -20,9 +20,14 @@ pub(in crate::validation::hooks) fn output_with_timeout(
     args: &[&str],
     timeout: Duration,
 ) -> Result<Output> {
+    let isolated_home = tempfile::tempdir().context("creating isolated hook validation home")?;
     let mut command = Command::new(script_path);
     command
         .args(args)
+        .env_clear()
+        .env("HOME", isolated_home.path())
+        .env("CODEX_HOME", isolated_home.path().join(".codex"))
+        .env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);

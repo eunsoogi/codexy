@@ -1,0 +1,87 @@
+#!/bin/sh
+set -eu
+
+if [ -L "$0" ]; then
+  echo "bootstrap-codexy-agents refuses invocation through a symbolic link" >&2
+  exit 2
+fi
+
+case "$0" in
+  */*) script_dir=${0%/*} ;;
+  *) script_dir=. ;;
+esac
+self_dir=$(CDPATH= cd -- "$script_dir" && pwd -P)
+registrar="$self_dir/register-codexy-agents"
+if [ -L "$registrar" ] || [ ! -f "$registrar" ] || [ ! -x "$registrar" ]; then
+  echo "bootstrap-codexy-agents requires a regular executable sibling registrar" >&2
+  exit 2
+fi
+
+validate_arguments() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --plugin-root|--plugin-root=*)
+        echo "bootstrap-codexy-agents must resolve agents from its installed package; --plugin-root is not supported" >&2
+        exit 2
+        ;;
+      --diagnose|--dry-run|--uninstall)
+        echo "bootstrap-codexy-agents does not accept lifecycle mode $1" >&2
+        exit 2
+        ;;
+      --config|--config=*)
+        echo "bootstrap-codexy-agents does not support --config because SessionStart checks the active CODEX_HOME discovery root" >&2
+        exit 2
+        ;;
+      --codex-home=?*)
+        shift
+        ;;
+      --codex-home)
+        option=$1
+        shift
+        if [ "$#" -eq 0 ] || [ "${1#--}" != "$1" ]; then
+          echo "bootstrap-codexy-agents requires a value for $option" >&2
+          exit 2
+        fi
+        shift
+        ;;
+      *)
+        echo "bootstrap-codexy-agents: unsupported option $1" >&2
+        exit 2
+        ;;
+    esac
+  done
+}
+
+check_only=0
+if [ "${1:-}" = "--check" ]; then
+  check_only=1
+  shift
+fi
+validate_arguments "$@"
+
+before=$("$registrar" "$@" --diagnose)
+printf '%s\n' "$before"
+case "$before" in
+  *"A role-discovery: PASS ("*)
+    printf '%s\n' "D bootstrap: READY (registration is current; prove agent_type in this task)"
+    exit 0
+    ;;
+esac
+
+if [ "$check_only" -eq 1 ]; then
+  printf '%s\n' "D bootstrap: UPDATE_REQUIRED (run the installed plugin-root bootstrap, then restart Codex)"
+  exit 1
+fi
+
+"$registrar" "$@"
+after=$("$registrar" "$@" --diagnose)
+printf '%s\n' "$after"
+case "$after" in
+  *"A role-discovery: PASS ("*)
+    printf '%s\n' "D bootstrap: RESTART_REQUIRED (start a fresh Codex task before specialist invocation)"
+    ;;
+  *)
+    echo "D bootstrap: FAILED (role discovery is incomplete)" >&2
+    exit 1
+    ;;
+esac

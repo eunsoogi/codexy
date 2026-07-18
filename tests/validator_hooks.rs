@@ -200,10 +200,10 @@ fn validator_cli_rejects_hook_user_state_mutation() -> Result<(), Box<dyn std::e
             !output.status.success(),
             "validator should reject hook scripts that mutate user state: {script_suffix:?}"
         );
-        assert!(
-            String::from_utf8_lossy(&output.stderr).contains("hook script must not"),
-            "unexpected stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
+        support::assert_structured_literals(
+            &String::from_utf8_lossy(&output.stderr),
+            "mutating routing hook rejection",
+            &["compiled read-only package before execution"],
         );
     }
     Ok(())

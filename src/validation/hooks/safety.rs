@@ -4,6 +4,8 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
+use super::agent_update_safety;
+
 const FORBIDDEN_COMMAND_FRAGMENTS: &[&str] = &[
     "~",
     "$HOME",
@@ -107,6 +109,7 @@ fn check_script_inner(
 ) -> Result<()> {
     let text = std::fs::read_to_string(script_path)
         .with_context(|| format!("reading {}", display_relative(script_path)))?;
+    agent_update_safety::check(path, event, script_path, &text)?;
     for forbidden in forbidden_fragments {
         if text.contains(forbidden) {
             bail!(

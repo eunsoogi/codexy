@@ -183,10 +183,11 @@ type with no or bounded history, such as `spawn_agent(agent_type="codexy-sentine
 `spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="3")`, or
 `spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="none")`.
 
-If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST report
-that the Codexy agents have not been registered in the active Codex config and
-fall back to packaged TOML/catalog context without claiming native-agent
-success.
+If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST follow
+`references/agent-registration.md`, MUST run the installed plugin's packaged
+`scripts/bootstrap-codexy-agents`, MUST honor `RESTART_REQUIRED`, and MUST prove
+the exact native role in a fresh task. MUST NOT substitute a generic agent for
+a packaged Codexy specialist or Sentinel.
 
 MUST end every non-trivial atomic unit with the packaged Codexy reviewer agent
 defined in `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate MUST
