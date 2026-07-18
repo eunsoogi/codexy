@@ -29,9 +29,9 @@ pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_re
         )),
         "unversioned cache must not bypass the active release package, got {output:?}"
     );
-    assert!(
-        std::fs::read_to_string(release_root.join("curl.log"))?
-            .contains("releases/latest/download/codexy-marketplace-plugin.tar.gz"),
+    assert_eq!(
+        std::fs::read_to_string(release_root.join("curl.log"))?.trim(),
+        "https://github.com/eunsoogi/codexy/releases/latest/download/codexy-marketplace-plugin.tar.gz",
         "unversioned cache invalidation must refresh the release package"
     );
     Ok(())
