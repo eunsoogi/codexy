@@ -12,7 +12,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
     for required in [
         "package-plugin:",
         "needs: build-runtime",
-        "actions/download-artifact@v4",
+        "actions/download-artifact@",
         "pattern: codexy-mcp-runtimes-*",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
@@ -41,10 +41,11 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         !workflow.contains("--target \"$GITHUB_SHA\""),
         "manual release workflow must target the commit behind release_tag, not the workflow ref"
     );
-    assert!(
-        workflow.matches("ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}").count() >= 2,
-        "manual release workflow must check out the requested release tag before building runtime binaries and package archive"
-    );
+    assert!(workflow.contains("git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main"));
+    assert!(workflow.contains("if: startsWith(github.ref, 'refs/tags/')"));
+    assert!(!workflow.contains(
+        "if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'"
+    ));
     let package_validation_order = concat!(
         "--check-runtime-artifacts\n",
         "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",

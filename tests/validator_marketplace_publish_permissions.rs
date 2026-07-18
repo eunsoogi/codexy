@@ -144,6 +144,12 @@ fn assert_release_write_permissions_are_trusted(workflow: &str) -> Result<(), St
             let permissions = mapping(permissions, "publish-release permissions")?;
             require_exact_permission(permissions, "contents", "write", "publish-release")?;
             require_trusted_release_condition(job)?;
+        } else if job_name == "publish-runtime-tool" {
+            let permissions = permissions
+                .ok_or_else(|| "publish-runtime-tool must declare permissions".to_owned())?;
+            let permissions = mapping(permissions, "publish-runtime-tool permissions")?;
+            require_exact_permission(permissions, "id-token", "write", "publish-runtime-tool")?;
+            require_trusted_release_condition(job)?;
         } else if let Some(permissions) = permissions {
             reject_write_permissions(permissions, job_name)?;
         }
@@ -156,7 +162,10 @@ fn assert_release_write_permissions_are_trusted(workflow: &str) -> Result<(), St
             .ok_or_else(|| format!("{job_name} steps must be a sequence"))?;
         for step in steps {
             let step = mapping(step, "workflow step")?;
-            if field(step, "uses").and_then(Value::as_str) != Some("actions/checkout@v4") {
+            if !field(step, "uses")
+                .and_then(Value::as_str)
+                .is_some_and(|uses| uses.starts_with("actions/checkout@"))
+            {
                 continue;
             }
             checkout_count += 1;
@@ -231,7 +240,7 @@ fn reject_write_permissions(permissions: &Value, job_name: &str) -> Result<(), S
             level.eq_ignore_ascii_case("write") || level.eq_ignore_ascii_case("write-all")
         }) {
             return Err(format!(
-                "only publish-release may receive write permissions; {job_name} grants {permission:?}"
+                "only trusted publish jobs may receive write permissions; {job_name} grants {permission:?}"
             ));
         }
     }
@@ -242,8 +251,7 @@ fn require_trusted_release_condition(job: &Mapping) -> Result<(), String> {
     let condition = field(job, "if")
         .and_then(Value::as_str)
         .ok_or_else(|| "publish-release must retain its trusted release condition".to_owned())?;
-    (condition
-        == "github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'")
+    (condition == "startsWith(github.ref, 'refs/tags/')")
         .then_some(())
         .ok_or_else(|| "publish-release must retain its trusted release condition".to_owned())
 }

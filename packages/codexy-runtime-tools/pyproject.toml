@@ -1,0 +1,29 @@
+[build-system]
+requires = ["uv_build==0.9.26"]
+build-backend = "uv_build"
+
+[project]
+name = "codexy-runtime-tools"
+version = "1.2.1"
+description = "Version-pinned MCP runtime bootstrap tools for Codexy"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Eunsoo Lee" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+[project.urls]
+Repository = "https://github.com/eunsoogi/codexy"
+Issues = "https://github.com/eunsoogi/codexy/issues"
+
+[project.scripts]
+codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"
+codexy-update = "codexy_runtime_tools.updater:main"
+codexy-hook-policy = "codexy_runtime_tools.hook_policy:main"
+
+[tool.uv.build-backend]
+module-name = "codexy_runtime_tools"
+module-root = "src"

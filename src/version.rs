@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::paths::{display_relative, repo_root};
 
 mod cargo;
+mod python;
 
 const PLUGIN_NAME: &str = "codexy";
 
@@ -206,6 +207,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             );
         }
     }
+    python::check_version(manifest_version)?;
     cargo::check_version(manifest_version)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
@@ -230,6 +232,7 @@ pub fn set_version(version: &str) -> Result<String> {
     let mut manifest = load_json(&manifest_path)?;
     let mut marketplace = load_json(&market_path)?;
     let mut publish = load_json(&publish_path)?;
+    let current_version = string_field(&manifest, "version", "plugin manifest")?.to_owned();
     manifest["version"] = Value::String(version.to_owned());
     marketplace_plugin_mut(&mut marketplace)?["version"] = Value::String(version.to_owned());
     publish["version"] = Value::String(version.to_owned());
@@ -242,5 +245,6 @@ pub fn set_version(version: &str) -> Result<String> {
         package["version"] = Value::String(version.to_owned());
         write_json(&path, &package)?;
     }
+    python::set_version(&current_version, version)?;
     Ok(format!("plugin version synchronized to {version}"))
 }

@@ -17,6 +17,7 @@ on:
       - "Cargo.toml"
       - "src/**"
       - "plugins/codexy/**"
+      - "packages/codexy-runtime-tools/**"
       - ".agents/plugins/marketplace.json"
       - "scripts/generate-release-changelog"
       - "scripts/inspect-release-archive"
@@ -30,6 +31,7 @@ on:
       - "Cargo.toml"
       - "src/**"
       - "plugins/codexy/**"
+      - "packages/codexy-runtime-tools/**"
       - ".agents/plugins/marketplace.json"
       - "scripts/generate-release-changelog"
       - "scripts/inspect-release-archive"
@@ -42,6 +44,64 @@ permissions:
   contents: read
 
 jobs:
+  verify-release-source:
+    name: Verify protected release source
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require tag commit to be reachable from main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+  build-runtime-tool:
+    name: Build and verify pinned uvx runtime tool
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          persist-credentials: false
+
+      - name: Install pinned uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.9.26"
+
+      - name: Build wheel and source distribution
+        run: uv build --no-sources packages/codexy-runtime-tools --out-dir dist/python
+
+      - name: Verify exact distributions and console entrypoints
+        run: |
+          set -- dist/python/*.whl
+          test "$#" -eq 1
+          wheel=$1
+          set -- dist/python/*.tar.gz
+          test "$#" -eq 1
+          sdist=$1
+          for distribution in "$wheel" "$sdist"; do
+            cache=$(mktemp -d)
+            UV_CACHE_DIR="$cache" uvx --from "$distribution" codexy-mcp-runtime --help
+            UV_CACHE_DIR="$cache" uvx --from "$distribution" codexy-update --help
+            UV_CACHE_DIR="$cache" uvx --from "$distribution" codexy-hook-policy --help
+            rm -rf "$cache"
+          done
+          sha256sum "$wheel" "$sdist"
+
+      - name: Upload runtime tool distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: codexy-runtime-tools-distributions
+          path: dist/python/*
+          if-no-files-found: error
+
   build-runtime:
     name: Build ${{ matrix.platform }} MCP runtimes
     runs-on: ${{ matrix.runner }}
@@ -56,7 +116,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
@@ -102,7 +162,7 @@ jobs:
           done
 
       - name: Upload runtime binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: codexy-mcp-runtimes-${{ matrix.platform }}
           path: dist/runtimes-${{ matrix.platform }}/*.bin
@@ -114,14 +174,14 @@ jobs:
     needs: build-runtime
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download generated runtime binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: codexy-mcp-runtimes-*
           path: dist/generated-runtimes
@@ -147,7 +207,7 @@ jobs:
           scripts/inspect-release-archive "dist/codexy-marketplace-plugin.tar.gz" "$plugin_root"
 
       - name: Upload marketplace package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: codexy-marketplace-plugin
           path: dist/codexy-marketplace-plugin.tar.gz
@@ -155,21 +215,22 @@ jobs:
 
   publish-release:
     name: Publish marketplace release
-    needs: package-plugin
-    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    needs: [package-plugin, verify-release-source]
+    if: startsWith(github.ref, 'refs/tags/')
+    environment: release
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download marketplace package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: codexy-marketplace-plugin
           path: dist
@@ -226,4 +287,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "$RELEASE_TAG" "dist/codexy-marketplace-plugin.tar.gz" --clobber
+          gh release upload "$RELEASE_TAG" "dist/codexy-marketplace-plugin.tar.gz"
+
+  publish-runtime-tool:
+    name: Publish pinned uvx runtime tool with provenance
+    needs: [build-runtime-tool, verify-release-source]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download exact runtime tool distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: codexy-runtime-tools-distributions
+          path: dist/python
+
+      - name: Publish with PyPI trusted publishing and attestations
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        with:
+          packages-dir: dist/python
+          attestations: true

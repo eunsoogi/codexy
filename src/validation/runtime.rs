@@ -7,6 +7,8 @@ use crate::paths::display_relative;
 use crate::validation::manifest::{load_manifest, supported_platforms};
 use crate::validation::manifest_path;
 
+mod uvx;
+
 const REQUIRED_RUNTIME_SERVERS: &[&str] = &["lsp", "codegraph"];
 const GENERATED_SOURCE_DIRS: &[&str] = &["bin", "runtime"];
 
@@ -14,8 +16,13 @@ pub(super) fn check_source_contract(plugin_root: &Path, manifest: &Value) -> Res
     check_no_source_runtime_artifacts(plugin_root)?;
     let path = manifest_path(plugin_root);
     let platforms = supported_platforms(manifest, &path)?;
+    let version = manifest
+        .get("version")
+        .and_then(Value::as_str)
+        .context("plugin manifest version must be a string")?;
     for server in REQUIRED_RUNTIME_SERVERS {
         let wrapper_path = plugin_root.join("mcp").join(format!("codexy-mcp-{server}"));
+        uvx::check_wrapper(&wrapper_path, server, version)?;
         let wrapper_platforms = bundled_platforms(&wrapper_path)?;
         if wrapper_platforms != platforms {
             bail!(
@@ -128,13 +135,19 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "release:",
         "package-plugin:",
         "needs: build-runtime",
-        "actions/download-artifact@v4",
+        "actions/download-artifact@",
         "pattern: codexy-mcp-runtimes-*",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "--check-runtime-artifacts",
         "--check-hooks",
         "gh release upload",
+        "Build and verify pinned uvx runtime tool",
+        "codexy-runtime-tools-distributions",
+        "codexy-hook-policy --help",
+        "pypa/gh-action-pypi-publish@",
+        "attestations: true",
+        "git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main",
     ] {
         if !text.contains(required) {
             bail!(
@@ -174,7 +187,11 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
                 display_relative(&path)
             )
         })?;
-        for required_path in ["plugins/codexy/**", "scripts/inspect-mcp-response"] {
+        for required_path in [
+            "plugins/codexy/**",
+            "packages/codexy-runtime-tools/**",
+            "scripts/inspect-mcp-response",
+        ] {
             if !trigger_text.contains(required_path) {
                 bail!(
                     "{} runtime package workflow {trigger} paths must include {required_path:?}",
