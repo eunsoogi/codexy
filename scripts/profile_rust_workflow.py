@@ -169,15 +169,16 @@ def executable_tokens(tokens: list[str]) -> list[str]:
                 if ASSIGNMENT_WORD_PATTERN.fullmatch(option):
                     index += 1
                     continue
-                if option in {"-u", "--unset"}:
-                    index += 2
-                    continue
-                if option in {"-C", "--chdir"}:
+                if option in {"-u", "--unset", "-C", "--chdir", "-a", "--argv0"}:
                     index += 2
                     continue
                 if option in {"-S", "--split-string"}:
-                    return executable_tokens(shlex.split(tokens[index + 1]))
-                if option.startswith("--chdir="):
+                    return executable_tokens(shlex.split(tokens[index + 1]) + tokens[index + 2 :])
+                if option.startswith("--split-string="):
+                    return executable_tokens(
+                        shlex.split(option.partition("=")[2]) + tokens[index + 1 :]
+                    )
+                if option.startswith(("--chdir=", "--unset=", "--argv0=")):
                     index += 1
                     continue
                 if option.startswith("-") and option != "-":
