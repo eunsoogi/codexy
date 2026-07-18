@@ -7,12 +7,13 @@ import argparse
 import json
 import os
 import re
-import shlex
 import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+from profile_rust_workflow import enforce_workflow_contract
 
 BUDGET_SECONDS = 180.0
 METADATA_TIMEOUT_SECONDS = 30.0
@@ -25,7 +26,6 @@ RESULT_PATTERN = re.compile(
     r"(\d+) ignored; \d+ measured; \d+ filtered out"
 )
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
-WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 def integration_target_count(root: Path) -> int:
     try:
         result = subprocess.run(
@@ -52,124 +52,6 @@ def integration_target_count(root: Path) -> int:
     except (json.JSONDecodeError, TypeError):
         sys.stderr.write("cargo metadata returned an invalid target inventory\n")
         raise SystemExit(1) from None
-def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
-    stripped = line.strip()
-    if not stripped or stripped.startswith("#") or stripped.startswith("-"):
-        return None
-    match = WORKFLOW_KEY_PATTERN.match(stripped)
-    if match is None:
-        return None
-    key = match.group("key").strip()
-    value = match.group("value").split("#", 1)[0].strip()
-    return key, value
-def step_run_command(line: str) -> str | None:
-    stripped = line.strip()
-    if stripped.startswith("-"):
-        stripped = stripped[1:].lstrip()
-    entry = yaml_mapping_entry(stripped)
-    if entry is None or entry[0] != "run":
-        return None
-    return entry[1]
-
-
-def invokes_profiler(command: str) -> bool:
-    return any(shlex.split(line, comments=True)[:1] == ["scripts/profile-rust-tests"] for line in command.splitlines())
-
-
-def workflow_jobs(source: str) -> dict[str, list[str]]:
-    jobs: dict[str, list[str]] = {}
-    current_job: str | None = None
-    in_jobs = False
-    for line in source.splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        indentation = len(line) - len(line.lstrip(" "))
-        entry = yaml_mapping_entry(line)
-        if indentation == 0:
-            in_jobs = entry == ("jobs", "")
-            current_job = None
-            continue
-        if not in_jobs:
-            continue
-        if indentation == 2 and entry is not None and entry[1] == "":
-            name = entry[0]
-            if name in jobs:
-                sys.stderr.write(f"Rust workflow defines job {name!r} more than once\n")
-                raise SystemExit(1)
-            jobs[name] = []
-            current_job = name
-            continue
-        if current_job is not None:
-            jobs[current_job].append(line)
-    return jobs
-def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
-    timeouts: list[str] = []
-    runs: list[str] = []
-    in_steps = False
-    step_open = False
-    block_run: tuple[int, list[str]] | None = None
-    for line in lines:
-        indentation = len(line) - len(line.lstrip(" "))
-        if block_run is not None:
-            if not line.strip() or indentation > block_run[0]:
-                if line.strip():
-                    block_run[1].append(line)
-                continue
-            runs.append("\n".join(block_run[1]))
-            block_run = None
-        entry = yaml_mapping_entry(line)
-        if indentation == 4:
-            step_open = False
-            in_steps = entry == ("steps", "")
-            if entry is not None and entry[0] == "timeout-minutes":
-                timeouts.append(entry[1])
-            continue
-        if not in_steps:
-            continue
-        if indentation < 6:
-            in_steps = False
-            step_open = False
-            continue
-        if indentation == 6 and line.lstrip().startswith("-"):
-            step_open = True
-        if (indentation == 6 and line.lstrip().startswith("-")) or (indentation == 8 and step_open):
-            command = step_run_command(line)
-            if command in {"|", "|-", "|+", ">", ">-", ">+"}:
-                block_run = (indentation, [])
-            elif command is not None:
-                runs.append(command)
-    if block_run is not None:
-        runs.append("\n".join(block_run[1]))
-    return timeouts, runs
-def enforce_workflow_contract(workflow: Path) -> None:
-    try:
-        source = workflow.read_text()
-    except OSError as error:
-        sys.stderr.write(f"Rust workflow is unreadable: {workflow}: {error}\n")
-        raise SystemExit(1) from None
-    jobs = workflow_jobs(source)
-    if "rust-test" not in jobs:
-        sys.stderr.write("Rust workflow must define the rust-test job\n")
-        raise SystemExit(1)
-    timeouts, rust_runs = job_contract(jobs["rust-test"])
-    found = int(timeouts[0]) if len(timeouts) == 1 and timeouts[0].isdigit() else None
-    if found != REQUIRED_JOB_TIMEOUT_MINUTES:
-        sys.stderr.write(
-            f"Rust job timeout must be {REQUIRED_JOB_TIMEOUT_MINUTES} minutes; found {found}\n"
-        )
-        raise SystemExit(1)
-    profiler_runs = [
-        command
-        for lines in jobs.values()
-        for command in job_contract(lines)[1]
-        if invokes_profiler(command)
-    ]
-    if sum(invokes_profiler(command) for command in rust_runs) != 1 or len(profiler_runs) != 1:
-        sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
-        raise SystemExit(1)
-    if "cargo test --locked --all-targets" in source:
-        sys.stderr.write("Rust workflow must not run the full workload outside its gate\n")
-        raise SystemExit(1)
 def nested_build_count(root: Path) -> int:
     helper = root / "tests/support/release_archive.rs"
     try:
@@ -212,7 +94,7 @@ def main() -> int:
     arguments = parser.parse_args()
     root = arguments.root.resolve()
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
-    enforce_workflow_contract(workflow)
+    enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
     targets = integration_target_count(root)
     nested_builds = nested_build_count(root)
     output, elapsed, status = run_workload(root)

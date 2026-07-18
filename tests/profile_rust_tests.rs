@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[path = "profile_rust_tests/workflow_contract.rs"]
+mod workflow_contract;
+
 #[cfg(unix)]
 #[test]
 fn gate_runs_the_exact_full_workload_once() -> Result<(), Box<dyn std::error::Error>> {
@@ -173,16 +176,20 @@ fn gate_handles_profiler_block_scalars_and_jobs_comments() -> Result<(), Box<dyn
 }
 
 #[cfg(unix)]
-struct GateFixture {
+pub(super) struct GateFixture {
     temp: tempfile::TempDir,
     marker: PathBuf,
     bin_dir: PathBuf,
-    workflow: PathBuf,
+    pub(super) workflow: PathBuf,
 }
 
 #[cfg(unix)]
 impl GateFixture {
-    fn new(exit: i32, passed: usize, ignored: usize) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(super) fn new(
+        exit: i32,
+        passed: usize,
+        ignored: usize,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
         let bin_dir = temp.path().join("bin");
         std::fs::create_dir(&bin_dir)?;
@@ -207,7 +214,7 @@ impl GateFixture {
         })
     }
 
-    fn run(
+    pub(super) fn run(
         &self,
         environment: &[(&str, &std::ffi::OsStr)],
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
