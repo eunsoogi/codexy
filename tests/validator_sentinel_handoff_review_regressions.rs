@@ -1,5 +1,3 @@
-use std::{path::Path, process::Command};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const HEAD: &str = "32b03a210b3defb2d29dd352283ea2488e60d893";
@@ -174,20 +172,7 @@ fn validate_file(handoff: &str) -> Result<std::process::Output, Box<dyn std::err
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(&pr_state_path, open_pr_state())?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-completion-handoff",
-            "--handoff-file",
-            path_str(&handoff_path)?,
-            "--pr-state-file",
-            path_str(&pr_state_path)?,
-        ])
-        .output()?)
-}
-
-fn path_str(path: &Path) -> Result<&str, Box<dyn std::error::Error>> {
-    path.to_str()
-        .ok_or_else(|| "path is not valid UTF-8".into())
+    crate::support::validator_completion_handoff_files(&handoff_path, &pr_state_path)
 }
 
 fn open_pr_state() -> String {

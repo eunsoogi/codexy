@@ -1,3 +1,4 @@
+use std::io::Write as _;
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -89,11 +90,40 @@ fn bounds_continuous_hook_output() -> TestResult {
 
 fn make_script(root: &Path, body: &str) -> TestResult<PathBuf> {
     let script = root.join("probe.sh");
-    std::fs::write(&script, format!("#!/bin/sh\n{body}"))?;
-    let mut permissions = std::fs::metadata(&script)?.permissions();
+    let staging = root.join(".probe.sh.tmp");
+    let mut file = std::fs::File::create(&staging)?;
+    file.write_all(format!("#!/bin/sh\n{body}").as_bytes())?;
+    file.sync_all()?;
+    let mut permissions = file.metadata()?.permissions();
     permissions.set_mode(0o755);
-    std::fs::set_permissions(&script, permissions)?;
+    file.set_permissions(permissions)?;
+    drop(file);
+    std::fs::rename(staging, &script)?;
     Ok(script)
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn replaces_a_running_script_without_writing_its_executable_path() -> TestResult {
+    use std::io::BufRead as _;
+    use std::process::Stdio;
+
+    let temp = tempfile::tempdir()?;
+    let script = make_script(temp.path(), "printf 'ready\\n'\nread _\n")?;
+    let mut child = Command::new(&script)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+    let mut ready = String::new();
+    std::io::BufReader::new(child.stdout.take().ok_or("missing child stdout")?)
+        .read_line(&mut ready)?;
+    assert_eq!(ready, "ready\n");
+
+    let replacement = make_script(temp.path(), "exit 0\n")?;
+    drop(child.stdin.take());
+    assert!(child.wait()?.success());
+    assert!(Command::new(replacement).status()?.success());
+    Ok(())
 }
 
 fn matching_pids(marker: &str) -> TestResult<Vec<i32>> {

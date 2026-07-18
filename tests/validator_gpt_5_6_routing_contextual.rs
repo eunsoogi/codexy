@@ -1,4 +1,4 @@
-mod support;
+use crate::support;
 
 use support::{copy_dir, validator_routing};
 

@@ -1,189 +1,157 @@
 #!/usr/bin/env python3
-"""Report warm Rust test-binary timings for a reproducible performance baseline."""
+"""Run and enforce the exact complete Rust test workload once."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
-import statistics
+import re
+import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-REGRESSION_BUDGET_SECONDS = 60.0
-SUBPROCESS_TIMEOUT_SECONDS = 120.0
-PROFILE_TARGET_SOURCES = frozenset(("tests/validator_gpt_5_6_routing_assignment_blocks.rs",))
-REQUIRED_WORKLOAD_TIMEOUT_MINUTES = 10
+BUDGET_SECONDS = 180.0
+METADATA_TIMEOUT_SECONDS = 30.0
+MINIMUM_PASSED_TESTS = 1802
+MAXIMUM_INTEGRATION_TARGETS = 8
+REQUIRED_JOB_TIMEOUT_MINUTES = 4
+WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
+RESULT_PATTERN = re.compile(
+    r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; "
+    r"(\d+) ignored; \d+ measured; \d+ filtered out"
+)
+COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 
 
-def enforce_required_workload_timeout(workflow: Path) -> None:
-    try:
-        lines = workflow.read_text().splitlines()
-    except OSError as error:
-        sys.stderr.write(f"required Rust workload policy is unreadable: {workflow}: {error}\n")
-        raise SystemExit(1) from None
-
-    in_rust_test_job = False
-    timeout_minutes: int | None = None
-    for line in lines:
-        if line == "  rust-test:":
-            in_rust_test_job = True
-            continue
-        if in_rust_test_job and line.startswith("  ") and not line.startswith("    "):
-            break
-        if in_rust_test_job and line.startswith("    timeout-minutes:"):
-            value = line.removeprefix("    timeout-minutes:").strip()
-            try:
-                timeout_minutes = int(value)
-            except ValueError:
-                break
-            break
-
-    if timeout_minutes != REQUIRED_WORKLOAD_TIMEOUT_MINUTES:
-        found = "missing" if timeout_minutes is None else str(timeout_minutes)
-        sys.stderr.write(
-            "required Rust workload timeout must remain "
-            f"{REQUIRED_WORKLOAD_TIMEOUT_MINUTES} minutes; found {found}\n"
-        )
-        raise SystemExit(1)
-
-
-def test_binaries(root: Path, timeout: float) -> list[tuple[str, str]]:
-    command = [
-        "cargo",
-        "test",
-        "--offline",
-        "--all-targets",
-        "--no-run",
-        "--message-format=json",
-    ]
+def integration_target_count(root: Path) -> int:
     try:
         result = subprocess.run(
-            command,
+            ["cargo", "metadata", "--locked", "--no-deps", "--format-version=1"],
             cwd=root,
             capture_output=True,
             text=True,
             check=False,
-            timeout=timeout,
+            timeout=METADATA_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
-        sys.stderr.write(f"cargo test discovery timed out after {timeout:.3f} seconds\n")
+        sys.stderr.write("cargo metadata timed out\n")
         raise SystemExit(124) from None
     if result.returncode:
         sys.stderr.write(result.stderr)
         raise SystemExit(result.returncode)
-    binaries = {
-        (message["executable"], message.get("target", {}).get("src_path", ""))
-        for line in result.stdout.splitlines()
-        if (message := json.loads(line)).get("profile", {}).get("test")
-        and message.get("executable")
-    }
-    targets = [
-        binary
-        for binary in binaries
-        if report_path(binary[1], root) in PROFILE_TARGET_SOURCES
-    ]
-    profiled_sources = {report_path(source, root) for _, source in targets}
-    missing_sources = PROFILE_TARGET_SOURCES - profiled_sources
-    if missing_sources:
+    try:
+        metadata = json.loads(result.stdout)
+        return sum(
+            "test" in target.get("kind", [])
+            for package in metadata.get("packages", [])
+            for target in package.get("targets", [])
+        )
+    except (json.JSONDecodeError, TypeError):
+        sys.stderr.write("cargo metadata returned an invalid target inventory\n")
+        raise SystemExit(1) from None
+
+
+def enforce_workflow_contract(workflow: Path) -> None:
+    try:
+        source = workflow.read_text()
+    except OSError as error:
+        sys.stderr.write(f"Rust workflow is unreadable: {workflow}: {error}\n")
+        raise SystemExit(1) from None
+    timeout = re.search(r"(?m)^    timeout-minutes:\s*(\d+)\s*$", source)
+    found = int(timeout.group(1)) if timeout else None
+    if found != REQUIRED_JOB_TIMEOUT_MINUTES:
         sys.stderr.write(
-            "profile target binaries were not built: "
-            f"{', '.join(sorted(missing_sources))}\n"
+            f"Rust job timeout must be {REQUIRED_JOB_TIMEOUT_MINUTES} minutes; found {found}\n"
         )
         raise SystemExit(1)
-    return sorted(targets)
+    if source.count("scripts/profile-rust-tests") != 1:
+        sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
+        raise SystemExit(1)
+    if "cargo test --locked --all-targets" in source:
+        sys.stderr.write("Rust workflow must not run the full workload outside its gate\n")
+        raise SystemExit(1)
 
 
-def run_binary(path: str, root: Path, timeout: float) -> tuple[float, int]:
+def nested_build_count(root: Path) -> int:
+    helper = root / "tests/support/release_archive.rs"
+    try:
+        source = helper.read_text()
+    except OSError as error:
+        sys.stderr.write(f"archive fixture helper is unreadable: {error}\n")
+        raise SystemExit(1) from None
+    return source.count('Command::new("cargo")')
+
+
+def run_workload(root: Path) -> tuple[str, float, int]:
     started = time.perf_counter()
+    process = subprocess.Popen(
+        WORKLOAD,
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=os.name == "posix",
+    )
     try:
-        result = subprocess.run([path, "--quiet"], cwd=root, check=False, timeout=timeout)
-        return time.perf_counter() - started, result.returncode
-    except subprocess.TimeoutExpired:
-        return time.perf_counter() - started, 124
-
-
-def report_path(source: str, root: Path) -> str:
-    try:
-        return str(Path(source).resolve().relative_to(root))
-    except ValueError:
-        return Path(source).name
+        output, _ = process.communicate(timeout=BUDGET_SECONDS)
+    except subprocess.TimeoutExpired as error:
+        if os.name == "posix":
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            process.kill()
+        remainder, _ = process.communicate()
+        partial = error.output or ""
+        if isinstance(partial, bytes):
+            partial = partial.decode(errors="replace")
+        output = remainder or partial
+        sys.stdout.write(output)
+        return output, BUDGET_SECONDS, 124
+    elapsed = time.perf_counter() - started
+    sys.stdout.write(output)
+    return output, elapsed, process.returncode
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--iterations", type=int, default=1)
-    parser.add_argument(
-        "--max-median-seconds",
-        type=float,
-        default=REGRESSION_BUDGET_SECONDS,
-        help="must remain the repository's fixed warmed-suite regression budget",
-    )
-    parser.add_argument(
-        "--slowest",
-        type=int,
-        default=10,
-        help="number of slowest integration binaries to report for each sample",
-    )
-    parser.add_argument(
-        "--timeout-seconds",
-        type=float,
-        default=SUBPROCESS_TIMEOUT_SECONDS,
-        help="bounded timeout for each discovery and integration-binary subprocess",
-    )
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
-    parser.add_argument(
-        "--workflow-file",
-        type=Path,
-        help="required-workload policy file; defaults to the Rust CI workflow under --root",
-    )
+    parser.add_argument("--workflow-file", type=Path)
     arguments = parser.parse_args()
-    if arguments.iterations < 1:
-        parser.error("--iterations must be at least 1")
-    if arguments.max_median_seconds != REGRESSION_BUDGET_SECONDS:
-        parser.error(
-            f"--max-median-seconds must remain {REGRESSION_BUDGET_SECONDS:.3f} for reproducible CI policy"
-        )
-    if arguments.slowest < 1:
-        parser.error("--slowest must be at least 1")
-    if arguments.timeout_seconds <= 0:
-        parser.error("--timeout-seconds must be positive")
     root = arguments.root.resolve()
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
-    enforce_required_workload_timeout(workflow)
-    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
-    binaries = test_binaries(root, arguments.timeout_seconds)
-    print(f"# codexy-rust-test-profile commit={commit} samples={arguments.iterations}")
-    print(f"# profile-targets={','.join(sorted(PROFILE_TARGET_SOURCES))}")
-    print("sample\tbinary\tseconds\texit")
-    sample_totals: list[float] = []
-    for iteration in range(1, arguments.iterations + 1):
-        sample_total = 0.0
-        timings: list[tuple[float, str, str, int]] = []
-        for binary, source in binaries:
-            elapsed, status = run_binary(binary, root, arguments.timeout_seconds)
-            print(f"{iteration}\t{Path(binary).name}\t{elapsed:.3f}\t{status}")
-            if status:
-                return status
-            sample_total += elapsed
-            timings.append((elapsed, binary, source, status))
-        for elapsed, binary, source, status in sorted(timings, reverse=True)[: arguments.slowest]:
-            print(
-                f"slowest\t{iteration}\t{Path(binary).name}\t{report_path(source, root)}\t{elapsed:.3f}\t{status}"
-            )
-        sample_totals.append(sample_total)
-        print(f"sample-total\tTOTAL\t{sample_total:.3f}\t0")
-    median = statistics.median(sample_totals)
-    print(f"median\tTOTAL\t{median:.3f}\t0")
-    status = 0 if median <= REGRESSION_BUDGET_SECONDS else 1
-    result = "PASS" if status == 0 else "FAIL"
-    print(
-        "budget\tMAX_MEDIAN_SECONDS\t"
-        f"{REGRESSION_BUDGET_SECONDS:.3f}\t{median:.3f}\t{result}"
+    enforce_workflow_contract(workflow)
+    targets = integration_target_count(root)
+    nested_builds = nested_build_count(root)
+    output, elapsed, status = run_workload(root)
+    summaries = RESULT_PATTERN.findall(output)
+    passed = sum(int(result[0]) for result in summaries)
+    failed = sum(int(result[1]) for result in summaries)
+    ignored = sum(int(result[2]) for result in summaries)
+    compile_matches = COMPILE_PATTERN.findall(output)
+    compile_seconds = (
+        int(compile_matches[-1][0] or 0) * 60 + float(compile_matches[-1][1])
+        if compile_matches
+        else 0.0
     )
-    return status
+    execution_seconds = max(0.0, elapsed - compile_seconds)
+    target_pass = 0 < targets <= MAXIMUM_INTEGRATION_TARGETS
+    tests_pass = passed >= MINIMUM_PASSED_TESTS and failed == 0 and ignored == 0
+    nested_pass = nested_builds == 0
+    budget_pass = elapsed <= BUDGET_SECONDS
+    print(f"command\t{' '.join(WORKLOAD)}")
+    print("workload-invocations\t1")
+    print(f"integration-targets\t{targets}\t{'PASS' if target_pass else 'FAIL'}")
+    print(f"tests\t{passed} passed\t{failed} failed\t{ignored} ignored\t{'PASS' if tests_pass else 'FAIL'}")
+    print(f"nested-builds\t{nested_builds}\t{'PASS' if nested_pass else 'FAIL'}")
+    print(f"compile-seconds\t{compile_seconds:.3f}")
+    print(f"execution-seconds\t{execution_seconds:.3f}")
+    print(f"total-seconds\t{elapsed:.3f}")
+    print(f"budget-seconds\t{BUDGET_SECONDS:.3f}\t{'PASS' if budget_pass else 'FAIL'}")
+    success = status == 0 and target_pass and tests_pass and nested_pass and budget_pass
+    print(f"result\t{'PASS' if success else 'FAIL'}")
+    return 0 if success else status or 1
 
 
 if __name__ == "__main__":

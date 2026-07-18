@@ -69,6 +69,29 @@ pub(crate) fn validator_routing(plugin_root: &Path) -> Result<Output, Box<dyn st
     validator_in_process_mode(plugin_root, Mode::OrchestrationRouting)
 }
 
+pub(crate) fn validator_child_lane_ownership_file(
+    evidence_path: &Path,
+) -> Result<Output, Box<dyn std::error::Error>> {
+    let evidence = std::fs::read_to_string(evidence_path)?;
+    validator_in_process_mode(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        Mode::ChildLaneOwnership { evidence },
+    )
+}
+
+pub(crate) fn validator_completion_handoff_files(
+    handoff_path: &Path,
+    pr_state_path: &Path,
+) -> Result<Output, Box<dyn std::error::Error>> {
+    validator_in_process_mode(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        Mode::CompletionHandoff {
+            handoff: std::fs::read_to_string(handoff_path)?,
+            pr_state: std::fs::read_to_string(pr_state_path)?,
+        },
+    )
+}
+
 pub(crate) fn validator_in_process(
     plugin_root: &Path,
     mode: &str,

@@ -1,4 +1,4 @@
-mod support;
+use crate::support;
 
 use std::path::Path;
 use std::process::{Command, Output};
@@ -113,30 +113,68 @@ fn shared_fixture_copy_routes_files_through_the_copy_on_write_overlay()
 fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for relative in [
-        "tests/validator_instruction_policy.rs",
-        "tests/validator_instruction_policy_passive.rs",
-        "tests/validator_gpt_5_6_routing_adversarial.rs",
-        "tests/validator_gpt_5_6_routing_contextual.rs",
-        "tests/validator_sentinel_scope_policy.rs",
-        "tests/validator_runtime_heartbeat_contract.rs",
+    for (relative, adapter) in [
+        (
+            "tests/validator_instruction_policy.rs",
+            "validator_instruction_policy",
+        ),
+        (
+            "tests/validator_instruction_policy_passive.rs",
+            "validator_instruction_policy",
+        ),
+        (
+            "tests/validator_gpt_5_6_routing_adversarial.rs",
+            "support::validator",
+        ),
+        (
+            "tests/validator_gpt_5_6_routing_contextual.rs",
+            "validator_routing",
+        ),
+        (
+            "tests/validator_sentinel_scope_policy.rs",
+            "support::validator",
+        ),
+        (
+            "tests/validator_runtime_heartbeat_contract.rs",
+            "support::validator",
+        ),
+        (
+            "tests/validator_child_external_gate_policy.rs",
+            "validator_instruction_policy",
+        ),
+        (
+            "tests/validator_execution_budget_policy.rs",
+            "validator_instruction_policy",
+        ),
+        (
+            "tests/validator_live_worktree_reservation_preflight.rs",
+            "validator_instruction_policy",
+        ),
     ] {
         let source = std::fs::read_to_string(root.join(relative))?;
-        let adapter = if relative.contains("routing_contextual") {
-            "validator_routing"
-        } else {
-            "support::validator"
-        };
         support::assert_structured_literals(
             &source,
             "high-cost validator library adapter",
             &[adapter],
         );
         if source.contains("CARGO_BIN_EXE_codexy-validate") {
-            return Err(format!(
-                "{relative} must retain CLI coverage in parity tests instead of spawning it per fixture"
-            )
-            .into());
+            return Err(format!("{relative} must use the focused library adapter").into());
+        }
+    }
+    for entry in std::fs::read_dir(root.join("tests"))? {
+        let path = entry?.path();
+        let name = path.file_name().map(|name| name.to_string_lossy());
+        if name.as_deref().is_some_and(|name| {
+            name.starts_with("validator_runtime_heartbeat_")
+                && name != "validator_runtime_heartbeat_reference_registration.rs"
+        })
+        {
+            let source = std::fs::read_to_string(&path)?;
+            support::assert_structured_literals(
+                &source,
+                "runtime heartbeat focused validator adapter",
+                &["validator_instruction_policy"],
+            );
         }
     }
     Ok(())

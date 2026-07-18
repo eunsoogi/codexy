@@ -1,6 +1,6 @@
 use std::fs;
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -11,7 +11,7 @@ fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
     let original = fs::read_to_string(&path)?;
     fs::write(&path, original.replace(CLAUSE, replacement))?;
-    support::validator(&plugin_root, "--check")
+    support::validator_instruction_policy(&plugin_root)
 }
 
 #[test]

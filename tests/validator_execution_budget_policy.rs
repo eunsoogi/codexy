@@ -2,7 +2,7 @@ use std::fs;
 
 #[path = "structured_contract.rs"]
 mod structured_contract;
-mod support;
+use crate::support;
 
 use structured_contract::{Contract, Modality, Rule};
 
@@ -77,7 +77,7 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
             original.replace(clause, "removed execution-budget policy"),
         )?;
 
-        let output = support::validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy(&plugin_root)?;
         assert!(!output.status.success(), "validator accepted {clause:?}");
         assert!(support::stderr(&output).contains("execution-budget contract"));
     }
@@ -95,7 +95,7 @@ fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult 
         );
         fs::write(&path, format!("{original}{sequence}"))?;
 
-        let output = support::validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy(&plugin_root)?;
         assert!(
             !output.status.success(),
             "validator accepted countermanding #426/#434 policy {countermand:?}"
@@ -117,7 +117,7 @@ fn validator_allows_negated_countermand_examples() -> TestResult {
         ),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         output.status.success(),
         "validator rejected a negated countermand example: {}",
@@ -139,7 +139,7 @@ fn validator_rejects_mixed_polarity_countermand() -> TestResult {
             ),
         )?;
 
-        let output = support::validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy(&plugin_root)?;
         assert!(
             !output.status.success(),
             "validator accepted mixed-polarity countermand {countermand:?}"
@@ -157,7 +157,7 @@ fn validator_rejects_adjacent_mixed_polarity_countermand() -> TestResult {
         let original = fs::read_to_string(&path)?;
         fs::write(&path, format!("{original}\n{countermand}\n"))?;
 
-        let output = support::validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy(&plugin_root)?;
         assert!(
             !output.status.success(),
             "validator accepted adjacent mixed-polarity countermand {countermand:?}"
@@ -177,7 +177,7 @@ fn validator_rejects_numbered_metadata_countermand() -> TestResult {
         format!("{original}\n#426 sequence: Artifact churn MAY renew the budget.\n"),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         !output.status.success(),
         "validator accepted numbered metadata countermand"
@@ -198,7 +198,7 @@ fn validator_allows_benign_markdown_heading_and_comment() -> TestResult {
         ),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         output.status.success(),
         "validator rejected benign Markdown: {}",
@@ -217,7 +217,7 @@ fn validator_allows_multiline_html_comment() -> TestResult {
         format!("{original}\n<!--\nArtifact churn MAY renew the budget.\n-->\n"),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         output.status.success(),
         "validator rejected a multiline HTML comment: {}",
@@ -237,7 +237,7 @@ fn validator_allows_convergent_progress_and_post_proof_termination() -> TestResu
             "{original}\nConvergent control: an explicit acceptance criterion was newly satisfied, required proof completed, and the lane terminates implementation.\n"
         ),
     )?;
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         output.status.success(),
         "validator rejected convergent progress and post-proof termination: {}",

@@ -1,4 +1,4 @@
-mod support;
+use crate::support;
 
 #[test]
 fn runtime_cache_helper_avoids_python_39_builtin_generic_annotations()

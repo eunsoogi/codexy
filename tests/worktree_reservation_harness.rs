@@ -1,4 +1,4 @@
-mod support;
+use crate::support;
 
 use support::worktree_reservation_harness::{
     FrozenWorktree, ReservationError, ReservationRegistry, ReservationRole, TaskState,

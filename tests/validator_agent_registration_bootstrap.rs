@@ -5,7 +5,7 @@ use std::process::Command;
 mod structured_contract;
 #[path = "structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
-mod support;
+use crate::support;
 
 use structured_contract::{Contract, Modality, Rule, assert_rules};
 use structured_contract_artifacts::TextShape;

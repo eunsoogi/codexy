@@ -26,8 +26,9 @@ pub(crate) use agent_model_assignments::{
     validate_agent_replacement, validate_catalog_replacement,
 };
 pub(crate) use child_thread_ledger_skill::{
-    copy_plugin_fixture, plugin_fixture, stderr, validator, validator_in_process,
-    validator_instruction_policy, validator_routing,
+    copy_plugin_fixture, plugin_fixture, stderr, validator, validator_child_lane_ownership_file,
+    validator_completion_handoff_files, validator_in_process, validator_instruction_policy,
+    validator_routing,
 };
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,

@@ -2,7 +2,7 @@ use std::process::Command;
 
 #[path = "structured_contract.rs"]
 mod structured_contract;
-mod support;
+use crate::support;
 
 use structured_contract::{Contract, Modality, Rule};
 use support::copy_dir;
