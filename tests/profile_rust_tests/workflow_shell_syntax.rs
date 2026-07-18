@@ -80,6 +80,19 @@ fn gate_rejects_a_backslash_continued_full_workload(
 }
 
 #[test]
+fn gate_rejects_a_full_workload_after_an_arithmetic_shift(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = fixture_with(
+        r#"|
+          x=$((1 << 2))
+          cargo test --locked --all-targets"#,
+    )?;
+
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
 fn gate_rejects_a_full_workload_after_an_escaped_heredoc_delimiter(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let fixture = trailing_workload_after_heredoc(r#"\EOF"#)?;

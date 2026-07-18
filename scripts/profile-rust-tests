@@ -52,7 +52,7 @@ def integration_target_count(root: Path) -> int:
     except (json.JSONDecodeError, TypeError):
         sys.stderr.write("cargo metadata returned an invalid target inventory\n")
         raise SystemExit(1) from None
-def nested_build_count(root: Path) -> int:
+def archive_fixture_nested_cargo_build_count(root: Path) -> int:
     helper = root / "tests/support/release_archive.rs"
     try:
         source = helper.read_text()
@@ -96,7 +96,7 @@ def main() -> int:
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
     enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
     targets = integration_target_count(root)
-    nested_builds = nested_build_count(root)
+    archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
     output, elapsed, status = run_workload(root)
     summaries = RESULT_PATTERN.findall(output)
     passed = sum(int(result[0]) for result in summaries)
@@ -111,18 +111,28 @@ def main() -> int:
     execution_seconds = max(0.0, elapsed - compile_seconds)
     target_pass = 0 < targets <= MAXIMUM_INTEGRATION_TARGETS
     tests_pass = passed >= MINIMUM_PASSED_TESTS and failed == 0 and ignored == 0
-    nested_pass = nested_builds == 0
+    archive_fixture_nested_cargo_pass = archive_fixture_nested_cargo_builds == 0
     budget_pass = elapsed <= BUDGET_SECONDS
     print(f"command\t{' '.join(WORKLOAD)}")
     print("workload-invocations\t1")
     print(f"integration-targets\t{targets}\t{'PASS' if target_pass else 'FAIL'}")
     print(f"tests\t{passed} passed\t{failed} failed\t{ignored} ignored\t{'PASS' if tests_pass else 'FAIL'}")
-    print(f"nested-builds\t{nested_builds}\t{'PASS' if nested_pass else 'FAIL'}")
+    print(
+        "archive-fixture-nested-cargo-builds"
+        f"\t{archive_fixture_nested_cargo_builds}"
+        f"\t{'PASS' if archive_fixture_nested_cargo_pass else 'FAIL'}"
+    )
     print(f"compile-seconds\t{compile_seconds:.3f}")
     print(f"execution-seconds\t{execution_seconds:.3f}")
     print(f"total-seconds\t{elapsed:.3f}")
     print(f"budget-seconds\t{BUDGET_SECONDS:.3f}\t{'PASS' if budget_pass else 'FAIL'}")
-    success = status == 0 and target_pass and tests_pass and nested_pass and budget_pass
+    success = (
+        status == 0
+        and target_pass
+        and tests_pass
+        and archive_fixture_nested_cargo_pass
+        and budget_pass
+    )
     print(f"result\t{'PASS' if success else 'FAIL'}")
     return 0 if success else status or 1
 if __name__ == "__main__":

@@ -79,6 +79,8 @@ def heredoc_delimiters(
         elif character in "'\"":
             quote = character
             index += 1
+        elif line.startswith("$((", index):
+            index = arithmetic_end(line, index)
         elif line.startswith("<<", index):
             index += 2
             strip_tabs = index < len(line) and line[index] == "-"
@@ -91,6 +93,18 @@ def heredoc_delimiters(
         else:
             index += 1
     return delimiters, quote
+
+
+def arithmetic_end(line: str, index: int) -> int:
+    depth = 2
+    index += 3
+    while index < len(line) and depth:
+        if line[index] == "(":
+            depth += 1
+        elif line[index] == ")":
+            depth -= 1
+        index += 1
+    return index
 
 
 def heredoc_delimiter(line: str, index: int) -> tuple[str, int]:
