@@ -139,9 +139,7 @@ fn starts_with_tag(line: &str, tag: &str) -> bool {
     line.strip_prefix('<')
         .and_then(|value| value.strip_prefix(tag))
         .is_some_and(|suffix| {
-            suffix.is_empty()
-                || suffix.starts_with(char::is_whitespace)
-                || matches!(suffix.chars().next(), Some('>' | '/'))
+            suffix.is_empty() || suffix.starts_with(char::is_whitespace) || suffix.starts_with('>')
         })
 }
 

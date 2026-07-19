@@ -126,6 +126,14 @@ fn lowercase_cdata_token_does_not_start_a_raw_html_block() -> TestResult {
 }
 
 #[test]
+fn slash_after_type_one_name_does_not_start_that_html_block() -> TestResult {
+    for tag in ["pre", "script", "style"] {
+        assert_allowed(&setup_after(&format!("<{tag}/garbage\n\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
 fn marker_terminated_html_blocks_allow_the_following_table() -> TestResult {
     for html in [
         "<!-- raw -->",
