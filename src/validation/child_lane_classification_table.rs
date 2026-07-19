@@ -49,8 +49,9 @@ pub(super) fn complete_child_classification_index(
     let list_indent = list_indent(raw_lines, header_index);
     if (header_index..=end).any(|index| {
         raw_lines.get(index).is_none_or(|line| {
-            is_indented_code_line(line)
-                && list_indent.is_none_or(|indent| leading_indent(line) < indent)
+            list_indent.is_some_and(|indent| leading_indent(line) < indent)
+                || (is_indented_code_line(line)
+                    && list_indent.is_none_or(|indent| leading_indent(line) < indent))
         })
     }) {
         return None;
@@ -73,6 +74,7 @@ fn table_header_at(raw_lines: &[&str], lines: &[&str], index: usize) -> bool {
     parse_cells(lines[index]).is_some_and(|cells| cells == HEADER)
         && is_separator(lines.get(index + 1).copied().unwrap_or(""))
         && !is_in_non_rendering_block(raw_lines, index)
+        && (!is_indented_code_line(raw_lines[index]) || list_indent(raw_lines, index).is_some())
 }
 
 fn table_can_start(raw_lines: &[&str], index: usize) -> bool {

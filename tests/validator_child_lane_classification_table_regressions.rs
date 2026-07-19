@@ -58,3 +58,22 @@ fn table_requires_a_block_boundary_and_allows_list_continuation_indent() -> Test
     }
     Ok(())
 }
+
+#[test]
+fn list_tables_keep_each_row_in_the_list_and_ignore_indented_code_duplicates() -> TestResult {
+    let malformed = format!(
+        "-\n  | Task classification | Decision |\n  | --- | --- |\n{}\nChild branch codexy/461-table was created after classification.\n",
+        TABLE.lines().skip(2).collect::<Vec<_>>().join("\n")
+    );
+    assert!(!run_validator(&malformed)?.status.success());
+    let code_sample = TABLE
+        .lines()
+        .map(|line| format!("    {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let evidence = format!(
+        "{TABLE}\nChild branch codexy/461-table was created after classification.\n{code_sample}\n"
+    );
+    assert!(run_validator(&evidence)?.status.success());
+    Ok(())
+}
