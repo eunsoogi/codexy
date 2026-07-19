@@ -161,6 +161,28 @@ fn gate_rejects_shell_wrapped_or_reordered_full_workloads(
     Ok(())
 }
 
+#[test]
+fn gate_distinguishes_sudo_workloads_from_cargo_run_arguments(
+) -> Result<(), Box<dyn std::error::Error>> {
+    for command in [
+        "sudo cargo test --locked --all-targets",
+        "sudo -u root cargo test --locked --all-targets",
+    ] {
+        let fixture = fixture_with(command)?;
+        assert!(
+            !fixture.run(&[])?.status.success(),
+            "sudo must not hide a second workload: {command}"
+        );
+    }
+
+    let fixture = fixture_with("cargo run --bin helper -- test --locked --all-targets")?;
+    assert!(
+        fixture.run(&[])?.status.success(),
+        "arguments passed to cargo run are not a cargo test workload"
+    );
+    Ok(())
+}
+
 fn fixture_with(command: &str) -> Result<GateFixture, Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(

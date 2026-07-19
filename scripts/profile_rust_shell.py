@@ -12,6 +12,40 @@ ASSIGNMENT_WORD_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 VALUE_OPTIONS = frozenset({"-a", "--argv0", "-C", "--chdir", "-u", "--unset"})
 TIMEOUT_VALUE_OPTIONS = frozenset({"-k", "--kill-after", "-s", "--signal"})
 TIME_VALUE_OPTIONS = frozenset({"-f", "--format", "-o", "--output"})
+SUDO_VALUE_OPTIONS = frozenset(
+    {
+        "-C",
+        "--chdir",
+        "-g",
+        "--group",
+        "-p",
+        "--prompt",
+        "-r",
+        "--role",
+        "-t",
+        "--type",
+        "-T",
+        "--command-timeout",
+        "-u",
+        "--user",
+    }
+)
+SUDO_NON_EXECUTING_OPTIONS = frozenset(
+    {
+        "-h",
+        "--help",
+        "-K",
+        "--remove-timestamp",
+        "-k",
+        "--reset-timestamp",
+        "-l",
+        "--list",
+        "-V",
+        "--version",
+        "-v",
+        "--validate",
+    }
+)
 SHELL_PREFIXES = frozenset({"!", "do", "elif", "else", "if", "then", "until", "while"})
 SHELL_EXECUTABLES = frozenset({"bash", "dash", "ksh", "sh", "zsh"})
 
@@ -42,14 +76,17 @@ def executable_token_sets(tokens: list[str]) -> list[list[str]]:
 
 
 def matches_invocation(tokens: list[str], invocation: tuple[str, ...]) -> bool:
-    if tokens[: len(invocation)] == list(invocation):
-        return True
-    return bool(
-        invocation[:1] == ("cargo",)
-        and tokens
-        and executable_name(tokens[0]) == "cargo"
-        and set(invocation[1:]).issubset(tokens[1:])
-    )
+    if invocation[:2] == ("cargo", "test"):
+        return cargo_test_workload(tokens, invocation)
+    return tokens[: len(invocation)] == list(invocation)
+
+
+def cargo_test_workload(tokens: list[str], invocation: tuple[str, ...]) -> bool:
+    if not tokens or executable_name(tokens[0]) != "cargo":
+        return False
+    arguments = tokens[1:]
+    subcommand = next((token for token in arguments if not token.startswith("-")), None)
+    return subcommand == "test" and set(invocation[2:]).issubset(arguments)
 
 
 def executable_tokens(tokens: list[str]) -> list[str]:
@@ -72,6 +109,8 @@ def executable_tokens(tokens: list[str]) -> list[str]:
             index = option_index(tokens, index + 1, TIME_VALUE_OPTIONS)
         elif executable_name(token) == "nice":
             index = option_index(tokens, index + 1, frozenset({"-n", "--adjustment"}))
+        elif executable_name(token) == "sudo":
+            index = sudo_index(tokens, index + 1)
         else:
             return tokens[index:]
     return []
@@ -159,6 +198,34 @@ def timeout_index(tokens: list[str], index: int) -> int:
             index += 1
         else:
             return index + 1
+    return index
+
+
+def sudo_index(tokens: list[str], index: int) -> int:
+    while index < len(tokens):
+        option = tokens[index]
+        if option == "--":
+            return index + 1
+        if option in SUDO_NON_EXECUTING_OPTIONS:
+            return len(tokens)
+        if option in SUDO_VALUE_OPTIONS:
+            index += 2
+        elif option.startswith(
+            (
+                "--chdir=",
+                "--group=",
+                "--prompt=",
+                "--role=",
+                "--type=",
+                "--command-timeout=",
+                "--user=",
+            )
+        ):
+            index += 1
+        elif option.startswith("-") and option != "-":
+            index += 1
+        else:
+            return index
     return index
 
 
