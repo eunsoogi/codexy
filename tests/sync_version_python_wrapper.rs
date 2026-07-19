@@ -105,7 +105,13 @@ fn sync_version_cli_ignores_comment_pins_when_updating()
         let wrapper = repo.join(format!("plugins/codexy/mcp/codexy-mcp-{server}"));
         let text = fs::read_to_string(wrapper)?;
         assert!(text.starts_with("# keep codexy-runtime-tools==1.2.1"));
-        assert!(text.contains("--from \"codexy-runtime-tools==9.9.9\""));
+        let expected = format!(
+            "  --from \"codexy-runtime-tools==9.9.9\" codexy-mcp-runtime {server} \\"
+        );
+        assert_eq!(
+            text.lines().find(|line| line.starts_with("  --from ")),
+            Some(expected.as_str())
+        );
     }
     Ok(())
 }
