@@ -11,7 +11,6 @@ mod child_handoff_readiness_text;
 mod child_lane_active_threads;
 mod child_lane_classification_boundaries;
 mod child_lane_classification_setup;
-mod child_lane_classification_setup_context;
 mod child_lane_owner_decision;
 mod child_lane_ownership;
 mod child_lane_ownership_fixes;
