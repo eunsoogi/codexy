@@ -1,7 +1,8 @@
 use super::child_lane_classification_boundaries::{
-    child_candidate_requires_guard, classifications, complete_classification_before,
-    is_classification_key, rendered_child_context_applies,
+    child_candidate_requires_guard, classification_owner_before, classifications,
+    rendered_child_context_applies,
 };
+use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
@@ -27,12 +28,31 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         return Vec::new();
     }
     if setup_clauses.iter().any(|(setup_index, setup_clause)| {
-        complete_classification_before(&lines, &tables, *setup_index).is_none()
+        !classification_owner_before(&lines, &tables, *setup_index)
+            .is_some_and(is_child_delegation_owner_decision)
             || line_claims_setup_before_classification(setup_clause)
     }) {
         return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed".to_owned()];
     }
     Vec::new()
+}
+
+fn is_classification_key(key: &str) -> bool {
+    matches!(
+        key,
+        "lane type"
+            | "secondary surfaces"
+            | "owner decision"
+            | "atomic scope"
+            | "required skills"
+            | "required tools/evidence"
+            | "first allowed action"
+            | "stop/blocker"
+            | "required tools"
+            | "required evidence"
+            | "stop blocker"
+            | "blocker"
+    )
 }
 
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {

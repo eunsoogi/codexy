@@ -188,6 +188,36 @@ fn validator_allows_korean_current_thread_implementation_owner_after_classificat
 }
 
 #[test]
+fn validator_rejects_child_evidence_after_external_rendered_owner() -> TestResult {
+    let table = canonical_table().replace(
+        "current-thread-owned child implementation lane",
+        "external/human-owned implementation lane",
+    );
+    for evidence in [
+        format!("{table}\nReview response: child-authored commit def456 fixed feedback\n"),
+        format!("{table}\nSource thread id: child-461\nGoal tool call: create_goal\n"),
+    ] {
+        assert_rejected(&evidence)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_requires_a_fresh_table_after_explicit_owner_metadata() -> TestResult {
+    for owner in [
+        "Owner: child-owned",
+        "Child owner: codex thread 461",
+        "Lane owner: child-owned",
+    ] {
+        assert_rejected(&format!(
+            "{}\n{owner}\nChild branch codexy/461-table was created after classification.\n",
+            canonical_table()
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
 fn task_classification_skill_requires_the_compact_table() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;

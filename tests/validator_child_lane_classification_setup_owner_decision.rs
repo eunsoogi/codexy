@@ -104,8 +104,8 @@ fn validator_allows_setup_before_next_lane_ownership_boundary() -> TestResult {
 }
 
 #[test]
-fn validator_allows_classification_before_child_lane_metadata() -> TestResult {
-    assert_allowed(&format!(
+fn validator_rejects_child_lane_metadata_after_prior_table() -> TestResult {
+    assert_rejected(&format!(
         "{}\nLane ownership: child-owned\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
         complete_child_classification().replacen("Lane ownership: child-owned\n", "", 1),
         ownership_footer()
@@ -140,9 +140,9 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_owner_metadata_after_complete_child_classification() -> TestResult {
+fn validator_rejects_owner_metadata_after_complete_child_classification() -> TestResult {
     for owner_metadata in ["Owner: child-thread-1", "Child owner: thread-231"] {
-        assert_allowed(&format!(
+        assert_rejected(&format!(
             "{}\n{owner_metadata}\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
             complete_child_classification(),
             ownership_footer()

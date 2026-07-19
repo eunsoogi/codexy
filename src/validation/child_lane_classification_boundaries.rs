@@ -1,4 +1,4 @@
-use super::child_lane_owner_decision::is_child_delegation_owner_decision;
+use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
@@ -14,7 +14,6 @@ const FIELDS: [&str; 8] = [
     "stop/blocker",
 ];
 
-#[derive(Debug)]
 pub(super) struct ClassificationTable {
     pub(super) start: usize,
     pub(super) end: usize,
@@ -31,13 +30,28 @@ pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
 
 fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
     let line = metadata_key(trimmed_value(lines[index]));
-    if "pr:|pull request:|review response:|maintainer reassignment:"
+    "pr:|pull request:|review response:|maintainer reassignment:"
         .split('|')
         .any(|marker| line.starts_with(marker))
-    {
-        return true;
-    }
-    line.starts_with("lane ownership:") || line.starts_with("owner decision:")
+        || is_ownership_boundary(lines[index])
+}
+
+pub(super) fn is_ownership_boundary(line: &str) -> bool {
+    line.split_once(':').is_some_and(|(key, _)| {
+        "owner|child owner|lane owner|lane ownership|owner decision|ownership|pr ownership|pull request ownership"
+            .split('|')
+            .any(|boundary| metadata_key(key) == boundary)
+    })
+}
+
+pub(super) fn is_legacy_ownership_boundary(line: &str) -> bool {
+    let key = line
+        .split_once(':')
+        .map_or("", |(key, _)| metadata_key(key));
+    "owner decision|ownership|lane ownership|pr ownership|pull request ownership"
+        .split('|')
+        .any(|boundary| key == boundary)
+        || field_value(line, "owner").is_some_and(is_parent_owned_value)
 }
 
 pub(super) fn classifications(source: &str) -> Vec<ClassificationTable> {
@@ -90,14 +104,6 @@ pub(super) fn classifications(source: &str) -> Vec<ClassificationTable> {
     tables
 }
 
-pub(super) fn is_classification_key(key: &str) -> bool {
-    FIELDS.contains(&key)
-        || matches!(
-            key,
-            "required tools" | "required evidence" | "stop blocker" | "blocker"
-        )
-}
-
 pub(super) fn owner_at(tables: &[ClassificationTable], index: usize) -> Option<&str> {
     tables
         .iter()
@@ -110,13 +116,17 @@ pub(super) fn child_table_owns_handoff_pr(
     lines: &[&str],
     pr_index: usize,
 ) -> bool {
-    tables.iter().any(|table| {
-        table.end < pr_index
-            && owner_at(tables, table.start).is_some_and(is_child_delegation_owner_decision)
-            && lines[table.end + 1..pr_index]
-                .iter()
-                .all(|line| is_handoff_metadata(line))
-    })
+    classification_owner_before(lines, tables, pr_index)
+        .is_some_and(is_child_delegation_owner_decision)
+}
+
+pub(super) fn table_ownership_boundary(
+    tables: &[ClassificationTable],
+    lines: &[&str],
+    index: usize,
+) -> bool {
+    is_ownership_boundary(lines[index])
+        && classification_owner_before(lines, tables, index).is_some()
 }
 
 pub(super) fn child_candidate_requires_guard(
@@ -134,13 +144,6 @@ pub(super) fn child_candidate_requires_guard(
                         && !tables.iter().any(|table| table.start == line)
                 }))
     })
-}
-
-fn is_handoff_metadata(line: &str) -> bool {
-    line.is_empty()
-        || line.split_once(':').is_some_and(|(key, _)| {
-            matches!(metadata_key(key), "issue" | "branch" | "worktree path")
-        })
 }
 
 pub(super) fn rendered_child_context_applies(
@@ -169,13 +172,14 @@ pub(super) fn rendered_child_context_applies(
         .iter()
         .filter(|table| table_in_lane(table, lane_start, lines) && table.start < lane_end)
         .collect::<Vec<_>>();
-    tables
+    tables.iter().any(|table| {
+        is_child_delegation_owner_decision(&table.owner)
+            || table.owner.is_empty()
+            || table.owner.starts_with("external/human-owned")
+    }) || lines[context_start..lane_end]
         .iter()
-        .any(|table| is_child_delegation_owner_decision(&table.owner) || table.owner.is_empty())
-        || lines[context_start..lane_end]
-            .iter()
-            .take_while(|line| !line.starts_with("pr:") && !line.starts_with("pull request:"))
-            .any(|line| is_explicit_child_context(line))
+        .take_while(|line| !line.starts_with("pr:") && !line.starts_with("pull request:"))
+        .any(|line| is_explicit_child_context(line))
         || lines[context_start..lane_end]
             .iter()
             .any(|line| metadata_key(trimmed_value(line)) == "task classification:")
@@ -192,32 +196,32 @@ fn is_explicit_child_context(line: &str) -> bool {
             .is_some_and(|value| !value.is_empty() && !value.contains("none"))
 }
 
-pub(super) fn complete_classification_before(
+pub(super) fn classification_owner_before<'a>(
     lines: &[&str],
-    tables: &[ClassificationTable],
-    setup_index: usize,
-) -> Option<usize> {
-    let lane_start = current_lane_start(lines, setup_index);
+    tables: &'a [ClassificationTable],
+    index: usize,
+) -> Option<&'a str> {
+    let lane_start = current_lane_start(lines, index);
     let complete = tables
         .iter()
         .filter(|table| {
-            table.canonical && table_in_lane(table, lane_start, lines) && table.end < setup_index
+            table.canonical && table_in_lane(table, lane_start, lines) && table.end < index
         })
         .collect::<Vec<_>>();
-    (complete.len() == 1 && is_child_delegation_owner_decision(&complete[0].owner))
-        .then(|| complete[0].end)
+    (complete.len() == 1).then(|| complete[0].owner.as_str())
 }
 
 fn table_in_lane(table: &ClassificationTable, lane_start: usize, lines: &[&str]) -> bool {
     table.start >= lane_start
-        || (table.end + 1 < lane_start
-            && lines[table.end + 1..lane_start - 1]
+        || (table.end < lane_start
+            && lines[table.end + 1..lane_start]
                 .iter()
                 .all(|line| line.is_empty()))
 }
 
 fn classification_owner(rows: &[Vec<String>]) -> Option<(String, bool)> {
-    cells_match(rows.first()?, &HEADER).then_some(())?;
+    matches!(rows.first()?.as_slice(), [key, _] if key.trim().eq_ignore_ascii_case(HEADER[0]))
+        .then_some(())?;
     let mut owner = String::new();
     for row in rows.iter().skip(1) {
         let [key, value] = row.as_slice() else {
@@ -227,19 +231,14 @@ fn classification_owner(rows: &[Vec<String>]) -> Option<(String, bool)> {
             owner = value.to_ascii_lowercase();
         }
     }
-    let canonical = rows.len() == FIELDS.len() + 1
+    let canonical = rows.first().is_some_and(|header| {
+        matches!(header.as_slice(), [first, second] if first.trim().eq_ignore_ascii_case(HEADER[0]) && second.trim().eq_ignore_ascii_case(HEADER[1]))
+    })
+        && rows.len() == FIELDS.len() + 1
         && rows.iter().skip(1).zip(FIELDS).all(|(row, field)| {
             matches!(row.as_slice(), [key, value] if key.trim().eq_ignore_ascii_case(field) && !value.trim().is_empty())
         });
     Some((owner, canonical))
-}
-
-fn cells_match(cells: &[String], expected: &[&str]) -> bool {
-    cells.len() == expected.len()
-        && cells
-            .iter()
-            .zip(expected)
-            .all(|(cell, expected)| cell.trim().eq_ignore_ascii_case(expected))
 }
 
 fn line_at(source: &str, offset: usize) -> usize {

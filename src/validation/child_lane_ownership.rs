@@ -1,8 +1,9 @@
 use super::child_lane_classification_boundaries::{
-    child_candidate_requires_guard, child_table_owns_handoff_pr, classifications, owner_at,
+    child_candidate_requires_guard, child_table_owns_handoff_pr, classification_owner_before,
+    classifications, is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
 };
 use super::child_lane_owner_decision::{
-    is_affirmative_child_owned_value, is_child_delegation_owner_decision, is_parent_owned_value,
+    is_affirmative_child_owned_value, is_child_delegation_owner_decision,
 };
 use super::child_lane_ownership_fixes::line_has_parent_authored_fix;
 use super::child_lane_ownership_phrases::*;
@@ -79,15 +80,22 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous))
                 || (child_owned && child_header_open && child_pr_seen))
             && !(child_owned && child_header_open && !child_pr_seen);
-        let ownership_boundary = is_lane_ownership_boundary(line)
-            || table_owner.is_some_and(is_parent_owned_value)
-            || is_parent_owned_owner_boundary(line);
+        let ownership_boundary = table_owner.is_some()
+            || is_legacy_ownership_boundary(line)
+            || table_ownership_boundary(&tables, &lines, index);
         let line_parent_setup = line_has_parent_implementation_setup(&lines, index);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
         let line_setup_recovered = line_has_parent_setup_recovery(&lines, index);
         if child_candidate_requires_guard(&tables, &lines, index)
             && (line_parent_fix || line_parent_setup)
+        {
+            return true;
+        }
+        if classification_owner_before(&lines, &tables, index)
+            .is_some_and(|owner| owner.starts_with("external/human-owned"))
+            && line.starts_with("review response:")
+            && line.contains("child-authored")
         {
             return true;
         }
@@ -175,15 +183,6 @@ fn previous_non_empty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a st
         .find(|line| !line.is_empty())
         .copied()
 }
-fn is_lane_ownership_boundary(line: &str) -> bool {
-    line.split_once(':').is_some_and(|(key, _)| {
-        let key = metadata_key(key);
-        matches!(
-            key,
-            "ownership" | "lane ownership" | "pr ownership" | "pull request ownership"
-        )
-    })
-}
 fn is_child_lane_header_metadata(line: &str) -> bool {
     line.is_empty()
         || line.starts_with("pr:")
@@ -202,10 +201,6 @@ fn is_exact_child_header_metadata_line(line: &str) -> bool {
                 | "maintainer reassignment"
         )
     })
-}
-fn is_parent_owned_owner_boundary(line: &str) -> bool {
-    field_value(line, "owner").is_some_and(is_parent_owned_value)
-        || field_value(line, "owner decision").is_some_and(is_parent_owned_value)
 }
 fn is_affirmative_child_owned_line(line: &str) -> bool {
     has_present_child_owner_metadata(line)

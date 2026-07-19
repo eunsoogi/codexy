@@ -132,9 +132,6 @@ MUST use this for any lane that needs its own branch, PR, or long-running
 implementation context:
 
 ```text
-Issue:
-Branch:
-Worktree path:
 | Task classification | Decision |
 | --- | --- |
 | Lane type | |
@@ -146,6 +143,9 @@ Worktree path:
 | First allowed action | |
 | Stop/blocker | |
 
+Issue:
+Branch:
+Worktree path:
 First message:
 Allowed files or paths:
 Read first:

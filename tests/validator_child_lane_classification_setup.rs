@@ -91,26 +91,22 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_child_setup_after_unrelated_parent_classification() -> TestResult {
-    for owner_decision in [
-        "parent-owned for thread/worktree tool discovery only; child routing required",
-        "parent-owned orchestration; child thread/worktree owner required after setup",
+fn validator_rejects_external_or_invalid_rendered_classification_before_child_setup() -> TestResult {
+    for table in [
+        complete_child_classification().replace(
+            "current-thread-owned child implementation lane",
+            "external/human-owned implementation lane",
+        ),
+        complete_child_classification().replace("| Task classification | Decision |", "| Task classification | Result |"),
+        complete_child_classification().replacen(
+            "| Atomic scope | issue-sized |",
+            "| Atomic scope | issue-sized |\n| Atomic scope | duplicate |",
+            1,
+        ),
     ] {
         assert_rejected(&format!(
-            r#"Lane ownership: child-owned
-Task classification:
-Lane type: validation
-Secondary surfaces: workflow, validators
-Owner decision: {owner_decision}
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: validate delegated child output
-Stop/blocker: None
-Child branch codexy/228-reject-generic-reviewer-gate-sentinel-proof was created immediately after thread rename.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
+            "{table}\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
+            ownership_footer()
         ))?;
     }
     Ok(())
