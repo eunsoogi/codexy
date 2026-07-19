@@ -144,7 +144,7 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "gh release upload",
         "Build and verify pinned uvx runtime tool",
         "codexy-runtime-tools-distributions",
-        "codexy-hook-policy --help",
+        "codexy-mcp-runtime --help",
         "pypa/gh-action-pypi-publish@",
         "attestations: true",
         "git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main",

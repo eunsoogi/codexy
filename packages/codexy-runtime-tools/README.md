@@ -11,8 +11,6 @@ startup does not use Rust script mode. See the official
 The distribution exports two console entrypoints:
 
 - `codexy-mcp-runtime {lsp,codegraph} --plugin-root PATH -- ...`
-- `codexy-update --plugin-root PATH --codex-home PATH --mode MODE`
-- `codexy-hook-policy evaluate --event PreToolUse|PermissionRequest`
 
 Downstream update automation can import the quiet API directly:
 

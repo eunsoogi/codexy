@@ -21,8 +21,6 @@ Issues = "https://github.com/eunsoogi/codexy/issues"
 
 [project.scripts]
 codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"
-codexy-update = "codexy_runtime_tools.updater:main"
-codexy-hook-policy = "codexy_runtime_tools.hook_policy:main"
 
 [tool.uv.build-backend]
 module-name = "codexy_runtime_tools"
