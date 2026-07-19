@@ -5,6 +5,7 @@ import hashlib
 import os
 import shutil
 import stat
+import subprocess
 import tarfile
 import urllib.request
 import zipfile
@@ -98,7 +99,19 @@ def _extract_zip(archive: Path, destination: Path) -> None:
 def _github_token_for(url: str) -> str:
     if urlparse(url).hostname != "api.github.com":
         return ""
-    return os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if token:
+        return token
+    try:
+        return subprocess.run(
+            ["gh", "auth", "token"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return ""
 
 
 def _artifact_package(api_url: str, work: Path) -> Path:

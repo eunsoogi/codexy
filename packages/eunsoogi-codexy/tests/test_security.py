@@ -4,9 +4,12 @@ import tempfile
 import unittest
 import urllib.request
 from pathlib import Path
+from unittest import mock
 
+from codexy_runtime_tools import package
 from codexy_runtime_tools.package import (
     _GithubRedirectHandler,
+    _github_token_for,
     _safe_extract_tar,
     _safe_extract_zip,
     acquire_package,
@@ -14,6 +17,54 @@ from codexy_runtime_tools.package import (
 
 
 class ArchiveSecurityTests(unittest.TestCase):
+    def test_github_environment_token_takes_precedence_over_cli_auth(self) -> None:
+        with mock.patch.dict(
+            "os.environ", {"GH_TOKEN": "environment-token", "GITHUB_TOKEN": "other"}, clear=True
+        ), mock.patch.object(package.subprocess, "run") as run:
+            self.assertEqual(
+                _github_token_for("https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"),
+                "environment-token",
+            )
+        run.assert_not_called()
+
+    def test_github_cli_auth_token_is_used_when_environment_is_empty(self) -> None:
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(
+            package.subprocess,
+            "run",
+            return_value=package.subprocess.CompletedProcess(["gh"], 0, "cli-token\n", ""),
+        ) as run:
+            self.assertEqual(
+                _github_token_for("https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"),
+                "cli-token",
+            )
+        run.assert_called_once_with(
+            ["gh", "auth", "token"],
+            check=True,
+            stdout=package.subprocess.PIPE,
+            stderr=package.subprocess.DEVNULL,
+            text=True,
+        )
+
+    def test_missing_or_failed_github_cli_auth_returns_no_token(self) -> None:
+        for error in (
+            FileNotFoundError(),
+            package.subprocess.CalledProcessError(1, ["gh", "auth", "token"]),
+        ):
+            with self.subTest(error=type(error).__name__), mock.patch.dict(
+                "os.environ", {}, clear=True
+            ), mock.patch.object(package.subprocess, "run", side_effect=error):
+                self.assertEqual(
+                    _github_token_for("https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"),
+                    "",
+                )
+
+    def test_untrusted_artifact_host_never_uses_github_cli_auth(self) -> None:
+        with mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(
+            package.subprocess, "run"
+        ) as run:
+            self.assertEqual(_github_token_for("https://objects.example.test/artifact.zip"), "")
+        run.assert_not_called()
+
     def test_cross_host_redirect_drops_github_authorization(self) -> None:
         request = urllib.request.Request(
             "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts/1/zip",
