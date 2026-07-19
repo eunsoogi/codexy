@@ -131,11 +131,7 @@ fn representative_skills_share_plain_korean_response_guidance() -> TestResult {
     let agent_prompt = std::fs::read_to_string(root.join("plugins/codexy/agents/openai.yaml"))?;
     let manifest = std::fs::read_to_string(root.join("plugins/codexy/.codex-plugin/plugin.json"))?;
     let prompt = structured_contract_artifacts::Prompt::parse(&agent_prompt)?;
-    let prompt = korean_response_prompt(prompt.default_prompt())?;
-    structured_contract::assert_rules(
-        &Contract::markdown_for_subject(prompt, "you"),
-        PROMPT_RULES,
-    );
+    validate_korean_response_prompt(prompt.default_prompt())?;
     let manifest: serde_json::Value = serde_json::from_str(&manifest)?;
     let manifest_prompt = manifest["interface"]["defaultPrompt"]
         .as_array()
@@ -144,11 +140,7 @@ fn representative_skills_share_plain_korean_response_guidance() -> TestResult {
         .map(|line| line.as_str().ok_or("manifest prompt line"))
         .collect::<Result<Vec<_>, _>>()?
         .join("\n");
-    let manifest_prompt = korean_response_prompt(&manifest_prompt)?;
-    structured_contract::assert_rules(
-        &Contract::markdown_for_subject(manifest_prompt, "you"),
-        PROMPT_RULES,
-    );
+    validate_korean_response_prompt(&manifest_prompt)?;
 
     response_cases::assert_response_cases();
 
@@ -159,6 +151,48 @@ fn representative_skills_share_plain_korean_response_guidance() -> TestResult {
 fn unscoped_korean_prompt_is_rejected() {
     let global = "You MUST use plain, idiomatic Korean. You MUST keep machine-readable evidence separate from the user summary.";
     assert_eq!(korean_response_prompt(global), Err("missing Korean response scope"));
+}
+
+#[test]
+fn permissive_evidence_prompt_artifacts_are_rejected() -> TestResult {
+    let weakened = "When responding in Korean, you MUST use plain, idiomatic Korean and MAY keep machine-readable evidence separate from the user summary.";
+    let yaml = format!(
+        "interface:\n  display_name: Codexy\n  default_prompt: \"{weakened}\"\npolicy:\n  allow_implicit_invocation: true\n"
+    );
+    let yaml_prompt = structured_contract_artifacts::Prompt::parse(&yaml)?;
+    let json = serde_json::json!({"interface": {"defaultPrompt": [weakened]}});
+    let json_prompt = json["interface"]["defaultPrompt"][0]
+        .as_str()
+        .ok_or("manifest prompt")?;
+
+    for prompt in [yaml_prompt.default_prompt(), json_prompt] {
+        assert_eq!(
+            validate_korean_response_prompt(prompt),
+            Err("missing mandatory evidence clause")
+        );
+    }
+    Ok(())
+}
+
+fn validate_korean_response_prompt(prompt: &str) -> Result<(), &'static str> {
+    let body = korean_response_prompt(prompt)?;
+    let (idiomatic, evidence) = body
+        .split_once(" and MUST ")
+        .ok_or("missing mandatory evidence clause")?;
+    if Contract::markdown_for_subject(idiomatic, "you")
+        .assert_rule(PROMPT_RULES[0])
+        .is_err()
+    {
+        return Err("missing idiomatic Korean requirement");
+    }
+    let evidence = format!("you MUST {evidence}");
+    if Contract::markdown_for_subject(&evidence, "you")
+        .assert_rule(PROMPT_RULES[1])
+        .is_err()
+    {
+        return Err("missing evidence separation requirement");
+    }
+    Ok(())
 }
 
 fn korean_response_prompt(prompt: &str) -> Result<&str, &'static str> {
