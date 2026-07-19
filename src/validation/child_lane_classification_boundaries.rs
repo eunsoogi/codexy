@@ -28,6 +28,15 @@ pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
         .map_or(0, |index| index + 1)
 }
 
+pub(super) fn next_lane_boundary(lines: &[&str], index: usize) -> usize {
+    lines
+        .iter()
+        .enumerate()
+        .skip(index + 1)
+        .find(|(index, _)| is_lane_boundary(lines, *index))
+        .map_or(lines.len(), |(index, _)| index)
+}
+
 fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
     let line = metadata_key(trimmed_value(lines[index]));
     "pr:|pull request:|review response:|maintainer reassignment:"
@@ -129,6 +138,25 @@ pub(super) fn table_ownership_boundary(
         && classification_owner_before(lines, tables, index).is_some()
 }
 
+pub(super) fn child_table_ownership_boundary(
+    tables: &[ClassificationTable],
+    lines: &[&str],
+    index: usize,
+) -> bool {
+    table_ownership_boundary(tables, lines, index)
+        && lines[index].split_once(':').is_some_and(|(key, value)| {
+            let key = metadata_key(key);
+            is_child_delegation_owner_decision(value)
+                || (key == "child owner"
+                    && !value.is_empty()
+                    && !value.starts_with("external/human-owned")
+                    && !is_parent_owned_value(value)
+                    && !value.starts_with("not ")
+                    && !value.starts_with("without ")
+                    && !matches!(value, "no" | "none" | "false" | "missing" | "absent"))
+        })
+}
+
 pub(super) fn child_candidate_requires_guard(
     tables: &[ClassificationTable],
     lines: &[&str],
@@ -146,56 +174,6 @@ pub(super) fn child_candidate_requires_guard(
     })
 }
 
-pub(super) fn rendered_child_context_applies(
-    lines: &[&str],
-    tables: &[ClassificationTable],
-    setup_index: usize,
-) -> bool {
-    let lane_start = current_lane_start(lines, setup_index);
-    let context_start = lines[..setup_index]
-        .iter()
-        .rposition(|line| {
-            let line = metadata_key(trimmed_value(line));
-            line.starts_with("pr:")
-                || line.starts_with("pull request:")
-                || line.starts_with("review response:")
-                || line.starts_with("maintainer reassignment:")
-        })
-        .map_or(0, |index| index + 1);
-    let lane_end = lines
-        .iter()
-        .enumerate()
-        .skip(setup_index + 1)
-        .find(|(index, _)| is_lane_boundary(lines, *index))
-        .map_or(lines.len(), |(index, _)| index);
-    let tables = tables
-        .iter()
-        .filter(|table| table_in_lane(table, lane_start, lines) && table.start < lane_end)
-        .collect::<Vec<_>>();
-    tables.iter().any(|table| {
-        is_child_delegation_owner_decision(&table.owner)
-            || table.owner.is_empty()
-            || table.owner.starts_with("external/human-owned")
-    }) || lines[context_start..lane_end]
-        .iter()
-        .take_while(|line| !line.starts_with("pr:") && !line.starts_with("pull request:"))
-        .any(|line| is_explicit_child_context(line))
-        || lines[context_start..lane_end]
-            .iter()
-            .any(|line| metadata_key(trimmed_value(line)) == "task classification:")
-}
-
-fn is_explicit_child_context(line: &str) -> bool {
-    let line = metadata_key(trimmed_value(line));
-    matches!(line, "child-owned" | "child-owned lane")
-        || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
-        || "lane ownership: child-owned|owner: child-owned|lane owner: child-owned"
-            .split('|')
-            .any(|marker| line.starts_with(marker))
-        || field_value(line, "child owner")
-            .is_some_and(|value| !value.is_empty() && !value.contains("none"))
-}
-
 pub(super) fn classification_owner_before<'a>(
     lines: &[&str],
     tables: &'a [ClassificationTable],
@@ -205,10 +183,27 @@ pub(super) fn classification_owner_before<'a>(
     let complete = tables
         .iter()
         .filter(|table| {
-            table.canonical && table_in_lane(table, lane_start, lines) && table.end < index
+            table.canonical
+                && table.end < index
+                && (table_in_lane(table, lane_start, lines)
+                    || table_handoff_reaches(table, lines, index))
         })
         .collect::<Vec<_>>();
     (complete.len() == 1).then(|| complete[0].owner.as_str())
+}
+
+fn table_handoff_reaches(table: &ClassificationTable, lines: &[&str], index: usize) -> bool {
+    let handoff = &lines[table.end + 1..index];
+    handoff.first().is_some_and(|line| line.is_empty())
+        && handoff.iter().all(|line| {
+            line.is_empty()
+                || line.split_once(':').is_some_and(|(key, _)| {
+                    matches!(
+                        metadata_key(key),
+                        "issue" | "branch" | "worktree path" | "pr"
+                    )
+                })
+        })
 }
 
 fn table_in_lane(table: &ClassificationTable, lane_start: usize, lines: &[&str]) -> bool {

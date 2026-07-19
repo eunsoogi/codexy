@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 
-use super::child_lane_classification_boundaries::ClassificationTable;
 use super::child_lane_classification_boundaries::{
-    child_candidate_requires_guard, child_table_owns_handoff_pr, classification_owner_before,
-    classifications, is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
+    ClassificationTable, child_candidate_requires_guard, child_table_ownership_boundary,
+    child_table_owns_handoff_pr, classification_owner_before, classifications,
+    is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
 };
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::field_value;
@@ -33,6 +33,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     for end in 1..=lines.len() {
         if end == lines.len() || is_lane_boundary(&lines, &tables, end) {
             if owner_at(&tables, start).is_some_and(is_child_delegation_owner_decision)
+                || child_table_ownership_boundary(&tables, &lines, start)
                 || lines[start].contains("lane ownership: child-owned")
                 || field_value(lines[start], "owner decision")
                     .is_some_and(is_child_delegation_owner_decision)

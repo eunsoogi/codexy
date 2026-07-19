@@ -1,9 +1,9 @@
 use super::child_lane_classification_boundaries::{
     child_candidate_requires_guard, classification_owner_before, classifications,
-    rendered_child_context_applies,
+    next_lane_boundary,
 };
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
-use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
+use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
@@ -21,7 +21,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 || (!tables
                     .iter()
                     .any(|table| table.start <= *index && *index <= table.end)
-                    && rendered_child_context_applies(&lines, &tables, *index))
+                    && has_rendered_or_legacy_child_context(&lines, &tables, *index))
         })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {
@@ -35,6 +35,50 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed".to_owned()];
     }
     Vec::new()
+}
+
+fn has_rendered_or_legacy_child_context(
+    lines: &[&str],
+    tables: &[super::child_lane_classification_boundaries::ClassificationTable],
+    setup_index: usize,
+) -> bool {
+    classification_owner_before(lines, tables, setup_index).is_some_and(|owner| {
+        is_child_delegation_owner_decision(owner)
+            || owner.is_empty()
+            || owner.starts_with("external/human-owned")
+    }) || legacy_child_context(lines, setup_index)
+}
+
+fn legacy_child_context(lines: &[&str], setup_index: usize) -> bool {
+    let context_start = lines[..setup_index]
+        .iter()
+        .rposition(|line| {
+            let line = metadata_key(trimmed_value(line));
+            line.starts_with("pr:")
+                || line.starts_with("pull request:")
+                || line.starts_with("review response:")
+                || line.starts_with("maintainer reassignment:")
+        })
+        .map_or(0, |index| index + 1);
+    let lane_end = next_lane_boundary(lines, setup_index);
+    lines[context_start..lane_end]
+        .iter()
+        .take_while(|line| !line.starts_with("pr:") && !line.starts_with("pull request:"))
+        .any(|line| is_explicit_child_context(line))
+        || lines[context_start..lane_end]
+            .iter()
+            .any(|line| metadata_key(trimmed_value(line)) == "task classification:")
+}
+
+fn is_explicit_child_context(line: &str) -> bool {
+    let line = metadata_key(trimmed_value(line));
+    matches!(line, "child-owned" | "child-owned lane")
+        || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
+        || "lane ownership: child-owned|owner: child-owned|lane owner: child-owned"
+            .split('|')
+            .any(|marker| line.starts_with(marker))
+        || field_value(line, "child owner")
+            .is_some_and(|value| !value.is_empty() && !value.contains("none"))
 }
 
 fn is_classification_key(key: &str) -> bool {

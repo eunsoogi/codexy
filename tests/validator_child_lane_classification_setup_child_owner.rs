@@ -137,7 +137,21 @@ fn rendered_table_is_the_only_classification_source() -> TestResult {
     ))?;
     assert_rejected(&format!(
         "{table}\nPR: #468\nReview response: parent-authored implementation commit abc123 fixed feedback\n"
-    ))
+    ))?;
+    for owner in [
+        "Owner: child-owned",
+        "Child owner: codex thread 461",
+        "Lane owner: child-owned",
+    ] {
+        let boundary = format!("{table}\n{owner}\n");
+        for evidence in [
+            "Child branch codexy/461-table was created after classification.\n",
+            "Source thread id: parent-461\nGoal tool call: create_goal\n",
+        ] {
+            assert_rejected(&format!("{boundary}{evidence}"))?;
+        }
+    }
+    Ok(())
 }
 
 #[test]
@@ -153,9 +167,15 @@ fn validator_rejects_incomplete_child_table_for_ownership_and_goal_evidence() ->
 
 #[test]
 fn validator_keeps_table_ownership_across_handoff_metadata_before_pr() -> TestResult {
-    assert_rejected(&format!(
-        "{}\nIssue: #461\nBranch: eunsoogi/461-main-rendered-table\nWorktree path: /tmp/codexy-461\nPR: #468\nReview response: parent-authored implementation commit abc123 fixed feedback\n",
+    let handoff = format!(
+        "{}\nIssue: #461\nBranch: eunsoogi/461-main-rendered-table\nWorktree path: /tmp/codexy-461\nPR: #468\n",
         canonical_table()
+    );
+    assert_rejected(&format!(
+        "{handoff}Review response: parent-authored implementation commit abc123 fixed feedback\n"
+    ))?;
+    assert_rejected(&format!(
+        "{handoff}Child branch codexy/461-table was created before task classification.\n"
     ))
 }
 
@@ -198,21 +218,6 @@ fn validator_rejects_child_evidence_after_external_rendered_owner() -> TestResul
         format!("{table}\nSource thread id: child-461\nGoal tool call: create_goal\n"),
     ] {
         assert_rejected(&evidence)?;
-    }
-    Ok(())
-}
-
-#[test]
-fn validator_requires_a_fresh_table_after_explicit_owner_metadata() -> TestResult {
-    for owner in [
-        "Owner: child-owned",
-        "Child owner: codex thread 461",
-        "Lane owner: child-owned",
-    ] {
-        assert_rejected(&format!(
-            "{}\n{owner}\nChild branch codexy/461-table was created after classification.\n",
-            canonical_table()
-        ))?;
     }
     Ok(())
 }
