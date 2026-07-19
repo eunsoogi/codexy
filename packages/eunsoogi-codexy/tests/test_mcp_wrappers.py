@@ -81,6 +81,49 @@ class McpWrapperTests(unittest.TestCase):
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertEqual(completed.stdout.splitlines(), [str(root), "--stdio"])
 
+    def test_wrapper_routes_runtime_overrides_through_bootstrap(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            uname = bin_dir / "uname"
+            uname.write_text('#!/bin/sh\n[ "$1" = "-s" ] && echo Darwin || echo arm64\n')
+            uname.chmod(0o755)
+            uvx_log = root / "uvx.log"
+            fake_uvx = root / "uvx"
+            fake_uvx.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CODEXY_TEST_UVX_LOG"\n')
+            fake_uvx.chmod(0o755)
+            for environment in (
+                {"CODEXY_RUNTIME_DIR": str(root / "custom-runtime")},
+                {"CODEXY_RUNTIME_PLATFORM": "linux-x86_64"},
+            ):
+                for server in ("lsp", "codegraph"):
+                    mcp = root / "mcp"
+                    mcp.mkdir(exist_ok=True)
+                    wrapper = mcp / f"codexy-mcp-{server}"
+                    shutil.copyfile(self.wrapper(server), wrapper)
+                    wrapper.chmod(0o755)
+                    bundled = root / "runtime" / f"codexy-mcp-{server}-darwin-arm64.bin"
+                    bundled.parent.mkdir(exist_ok=True)
+                    bundled.write_text('#!/bin/sh\necho bundled-runtime\n')
+                    bundled.chmod(0o755)
+
+                    completed = subprocess.run(
+                        [wrapper, "--stdio"],
+                        env={
+                            "PATH": str(bin_dir),
+                            "CODEXY_UVX_PATH": str(fake_uvx),
+                            "CODEXY_TEST_UVX_LOG": str(uvx_log),
+                            **environment,
+                        },
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    self.assertIn("eunsoogi-codexy==1.2.1", uvx_log.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

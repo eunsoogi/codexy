@@ -7,7 +7,7 @@ bundled_platforms="darwin-arm64 linux-x86_64"
 case "$(uname -s)" in Darwin) runtime_os=darwin ;; Linux) runtime_os=linux ;; *) runtime_os=unknown ;; esac
 case "$(uname -m)" in arm64|aarch64) runtime_arch=arm64 ;; x86_64|amd64|AMD64) runtime_arch=x86_64 ;; *) runtime_arch=unknown ;; esac
 bundled_runtime="$plugin_root/runtime/codexy-mcp-codegraph-${runtime_os}-${runtime_arch}.bin"
-if [ -x "$bundled_runtime" ]; then
+if [ -z "${CODEXY_RUNTIME_DIR:-}" ] && [ -z "${CODEXY_RUNTIME_PLATFORM:-}" ] && [ -x "$bundled_runtime" ]; then
   export CODEXY_PLUGIN_ROOT="$plugin_root"
   exec "$bundled_runtime" "$@"
 fi
