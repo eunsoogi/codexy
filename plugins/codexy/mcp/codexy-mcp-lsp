@@ -47,9 +47,9 @@ ${package_sha256}"
     fi
     cache_hash=""
     if command -v sha256sum >/dev/null 2>&1; then
-      cache_hash=$( { printf '%s\000' "codexy.runtime-cache/v2" "${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}" "${CODEXY_RUNTIME_GIT_REF:-}" "$runtime_platform" "stdio-newline-v1" "$cache_source" "$release"; printf '%s' "codexy-mcp-lsp"; } | sha256sum | awk '{print $1}')
+      cache_hash=$( { printf '%s\000' "codexy.runtime-cache/v2" "${CODEXY_RUNTIME_GIT_REPOSITORY-https://github.com/eunsoogi/codexy}" "${CODEXY_RUNTIME_GIT_REF:-}" "$runtime_platform" "stdio-newline-v1" "$cache_source" "$release"; printf '%s' "codexy-mcp-lsp"; } | sha256sum | awk '{print $1}')
     elif command -v shasum >/dev/null 2>&1; then
-      cache_hash=$( { printf '%s\000' "codexy.runtime-cache/v2" "${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}" "${CODEXY_RUNTIME_GIT_REF:-}" "$runtime_platform" "stdio-newline-v1" "$cache_source" "$release"; printf '%s' "codexy-mcp-lsp"; } | shasum -a 256 | awk '{print $1}')
+      cache_hash=$( { printf '%s\000' "codexy.runtime-cache/v2" "${CODEXY_RUNTIME_GIT_REPOSITORY-https://github.com/eunsoogi/codexy}" "${CODEXY_RUNTIME_GIT_REF:-}" "$runtime_platform" "stdio-newline-v1" "$cache_source" "$release"; printf '%s' "codexy-mcp-lsp"; } | shasum -a 256 | awk '{print $1}')
     fi
     cached="$cache_root/v2-$cache_hash/bin/codexy-mcp-lsp"
     marker="$cache_root/v2-$cache_hash/plugin.json"
