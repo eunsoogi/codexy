@@ -67,6 +67,7 @@ fn validator_rejects_missing_duplicate_malformed_and_legacy_shapes() -> TestResu
         "| Atomic scope | issue-sized |\n| Atomic scope | duplicated |",
     ))?;
     assert_rejected(&ENGLISH_TABLE.replace("| --- | --- |", "| --- |"))?;
+    assert_rejected(&format!("{ENGLISH_TABLE}\n\n{ENGLISH_TABLE}"))?;
     assert_rejected(
         r#"Task classification:
 Lane type: implementation
@@ -93,17 +94,49 @@ fn packaged_prompts_and_templates_require_the_canonical_table() -> TestResult {
         "plugins/codexy/skills/codex-orchestration/references/orchestration-loop.md",
     ))?;
 
-    assert!(skill.contains("MUST emit exactly one ordered GFM table"));
-    assert!(skill.contains("Values MAY be localized"));
-    assert_eq!(skill.matches("| Task classification | Decision |").count(), 1);
-    assert!(prompt.contains("one ordered eight-row GFM table"));
+    assert_eq!(
+        skill
+            .lines()
+            .filter(|line| *line == "MUST emit exactly one ordered GFM table before taking the first workflow action:")
+            .count(),
+        1
+    );
+    assert_eq!(
+        skill
+            .lines()
+            .filter(|line| *line == "| Task classification | Decision |")
+            .count(),
+        1
+    );
+    let prompt: serde_yaml::Value = serde_yaml::from_str(&prompt)?;
+    assert_eq!(
+        prompt["interface"]["default_prompt"].as_str(),
+        Some("You MUST use $task-classification first and emit one ordered eight-row GFM table naming lane type, secondary surfaces, owner decision, atomic scope, required skills, required tools/evidence, first allowed action, and blocker before Codexy setup, delegation, implementation, PR, review-response, or merge work begins.")
+    );
     assert_eq!(
         loop_template
-            .matches("| Task classification | Decision |")
+            .lines()
+            .filter(|line| *line == "| Task classification | Decision |")
             .count(),
         2
     );
-    assert!(loop_template.contains("Lane goal / success criteria:\n```\n\n| Task classification"));
-    assert!(loop_template.contains("Worktree path:\n```\n\n| Task classification"));
+    assert_eq!(
+        loop_template
+            .lines()
+            .collect::<Vec<_>>()
+            .windows(3)
+            .filter(|lines| lines == &["Lane goal / success criteria:", "```", ""])
+            .count(),
+        1
+    );
+    assert_eq!(
+        loop_template
+            .lines()
+            .collect::<Vec<_>>()
+            .windows(3)
+            .filter(|lines| lines == &["Worktree path:", "```", ""])
+            .count(),
+        1
+    );
     Ok(())
 }

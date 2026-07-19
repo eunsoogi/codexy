@@ -17,33 +17,33 @@ pub(super) fn complete_child_classification_index(
     lane_start: usize,
     setup_index: usize,
 ) -> Option<usize> {
-    (lane_start..setup_index).find_map(|header_index| {
-        let header = parse_cells(lines[header_index])?;
-        if header != HEADER || !is_separator(lines.get(header_index + 1).copied()?) {
+    let mut headers = (lane_start..setup_index)
+        .filter(|index| parse_cells(lines[*index]).is_some_and(|cells| cells == HEADER));
+    let header_index = headers.next()?;
+    if headers.next().is_some() || !is_separator(lines.get(header_index + 1).copied()?) {
+        return None;
+    }
+    let mut owner = None;
+    for (offset, expected) in FIELDS.iter().enumerate() {
+        let index = header_index + offset + 2;
+        let (field, value) = table_row(lines.get(index).copied()?)?;
+        if field != *expected || value.is_empty() {
             return None;
         }
-        let mut owner = None;
-        for (offset, expected) in FIELDS.iter().enumerate() {
-            let index = header_index + offset + 2;
-            let (field, value) = table_row(lines.get(index).copied()?)?;
-            if field != *expected || value.is_empty() {
-                return None;
-            }
-            if field == "owner decision" {
-                owner = Some(value);
-            }
+        if field == "owner decision" {
+            owner = Some(value);
         }
-        let end = header_index + FIELDS.len() + 1;
-        if lines
-            .get(end + 1)
-            .and_then(|line| table_row(line))
-            .is_some()
-        {
-            return None;
-        }
-        owner.filter(|value| is_child_completion_owner(value))?;
-        Some(end)
-    })
+    }
+    let end = header_index + FIELDS.len() + 1;
+    if lines
+        .get(end + 1)
+        .and_then(|line| table_row(line))
+        .is_some()
+    {
+        return None;
+    }
+    owner.filter(|value| is_child_completion_owner(value))?;
+    Some(end)
 }
 
 pub(super) fn table_row(line: &str) -> Option<(&str, &str)> {
