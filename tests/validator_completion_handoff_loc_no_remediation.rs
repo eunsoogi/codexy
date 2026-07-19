@@ -1,4 +1,4 @@
-use std::process::{Command, Output};
+use std::process::Output;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -126,15 +126,7 @@ fn validate(handoff: &str) -> TestResult<Output> {
         &state_path,
         r#"{"number":360,"state":"CLOSED","mergeStateStatus":"CLEAN","isDraft":false,"headRefOid":"0123456789012345678901234567890123456789"}"#,
     )?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-completion-handoff",
-            "--handoff-file",
-            handoff_path.to_str().ok_or("handoff path")?,
-            "--pr-state-file",
-            state_path.to_str().ok_or("state path")?,
-        ])
-        .output()?)
+    crate::support::validator_completion_handoff_files(&handoff_path, &state_path)
 }
 
 fn stderr(output: &Output) -> String {

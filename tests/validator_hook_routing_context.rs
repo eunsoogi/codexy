@@ -1,7 +1,7 @@
 use std::process::Command;
 
 #[allow(unused)]
-mod support;
+use crate::support;
 
 const REQUIRED_CONTEXT_FRAGMENTS: &[&str] = &[
     "codegraph MCP before direct file reads",

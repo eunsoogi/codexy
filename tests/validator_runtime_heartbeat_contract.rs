@@ -4,7 +4,7 @@ use std::fs;
 mod structured_contract;
 #[path = "structured_contract_rules/mod.rs"]
 mod structured_contract_rules;
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 

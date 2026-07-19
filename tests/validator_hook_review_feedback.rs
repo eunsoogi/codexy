@@ -1,7 +1,7 @@
 use std::process::Command;
 
 #[allow(unused)]
-mod support;
+use crate::support;
 
 #[test]
 fn validator_cli_rejects_quoted_hook_entrypoint_shell_syntax()

@@ -1,4 +1,4 @@
-mod support;
+use crate::support;
 
 use support::{TestResult, copy_plugin_fixture, stderr};
 

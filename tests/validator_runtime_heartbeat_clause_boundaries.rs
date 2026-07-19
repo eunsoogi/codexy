@@ -1,6 +1,6 @@
 use std::fs;
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -13,7 +13,7 @@ fn validate_heartbeat_kind(replacement: &str) -> TestResult<std::process::Output
     let updated = original.replace(HEARTBEAT_KIND, replacement);
     assert_ne!(updated, original, "fixture heartbeat kind was not replaced");
     fs::write(path, updated)?;
-    support::validator(&plugin_root, "--check")
+    support::validator_instruction_policy(&plugin_root)
 }
 
 #[test]

@@ -1,7 +1,7 @@
 use std::process::Command;
 
 #[allow(unused)]
-mod support;
+use crate::support;
 
 #[test]
 fn validator_cli_requires_separate_issue_title_hook() -> Result<(), Box<dyn std::error::Error>> {

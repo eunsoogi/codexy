@@ -1,13 +1,10 @@
-use std::process::{Command, Output};
+use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");
     std::fs::write(&evidence_path, evidence)?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?)
+    crate::support::validator_child_lane_ownership_file(&evidence_path)
 }
 
 fn lane_prefix_fixture(defect_and_metadata: &str) -> String {

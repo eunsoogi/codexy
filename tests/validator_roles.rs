@@ -1,6 +1,6 @@
 use std::process::{Command, Output};
 
-mod support;
+use crate::support;
 
 use support::copy_dir;
 

@@ -1,4 +1,4 @@
-use std::process::{Command, Output};
+use std::process::Output;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
@@ -6,10 +6,7 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
     let evidence_path = temp.path().join("handoff.md");
     std::fs::write(&evidence_path, evidence)?;
 
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-child-lane-ownership", "--evidence-file"])
-        .arg(&evidence_path)
-        .output()?)
+    crate::support::validator_child_lane_ownership_file(&evidence_path)
 }
 
 fn assert_rejected(evidence: &str) -> TestResult {

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-mod support;
+use crate::support;
 
 #[path = "validator_instruction_policy/baseline_contract.rs"]
 mod baseline_contract;

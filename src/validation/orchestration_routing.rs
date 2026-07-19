@@ -9,8 +9,10 @@ use crate::validation::orchestration_routing_semantics::{
 mod assignments;
 mod evidence;
 mod policy;
+mod required_bullets;
 
 use policy::{affirmative_field_values, policy_instructions, sections_for_heading};
+use required_bullets::missing_required_bullets;
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
 const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
@@ -97,7 +99,11 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(&path)
         )];
     };
-    let routing_sections = sections_for_heading(&skill, "## GPT-5.6 Routing Matrix");
+    check_skill(&path, &skill)
+}
+
+pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
+    let routing_sections = sections_for_heading(skill, "## GPT-5.6 Routing Matrix");
     if routing_sections.is_empty() {
         return vec![format!(
             "{} must define the GPT-5.6 routing matrix",
@@ -117,7 +123,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         .iter()
         .flat_map(|bullets| missing_required_bullets(&path, bullets, REQUIRED_BULLETS))
         .collect::<Vec<_>>();
-    let recipient_sections = sections_for_heading(&skill, RECIPIENT_ROUTING_HEADING);
+    let recipient_sections = sections_for_heading(skill, RECIPIENT_ROUTING_HEADING);
     if recipient_sections.is_empty() {
         errors.push(format!(
             "{} must define recipient model routing policy",
@@ -224,27 +230,4 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         }
     }
     errors
-}
-
-fn missing_required_bullets(
-    path: &Path,
-    bullets: &[String],
-    required: &[(&str, &[&str], &str)],
-) -> Vec<String> {
-    required
-        .iter()
-        .filter(|(start, clauses, _)| {
-            let mut matches = bullets
-                .iter()
-                .filter(|bullet| required_clause_matches(bullet, start));
-            matches.clone().next().is_none()
-                || matches.any(|bullet| clauses.iter().any(|clause| !bullet.contains(clause)))
-        })
-        .map(|(_, _, error)| format!("{} {error}", display_relative(path)))
-        .collect()
-}
-
-fn required_clause_matches(bullet: &str, prefix: &str) -> bool {
-    bullet.starts_with(prefix)
-        && (!prefix.ends_with("MUST") || !bullet[prefix.len()..].trim_start().starts_with("NOT"))
 }
