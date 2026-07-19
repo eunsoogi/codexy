@@ -11,6 +11,8 @@ QA turns claims into observable evidence. Automated tests are useful, but work
 is not proven until the surface users, maintainers, or automation depend on has
 been driven and inspected.
 
+When replying in Korean, MUST follow [Natural Korean User Replies](../codex-orchestration/references/natural-korean-responses.md) for observable results while preserving exact QA evidence separately.
+
 ## Workflow
 
 1. MUST list claims that need proof:

@@ -10,6 +10,8 @@ description: MUST use when behavior is wrong, tests fail, processes hang, output
 MUST find the cause before applying the fix. Debugging is reproduction, evidence
 collection, hypothesis testing, minimal repair, and regression proof.
 
+When replying in Korean, MUST follow [Natural Korean User Replies](../codex-orchestration/references/natural-korean-responses.md) for the user summary while preserving exact debugging evidence separately.
+
 ## Workflow
 
 1. MUST reproduce the symptom with the smallest faithful command or user action.
