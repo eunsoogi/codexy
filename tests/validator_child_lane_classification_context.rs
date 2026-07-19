@@ -97,9 +97,9 @@ fn table_after_blank_terminated_html_block_is_allowed() -> TestResult {
 }
 
 #[test]
-fn table_after_any_type_one_closer_is_allowed() -> TestResult {
+fn table_after_matching_type_one_closer_is_allowed() -> TestResult {
     assert_allowed(&setup_after(&format!(
-        "<script>\nraw html\n</style>\n{TABLE}"
+        "<script>\nraw html\n</script>\n{TABLE}"
     )))
 }
 

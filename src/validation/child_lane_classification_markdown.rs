@@ -67,16 +67,14 @@ enum MarkdownBlock {
 
 #[derive(Clone, Copy)]
 enum HtmlEnd {
-    TypeOne,
+    TypeOne(&'static str),
     Marker(&'static str),
     Blank,
 }
 
 fn html_block_ends(end: HtmlEnd, line: &str) -> bool {
     match end {
-        HtmlEnd::TypeOne => ["</pre>", "</script>", "</style>"]
-            .iter()
-            .any(|marker| line.to_ascii_lowercase().contains(marker)),
+        HtmlEnd::TypeOne(tag) => line.to_ascii_lowercase().contains(&format!("</{tag}>")),
         HtmlEnd::Marker(marker) => line.contains(marker),
         HtmlEnd::Blank => line.is_empty(),
     }
@@ -93,14 +91,13 @@ fn html_block_candidate(line: &str) -> Option<&str> {
 
 fn raw_html_start(line: &str, allow_type_seven: bool) -> Option<Option<HtmlEnd>> {
     let lower = line.to_ascii_lowercase();
-    if ["pre", "script", "style"]
+    if let Some(tag) = ["pre", "script", "style", "textarea"]
         .iter()
-        .any(|tag| starts_with_tag(&lower, tag))
+        .copied()
+        .find(|tag| starts_with_tag(&lower, tag))
     {
-        let open = !["</pre>", "</script>", "</style>"]
-            .iter()
-            .any(|end| lower.contains(end));
-        return Some(open.then_some(HtmlEnd::TypeOne));
+        let open = !lower.contains(&format!("</{tag}>"));
+        return Some(open.then_some(HtmlEnd::TypeOne(tag)));
     }
     if lower.starts_with("<?") {
         return Some((!lower.contains("?>")).then_some(HtmlEnd::Marker("?>")));
