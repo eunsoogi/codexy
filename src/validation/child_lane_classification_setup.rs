@@ -1,6 +1,6 @@
 use super::child_lane_classification_boundaries::{
-    classifications, complete_classification_before, is_classification_key,
-    rendered_child_context_applies,
+    child_candidate_requires_guard, classifications, complete_classification_before,
+    is_classification_key, rendered_child_context_applies,
 };
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
@@ -16,10 +16,11 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 .map(move |clause| (index, clause))
         })
         .filter(|(index, _)| {
-            !tables
-                .iter()
-                .any(|table| table.start <= *index && *index <= table.end)
-                && rendered_child_context_applies(&lines, &tables, *index)
+            child_candidate_requires_guard(&tables, &lines, *index)
+                || (!tables
+                    .iter()
+                    .any(|table| table.start <= *index && *index <= table.end)
+                    && rendered_child_context_applies(&lines, &tables, *index))
         })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {

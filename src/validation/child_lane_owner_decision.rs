@@ -11,8 +11,11 @@ pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
 
 fn is_current_thread_child_implementation(value: &str) -> bool {
     value.starts_with("current-thread-owned")
-        && (value.contains("implementation lane") || value.contains("child implementation"))
+        && (value.contains("implementation lane")
+            || value.contains("child implementation")
+            || value.contains("현재 작업이 구현을 소유함"))
         && !value.contains("not current-thread-owned")
+        && !value.contains("현재 작업이 구현을 소유하지 않음")
 }
 
 pub(super) fn is_affirmative_child_owned_value(value: &str) -> bool {

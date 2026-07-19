@@ -100,6 +100,7 @@ Lane goal / success criteria:
 | Required tools/evidence | |
 | First allowed action | |
 | Stop/blocker | |
+
 Atomic lane:
 Issue:
 Branch:
@@ -144,6 +145,7 @@ Worktree path:
 | Required tools/evidence | |
 | First allowed action | |
 | Stop/blocker | |
+
 First message:
 Allowed files or paths:
 Read first:

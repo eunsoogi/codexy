@@ -90,7 +90,7 @@ fn validator_rejects_child_setup_when_only_prior_lane_precedes_owner_decision() 
 #[test]
 fn validator_allows_setup_before_next_lane_boundary() -> TestResult {
     assert_allowed(&format!(
-        "PR: #1\nBranch codexy/neutral-lane was created after classification.\n{}PR: #2\n{}Child branch codexy/231-branch-classification-guard was created after classification.\n{}",
+        "PR: #1\nBranch codexy/neutral-lane was created after classification.\n{}\nPR: #2\n{}\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
         ownership_footer(), complete_child_classification(), ownership_footer()
     ))
 }
@@ -98,7 +98,7 @@ fn validator_allows_setup_before_next_lane_boundary() -> TestResult {
 #[test]
 fn validator_allows_setup_before_next_lane_ownership_boundary() -> TestResult {
     assert_allowed(&format!(
-        "Branch codexy/neutral-lane was created after classification.\n{}Child branch codexy/231-branch-classification-guard was created after classification.\n{}",
+        "Branch codexy/neutral-lane was created after classification.\n{}\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
         complete_child_classification(), ownership_footer()
     ))
 }
@@ -115,7 +115,7 @@ fn validator_allows_classification_before_child_lane_metadata() -> TestResult {
 #[test]
 fn validator_allows_setup_before_next_owner_decision_boundary() -> TestResult {
     assert_allowed(&format!(
-        "Branch codexy/neutral-lane was created after classification.\nOwner decision: child-owned implementation lane\n{}Child branch codexy/231-branch-classification-guard was created after classification.\n{}",
+        "Branch codexy/neutral-lane was created after classification.\nOwner decision: child-owned implementation lane\n{}\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
         complete_child_classification().replacen("Lane ownership: child-owned\n", "", 1), ownership_footer()
     ))
 }

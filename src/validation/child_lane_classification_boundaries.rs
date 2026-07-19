@@ -126,11 +126,13 @@ pub(super) fn child_candidate_requires_guard(
 ) -> bool {
     tables.iter().any(|table| {
         !table.canonical
-            && table.end < index
+            && table.start < index
             && is_child_delegation_owner_decision(&table.owner)
-            && (table.end + 1..index).all(|line| {
-                !is_lane_boundary(lines, line) && !tables.iter().any(|table| table.start == line)
-            })
+            && (table.end >= index
+                || (table.end + 1..index).all(|line| {
+                    !is_lane_boundary(lines, line)
+                        && !tables.iter().any(|table| table.start == line)
+                }))
     })
 }
 

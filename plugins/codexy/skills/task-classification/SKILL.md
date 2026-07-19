@@ -138,6 +138,8 @@ MUST emit exactly one ordered GFM table before taking the first workflow action:
   work, release work, and PR-readiness claims.
 - Child lanes MUST emit the complete classification table before
   creating or switching to an implementation branch or worktree. Handoff
+  metadata such as `Issue`, `Branch`, `Worktree path`, or `PR` MUST follow a
+  real blank line after that table.
   evidence MUST NOT report child-created branch/worktree setup before that
   block; `scripts/validate-plugin-config --check-child-lane-ownership
   --evidence-file <path>` catches this workflow defect. Issue #231 tracks the
