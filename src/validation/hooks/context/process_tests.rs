@@ -100,6 +100,17 @@ fn publishes_each_script_at_a_distinct_executable_path() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn executes_a_unique_script_after_closing_its_publication_handle() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let script = make_script(temp.path(), "exit 0\n")?;
+
+    let status = Command::new(script).status()?;
+
+    assert!(status.success());
+    Ok(())
+}
+
 fn make_script(root: &Path, body: &str) -> TestResult<PathBuf> {
     let mut file = tempfile::Builder::new()
         .prefix(".probe-")
@@ -110,7 +121,8 @@ fn make_script(root: &Path, body: &str) -> TestResult<PathBuf> {
     let mut permissions = file.as_file().metadata()?.permissions();
     permissions.set_mode(0o755);
     std::fs::set_permissions(file.path(), permissions)?;
-    let (_, script) = file.keep()?;
+    let (publication_handle, script) = file.keep()?;
+    drop(publication_handle);
     std::fs::File::open(root)?.sync_all()?;
     Ok(script)
 }
