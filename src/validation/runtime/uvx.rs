@@ -32,7 +32,7 @@ pub(super) fn check_wrapper(path: &Path, server: &str, version: &str) -> Result<
         .get(1)
         .is_some_and(|word| matches!(word.text.as_str(), "uvx" | "$uvx_path"))
         || unique_option_value(&command, "--from")
-            != Some(format!("codexy-runtime-tools=={version}").as_str())
+            != Some(format!("eunsoogi-codexy=={version}").as_str())
     {
         bail!(
             "{} has an invalid runtime executable or pin",
@@ -82,7 +82,7 @@ bundled_platforms="linux-x86_64 darwin-arm64"
 command -v uvx
 CODEXY_UVX_PATH=uvx
 exec uvx --no-config --isolated --default-index https://pypi.org/simple \
-  --from "codexy-runtime-tools==1.2.1" codexy-mcp-runtime lsp
+  --from "eunsoogi-codexy==1.2.1" codexy-mcp-runtime lsp
 "#;
 
     #[test]
@@ -91,7 +91,7 @@ exec uvx --no-config --isolated --default-index https://pypi.org/simple \
             "command -v uvx",
             "CODEXY_UVX_PATH",
             "--no-config --isolated --default-index https://pypi.org/simple",
-            "codexy-runtime-tools==1.2.1",
+            "eunsoogi-codexy==1.2.1",
             "codexy-mcp-runtime lsp",
         ] {
             let temp = tempfile::NamedTempFile::new()?;
@@ -145,8 +145,8 @@ exec uvx --no-config --isolated --default-index https://pypi.org/simple \
     fn rejects_duplicate_from_and_non_uvx_exec_commands() -> anyhow::Result<()> {
         for invalid in [
             VALID.replace(
-                "--from \"codexy-runtime-tools==1.2.1\"",
-                "--from \"codexy-runtime-tools==1.2.1\" --from \"codexy-runtime-tools==1.2.10\"",
+                "--from \"eunsoogi-codexy==1.2.1\"",
+                "--from \"eunsoogi-codexy==1.2.1\" --from \"eunsoogi-codexy==1.2.10\"",
             ),
             VALID.replace("exec uvx", "exec arbitrary-runner"),
         ] {

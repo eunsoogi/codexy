@@ -143,7 +143,7 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "--check-hooks",
         "gh release upload",
         "Build and verify pinned uvx runtime tool",
-        "codexy-runtime-tools-distributions",
+        "eunsoogi-codexy-distributions",
         "codexy-mcp-runtime --help",
         "pypa/gh-action-pypi-publish@",
         "attestations: true",
@@ -189,7 +189,7 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         })?;
         for required_path in [
             "plugins/codexy/**",
-            "packages/codexy-runtime-tools/**",
+            "packages/eunsoogi-codexy/**",
             "scripts/inspect-mcp-response",
         ] {
             if !trigger_text.contains(required_path) {

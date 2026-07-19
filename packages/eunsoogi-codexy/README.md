@@ -1,4 +1,4 @@
-# codexy-runtime-tools
+# eunsoogi-codexy
 
 This package is the version-pinned `uvx` runtime bootstrap used by the Codexy
 plugin's MCP entrypoints. It is released by Codexy's trusted publishing

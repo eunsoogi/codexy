@@ -7,6 +7,13 @@ from codexy_runtime_tools import runtime
 
 
 class RuntimeCliTests(unittest.TestCase):
+    def test_distribution_identity_is_distinct_from_console_entrypoint(self) -> None:
+        pyproject = Path(__file__).parents[1].joinpath("pyproject.toml").read_text()
+        self.assertIn('name = "eunsoogi-codexy"', pyproject)
+        self.assertIn(
+            'codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"', pyproject
+        )
+
     def test_package_readme_documents_only_packaged_runtime_api(self) -> None:
         readme = Path(__file__).parents[1].joinpath("README.md").read_text()
         self.assertNotIn("codexy_runtime_tools.updater", readme)

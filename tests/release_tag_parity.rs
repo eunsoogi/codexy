@@ -17,7 +17,7 @@ fn rejects_each_synchronized_source_mismatch() -> Result<(), Box<dyn std::error:
         ".agents/plugins/release-publish-contract.json",
         "Cargo.toml",
         "Cargo.lock",
-        "packages/codexy-runtime-tools/pyproject.toml",
+        "packages/eunsoogi-codexy/pyproject.toml",
         "plugins/codexy/mcp/codexy-mcp-lsp",
         "plugins/codexy/mcp/codexy-mcp-codegraph",
     ] {
@@ -55,8 +55,8 @@ fn stale_synchronized_source(
         )
     } else if relative.starts_with("plugins/codexy/mcp/") {
         original.replacen(
-            &format!("codexy-runtime-tools=={version}"),
-            &format!("codexy-runtime-tools=={replacement}"),
+            &format!("eunsoogi-codexy=={version}"),
+            &format!("eunsoogi-codexy=={replacement}"),
             1,
         )
     } else {

@@ -51,7 +51,7 @@ class McpWrapperTests(unittest.TestCase):
 
             self.assertEqual(completed.returncode, 0, completed.stderr)
             arguments = log.read_text(encoding="utf-8").splitlines()
-            self.assertIn("codexy-runtime-tools==1.2.1", arguments)
+            self.assertIn("eunsoogi-codexy==1.2.1", arguments)
             self.assertEqual(arguments[-4:], ["--plugin-root", str(root), "--", "--stdio"])
 
 

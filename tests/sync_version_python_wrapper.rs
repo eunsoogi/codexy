@@ -20,7 +20,7 @@ fn sync_version_cli_rejects_wrapper_version_prefix_decoys()
         let text = fs::read_to_string(&wrapper)?;
         fs::write(
             wrapper,
-            text.replace("codexy-runtime-tools==1.2.1", "codexy-runtime-tools==1.2.10"),
+            text.replace("eunsoogi-codexy==1.2.1", "eunsoogi-codexy==1.2.10"),
         )?;
     }
 
@@ -45,8 +45,8 @@ fn sync_version_cli_rejects_pin_on_a_different_command()
         fs::write(
             wrapper,
             format!(
-                "printf '%s\\n' \"codexy-runtime-tools==1.2.1\"\n{}",
-                text.replace("codexy-runtime-tools==1.2.1", "codexy-runtime-tools==1.2.10")
+                "printf '%s\\n' \"eunsoogi-codexy==1.2.1\"\n{}",
+                text.replace("eunsoogi-codexy==1.2.1", "eunsoogi-codexy==1.2.10")
             ),
         )?;
     }
@@ -66,8 +66,8 @@ fn sync_version_cli_rejects_semicolon_comment_pin_decoy()
         fs::write(
             wrapper,
             format!(
-                "true;# \"codexy-runtime-tools==1.2.1\"\n{}",
-                text.replace("codexy-runtime-tools==1.2.1", "codexy-runtime-tools==1.2.10")
+                "true;# \"eunsoogi-codexy==1.2.1\"\n{}",
+                text.replace("eunsoogi-codexy==1.2.1", "eunsoogi-codexy==1.2.10")
             ),
         )?;
     }
@@ -86,7 +86,7 @@ fn sync_version_cli_ignores_comment_pins_when_updating()
         let text = fs::read_to_string(&wrapper)?;
         fs::write(
             wrapper,
-            format!("# keep codexy-runtime-tools==1.2.1 as historical context\n{text}"),
+            format!("# keep eunsoogi-codexy==1.2.1 as historical context\n{text}"),
         )?;
     }
 
@@ -104,9 +104,9 @@ fn sync_version_cli_ignores_comment_pins_when_updating()
     for server in ["lsp", "codegraph"] {
         let wrapper = repo.join(format!("plugins/codexy/mcp/codexy-mcp-{server}"));
         let text = fs::read_to_string(wrapper)?;
-        assert!(text.starts_with("# keep codexy-runtime-tools==1.2.1"));
+        assert!(text.starts_with("# keep eunsoogi-codexy==1.2.1"));
         let expected = format!(
-            "  --from \"codexy-runtime-tools==9.9.9\" codexy-mcp-runtime {server} \\"
+            "  --from \"eunsoogi-codexy==9.9.9\" codexy-mcp-runtime {server} \\"
         );
         assert_eq!(
             text.lines().find(|line| line.starts_with("  --from ")),

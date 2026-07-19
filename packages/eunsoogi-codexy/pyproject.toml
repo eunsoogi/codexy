@@ -3,7 +3,7 @@ requires = ["uv_build==0.9.26"]
 build-backend = "uv_build"
 
 [project]
-name = "codexy-runtime-tools"
+name = "eunsoogi-codexy"
 version = "1.2.1"
 description = "Version-pinned MCP runtime bootstrap tools for Codexy"
 readme = "README.md"

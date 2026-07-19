@@ -55,7 +55,7 @@ jobs:
           git switch -c "${branch}"
           git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json \
             plugins/codexy/.codex-plugin/plugin.json plugins/codexy/mcp/codexy-mcp-lsp \
-            plugins/codexy/mcp/codexy-mcp-codegraph packages/codexy-runtime-tools/pyproject.toml
+            plugins/codexy/mcp/codexy-mcp-codegraph packages/eunsoogi-codexy/pyproject.toml
           if [ -f package.json ]; then
             git add package.json
           fi

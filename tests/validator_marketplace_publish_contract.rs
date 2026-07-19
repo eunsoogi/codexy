@@ -13,6 +13,8 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "package-plugin:",
         "needs: build-runtime",
         "actions/download-artifact@",
+        "packages/eunsoogi-codexy",
+        "eunsoogi-codexy-distributions",
         "pattern: codexy-mcp-runtimes-*",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",

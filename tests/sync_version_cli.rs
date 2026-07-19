@@ -192,7 +192,7 @@ fn version_surface_contents(
         ".agents/plugins/release-publish-contract.json",
         "Cargo.lock",
         "Cargo.toml",
-        "packages/codexy-runtime-tools/pyproject.toml",
+        "packages/eunsoogi-codexy/pyproject.toml",
         "plugins/codexy/.codex-plugin/plugin.json",
         "plugins/codexy/mcp/codexy-mcp-lsp",
         "plugins/codexy/mcp/codexy-mcp-codegraph",

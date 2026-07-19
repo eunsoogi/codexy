@@ -17,7 +17,7 @@ on:
       - "Cargo.toml"
       - "src/**"
       - "plugins/codexy/**"
-      - "packages/codexy-runtime-tools/**"
+      - "packages/eunsoogi-codexy/**"
       - ".agents/plugins/marketplace.json"
       - "scripts/generate-release-changelog"
       - "scripts/inspect-release-archive"
@@ -31,7 +31,7 @@ on:
       - "Cargo.toml"
       - "src/**"
       - "plugins/codexy/**"
-      - "packages/codexy-runtime-tools/**"
+      - "packages/eunsoogi-codexy/**"
       - ".agents/plugins/marketplace.json"
       - "scripts/generate-release-changelog"
       - "scripts/inspect-release-archive"
@@ -76,7 +76,7 @@ jobs:
           version: "0.9.26"
 
       - name: Build wheel and source distribution
-        run: uv build --no-sources packages/codexy-runtime-tools --out-dir dist/python
+        run: uv build --no-sources packages/eunsoogi-codexy --out-dir dist/python
 
       - name: Verify exact distributions and console entrypoints
         run: |
@@ -96,7 +96,7 @@ jobs:
       - name: Upload runtime tool distributions
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: codexy-runtime-tools-distributions
+          name: eunsoogi-codexy-distributions
           path: dist/python/*
           if-no-files-found: error
 
@@ -308,7 +308,7 @@ jobs:
       - name: Download exact runtime tool distributions
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: codexy-runtime-tools-distributions
+          name: eunsoogi-codexy-distributions
           path: dist/python
 
       - name: Publish with PyPI trusted publishing and attestations

@@ -18,5 +18,5 @@ else
   uvx_path=$(command -v uvx)
 fi
 exec "$uvx_path" --no-config --isolated --default-index https://pypi.org/simple \
-  --from "codexy-runtime-tools==1.2.1" codexy-mcp-runtime lsp \
+  --from "eunsoogi-codexy==1.2.1" codexy-mcp-runtime lsp \
   --plugin-root "$plugin_root" -- "$@"

@@ -5,10 +5,10 @@ use anyhow::{Context as _, Result, bail};
 use crate::paths::{display_relative, repo_root};
 use crate::shell::{replace_runtime_pin, runtime_exec, unique_option_value};
 
-const PACKAGE_NAME: &str = "codexy-runtime-tools";
+const PACKAGE_NAME: &str = "eunsoogi-codexy";
 
 fn pyproject() -> Result<std::path::PathBuf> {
-    Ok(repo_root()?.join("packages/codexy-runtime-tools/pyproject.toml"))
+    Ok(repo_root()?.join("packages/eunsoogi-codexy/pyproject.toml"))
 }
 
 fn wrappers() -> Result<Vec<(&'static str, std::path::PathBuf)>> {
@@ -98,19 +98,19 @@ mod tests {
     #[test]
     fn wrapper_pin_requires_exact_active_shell_token() {
         assert!(wrapper_has_pin(
-            "exec uvx --from \"codexy-runtime-tools==1.2.1\" codexy-mcp-runtime lsp",
+            "exec uvx --from \"eunsoogi-codexy==1.2.1\" codexy-mcp-runtime lsp",
             "lsp",
-            "codexy-runtime-tools==1.2.1"
+            "eunsoogi-codexy==1.2.1"
         ));
         assert!(!wrapper_has_pin(
-            "exec uvx --from \"codexy-runtime-tools==1.2.10\" codexy-mcp-runtime lsp",
+            "exec uvx --from \"eunsoogi-codexy==1.2.10\" codexy-mcp-runtime lsp",
             "lsp",
-            "codexy-runtime-tools==1.2.1"
+            "eunsoogi-codexy==1.2.1"
         ));
         assert!(!wrapper_has_pin(
-            "# exec uvx --from \"codexy-runtime-tools==1.2.1\" codexy-mcp-runtime lsp",
+            "# exec uvx --from \"eunsoogi-codexy==1.2.1\" codexy-mcp-runtime lsp",
             "lsp",
-            "codexy-runtime-tools==1.2.1"
+            "eunsoogi-codexy==1.2.1"
         ));
     }
 }
