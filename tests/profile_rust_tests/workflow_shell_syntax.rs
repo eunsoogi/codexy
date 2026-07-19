@@ -195,6 +195,29 @@ fn gate_distinguishes_sudo_workloads_from_cargo_run_arguments(
         !fixture.run(&[])?.status.success(),
         "cargo global-option values must not hide a cargo test workload"
     );
+
+    for command in [
+        "cargo test -- --locked --all-targets",
+        "cargo --help test --locked --all-targets",
+    ] {
+        let fixture = fixture_with(command)?;
+        assert!(
+            fixture.run(&[])?.status.success(),
+            "non-executing or post-boundary Cargo arguments are not workloads: {command}"
+        );
+    }
+
+    for command in [
+        "bash -O extglob -c 'cargo test --locked --all-targets'",
+        "bash -o pipefail -c 'cargo test --locked --all-targets'",
+        "exec -cl cargo test --locked --all-targets",
+    ] {
+        let fixture = fixture_with(command)?;
+        assert!(
+            !fixture.run(&[])?.status.success(),
+            "shell options must not hide a second workload: {command}"
+        );
+    }
     Ok(())
 }
 

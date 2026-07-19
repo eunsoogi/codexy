@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 CARGO_GLOBAL_VALUE_OPTIONS = frozenset({"-C", "--color", "--config", "-Z"})
+CARGO_NON_EXECUTING_OPTIONS = frozenset({"-h", "--help", "-V", "--version"})
 SUDO_VALUE_OPTIONS = frozenset(
     {
         "-C",
@@ -47,8 +48,12 @@ def executable_name(token: str) -> str:
 def cargo_test_workload(tokens: list[str], invocation: tuple[str, ...]) -> bool:
     if not tokens or executable_name(tokens[0]) != "cargo":
         return False
-    arguments = tokens[1:]
-    return cargo_subcommand(arguments) == "test" and set(invocation[2:]).issubset(arguments)
+    execution_arguments = tokens[1 : tokens.index("--")] if "--" in tokens else tokens[1:]
+    return (
+        not CARGO_NON_EXECUTING_OPTIONS.intersection(execution_arguments)
+        and cargo_subcommand(execution_arguments) == "test"
+        and set(invocation[2:]).issubset(execution_arguments)
+    )
 
 
 def cargo_subcommand(arguments: list[str]) -> str | None:

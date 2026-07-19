@@ -13,6 +13,7 @@ ASSIGNMENT_WORD_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 VALUE_OPTIONS = frozenset({"-a", "--argv0", "-C", "--chdir", "-u", "--unset"})
 TIMEOUT_VALUE_OPTIONS = frozenset({"-k", "--kill-after", "-s", "--signal"})
 TIME_VALUE_OPTIONS = frozenset({"-f", "--format", "-o", "--output"})
+SHELL_VALUE_OPTIONS = frozenset({"-O", "-o", "--init-file", "--rcfile"})
 SHELL_PREFIXES = frozenset({"!", "do", "elif", "else", "if", "then", "until", "while"})
 SHELL_EXECUTABLES = frozenset({"bash", "dash", "ksh", "sh", "zsh"})
 
@@ -78,11 +79,20 @@ def executable_tokens(tokens: list[str]) -> list[str]:
 def shell_child_command(tokens: list[str]) -> str | None:
     if not tokens or executable_name(tokens[0]) not in SHELL_EXECUTABLES:
         return None
-    for index, option in enumerate(tokens[1:], start=1):
+    index = 1
+    while index < len(tokens):
+        option = tokens[index]
+        if option in SHELL_VALUE_OPTIONS:
+            index += 2
+            continue
+        if option.startswith(("--init-file=", "--rcfile=")):
+            index += 1
+            continue
         if option == "-c" or option.startswith("-") and "c" in option[1:]:
             return tokens[index + 1] if index + 1 < len(tokens) else None
         if not option.startswith("-") or option == "-":
             return None
+        index += 1
     return None
 
 
@@ -134,6 +144,8 @@ def exec_index(tokens: list[str], index: int) -> int:
         if option == "-a":
             index += 2
         elif option.startswith("-a") and len(option) > 2:
+            index += 1
+        elif option != "-" and option.startswith("-") and set(option[1:]).issubset({"c", "l"}):
             index += 1
         elif option in {"-c", "-l"}:
             index += 1
