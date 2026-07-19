@@ -2,12 +2,35 @@ import io
 import tarfile
 import tempfile
 import unittest
+import urllib.request
 from pathlib import Path
 
-from codexy_runtime_tools.package import _safe_extract_tar, _safe_extract_zip, acquire_package
+from codexy_runtime_tools.package import (
+    _GithubRedirectHandler,
+    _safe_extract_tar,
+    _safe_extract_zip,
+    acquire_package,
+)
 
 
 class ArchiveSecurityTests(unittest.TestCase):
+    def test_cross_host_redirect_drops_github_authorization(self) -> None:
+        request = urllib.request.Request(
+            "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts/1/zip",
+            headers={"Authorization": "Bearer secret"},
+        )
+        redirected = _GithubRedirectHandler().redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://objects.example.test/artifact.zip",
+        )
+
+        self.assertIsNotNone(redirected)
+        self.assertIsNone(redirected.get_header("Authorization"))
+
     def test_malformed_tar_is_translated_to_package_diagnostic(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

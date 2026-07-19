@@ -15,12 +15,26 @@ MAX_ARCHIVE_FILES = 2_048
 MAX_UNPACKED_BYTES = 512 * 1024 * 1024
 
 
+class _GithubRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, file_pointer, status, message, headers, new_url):
+        redirected = super().redirect_request(
+            request, file_pointer, status, message, headers, new_url
+        )
+        if redirected and urlparse(request.full_url).hostname != urlparse(new_url).hostname:
+            for redirect_headers in (redirected.headers, redirected.unredirected_hdrs):
+                for name in list(redirect_headers):
+                    if name.lower() == "authorization":
+                        del redirect_headers[name]
+        return redirected
+
+
 def _download(url: str, destination: Path, token: str = "") -> None:
     headers = {"Accept": "application/vnd.github+json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(request, timeout=30) as response, destination.open("wb") as output:
+    opener = urllib.request.build_opener(_GithubRedirectHandler()) if token else urllib.request
+    with opener.open(request, timeout=30) as response, destination.open("wb") as output:
         shutil.copyfileobj(response, output)
 
 
