@@ -72,6 +72,7 @@ fn without_parent_denials(clause: &str) -> String {
     [
         "not parent-owned",
         "no parent implementation edits",
+        "parent ownership absent",
         "부모 소유자가 아님",
         "부모 소유자가 아니다",
         "부모 소유자가 아니며",
@@ -79,6 +80,7 @@ fn without_parent_denials(clause: &str) -> String {
         "부모 소유자가 아닙니다",
         "부모 소유자가 아니에요",
         "부모 소유자가 아님을",
+        "부모 소유권 없음",
     ]
     .into_iter()
     .fold(clause.to_owned(), |value, marker| value.replace(marker, ""))

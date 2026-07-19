@@ -52,8 +52,8 @@ fn validator_allows_ordered_english_and_korean_classification_tables() -> TestRe
         .join("\n");
     assert_allowed(&shallow_indent)?;
     for owner in [
-        "current-thread-owned implementation lane; not parent-owned",
-        "current-thread-owned implementation lane; no parent implementation edits",
+        "current-thread-owned implementation lane; parent ownership absent",
+        "current-thread-owned — 부모 소유권 없음, 현재 스레드가 구현을 소유함",
         "current-thread-owned — 부모 소유자가 아닌 구현 소유자",
         "current-thread-owned — 구현 소유자이며 부모 소유자가 아닙니다",
     ] {

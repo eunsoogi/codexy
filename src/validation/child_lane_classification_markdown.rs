@@ -20,7 +20,7 @@ pub(super) fn is_in_non_rendering_block(lines: &[&str], index: usize) -> bool {
             continue;
         }
         let Some(line) = candidate else {
-            paragraph_open = line_opens_or_continues_paragraph(raw_line);
+            paragraph_open = line_opens_or_continues_paragraph(raw_line, paragraph_open);
             continue;
         };
         if let Some((marker, length)) = opens_fence(line) {
@@ -38,7 +38,7 @@ pub(super) fn is_in_non_rendering_block(lines: &[&str], index: usize) -> bool {
             paragraph_open = false;
             continue;
         }
-        paragraph_open = line_opens_or_continues_paragraph(raw_line);
+        paragraph_open = line_opens_or_continues_paragraph(raw_line, paragraph_open);
     }
     state.is_some()
 }
@@ -162,16 +162,19 @@ fn is_block_tag(line: &str) -> bool {
             || suffix.starts_with("/>"))
 }
 
-fn line_opens_or_continues_paragraph(line: &str) -> bool {
+fn line_opens_or_continues_paragraph(line: &str, paragraph_open: bool) -> bool {
     let trimmed = line.trim();
-    if trimmed.is_empty() || is_indented_code_line(line) {
+    if trimmed.is_empty() {
         return false;
+    }
+    if is_indented_code_line(line) {
+        return paragraph_open;
     }
     let candidate = html_block_candidate(line).unwrap_or(trimmed);
     if html_block_candidate(line).and_then(opens_fence).is_some() {
         return false;
     }
-    if starts_container_block(candidate) {
+    if starts_container_block(candidate, paragraph_open) {
         return false;
     }
     if is_thematic_break(candidate) {
@@ -189,7 +192,7 @@ fn line_opens_or_continues_paragraph(line: &str) -> bool {
     !atx_heading && !setext_heading
 }
 
-fn starts_container_block(line: &str) -> bool {
+fn starts_container_block(line: &str, paragraph_open: bool) -> bool {
     if line.starts_with('>') {
         return true;
     }
@@ -197,7 +200,11 @@ fn starts_container_block(line: &str) -> bool {
     let marker = &line[..marker_end];
     matches!(marker, "-" | "+" | "*")
         || marker.strip_suffix(['.', ')']).is_some_and(|number| {
-            !number.is_empty() && number.len() <= 9 && number.chars().all(|ch| ch.is_ascii_digit())
+            !number.is_empty()
+                && number.len() <= 9
+                && number.chars().all(|ch| ch.is_ascii_digit())
+                && !line[marker_end..].trim().is_empty()
+                && (!paragraph_open || number == "1")
         })
 }
 

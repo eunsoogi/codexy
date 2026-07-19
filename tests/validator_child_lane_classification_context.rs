@@ -143,7 +143,13 @@ fn malformed_type_six_and_seven_tags_do_not_hide_the_table() -> TestResult {
 
 #[test]
 fn type_seven_tag_does_not_interrupt_a_paragraph() -> TestResult {
-    for paragraph in ["paragraph", "1234567890. paragraph"] {
+    for paragraph in [
+        "paragraph",
+        "1234567890. paragraph",
+        "paragraph\n2. continuation",
+        "paragraph\n1.",
+        "paragraph\n    lazy continuation",
+    ] {
         assert_allowed(&setup_after(&format!("{paragraph}\n<Warning>\n{TABLE}")))?;
     }
     Ok(())
