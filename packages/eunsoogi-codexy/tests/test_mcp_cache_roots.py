@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -16,9 +17,11 @@ class McpCacheRootTests(unittest.TestCase):
             root = Path(temporary)
             bin_dir = root / "bin"
             bin_dir.mkdir()
+            sha256sum = shutil.which("sha256sum")
+            self.assertIsNotNone(sha256sum)
             for command, body in {
                 "uname": '[ "$1" = "-s" ] && echo Linux || echo x86_64',
-                "sha256sum": 'exec /sbin/sha256sum "$@"',
+                "sha256sum": f'exec {sha256sum} "$@"',
                 "awk": 'read value rest\nprintf "%s\\n" "$value"',
                 "sed": 'exec /usr/bin/sed "$@"',
                 "head": 'exec /usr/bin/head "$@"',
