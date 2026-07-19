@@ -10,6 +10,9 @@ mod child_handoff_readiness_text;
 #[path = "child_lane_active_threads_module.rs"]
 mod child_lane_active_threads;
 mod child_lane_classification_boundaries;
+mod child_lane_classification_context;
+mod child_lane_classification_markdown;
+mod child_lane_classification_owner;
 mod child_lane_classification_setup;
 mod child_lane_classification_setup_context;
 mod child_lane_classification_table;

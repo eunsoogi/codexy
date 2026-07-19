@@ -1,3 +1,4 @@
+use super::child_lane_classification_context::context_metadata_key;
 use super::child_lane_classification_table::{is_table_header, is_table_line, table_row};
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{
@@ -146,11 +147,4 @@ fn is_task_classification_field(line: &str) -> bool {
                 | "blocker"
         )
     })
-}
-
-fn context_metadata_key(line: &str) -> &str {
-    let line = metadata_key(line);
-    line.split_once(". ")
-        .filter(|(prefix, _)| prefix.chars().all(|character| character.is_ascii_digit()))
-        .map_or(line, |(_, value)| metadata_key(value))
 }

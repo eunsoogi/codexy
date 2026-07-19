@@ -148,6 +148,9 @@ mod validator_child_lane_classification_setup_owner_decision;
 #[path = "../validator_child_lane_classification_table.rs"]
 mod validator_child_lane_classification_table;
 
+#[path = "../validator_child_lane_classification_context.rs"]
+mod validator_child_lane_classification_context;
+
 #[path = "../validator_child_lane_ownership.rs"]
 mod validator_child_lane_ownership;
 

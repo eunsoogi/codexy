@@ -1,5 +1,6 @@
+use super::child_lane_classification_context::context_metadata_key;
 use super::child_lane_classification_table::{is_table_header, is_table_line};
-use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
+use super::child_lane_ownership_phrases::trimmed_value;
 
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
     (0..setup_index)
@@ -15,7 +16,7 @@ pub(super) fn current_lane_end(lines: &[&str], setup_index: usize) -> usize {
 }
 
 fn is_forward_lane_boundary(lines: &[&str], index: usize) -> bool {
-    let line = metadata_key(trimmed_value(lines[index]));
+    let line = context_metadata_key(trimmed_value(lines[index]));
     "pr:|pull request:|review response:|maintainer reassignment:"
         .split('|')
         .any(|marker| line.starts_with(marker))
@@ -24,7 +25,7 @@ fn is_forward_lane_boundary(lines: &[&str], index: usize) -> bool {
 }
 
 fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
-    let line = metadata_key(trimmed_value(lines[index]));
+    let line = context_metadata_key(trimmed_value(lines[index]));
     if "pr:|pull request:"
         .split('|')
         .any(|marker| line.starts_with(marker))
@@ -48,7 +49,7 @@ fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
         .iter()
         .take(index)
         .rev()
-        .map(|line| metadata_key(trimmed_value(line)))
+        .map(|line| context_metadata_key(trimmed_value(line)))
     {
         if line.is_empty() {
             continue;
@@ -80,7 +81,7 @@ fn is_after_task_classification_block(lines: &[&str], index: usize) -> bool {
         .iter()
         .take(index)
         .rev()
-        .map(|line| metadata_key(trimmed_value(line)))
+        .map(|line| context_metadata_key(trimmed_value(line)))
     {
         if line.is_empty() {
             continue;
@@ -110,7 +111,7 @@ fn is_lane_boundary_terminator(line: &str) -> bool {
 fn is_task_classification_field(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
         matches!(
-            super::child_lane_ownership_phrases::metadata_key(key),
+            context_metadata_key(key),
             "lane type"
                 | "secondary surfaces"
                 | "owner decision"

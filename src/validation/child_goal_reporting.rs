@@ -1,5 +1,8 @@
 use std::collections::BTreeSet;
 
+use super::child_lane_classification_context::{
+    is_child_classification_owner_line, table_owner_value,
+};
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
 use super::child_terminal_handoff::{
@@ -227,6 +230,9 @@ fn invalid_value(value: Option<&str>) -> bool {
     })
 }
 fn is_lane_boundary(line: &str) -> bool {
+    if table_owner_value(line).is_some() {
+        return true;
+    }
     ["lane ownership", "owner decision"]
         .into_iter()
         .any(|field| {
@@ -235,6 +241,7 @@ fn is_lane_boundary(line: &str) -> bool {
         })
 }
 fn is_child_owned(line: &str) -> bool {
-    line.contains("lane ownership: child-owned")
+    is_child_classification_owner_line(line)
+        || line.contains("lane ownership: child-owned")
         || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
 }

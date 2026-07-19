@@ -1,4 +1,5 @@
-use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
+use super::child_lane_classification_markdown::{is_in_non_rendering_block, is_indented_code_line};
+use super::child_lane_classification_owner::is_child_completion_owner;
 
 const HEADER: [&str; 2] = ["task classification", "decision"];
 const FIELDS: [&str; 8] = [
@@ -24,8 +25,7 @@ pub(super) fn complete_child_classification_index(
     let header_index = headers.next()?;
     if header_index >= setup_index
         || headers.next().is_some()
-        || is_inside_fenced_code_block(raw_lines, header_index)
-        || is_inside_html_comment(raw_lines, header_index)
+        || is_in_non_rendering_block(raw_lines, header_index)
         || !is_separator(lines.get(header_index + 1).copied()?)
     {
         return None;
@@ -58,85 +58,6 @@ pub(super) fn complete_child_classification_index(
     }
     owner.filter(|value| is_child_completion_owner(value))?;
     Some(end)
-}
-
-fn is_indented_code_line(line: &str) -> bool {
-    line.starts_with('\t')
-        || line
-            .as_bytes()
-            .iter()
-            .take_while(|byte| **byte == b' ')
-            .count()
-            >= 4
-}
-
-fn is_inside_fenced_code_block(lines: &[&str], index: usize) -> bool {
-    let mut open = None;
-    for line in lines.iter().take(index) {
-        let Some(candidate) = fence_candidate(line) else {
-            continue;
-        };
-        match open {
-            Some((marker, length)) if closes_fence(candidate, marker, length) => open = None,
-            None => open = opens_fence(candidate),
-            _ => {}
-        }
-    }
-    open.is_some()
-}
-
-fn is_inside_html_comment(lines: &[&str], index: usize) -> bool {
-    let mut open = false;
-    for line in lines.iter().take(index) {
-        let mut remaining = *line;
-        loop {
-            if open {
-                let Some(end) = remaining.find("-->") else {
-                    break;
-                };
-                open = false;
-                remaining = &remaining[end + 3..];
-            } else {
-                let Some(start) = remaining.find("<!--") else {
-                    break;
-                };
-                open = true;
-                remaining = &remaining[start + 4..];
-            }
-        }
-    }
-    open
-}
-
-fn fence_candidate(line: &str) -> Option<&str> {
-    let spaces = line
-        .as_bytes()
-        .iter()
-        .take_while(|byte| **byte == b' ')
-        .count();
-    (spaces <= 3 && !line.starts_with('\t')).then(|| &line[spaces..])
-}
-
-fn opens_fence(line: &str) -> Option<(u8, usize)> {
-    let marker = *line.as_bytes().first()?;
-    if !matches!(marker, b'`' | b'~') {
-        return None;
-    }
-    let length = line
-        .as_bytes()
-        .iter()
-        .take_while(|byte| **byte == marker)
-        .count();
-    (length >= 3 && (marker != b'`' || !line[length..].contains('`'))).then_some((marker, length))
-}
-
-fn closes_fence(line: &str, marker: u8, minimum: usize) -> bool {
-    let length = line
-        .as_bytes()
-        .iter()
-        .take_while(|byte| **byte == marker)
-        .count();
-    length >= minimum && line[length..].trim().is_empty()
 }
 
 pub(super) fn table_row(line: &str) -> Option<(&str, &str)> {
@@ -177,40 +98,6 @@ fn is_separator(line: &str) -> bool {
             hyphens.len() >= 3 && hyphens.chars().all(|ch| ch == '-')
         })
     })
-}
-
-fn is_child_completion_owner(value: &str) -> bool {
-    if value.starts_with("current-thread-owned") {
-        return is_current_thread_owner(value);
-    }
-    !is_parent_owned_value(value) && is_child_delegation_owner_decision(value)
-}
-
-fn is_current_thread_owner(value: &str) -> bool {
-    value.starts_with("current-thread-owned")
-        && (value.contains("implementation lane")
-            || value.contains("child implementation")
-            || value.contains("구현"))
-        && !has_owner_denial(value)
-}
-
-fn has_owner_denial(value: &str) -> bool {
-    value
-        .split([';', ',', '—'])
-        .filter(|clause| !clause.contains("parent") && !clause.contains("부모"))
-        .any(|clause| {
-            clause
-                .split(|character: char| !character.is_alphanumeric())
-                .any(|word| {
-                    matches!(
-                        word,
-                        "not" | "no" | "without" | "absent" | "never" | "neither"
-                    )
-                })
-                || ["아님", "아니다", "않음", "않다", "없음", "없다", "소유하지"]
-                    .iter()
-                    .any(|marker| clause.contains(marker))
-        })
 }
 
 #[cfg(test)]

@@ -1,3 +1,6 @@
+use super::child_lane_classification_context::{
+    is_child_classification_owner_line, table_owner_value,
+};
 use super::child_lane_owner_decision::{
     is_affirmative_child_owned_value, is_child_delegation_owner_decision, is_parent_owned_value,
 };
@@ -192,11 +195,13 @@ fn is_exact_child_header_metadata_line(line: &str) -> bool {
     })
 }
 fn is_parent_owned_owner_boundary(line: &str) -> bool {
-    field_value(line, "owner").is_some_and(is_parent_owned_value)
+    table_owner_value(line).is_some_and(is_parent_owned_value)
+        || field_value(line, "owner").is_some_and(is_parent_owned_value)
         || field_value(line, "owner decision").is_some_and(is_parent_owned_value)
 }
 fn is_affirmative_child_owned_line(line: &str) -> bool {
-    has_present_child_owner_metadata(line)
+    is_child_classification_owner_line(line)
+        || has_present_child_owner_metadata(line)
         || field_value(line, "owner").is_some_and(is_affirmative_child_owned_value)
         || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
         || field_value(line, "child-owned")
