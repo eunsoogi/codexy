@@ -148,6 +148,8 @@ fn type_seven_tag_does_not_interrupt_a_paragraph() -> TestResult {
         "1234567890. paragraph",
         "paragraph\n2. continuation",
         "paragraph\n1.",
+        "paragraph\n+",
+        "paragraph\n*",
         "paragraph\n    lazy continuation",
     ] {
         assert_allowed(&setup_after(&format!("{paragraph}\n<Warning>\n{TABLE}")))?;
@@ -163,6 +165,8 @@ fn type_seven_tag_after_block_boundary_starts_html_block() -> TestResult {
         ">> paragraph",
         ">>paragraph",
         "1. paragraph",
+        "01. paragraph", "000000001. paragraph",
+        "01) paragraph", "000000001) paragraph",
         "***",
         "___",
         "#",

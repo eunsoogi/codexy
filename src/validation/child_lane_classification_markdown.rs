@@ -198,13 +198,14 @@ fn starts_container_block(line: &str, paragraph_open: bool) -> bool {
     }
     let marker_end = line.find(char::is_whitespace).unwrap_or(line.len());
     let marker = &line[..marker_end];
-    matches!(marker, "-" | "+" | "*")
+    let has_list_content = !line[marker_end..].trim().is_empty();
+    (matches!(marker, "-" | "+" | "*") && has_list_content)
         || marker.strip_suffix(['.', ')']).is_some_and(|number| {
             !number.is_empty()
                 && number.len() <= 9
                 && number.chars().all(|ch| ch.is_ascii_digit())
-                && !line[marker_end..].trim().is_empty()
-                && (!paragraph_open || number == "1")
+                && has_list_content
+                && (!paragraph_open || number.parse() == Ok(1))
         })
 }
 
