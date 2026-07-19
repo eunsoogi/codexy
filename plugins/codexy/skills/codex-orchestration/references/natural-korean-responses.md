@@ -7,19 +7,22 @@ in their own evidence surfaces while making the main reply useful to a general u
 ## User Summary
 
 - MUST lead with the outcome, problem, or next action in natural Korean word order.
+- The user summary MUST use context-appropriate honorific tone without sounding stiff or ceremonial.
 - MUST prefer short sentences, ordinary connective phrases, and context-specific
   Korean over literal translations of English workflow nouns.
-- MUST NOT expose internal workflow vocabulary such as `intake receipt`,
-  `terminal receipt`, `handoff`, `packaged`, `gate`, or `lane` when it does not
-  change the user's decision or next action.
-- When an internal term is essential, MUST explain it briefly in plain Korean or
-  replace it with the concrete event it represents.
+- The user summary MUST NOT expose unnecessary internal workflow vocabulary.
+- Internal workflow vocabulary is unnecessary when it does not change the user's
+  decision or next action.
+- Internal workflow vocabulary includes `intake receipt`, `terminal receipt`,
+  `handoff`, `packaged`, `gate`, and `lane`.
+- Essential internal terms MUST receive a brief explanation in plain Korean or
+  be replaced with the concrete event they represent.
 - MUST preserve the strength of mandatory source rules without mechanically
   repeating `MUST` or `MUST NOT` in an ordinary Korean conversation.
 
 ## Machine-Readable Evidence
 
-- MUST keep machine-readable evidence complete and unchanged.
+- Machine-readable evidence MUST remain complete and unchanged.
 - MUST keep receipts, exact commands, structured logs, review records, and other
   internal proof separate from the main user summary.
 - MUST place technical evidence under a clearly separate evidence section or in
@@ -27,8 +30,8 @@ in their own evidence surfaces while making the main reply useful to a general u
 
 ## Protected Technical Text
 
-- MUST preserve code, commands, paths, identifiers, issue/PR numbers, product names,
-  and source-level `MUST/MUST NOT` semantics.
+- MUST preserve code, commands, paths, identifiers, issue/PR numbers, and product names.
+- Protected source semantics include `MUST/MUST NOT` requirements.
 - MUST NOT translate or paraphrase protected technical text when doing so could
   change its meaning or prevent the user from copying it exactly.
 
