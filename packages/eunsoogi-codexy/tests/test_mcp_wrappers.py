@@ -145,6 +145,28 @@ class McpWrapperTests(unittest.TestCase):
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertEqual(completed.stdout.strip(), "override --stdio")
 
+    def test_runtime_directory_override_honors_platform_override(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            uname = bin_dir / "uname"
+            uname.write_text('#!/bin/sh\n[ "$1" = "-s" ] && echo Darwin || echo arm64\n')
+            uname.chmod(0o755)
+            for server in ("lsp", "codegraph"):
+                mcp = root / "mcp"
+                mcp.mkdir(exist_ok=True)
+                wrapper = mcp / f"codexy-mcp-{server}"
+                shutil.copyfile(self.wrapper(server), wrapper)
+                wrapper.chmod(0o755)
+                override = root / "override" / f"codexy-mcp-{server}-linux-x86_64.bin"
+                override.parent.mkdir(exist_ok=True)
+                override.write_text('#!/bin/sh\necho platform-override "$@"\n')
+                override.chmod(0o755)
+                completed = subprocess.run([wrapper, "--stdio"], env={"PATH": str(bin_dir), "UV_OFFLINE": "1", "CODEXY_RUNTIME_DIR": str(override.parent), "CODEXY_RUNTIME_PLATFORM": "linux-x86_64"}, capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(completed.stdout.strip(), "platform-override --stdio")
+
     def test_runtime_directory_override_must_be_absolute(self) -> None:
         for server in ("lsp", "codegraph"):
             completed = subprocess.run([self.wrapper(server)], env={"PATH": "", "CODEXY_RUNTIME_DIR": "relative"}, capture_output=True, text=True)
