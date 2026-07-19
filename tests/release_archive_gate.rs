@@ -6,7 +6,7 @@ use tempfile::tempdir;
 mod release_archive_support;
 use release_archive_support::{
     assert_archive_scanner_contract, assert_runtime_workflow_contract, complete_plugin_fixture,
-    create_archive, make_executable,
+    complete_plugin_fixture_with_stubbed_runtime, create_archive, make_executable,
 };
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
@@ -15,6 +15,12 @@ fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::pr
         .arg(plugin_root)
         .output()
         .expect("archive gate should start")
+}
+
+fn assert_gate_error(archive: &std::path::Path, plugin_root: &std::path::Path, expected: &str) {
+    let output = run_gate(archive, plugin_root);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains(expected));
 }
 
 #[test]
@@ -41,11 +47,20 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
     assert_runtime_workflow_contract(&workflow);
 }
+fn complete_archive_fixture(
+    name: &str,
+) -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let root = tempdir().expect("tempdir");
+    let plugin_root =
+        complete_plugin_fixture_with_stubbed_runtime(root.path()).expect("complete plugin fixture");
+    let archive = root.path().join(format!("{name}.tar.gz"));
+    (root, plugin_root, archive)
+}
+
 #[test]
 fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     let root = tempdir().expect("tempdir");
     let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
-    let runtime = plugin_root.join("runtime");
     let archive = root.path().join("valid.tar.gz");
     create_archive(root.path(), &archive).expect("archive fixture");
     let output = run_gate(&archive, &plugin_root);
@@ -54,100 +69,93 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
         "valid fixture failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+#[test]
+fn archive_gate_rejects_a_non_executable_wrapper() {
+    use std::os::unix::fs::PermissionsExt;
 
-        let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
-        let mut permissions = std::fs::metadata(&wrapper)
-            .expect("wrapper metadata")
-            .permissions();
-        permissions.set_mode(0o644);
-        std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
-        let non_executable_wrapper_archive = root.path().join("non-executable-wrapper.tar.gz");
-        create_archive(root.path(), &non_executable_wrapper_archive).expect("archive fixture");
-        let non_executable_wrapper_output = run_gate(&non_executable_wrapper_archive, &plugin_root);
-        assert!(!non_executable_wrapper_output.status.success());
-        assert!(
-            String::from_utf8_lossy(&non_executable_wrapper_output.stderr)
-                .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp")
-        );
-        make_executable(&wrapper).expect("restore executable wrapper");
-    }
-
-    std::fs::write(runtime.join("debug.log"), "debug\n").expect("runtime extra fixture");
-    let extra_runtime_archive = root.path().join("extra-runtime.tar.gz");
-    create_archive(root.path(), &extra_runtime_archive).expect("archive fixture");
-    let extra_runtime_output = run_gate(&extra_runtime_archive, &plugin_root);
-    assert!(!extra_runtime_output.status.success());
+    let (root, plugin_root, archive) = complete_archive_fixture("non-executable-wrapper");
+    let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
+    let mut permissions = std::fs::metadata(&wrapper)
+        .expect("wrapper metadata")
+        .permissions();
+    permissions.set_mode(0o644);
+    std::fs::set_permissions(&wrapper, permissions).expect("non-executable wrapper fixture");
+    create_archive(root.path(), &archive).expect("archive fixture");
+    let output = run_gate(&archive, &plugin_root);
+    assert!(!output.status.success());
     assert!(
-        String::from_utf8_lossy(&extra_runtime_output.stderr)
+        String::from_utf8_lossy(&output.stderr)
+            .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp")
+    );
+}
+
+#[test]
+fn archive_gate_rejects_an_unexpected_runtime_artifact() {
+    let (root, plugin_root, archive) = complete_archive_fixture("extra-runtime");
+    let runtime = plugin_root.join("runtime");
+    std::fs::write(runtime.join("debug.log"), "debug\n").expect("runtime extra fixture");
+    create_archive(root.path(), &archive).expect("archive fixture");
+    let output = run_gate(&archive, &plugin_root);
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
             .contains("unexpected runtime artifact: runtime/debug.log")
     );
-    std::fs::remove_file(runtime.join("debug.log")).expect("remove runtime extra");
+}
 
+#[test]
+fn archive_gate_rejects_a_missing_runtime() {
+    let (root, plugin_root, archive) = complete_archive_fixture("missing-runtime");
+    let runtime = plugin_root.join("runtime");
     let missing_runtime = runtime.join("codexy-mcp-lsp-linux-x86_64.bin");
-    let missing_bytes = std::fs::read(&missing_runtime).expect("read runtime");
     std::fs::remove_file(&missing_runtime).expect("remove runtime");
-    let missing_archive = root.path().join("missing-runtime.tar.gz");
-    create_archive(root.path(), &missing_archive).expect("archive fixture");
-    assert!(!run_gate(&missing_archive, &plugin_root).status.success());
-    std::fs::write(&missing_runtime, missing_bytes).expect("restore runtime");
-    make_executable(&missing_runtime).expect("restore runtime permissions");
+    create_archive(root.path(), &archive).expect("archive fixture");
+    assert_gate_error(&archive, &plugin_root, "bundled MCP runtime missing");
+}
 
-    let malformed_bytes = std::fs::read(&missing_runtime).expect("read runtime again");
+#[test]
+fn archive_gate_rejects_a_malformed_runtime() {
+    let (root, plugin_root, archive) = complete_archive_fixture("malformed-runtime");
+    let missing_runtime = plugin_root
+        .join("runtime")
+        .join("codexy-mcp-lsp-linux-x86_64.bin");
     std::fs::write(&missing_runtime, b"not-a-binary").expect("malform runtime");
-    let malformed_archive = root.path().join("malformed-runtime.tar.gz");
-    create_archive(root.path(), &malformed_archive).expect("archive fixture");
-    assert!(!run_gate(&malformed_archive, &plugin_root).status.success());
-    std::fs::write(&missing_runtime, malformed_bytes).expect("restore valid runtime");
-    make_executable(&missing_runtime).expect("restore valid runtime permissions");
+    make_executable(&missing_runtime).expect("runtime permissions");
+    create_archive(root.path(), &archive).expect("archive fixture");
+    assert_gate_error(&archive, &plugin_root, "invalid binary format");
+}
 
+#[test]
+fn archive_gate_rejects_an_access_key() {
+    let (root, plugin_root, archive) = complete_archive_fixture("secret");
     std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
         .expect("secret fixture");
-    let secret_archive = root.path().join("secret.tar.gz");
-    create_archive(root.path(), &secret_archive).expect("archive fixture");
-    assert!(!run_gate(&secret_archive, &plugin_root).status.success());
-    std::fs::remove_file(plugin_root.join("README.md")).expect("remove visible secret");
+    create_archive(root.path(), &archive).expect("archive fixture");
+    assert_gate_error(
+        &archive,
+        &plugin_root,
+        "archive contains a secret or local path",
+    );
+}
 
+#[test]
+fn archive_gate_rejects_an_ignored_secret() {
+    let (root, plugin_root, archive) = complete_archive_fixture("ignored-secret");
     std::fs::write(plugin_root.join(".rgignore"), "hidden-secret.txt\n").expect("ignore fixture");
     std::fs::write(
         plugin_root.join("hidden-secret.txt"),
         "AKIA1234567890ABCDEF\n",
     )
     .expect("ignored secret fixture");
-    let ignored_secret_archive = root.path().join("ignored-secret.tar.gz");
-    create_archive(root.path(), &ignored_secret_archive).expect("archive fixture");
-    assert!(
-        !run_gate(&ignored_secret_archive, &plugin_root)
-            .status
-            .success()
+    create_archive(root.path(), &archive).expect("archive fixture");
+    assert_gate_error(
+        &archive,
+        &plugin_root,
+        "archive contains a secret or local path",
     );
-    std::fs::remove_file(plugin_root.join(".rgignore")).expect("remove ignore fixture");
-    std::fs::remove_file(plugin_root.join("hidden-secret.txt")).expect("remove ignored secret");
-
-    for (name, pem) in [
-        ("generic-private-key.pem", "-----BEGIN PRIVATE KEY-----\n"),
-        (
-            "encrypted-private-key.pem",
-            "-----BEGIN ENCRYPTED PRIVATE KEY-----\n",
-        ),
-    ] {
-        let pem_path = plugin_root.join(name);
-        std::fs::write(&pem_path, pem).expect("private-key fixture");
-        let pem_archive = root.path().join(format!("{name}.tar.gz"));
-        create_archive(root.path(), &pem_archive).expect("archive fixture");
-        let pem_output = run_gate(&pem_archive, &plugin_root);
-        assert!(!pem_output.status.success());
-        assert!(
-            String::from_utf8_lossy(&pem_output.stderr)
-                .contains("archive contains a secret or local path"),
-            "private-key fixture was rejected for the wrong reason: {}",
-            String::from_utf8_lossy(&pem_output.stderr)
-        );
-        std::fs::remove_file(pem_path).expect("remove private-key fixture");
-    }
 }
 
 #[test]

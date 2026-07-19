@@ -1,6 +1,6 @@
-mod support;
+use crate::support;
 
-use support::copy_dir;
+use support::routing_validator::{assert_accepted, assert_policy_rejected as assert_rejected};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -185,47 +185,4 @@ fn routing_skill() -> TestResult<String> {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
     )?)
-}
-
-fn assert_rejected(skill: String, expected: &str) -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    std::fs::write(path, &skill)?;
-
-    let output = support::validator_routing(&plugin_root)?;
-    assert!(
-        !output.status.success(),
-        "routing bypass unexpectedly passed:\n{skill}"
-    );
-    support::assert_structured_literals(
-        &String::from_utf8_lossy(&output.stderr),
-        "routing rejection diagnostic",
-        &[expected],
-    );
-    Ok(())
-}
-
-fn assert_accepted(skill: String) -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    std::fs::write(
-        plugin_root.join("skills/codex-orchestration/SKILL.md"),
-        skill,
-    )?;
-    let output = support::validator_routing(&plugin_root)?;
-    assert!(
-        output.status.success(),
-        "valid routing policy rejected:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
 }

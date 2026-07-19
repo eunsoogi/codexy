@@ -1,6 +1,6 @@
-mod support;
+use crate::support;
 
-use support::{TestResult, copy_plugin_fixture, stderr, validator};
+use support::{TestResult, copy_plugin_fixture, stderr, validator_instruction_policy};
 
 #[test]
 fn validator_cli_rejects_missing_live_worktree_reservation_preflight() -> TestResult {
@@ -22,7 +22,7 @@ fn validator_cli_rejects_missing_live_worktree_reservation_preflight() -> TestRe
             ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     let stderr = stderr(&output);
     assert!(stderr.contains("live worktree reservation preflight"));
@@ -46,7 +46,7 @@ fn validator_cli_rejects_exception_that_weakens_reservation_preflight() -> TestR
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     let stderr = stderr(&output);
     assert!(stderr.contains("must not create or fork the new thread"));
@@ -68,7 +68,7 @@ fn validator_cli_rejects_comma_prefixed_exception_that_weakens_reservation_prefl
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     Ok(())
 }
@@ -87,7 +87,7 @@ fn validator_cli_rejects_semicolon_prefixed_exception_that_weakens_reservation_p
             "MUST NOT create or fork the new thread; unless the allocator appears healthy, then retry the same path",
         ),
     )?;
-    assert!(!validator(&plugin_root, "--check")?.status.success());
+    assert!(!validator_instruction_policy(&plugin_root)?.status.success());
     Ok(())
 }
 
@@ -106,7 +106,7 @@ fn validator_cli_rejects_historical_example_that_retains_reservation_phrase() ->
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     let stderr = stderr(&output);
     assert!(stderr.contains("must not create or fork the new thread"));
@@ -128,7 +128,7 @@ fn validator_cli_rejects_numbered_historical_example_that_retains_reservation_ph
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     Ok(())
 }
@@ -147,7 +147,7 @@ fn validator_cli_accepts_current_contract_after_historical_examples_heading() ->
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy(&plugin_root)?;
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
@@ -165,7 +165,7 @@ fn validator_cli_accepts_contract_after_unrelated_not_required_sentence() -> Tes
             "A retry explanation is not required. The parent MUST NOT create or fork the new thread, retry the same path",
         ),
     )?;
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy(&plugin_root)?;
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }

@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::{Command, Output};
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 

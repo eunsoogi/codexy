@@ -1,7 +1,5 @@
 use std::path::Path;
 
-use super::copy_dir;
-
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 pub(crate) fn assert_rejected(policy: &str, expected: &str) -> TestResult {
@@ -9,26 +7,18 @@ pub(crate) fn assert_rejected(policy: &str, expected: &str) -> TestResult {
 }
 
 pub(crate) fn assert_policy_rejected(skill: String, expected: &str) -> TestResult {
-    let output = validate(skill)?;
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    let errors = validate(skill)?;
+    assert!(!errors.is_empty(), "routing bypass unexpectedly passed");
     assert!(
-        !output.status.success(),
-        "routing bypass unexpectedly passed"
-    );
-    assert!(
-        stderr.contains(expected),
-        "routing rejection must name {expected}: {stderr}"
+        errors.iter().any(|error| error.contains(expected)),
+        "routing rejection must name {expected}: {errors:#?}"
     );
     Ok(())
 }
 
 pub(crate) fn assert_accepted(skill: String) -> TestResult {
-    let output = validate(skill)?;
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let errors = validate(skill)?;
+    assert!(errors.is_empty(), "{errors:#?}");
     Ok(())
 }
 
@@ -44,16 +34,9 @@ pub(crate) fn duplicate_recipient_section(policy: &str) -> TestResult<String> {
     ))
 }
 
-pub(crate) fn validate(skill: String) -> TestResult<std::process::Output> {
+pub(crate) fn validate(skill: String) -> TestResult<Vec<String>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_dir(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    std::fs::write(
-        plugin_root.join("skills/codex-orchestration/SKILL.md"),
-        skill,
-    )?;
-    super::validator_routing(&plugin_root)
+    let path = temp.path().join("SKILL.md");
+    std::fs::write(&path, skill)?;
+    Ok(codexy_runtime::validation::orchestration_routing_diagnostics(&path)?)
 }

@@ -2,7 +2,7 @@ use std::process::{Command, Output};
 use std::time::{Duration, Instant};
 
 #[allow(unused)]
-mod support;
+use crate::support;
 
 #[test]
 fn validator_cli_bounds_readiness_context_execution() -> Result<(), Box<dyn std::error::Error>> {

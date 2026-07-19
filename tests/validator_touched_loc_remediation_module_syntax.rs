@@ -1,4 +1,4 @@
-mod support;
+use crate::support;
 
 use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
 

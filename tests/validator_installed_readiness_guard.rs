@@ -1,7 +1,7 @@
 use std::process::Command;
 
 #[allow(unused)]
-mod support;
+use crate::support;
 
 #[test]
 fn installed_readiness_guard_validates_merge_bodies() -> Result<(), Box<dyn std::error::Error>> {

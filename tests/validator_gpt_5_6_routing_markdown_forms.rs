@@ -1,4 +1,4 @@
-mod support;
+use crate::support;
 
 use support::routing_validator::{
     TestResult, assert_accepted, assert_policy_rejected, duplicate_recipient_section,

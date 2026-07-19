@@ -8,7 +8,7 @@ mod structured_contract;
 mod structured_contract_artifacts;
 #[path = "structured_contract_rules/mod.rs"]
 mod structured_contract_rules;
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -170,7 +170,7 @@ fn validator_rejects_legacy_root_goal_and_polling_mandates() -> TestResult {
             "The root/orchestrator MUST retain a persistent long-running goal",
         ),
     )?;
-    let missing_guard = support::validator(&plugin_root, "--check")?;
+    let missing_guard = support::validator_instruction_policy(&plugin_root)?;
     assert!(!missing_guard.status.success());
     assert!(support::stderr(&missing_guard).contains("persistent long-running goal"));
 
@@ -178,7 +178,7 @@ fn validator_rejects_legacy_root_goal_and_polling_mandates() -> TestResult {
         &path,
         format!("{original}\n- MUST keep polling and keep the goal active.\n"),
     )?;
-    let legacy_mandate = support::validator(&plugin_root, "--check")?;
+    let legacy_mandate = support::validator_instruction_policy(&plugin_root)?;
     assert!(!legacy_mandate.status.success());
     assert!(support::stderr(&legacy_mandate).contains("autonomous polling"));
     Ok(())
@@ -198,7 +198,7 @@ fn validator_ignores_negated_and_historical_legacy_polling_examples() -> TestRes
         ),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(output.status.success(), "{}", support::stderr(&output));
     Ok(())
 }

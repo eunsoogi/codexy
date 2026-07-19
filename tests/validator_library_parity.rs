@@ -1,7 +1,10 @@
-mod support;
+use crate::support;
 
 use std::path::Path;
 use std::process::{Command, Output};
+
+#[path = "validator_library_parity/high_cost_adapters.rs"]
+mod high_cost_adapters;
 
 #[test]
 fn in_process_validator_matches_cli_success_output_for_migrated_modes()
@@ -84,7 +87,7 @@ fn plugin_fixture_mutations_do_not_leak_between_copy_on_write_overlays()
 fn shared_fixture_copy_routes_files_through_the_copy_on_write_overlay()
 -> Result<(), Box<dyn std::error::Error>> {
     let source = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/wrapper.rs"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/wrapper_copy.rs"),
     )?;
     let copy_dir = source
         .split("pub(crate) fn copy_dir")
@@ -105,39 +108,6 @@ fn shared_fixture_copy_routes_files_through_the_copy_on_write_overlay()
         return Err(
             "shared fixture copying must not fall back to full copies on the hot path".into(),
         );
-    }
-    Ok(())
-}
-
-#[test]
-fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
--> Result<(), Box<dyn std::error::Error>> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for relative in [
-        "tests/validator_instruction_policy.rs",
-        "tests/validator_instruction_policy_passive.rs",
-        "tests/validator_gpt_5_6_routing_adversarial.rs",
-        "tests/validator_gpt_5_6_routing_contextual.rs",
-        "tests/validator_sentinel_scope_policy.rs",
-        "tests/validator_runtime_heartbeat_contract.rs",
-    ] {
-        let source = std::fs::read_to_string(root.join(relative))?;
-        let adapter = if relative.contains("routing_contextual") {
-            "validator_routing"
-        } else {
-            "support::validator"
-        };
-        support::assert_structured_literals(
-            &source,
-            "high-cost validator library adapter",
-            &[adapter],
-        );
-        if source.contains("CARGO_BIN_EXE_codexy-validate") {
-            return Err(format!(
-                "{relative} must retain CLI coverage in parity tests instead of spawning it per fixture"
-            )
-            .into());
-        }
     }
     Ok(())
 }

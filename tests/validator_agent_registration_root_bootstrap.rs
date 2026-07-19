@@ -3,7 +3,7 @@ use std::process::Command;
 
 #[path = "structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
-mod support;
+use crate::support;
 
 use structured_contract_artifacts::TextShape;
 

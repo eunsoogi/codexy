@@ -8,7 +8,7 @@ use tempfile::{TempDir, tempdir};
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::{complete_plugin_fixture, create_archive};
+use release_archive_support::{complete_plugin_fixture_with_stubbed_runtime, create_archive};
 
 const AKIA_SECRET: &str = "AKIA1234567890ABCDEF";
 const ASIA_SECRET: &str = "ASIA1234567890ABCDEF";
@@ -26,7 +26,8 @@ fn run_gate(archive: &Path, plugin_root: &Path, path: Option<&Path>) -> Output {
 
 fn secret_archive(secret: &str) -> (TempDir, PathBuf, PathBuf) {
     let root = tempdir().expect("tempdir");
-    let plugin_root = complete_plugin_fixture(root.path()).expect("complete plugin fixture");
+    let plugin_root =
+        complete_plugin_fixture_with_stubbed_runtime(root.path()).expect("complete plugin fixture");
     fs::write(
         plugin_root.join("secret.txt"),
         format!("{MATCHED_LINE}: {secret}\n"),

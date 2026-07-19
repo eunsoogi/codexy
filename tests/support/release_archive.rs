@@ -29,6 +29,7 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
             "! -name '*.md'",
             "! -name '*.txt'",
             "command -v python3",
+            "inspect-mcp-entrypoints",
             "rg or grep is required",
             "hygiene scan failed",
             "duplicate archive entries",
@@ -172,6 +173,19 @@ fn reap_archive_process(child: &mut Child) {
 pub(crate) fn complete_plugin_fixture(
     root: &std::path::Path,
 ) -> std::io::Result<std::path::PathBuf> {
+    complete_plugin_fixture_with_runtime(root, true)
+}
+
+pub(crate) fn complete_plugin_fixture_with_stubbed_runtime(
+    root: &std::path::Path,
+) -> std::io::Result<std::path::PathBuf> {
+    complete_plugin_fixture_with_runtime(root, false)
+}
+
+fn complete_plugin_fixture_with_runtime(
+    root: &std::path::Path,
+    native_host_runtime: bool,
+) -> std::io::Result<std::path::PathBuf> {
     let plugin_root = root.join("plugins/codexy");
     copy_tree(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
@@ -179,23 +193,6 @@ pub(crate) fn complete_plugin_fixture(
     )?;
     let runtime = plugin_root.join("runtime");
     std::fs::create_dir_all(&runtime)?;
-    let build = Command::new("cargo")
-        .args([
-            "build",
-            "--offline",
-            "--release",
-            "--bin",
-            "codexy-mcp-lsp",
-            "--bin",
-            "codexy-mcp-codegraph",
-        ])
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .status()?;
-    if !build.success() {
-        return Err(std::io::Error::other(format!(
-            "release runtime build failed: {build}"
-        )));
-    }
     let host_platform = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => "darwin-arm64",
         ("linux", "x86_64") => "linux-x86_64",
@@ -206,18 +203,13 @@ pub(crate) fn complete_plugin_fixture(
         }
     };
     for (server, binary) in [
-        ("lsp", "codexy-mcp-lsp"),
-        ("codegraph", "codexy-mcp-codegraph"),
+        ("lsp", env!("CARGO_BIN_EXE_codexy-mcp-lsp")),
+        ("codegraph", env!("CARGO_BIN_EXE_codexy-mcp-codegraph")),
     ] {
         for platform in ["darwin-arm64", "linux-x86_64"] {
             let path = runtime.join(format!("codexy-mcp-{server}-{platform}.bin"));
-            if platform == host_platform {
-                std::fs::copy(
-                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                        .join("target/release")
-                        .join(binary),
-                    &path,
-                )?;
+            if native_host_runtime && platform == host_platform {
+                std::fs::copy(binary, &path)?;
             } else {
                 let header = if platform == "darwin-arm64" {
                     vec![0xcf, 0xfa, 0xed, 0xfe]
