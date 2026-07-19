@@ -9,16 +9,14 @@ pub(super) fn check_wrapper(path: &Path, server: &str, version: &str) -> Result<
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("reading {}", display_relative(path)))?;
     let commands = commands(&text);
-    let active = commands
+    let has_uvx_override = commands
         .iter()
         .flatten()
-        .map(|word| word.text.as_str())
-        .collect::<Vec<_>>()
-        .join(" ");
+        .any(|word| matches!(word.text.as_str(), "$CODEXY_UVX_PATH") || word.text.starts_with("CODEXY_UVX_PATH="));
     if !commands
         .iter()
         .any(|command| has_sequence(command, &["command", "-v", "uvx"]))
-        || !active.contains("CODEXY_UVX_PATH")
+        || !has_uvx_override
     {
         bail!("{} must locate uvx safely", display_relative(path));
     }
@@ -122,6 +120,7 @@ exec uvx --no-config --isolated --default-index https://pypi.org/simple \
     fn rejects_version_prefix_and_commented_execution_decoys() -> anyhow::Result<()> {
         for invalid in [
             VALID.replace("1.2.1", "1.2.10"),
+            VALID.replace("1.2.1", "1.2\\.1"),
             VALID
                 .lines()
                 .map(|line| {
@@ -154,6 +153,14 @@ exec uvx --no-config --isolated --default-index https://pypi.org/simple \
             std::fs::write(temp.path(), invalid)?;
             assert!(check_wrapper(temp.path(), "lsp", "1.2.1").is_err());
         }
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_substring_only_uvx_override_variables() -> anyhow::Result<()> {
+        let temp = tempfile::NamedTempFile::new()?;
+        std::fs::write(temp.path(), VALID.replace("CODEXY_UVX_PATH", "NOT_CODEXY_UVX_PATH"))?;
+        assert!(check_wrapper(temp.path(), "lsp", "1.2.1").is_err());
         Ok(())
     }
 

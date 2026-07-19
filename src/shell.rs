@@ -19,7 +19,7 @@ pub(crate) fn commands(text: &str) -> Vec<Vec<Word>> {
             if character == delimiter {
                 quote = None;
             } else if character == '\\' && delimiter == '"' {
-                append_escaped(&mut chars, entry);
+                append_double_quoted_escape(&mut chars, entry);
             } else {
                 entry.2.push(character);
             }
@@ -128,6 +128,21 @@ fn append_escaped(
 ) {
     if let Some((index, escaped)) = chars.next() {
         word.1 = index + escaped.len_utf8();
+        if escaped != '\n' {
+            word.2.push(escaped);
+        }
+    }
+}
+
+fn append_double_quoted_escape(
+    chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
+    word: &mut (usize, usize, String),
+) {
+    if let Some((index, escaped)) = chars.next() {
+        word.1 = index + escaped.len_utf8();
+        if escaped != '\n' && !matches!(escaped, '$' | '`' | '"' | '\\') {
+            word.2.push('\\');
+        }
         if escaped != '\n' {
             word.2.push(escaped);
         }

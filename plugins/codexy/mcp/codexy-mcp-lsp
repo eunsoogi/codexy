@@ -7,6 +7,8 @@ bundled_platforms="darwin-arm64 linux-x86_64"
 case "$(uname -s)" in Darwin) runtime_os=darwin ;; Linux) runtime_os=linux ;; *) runtime_os=unknown ;; esac
 case "$(uname -m)" in arm64|aarch64) runtime_arch=arm64 ;; x86_64|amd64|AMD64) runtime_arch=x86_64 ;; *) runtime_arch=unknown ;; esac
 runtime_platform=${CODEXY_RUNTIME_PLATFORM:-$runtime_os-$runtime_arch}
+package_sha256=${CODEXY_RUNTIME_PACKAGE_SHA256:-}
+case "$package_sha256" in *[A-Z]*) package_sha256=$(printf '%s' "$package_sha256" | tr '[:upper:]' '[:lower:]') ;; esac
 bundled_runtime="$plugin_root/runtime/codexy-mcp-lsp-${runtime_platform}.bin"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   case "$CODEXY_RUNTIME_DIR" in /*) ;; *) echo "CODEXY_RUNTIME_DIR must be absolute" >&2; exit 127 ;; esac
@@ -38,10 +40,10 @@ if [ -n "$cache_root" ] && command -v sed >/dev/null 2>&1 && command -v head >/d
 ${CODEXY_RUNTIME_PACKAGE_PATH:-}
 ${CODEXY_RUNTIME_PACKAGE_URL:-}
 ${CODEXY_RUNTIME_ARTIFACTS_API_URL:-}
-${CODEXY_RUNTIME_PACKAGE_SHA256:-}"
+${package_sha256}"
     else
       cache_source="package-default
-${CODEXY_RUNTIME_PACKAGE_SHA256:-}"
+${package_sha256}"
     fi
     cache_hash=""
     if command -v sha256sum >/dev/null 2>&1; then
