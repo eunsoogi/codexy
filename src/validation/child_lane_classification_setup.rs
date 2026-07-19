@@ -6,6 +6,7 @@ use super::child_lane_classification_table::{
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
+    let raw_lines = evidence.lines().collect::<Vec<_>>();
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
     let setup_clauses = lines
         .iter()
@@ -21,7 +22,8 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         return Vec::new();
     }
     if setup_clauses.iter().any(|(setup_index, setup_clause)| {
-        formal_child_classification_complete_index_before(&lines, *setup_index).is_none()
+        formal_child_classification_complete_index_before(&raw_lines, &lines, *setup_index)
+            .is_none()
             || line_claims_setup_before_classification(setup_clause)
     }) {
         return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed".to_owned()];
@@ -29,12 +31,13 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     Vec::new()
 }
 fn formal_child_classification_complete_index_before(
+    raw_lines: &[&str],
     lines: &[&str],
     setup_index: usize,
 ) -> Option<usize> {
     let lane_start = current_lane_start(lines, setup_index);
     let lane_end = current_lane_end(lines, setup_index);
-    complete_child_classification_index(lines, lane_start, setup_index, lane_end)
+    complete_child_classification_index(raw_lines, lines, lane_start, setup_index, lane_end)
 }
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     let line = trimmed_value(line);

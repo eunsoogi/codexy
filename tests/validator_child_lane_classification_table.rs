@@ -45,6 +45,12 @@ const ENGLISH_TABLE: &str = r#"| Task classification | Decision |
 #[test]
 fn validator_allows_ordered_english_and_korean_classification_tables() -> TestResult {
     assert_allowed(ENGLISH_TABLE)?;
+    let shallow_indent = ENGLISH_TABLE
+        .lines()
+        .map(|line| format!("   {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_allowed(&shallow_indent)?;
     assert_allowed(
         r#"| Task classification | Decision |
 | --- | --- |
@@ -93,6 +99,22 @@ fn validator_rejects_duplicate_table_after_same_lane_setup() -> TestResult {
 #[test]
 fn validator_rejects_non_gfm_separator_cells() -> TestResult {
     assert_rejected(&ENGLISH_TABLE.replace("| --- | --- |", "| ::: | ::: |"))
+}
+
+#[test]
+fn validator_rejects_fenced_code_block_table() -> TestResult {
+    assert_rejected(&format!("```text\n{ENGLISH_TABLE}\n```"))?;
+    assert_rejected(&format!("   ~~~\n{ENGLISH_TABLE}\n   ~~~"))
+}
+
+#[test]
+fn validator_rejects_indented_code_block_table() -> TestResult {
+    let indented = ENGLISH_TABLE
+        .lines()
+        .map(|line| format!("    {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_rejected(&indented)
 }
 
 #[test]

@@ -13,6 +13,7 @@ const FIELDS: [&str; 8] = [
 ];
 
 pub(super) fn complete_child_classification_index(
+    raw_lines: &[&str],
     lines: &[&str],
     lane_start: usize,
     setup_index: usize,
@@ -23,6 +24,7 @@ pub(super) fn complete_child_classification_index(
     let header_index = headers.next()?;
     if header_index >= setup_index
         || headers.next().is_some()
+        || is_inside_fenced_code_block(raw_lines, header_index)
         || !is_separator(lines.get(header_index + 1).copied()?)
     {
         return None;
@@ -39,6 +41,13 @@ pub(super) fn complete_child_classification_index(
         }
     }
     let end = header_index + FIELDS.len() + 1;
+    if (header_index..=end).any(|index| {
+        raw_lines
+            .get(index)
+            .is_none_or(|line| is_indented_code_line(line))
+    }) {
+        return None;
+    }
     if lines
         .get(end + 1)
         .and_then(|line| table_row(line))
@@ -48,6 +57,62 @@ pub(super) fn complete_child_classification_index(
     }
     owner.filter(|value| is_child_completion_owner(value))?;
     Some(end)
+}
+
+fn is_indented_code_line(line: &str) -> bool {
+    line.starts_with('\t')
+        || line
+            .as_bytes()
+            .iter()
+            .take_while(|byte| **byte == b' ')
+            .count()
+            >= 4
+}
+
+fn is_inside_fenced_code_block(lines: &[&str], index: usize) -> bool {
+    let mut open = None;
+    for line in lines.iter().take(index) {
+        let Some(candidate) = fence_candidate(line) else {
+            continue;
+        };
+        match open {
+            Some((marker, length)) if closes_fence(candidate, marker, length) => open = None,
+            None => open = opens_fence(candidate),
+            _ => {}
+        }
+    }
+    open.is_some()
+}
+
+fn fence_candidate(line: &str) -> Option<&str> {
+    let spaces = line
+        .as_bytes()
+        .iter()
+        .take_while(|byte| **byte == b' ')
+        .count();
+    (spaces <= 3 && !line.starts_with('\t')).then(|| &line[spaces..])
+}
+
+fn opens_fence(line: &str) -> Option<(u8, usize)> {
+    let marker = *line.as_bytes().first()?;
+    if !matches!(marker, b'`' | b'~') {
+        return None;
+    }
+    let length = line
+        .as_bytes()
+        .iter()
+        .take_while(|byte| **byte == marker)
+        .count();
+    (length >= 3 && (marker != b'`' || !line[length..].contains('`'))).then_some((marker, length))
+}
+
+fn closes_fence(line: &str, marker: u8, minimum: usize) -> bool {
+    let length = line
+        .as_bytes()
+        .iter()
+        .take_while(|byte| **byte == marker)
+        .count();
+    length >= minimum && line[length..].trim().is_empty()
 }
 
 pub(super) fn table_row(line: &str) -> Option<(&str, &str)> {
@@ -121,7 +186,7 @@ Child branch codexy/461-table was created after classification."#;
         let normalized = evidence.to_ascii_lowercase();
         let lines = normalized.lines().collect::<Vec<_>>();
         assert_eq!(
-            complete_child_classification_index(&lines, 1, 11, lines.len()),
+            complete_child_classification_index(&lines, &lines, 1, 11, lines.len()),
             Some(10)
         );
     }
