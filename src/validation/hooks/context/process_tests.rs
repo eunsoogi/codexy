@@ -5,7 +5,9 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 #[cfg(target_os = "linux")]
-use std::io::ErrorKind;
+use std::ffi::CString;
+#[cfg(target_os = "linux")]
+use std::os::unix::ffi::OsStrExt as _;
 
 use super::process::{MAX_HOOK_OUTPUT_BYTES, output_with_timeout};
 
@@ -128,16 +130,23 @@ fn linux_rejects_a_published_script_while_its_staging_file_is_writable() -> Test
     let executable = executable_path_for(&staging)?;
 
     std::fs::rename(&staging, &executable)?;
-    match Command::new(&executable).status() {
-        Err(error) => assert_eq!(error.kind(), ErrorKind::ExecutableFileBusy),
-        Ok(status) => assert!(
-            !status.success(),
-            "Linux must not execute a script held open for writing"
-        ),
+    let executable = CString::new(executable.as_os_str().as_bytes())?;
+    let child = unsafe { libc::fork() };
+    assert_ne!(child, -1, "fork must succeed");
+    if child == 0 {
+        unsafe {
+            let arguments = [executable.as_ptr(), std::ptr::null()];
+            libc::execv(executable.as_ptr(), arguments.as_ptr());
+            libc::_exit(*libc::__errno_location());
+        }
     }
+    let mut status = 0;
+    assert_eq!(unsafe { libc::waitpid(child, &mut status, 0) }, child);
+    assert!(libc::WIFEXITED(status));
+    assert_eq!(libc::WEXITSTATUS(status), libc::ETXTBSY);
 
     drop(file);
-    assert!(Command::new(&executable).status()?.success());
+    assert!(Command::new(executable.to_str()?).status()?.success());
     Ok(())
 }
 
