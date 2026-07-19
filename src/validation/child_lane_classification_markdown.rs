@@ -1,49 +1,58 @@
 use regex::Regex;
 use std::sync::OnceLock;
 
+mod block;
 mod list_item;
 
+use block::{HtmlEnd, MarkdownBlock, OpenBlock};
+
 pub(super) fn is_in_non_rendering_block(lines: &[&str], index: usize) -> bool {
-    let mut state = None;
+    let mut state: Option<OpenBlock> = None;
     let mut paragraph_open = false;
     for raw_line in lines.iter().take(index) {
         let candidate = html_block_candidate(raw_line);
         if let Some(open) = state {
-            let closes = match open {
-                MarkdownBlock::Fence(marker, length) => {
-                    candidate.is_some_and(|line| closes_fence(line, marker, length))
-                }
-                MarkdownBlock::Comment => raw_line.contains("-->"),
-                MarkdownBlock::Html(end) => html_block_ends(end, raw_line.trim_start()),
-            };
-            if closes {
+            if open.ends_with_list_item(raw_line) {
                 state = None;
+            } else {
+                if open.closes(candidate, raw_line) {
+                    state = None;
+                }
+                continue;
             }
-            continue;
         }
         let Some(line) = candidate else {
             paragraph_open = line_opens_or_continues_paragraph(raw_line, paragraph_open);
             continue;
         };
+        let list_continuation = list_item::continuation_indent(line);
         let block_line = list_item::content(line).unwrap_or(line);
         if let Some((marker, length)) = opens_fence(block_line) {
-            state = Some(MarkdownBlock::Fence(marker, length));
+            state = Some(OpenBlock::new(
+                MarkdownBlock::Fence(marker, length),
+                list_continuation,
+            ));
             paragraph_open = false;
             continue;
         }
         if block_line.starts_with("<!--") {
-            state = (!block_line.contains("-->")).then_some(MarkdownBlock::Comment);
+            state = (!block_line.contains("-->"))
+                .then_some(OpenBlock::new(MarkdownBlock::Comment, list_continuation));
             paragraph_open = false;
             continue;
         }
         if let Some(end) = raw_html_start(block_line, !paragraph_open) {
-            state = end.map(MarkdownBlock::Html);
+            state = end.map(|end| OpenBlock::new(MarkdownBlock::Html(end), list_continuation));
             paragraph_open = false;
             continue;
         }
         paragraph_open = line_opens_or_continues_paragraph(raw_line, paragraph_open);
     }
-    state.is_some()
+    state.is_some_and(|open| {
+        !lines
+            .get(index)
+            .is_some_and(|line| open.ends_with_list_item(line))
+    })
 }
 
 pub(super) fn is_indented_code_line(line: &str) -> bool {
@@ -59,28 +68,6 @@ pub(super) fn is_indented_code_line(line: &str) -> bool {
         }
     }
     false
-}
-
-#[derive(Clone, Copy)]
-enum MarkdownBlock {
-    Fence(u8, usize),
-    Comment,
-    Html(HtmlEnd),
-}
-
-#[derive(Clone, Copy)]
-enum HtmlEnd {
-    TypeOne(&'static str),
-    Marker(&'static str),
-    Blank,
-}
-
-fn html_block_ends(end: HtmlEnd, line: &str) -> bool {
-    match end {
-        HtmlEnd::TypeOne(tag) => line.to_ascii_lowercase().contains(&format!("</{tag}>")),
-        HtmlEnd::Marker(marker) => line.contains(marker),
-        HtmlEnd::Blank => line.is_empty(),
-    }
 }
 
 fn html_block_candidate(line: &str) -> Option<&str> {
@@ -234,13 +221,4 @@ fn opens_fence(line: &str) -> Option<(u8, usize)> {
         .take_while(|byte| **byte == marker)
         .count();
     (length >= 3 && (marker != b'`' || !line[length..].contains('`'))).then_some((marker, length))
-}
-
-fn closes_fence(line: &str, marker: u8, minimum: usize) -> bool {
-    let length = line
-        .as_bytes()
-        .iter()
-        .take_while(|byte| **byte == marker)
-        .count();
-    length >= minimum && line[length..].trim().is_empty()
 }

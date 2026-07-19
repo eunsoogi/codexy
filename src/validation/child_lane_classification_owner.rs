@@ -4,7 +4,9 @@ pub(super) fn is_child_completion_owner(value: &str) -> bool {
     if value.starts_with("current-thread-owned") {
         return is_current_thread_owner(value);
     }
-    !is_parent_owned_value(value) && is_child_delegation_owner_decision(value)
+    !is_parent_owned_value(value)
+        && !has_affirmative_parent_owner(value)
+        && is_child_delegation_owner_decision(value)
 }
 
 fn is_current_thread_owner(value: &str) -> bool {
@@ -17,9 +19,17 @@ fn is_current_thread_owner(value: &str) -> bool {
 }
 
 fn has_implementation_lane(value: &str) -> bool {
-    ["implementation", "implémentation", "구현"]
-        .iter()
-        .any(|marker| value.contains(marker))
+    [
+        "implementation lane",
+        "implementation owner",
+        "owns implementation",
+        "own implementation",
+        "possède l'implémentation",
+        "구현을 소유",
+        "구현 소유",
+    ]
+    .iter()
+    .any(|marker| value.contains(marker))
 }
 
 fn has_affirmative_parent_owner(value: &str) -> bool {

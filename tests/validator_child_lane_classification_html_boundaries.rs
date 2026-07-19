@@ -25,6 +25,17 @@ fn assert_rejected(evidence: &str) -> TestResult {
     Ok(())
 }
 
+fn assert_allowed(evidence: &str) -> TestResult {
+    let output = run_validator(evidence)?;
+    assert!(
+        output.status.success(),
+        "evidence:\n{evidence}\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn setup_after(classification: &str) -> String {
     format!(
         "{classification}\nChild branch codexy/461-table was created after classification.\n"
@@ -45,18 +56,26 @@ fn textarea_type_one_block_keeps_the_table_hidden_after_a_blank_line() -> TestRe
 
 #[test]
 fn list_item_non_rendering_blocks_keep_the_table_hidden() -> TestResult {
-    let indented_table = TABLE
-        .lines()
-        .map(|line| format!("  {line}"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    for marker in ["-", "1."] {
+    for (marker, indent) in [("-", "  "), ("1.", "   ")] {
+        let indented_table = TABLE
+            .lines()
+            .map(|line| format!("{indent}{line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
         for block in [
-            format!("{marker} ```\n{indented_table}\n  ```"),
-            format!("{marker} <!--\n{indented_table}\n  -->"),
+            format!("{marker} ```\n{indented_table}\n{indent}```"),
+            format!("{marker} <!--\n{indented_table}\n{indent}-->"),
         ] {
             assert_rejected(&setup_after(&block))?;
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn list_item_blocks_end_when_their_list_item_ends() -> TestResult {
+    for block in ["```\n  unclosed", "<!--\n  unclosed", "<script>\n  unclosed"] {
+        assert_allowed(&setup_after(&format!("- {block}\n{TABLE}")))?;
     }
     Ok(())
 }
