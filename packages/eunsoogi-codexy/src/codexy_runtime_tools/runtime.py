@@ -85,7 +85,7 @@ class Configuration:
         package_url = os.environ.get("CODEXY_RUNTIME_PACKAGE_URL", "")
         artifacts_api = os.environ.get("CODEXY_RUNTIME_ARTIFACTS_API_URL", "")
         package_override = bool(package_path or package_url_was_set or artifacts_was_set)
-        package_sha256 = os.environ.get("CODEXY_RUNTIME_PACKAGE_SHA256", "")
+        package_sha256 = os.environ.get("CODEXY_RUNTIME_PACKAGE_SHA256", "").lower()
         if package_override and (
             len(package_sha256) != 64
             or any(character not in "0123456789abcdefABCDEF" for character in package_sha256)

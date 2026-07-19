@@ -113,6 +113,38 @@ class RuntimeFlowTests(unittest.TestCase):
 
             self.assertIn("offline mode has no cached", error.getvalue())
 
+    def test_default_digest_cache_reuses_case_equivalent_checksum(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / "cache"
+            plugin_root = self.config(root).plugin_root
+            with mock.patch.dict(
+                "os.environ",
+                {"CODEXY_RUNTIME_PACKAGE_SHA256": "a" * 64, "UV_OFFLINE": "1"},
+                clear=True,
+            ):
+                lowercase = runtime.Configuration.load("lsp", plugin_root, ["--stdio"])
+            with mock.patch.dict(
+                "os.environ",
+                {"CODEXY_RUNTIME_PACKAGE_SHA256": "A" * 64, "UV_OFFLINE": "1"},
+                clear=True,
+            ):
+                uppercase = runtime.Configuration.load("lsp", plugin_root, ["--stdio"])
+            installed = self.seed_cached_runtime(lowercase, cache)
+
+            with (
+                mock.patch.object(runtime, "_cache_root", return_value=cache),
+                mock.patch.object(runtime, "execute", side_effect=Executed) as execute,
+                self.assertRaises(Executed),
+            ):
+                runtime.run(uppercase)
+
+            execute.assert_called_once_with(
+                installed,
+                ["--stdio"],
+                {"CODEXY_PLUGIN_ROOT": str(uppercase.plugin_root)},
+            )
+
     def test_stale_marker_reacquires_instead_of_reusing_old_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
