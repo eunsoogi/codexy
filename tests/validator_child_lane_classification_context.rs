@@ -76,10 +76,12 @@ fn contradictory_or_multiple_owners_are_rejected() -> TestResult {
 fn raw_html_block_table_is_rejected() -> TestResult {
     for classification in [
         format!("<pre>\n{TABLE}\n</pre>"),
+        format!("<!--\n{TABLE}\n-->"),
         format!("<div>\n{TABLE}\n</div>"),
         format!("<?instruction\n{TABLE}\n?>"),
         format!("<Warning>\n{TABLE}\n</Warning>"),
         format!("<!DOCTYPE\nhtml\n{TABLE}\n>"),
+        format!("<![CDATA[\n{TABLE}\n]]>"),
     ] {
         let output = run_validator(&setup_after(&classification))?;
         assert!(
@@ -106,6 +108,32 @@ fn table_after_any_type_one_closer_is_allowed() -> TestResult {
 fn indented_html_tag_does_not_start_a_raw_html_block() -> TestResult {
     for prefix in ["    ", "\t"] {
         assert_allowed(&setup_after(&format!("{prefix}<div>\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn indented_html_comment_does_not_start_a_raw_html_block() -> TestResult {
+    for prefix in ["    ", "\t"] {
+        assert_allowed(&setup_after(&format!("{prefix}<!--\n\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn lowercase_cdata_token_does_not_start_a_raw_html_block() -> TestResult {
+    assert_allowed(&setup_after(&format!("<![cdata[\nraw text\n\n{TABLE}")))
+}
+
+#[test]
+fn marker_terminated_html_blocks_allow_the_following_table() -> TestResult {
+    for html in [
+        "<!-- raw -->",
+        "<?raw?>",
+        "<!DOCTYPE html>",
+        "<![CDATA[raw]]>",
+    ] {
+        assert_allowed(&setup_after(&format!("{html}\n{TABLE}")))?;
     }
     Ok(())
 }

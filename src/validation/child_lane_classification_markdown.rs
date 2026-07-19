@@ -31,22 +31,15 @@ fn is_inside_fenced_code_block(lines: &[&str], index: usize) -> bool {
 
 fn is_inside_html_comment(lines: &[&str], index: usize) -> bool {
     let mut open = false;
-    for line in lines.iter().take(index) {
-        let mut remaining = *line;
-        loop {
-            if open {
-                let Some(end) = remaining.find("-->") else {
-                    break;
-                };
+    for raw_line in lines.iter().take(index) {
+        if open {
+            if raw_line.contains("-->") {
                 open = false;
-                remaining = &remaining[end + 3..];
-            } else {
-                let Some(start) = remaining.find("<!--") else {
-                    break;
-                };
-                open = true;
-                remaining = &remaining[start + 4..];
             }
+            continue;
+        }
+        if let Some(line) = html_block_candidate(raw_line).filter(|line| line.starts_with("<!--")) {
+            open = !line.contains("-->");
         }
     }
     open
@@ -106,7 +99,7 @@ fn raw_html_end(line: &str) -> Option<HtmlEnd> {
     if lower.starts_with("<?") && !lower.contains("?>") {
         return Some(HtmlEnd::Marker("?>"));
     }
-    if lower.starts_with("<![cdata[") && !lower.contains("]]>") {
+    if line.starts_with("<![CDATA[") && !line.contains("]]>") {
         return Some(HtmlEnd::Marker("]]>"));
     }
     if is_declaration_start(line) && !line.contains('>') {
