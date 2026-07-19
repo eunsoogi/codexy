@@ -167,6 +167,9 @@ fn gate_distinguishes_sudo_workloads_from_cargo_run_arguments(
     for command in [
         "sudo cargo test --locked --all-targets",
         "sudo -u root cargo test --locked --all-targets",
+        "sudo -k cargo test --locked --all-targets",
+        "sudo -D . cargo test --locked --all-targets",
+        "sudo -R / cargo test --locked --all-targets",
     ] {
         let fixture = fixture_with(command)?;
         assert!(
@@ -179,6 +182,18 @@ fn gate_distinguishes_sudo_workloads_from_cargo_run_arguments(
     assert!(
         fixture.run(&[])?.status.success(),
         "arguments passed to cargo run are not a cargo test workload"
+    );
+
+    let fixture = fixture_with("cargo --config test run -- test --locked --all-targets")?;
+    assert!(
+        fixture.run(&[])?.status.success(),
+        "a cargo config value named test is not a cargo test workload"
+    );
+
+    let fixture = fixture_with("cargo --config net.retry=2 test --locked --all-targets")?;
+    assert!(
+        !fixture.run(&[])?.status.success(),
+        "cargo global-option values must not hide a cargo test workload"
     );
     Ok(())
 }

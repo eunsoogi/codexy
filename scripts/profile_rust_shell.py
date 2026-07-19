@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import shlex
 
+from profile_rust_command_forms import cargo_test_workload, executable_name, sudo_index
 from profile_rust_shell_source import shell_commands, strip_heredoc_data
 from profile_rust_substitutions import command_substitutions
 
@@ -12,40 +13,6 @@ ASSIGNMENT_WORD_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 VALUE_OPTIONS = frozenset({"-a", "--argv0", "-C", "--chdir", "-u", "--unset"})
 TIMEOUT_VALUE_OPTIONS = frozenset({"-k", "--kill-after", "-s", "--signal"})
 TIME_VALUE_OPTIONS = frozenset({"-f", "--format", "-o", "--output"})
-SUDO_VALUE_OPTIONS = frozenset(
-    {
-        "-C",
-        "--chdir",
-        "-g",
-        "--group",
-        "-p",
-        "--prompt",
-        "-r",
-        "--role",
-        "-t",
-        "--type",
-        "-T",
-        "--command-timeout",
-        "-u",
-        "--user",
-    }
-)
-SUDO_NON_EXECUTING_OPTIONS = frozenset(
-    {
-        "-h",
-        "--help",
-        "-K",
-        "--remove-timestamp",
-        "-k",
-        "--reset-timestamp",
-        "-l",
-        "--list",
-        "-V",
-        "--version",
-        "-v",
-        "--validate",
-    }
-)
 SHELL_PREFIXES = frozenset({"!", "do", "elif", "else", "if", "then", "until", "while"})
 SHELL_EXECUTABLES = frozenset({"bash", "dash", "ksh", "sh", "zsh"})
 
@@ -81,14 +48,6 @@ def matches_invocation(tokens: list[str], invocation: tuple[str, ...]) -> bool:
     return tokens[: len(invocation)] == list(invocation)
 
 
-def cargo_test_workload(tokens: list[str], invocation: tuple[str, ...]) -> bool:
-    if not tokens or executable_name(tokens[0]) != "cargo":
-        return False
-    arguments = tokens[1:]
-    subcommand = next((token for token in arguments if not token.startswith("-")), None)
-    return subcommand == "test" and set(invocation[2:]).issubset(arguments)
-
-
 def executable_tokens(tokens: list[str]) -> list[str]:
     index = 0
     while index < len(tokens):
@@ -114,10 +73,6 @@ def executable_tokens(tokens: list[str]) -> list[str]:
         else:
             return tokens[index:]
     return []
-
-
-def executable_name(token: str) -> str:
-    return token.rsplit("/", 1)[-1]
 
 
 def shell_child_command(tokens: list[str]) -> str | None:
@@ -198,34 +153,6 @@ def timeout_index(tokens: list[str], index: int) -> int:
             index += 1
         else:
             return index + 1
-    return index
-
-
-def sudo_index(tokens: list[str], index: int) -> int:
-    while index < len(tokens):
-        option = tokens[index]
-        if option == "--":
-            return index + 1
-        if option in SUDO_NON_EXECUTING_OPTIONS:
-            return len(tokens)
-        if option in SUDO_VALUE_OPTIONS:
-            index += 2
-        elif option.startswith(
-            (
-                "--chdir=",
-                "--group=",
-                "--prompt=",
-                "--role=",
-                "--type=",
-                "--command-timeout=",
-                "--user=",
-            )
-        ):
-            index += 1
-        elif option.startswith("-") and option != "-":
-            index += 1
-        else:
-            return index
     return index
 
 
