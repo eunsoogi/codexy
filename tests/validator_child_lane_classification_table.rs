@@ -125,10 +125,26 @@ fn validator_rejects_html_comment_table() -> TestResult {
 
 #[test]
 fn validator_rejects_negated_implementation_owner() -> TestResult {
-    assert_rejected(&ENGLISH_TABLE.replace(
-        "current-thread-owned implementation lane for #461",
+    for owner in [
         "current-thread-owned reviewer; not implementation owner",
-    ))
+        "current-thread-owned implementation lane; not the implementation owner",
+        "current-thread-owned implementation lane; does not own implementation",
+        "current-thread-owned implementation lane; implementation ownership is absent",
+        "current-thread-owned 구현 lane; 구현 소유자가 아님",
+        "current-thread-owned implementation lane; reviewer only, not owner",
+    ] {
+        let classification = ENGLISH_TABLE.replace(
+            "current-thread-owned implementation lane for #461",
+            owner,
+        );
+        assert!(
+            !run_ownership_validator(&evidence(&classification))?
+                .status
+                .success(),
+            "contradictory owner must be rejected: {owner}"
+        );
+    }
+    Ok(())
 }
 
 #[test]

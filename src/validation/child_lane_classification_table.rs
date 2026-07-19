@@ -180,8 +180,10 @@ fn is_separator(line: &str) -> bool {
 }
 
 fn is_child_completion_owner(value: &str) -> bool {
-    is_current_thread_owner(value)
-        || (!is_parent_owned_value(value) && is_child_delegation_owner_decision(value))
+    if value.starts_with("current-thread-owned") {
+        return is_current_thread_owner(value);
+    }
+    !is_parent_owned_value(value) && is_child_delegation_owner_decision(value)
 }
 
 fn is_current_thread_owner(value: &str) -> bool {
@@ -189,11 +191,21 @@ fn is_current_thread_owner(value: &str) -> bool {
         && (value.contains("implementation lane")
             || value.contains("child implementation")
             || value.contains("구현"))
-        && !value.contains("not current-thread-owned")
-        && !value.contains("not implementation")
-        && !value.contains("no implementation")
-        && !value.contains("without implementation")
-        && !value.contains("구현을 소유하지")
+        && !has_owner_denial(value)
+}
+
+fn has_owner_denial(value: &str) -> bool {
+    value
+        .split(|character: char| !character.is_alphanumeric())
+        .any(|word| {
+            matches!(
+                word,
+                "not" | "no" | "without" | "absent" | "never" | "neither"
+            )
+        })
+        || ["아님", "아니다", "않음", "않다", "없음", "없다", "소유하지"]
+            .iter()
+            .any(|marker| value.contains(marker))
 }
 
 #[cfg(test)]
