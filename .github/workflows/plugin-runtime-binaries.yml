@@ -75,6 +75,9 @@ jobs:
         with:
           version: "0.9.26"
 
+      - name: Run runtime package tests
+        run: uv run --project packages/eunsoogi-codexy python -m unittest discover -s packages/eunsoogi-codexy/tests -p 'test_*.py'
+
       - name: Build wheel and source distribution
         run: uv build --no-sources packages/eunsoogi-codexy --out-dir dist/python
 

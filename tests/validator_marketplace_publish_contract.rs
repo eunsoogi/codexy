@@ -14,6 +14,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "needs: build-runtime",
         "actions/download-artifact@",
         "packages/eunsoogi-codexy",
+        "python -m unittest discover -s packages/eunsoogi-codexy/tests -p 'test_*.py'",
         "eunsoogi-codexy-distributions",
         "pattern: codexy-mcp-runtimes-*",
         "dist/codexy-marketplace-plugin",

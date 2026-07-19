@@ -27,7 +27,7 @@ def _download(url: str, destination: Path, token: str = "") -> None:
 def _safe_extract_tar(archive: Path, destination: Path) -> None:
     try:
         _extract_tar(archive, destination)
-    except tarfile.TarError as error:
+    except (tarfile.TarError, EOFError) as error:
         raise ValueError(f"invalid runtime package archive: {error}") from error
 
 

@@ -16,6 +16,18 @@ class ArchiveSecurityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "invalid runtime package archive"):
                 _safe_extract_tar(archive, root / "extract")
 
+    def test_truncated_gzip_tar_is_translated_to_package_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "truncated.tar.gz"
+            with tarfile.open(archive, "w:gz") as package:
+                member = tarfile.TarInfo("plugins/codexy/plugin.json")
+                member.size = 1
+                package.addfile(member, io.BytesIO(b"x"))
+            archive.write_bytes(archive.read_bytes()[:10])
+            with self.assertRaisesRegex(ValueError, "invalid runtime package archive"):
+                _safe_extract_tar(archive, root / "extract")
+
     def test_malformed_zip_is_translated_to_package_diagnostic(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
