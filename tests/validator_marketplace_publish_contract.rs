@@ -19,6 +19,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
         "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks",
         "gh release upload",
+        "gh release upload \"$RELEASE_TAG\" \"dist/codexy-marketplace-plugin.tar.gz\" --clobber",
         "mkdir -p \"${plugin_root}/runtime\"",
         "cp dist/generated-runtimes/*.bin \"${plugin_root}/runtime/\"",
         "push:",

@@ -285,7 +285,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "$RELEASE_TAG" "dist/codexy-marketplace-plugin.tar.gz"
+          gh release upload "$RELEASE_TAG" "dist/codexy-marketplace-plugin.tar.gz" --clobber
 
   publish-runtime-tool:
     name: Publish pinned uvx runtime tool with provenance

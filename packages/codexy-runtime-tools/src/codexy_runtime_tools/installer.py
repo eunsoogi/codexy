@@ -99,3 +99,4 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
     completed = subprocess.run(command, check=False)
     if completed.returncode or not executable(installed):
         raise RuntimeError(f"cargo install exited with status {completed.returncode}")
+    shutil.copyfile(config.manifest, install_root / "plugin.json")
