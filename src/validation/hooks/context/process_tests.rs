@@ -101,30 +101,58 @@ fn publishes_each_script_at_a_distinct_executable_path() -> TestResult {
 }
 
 #[test]
-fn executes_a_unique_script_after_closing_its_publication_handle() -> TestResult {
+fn publishes_a_closed_staging_file_to_a_distinct_executable_path() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let script = make_script(temp.path(), "exit 0\n")?;
+    let (script, staging) = make_script_with_publication_paths(temp.path(), "exit 0\n")?;
 
-    let status = Command::new(script).status()?;
+    assert_ne!(script, staging);
+    assert!(
+        !staging.exists(),
+        "staging path must be removed before execution"
+    );
+    let status = Command::new(&script).status()?;
 
     assert!(status.success());
     Ok(())
 }
 
 fn make_script(root: &Path, body: &str) -> TestResult<PathBuf> {
+    make_script_with_publication_paths(root, body).map(|(script, _)| script)
+}
+
+fn make_script_with_publication_paths(root: &Path, body: &str) -> TestResult<(PathBuf, PathBuf)> {
     let mut file = tempfile::Builder::new()
-        .prefix(".probe-")
-        .suffix(".sh")
+        .prefix(".probe-staging-")
+        .suffix(".tmp")
         .tempfile_in(root)?;
     file.write_all(format!("#!/bin/sh\n{body}").as_bytes())?;
     file.as_file().sync_all()?;
     let mut permissions = file.as_file().metadata()?.permissions();
     permissions.set_mode(0o755);
     std::fs::set_permissions(file.path(), permissions)?;
-    let (publication_handle, script) = file.keep()?;
+    let (publication_handle, staging) = file.keep()?;
     drop(publication_handle);
+    let executable = executable_path_for(&staging)?;
+    if executable.exists() {
+        return Err(format!(
+            "refusing to replace existing probe: {}",
+            executable.display()
+        )
+        .into());
+    }
+    std::fs::rename(&staging, &executable)?;
     std::fs::File::open(root)?.sync_all()?;
-    Ok(script)
+    Ok((executable, staging))
+}
+
+fn executable_path_for(staging: &Path) -> TestResult<PathBuf> {
+    let suffix = staging
+        .file_name()
+        .and_then(|name| name.to_str())
+        .and_then(|name| name.strip_prefix(".probe-staging-"))
+        .and_then(|name| name.strip_suffix(".tmp"))
+        .ok_or("invalid probe staging path")?;
+    Ok(staging.with_file_name(format!(".probe-{suffix}.sh")))
 }
 
 #[cfg(target_os = "linux")]
