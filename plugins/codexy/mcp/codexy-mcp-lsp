@@ -19,6 +19,45 @@ if [ -x "$bundled_runtime" ]; then
   export CODEXY_PLUGIN_ROOT="$plugin_root"
   exec "$bundled_runtime" "$@"
 fi
+if [ -n "${CODEXY_RUNTIME_CACHE_DIR:-}" ]; then
+  case "$CODEXY_RUNTIME_CACHE_DIR" in /*) cache_root=$CODEXY_RUNTIME_CACHE_DIR ;; *) cache_root="" ;; esac
+elif [ -n "${XDG_CACHE_HOME:-}" ]; then
+  case "$XDG_CACHE_HOME" in /*) cache_root="$XDG_CACHE_HOME/codexy/runtime" ;; *) cache_root="" ;; esac
+elif [ -n "${HOME:-}" ]; then
+  cache_root="$HOME/.cache/codexy/runtime"
+else
+  cache_root=""
+fi
+if [ -n "$cache_root" ] && command -v sed >/dev/null 2>&1 && command -v head >/dev/null 2>&1; then
+  release=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$plugin_root/.codex-plugin/plugin.json" | head -n 1)
+  if [ -n "$release" ]; then
+    package_override=0
+    if [ -n "${CODEXY_RUNTIME_PACKAGE_PATH:-}" ] || [ "${CODEXY_RUNTIME_PACKAGE_URL+x}" = x ] || [ "${CODEXY_RUNTIME_ARTIFACTS_API_URL+x}" = x ]; then
+      package_override=1
+      cache_source="package-override
+${CODEXY_RUNTIME_PACKAGE_PATH:-}
+${CODEXY_RUNTIME_PACKAGE_URL:-}
+${CODEXY_RUNTIME_ARTIFACTS_API_URL:-}
+${CODEXY_RUNTIME_PACKAGE_SHA256:-}"
+    else
+      cache_source="package-default
+${CODEXY_RUNTIME_PACKAGE_SHA256:-}"
+    fi
+    cache_hash=""
+    if command -v sha256sum >/dev/null 2>&1; then
+      cache_hash=$( { printf '%s\000' "codexy.runtime-cache/v2" "${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}" "${CODEXY_RUNTIME_GIT_REF:-}" "$runtime_platform" "stdio-newline-v1" "$cache_source" "$release"; printf '%s' "codexy-mcp-lsp"; } | sha256sum | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+      cache_hash=$( { printf '%s\000' "codexy.runtime-cache/v2" "${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}" "${CODEXY_RUNTIME_GIT_REF:-}" "$runtime_platform" "stdio-newline-v1" "$cache_source" "$release"; printf '%s' "codexy-mcp-lsp"; } | shasum -a 256 | awk '{print $1}')
+    fi
+    cached="$cache_root/v2-$cache_hash/bin/codexy-mcp-lsp"
+    marker="$cache_root/v2-$cache_hash/plugin.json"
+    marker_release=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$marker" 2>/dev/null | head -n 1)
+    if [ -n "$cache_hash" ] && [ -x "$cached" ] && { [ "$package_override" -eq 1 ] || [ "$marker_release" = "$release" ]; }; then
+      export CODEXY_PLUGIN_ROOT="$plugin_root"
+      exec "$cached" "$@"
+    fi
+  fi
+fi
 unset UV_INDEX UV_EXTRA_INDEX_URL UV_FIND_LINKS UV_CONSTRAINT UV_OVERRIDE UV_INSECURE_HOST UV_CONFIG_FILE
 export UV_NO_CONFIG=1 UV_DEFAULT_INDEX=https://pypi.org/simple
 if [ -n "${CODEXY_UVX_PATH:-}" ]; then

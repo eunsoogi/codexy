@@ -1,9 +1,12 @@
+import json
 import os
 import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+
+from codexy_runtime_tools.cache import runtime_cache_key
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -135,6 +138,7 @@ class McpWrapperTests(unittest.TestCase):
                             "PATH": str(bin_dir),
                             "CODEXY_UVX_PATH": str(fake_uvx),
                             "CODEXY_TEST_UVX_LOG": str(uvx_log),
+                            "CODEXY_RUNTIME_CACHE_DIR": str(root / "empty-cache"),
                             **environment,
                         },
                         capture_output=True,
@@ -144,6 +148,34 @@ class McpWrapperTests(unittest.TestCase):
 
                     self.assertEqual(completed.returncode, 0, completed.stderr)
                     self.assertIn("eunsoogi-codexy==1.2.1", uvx_log.read_text(encoding="utf-8"))
+
+    def test_cached_runtime_executes_without_uvx(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            uname = bin_dir / "uname"
+            uname.write_text('#!/bin/sh\n[ "$1" = "-s" ] && echo Linux || echo x86_64\n')
+            uname.chmod(0o755)
+            manifest = root / ".codex-plugin" / "plugin.json"
+            manifest.parent.mkdir()
+            manifest.write_text(json.dumps({"version": "1.2.1"}))
+            cache = root / "cache"
+            for server in ("lsp", "codegraph"):
+                mcp = root / "mcp"
+                mcp.mkdir(exist_ok=True)
+                wrapper = mcp / f"codexy-mcp-{server}"
+                shutil.copyfile(self.wrapper(server), wrapper)
+                wrapper.chmod(0o755)
+                key = runtime_cache_key(manifest=manifest, package_override=False, identity=["https://github.com/eunsoogi/codexy", "", "linux-x86_64", "stdio-newline-v1", "package-default\n", f"codexy-mcp-{server}"])
+                installed = cache / key / "bin" / f"codexy-mcp-{server}"
+                installed.parent.mkdir(parents=True)
+                installed.write_text('#!/bin/sh\necho cached-runtime "$@"\n')
+                installed.chmod(0o755)
+                (cache / key / "plugin.json").write_text(json.dumps({"version": "1.2.1"}))
+                completed = subprocess.run([wrapper, "--stdio"], env={"PATH": f"{bin_dir}:/usr/bin:/bin", "UV_OFFLINE": "1", "CODEXY_RUNTIME_CACHE_DIR": str(cache)}, capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(completed.stdout.strip(), "cached-runtime --stdio")
 
     def test_runtime_directory_override_executes_without_uvx(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
