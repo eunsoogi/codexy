@@ -1,14 +1,6 @@
 name: Plugin marketplace packages
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Existing protected version tag to publish, for example v1.0.0"
-        required: true
-      previous_tag:
-        description: "Optional previous tag for changelog range"
-        required: false
   push:
     branches: [main]
     tags: ["v*"]
@@ -46,26 +38,19 @@ permissions:
 jobs:
   verify-release-source:
     name: Verify protected release source
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Check out tagged source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Require tag commit to be reachable from main
         run: |
           git fetch --no-tags origin main
-          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
-            release_target="$(git rev-list -n 1 "${{ inputs.release_tag }}")"
-            test -n "$release_target"
-            git merge-base --is-ancestor "$release_target" origin/main
-          else
-            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-          fi
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
   build-runtime-tool:
     name: Build and verify pinned uvx runtime tool
@@ -74,7 +59,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           persist-credentials: false
 
       - name: Install pinned uv
@@ -126,7 +110,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -184,7 +168,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -224,7 +208,7 @@ jobs:
   publish-release:
     name: Stage marketplace release
     needs: [package-plugin, verify-release-source]
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/')
     environment: release
     permissions:
       contents: write
@@ -235,7 +219,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -248,24 +231,11 @@ jobs:
       - name: Resolve release tag
         id: resolve-release-tag
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          RELEASE_EVENT_TAG: ${{ github.event.release.tag_name }}
-          WORKFLOW_RELEASE_TAG: ${{ inputs.release_tag }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          case "$EVENT_NAME" in
-            release)
-              release_tag="$RELEASE_EVENT_TAG"
-              ;;
-            workflow_dispatch)
-              release_tag="$WORKFLOW_RELEASE_TAG"
-              ;;
-            *)
-              release_tag="$REF_NAME"
-              ;;
-          esac
+          release_tag="$REF_NAME"
           if [ -z "$release_tag" ]; then
-            echo "release_tag is required for manual release runs" >&2
+            echo "release_tag is required for tag release runs" >&2
             exit 1
           fi
           echo "RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
@@ -275,8 +245,6 @@ jobs:
         run: scripts/sync-plugin-version --check --tag "$RELEASE_TAG"
 
       - name: Generate commit-log changelog
-        env:
-          PREVIOUS_TAG: ${{ inputs.previous_tag }}
         run: |
           git fetch --tags --force
           release_tag="$RELEASE_TAG"
@@ -309,7 +277,7 @@ jobs:
   publish-runtime-tool:
     name: Publish pinned uvx runtime tool with provenance
     needs: [build-runtime-tool, verify-release-source, publish-release]
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -331,7 +299,7 @@ jobs:
   finalize-release:
     name: Publish marketplace release
     needs: [publish-release, publish-runtime-tool]
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment: release
     permissions:

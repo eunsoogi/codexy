@@ -92,7 +92,7 @@ fn runtime_workflow_rejects_semantic_write_bypasses_and_checks_each_checkout()
             1,
         ),
         workflow.replacen(
-            "        with:\n          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}\n          fetch-depth: 0\n          persist-credentials: false",
+            "        with:\n          ref: ${{ github.ref }}\n          fetch-depth: 0\n          persist-credentials: false",
             "        with: { persist-credentials: true }",
             1,
         ),

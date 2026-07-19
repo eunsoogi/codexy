@@ -167,13 +167,9 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
             display_relative(path)
         );
     }
-    if text
-        .matches("ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}")
-        .count()
-        < 2
-    {
+    if text.matches("ref: ${{ github.ref }}").count() < 2 {
         bail!(
-            "{} must check out the requested release tag before building runtime binaries and package archive",
+            "{} must check out the protected tag ref before building runtime binaries and package archive",
             display_relative(path)
         );
     }
