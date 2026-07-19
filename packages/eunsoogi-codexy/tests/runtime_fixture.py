@@ -46,7 +46,7 @@ def install_paths(config: runtime.Configuration, cache: Path) -> tuple[Path, Pat
             )
         )
         if config.package_override
-        else "package-default"
+        else "\n".join(("package-default", config.package_sha256))
     )
     key = runtime_cache_key(
         manifest=config.manifest,

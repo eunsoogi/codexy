@@ -94,6 +94,25 @@ class RuntimeFlowTests(unittest.TestCase):
                 {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)},
             )
 
+    def test_default_digest_does_not_reuse_unsigned_cached_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / "cache"
+            unsigned = self.config(root, offline=True)
+            digest_checked = self.config(root, offline=True, package_sha256="0" * 64)
+            self.seed_cached_runtime(unsigned, cache)
+            error = io.StringIO()
+
+            with (
+                mock.patch.object(runtime, "_cache_root", return_value=cache),
+                mock.patch.object(runtime, "execute", side_effect=Executed),
+                contextlib.redirect_stderr(error),
+                self.assertRaisesRegex(SystemExit, "127"),
+            ):
+                runtime.run(digest_checked)
+
+            self.assertIn("offline mode has no cached", error.getvalue())
+
     def test_stale_marker_reacquires_instead_of_reusing_old_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

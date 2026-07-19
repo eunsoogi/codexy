@@ -159,7 +159,11 @@ def run(config: Configuration) -> NoReturn:
     source_components = [
         config.package_path, config.package_url, config.artifacts_api, config.package_sha256
     ]
-    source = "\n".join(("package-override", *source_components)) if config.package_override else "package-default"
+    source = (
+        "\n".join(("package-override", *source_components))
+        if config.package_override
+        else "\n".join(("package-default", config.package_sha256))
+    )
     key = runtime_cache_key(
         manifest=config.manifest,
         package_override=config.package_override,
