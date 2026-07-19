@@ -12,6 +12,7 @@ from codexy_runtime_tools import package
 from codexy_runtime_tools.package import (
     _GithubRedirectHandler,
     _artifact_package,
+    _download,
     _github_token_for,
     _safe_extract_tar,
     _safe_extract_zip,
@@ -20,6 +21,15 @@ from codexy_runtime_tools.package import (
 
 
 class ArchiveSecurityTests(unittest.TestCase):
+    def test_tokenless_download_uses_standard_urlopen(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "package.tar.gz"
+            with mock.patch.object(package.urllib.request, "urlopen") as open_url:
+                open_url.return_value.__enter__.return_value = io.BytesIO(b"package")
+                _download("https://example.test/package.tar.gz", destination)
+            self.assertEqual(destination.read_bytes(), b"package")
+            open_url.assert_called_once()
+
     def test_artifact_listing_skips_non_object_workflow_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

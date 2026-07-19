@@ -36,8 +36,10 @@ def _download(url: str, destination: Path, token: str = "") -> None:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)
-    opener = urllib.request.build_opener(_GithubRedirectHandler()) if token else urllib.request
-    with opener.open(request, timeout=30) as response, destination.open("wb") as output:
+    open_request = (
+        urllib.request.build_opener(_GithubRedirectHandler()).open if token else urllib.request.urlopen
+    )
+    with open_request(request, timeout=30) as response, destination.open("wb") as output:
         shutil.copyfileobj(response, output)
 
 
