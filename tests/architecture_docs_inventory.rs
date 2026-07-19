@@ -35,7 +35,7 @@ fn architecture_inventory_rejects_omissions_duplicates_and_stale_fields() -> Tes
     assert!(validate_guide(root, &guide.replacen("`xhigh`", "`stale-effort`", 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("./mcp/codexy-mcp-codegraph", "./mcp/stale-codegraph", 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("--stdio", "--stale-stdio", 1)).is_err());
-    assert!(validate_guide(root, &guide.replacen("cwd `.`", "cwd `stale-cwd`", 1)).is_err());
+    assert!(validate_guide(root, &guide.replacen("\"cwd\":\".\"", "\"cwd\":\"stale-cwd\"", 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("https://mcp.grep.app", "https://stale.example", 1)).is_err());
     Ok(())
 }

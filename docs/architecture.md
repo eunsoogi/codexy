@@ -71,9 +71,13 @@ the host and the current session.
 
 | Server | Registration | Runtime boundary | Capabilities and tools |
 | --- | --- | --- | --- |
-| `codegraph` | Plugin-relative `./mcp/codexy-mcp-codegraph --stdio`; cwd `.`. | A bootstrapped Codexy runtime binary runs as a local stdio child process. | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery. |
-| `grep_app` | Remote endpoint `https://mcp.grep.app`. | The remote service owns transport, availability, and its tool schema; the plugin does not ship its implementation. | Searches public GitHub code. A host may expose a tool such as `searchGitHub`, but the remote service's current schema is not a static repository guarantee. |
-| `lsp` | Plugin-relative `./mcp/codexy-mcp-lsp --stdio`; cwd `.`. | A local stdio server reads the packaged client config, then starts a matching language server only when its executable is installed. | `lsp_list_servers`, `lsp_for_path`, `lsp_status`, `lsp_document_symbols`, `lsp_definition`, `lsp_references`, and `lsp_diagnostics` cover discovery, readiness, and language-aware requests. |
+| `codegraph` | `{"command":"./mcp/codexy-mcp-codegraph","args":["--stdio"],"cwd":"."}` | A bootstrapped Codexy runtime binary runs as a plugin-relative local stdio child process. | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery. |
+| `grep_app` | `{"url":"https://mcp.grep.app"}` | The remote service owns transport, availability, and its tool schema; the plugin does not ship its implementation. | Searches public GitHub code. A host may expose a tool such as `searchGitHub`, but the remote service's current schema is not a static repository guarantee. |
+| `lsp` | `{"command":"./mcp/codexy-mcp-lsp","args":["--stdio"],"cwd":"."}` | A plugin-relative local stdio server reads the packaged client config, then starts a matching language server only when its executable is installed. | `lsp_list_servers`, `lsp_for_path`, `lsp_status`, `lsp_document_symbols`, `lsp_definition`, `lsp_references`, and `lsp_diagnostics` cover discovery, readiness, and language-aware requests. |
+
+Registration cells reproduce the complete JSON object so argument boundaries and
+simultaneously configured fields remain source-verifiable rather than being
+flattened into command-line prose.
 
 For LSP, [`lsp-client.json`](../plugins/codexy/.codex/lsp-client.json) is the
 machine-readable client registration and
