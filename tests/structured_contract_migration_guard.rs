@@ -1,7 +1,10 @@
 #[path = "structured_contract_guard/mod.rs"]
 mod structured_contract_guard;
 
-use structured_contract_guard::{comparison_counts, repository_violations, scan_source};
+use structured_contract_guard::{
+    comparison_counts, read_current_source, repository_violations, repository_violations_at,
+    scan_source,
+};
 
 fn migration_counts_preserve_guard(before: usize, after: usize) -> bool {
     if before == 0 {
@@ -18,6 +21,50 @@ fn new_contract_tests_cannot_add_unstructured_substring_assertions() {
         violations.is_empty(),
         "new governed substring assertions need structured rules: {violations:?}"
     );
+}
+
+#[test]
+fn migration_guard_skips_committed_deleted_tests_but_keeps_new_violations() {
+    let temporary = tempfile::tempdir().expect("temporary repository");
+    let root = temporary.path();
+    git(root, &["init", "-q"]);
+    git(root, &["config", "user.email", "codexy@example.test"]);
+    git(root, &["config", "user.name", "Codexy Test"]);
+    std::fs::create_dir_all(root.join("tests")).expect("tests directory");
+    std::fs::write(root.join("tests/deleted.rs"), "fn deleted() {}\n").expect("seed file");
+    git(root, &["add", "."]);
+    git(root, &["commit", "-qm", "seed"]);
+    git(root, &["branch", "origin/main"]);
+    std::fs::remove_file(root.join("tests/deleted.rs")).expect("delete fixture");
+    std::fs::write(
+        root.join("tests/changed.rs"),
+        "fn changed() { assert!(snapshot.contains(\"new\")); }\n",
+    )
+    .expect("add violating fixture");
+    git(root, &["add", "-A"]);
+    git(root, &["commit", "-qm", "change"]);
+
+    let violations = repository_violations_at(root).expect("inspect fixture");
+    assert_eq!(violations.len(), 1, "deleted test must be skipped: {violations:?}");
+    assert!(violations[0].starts_with("tests/changed.rs:"));
+}
+
+#[test]
+fn migration_guard_propagates_non_not_found_read_errors() {
+    let temporary = tempfile::tempdir().expect("temporary root");
+    std::fs::create_dir(temporary.path().join("blocked.rs")).expect("directory fixture");
+    let error = read_current_source(temporary.path(), std::path::Path::new("blocked.rs"))
+        .expect_err("directories must not be silently skipped");
+    assert_ne!(error.kind(), std::io::ErrorKind::NotFound);
+}
+
+fn git(root: &std::path::Path, arguments: &[&str]) {
+    let status = std::process::Command::new("git")
+        .args(arguments)
+        .current_dir(root)
+        .status()
+        .expect("run git");
+    assert!(status.success(), "git {arguments:?} failed");
 }
 
 #[test]
