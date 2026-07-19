@@ -53,7 +53,7 @@ pub(super) fn complete_child_classification_index(
     if lines
         .get(end + 1)
         .and_then(|line| table_record_key(line))
-        .is_some_and(records_key)
+        .is_some()
     {
         return None;
     }
@@ -96,7 +96,8 @@ fn parse_cells(line: &str) -> Option<[&str; 2]> {
 }
 
 fn table_record_key(line: &str) -> Option<&str> {
-    let inner = line.strip_prefix('|')?.strip_suffix('|')?;
+    let inner = line.strip_prefix('|').unwrap_or(line);
+    let inner = inner.strip_suffix('|').unwrap_or(inner);
     let separator = inner
         .match_indices('|')
         .map(|(index, _)| index)

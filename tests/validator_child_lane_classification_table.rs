@@ -55,6 +55,7 @@ fn validator_allows_ordered_english_and_korean_classification_tables() -> TestRe
         "current-thread-owned implementation lane; not parent-owned",
         "current-thread-owned implementation lane; no parent implementation edits",
         "current-thread-owned — 구현 소유자이며 부모 소유자가 아님",
+        "current-thread-owned — 구현 소유자이며 부모 소유자가 아닙니다",
     ] {
         assert_allowed(&ENGLISH_TABLE.replace(
             "current-thread-owned implementation lane for #461",
@@ -83,6 +84,10 @@ fn validator_rejects_missing_duplicate_malformed_and_legacy_shapes() -> TestResu
         "| Atomic scope | issue-sized |\n| Atomic scope | duplicated |",
     ))?;
     assert_rejected(&ENGLISH_TABLE.replace("| --- | --- |", "| --- |"))?;
+    assert_rejected(&format!(
+        "{ENGLISH_TABLE}\n| Surprise field | silently accepted |"
+    ))?;
+    assert_rejected(&format!("{ENGLISH_TABLE}\nSurprise field | silently accepted"))?;
     assert_rejected(&format!("{ENGLISH_TABLE}\n\n{ENGLISH_TABLE}"))?;
     assert_rejected(
         r#"Task classification:
@@ -149,7 +154,11 @@ fn validator_rejects_negated_implementation_owner() -> TestResult {
         "current-thread-owned implementation lane; not the implementation owner",
         "current-thread-owned implementation lane; does not own implementation",
         "current-thread-owned implementation lane; implementation ownership is absent",
+        "current-thread-owned implementation lane; isn't the implementation owner",
+        "current-thread-owned implementation lane; doesn't own implementation",
         "current-thread-owned 구현 lane; 구현 소유자가 아님",
+        "current-thread-owned — 구현 소유자가 아닙니다",
+        "current-thread-owned — 구현 소유자가 아니에요",
         "current-thread-owned implementation lane; reviewer only, not owner",
     ] {
         let classification = ENGLISH_TABLE.replace(

@@ -179,6 +179,9 @@ fn line_opens_or_continues_paragraph(line: &str) -> bool {
     if fence_candidate(line).and_then(opens_fence).is_some() {
         return false;
     }
+    if starts_container_block(candidate) {
+        return false;
+    }
     let atx_heading = candidate.starts_with('#')
         && candidate
             .trim_start_matches('#')
@@ -189,6 +192,16 @@ fn line_opens_or_continues_paragraph(line: &str) -> bool {
             .all(|character| matches!(character, '=' | '-' | ' ' | '\t'))
         && candidate.contains(['=', '-']);
     !atx_heading && !setext_heading
+}
+
+fn starts_container_block(line: &str) -> bool {
+    let marker_end = line.find(char::is_whitespace).unwrap_or(line.len());
+    let marker = &line[..marker_end];
+    (!marker.is_empty() && marker.chars().all(|ch| ch == '>'))
+        || matches!(marker, "-" | "+" | "*")
+        || marker.strip_suffix(['.', ')']).is_some_and(|number| {
+            !number.is_empty() && number.len() <= 9 && number.chars().all(|ch| ch.is_ascii_digit())
+        })
 }
 
 fn fence_candidate(line: &str) -> Option<&str> {

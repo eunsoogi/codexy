@@ -20,9 +20,17 @@ fn has_affirmative_parent_owner(value: &str) -> bool {
     value.split([';', ',', '—']).any(|clause| {
         (clause.contains("parent-owned") && !clause.contains("not parent-owned"))
             || (clause.contains("부모 소유자")
-                && !["아님", "아니다", "아니며", "않음", "않다"]
-                    .iter()
-                    .any(|marker| clause.contains(marker)))
+                && ![
+                    "아님",
+                    "아니다",
+                    "아니며",
+                    "아닙니다",
+                    "아니에요",
+                    "않음",
+                    "않다",
+                ]
+                .iter()
+                .any(|marker| clause.contains(marker)))
     })
 }
 
@@ -37,9 +45,22 @@ fn has_owner_denial(value: &str) -> bool {
                     "not" | "no" | "without" | "absent" | "never" | "neither"
                 )
             })
-            || ["아님", "아니다", "않음", "않다", "없음", "없다", "소유하지"]
+            || ["isn't", "doesn't", "don't", "can't", "cannot", "won't"]
                 .iter()
                 .any(|marker| clause.contains(marker))
+            || [
+                "아님",
+                "아니다",
+                "아닙니다",
+                "아니에요",
+                "않음",
+                "않다",
+                "없음",
+                "없다",
+                "소유하지",
+            ]
+            .iter()
+            .any(|marker| clause.contains(marker))
     })
 }
 
@@ -50,6 +71,8 @@ fn without_parent_denials(clause: &str) -> String {
         "부모 소유자가 아님",
         "부모 소유자가 아니다",
         "부모 소유자가 아니며",
+        "부모 소유자가 아닙니다",
+        "부모 소유자가 아니에요",
         "부모 소유자가 아님을",
     ]
     .into_iter()

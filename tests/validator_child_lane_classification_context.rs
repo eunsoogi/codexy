@@ -143,7 +143,18 @@ fn malformed_type_six_and_seven_tags_do_not_hide_the_table() -> TestResult {
 
 #[test]
 fn type_seven_tag_does_not_interrupt_a_paragraph() -> TestResult {
-    assert_allowed(&setup_after(&format!("paragraph\n<Warning>\n{TABLE}")))
+    for paragraph in ["paragraph", "1234567890. paragraph"] {
+        assert_allowed(&setup_after(&format!("{paragraph}\n<Warning>\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn type_seven_tag_after_blockquote_paragraph_starts_html_block() -> TestResult {
+    for container in ["> paragraph", ">> paragraph", "1. paragraph"] {
+        assert_rejected(&setup_after(&format!("{container}\n<Warning>\n{TABLE}")))?;
+    }
+    Ok(())
 }
 
 #[test]
