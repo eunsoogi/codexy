@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 MAX_ARCHIVE_FILES = 2_048
 MAX_UNPACKED_BYTES = 512 * 1024 * 1024
+CANONICAL_REPOSITORY_ID = 1_269_350_143
 
 
 class _GithubRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -139,6 +140,7 @@ def _artifact_package(api_url: str, work: Path) -> Path:
             and not item.get("expired", True)
             and isinstance(item.get("workflow_run"), dict)
             and item["workflow_run"].get("head_branch") == "main"
+            and item["workflow_run"].get("head_repository_id") == CANONICAL_REPOSITORY_ID
             and isinstance(item.get("archive_download_url"), str)
         ),
         None,

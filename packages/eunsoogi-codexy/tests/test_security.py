@@ -37,7 +37,12 @@ class ArchiveSecurityTests(unittest.TestCase):
                                     {"expired": False, "workflow_run": 1},
                                     {
                                         "expired": False,
-                                        "workflow_run": {"head_branch": "main"},
+                                        "workflow_run": {"head_branch": "main", "head_repository_id": 1},
+                                        "archive_download_url": "https://api.github.com/fork-artifact.zip",
+                                    },
+                                    {
+                                        "expired": False,
+                                        "workflow_run": {"head_branch": "main", "head_repository_id": 1_269_350_143},
                                         "archive_download_url": "https://api.github.com/artifact.zip",
                                     },
                                 ]
