@@ -74,8 +74,13 @@ fn list_item_non_rendering_blocks_keep_the_table_hidden() -> TestResult {
 
 #[test]
 fn list_item_blocks_end_when_their_list_item_ends() -> TestResult {
-    for block in ["```\n  unclosed", "<!--\n  unclosed", "<script>\n  unclosed"] {
+    for block in ["```\n  unclosed", "<script>\n  unclosed"] {
         assert_allowed(&setup_after(&format!("- {block}\n{TABLE}")))?;
     }
     Ok(())
+}
+
+#[test]
+fn unclosed_list_item_comment_keeps_the_table_hidden() -> TestResult {
+    assert_rejected(&setup_after(&format!("- <!--\n  unclosed\n{TABLE}")))
 }

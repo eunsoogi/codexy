@@ -37,6 +37,9 @@ fn has_affirmative_parent_owner(value: &str) -> bool {
         let clause = without_parent_denials(clause);
         clause.contains("parent-owned")
             || clause.contains("parent implementation owner")
+            || clause.contains("parent owns implementation")
+            || clause.contains("parent is the implementation owner")
+            || clause.contains("implementation is owned by parent")
             || (clause.contains("부모 소유자")
                 && ![
                     "아님",

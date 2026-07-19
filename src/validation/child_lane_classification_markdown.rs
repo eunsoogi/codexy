@@ -70,6 +70,10 @@ pub(super) fn is_indented_code_line(line: &str) -> bool {
     false
 }
 
+pub(super) fn list_continuation_indent(line: &str) -> Option<usize> {
+    list_item::continuation_indent(line)
+}
+
 fn html_block_candidate(line: &str) -> Option<&str> {
     let spaces = line
         .as_bytes()

@@ -34,3 +34,27 @@ fn standalone_later_header_does_not_duplicate_a_gfm_table() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn table_requires_a_block_boundary_and_allows_list_continuation_indent() -> TestResult {
+    let paragraph = format!(
+        "A paragraph-like note precedes this table.\n{TABLE}\nChild branch codexy/461-table was created after classification.\n"
+    );
+    assert!(!run_validator(&paragraph)?.status.success());
+    for prefix in ["", " ", "  ", "   "] {
+        for padding in ["", " ", "  ", "   ", "    "] {
+            let continuation = if padding.is_empty() { 1 } else { padding.len() };
+            let indent = " ".repeat(prefix.len() + 3 + continuation);
+            let nested = TABLE
+                .lines()
+                .map(|line| format!("{indent}{line}"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let evidence = format!(
+                "{prefix}10.{padding}\n{nested}\nChild branch codexy/461-table was created after classification.\n"
+            );
+            assert!(run_validator(&evidence)?.status.success(), "{prefix:?}, {padding:?}");
+        }
+    }
+    Ok(())
+}

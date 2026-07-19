@@ -1,4 +1,6 @@
-use super::child_lane_classification_markdown::{is_in_non_rendering_block, is_indented_code_line};
+use super::child_lane_classification_markdown::{
+    is_in_non_rendering_block, is_indented_code_line, list_continuation_indent,
+};
 use super::child_lane_classification_owner::is_child_completion_owner;
 
 const HEADER: [&str; 2] = ["task classification", "decision"];
@@ -23,8 +25,11 @@ pub(super) fn complete_child_classification_index(
     let mut headers = (lane_start..lane_end)
         .filter(|index| parse_cells(lines[*index]).is_some_and(|cells| cells == HEADER))
         .filter(|index| is_separator(lines.get(index + 1).copied().unwrap_or("")))
+        .filter(|index| table_can_start(raw_lines, *index))
         .filter(|index| !is_in_non_rendering_block(raw_lines, *index))
-        .filter(|index| !is_indented_code_line(raw_lines[*index]));
+        .filter(|index| {
+            !is_indented_code_line(raw_lines[*index]) || list_indent(raw_lines, *index).is_some()
+        });
     let header_index = headers.next()?;
     if header_index >= setup_index || headers.next().is_some() {
         return None;
@@ -41,10 +46,12 @@ pub(super) fn complete_child_classification_index(
         }
     }
     let end = header_index + FIELDS.len() + 1;
+    let list_indent = list_indent(raw_lines, header_index);
     if (header_index..=end).any(|index| {
-        raw_lines
-            .get(index)
-            .is_none_or(|line| is_indented_code_line(line))
+        raw_lines.get(index).is_none_or(|line| {
+            is_indented_code_line(line)
+                && list_indent.is_none_or(|indent| leading_indent(line) < indent)
+        })
     }) {
         return None;
     }
@@ -55,8 +62,60 @@ pub(super) fn complete_child_classification_index(
     {
         return None;
     }
+    if ((end + 1)..lane_end).any(|index| table_header_at(raw_lines, lines, index)) {
+        return None;
+    }
     owner.filter(|value| is_child_completion_owner(value))?;
     Some(end)
+}
+
+fn table_header_at(raw_lines: &[&str], lines: &[&str], index: usize) -> bool {
+    parse_cells(lines[index]).is_some_and(|cells| cells == HEADER)
+        && is_separator(lines.get(index + 1).copied().unwrap_or(""))
+        && !is_in_non_rendering_block(raw_lines, index)
+}
+
+fn table_can_start(raw_lines: &[&str], index: usize) -> bool {
+    index == 0
+        || list_indent(raw_lines, index).is_some()
+        || list_block_boundary(raw_lines, index)
+        || raw_lines.get(index - 1).is_some_and(|line| {
+            let trimmed = line.trim();
+            trimmed.is_empty()
+                || trimmed.starts_with("Lane ownership:")
+                || trimmed.starts_with("Owner decision:")
+                || trimmed.starts_with('#')
+                || trimmed.starts_with('>')
+                || trimmed.starts_with('<')
+                || trimmed.ends_with("-->")
+                || trimmed.starts_with(['`', '~'])
+                || is_indented_code_line(line)
+        })
+}
+
+fn list_block_boundary(raw_lines: &[&str], index: usize) -> bool {
+    raw_lines[..index]
+        .iter()
+        .rev()
+        .find(|line| !line.trim().is_empty() && !line.starts_with(' '))
+        .and_then(|line| list_continuation_indent(line))
+        .is_some()
+}
+
+fn list_indent(raw_lines: &[&str], index: usize) -> Option<usize> {
+    index
+        .checked_sub(1)
+        .and_then(|index| raw_lines.get(index))
+        .and_then(|line| list_continuation_indent(line))
+        .filter(|indent| {
+            raw_lines
+                .get(index)
+                .is_some_and(|line| leading_indent(line) >= *indent)
+        })
+}
+
+fn leading_indent(line: &str) -> usize {
+    line.bytes().take_while(|byte| *byte == b' ').count()
 }
 
 pub(super) fn table_row(line: &str) -> Option<(&str, &str)> {

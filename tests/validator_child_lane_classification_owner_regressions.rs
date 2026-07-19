@@ -63,13 +63,17 @@ fn current_thread_owner_requires_an_implementation_lane() -> TestResult {
 
 #[test]
 fn child_owner_cannot_assign_the_implementation_to_the_parent() -> TestResult {
-    let evidence = format!(
-        "{}\nChild branch codexy/461-table was created after classification.\n",
-        TABLE.replace(
-            "current-thread-owned implementation lane for #461",
-            "child-owned implementation lane; parent-owned implementation owner",
-        )
-    );
-    assert!(!run_validator(&evidence)?.status.success());
+    for owner in [
+        "child-owned implementation lane; parent-owned implementation owner",
+        "child-owned implementation lane; parent owns implementation",
+        "child-owned implementation lane; the parent is the implementation owner",
+        "child-owned implementation lane; implementation is owned by parent",
+    ] {
+        let evidence = format!(
+            "{}\nChild branch codexy/461-table was created after classification.\n",
+            TABLE.replace("current-thread-owned implementation lane for #461", owner)
+        );
+        assert!(!run_validator(&evidence)?.status.success(), "{owner}");
+    }
     Ok(())
 }

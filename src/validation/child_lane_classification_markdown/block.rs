@@ -23,8 +23,10 @@ impl OpenBlock {
     }
 
     pub(super) fn ends_with_list_item(self, raw_line: &str) -> bool {
-        self.list_continuation
-            .is_some_and(|indent| !raw_line.trim().is_empty() && leading_indent(raw_line) < indent)
+        !matches!(self.kind, MarkdownBlock::Comment)
+            && self.list_continuation.is_some_and(|indent| {
+                !raw_line.trim().is_empty() && leading_indent(raw_line) < indent
+            })
     }
 }
 

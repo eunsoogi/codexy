@@ -4,8 +4,22 @@ pub(super) fn content(line: &str) -> Option<&str> {
 }
 
 pub(super) fn continuation_indent(line: &str) -> Option<usize> {
-    let marker_end = line.find(char::is_whitespace)?;
-    is_marker(&line[..marker_end]).then_some(marker_end + 1)
+    let leading = line.bytes().take_while(|byte| *byte == b' ').count();
+    let line = &line[leading..];
+    let marker_end = line.find(char::is_whitespace).unwrap_or(line.len());
+    is_marker(&line[..marker_end]).then(|| {
+        let padding = line[marker_end..]
+            .bytes()
+            .take_while(|byte| *byte == b' ')
+            .count();
+        leading
+            + marker_end
+            + if (1..=4).contains(&padding) {
+                padding
+            } else {
+                1
+            }
+    })
 }
 
 fn is_marker(marker: &str) -> bool {
