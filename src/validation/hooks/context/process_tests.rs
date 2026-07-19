@@ -4,6 +4,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+#[cfg(target_os = "linux")]
+use std::io::ErrorKind;
+
 use super::process::{MAX_HOOK_OUTPUT_BYTES, output_with_timeout};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -116,22 +119,34 @@ fn publishes_a_closed_staging_file_to_a_distinct_executable_path() -> TestResult
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn linux_rejects_a_published_script_while_its_staging_file_is_writable() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let file = stage_script(temp.path(), "exit 0\n")?;
+    let staging = file.path().to_path_buf();
+    let executable = executable_path_for(&staging)?;
+
+    std::fs::rename(&staging, &executable)?;
+    match Command::new(&executable).status() {
+        Err(error) => assert_eq!(error.kind(), ErrorKind::ExecutableFileBusy),
+        Ok(status) => assert!(
+            !status.success(),
+            "Linux must not execute a script held open for writing"
+        ),
+    }
+
+    drop(file);
+    assert!(Command::new(&executable).status()?.success());
+    Ok(())
+}
+
 fn make_script(root: &Path, body: &str) -> TestResult<PathBuf> {
     make_script_with_publication_paths(root, body).map(|(script, _)| script)
 }
 
 fn make_script_with_publication_paths(root: &Path, body: &str) -> TestResult<(PathBuf, PathBuf)> {
-    let mut file = tempfile::Builder::new()
-        .prefix(".probe-staging-")
-        .suffix(".tmp")
-        .tempfile_in(root)?;
-    file.write_all(format!("#!/bin/sh\n{body}").as_bytes())?;
-    file.as_file().sync_all()?;
-    let mut permissions = file.as_file().metadata()?.permissions();
-    permissions.set_mode(0o755);
-    std::fs::set_permissions(file.path(), permissions)?;
-    let (publication_handle, staging) = file.keep()?;
-    drop(publication_handle);
+    let staging = stage_script(root, body)?.into_temp_path();
     let executable = executable_path_for(&staging)?;
     if executable.exists() {
         return Err(format!(
@@ -142,7 +157,20 @@ fn make_script_with_publication_paths(root: &Path, body: &str) -> TestResult<(Pa
     }
     std::fs::rename(&staging, &executable)?;
     std::fs::File::open(root)?.sync_all()?;
-    Ok((executable, staging))
+    Ok((executable, staging.to_path_buf()))
+}
+
+fn stage_script(root: &Path, body: &str) -> TestResult<tempfile::NamedTempFile> {
+    let mut file = tempfile::Builder::new()
+        .prefix(".probe-staging-")
+        .suffix(".tmp")
+        .tempfile_in(root)?;
+    file.write_all(format!("#!/bin/sh\n{body}").as_bytes())?;
+    file.as_file().sync_all()?;
+    let mut permissions = file.as_file().metadata()?.permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(file.path(), permissions)?;
+    Ok(file)
 }
 
 fn executable_path_for(staging: &Path) -> TestResult<PathBuf> {
