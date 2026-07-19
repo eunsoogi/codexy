@@ -5,13 +5,18 @@ pub(super) fn is_in_non_rendering_block(lines: &[&str], index: usize) -> bool {
 }
 
 pub(super) fn is_indented_code_line(line: &str) -> bool {
-    line.starts_with('\t')
-        || line
-            .as_bytes()
-            .iter()
-            .take_while(|byte| **byte == b' ')
-            .count()
-            >= 4
+    let mut columns = 0;
+    for byte in line.bytes() {
+        match byte {
+            b' ' => columns += 1,
+            b'\t' => columns += 4 - columns % 4,
+            _ => break,
+        }
+        if columns >= 4 {
+            return true;
+        }
+    }
+    false
 }
 
 fn is_inside_fenced_code_block(lines: &[&str], index: usize) -> bool {

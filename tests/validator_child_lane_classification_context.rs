@@ -159,3 +159,33 @@ fn escaped_pipe_inside_a_value_is_allowed() -> TestResult {
         &TABLE.replace("workflow, validators", r"workflow \| validators"),
     ))
 }
+
+#[test]
+fn hidden_fake_table_does_not_duplicate_the_rendered_table() -> TestResult {
+    let indented = TABLE
+        .lines()
+        .map(|line| format!("    {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for hidden in [
+        format!("```text\n{TABLE}\n```"),
+        indented,
+        format!("<div>\n{TABLE}\n\n"),
+    ] {
+        assert_allowed(&setup_after(&format!("{hidden}\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn mixed_space_tab_indented_table_is_rejected() -> TestResult {
+    for spaces in [" ", "  ", "   "] {
+        let classification = TABLE
+            .lines()
+            .map(|line| format!("{spaces}\t{line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_rejected(&setup_after(&classification))?;
+    }
+    Ok(())
+}

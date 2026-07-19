@@ -21,11 +21,12 @@ pub(super) fn complete_child_classification_index(
     lane_end: usize,
 ) -> Option<usize> {
     let mut headers = (lane_start..lane_end)
-        .filter(|index| parse_cells(lines[*index]).is_some_and(|cells| cells == HEADER));
+        .filter(|index| parse_cells(lines[*index]).is_some_and(|cells| cells == HEADER))
+        .filter(|index| !is_in_non_rendering_block(raw_lines, *index))
+        .filter(|index| !is_indented_code_line(raw_lines[*index]));
     let header_index = headers.next()?;
     if header_index >= setup_index
         || headers.next().is_some()
-        || is_in_non_rendering_block(raw_lines, header_index)
         || !is_separator(lines.get(header_index + 1).copied()?)
     {
         return None;
