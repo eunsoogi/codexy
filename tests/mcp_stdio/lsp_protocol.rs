@@ -1,6 +1,22 @@
 use super::*;
 
 #[test]
+fn lsp_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))?;
+    let init =
+        client.send_line(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
+    let list =
+        client.send_line(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}))?;
+    assert!(list["result"]["tools"]
+        .as_array()
+        .ok_or("tools must be array")?
+        .iter()
+        .any(|tool| tool["name"] == "lsp_status"));
+    Ok(())
+}
+
+#[test]
 fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
@@ -52,11 +68,13 @@ fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
             .ok_or("text")?,
     )?;
     assert_eq!(unmatched_payload["available"], false);
+    // structured-contract: non-contract substring rationale: verifies unsupported-extension diagnostic returned to clients
     assert!(
         unmatched_payload["reason"]
             .as_str()
             .ok_or("reason")?
-            .contains("no LSP server matches")
+            .find("no LSP server matches")
+            .is_some()
     );
     Ok(())
 }

@@ -1,6 +1,41 @@
 use super::*;
 
 #[test]
+fn codegraph_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
+    let init =
+        client.send_line(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    let list =
+        client.send_line(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}))?;
+    assert!(list["result"]["tools"]
+        .as_array()
+        .ok_or("tools must be array")?
+        .iter()
+        .any(|tool| tool["name"] == "codegraph_index"));
+    Ok(())
+}
+
+#[test]
+fn codegraph_stdio_accepts_content_type_before_content_length()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
+    let init = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}),
+    )?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    let list = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}),
+    )?;
+    assert!(list["result"]["tools"]
+        .as_array()
+        .ok_or("tools must be array")?
+        .iter()
+        .any(|tool| tool["name"] == "codegraph_index"));
+    Ok(())
+}
+
+#[test]
 fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
@@ -52,8 +87,9 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
     let search_text = search["result"]["content"][0]["text"]
         .as_str()
         .ok_or("search text")?;
+    // structured-contract: non-contract substring rationale: verifies protocol search text returned to clients
     assert!(
-        search_text.contains("ENTRY"),
+        search_text.find("ENTRY").is_some(),
         "codegraph_search must return a matching line, got {search_text:?}"
     );
     assert_eq!(

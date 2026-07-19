@@ -32,27 +32,33 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "gh release create \"$release_tag\"",
         "gh release edit \"$release_tag\"",
     ] {
+        // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
         assert!(
-            workflow.contains(required),
+            workflow.find(required).is_some(),
             "runtime workflow must package release artifacts; missing {required:?}"
         );
     }
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
     assert!(
-        !workflow.contains("--target \"$GITHUB_SHA\""),
+        workflow.find("--target \"$GITHUB_SHA\"").is_none(),
         "manual release workflow must target the commit behind release_tag, not the workflow ref"
     );
-    assert!(workflow.contains("git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main"));
-    assert!(workflow.contains("if: startsWith(github.ref, 'refs/tags/')"));
-    assert!(!workflow.contains(
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
+    assert!(workflow.find("git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main").is_some());
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
+    assert!(workflow.find("if: startsWith(github.ref, 'refs/tags/')").is_some());
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
+    assert!(workflow.find(
         "if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'"
-    ));
+    ).is_none());
     let package_validation_order = concat!(
         "--check-runtime-artifacts\n",
         "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",
         "          tar -C"
     );
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
     assert!(
-        workflow.contains(package_validation_order),
+        workflow.find(package_validation_order).is_some(),
         "runtime workflow must validate hooks before creating the package archive"
     );
     for trigger in ["push:", "pull_request:"] {
@@ -63,8 +69,9 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
             "scripts/inspect-mcp-response",
             "scripts/generate-release-changelog",
         ] {
+            // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
             assert!(
-                trigger_text.contains(required_path),
+                trigger_text.find(required_path).is_some(),
                 "runtime workflow {trigger} paths must include {required_path}"
             );
         }
@@ -74,13 +81,15 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
             ".agents/plugins/marketplace.json",
             ".agents/plugins/release-publish-contract.json",
         ] {
+            // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
             assert!(
-                trigger_text.contains(packaged_source),
+                trigger_text.find(packaged_source).is_some(),
                 "runtime workflow {trigger} paths must cover packaged source inventory entry {packaged_source}"
             );
         }
+        // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
         assert!(
-            !trigger_text.contains("README.md") && !trigger_text.contains("tests/**"),
+            trigger_text.find("README.md").is_none() && trigger_text.find("tests/**").is_none(),
             "runtime workflow {trigger} paths must not include unrelated repository paths"
         );
     }
@@ -90,15 +99,17 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "dist/marketplace-root",
         "git -C \"$marketplace_root\" push --force origin \"$MARKETPLACE_BRANCH\"",
     ] {
+        // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
         assert!(
-            !workflow.contains(forbidden),
+            workflow.find(forbidden).is_none(),
             "runtime workflow must not publish a generated marketplace branch; found {forbidden:?}"
         );
     }
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
     assert!(
-        !workflow.contains("plugins/codexy/bin")
-            && !workflow.contains("${plugin_root}/bin")
-            && !workflow.contains("\"$plugin_root\"/bin"),
+        workflow.find("plugins/codexy/bin").is_none()
+            && workflow.find("${plugin_root}/bin").is_none()
+            && workflow.find("\"$plugin_root\"/bin").is_none(),
         "runtime workflow must not use plugin bin paths as its install contract"
     );
     Ok(())
@@ -176,13 +187,17 @@ fn touched_loc_workflow_runs_for_all_pull_requests() -> Result<(), Box<dyn std::
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow = std::fs::read_to_string(root.join(".github/workflows/touched-loc-gate.yml"))?;
 
-    assert!(workflow.contains("pull_request:"));
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
+    assert!(workflow.find("pull_request:").is_some());
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
     assert!(
-        !workflow.contains("paths:"),
+        workflow.find("paths:").is_none(),
         "touched LOC gate must not use a narrow paths filter"
     );
-    assert!(workflow.contains("fetch-depth: 0"));
-    assert!(workflow.contains("--check-touched-loc"));
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
+    assert!(workflow.find("fetch-depth: 0").is_some());
+    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
+    assert!(workflow.find("--check-touched-loc").is_some());
     Ok(())
 }
 

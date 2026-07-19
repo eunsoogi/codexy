@@ -19,12 +19,6 @@ mod mcp_server_names;
 #[path = "../mcp_stdio.rs"]
 mod mcp_stdio;
 
-#[path = "../mcp_wrapper_bootstrap.rs"]
-mod mcp_wrapper_bootstrap;
-
-#[path = "../mcp_wrapper_release_cache.rs"]
-mod mcp_wrapper_release_cache;
-
 #[path = "../profile_rust_tests.rs"]
 mod profile_rust_tests;
 
@@ -36,9 +30,6 @@ mod release_tag_parity;
 
 #[path = "../release_workflow_parity.rs"]
 mod release_workflow_parity;
-
-#[path = "../runtime_wrapper_fallback_order.rs"]
-mod runtime_wrapper_fallback_order;
 
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;

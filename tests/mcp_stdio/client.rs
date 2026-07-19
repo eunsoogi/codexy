@@ -1,14 +1,5 @@
 use super::*;
-
-pub(super) struct InstalledPlugin {
-    pub(super) _temp: tempfile::TempDir,
-    pub(super) path: PathBuf,
-}
-
-pub(super) struct TempRuntimeDir {
-    pub(super) _temp: tempfile::TempDir,
-    pub(super) path: PathBuf,
-}
+use std::path::Path;
 
 pub(super) struct McpClient {
     pub(super) child: Child,
@@ -35,7 +26,7 @@ impl McpClient {
         Self::spawn_command(command)
     }
 
-    pub(super) fn spawn_command(mut command: Command) -> Result<Self, Box<dyn std::error::Error>> {
+    fn spawn_command(mut command: Command) -> Result<Self, Box<dyn std::error::Error>> {
         let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
