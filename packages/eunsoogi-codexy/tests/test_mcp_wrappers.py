@@ -94,7 +94,6 @@ class McpWrapperTests(unittest.TestCase):
             fake_uvx.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CODEXY_TEST_UVX_LOG"\n')
             fake_uvx.chmod(0o755)
             for environment in (
-                {"CODEXY_RUNTIME_DIR": str(root / "custom-runtime")},
                 {"CODEXY_RUNTIME_PLATFORM": "linux-x86_64"},
             ):
                 for server in ("lsp", "codegraph"):
@@ -123,6 +122,23 @@ class McpWrapperTests(unittest.TestCase):
 
                     self.assertEqual(completed.returncode, 0, completed.stderr)
                     self.assertIn("eunsoogi-codexy==1.2.1", uvx_log.read_text(encoding="utf-8"))
+
+    def test_runtime_directory_override_executes_without_uvx(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for server in ("lsp", "codegraph"):
+                mcp = root / "mcp"
+                mcp.mkdir(exist_ok=True)
+                wrapper = mcp / f"codexy-mcp-{server}"
+                shutil.copyfile(self.wrapper(server), wrapper)
+                wrapper.chmod(0o755)
+                override = root / "override" / f"codexy-mcp-{server}"
+                override.parent.mkdir(exist_ok=True)
+                override.write_text('#!/bin/sh\necho override "$@"\n')
+                override.chmod(0o755)
+                completed = subprocess.run([wrapper, "--stdio"], env={"PATH": "", "UV_OFFLINE": "1", "CODEXY_RUNTIME_DIR": str(override.parent)}, capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(completed.stdout.strip(), "override --stdio")
 
 
 if __name__ == "__main__":

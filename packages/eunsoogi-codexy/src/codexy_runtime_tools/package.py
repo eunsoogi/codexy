@@ -21,7 +21,7 @@ class _GithubRedirectHandler(urllib.request.HTTPRedirectHandler):
         redirected = super().redirect_request(
             request, file_pointer, status, message, headers, new_url
         )
-        if redirected and urlparse(request.full_url).hostname != urlparse(new_url).hostname:
+        if redirected and _origin(request.full_url) != _origin(new_url):
             for redirect_headers in (redirected.headers, redirected.unredirected_hdrs):
                 for name in list(redirect_headers):
                     if name.lower() == "authorization":
@@ -37,6 +37,15 @@ def _download(url: str, destination: Path, token: str = "") -> None:
     opener = urllib.request.build_opener(_GithubRedirectHandler()) if token else urllib.request
     with opener.open(request, timeout=30) as response, destination.open("wb") as output:
         shutil.copyfileobj(response, output)
+
+
+def _origin(url: str) -> tuple[str, str, int | None]:
+    parsed = urlparse(url)
+    return parsed.scheme, parsed.hostname or "", parsed.port
+
+
+def _trusted_github_api(url: str) -> bool:
+    return _origin(url) == ("https", "api.github.com", None)
 
 
 def _safe_extract_tar(archive: Path, destination: Path) -> None:
@@ -97,7 +106,7 @@ def _extract_zip(archive: Path, destination: Path) -> None:
 
 
 def _github_token_for(url: str) -> str:
-    if urlparse(url).hostname != "api.github.com":
+    if not _trusted_github_api(url):
         return ""
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     if token:
@@ -119,7 +128,9 @@ def _artifact_package(api_url: str, work: Path) -> Path:
     metadata = work / "artifacts.json"
     _download(api_url, metadata, token)
     payload = json.loads(metadata.read_text(encoding="utf-8"))
-    artifacts = payload.get("artifacts", []) if isinstance(payload, dict) else []
+    artifacts = payload.get("artifacts") if isinstance(payload, dict) else None
+    if not isinstance(artifacts, list):
+        raise RuntimeError("artifact source has invalid artifacts listing")
     selected = next(
         (
             item
@@ -136,7 +147,7 @@ def _artifact_package(api_url: str, work: Path) -> Path:
         raise RuntimeError("artifact source has no unexpired main-branch package")
     archive = work / "artifact.zip"
     download_url = selected["archive_download_url"]
-    if token and urlparse(download_url).hostname not in {"api.github.com", "github.com"}:
+    if token and not (_trusted_github_api(download_url) or _origin(download_url) == ("https", "github.com", None)):
         raise RuntimeError("artifact download URL is not a trusted GitHub host")
     _download(download_url, archive, token)
     artifact_root = work / "artifact"
