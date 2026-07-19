@@ -55,6 +55,9 @@ mod validator_live_worktree_reservation_preflight;
 #[path = "../validator_msrv_syntax.rs"]
 mod validator_msrv_syntax;
 
+#[path = "../validator_natural_korean_skill_responses.rs"]
+mod validator_natural_korean_skill_responses;
+
 #[path = "../validator_readiness_guard.rs"]
 mod validator_readiness_guard;
 

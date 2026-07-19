@@ -1,3 +1,6 @@
+#[path = "../architecture_docs_inventory.rs"]
+mod architecture_docs_inventory;
+
 #[path = "../codegraph_language_regressions.rs"]
 mod codegraph_language_regressions;
 
