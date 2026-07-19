@@ -24,7 +24,7 @@ if [ -n "${CODEXY_RUNTIME_CACHE_DIR:-}" ]; then
 elif [ -n "${XDG_CACHE_HOME:-}" ]; then
   case "$XDG_CACHE_HOME" in /*) cache_root="$XDG_CACHE_HOME/codexy/runtime" ;; *) cache_root="" ;; esac
 elif [ -n "${HOME:-}" ]; then
-  cache_root="$HOME/.cache/codexy/runtime"
+  case "$HOME" in /*) cache_root="$HOME/.cache/codexy/runtime" ;; *) cache_root="" ;; esac
 else
   cache_root=""
 fi
