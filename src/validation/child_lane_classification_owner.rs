@@ -11,9 +11,6 @@ fn is_current_thread_owner(value: &str) -> bool {
     let normalized = value.replace(['‘', '’'], "'");
     let value = normalized.as_str();
     value.starts_with("current-thread-owned")
-        && (value.contains("implementation lane")
-            || value.contains("child implementation")
-            || value.contains("구현"))
         && !has_affirmative_parent_owner(value)
         && !has_owner_denial(value)
 }
@@ -42,31 +39,39 @@ fn has_affirmative_parent_owner(value: &str) -> bool {
 fn has_owner_denial(value: &str) -> bool {
     value.split([';', ',', '—']).any(|clause| {
         let clause = without_parent_denials(clause);
-        clause
+        let words = clause
             .split(|character: char| !character.is_alphanumeric())
-            .any(|word| {
-                matches!(
-                    word,
-                    "not" | "no" | "without" | "absent" | "never" | "neither"
-                )
-            })
-            || ["isn't", "doesn't", "don't", "can't", "cannot", "won't"]
-                .iter()
-                .any(|marker| clause.contains(marker))
-            || [
-                "아님",
-                "아니다",
-                "아닌",
-                "아닙니다",
-                "아니에요",
-                "않음",
-                "않다",
-                "없음",
-                "없다",
-                "소유하지",
-            ]
+            .collect::<Vec<_>>();
+        let english = words.iter().enumerate().any(|(index, word)| {
+            matches!(*word, "not" | "absent" | "never" | "neither")
+                && words[index + 1..]
+                    .iter()
+                    .take(3)
+                    .any(|word| matches!(*word, "owner" | "own" | "implementation"))
+        });
+        let owns_implementation = ["owner", "own", "implementation"]
             .iter()
-            .any(|marker| clause.contains(marker))
+            .any(|marker| clause.contains(marker));
+        english
+            || owns_implementation
+                && ["isn't", "doesn't", "don't", "can't", "cannot", "won't"]
+                    .iter()
+                    .any(|marker| clause.contains(marker))
+            || ((clause.contains("구현") || clause.contains("소유"))
+                && [
+                    "아님",
+                    "아니다",
+                    "아닌",
+                    "아닙니다",
+                    "아니에요",
+                    "않음",
+                    "않다",
+                    "없음",
+                    "없다",
+                    "소유하지",
+                ]
+                .iter()
+                .any(|marker| clause.contains(marker)))
     })
 }
 

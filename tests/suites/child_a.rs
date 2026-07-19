@@ -154,6 +154,9 @@ mod validator_child_lane_classification_context;
 #[path = "../validator_child_lane_classification_html_boundaries.rs"]
 mod validator_child_lane_classification_html_boundaries;
 
+#[path = "../validator_child_lane_classification_owner_regressions.rs"]
+mod validator_child_lane_classification_owner_regressions;
+
 #[path = "../validator_child_lane_ownership.rs"]
 mod validator_child_lane_ownership;
 

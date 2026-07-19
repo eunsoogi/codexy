@@ -1,6 +1,8 @@
 use regex::Regex;
 use std::sync::OnceLock;
 
+mod list_item;
+
 pub(super) fn is_in_non_rendering_block(lines: &[&str], index: usize) -> bool {
     let mut state = None;
     let mut paragraph_open = false;
@@ -23,17 +25,18 @@ pub(super) fn is_in_non_rendering_block(lines: &[&str], index: usize) -> bool {
             paragraph_open = line_opens_or_continues_paragraph(raw_line, paragraph_open);
             continue;
         };
-        if let Some((marker, length)) = opens_fence(line) {
+        let block_line = list_item::content(line).unwrap_or(line);
+        if let Some((marker, length)) = opens_fence(block_line) {
             state = Some(MarkdownBlock::Fence(marker, length));
             paragraph_open = false;
             continue;
         }
-        if line.starts_with("<!--") {
-            state = (!line.contains("-->")).then_some(MarkdownBlock::Comment);
+        if block_line.starts_with("<!--") {
+            state = (!block_line.contains("-->")).then_some(MarkdownBlock::Comment);
             paragraph_open = false;
             continue;
         }
-        if let Some(end) = raw_html_start(line, !paragraph_open) {
+        if let Some(end) = raw_html_start(block_line, !paragraph_open) {
             state = end.map(MarkdownBlock::Html);
             paragraph_open = false;
             continue;

@@ -42,3 +42,21 @@ fn mismatched_type_one_closer_keeps_the_table_hidden() -> TestResult {
 fn textarea_type_one_block_keeps_the_table_hidden_after_a_blank_line() -> TestResult {
     assert_rejected(&setup_after(&format!("<textarea>\n\n{TABLE}")))
 }
+
+#[test]
+fn list_item_non_rendering_blocks_keep_the_table_hidden() -> TestResult {
+    let indented_table = TABLE
+        .lines()
+        .map(|line| format!("  {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for marker in ["-", "1."] {
+        for block in [
+            format!("{marker} ```\n{indented_table}\n  ```"),
+            format!("{marker} <!--\n{indented_table}\n  -->"),
+        ] {
+            assert_rejected(&setup_after(&block))?;
+        }
+    }
+    Ok(())
+}
