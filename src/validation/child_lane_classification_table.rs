@@ -25,6 +25,7 @@ pub(super) fn complete_child_classification_index(
     if header_index >= setup_index
         || headers.next().is_some()
         || is_inside_fenced_code_block(raw_lines, header_index)
+        || is_inside_html_comment(raw_lines, header_index)
         || !is_separator(lines.get(header_index + 1).copied()?)
     {
         return None;
@@ -82,6 +83,29 @@ fn is_inside_fenced_code_block(lines: &[&str], index: usize) -> bool {
         }
     }
     open.is_some()
+}
+
+fn is_inside_html_comment(lines: &[&str], index: usize) -> bool {
+    let mut open = false;
+    for line in lines.iter().take(index) {
+        let mut remaining = *line;
+        loop {
+            if open {
+                let Some(end) = remaining.find("-->") else {
+                    break;
+                };
+                open = false;
+                remaining = &remaining[end + 3..];
+            } else {
+                let Some(start) = remaining.find("<!--") else {
+                    break;
+                };
+                open = true;
+                remaining = &remaining[start + 4..];
+            }
+        }
+    }
+    open
 }
 
 fn fence_candidate(line: &str) -> Option<&str> {
@@ -148,7 +172,8 @@ fn parse_cells(line: &str) -> Option<[&str; 2]> {
 fn is_separator(line: &str) -> bool {
     parse_cells(line).is_some_and(|cells| {
         cells.iter().all(|cell| {
-            let hyphens = cell.trim_matches(':');
+            let hyphens = cell.strip_prefix(':').unwrap_or(cell);
+            let hyphens = hyphens.strip_suffix(':').unwrap_or(hyphens);
             hyphens.len() >= 3 && hyphens.chars().all(|ch| ch == '-')
         })
     })
@@ -161,8 +186,14 @@ fn is_child_completion_owner(value: &str) -> bool {
 
 fn is_current_thread_owner(value: &str) -> bool {
     value.starts_with("current-thread-owned")
-        && (value.contains("implementation") || value.contains("구현"))
+        && (value.contains("implementation lane")
+            || value.contains("child implementation")
+            || value.contains("구현"))
         && !value.contains("not current-thread-owned")
+        && !value.contains("not implementation")
+        && !value.contains("no implementation")
+        && !value.contains("without implementation")
+        && !value.contains("구현을 소유하지")
 }
 
 #[cfg(test)]

@@ -98,7 +98,8 @@ fn validator_rejects_duplicate_table_after_same_lane_setup() -> TestResult {
 
 #[test]
 fn validator_rejects_non_gfm_separator_cells() -> TestResult {
-    assert_rejected(&ENGLISH_TABLE.replace("| --- | --- |", "| ::: | ::: |"))
+    assert_rejected(&ENGLISH_TABLE.replace("| --- | --- |", "| ::: | ::: |"))?;
+    assert_rejected(&ENGLISH_TABLE.replace("| --- | --- |", "| ::---:: | ::---:: |"))
 }
 
 #[test]
@@ -115,6 +116,19 @@ fn validator_rejects_indented_code_block_table() -> TestResult {
         .collect::<Vec<_>>()
         .join("\n");
     assert_rejected(&indented)
+}
+
+#[test]
+fn validator_rejects_html_comment_table() -> TestResult {
+    assert_rejected(&format!("<!--\n{ENGLISH_TABLE}\n-->"))
+}
+
+#[test]
+fn validator_rejects_negated_implementation_owner() -> TestResult {
+    assert_rejected(&ENGLISH_TABLE.replace(
+        "current-thread-owned implementation lane for #461",
+        "current-thread-owned reviewer; not implementation owner",
+    ))
 }
 
 #[test]
