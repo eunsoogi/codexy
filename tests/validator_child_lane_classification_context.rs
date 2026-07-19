@@ -25,6 +25,11 @@ fn assert_rejected(evidence: &str) -> TestResult {
     Ok(())
 }
 
+fn assert_allowed(evidence: &str) -> TestResult {
+    assert!(run_validator(evidence)?.status.success());
+    Ok(())
+}
+
 fn setup_after(classification: &str) -> String {
     format!(
         "{classification}\nChild branch codexy/461-table was created after classification.\n"
@@ -73,8 +78,19 @@ fn raw_html_block_table_is_rejected() -> TestResult {
         format!("<pre>\n{TABLE}\n</pre>"),
         format!("<div>\n{TABLE}\n</div>"),
         format!("<?instruction\n{TABLE}\n?>"),
+        format!("<Warning>\n{TABLE}\n</Warning>"),
+        format!("<!DOCTYPE\nhtml\n{TABLE}\n>"),
     ] {
-        assert_rejected(&setup_after(&classification))?;
+        let output = run_validator(&setup_after(&classification))?;
+        assert!(
+            !output.status.success(),
+            "raw HTML classification must be rejected: {classification}"
+        );
     }
     Ok(())
+}
+
+#[test]
+fn table_after_blank_terminated_html_block_is_allowed() -> TestResult {
+    assert_allowed(&setup_after(&format!("<div>\nraw html\n\n{TABLE}")))
 }

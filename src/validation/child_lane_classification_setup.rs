@@ -6,8 +6,9 @@ use super::child_lane_classification_table::{
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
+    let normalized = evidence.to_ascii_lowercase();
     let raw_lines = evidence.lines().collect::<Vec<_>>();
-    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
+    let lines = normalized.lines().map(str::trim).collect::<Vec<_>>();
     let setup_clauses = lines
         .iter()
         .enumerate()

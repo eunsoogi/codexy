@@ -72,7 +72,6 @@ fn raw_html_end(line: &str) -> Option<&'static str> {
         ("pre", "</pre>"),
         ("script", "</script>"),
         ("style", "</style>"),
-        ("textarea", "</textarea>"),
     ] {
         if starts_with_tag(&lower, tag) && !lower.contains(end) {
             return Some(end);
@@ -84,7 +83,37 @@ fn raw_html_end(line: &str) -> Option<&'static str> {
     if lower.starts_with("<![cdata[") && !lower.contains("]]>") {
         return Some("]]>");
     }
-    is_block_tag(&lower).then_some("")
+    if is_declaration_start(line) && !line.contains('>') {
+        return Some(">");
+    }
+    (is_block_tag(&lower) || is_complete_tag_line(line)).then_some("")
+}
+
+fn is_declaration_start(line: &str) -> bool {
+    line.as_bytes().get(2).is_some_and(u8::is_ascii_uppercase) && line.starts_with("<!")
+}
+
+fn is_complete_tag_line(line: &str) -> bool {
+    let Some(inner) = line
+        .trim()
+        .strip_prefix('<')
+        .and_then(|line| line.strip_suffix('>'))
+    else {
+        return false;
+    };
+    let inner = inner.strip_prefix('/').unwrap_or(inner);
+    let name_length = inner
+        .chars()
+        .take_while(|character| character.is_ascii_alphanumeric() || *character == '-')
+        .count();
+    let Some(first) = inner.chars().next() else {
+        return false;
+    };
+    if !first.is_ascii_alphabetic() || name_length == 0 {
+        return false;
+    }
+    let suffix = &inner[name_length..];
+    suffix.is_empty() || suffix.starts_with(char::is_whitespace) || suffix == "/"
 }
 
 fn starts_with_tag(line: &str, tag: &str) -> bool {
@@ -106,7 +135,7 @@ fn is_block_tag(line: &str) -> bool {
         .split(|character: char| character.is_whitespace() || matches!(character, '>' | '/'))
         .next()
         .unwrap_or_default();
-    "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul"
+    "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul"
         .split('|')
         .any(|candidate| candidate == tag)
 }
