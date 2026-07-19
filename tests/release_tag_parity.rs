@@ -17,24 +17,13 @@ fn rejects_each_synchronized_source_mismatch() -> Result<(), Box<dyn std::error:
         ".agents/plugins/release-publish-contract.json",
         "Cargo.toml",
         "Cargo.lock",
+        "packages/codexy-runtime-tools/pyproject.toml",
+        "plugins/codexy/mcp/codexy-mcp-lsp",
+        "plugins/codexy/mcp/codexy-mcp-codegraph",
     ] {
         let path = repo.join(relative);
         let original = fs::read_to_string(&path)?;
-        let mutated = if relative == "Cargo.lock" {
-            stale_runtime_lock(&original, replacement)
-        } else if relative.ends_with(".json") {
-            original.replacen(
-                &format!("\"version\": \"{version}\""),
-                &format!("\"version\": \"{replacement}\""),
-                1,
-            )
-        } else {
-            original.replacen(
-                &format!("version = \"{version}\""),
-                &format!("version = \"{replacement}\""),
-                1,
-            )
-        };
+        let mutated = stale_synchronized_source(relative, &original, version, replacement);
         assert_ne!(original, mutated, "fixture did not mutate {relative}");
         fs::write(&path, mutated)?;
         let output = Command::new(binary)
@@ -48,6 +37,35 @@ fn rejects_each_synchronized_source_mismatch() -> Result<(), Box<dyn std::error:
         fs::write(path, original)?;
     }
     Ok(())
+}
+
+fn stale_synchronized_source(
+    relative: &str,
+    original: &str,
+    version: &str,
+    replacement: &str,
+) -> String {
+    if relative == "Cargo.lock" {
+        stale_runtime_lock(original, replacement)
+    } else if relative.ends_with(".json") {
+        original.replacen(
+            &format!("\"version\": \"{version}\""),
+            &format!("\"version\": \"{replacement}\""),
+            1,
+        )
+    } else if relative.starts_with("plugins/codexy/mcp/") {
+        original.replacen(
+            &format!("codexy-runtime-tools=={version}"),
+            &format!("codexy-runtime-tools=={replacement}"),
+            1,
+        )
+    } else {
+        original.replacen(
+            &format!("version = \"{version}\""),
+            &format!("version = \"{replacement}\""),
+            1,
+        )
+    }
 }
 
 fn archive_repository(

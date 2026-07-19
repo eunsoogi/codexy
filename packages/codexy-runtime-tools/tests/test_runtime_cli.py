@@ -7,6 +7,11 @@ from codexy_runtime_tools import runtime
 
 
 class RuntimeCliTests(unittest.TestCase):
+    def test_package_readme_documents_only_packaged_runtime_api(self) -> None:
+        readme = Path(__file__).parents[1].joinpath("README.md").read_text()
+        self.assertNotIn("codexy_runtime_tools.updater", readme)
+        self.assertNotIn("sync_agents", readme)
+
     def test_wrapper_argument_order_keeps_plugin_root_and_stdio(self) -> None:
         argv = [
             "codexy-mcp-runtime",

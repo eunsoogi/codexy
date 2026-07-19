@@ -31,6 +31,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "--target \"$RELEASE_TARGET\"",
         "gh release create \"$release_tag\"",
         "gh release edit \"$release_tag\"",
+        "needs: [build-runtime-tool, verify-release-source, publish-release]",
     ] {
         // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
         assert!(

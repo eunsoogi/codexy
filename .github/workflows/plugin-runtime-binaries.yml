@@ -289,7 +289,7 @@ jobs:
 
   publish-runtime-tool:
     name: Publish pinned uvx runtime tool with provenance
-    needs: [build-runtime-tool, verify-release-source]
+    needs: [build-runtime-tool, verify-release-source, publish-release]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment: pypi
