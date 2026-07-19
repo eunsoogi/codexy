@@ -212,6 +212,20 @@ fn hidden_fake_table_does_not_duplicate_the_rendered_table() -> TestResult {
 }
 
 #[test]
+fn non_rendering_markers_do_not_leak_across_contexts() -> TestResult {
+    for prefix in [
+        "```text\n<div>\n```",
+        "```text\n<!--\n```",
+        "```text\n<?raw\n```",
+        "<!--\n<div>\n-->",
+        "<div>\n```\n",
+    ] {
+        assert_allowed(&setup_after(&format!("{prefix}\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
 fn mixed_space_tab_indented_table_is_rejected() -> TestResult {
     for spaces in [" ", "  ", "   "] {
         let classification = TABLE

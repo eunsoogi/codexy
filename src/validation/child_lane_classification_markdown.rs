@@ -2,9 +2,45 @@ use regex::Regex;
 use std::sync::OnceLock;
 
 pub(super) fn is_in_non_rendering_block(lines: &[&str], index: usize) -> bool {
-    is_inside_fenced_code_block(lines, index)
-        || is_inside_html_comment(lines, index)
-        || is_inside_raw_html_block(lines, index)
+    let mut state = None;
+    let mut paragraph_open = false;
+    for raw_line in lines.iter().take(index) {
+        let candidate = html_block_candidate(raw_line);
+        if let Some(open) = state {
+            let closes = match open {
+                MarkdownBlock::Fence(marker, length) => {
+                    candidate.is_some_and(|line| closes_fence(line, marker, length))
+                }
+                MarkdownBlock::Comment => raw_line.contains("-->"),
+                MarkdownBlock::Html(end) => html_block_ends(end, raw_line.trim_start()),
+            };
+            if closes {
+                state = None;
+            }
+            continue;
+        }
+        let Some(line) = candidate else {
+            paragraph_open = line_opens_or_continues_paragraph(raw_line);
+            continue;
+        };
+        if let Some((marker, length)) = opens_fence(line) {
+            state = Some(MarkdownBlock::Fence(marker, length));
+            paragraph_open = false;
+            continue;
+        }
+        if line.starts_with("<!--") {
+            state = (!line.contains("-->")).then_some(MarkdownBlock::Comment);
+            paragraph_open = false;
+            continue;
+        }
+        if let Some(end) = raw_html_start(line, !paragraph_open) {
+            state = end.map(MarkdownBlock::Html);
+            paragraph_open = false;
+            continue;
+        }
+        paragraph_open = line_opens_or_continues_paragraph(raw_line);
+    }
+    state.is_some()
 }
 
 pub(super) fn is_indented_code_line(line: &str) -> bool {
@@ -22,55 +58,11 @@ pub(super) fn is_indented_code_line(line: &str) -> bool {
     false
 }
 
-fn is_inside_fenced_code_block(lines: &[&str], index: usize) -> bool {
-    let mut open = None;
-    for line in lines.iter().take(index) {
-        let Some(candidate) = html_block_candidate(line) else {
-            continue;
-        };
-        match open {
-            Some((marker, length)) if closes_fence(candidate, marker, length) => open = None,
-            None => open = opens_fence(candidate),
-            _ => {}
-        }
-    }
-    open.is_some()
-}
-
-fn is_inside_html_comment(lines: &[&str], index: usize) -> bool {
-    let mut open = false;
-    for raw_line in lines.iter().take(index) {
-        if open {
-            if raw_line.contains("-->") {
-                open = false;
-            }
-            continue;
-        }
-        if let Some(line) = html_block_candidate(raw_line).filter(|line| line.starts_with("<!--")) {
-            open = !line.contains("-->");
-        }
-    }
-    open
-}
-
-fn is_inside_raw_html_block(lines: &[&str], index: usize) -> bool {
-    let mut end = None;
-    let mut paragraph_open = false;
-    for raw_line in lines.iter().take(index) {
-        if let Some(marker) = end {
-            if html_block_ends(marker, raw_line.trim_start()) {
-                end = None;
-            }
-            continue;
-        }
-        end = html_block_candidate(raw_line).and_then(|line| raw_html_end(line, !paragraph_open));
-        if end.is_some() {
-            paragraph_open = false;
-            continue;
-        }
-        paragraph_open = line_opens_or_continues_paragraph(raw_line);
-    }
-    end.is_some()
+#[derive(Clone, Copy)]
+enum MarkdownBlock {
+    Fence(u8, usize),
+    Comment,
+    Html(HtmlEnd),
 }
 
 #[derive(Clone, Copy)]
@@ -99,28 +91,28 @@ fn html_block_candidate(line: &str) -> Option<&str> {
     (spaces <= 3 && !line.starts_with('\t')).then(|| &line[spaces..])
 }
 
-fn raw_html_end(line: &str, allow_type_seven: bool) -> Option<HtmlEnd> {
+fn raw_html_start(line: &str, allow_type_seven: bool) -> Option<Option<HtmlEnd>> {
     let lower = line.to_ascii_lowercase();
     if ["pre", "script", "style"]
         .iter()
         .any(|tag| starts_with_tag(&lower, tag))
-        && !["</pre>", "</script>", "</style>"]
-            .iter()
-            .any(|end| lower.contains(end))
     {
-        return Some(HtmlEnd::TypeOne);
+        let open = !["</pre>", "</script>", "</style>"]
+            .iter()
+            .any(|end| lower.contains(end));
+        return Some(open.then_some(HtmlEnd::TypeOne));
     }
-    if lower.starts_with("<?") && !lower.contains("?>") {
-        return Some(HtmlEnd::Marker("?>"));
+    if lower.starts_with("<?") {
+        return Some((!lower.contains("?>")).then_some(HtmlEnd::Marker("?>")));
     }
-    if line.starts_with("<![CDATA[") && !line.contains("]]>") {
-        return Some(HtmlEnd::Marker("]]>"));
+    if line.starts_with("<![CDATA[") {
+        return Some((!line.contains("]]>")).then_some(HtmlEnd::Marker("]]>")));
     }
-    if is_declaration_start(line) && !line.contains('>') {
-        return Some(HtmlEnd::Marker(">"));
+    if is_declaration_start(line) {
+        return Some((!line.contains('>')).then_some(HtmlEnd::Marker(">")));
     }
     if is_block_tag(&lower) || allow_type_seven && is_complete_tag_line(line) {
-        return Some(HtmlEnd::Blank);
+        return Some(Some(HtmlEnd::Blank));
     }
     None
 }
