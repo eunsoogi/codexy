@@ -153,6 +153,21 @@ class ArchiveSecurityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "invalid artifact archive"):
                 _safe_extract_zip(archive, root / "extract")
 
+    def test_corrupt_deflate_zip_is_translated_to_package_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "corrupt-deflate.zip"
+            with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipped:
+                zipped.writestr("codexy-marketplace-plugin.tar.gz", b"x" * 2_048)
+            with zipfile.ZipFile(archive) as zipped:
+                member = zipped.getinfo("codexy-marketplace-plugin.tar.gz")
+                data_offset = member.header_offset + 30 + len(member.filename) + len(member.extra)
+            contents = bytearray(archive.read_bytes())
+            contents[data_offset] ^= 0xFF
+            archive.write_bytes(contents)
+            with self.assertRaisesRegex(ValueError, "invalid artifact archive"):
+                _safe_extract_zip(archive, root / "extract")
+
     def test_duplicate_tar_members_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

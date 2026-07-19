@@ -9,6 +9,7 @@ import subprocess
 import tarfile
 import urllib.request
 import zipfile
+import zlib
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -80,7 +81,7 @@ def _extract_tar(archive: Path, destination: Path) -> None:
 def _safe_extract_zip(archive: Path, destination: Path) -> None:
     try:
         _extract_zip(archive, destination)
-    except zipfile.BadZipFile as error:
+    except (zipfile.BadZipFile, zlib.error) as error:
         raise ValueError(f"invalid artifact archive: {error}") from error
 
 
