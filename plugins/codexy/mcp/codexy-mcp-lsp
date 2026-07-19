@@ -8,7 +8,8 @@ case "$(uname -s)" in Darwin) runtime_os=darwin ;; Linux) runtime_os=linux ;; *)
 case "$(uname -m)" in arm64|aarch64) runtime_arch=arm64 ;; x86_64|amd64|AMD64) runtime_arch=x86_64 ;; *) runtime_arch=unknown ;; esac
 bundled_runtime="$plugin_root/runtime/codexy-mcp-lsp-${runtime_os}-${runtime_arch}.bin"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
-  runtime="$CODEXY_RUNTIME_DIR/codexy-mcp-lsp"
+  case "$CODEXY_RUNTIME_DIR" in /*) ;; *) echo "CODEXY_RUNTIME_DIR must be absolute" >&2; exit 127 ;; esac
+  runtime="$CODEXY_RUNTIME_DIR/codexy-mcp-lsp-${runtime_os}-${runtime_arch}.bin"
   [ -x "$runtime" ] || { echo "codexy-mcp-lsp runtime not found in CODEXY_RUNTIME_DIR: $runtime" >&2; exit 127; }
   export CODEXY_PLUGIN_ROOT="$plugin_root"
   exec "$runtime" "$@"
