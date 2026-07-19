@@ -82,6 +82,20 @@ Stop/blocker: None"#,
 }
 
 #[test]
+fn validator_rejects_duplicate_table_after_same_lane_setup() -> TestResult {
+    let evidence = format!(
+        "Lane ownership: child-owned\n{ENGLISH_TABLE}\nChild branch codexy/461-table was created after classification.\n{ENGLISH_TABLE}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+    );
+    assert!(!run_ownership_validator(&evidence)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_non_gfm_separator_cells() -> TestResult {
+    assert_rejected(&ENGLISH_TABLE.replace("| --- | --- |", "| ::: | ::: |"))
+}
+
+#[test]
 fn packaged_prompts_and_templates_require_the_canonical_table() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let skill = std::fs::read_to_string(

@@ -8,6 +8,21 @@ pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
         .map_or(0, |index| index + 1)
 }
 
+pub(super) fn current_lane_end(lines: &[&str], setup_index: usize) -> usize {
+    (setup_index + 1..lines.len())
+        .find(|index| is_forward_lane_boundary(lines, *index))
+        .unwrap_or(lines.len())
+}
+
+fn is_forward_lane_boundary(lines: &[&str], index: usize) -> bool {
+    let line = metadata_key(trimmed_value(lines[index]));
+    "pr:|pull request:|review response:|maintainer reassignment:"
+        .split('|')
+        .any(|marker| line.starts_with(marker))
+        || line.starts_with("lane ownership:")
+        || (is_owner_metadata(line) && !is_inside_task_classification(lines, index))
+}
+
 fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
     let line = metadata_key(trimmed_value(lines[index]));
     if "pr:|pull request:"

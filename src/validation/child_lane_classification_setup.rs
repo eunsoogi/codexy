@@ -1,4 +1,4 @@
-use super::child_lane_classification_boundaries::current_lane_start;
+use super::child_lane_classification_boundaries::{current_lane_end, current_lane_start};
 use super::child_lane_classification_setup_context::child_lane_context_applies;
 use super::child_lane_classification_table::{
     complete_child_classification_index, records_key, table_row,
@@ -33,7 +33,8 @@ fn formal_child_classification_complete_index_before(
     setup_index: usize,
 ) -> Option<usize> {
     let lane_start = current_lane_start(lines, setup_index);
-    complete_child_classification_index(lines, lane_start, setup_index)
+    let lane_end = current_lane_end(lines, setup_index);
+    complete_child_classification_index(lines, lane_start, setup_index, lane_end)
 }
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     let line = trimmed_value(line);

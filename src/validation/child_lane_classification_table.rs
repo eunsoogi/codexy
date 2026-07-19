@@ -16,11 +16,15 @@ pub(super) fn complete_child_classification_index(
     lines: &[&str],
     lane_start: usize,
     setup_index: usize,
+    lane_end: usize,
 ) -> Option<usize> {
-    let mut headers = (lane_start..setup_index)
+    let mut headers = (lane_start..lane_end)
         .filter(|index| parse_cells(lines[*index]).is_some_and(|cells| cells == HEADER));
     let header_index = headers.next()?;
-    if headers.next().is_some() || !is_separator(lines.get(header_index + 1).copied()?) {
+    if header_index >= setup_index
+        || headers.next().is_some()
+        || !is_separator(lines.get(header_index + 1).copied()?)
+    {
         return None;
     }
     let mut owner = None;
@@ -78,9 +82,10 @@ fn parse_cells(line: &str) -> Option<[&str; 2]> {
 
 fn is_separator(line: &str) -> bool {
     parse_cells(line).is_some_and(|cells| {
-        cells
-            .iter()
-            .all(|cell| cell.trim_matches(':').chars().all(|ch| ch == '-') && cell.len() >= 3)
+        cells.iter().all(|cell| {
+            let hyphens = cell.trim_matches(':');
+            hyphens.len() >= 3 && hyphens.chars().all(|ch| ch == '-')
+        })
     })
 }
 
@@ -115,6 +120,9 @@ mod tests {
 Child branch codexy/461-table was created after classification."#;
         let normalized = evidence.to_ascii_lowercase();
         let lines = normalized.lines().collect::<Vec<_>>();
-        assert_eq!(complete_child_classification_index(&lines, 1, 11), Some(10));
+        assert_eq!(
+            complete_child_classification_index(&lines, 1, 11, lines.len()),
+            Some(10)
+        );
     }
 }
