@@ -36,6 +36,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "gh release create \"$release_tag\"",
         "gh release edit \"$release_tag\"",
         "needs: [build-runtime-tool, verify-release-source, publish-release]",
+        "if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'",
         "--draft",
         "finalize-release:",
         "needs: [publish-release, publish-runtime-tool]",
@@ -63,7 +64,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "manual release workflow must target the commit behind release_tag, not the workflow ref"
     );
     // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
-    assert!(workflow.find("git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main").is_some());
+    assert!(workflow.find("git merge-base --is-ancestor \"$release_target\" origin/main").is_some());
     // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
     assert!(workflow.find("if: startsWith(github.ref, 'refs/tags/')").is_some());
     // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
