@@ -24,8 +24,11 @@ class RuntimeCliTests(unittest.TestCase):
 
     def test_bootstrap_publish_is_exact_and_installs_the_wheel(self) -> None:
         workflow = Path(__file__).parents[3].joinpath(".github/workflows/python-package.yml").read_text()
+        publish_job = workflow.split("  publish:\n", maxsplit=1)[1].split("    environment:\n", maxsplit=1)[0]
         self.assertIn('tags: ["v1.2.2"]', workflow)
         self.assertIn("github.ref == 'refs/tags/v1.2.2'", workflow)
+        self.assertIn("      contents: read\n", publish_job)
+        self.assertIn("      id-token: write\n", publish_job)
         self.assertIn("python -m venv .package-venv", workflow)
         self.assertIn("eunsoogi-codexy==1.2.2", workflow)
         self.assertIn("codexy-mcp-runtime --help", workflow)
