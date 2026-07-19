@@ -126,7 +126,8 @@ def _artifact_package(api_url: str, work: Path) -> Path:
             for item in artifacts
             if isinstance(item, dict)
             and not item.get("expired", True)
-            and item.get("workflow_run", {}).get("head_branch") == "main"
+            and isinstance(item.get("workflow_run"), dict)
+            and item["workflow_run"].get("head_branch") == "main"
             and isinstance(item.get("archive_download_url"), str)
         ),
         None,

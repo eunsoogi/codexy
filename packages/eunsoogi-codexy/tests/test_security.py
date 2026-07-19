@@ -1,14 +1,17 @@
 import io
+import json
 import tarfile
 import tempfile
 import unittest
 import urllib.request
+import zipfile
 from pathlib import Path
 from unittest import mock
 
 from codexy_runtime_tools import package
 from codexy_runtime_tools.package import (
     _GithubRedirectHandler,
+    _artifact_package,
     _github_token_for,
     _safe_extract_tar,
     _safe_extract_zip,
@@ -17,6 +20,41 @@ from codexy_runtime_tools.package import (
 
 
 class ArchiveSecurityTests(unittest.TestCase):
+    def test_artifact_listing_skips_non_object_workflow_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifacts_api = "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"
+
+            def download(url: str, destination: Path, token: str = "") -> None:
+                if url == artifacts_api:
+                    destination.write_text(
+                        json.dumps(
+                            {
+                                "artifacts": [
+                                    {"expired": False, "workflow_run": None},
+                                    {"expired": False, "workflow_run": "main"},
+                                    {"expired": False, "workflow_run": []},
+                                    {"expired": False, "workflow_run": 1},
+                                    {
+                                        "expired": False,
+                                        "workflow_run": {"head_branch": "main"},
+                                        "archive_download_url": "https://api.github.com/artifact.zip",
+                                    },
+                                ]
+                            }
+                        ),
+                        encoding="utf-8",
+                    )
+                else:
+                    with zipfile.ZipFile(destination, "w") as archive:
+                        archive.writestr("codexy-marketplace-plugin.tar.gz", b"package")
+
+            with (
+                mock.patch("codexy_runtime_tools.package._github_token_for", return_value=""),
+                mock.patch("codexy_runtime_tools.package._download", side_effect=download),
+            ):
+                self.assertEqual(_artifact_package(artifacts_api, root), root / "artifact" / "codexy-marketplace-plugin.tar.gz")
+
     def test_github_environment_token_takes_precedence_over_cli_auth(self) -> None:
         with mock.patch.dict(
             "os.environ", {"GH_TOKEN": "environment-token", "GITHUB_TOKEN": "other"}, clear=True
