@@ -128,9 +128,22 @@ fn lowercase_cdata_token_does_not_start_a_raw_html_block() -> TestResult {
 #[test]
 fn slash_after_type_one_name_does_not_start_that_html_block() -> TestResult {
     for tag in ["pre", "script", "style"] {
-        assert_allowed(&setup_after(&format!("<{tag}/garbage\n\n{TABLE}")))?;
+        assert_allowed(&setup_after(&format!("<{tag}/garbage>\n{TABLE}")))?;
     }
     Ok(())
+}
+
+#[test]
+fn malformed_type_six_and_seven_tags_do_not_hide_the_table() -> TestResult {
+    for malformed in ["<div/garbage>", "<Warning ???>"] {
+        assert_allowed(&setup_after(&format!("{malformed}\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn type_seven_tag_does_not_interrupt_a_paragraph() -> TestResult {
+    assert_allowed(&setup_after(&format!("paragraph\n<Warning>\n{TABLE}")))
 }
 
 #[test]
