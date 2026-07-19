@@ -12,8 +12,6 @@ case "$package_sha256" in *[A-Z]*) package_sha256=$(printf '%s' "$package_sha256
 json_release() {
   if command -v jq >/dev/null 2>&1; then
     jq -er 'if type == "object" then .version | if type == "string" then . else empty end else empty end' "$1" 2>/dev/null || true
-  elif command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import json, sys; value = json.load(open(sys.argv[1], encoding="utf-8")); print(value.get("version", "") if isinstance(value, dict) and isinstance(value.get("version"), str) else "")' "$1" 2>/dev/null || true
   fi
 }
 bundled_runtime="$plugin_root/runtime/codexy-mcp-lsp-${runtime_platform}.bin"
