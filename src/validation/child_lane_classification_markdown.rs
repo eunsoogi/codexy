@@ -53,40 +53,66 @@ fn is_inside_html_comment(lines: &[&str], index: usize) -> bool {
 }
 
 fn is_inside_raw_html_block(lines: &[&str], index: usize) -> bool {
-    let mut end: Option<&'static str> = None;
-    for line in lines.iter().take(index).map(|line| line.trim_start()) {
+    let mut end = None;
+    for raw_line in lines.iter().take(index) {
         if let Some(marker) = end {
-            if marker.is_empty() && line.is_empty() || !marker.is_empty() && line.contains(marker) {
+            if html_block_ends(marker, raw_line.trim_start()) {
                 end = None;
             }
             continue;
         }
-        end = raw_html_end(line);
+        end = html_block_candidate(raw_line).and_then(raw_html_end);
     }
     end.is_some()
 }
 
-fn raw_html_end(line: &str) -> Option<&'static str> {
+#[derive(Clone, Copy)]
+enum HtmlEnd {
+    TypeOne,
+    Marker(&'static str),
+    Blank,
+}
+
+fn html_block_ends(end: HtmlEnd, line: &str) -> bool {
+    match end {
+        HtmlEnd::TypeOne => ["</pre>", "</script>", "</style>"]
+            .iter()
+            .any(|marker| line.to_ascii_lowercase().contains(marker)),
+        HtmlEnd::Marker(marker) => line.contains(marker),
+        HtmlEnd::Blank => line.is_empty(),
+    }
+}
+
+fn html_block_candidate(line: &str) -> Option<&str> {
+    let spaces = line
+        .as_bytes()
+        .iter()
+        .take_while(|byte| **byte == b' ')
+        .count();
+    (spaces <= 3 && !line.starts_with('\t')).then(|| &line[spaces..])
+}
+
+fn raw_html_end(line: &str) -> Option<HtmlEnd> {
     let lower = line.to_ascii_lowercase();
-    for (tag, end) in [
-        ("pre", "</pre>"),
-        ("script", "</script>"),
-        ("style", "</style>"),
-    ] {
-        if starts_with_tag(&lower, tag) && !lower.contains(end) {
-            return Some(end);
-        }
+    if ["pre", "script", "style"]
+        .iter()
+        .any(|tag| starts_with_tag(&lower, tag))
+        && !["</pre>", "</script>", "</style>"]
+            .iter()
+            .any(|end| lower.contains(end))
+    {
+        return Some(HtmlEnd::TypeOne);
     }
     if lower.starts_with("<?") && !lower.contains("?>") {
-        return Some("?>");
+        return Some(HtmlEnd::Marker("?>"));
     }
     if lower.starts_with("<![cdata[") && !lower.contains("]]>") {
-        return Some("]]>");
+        return Some(HtmlEnd::Marker("]]>"));
     }
     if is_declaration_start(line) && !line.contains('>') {
-        return Some(">");
+        return Some(HtmlEnd::Marker(">"));
     }
-    (is_block_tag(&lower) || is_complete_tag_line(line)).then_some("")
+    (is_block_tag(&lower) || is_complete_tag_line(line)).then_some(HtmlEnd::Blank)
 }
 
 fn is_declaration_start(line: &str) -> bool {

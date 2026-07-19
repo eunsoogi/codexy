@@ -51,8 +51,8 @@ pub(super) fn complete_child_classification_index(
     }
     if lines
         .get(end + 1)
-        .and_then(|line| table_row(line))
-        .is_some()
+        .and_then(|line| table_record_key(line))
+        .is_some_and(records_key)
     {
         return None;
     }
@@ -70,9 +70,7 @@ pub(super) fn is_table_header(line: &str) -> bool {
 }
 
 pub(super) fn is_table_line(line: &str) -> bool {
-    is_table_header(line)
-        || is_separator(line)
-        || table_row(line).is_some_and(|(key, _)| records_key(key))
+    is_table_header(line) || is_separator(line) || table_record_key(line).is_some_and(records_key)
 }
 
 pub(super) fn records_key(key: &str) -> bool {
@@ -85,9 +83,34 @@ pub(super) fn records_key(key: &str) -> bool {
 
 fn parse_cells(line: &str) -> Option<[&str; 2]> {
     let inner = line.strip_prefix('|')?.strip_suffix('|')?;
-    let mut cells = inner.split('|').map(str::trim);
-    let result = [cells.next()?, cells.next()?];
-    cells.next().is_none().then_some(result)
+    let mut separators = inner
+        .match_indices('|')
+        .map(|(index, _)| index)
+        .filter(|index| !is_escaped(inner, *index));
+    let separator = separators.next()?;
+    separators
+        .next()
+        .is_none()
+        .then_some([inner[..separator].trim(), inner[separator + 1..].trim()])
+}
+
+fn table_record_key(line: &str) -> Option<&str> {
+    let inner = line.strip_prefix('|')?.strip_suffix('|')?;
+    let separator = inner
+        .match_indices('|')
+        .map(|(index, _)| index)
+        .find(|index| !is_escaped(inner, *index))?;
+    Some(inner[..separator].trim())
+}
+
+fn is_escaped(text: &str, index: usize) -> bool {
+    text.as_bytes()[..index]
+        .iter()
+        .rev()
+        .take_while(|byte| **byte == b'\\')
+        .count()
+        % 2
+        == 1
 }
 
 fn is_separator(line: &str) -> bool {

@@ -94,3 +94,32 @@ fn raw_html_block_table_is_rejected() -> TestResult {
 fn table_after_blank_terminated_html_block_is_allowed() -> TestResult {
     assert_allowed(&setup_after(&format!("<div>\nraw html\n\n{TABLE}")))
 }
+
+#[test]
+fn table_after_any_type_one_closer_is_allowed() -> TestResult {
+    assert_allowed(&setup_after(&format!(
+        "<script>\nraw html\n</style>\n{TABLE}"
+    )))
+}
+
+#[test]
+fn indented_html_tag_does_not_start_a_raw_html_block() -> TestResult {
+    for prefix in ["    ", "\t"] {
+        assert_allowed(&setup_after(&format!("{prefix}<div>\n{TABLE}")))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn malformed_extra_cell_duplicate_is_rejected() -> TestResult {
+    assert_rejected(&setup_after(&format!(
+        "{TABLE}\n| Atomic scope | duplicated | ignored |"
+    )))
+}
+
+#[test]
+fn escaped_pipe_inside_a_value_is_allowed() -> TestResult {
+    assert_allowed(&setup_after(
+        &TABLE.replace("workflow, validators", r"workflow \| validators"),
+    ))
+}
