@@ -39,7 +39,7 @@
       "You MUST run $task-classification before setup, delegation, implementation, PR handling, review response, or merge work; then you MUST use $codex-orchestration with Codexy as orchestrator.",
       "You MUST track goals and todos; MUST assign specialist roles with multi-agent or multi-thread work.",
       "You MUST verify evidence and MUST use squash-merge gates before completion.",
-      "For Korean responses, you MUST use plain, idiomatic Korean. You MUST keep machine-readable evidence separate from the user summary."
+      "When responding in Korean, you MUST use plain, idiomatic Korean and MUST keep machine-readable evidence separate from the user summary."
     ],
     "brandColor": "#2F6F5E",
     "composerIcon": "./assets/codexy-icon.png",

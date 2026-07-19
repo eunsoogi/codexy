@@ -131,8 +131,9 @@ fn representative_skills_share_plain_korean_response_guidance() -> TestResult {
     let agent_prompt = std::fs::read_to_string(root.join("plugins/codexy/agents/openai.yaml"))?;
     let manifest = std::fs::read_to_string(root.join("plugins/codexy/.codex-plugin/plugin.json"))?;
     let prompt = structured_contract_artifacts::Prompt::parse(&agent_prompt)?;
+    let prompt = korean_response_prompt(prompt.default_prompt())?;
     structured_contract::assert_rules(
-        &Contract::markdown_for_subject(prompt.default_prompt(), "you"),
+        &Contract::markdown_for_subject(prompt, "you"),
         PROMPT_RULES,
     );
     let manifest: serde_json::Value = serde_json::from_str(&manifest)?;
@@ -143,14 +144,33 @@ fn representative_skills_share_plain_korean_response_guidance() -> TestResult {
         .map(|line| line.as_str().ok_or("manifest prompt line"))
         .collect::<Result<Vec<_>, _>>()?
         .join("\n");
+    let manifest_prompt = korean_response_prompt(&manifest_prompt)?;
     structured_contract::assert_rules(
-        &Contract::markdown_for_subject(&manifest_prompt, "you"),
+        &Contract::markdown_for_subject(manifest_prompt, "you"),
         PROMPT_RULES,
     );
 
     response_cases::assert_response_cases();
 
     Ok(())
+}
+
+#[test]
+fn unscoped_korean_prompt_is_rejected() {
+    let global = "You MUST use plain, idiomatic Korean. You MUST keep machine-readable evidence separate from the user summary.";
+    assert_eq!(korean_response_prompt(global), Err("missing Korean response scope"));
+}
+
+fn korean_response_prompt(prompt: &str) -> Result<&str, &'static str> {
+    let mut scoped = prompt
+        .split('.')
+        .map(str::trim)
+        .filter_map(|sentence| sentence.strip_prefix("When responding in Korean, "));
+    let body = scoped.next().ok_or("missing Korean response scope")?;
+    if scoped.next().is_some() {
+        return Err("duplicate Korean response scope");
+    }
+    Ok(body)
 }
 
 fn markdown_table_pairs(text: &str) -> BTreeSet<(&str, &str)> {

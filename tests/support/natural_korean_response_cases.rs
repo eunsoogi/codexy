@@ -44,6 +44,13 @@ pub(super) fn assert_response_cases() {
             valid: true,
         },
         ResponseCase {
+            name: "context-appropriate yo honorific",
+            user_summary: "요청하신 수정이 끝났어요.",
+            machine_evidence: r##"{"issue":"#460"}"##,
+            protected: &["#460"],
+            valid: true,
+        },
+        ResponseCase {
             name: "receipt-heavy progress",
             user_summary: "이슈 생성 전 확인을 마치고 작업을 시작했습니다. 종료 기록은 별도 증거에 보관했습니다.",
             machine_evidence: r##"{"intake receipt":"approved","terminal receipt":"recorded","lane":"#460","handoff":"parent","packaged":"yes","gate":"PASS"}"##,
@@ -75,6 +82,13 @@ pub(super) fn assert_response_cases() {
             protected: &["#460"],
             valid: false,
         },
+        ResponseCase {
+            name: "malformed machine evidence",
+            user_summary: "검증 결과를 확인했습니다.",
+            machine_evidence: "{not-json}",
+            protected: &[],
+            valid: false,
+        },
     ];
 
     for case in cases {
@@ -99,11 +113,15 @@ fn response_errors(case: &ResponseCase) -> Vec<String> {
         if !["습니다", "입니다", "됩니다"]
             .iter()
             .any(|ending| sentence.ends_with(ending))
+            && !sentence.ends_with('요')
         {
             errors.push(format!("non-honorific sentence: {sentence}"));
         }
     }
-    if !(case.machine_evidence.starts_with('{') && case.machine_evidence.ends_with('}')) {
+    if !matches!(
+        serde_json::from_str::<serde_json::Value>(case.machine_evidence),
+        Ok(serde_json::Value::Object(_))
+    ) {
         errors.push("machine evidence is not separate structured data".into());
     }
     for literal in case.protected {
