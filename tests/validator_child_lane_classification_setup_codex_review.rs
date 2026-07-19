@@ -55,15 +55,16 @@ Maintainer reassignment: none
 fn validator_allows_routing_only_child_delegation_classification_completion() -> TestResult {
     assert_allowed(
         r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: routing-only child delegation to child thread thread-148; parent remains coordination-only
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
+| Task classification | Decision |
+| --- | --- |
+| Lane type | implementation |
+| Secondary surfaces | workflow, validators |
+| Owner decision | routing-only child delegation to child thread thread-148; parent remains coordination-only |
+| Atomic scope | issue-sized |
+| Required skills | task-classification, codex-orchestration, git-workflow |
+| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |
+| First allowed action | create branch after classification |
+| Stop/blocker | None |
 Child branch codexy/231-branch-classification-guard was created after classification.
 Review response: child-authored commit def456 fixed feedback
 Maintainer reassignment: none
@@ -92,8 +93,8 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_list_style_task_classification_header() -> TestResult {
-    assert_allowed(
+fn validator_rejects_list_style_task_classification_header() -> TestResult {
+    assert_rejected(
         r#"Lane ownership: child-owned
 - Task classification:
 - Lane type: implementation
@@ -126,15 +127,16 @@ Maintainer reassignment: none
 fn validator_allows_setup_terms_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
         r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: branch/worktree setup evidence for codexy/231-classification-guard, goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
+| Task classification | Decision |
+| --- | --- |
+| Lane type | implementation |
+| Secondary surfaces | workflow, validators |
+| Owner decision | current-thread-owned child implementation lane |
+| Atomic scope | issue-sized |
+| Required skills | task-classification, codex-orchestration, git-workflow |
+| Required tools/evidence | branch/worktree setup evidence for codexy/231-classification-guard, goal, plan, codegraph, LSP, Sentinel |
+| First allowed action | create branch after classification |
+| Stop/blocker | None |
 Child branch codexy/231-branch-classification-guard was created after classification.
 Review response: child-authored commit def456 fixed feedback
 Maintainer reassignment: none
@@ -165,15 +167,16 @@ Maintainer reassignment: none
 fn validator_allows_negated_setup_terms_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
         r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: evidence that child branch/worktree setup did not occur before classification, goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
+| Task classification | Decision |
+| --- | --- |
+| Lane type | implementation |
+| Secondary surfaces | workflow, validators |
+| Owner decision | current-thread-owned child implementation lane |
+| Atomic scope | issue-sized |
+| Required skills | task-classification, codex-orchestration, git-workflow |
+| Required tools/evidence | evidence that child branch/worktree setup did not occur before classification, goal, plan, codegraph, LSP, Sentinel |
+| First allowed action | create branch after classification |
+| Stop/blocker | None |
 Child branch codexy/231-branch-classification-guard was created after classification.
 Review response: child-authored commit def456 fixed feedback
 Maintainer reassignment: none
@@ -185,15 +188,16 @@ Maintainer reassignment: none
 fn validator_allows_negative_test_setup_terms_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
         r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: negative test for child branch/worktree setup before classification, goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
+| Task classification | Decision |
+| --- | --- |
+| Lane type | implementation |
+| Secondary surfaces | workflow, validators |
+| Owner decision | current-thread-owned child implementation lane |
+| Atomic scope | issue-sized |
+| Required skills | task-classification, codex-orchestration, git-workflow |
+| Required tools/evidence | negative test for child branch/worktree setup before classification, goal, plan, codegraph, LSP, Sentinel |
+| First allowed action | create branch after classification |
+| Stop/blocker | None |
 Child branch codexy/231-branch-classification-guard was created after classification.
 Review response: child-authored commit def456 fixed feedback
 Maintainer reassignment: none
@@ -224,15 +228,16 @@ Maintainer reassignment: none
 fn validator_allows_no_setup_occurred_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
         r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: evidence that no child branch/worktree setup occurred before classification, goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
+| Task classification | Decision |
+| --- | --- |
+| Lane type | implementation |
+| Secondary surfaces | workflow, validators |
+| Owner decision | current-thread-owned child implementation lane |
+| Atomic scope | issue-sized |
+| Required skills | task-classification, codex-orchestration, git-workflow |
+| Required tools/evidence | evidence that no child branch/worktree setup occurred before classification, goal, plan, codegraph, LSP, Sentinel |
+| First allowed action | create branch after classification |
+| Stop/blocker | None |
 Child branch codexy/231-branch-classification-guard was created after classification.
 Review response: child-authored commit def456 fixed feedback
 Maintainer reassignment: none

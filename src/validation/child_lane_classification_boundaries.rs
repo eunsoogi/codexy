@@ -1,3 +1,4 @@
+use super::child_lane_classification_table::{is_table_header, is_table_line};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
@@ -40,10 +41,13 @@ fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
         if line == "task classification:" {
             return true;
         }
+        if is_table_header(line) {
+            return true;
+        }
         if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
             return false;
         }
-        if !is_task_classification_field(line) {
+        if !is_task_classification_field(line) && !is_table_line(line) {
             return false;
         }
     }
@@ -69,10 +73,13 @@ fn is_after_task_classification_block(lines: &[&str], index: usize) -> bool {
         if line == "task classification:" {
             return true;
         }
+        if is_table_header(line) {
+            return true;
+        }
         if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
             return false;
         }
-        if !is_task_classification_field(line) {
+        if !is_task_classification_field(line) && !is_table_line(line) {
             return false;
         }
     }

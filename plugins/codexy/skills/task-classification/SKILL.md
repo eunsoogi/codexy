@@ -103,41 +103,44 @@ plugin repair until classification evidence exists in the thread.
 
 ## Required Output
 
-MUST use this shape before taking the first workflow action:
+MUST emit exactly one ordered GFM table before taking the first workflow action:
 
-```text
-Task classification:
-Lane type:
-Secondary surfaces:
-Owner decision:
-Atomic scope:
-Required skills:
-Required tools/evidence:
-First allowed action:
-Stop/blocker:
-```
+| Task classification | Decision |
+| --- | --- |
+| Lane type | `<primary taxonomy entry>` |
+| Secondary surfaces | `<relevant surfaces or None>` |
+| Owner decision | `<owner and why it may act>` |
+| Atomic scope | `<issue-sized, bundled, or split required>` |
+| Required skills | `<skills required before acting>` |
+| Required tools/evidence | `<tools, proof, and fallbacks>` |
+| First allowed action | `<next concrete action>` |
+| Stop/blocker | `<None or exact blocker>` |
+
+MUST keep the header and eight field names in English for machine validation.
+Values MAY be localized. The owner value MUST retain its canonical owner token,
+such as `current-thread-owned`, while the explanation MAY be localized.
 
 ## Classification Output
 
-- `Lane type:` names one primary taxonomy entry.
-- `Secondary surfaces:` names relevant secondary surfaces or `None`.
-- `Owner decision:` names the owner and why that owner is allowed to act.
-- `Atomic scope:` states whether the request is issue-sized, bundled, or needs
+- `Lane type` names one primary taxonomy entry.
+- `Secondary surfaces` names relevant secondary surfaces or `None`.
+- `Owner decision` names the owner and why that owner is allowed to act.
+- `Atomic scope` states whether the request is issue-sized, bundled, or needs
   splitting before setup.
-- `Required skills:` lists the Codexy skills to read before acting.
-- `Required tools/evidence:` lists lane-relevant required evidence, including
+- `Required skills` lists the Codexy skills to read before acting.
+- `Required tools/evidence` lists lane-relevant required evidence, including
   unavailable-tool fallbacks where a relevant Codexy tool, GitHub surface,
   validator, test, LSP, codegraph, goal/plan, or reviewer gate is unavailable.
-- `First allowed action:` states the next concrete action that may happen only
+- `First allowed action` states the next concrete action that may happen only
   after this classification.
-- `Stop/blocker:` states `None` or the exact blocker that prevents proceeding.
+- `Stop/blocker` states `None` or the exact blocker that prevents proceeding.
 
 ## Gates
 
 - Missing classification evidence blocks branch/worktree setup, delegation,
   validation/QA, implementation, PR handling, review-response routing, merge
   work, release work, and PR-readiness claims.
-- Child lanes MUST emit the complete `Task classification:` block before
+- Child lanes MUST emit the complete task-classification table before
   creating or switching to an implementation branch or worktree. Handoff
   evidence MUST NOT report child-created branch/worktree setup before that
   block; `scripts/validate-plugin-config --check-child-lane-ownership
@@ -170,7 +173,7 @@ Stop/blocker:
 - Creating a branch or worktree before deciding whether the lane is
   parent-owned or child-owned.
 - Creating or switching to a child implementation branch or worktree after a
-  thread rename but before the complete `Task classification:` block.
+  thread rename but before the complete task-classification table.
 - Treating review response, merge, validation, release, and implementation as
   one generic task.
 - Letting a parent patch a child-owned implementation or review-response lane.

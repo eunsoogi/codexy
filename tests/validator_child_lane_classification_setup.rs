@@ -231,15 +231,15 @@ fn validator_rejects_child_setup_claimed_before_classification_after_block() -> 
 }
 
 fn complete_child_classification() -> &'static str {
-    "Lane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: run git worktree add -b codexy/231-branch-classification-guard after classification\nStop/blocker: None"
+    "Lane ownership: child-owned\n| Task classification | Decision |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | run git worktree add -b codexy/231-branch-classification-guard after classification |\n| Stop/blocker | None |"
 }
 
 fn complete_current_thread_classification() -> &'static str {
-    "Lane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: current-thread-owned implementation lane for issue #231\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None"
+    "Lane ownership: child-owned\n| Task classification | Decision |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | current-thread-owned implementation lane for issue #231 |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |"
 }
 
 fn complete_parent_classification() -> &'static str {
-    "Lane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: workflow, validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None"
+    "Lane ownership: parent-owned\n| Task classification | Decision |\n| --- | --- |\n| Lane type | validation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | parent-owned orchestration |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |"
 }
 
 fn ownership_footer() -> &'static str {

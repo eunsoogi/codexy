@@ -1,3 +1,4 @@
+use super::child_lane_classification_table::{is_table_header, is_table_line};
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
@@ -98,10 +99,13 @@ fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
         if metadata_key(line) == "task classification:" {
             return true;
         }
+        if is_table_header(line) {
+            return true;
+        }
         if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
             return false;
         }
-        if !is_task_classification_field(line) {
+        if !is_task_classification_field(line) && !is_table_line(line) {
             return false;
         }
     }
