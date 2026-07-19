@@ -38,6 +38,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "needs: [publish-release, publish-runtime-tool]",
         "gh release edit \"$RELEASE_TAG\" --draft=false",
         "--json isDraft --jq .isDraft",
+        "rerun only the failed finalize-release job; do not rerun the immutable PyPI upload",
     ] {
         // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
         assert!(

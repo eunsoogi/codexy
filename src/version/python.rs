@@ -3,6 +3,7 @@ use std::fs;
 use anyhow::{Context as _, Result, bail};
 
 use crate::paths::{display_relative, repo_root};
+use crate::shell::{replace_runtime_pin, runtime_exec, unique_option_value};
 
 const PACKAGE_NAME: &str = "codexy-runtime-tools";
 
@@ -10,11 +11,11 @@ fn pyproject() -> Result<std::path::PathBuf> {
     Ok(repo_root()?.join("packages/codexy-runtime-tools/pyproject.toml"))
 }
 
-fn wrappers() -> Result<Vec<std::path::PathBuf>> {
+fn wrappers() -> Result<Vec<(&'static str, std::path::PathBuf)>> {
     let root = repo_root()?.join("plugins/codexy/mcp");
     Ok(["lsp", "codegraph"]
         .into_iter()
-        .map(|server| root.join(format!("codexy-mcp-{server}")))
+        .map(|server| (server, root.join(format!("codexy-mcp-{server}"))))
         .collect())
 }
 
@@ -23,15 +24,9 @@ fn package_version(text: &str) -> Option<&str> {
         .find_map(|line| line.strip_prefix("version = \"")?.strip_suffix('"'))
 }
 
-fn wrapper_has_pin(text: &str, expected_pin: &str) -> bool {
-    let quoted = format!("\"{expected_pin}\"");
-    text.lines()
-        .filter(|line| !line.trim_start().starts_with('#'))
-        .any(|line| {
-            line.split(" #")
-                .next()
-                .is_some_and(|active| active.contains(&quoted))
-        })
+fn wrapper_has_pin(text: &str, server: &str, expected_pin: &str) -> bool {
+    runtime_exec(text, server)
+        .is_some_and(|command| unique_option_value(&command, "--from") == Some(expected_pin))
 }
 
 pub(super) fn check_version(expected: &str) -> Result<()> {
@@ -47,10 +42,10 @@ pub(super) fn check_version(expected: &str) -> Result<()> {
         );
     }
     let expected_pin = format!("{PACKAGE_NAME}=={expected}");
-    for wrapper in wrappers()? {
+    for (server, wrapper) in wrappers()? {
         let wrapper_text = fs::read_to_string(&wrapper)
             .with_context(|| format!("missing required file: {}", display_relative(&wrapper)))?;
-        if !wrapper_has_pin(&wrapper_text, &expected_pin) {
+        if !wrapper_has_pin(&wrapper_text, server, &expected_pin) {
             bail!(
                 "version mismatch: {} must pin {expected_pin}",
                 display_relative(&wrapper)
@@ -77,15 +72,21 @@ pub(super) fn set_version(current: &str, requested: &str) -> Result<()> {
     )?;
     let current_pin = format!("\"{PACKAGE_NAME}=={current}\"");
     let requested_pin = format!("\"{PACKAGE_NAME}=={requested}\"");
-    for wrapper in wrappers()? {
+    for (server, wrapper) in wrappers()? {
         let text = fs::read_to_string(&wrapper)?;
-        if text.matches(&current_pin).count() != 1 {
-            bail!(
-                "{} must contain exactly one {current_pin}",
+        let updated = replace_runtime_pin(
+            &text,
+            server,
+            current_pin.trim_matches('"'),
+            requested_pin.trim_matches('"'),
+        )
+        .with_context(|| {
+            format!(
+                "{} must execute exactly one runtime command pinned to {current_pin}",
                 display_relative(&wrapper)
-            );
-        }
-        fs::write(&wrapper, text.replace(&current_pin, &requested_pin))?;
+            )
+        })?;
+        fs::write(&wrapper, updated)?;
     }
     Ok(())
 }
@@ -97,15 +98,18 @@ mod tests {
     #[test]
     fn wrapper_pin_requires_exact_active_shell_token() {
         assert!(wrapper_has_pin(
-            "exec uvx --from \"codexy-runtime-tools==1.2.1\" tool",
+            "exec uvx --from \"codexy-runtime-tools==1.2.1\" codexy-mcp-runtime lsp",
+            "lsp",
             "codexy-runtime-tools==1.2.1"
         ));
         assert!(!wrapper_has_pin(
-            "exec uvx --from \"codexy-runtime-tools==1.2.10\" tool",
+            "exec uvx --from \"codexy-runtime-tools==1.2.10\" codexy-mcp-runtime lsp",
+            "lsp",
             "codexy-runtime-tools==1.2.1"
         ));
         assert!(!wrapper_has_pin(
-            "# exec uvx --from \"codexy-runtime-tools==1.2.1\" tool",
+            "# exec uvx --from \"codexy-runtime-tools==1.2.1\" codexy-mcp-runtime lsp",
+            "lsp",
             "codexy-runtime-tools==1.2.1"
         ));
     }

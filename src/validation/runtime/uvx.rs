@@ -3,34 +3,67 @@ use std::path::Path;
 use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
+use crate::shell::{commands, has_sequence, runtime_exec, unique_option_value};
 
 pub(super) fn check_wrapper(path: &Path, server: &str, version: &str) -> Result<()> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("reading {}", display_relative(path)))?;
-    let active = active_shell(&text);
+    let commands = commands(&text);
+    let active = commands
+        .iter()
+        .flatten()
+        .map(|word| word.text.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if !commands
+        .iter()
+        .any(|command| has_sequence(command, &["command", "-v", "uvx"]))
+        || !active.contains("CODEXY_UVX_PATH")
+    {
+        bail!("{} must locate uvx safely", display_relative(path));
+    }
+    let command = runtime_exec(&text, server).with_context(|| {
+        format!(
+            "{} must contain exactly one active runtime exec command",
+            display_relative(path)
+        )
+    })?;
+    if !command
+        .get(1)
+        .is_some_and(|word| matches!(word.text.as_str(), "uvx" | "$uvx_path"))
+        || unique_option_value(&command, "--from")
+            != Some(format!("codexy-runtime-tools=={version}").as_str())
+    {
+        bail!(
+            "{} has an invalid runtime executable or pin",
+            display_relative(path)
+        );
+    }
     for required in [
-        "command -v uvx",
-        "CODEXY_UVX_PATH",
-        "--no-config --isolated --default-index https://pypi.org/simple",
-        &format!("\"codexy-runtime-tools=={version}\""),
-        &format!("codexy-mcp-runtime {server}"),
+        vec!["--no-config"],
+        vec!["--isolated"],
+        vec!["--default-index", "https://pypi.org/simple"],
+        vec!["codexy-mcp-runtime", server],
     ] {
-        if !active.contains(required) {
+        if !has_sequence(&command, &required) {
             bail!(
-                "{} must contain pinned uvx runtime contract {required:?}",
+                "{} has an invalid runtime exec command",
                 display_relative(path)
             );
         }
     }
     for forbidden in [
-        "python3",
-        "cargo run",
-        "cargo install",
-        "curl ",
-        "git clone",
-        "dirname",
+        &["python3"][..],
+        &["cargo", "run"],
+        &["cargo", "install"],
+        &["curl"],
+        &["git", "clone"],
+        &["dirname"],
     ] {
-        if active.contains(forbidden) {
+        if commands
+            .iter()
+            .any(|command| has_sequence(command, forbidden))
+        {
             bail!(
                 "{} must not contain runtime fallback {forbidden:?}",
                 display_relative(path)
@@ -38,42 +71,6 @@ pub(super) fn check_wrapper(path: &Path, server: &str, version: &str) -> Result<
         }
     }
     Ok(())
-}
-
-fn active_shell(text: &str) -> String {
-    text.lines()
-        .map(strip_shell_comment)
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn strip_shell_comment(line: &str) -> &str {
-    let mut single_quoted = false;
-    let mut double_quoted = false;
-    let mut escaped = false;
-    let mut token_boundary = true;
-    for (index, character) in line.char_indices() {
-        if escaped {
-            escaped = false;
-            token_boundary = false;
-            continue;
-        }
-        if character == '\\' && !single_quoted {
-            escaped = true;
-            token_boundary = false;
-            continue;
-        }
-        match character {
-            '\'' if !double_quoted => single_quoted = !single_quoted,
-            '"' if !single_quoted => double_quoted = !double_quoted,
-            '#' if !single_quoted && !double_quoted && token_boundary => return &line[..index],
-            _ => {}
-        }
-        token_boundary = !single_quoted
-            && !double_quoted
-            && (character.is_whitespace() || matches!(character, ';' | '|' | '&' | '(' | ')'));
-    }
-    line
 }
 
 #[cfg(test)]
@@ -136,6 +133,22 @@ exec uvx --no-config --isolated --default-index https://pypi.org/simple \
                 })
                 .collect::<Vec<_>>()
                 .join("\n"),
+        ] {
+            let temp = tempfile::NamedTempFile::new()?;
+            std::fs::write(temp.path(), invalid)?;
+            assert!(check_wrapper(temp.path(), "lsp", "1.2.1").is_err());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_duplicate_from_and_non_uvx_exec_commands() -> anyhow::Result<()> {
+        for invalid in [
+            VALID.replace(
+                "--from \"codexy-runtime-tools==1.2.1\"",
+                "--from \"codexy-runtime-tools==1.2.1\" --from \"codexy-runtime-tools==1.2.10\"",
+            ),
+            VALID.replace("exec uvx", "exec arbitrary-runner"),
         ] {
             let temp = tempfile::NamedTempFile::new()?;
             std::fs::write(temp.path(), invalid)?;

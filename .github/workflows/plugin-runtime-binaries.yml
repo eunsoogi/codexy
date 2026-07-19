@@ -317,6 +317,7 @@ jobs:
           packages-dir: dist/python
           attestations: true
 
+  # Recovery after a post-PyPI failure: rerun only the failed finalize-release job; do not rerun the immutable PyPI upload.
   finalize-release:
     name: Publish marketplace release
     needs: [publish-release, publish-runtime-tool]
