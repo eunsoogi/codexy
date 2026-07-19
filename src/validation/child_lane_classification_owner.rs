@@ -11,8 +11,15 @@ fn is_current_thread_owner(value: &str) -> bool {
     let normalized = value.replace(['‘', '’'], "'");
     let value = normalized.as_str();
     value.starts_with("current-thread-owned")
+        && has_implementation_lane(value)
         && !has_affirmative_parent_owner(value)
         && !has_owner_denial(value)
+}
+
+fn has_implementation_lane(value: &str) -> bool {
+    ["implementation", "implémentation", "구현"]
+        .iter()
+        .any(|marker| value.contains(marker))
 }
 
 fn has_affirmative_parent_owner(value: &str) -> bool {

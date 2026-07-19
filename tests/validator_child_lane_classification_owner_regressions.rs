@@ -40,3 +40,18 @@ fn localized_and_unrelated_denials_preserve_current_thread_ownership() -> TestRe
     }
     Ok(())
 }
+
+#[test]
+fn current_thread_owner_requires_an_implementation_lane() -> TestResult {
+    for owner in ["current-thread-owned", "current-thread-owned reviewer"] {
+        let evidence = format!(
+            "{}\nChild branch codexy/461-table was created after classification.\n",
+            TABLE.replace("current-thread-owned implementation lane for #461", owner)
+        );
+        assert!(
+            !run_validator(&evidence)?.status.success(),
+            "owner must name its implementation lane: {owner}"
+        );
+    }
+    Ok(())
+}
