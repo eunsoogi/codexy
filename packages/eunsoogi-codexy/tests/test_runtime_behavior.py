@@ -6,6 +6,7 @@ import tempfile
 import unittest
 import urllib.request
 import zipfile
+import zlib
 from pathlib import Path
 from unittest import mock
 
@@ -14,6 +15,7 @@ from codexy_runtime_tools.cache import runtime_cache_key
 from codexy_runtime_tools.package import (
     _GithubRedirectHandler,
     _artifact_package,
+    _extract_zip,
     _safe_extract_tar,
     _safe_extract_zip,
     acquire_package,
@@ -75,6 +77,32 @@ class RuntimeBehaviorTests(unittest.TestCase):
                 runtime.run(config)
             acquire.assert_not_called()
             execute.assert_called_once_with(installed, ["--stdio"], {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)})
+
+    def test_default_digest_partitions_offline_caches(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / "cache"
+            unsigned = configuration(root, offline=True)
+            pinned = configuration(root, offline=True, package_sha256="a" * 64)
+            self.assertNotEqual(install_paths(unsigned, cache), install_paths(pinned, cache))
+            installed, marker = install_paths(unsigned, cache)
+            installed.parent.mkdir(parents=True)
+            installed.write_text("#!/bin/sh\n", encoding="utf-8")
+            installed.chmod(0o755)
+            marker.write_text('{"version":"1.2.1"}', encoding="utf-8")
+            with (
+                mock.patch.object(runtime, "_cache_root", return_value=cache),
+                self.assertRaisesRegex(SystemExit, "127"),
+            ):
+                runtime.run(pinned)
+            manifest = root / ".codex-plugin" / "plugin.json"
+            manifest.parent.mkdir(exist_ok=True)
+            manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
+            with mock.patch.dict("os.environ", {"CODEXY_RUNTIME_PACKAGE_SHA256": "A" * 64}, clear=True):
+                uppercase = runtime.Configuration.load("lsp", root, [])
+            with mock.patch.dict("os.environ", {"CODEXY_RUNTIME_PACKAGE_SHA256": "a" * 64}, clear=True):
+                lowercase = runtime.Configuration.load("lsp", root, [])
+            self.assertEqual(uppercase.package_sha256, lowercase.package_sha256)
 
     def test_offline_without_cache_fails_visibly(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -181,6 +209,24 @@ class RuntimeBehaviorTests(unittest.TestCase):
             zipped.write_bytes(b"not a zip archive")
             with self.assertRaisesRegex(ValueError, "invalid artifact archive"):
                 _safe_extract_zip(zipped, root / "zip")
+
+    def test_corrupt_deflate_has_runtime_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "corrupt-deflate.zip"
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zipped:
+                zipped.writestr("codexy-marketplace-plugin.tar.gz", b"payload-" * 1_000)
+            with zipfile.ZipFile(archive) as zipped:
+                info = zipped.infolist()[0]
+                offset = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra)
+                compressed_size = info.compress_size
+            contents = bytearray(archive.read_bytes())
+            contents[offset:offset + compressed_size] = b"\0" * compressed_size
+            archive.write_bytes(contents)
+            with self.assertRaises(zlib.error):
+                _extract_zip(archive, root / "raw")
+            with self.assertRaisesRegex(ValueError, "invalid artifact archive"):
+                _safe_extract_zip(archive, root / "safe")
 
 
 if __name__ == "__main__":

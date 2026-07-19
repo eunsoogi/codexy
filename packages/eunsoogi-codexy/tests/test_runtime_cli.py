@@ -61,6 +61,22 @@ class RuntimeCliTests(unittest.TestCase):
             self.assertEqual(_github_token_for("https://objects.example.test/artifact.zip"), "")
         run.assert_not_called()
 
+    def test_tokenless_download_uses_standard_urlopen(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "package.tar.gz"
+            response = mock.MagicMock()
+            response.__enter__.return_value = io.BytesIO(b"package")
+            with (
+                mock.patch("codexy_runtime_tools.package.urllib.request.urlopen", return_value=response) as urlopen,
+                mock.patch("codexy_runtime_tools.package.urllib.request.build_opener") as build_opener,
+            ):
+                package._download("https://downloads.example.test/package.tar.gz", destination)
+            build_opener.assert_not_called()
+            request = urlopen.call_args.args[0]
+            self.assertEqual(request.full_url, "https://downloads.example.test/package.tar.gz")
+            self.assertIsNone(request.get_header("Authorization"))
+            self.assertEqual(destination.read_bytes(), b"package")
+
     def test_git_repair_forces_install_and_preserves_plugin_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
