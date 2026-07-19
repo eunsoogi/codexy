@@ -76,12 +76,13 @@ class Configuration:
             release = plugin_release(manifest)
         except (OSError, ValueError) as error:
             _fail(f"codexy-mcp-{server} cannot read plugin release: {error}")
+        package_path_was_set = "CODEXY_RUNTIME_PACKAGE_PATH" in os.environ
         package_path = os.environ.get("CODEXY_RUNTIME_PACKAGE_PATH", "")
         package_url_was_set = "CODEXY_RUNTIME_PACKAGE_URL" in os.environ
         artifacts_was_set = "CODEXY_RUNTIME_ARTIFACTS_API_URL" in os.environ
         package_url = os.environ.get("CODEXY_RUNTIME_PACKAGE_URL", "")
         artifacts_api = os.environ.get("CODEXY_RUNTIME_ARTIFACTS_API_URL", "")
-        package_override = bool(package_path or package_url_was_set or artifacts_was_set)
+        package_override = bool(package_path_was_set or package_url_was_set or artifacts_was_set)
         package_sha256 = os.environ.get("CODEXY_RUNTIME_PACKAGE_SHA256", "").lower()
         if package_override and (
             len(package_sha256) != 64

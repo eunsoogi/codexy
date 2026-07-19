@@ -100,6 +100,18 @@ class RuntimeBehaviorTests(unittest.TestCase):
             ):
                 runtime.Configuration.load("lsp", root, [])
 
+    def test_empty_explicit_package_path_requires_a_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / ".codex-plugin" / "plugin.json"
+            manifest.parent.mkdir()
+            manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
+            with (
+                mock.patch.dict("os.environ", {"CODEXY_RUNTIME_PACKAGE_PATH": ""}, clear=True),
+                self.assertRaisesRegex(SystemExit, "127"),
+            ):
+                runtime.Configuration.load("lsp", root, [])
+
     def test_explicit_package_digest_must_match(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -6,7 +6,7 @@ on:
       - "packages/eunsoogi-codexy/**"
       - ".github/workflows/python-package.yml"
   push:
-    tags: ["v*"]
+    tags: ["v1.2.2"]
 
 permissions:
   contents: read
@@ -25,6 +25,12 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check build
           python -m build --outdir dist packages/eunsoogi-codexy
+      - name: Verify installed wheel and console entrypoint
+        run: |
+          python -m venv .package-venv
+          .package-venv/bin/python -m pip install --no-index --find-links dist eunsoogi-codexy==1.2.2
+          .package-venv/bin/python -c 'import codexy_runtime_tools'
+          .package-venv/bin/codexy-mcp-runtime --help
       - uses: actions/upload-artifact@v4
         with:
           name: python-package
@@ -33,7 +39,7 @@ jobs:
 
   publish:
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/tags/v1.2.2'
     permissions:
       contents: read
       id-token: write

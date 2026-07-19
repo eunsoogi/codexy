@@ -1,4 +1,7 @@
+import hashlib
+import io
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,7 +9,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from codexy_runtime_tools import package, runtime
-from codexy_runtime_tools.installer import execute, install_git
+from codexy_runtime_tools.installer import execute, install_git, install_package
 from codexy_runtime_tools.package import _github_token_for
 
 
@@ -18,6 +21,14 @@ class RuntimeCliTests(unittest.TestCase):
         self.assertIn(
             'codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"', pyproject
         )
+
+    def test_bootstrap_publish_is_exact_and_installs_the_wheel(self) -> None:
+        workflow = Path(__file__).parents[3].joinpath(".github/workflows/python-package.yml").read_text()
+        self.assertIn('tags: ["v1.2.2"]', workflow)
+        self.assertIn("github.ref == 'refs/tags/v1.2.2'", workflow)
+        self.assertIn("python -m venv .package-venv", workflow)
+        self.assertIn("eunsoogi-codexy==1.2.2", workflow)
+        self.assertIn("codexy-mcp-runtime --help", workflow)
 
     def test_cli_preserves_plugin_root_and_stdio_arguments(self) -> None:
         argv = [
@@ -75,6 +86,31 @@ class RuntimeCliTests(unittest.TestCase):
         ):
             execute("/runtime", ["--stdio"], {"CODEXY_PLUGIN_ROOT": "/installed/plugin"})
         execvpe.assert_called_once_with("/runtime", ["/runtime", "--stdio"], {"PRESERVED": "yes", "CODEXY_PLUGIN_ROOT": "/installed/plugin"})
+
+    def test_package_install_copies_verified_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "package.tar.gz"
+            runtime_name = "codexy-mcp-lsp-linux-x86_64.bin"
+            with tarfile.open(archive, "w:gz") as packaged:
+                for name, contents, mode in (
+                    (f"plugins/codexy/runtime/{runtime_name}", b"#!/bin/sh\n", 0o755),
+                    ("plugins/codexy/.codex-plugin/plugin.json", b'{"version":"1.2.1"}', 0o644),
+                ):
+                    member = tarfile.TarInfo(name)
+                    member.size, member.mode = len(contents), mode
+                    packaged.addfile(member, io.BytesIO(contents))
+            manifest = root / "plugin.json"
+            manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
+            config = SimpleNamespace(
+                package_path=str(archive), package_url="", artifacts_api="",
+                package_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
+                package_override=True, runtime_name=runtime_name, manifest=manifest,
+            )
+            installed = root / "cache/bin/codexy-mcp-lsp"
+            install_package(config, root / "cache", installed)
+            self.assertEqual(installed.read_bytes(), b"#!/bin/sh\n")
+            self.assertTrue(installed.stat().st_mode & 0o111)
 
 
 if __name__ == "__main__":
