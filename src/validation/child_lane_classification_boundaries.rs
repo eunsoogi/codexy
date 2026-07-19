@@ -1,5 +1,5 @@
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
-use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
+use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
 const HEADER: [&str; 2] = ["task classification", "decision"];
@@ -19,6 +19,7 @@ pub(super) struct ClassificationTable {
     pub(super) start: usize,
     pub(super) end: usize,
     pub(super) owner: String,
+    canonical: bool,
 }
 
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
@@ -30,77 +31,13 @@ pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
 
 fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
     let line = metadata_key(trimmed_value(lines[index]));
-    if "pr:|pull request:"
+    if "pr:|pull request:|review response:|maintainer reassignment:"
         .split('|')
         .any(|marker| line.starts_with(marker))
     {
         return true;
     }
-    if line.starts_with("lane ownership:") {
-        return !is_inside_task_classification(lines, index);
-    }
-    is_owner_metadata(line) && !is_inside_task_classification(lines, index)
-}
-
-fn is_owner_metadata(line: &str) -> bool {
-    "owner:|child owner:|lane owner:|owner decision:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
-}
-
-fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
-    for line in lines
-        .iter()
-        .take(index)
-        .rev()
-        .map(|line| metadata_key(trimmed_value(line)))
-    {
-        if line.is_empty() {
-            continue;
-        }
-        if line == "task classification:" {
-            return true;
-        }
-        if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
-            return false;
-        }
-        if !is_task_classification_field(line) {
-            return false;
-        }
-    }
-    false
-}
-
-fn is_hard_lane_boundary(line: &str) -> bool {
-    "pr:|pull request:|lane ownership:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
-}
-
-fn is_lane_boundary_terminator(line: &str) -> bool {
-    "review response:|maintainer reassignment:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
-}
-
-fn is_task_classification_field(line: &str) -> bool {
-    line.split_once(':').is_some_and(|(key, _)| {
-        matches!(
-            super::child_lane_ownership_phrases::metadata_key(key),
-            "lane type"
-                | "secondary surfaces"
-                | "owner decision"
-                | "atomic scope"
-                | "required skills"
-                | "required tools/evidence"
-                | "required tools"
-                | "required evidence"
-                | "first allowed action"
-                | "stop/blocker"
-                | "stop blocker"
-                | "blocker"
-        )
-    })
+    line.starts_with("lane ownership:") || line.starts_with("owner decision:")
 }
 
 pub(super) fn classifications(source: &str) -> Vec<ClassificationTable> {
@@ -137,11 +74,12 @@ pub(super) fn classifications(source: &str) -> Vec<ClassificationTable> {
             }
             Event::End(TagEnd::Table) => {
                 if let Some((start, rows)) = current.take() {
-                    if let Some(owner) = canonical_owner(&rows) {
+                    if let Some((owner, canonical)) = classification_owner(&rows) {
                         tables.push(ClassificationTable {
                             start,
-                            end: line_at(source, range.end.saturating_sub(1)),
+                            end: start + rows.len(),
                             owner,
+                            canonical,
                         });
                     }
                 }
@@ -173,7 +111,7 @@ pub(super) fn is_classification_key(key: &str) -> bool {
 pub(super) fn owner_at(tables: &[ClassificationTable], index: usize) -> Option<&str> {
     tables
         .iter()
-        .find(|table| table.start == index)
+        .find(|table| table.start == index && table.canonical)
         .map(|table| table.owner.as_str())
 }
 
@@ -182,31 +120,90 @@ pub(super) fn rendered_child_context_applies(
     tables: &[ClassificationTable],
     setup_index: usize,
 ) -> bool {
-    let Some(table) = tables.iter().rev().find(|table| table.end < setup_index) else {
-        return false;
-    };
-    is_child_delegation_owner_decision(&table.owner)
-        && !lines[table.end + 1..setup_index].iter().any(|line| {
+    let lane_start = current_lane_start(lines, setup_index);
+    let context_start = lines[..setup_index]
+        .iter()
+        .rposition(|line| {
             let line = metadata_key(trimmed_value(line));
-            line.starts_with("lane ownership:") || line.starts_with("owner decision:")
+            line.starts_with("pr:")
+                || line.starts_with("pull request:")
+                || line.starts_with("review response:")
+                || line.starts_with("maintainer reassignment:")
         })
+        .map_or(0, |index| index + 1);
+    let lane_end = lines
+        .iter()
+        .enumerate()
+        .skip(setup_index + 1)
+        .find(|(index, _)| is_lane_boundary(lines, *index))
+        .map_or(lines.len(), |(index, _)| index);
+    let tables = tables
+        .iter()
+        .filter(|table| table_in_lane(table, lane_start, lines) && table.start < lane_end)
+        .collect::<Vec<_>>();
+    tables
+        .iter()
+        .any(|table| is_child_delegation_owner_decision(&table.owner) || table.owner.is_empty())
+        || lines[context_start..lane_end]
+            .iter()
+            .take_while(|line| !line.starts_with("pr:") && !line.starts_with("pull request:"))
+            .any(|line| is_explicit_child_context(line))
+        || lines[context_start..lane_end]
+            .iter()
+            .any(|line| metadata_key(trimmed_value(line)) == "task classification:")
 }
 
-fn canonical_owner(rows: &[Vec<String>]) -> Option<String> {
-    (rows.len() == FIELDS.len() + 1 && cells_match(&rows[0], &HEADER)).then_some(())?;
-    let mut owner = None;
-    for (row, field) in rows.iter().skip(1).zip(FIELDS) {
+fn is_explicit_child_context(line: &str) -> bool {
+    let line = metadata_key(trimmed_value(line));
+    matches!(line, "child-owned" | "child-owned lane")
+        || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
+        || "lane ownership: child-owned|owner: child-owned|lane owner: child-owned"
+            .split('|')
+            .any(|marker| line.starts_with(marker))
+        || field_value(line, "child owner")
+            .is_some_and(|value| !value.is_empty() && !value.contains("none"))
+}
+
+pub(super) fn complete_classification_before(
+    lines: &[&str],
+    tables: &[ClassificationTable],
+    setup_index: usize,
+) -> Option<usize> {
+    let lane_start = current_lane_start(lines, setup_index);
+    let complete = tables
+        .iter()
+        .filter(|table| {
+            table.canonical && table_in_lane(table, lane_start, lines) && table.end < setup_index
+        })
+        .collect::<Vec<_>>();
+    (complete.len() == 1 && is_child_delegation_owner_decision(&complete[0].owner))
+        .then(|| complete[0].end)
+}
+
+fn table_in_lane(table: &ClassificationTable, lane_start: usize, lines: &[&str]) -> bool {
+    table.start >= lane_start
+        || (table.end + 1 < lane_start
+            && lines[table.end + 1..lane_start - 1]
+                .iter()
+                .all(|line| line.is_empty()))
+}
+
+fn classification_owner(rows: &[Vec<String>]) -> Option<(String, bool)> {
+    cells_match(rows.first()?, &HEADER).then_some(())?;
+    let mut owner = String::new();
+    for row in rows.iter().skip(1) {
         let [key, value] = row.as_slice() else {
-            return None;
+            break;
         };
-        if !key.trim().eq_ignore_ascii_case(field) || value.trim().is_empty() {
-            return None;
-        }
-        if field == "owner decision" {
-            owner = Some(value.to_ascii_lowercase());
+        if key.trim().eq_ignore_ascii_case("owner decision") {
+            owner = value.to_ascii_lowercase();
         }
     }
-    owner
+    let canonical = rows.len() == FIELDS.len() + 1
+        && rows.iter().skip(1).zip(FIELDS).all(|(row, field)| {
+            matches!(row.as_slice(), [key, value] if key.trim().eq_ignore_ascii_case(field) && !value.trim().is_empty())
+        });
+    Some((owner, canonical))
 }
 
 fn cells_match(cells: &[String], expected: &[&str]) -> bool {

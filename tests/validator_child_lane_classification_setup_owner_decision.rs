@@ -89,48 +89,18 @@ fn validator_rejects_child_setup_when_only_prior_lane_precedes_owner_decision() 
 
 #[test]
 fn validator_allows_setup_before_next_lane_boundary() -> TestResult {
-    assert_allowed(
-        r#"PR: #1
-Branch codexy/neutral-lane was created after classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-PR: #2
-Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
-Child branch codexy/231-branch-classification-guard was created after classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )
+    assert_allowed(&format!(
+        "PR: #1\nBranch codexy/neutral-lane was created after classification.\n{}PR: #2\n{}Child branch codexy/231-branch-classification-guard was created after classification.\n{}",
+        ownership_footer(), complete_child_classification(), ownership_footer()
+    ))
 }
 
 #[test]
 fn validator_allows_setup_before_next_lane_ownership_boundary() -> TestResult {
-    assert_allowed(
-        r#"Branch codexy/neutral-lane was created after classification.
-Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
-Child branch codexy/231-branch-classification-guard was created after classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )
+    assert_allowed(&format!(
+        "Branch codexy/neutral-lane was created after classification.\n{}Child branch codexy/231-branch-classification-guard was created after classification.\n{}",
+        complete_child_classification(), ownership_footer()
+    ))
 }
 
 #[test]
@@ -144,23 +114,10 @@ fn validator_allows_classification_before_child_lane_metadata() -> TestResult {
 
 #[test]
 fn validator_allows_setup_before_next_owner_decision_boundary() -> TestResult {
-    assert_allowed(
-        r#"Branch codexy/neutral-lane was created after classification.
-Owner decision: child-owned implementation lane
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
-Child branch codexy/231-branch-classification-guard was created after classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )
+    assert_allowed(&format!(
+        "Branch codexy/neutral-lane was created after classification.\nOwner decision: child-owned implementation lane\n{}Child branch codexy/231-branch-classification-guard was created after classification.\n{}",
+        complete_child_classification().replacen("Lane ownership: child-owned\n", "", 1), ownership_footer()
+    ))
 }
 
 #[test]
@@ -204,41 +161,15 @@ fn validator_allows_child_owned_owner_decision_with_parent_owned_negation() -> T
 }
 
 fn complete_parent_owned_owner_decision_classification() -> &'static str {
-    r#"Task classification:
-Lane type: validation
-Secondary surfaces: workflow, validators
-Owner decision: parent-owned for branch/worktree setup; parent owns implementation
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None"#
+    "| Task classification | Decision |\n| --- | --- |\n| Lane type | validation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | parent-owned for branch/worktree setup; parent owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |\n"
 }
 
 fn complete_child_classification() -> &'static str {
-    r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None"#
+    "Lane ownership: child-owned\n| Task classification | Decision |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |\n"
 }
 
 fn complete_child_classification_with_parent_owned_negation() -> &'static str {
-    r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: child-owned implementation lane (not parent-owned)
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None"#
+    "Lane ownership: child-owned\n| Task classification | Decision |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | child-owned implementation lane (not parent-owned) |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |\n"
 }
 
 fn ownership_footer() -> &'static str {

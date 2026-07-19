@@ -1,9 +1,7 @@
 use super::child_lane_classification_boundaries::{
-    ClassificationTable, classifications, current_lane_start, is_classification_key,
+    classifications, complete_classification_before, is_classification_key,
     rendered_child_context_applies,
 };
-use super::child_lane_classification_setup_context::child_lane_context_applies;
-use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
@@ -18,15 +16,17 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 .map(move |clause| (index, clause))
         })
         .filter(|(index, _)| {
-            child_lane_context_applies(&lines, *index)
-                || rendered_child_context_applies(&lines, &tables, *index)
+            !tables
+                .iter()
+                .any(|table| table.start <= *index && *index <= table.end)
+                && rendered_child_context_applies(&lines, &tables, *index)
         })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {
         return Vec::new();
     }
     if setup_clauses.iter().any(|(setup_index, setup_clause)| {
-        formal_child_classification_complete_index_before(&lines, &tables, *setup_index).is_none()
+        complete_classification_before(&lines, &tables, *setup_index).is_none()
             || line_claims_setup_before_classification(setup_clause)
     }) {
         return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed".to_owned()];
@@ -34,97 +34,6 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     Vec::new()
 }
 
-fn formal_child_classification_complete_index_before(
-    lines: &[&str],
-    tables: &[ClassificationTable],
-    setup_index: usize,
-) -> Option<usize> {
-    let lane_start = current_lane_start(lines, setup_index);
-    tables
-        .iter()
-        .filter(|table| table.start >= lane_start && table.end < setup_index)
-        .filter(|table| {
-            is_child_completion_owner(&table.owner) || is_current_thread_owner(&table.owner)
-        })
-        .map(|table| table.end)
-        .next_back()
-        .or_else(|| legacy_classification_complete_index_before(lines, lane_start, setup_index))
-}
-
-fn legacy_classification_complete_index_before(
-    lines: &[&str],
-    lane_start: usize,
-    setup_index: usize,
-) -> Option<usize> {
-    let mut seen = None::<ClassificationFields>;
-    for (index, line) in lines.iter().enumerate().take(setup_index).skip(lane_start) {
-        if metadata_key(trimmed_value(line)) == "task classification:" {
-            seen = Some(ClassificationFields::default());
-            continue;
-        }
-        if line.is_empty() {
-            continue;
-        }
-        let Some((key, value)) = line.split_once(':') else {
-            continue;
-        };
-        let Some(fields) = seen.as_mut() else {
-            continue;
-        };
-        fields.record(metadata_key(key), trimmed_value(value));
-        if fields.is_complete() {
-            return Some(index);
-        }
-    }
-    None
-}
-
-#[derive(Default)]
-struct ClassificationFields {
-    lane_type: bool,
-    secondary_surfaces: bool,
-    atomic_scope: bool,
-    required_skills: bool,
-    required_tools: bool,
-    first_allowed_action: bool,
-    stop_blocker: bool,
-    child_owner_decision: bool,
-}
-
-impl ClassificationFields {
-    fn record(&mut self, key: &str, value: &str) {
-        if value.is_empty() {
-            return;
-        }
-        match key {
-            "lane type" => self.lane_type = true,
-            "secondary surfaces" => self.secondary_surfaces = true,
-            "owner decision" => {
-                self.child_owner_decision =
-                    is_child_completion_owner(value) || is_current_thread_owner(value);
-            }
-            "atomic scope" => self.atomic_scope = true,
-            "required skills" => self.required_skills = true,
-            "required tools/evidence" | "required tools" | "required evidence" => {
-                self.required_tools = true
-            }
-            "first allowed action" => self.first_allowed_action = true,
-            "stop/blocker" | "stop blocker" | "blocker" => self.stop_blocker = true,
-            _ => {}
-        }
-    }
-
-    fn is_complete(&self) -> bool {
-        self.lane_type
-            && self.secondary_surfaces
-            && self.atomic_scope
-            && self.required_skills
-            && self.required_tools
-            && self.first_allowed_action
-            && self.stop_blocker
-            && self.child_owner_decision
-    }
-}
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     let line = trimmed_value(line);
     if line.split_once(':').is_some_and(|(key, value)| {
@@ -207,14 +116,6 @@ fn has_absent_child_setup(line: &str) -> bool {
         || "no child created|no child-created|not child created|not child-created|without child created|without child-created"
         .split('|')
         .any(|marker| line.contains(marker))
-}
-fn is_current_thread_owner(value: &str) -> bool {
-    value.starts_with("current-thread-owned")
-        && (value.contains("implementation lane") || value.contains("child implementation"))
-        && !value.contains("not current-thread-owned")
-}
-fn is_child_completion_owner(value: &str) -> bool {
-    !is_parent_owned_value(value) && is_child_delegation_owner_decision(value)
 }
 fn starts_with_absent_child_setup(line: &str) -> bool {
     "no child branch|no child-branch|no child worktree|no child-worktree|not child branch|not child-branch|not child worktree|not child-worktree|without child branch|without child-branch|without child worktree|without child-worktree|neither child branch|neither child worktree|never child branch|never child worktree|none child branch|none child worktree"

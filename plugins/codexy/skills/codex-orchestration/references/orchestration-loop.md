@@ -90,7 +90,16 @@ rationale wording.
 
 ```text
 Lane goal / success criteria:
-Task classification:
+| Task classification | Decision |
+| --- | --- |
+| Lane type | |
+| Secondary surfaces | |
+| Owner decision | |
+| Atomic scope | |
+| Required skills | |
+| Required tools/evidence | |
+| First allowed action | |
+| Stop/blocker | |
 Atomic lane:
 Issue:
 Branch:
@@ -125,7 +134,16 @@ implementation context:
 Issue:
 Branch:
 Worktree path:
-Task classification:
+| Task classification | Decision |
+| --- | --- |
+| Lane type | |
+| Secondary surfaces | |
+| Owner decision | |
+| Atomic scope | |
+| Required skills | |
+| Required tools/evidence | |
+| First allowed action | |
+| Stop/blocker | |
 First message:
 Allowed files or paths:
 Read first:

@@ -1,4 +1,4 @@
-use super::child_lane_classification_boundaries::classifications;
+use super::child_lane_classification_boundaries::{classifications, owner_at};
 use super::child_lane_owner_decision::{
     is_affirmative_child_owned_value, is_child_delegation_owner_decision, is_parent_owned_value,
 };
@@ -63,14 +63,21 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let mut pending_setup_recovered = Some(false);
     let mut pending_pr_seen = false;
     for (index, line) in lines.iter().enumerate() {
-        let table_owner = tables
-            .iter()
-            .find(|table| table.start == index)
-            .map(|table| table.owner.as_str());
+        let table_owner = owner_at(&tables, index);
         let starts_lane = table_owner.is_some_and(is_child_delegation_owner_decision)
             || is_affirmative_child_owned_line(line);
-        let pr_metadata = is_pr_boundary(line);
+        let pr_metadata = line
+            .split_once(':')
+            .is_some_and(|(key, _)| metadata_key(key) == "pr");
+        let table_owns_following_pr = tables.iter().any(|table| {
+            table.end < index
+                && owner_at(&tables, table.start).is_some_and(is_child_delegation_owner_decision)
+                && lines[table.end + 1..index]
+                    .iter()
+                    .all(|line| line.is_empty())
+        });
         let pr_boundary = pr_metadata
+            && !table_owns_following_pr
             && index > 0
             && (previous_non_empty_line(&lines, index)
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous))
@@ -166,10 +173,6 @@ fn previous_non_empty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a st
         .rev()
         .find(|line| !line.is_empty())
         .copied()
-}
-fn is_pr_boundary(line: &str) -> bool {
-    line.split_once(':')
-        .is_some_and(|(key, _)| metadata_key(key) == "pr")
 }
 fn is_lane_ownership_boundary(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {

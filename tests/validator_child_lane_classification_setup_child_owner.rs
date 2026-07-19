@@ -50,22 +50,10 @@ Maintainer reassignment: none
 
 #[test]
 fn validator_allows_absent_before_classification_clause_after_valid_setup() -> TestResult {
-    assert_allowed(
-        r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
-Child branch codexy/231-branch-classification-guard was created after classification; no child branch was created before task classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )
+    assert_allowed(&format!(
+        "Lane ownership: child-owned\n{}\nChild branch codexy/231-branch-classification-guard was created after classification; no child branch was created before task classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        canonical_table()
+    ))
 }
 
 #[test]
@@ -117,22 +105,10 @@ fn validator_rejects_unqualified_setup_before_classification() -> TestResult {
 
 #[test]
 fn validator_allows_codexy_worktree_setup_after_classification() -> TestResult {
-    assert_allowed(
-        r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
-Worktree for codexy/231-branch-classification-guard was created after task classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )
+    assert_allowed(&format!(
+        "Lane ownership: child-owned\n{}\nWorktree for codexy/231-branch-classification-guard was created after task classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        canonical_table()
+    ))
 }
 
 #[test]
@@ -158,6 +134,9 @@ fn rendered_table_is_the_only_classification_source() -> TestResult {
     assert_rejected(&format!("{table}\nSource thread id: parent-461\nGoal tool call: create_goal\n"))?;
     assert_rejected(&format!(
         "Lane ownership: child-owned\n```text\n{table}```\nChild branch codexy/461-table was created after classification.\n{footer}"
+    ))?;
+    assert_rejected(&format!(
+        "{table}\nPR: #468\nReview response: parent-authored implementation commit abc123 fixed feedback\n"
     ))
 }
 
@@ -180,4 +159,8 @@ fn task_classification_skill_requires_the_compact_table() -> TestResult {
         Some("You MUST use $task-classification first and emit one ordered eight-row GFM table naming lane type, secondary surfaces, owner decision, atomic scope, required skills, required tools/evidence, first allowed action, and blocker before Codexy setup, delegation, implementation, PR, review-response, or merge work begins.")
     );
     Ok(())
+}
+
+fn canonical_table() -> &'static str {
+    "| Task classification | Decision |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |\n"
 }
