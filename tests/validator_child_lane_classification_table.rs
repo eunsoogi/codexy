@@ -54,7 +54,7 @@ fn validator_allows_ordered_english_and_korean_classification_tables() -> TestRe
     for owner in [
         "current-thread-owned implementation lane; not parent-owned",
         "current-thread-owned implementation lane; no parent implementation edits",
-        "current-thread-owned — 구현 소유자이며 부모 소유자가 아님",
+        "current-thread-owned — 부모 소유자가 아닌 구현 소유자",
         "current-thread-owned — 구현 소유자이며 부모 소유자가 아닙니다",
     ] {
         assert_allowed(&ENGLISH_TABLE.replace(
@@ -153,10 +153,10 @@ fn validator_rejects_negated_implementation_owner() -> TestResult {
         "current-thread-owned reviewer; not implementation owner",
         "current-thread-owned implementation lane; not the implementation owner",
         "current-thread-owned implementation lane; does not own implementation",
-        "current-thread-owned implementation lane; implementation ownership is absent",
+        "current-thread-owned implementation lane; isn’t the implementation owner",
         "current-thread-owned implementation lane; isn't the implementation owner",
         "current-thread-owned implementation lane; doesn't own implementation",
-        "current-thread-owned 구현 lane; 구현 소유자가 아님",
+        "current-thread-owned — 구현 소유자가 아닌 검토자",
         "current-thread-owned — 구현 소유자가 아닙니다",
         "current-thread-owned — 구현 소유자가 아니에요",
         "current-thread-owned implementation lane; reviewer only, not owner",

@@ -8,6 +8,8 @@ pub(super) fn is_child_completion_owner(value: &str) -> bool {
 }
 
 fn is_current_thread_owner(value: &str) -> bool {
+    let normalized = value.replace(['‘', '’'], "'");
+    let value = normalized.as_str();
     value.starts_with("current-thread-owned")
         && (value.contains("implementation lane")
             || value.contains("child implementation")
@@ -24,6 +26,7 @@ fn has_affirmative_parent_owner(value: &str) -> bool {
                     "아님",
                     "아니다",
                     "아니며",
+                    "아닌",
                     "아닙니다",
                     "아니에요",
                     "않음",
@@ -51,6 +54,7 @@ fn has_owner_denial(value: &str) -> bool {
             || [
                 "아님",
                 "아니다",
+                "아닌",
                 "아닙니다",
                 "아니에요",
                 "않음",
@@ -71,6 +75,7 @@ fn without_parent_denials(clause: &str) -> String {
         "부모 소유자가 아님",
         "부모 소유자가 아니다",
         "부모 소유자가 아니며",
+        "부모 소유자가 아닌",
         "부모 소유자가 아닙니다",
         "부모 소유자가 아니에요",
         "부모 소유자가 아님을",

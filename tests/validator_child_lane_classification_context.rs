@@ -150,9 +150,19 @@ fn type_seven_tag_does_not_interrupt_a_paragraph() -> TestResult {
 }
 
 #[test]
-fn type_seven_tag_after_blockquote_paragraph_starts_html_block() -> TestResult {
-    for container in ["> paragraph", ">> paragraph", "1. paragraph"] {
-        assert_rejected(&setup_after(&format!("{container}\n<Warning>\n{TABLE}")))?;
+fn type_seven_tag_after_block_boundary_starts_html_block() -> TestResult {
+    for boundary in [
+        "> paragraph",
+        ">paragraph",
+        ">> paragraph",
+        ">>paragraph",
+        "1. paragraph",
+        "***",
+        "___",
+        "#",
+        "###",
+    ] {
+        assert_rejected(&setup_after(&format!("{boundary}\n<Warning>\n{TABLE}")))?;
     }
     Ok(())
 }

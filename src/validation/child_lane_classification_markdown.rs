@@ -25,7 +25,7 @@ pub(super) fn is_indented_code_line(line: &str) -> bool {
 fn is_inside_fenced_code_block(lines: &[&str], index: usize) -> bool {
     let mut open = None;
     for line in lines.iter().take(index) {
-        let Some(candidate) = fence_candidate(line) else {
+        let Some(candidate) = html_block_candidate(line) else {
             continue;
         };
         match open {
@@ -176,16 +176,19 @@ fn line_opens_or_continues_paragraph(line: &str) -> bool {
         return false;
     }
     let candidate = html_block_candidate(line).unwrap_or(trimmed);
-    if fence_candidate(line).and_then(opens_fence).is_some() {
+    if html_block_candidate(line).and_then(opens_fence).is_some() {
         return false;
     }
     if starts_container_block(candidate) {
         return false;
     }
-    let atx_heading = candidate.starts_with('#')
-        && candidate
-            .trim_start_matches('#')
-            .starts_with(char::is_whitespace);
+    if is_thematic_break(candidate) {
+        return false;
+    }
+    let hashes = candidate.chars().take_while(|ch| *ch == '#').count();
+    let heading_suffix = &candidate[hashes..];
+    let atx_heading = (1..=6).contains(&hashes)
+        && (heading_suffix.is_empty() || heading_suffix.starts_with(char::is_whitespace));
     let setext_heading = candidate.len() > 0
         && candidate
             .chars()
@@ -195,22 +198,28 @@ fn line_opens_or_continues_paragraph(line: &str) -> bool {
 }
 
 fn starts_container_block(line: &str) -> bool {
+    if line.starts_with('>') {
+        return true;
+    }
     let marker_end = line.find(char::is_whitespace).unwrap_or(line.len());
     let marker = &line[..marker_end];
-    (!marker.is_empty() && marker.chars().all(|ch| ch == '>'))
-        || matches!(marker, "-" | "+" | "*")
+    matches!(marker, "-" | "+" | "*")
         || marker.strip_suffix(['.', ')']).is_some_and(|number| {
             !number.is_empty() && number.len() <= 9 && number.chars().all(|ch| ch.is_ascii_digit())
         })
 }
 
-fn fence_candidate(line: &str) -> Option<&str> {
-    let spaces = line
-        .as_bytes()
-        .iter()
-        .take_while(|byte| **byte == b' ')
-        .count();
-    (spaces <= 3 && !line.starts_with('\t')).then(|| &line[spaces..])
+fn is_thematic_break(line: &str) -> bool {
+    let mut marker = None;
+    let mut count = 0;
+    for ch in line.chars().filter(|ch| !ch.is_whitespace()) {
+        if !matches!(ch, '*' | '-' | '_') || marker.is_some_and(|marker| marker != ch) {
+            return false;
+        }
+        marker = Some(ch);
+        count += 1;
+    }
+    count >= 3
 }
 
 fn opens_fence(line: &str) -> Option<(u8, usize)> {
