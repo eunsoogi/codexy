@@ -37,6 +37,9 @@ Codexy bundles:
 - validators and GitHub-oriented evidence gates for plugin configuration,
   pull-request readiness, and release work.
 
+See the [plugin architecture guide](docs/architecture.md) for the complete
+agent, skill, and MCP inventory and the implemented orchestration flows.
+
 ## Install Codexy
 
 Install Codexy through your Codex plugin marketplace. If this repository is not

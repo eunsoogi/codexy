@@ -62,6 +62,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/runtime-heartbeats.md` for external waits.
 - `references/parent-stop-preflight.md` for ownership checks before implementation edits.
 - `references/execution-budget.md` for finite child execution and termination.
+- `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 
 ## Classification Gate
 
