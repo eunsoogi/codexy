@@ -1,7 +1,6 @@
 use std::process::Output;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-
 const TABLE: &str = r#"| Task classification | Decision |
 | --- | --- |
 | Lane type | implementation |
@@ -12,14 +11,12 @@ const TABLE: &str = r#"| Task classification | Decision |
 | Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |
 | First allowed action | create branch after classification |
 | Stop/blocker | None |"#;
-
 fn run_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let evidence_path = temp.path().join("handoff.md");
     std::fs::write(&evidence_path, evidence)?;
     crate::support::validator_child_lane_ownership_file(&evidence_path)
 }
-
 fn assert_rejected(evidence: &str) -> TestResult {
     assert!(!run_validator(evidence)?.status.success());
     Ok(())
@@ -62,6 +59,8 @@ fn contradictory_or_multiple_owners_are_rejected() -> TestResult {
     for owner in [
         "current-thread-owned implementation lane; parent-owned coordination",
         "current-thread-owned implementation lane; not parent-owned and not implementation owner",
+        "current-thread-owned implementation lane; not parent-owned but parent-owned coordination",
+        "current-thread-owned implementation lane; no parent implementation edits but parent implementation owner",
         "current-thread-owned 구현 lane; 부모 소유자가 아니며 구현 소유자도 아님",
     ] {
         assert_rejected(&setup_after(&TABLE.replace(
@@ -167,6 +166,7 @@ fn type_seven_tag_after_block_boundary_starts_html_block() -> TestResult {
         "1. paragraph",
         "01. paragraph", "000000001. paragraph",
         "01) paragraph", "000000001) paragraph",
+        "+", "*", "1.", "000000001)",
         "***",
         "___",
         "#",

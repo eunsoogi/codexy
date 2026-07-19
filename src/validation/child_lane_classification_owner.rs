@@ -20,7 +20,9 @@ fn is_current_thread_owner(value: &str) -> bool {
 
 fn has_affirmative_parent_owner(value: &str) -> bool {
     value.split([';', ',', '—']).any(|clause| {
-        (clause.contains("parent-owned") && !clause.contains("not parent-owned"))
+        let clause = without_parent_denials(clause);
+        clause.contains("parent-owned")
+            || clause.contains("parent implementation owner")
             || (clause.contains("부모 소유자")
                 && ![
                     "아님",
