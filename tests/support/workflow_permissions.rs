@@ -14,11 +14,11 @@ pub(crate) fn assert_release_write_permissions_are_trusted(workflow: &str) -> Re
             .ok_or_else(|| "workflow job names must be strings".to_owned())?;
         let job = mapping(job, job_name)?;
         let permissions = field(job, "permissions");
-        if job_name == "publish-release" {
+        if matches!(job_name, "publish-release" | "finalize-release") {
             let permissions =
-                permissions.ok_or("publish-release permissions missing".to_owned())?;
-            let permissions = mapping(permissions, "publish-release permissions")?;
-            require_exact_permission(permissions, "contents", "write", "publish-release")?;
+                permissions.ok_or_else(|| format!("{job_name} permissions missing"))?;
+            let permissions = mapping(permissions, &format!("{job_name} permissions"))?;
+            require_exact_permission(permissions, "contents", "write", job_name)?;
             require_trusted_release_condition(job)?;
         } else if job_name == "publish-runtime-tool" {
             let permissions = permissions.ok_or("runtime-tool permissions missing".to_owned())?;

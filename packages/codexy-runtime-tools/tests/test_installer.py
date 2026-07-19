@@ -51,10 +51,11 @@ class GitInstallerTests(unittest.TestCase):
                 mock.patch("codexy_runtime_tools.installer.shutil.which", return_value="/cargo"),
                 mock.patch(
                     "codexy_runtime_tools.installer.subprocess.run", side_effect=cargo_install
-                ),
+                ) as cargo,
             ):
                 install_git(config, install_root, installed)
 
+            self.assertIn("--force", cargo.call_args.args[0])
             marker = install_root / "plugin.json"
             self.assertEqual(marker.read_text(encoding="utf-8"), manifest.read_text(encoding="utf-8"))
 

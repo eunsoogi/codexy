@@ -90,6 +90,7 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
     command = [
         cargo,
         "install",
+        "--force",
         "--locked",
         "--git",
         config.git_repository,

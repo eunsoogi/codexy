@@ -4,12 +4,13 @@ import json
 from pathlib import Path
 
 from codexy_runtime_tools import runtime
+from codexy_runtime_tools.cache import runtime_cache_key
 
 
 def configuration(root: Path, **overrides: object) -> runtime.Configuration:
     plugin_root = root / "plugin root 유니코드"
     manifest = plugin_root / ".codex-plugin" / "plugin.json"
-    manifest.parent.mkdir(parents=True)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
     manifest.write_text(json.dumps({"version": "1.2.1"}), encoding="utf-8")
     values: dict[str, object] = {
         "server": "lsp",
@@ -31,3 +32,33 @@ def configuration(root: Path, **overrides: object) -> runtime.Configuration:
     }
     values.update(overrides)
     return runtime.Configuration(**values)  # type: ignore[arg-type]
+
+
+def install_paths(config: runtime.Configuration, cache: Path) -> tuple[Path, Path]:
+    source = (
+        "\n".join(
+            (
+                "package-override",
+                config.package_path,
+                config.package_url,
+                config.artifacts_api,
+                config.package_sha256,
+            )
+        )
+        if config.package_override
+        else "package-default"
+    )
+    key = runtime_cache_key(
+        manifest=config.manifest,
+        package_override=config.package_override,
+        identity=[
+            config.git_repository,
+            config.git_ref,
+            config.platform,
+            runtime.PROTOCOL,
+            source,
+            f"codexy-mcp-{config.server}",
+        ],
+    )
+    root = cache / key
+    return root / "bin" / f"codexy-mcp-{config.server}", root / "plugin.json"

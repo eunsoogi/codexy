@@ -160,7 +160,7 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
     Ok(())
 }
 
-fn archive_repository(
+pub(super) fn archive_repository(
     temp: &tempfile::TempDir,
     name: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {

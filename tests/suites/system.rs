@@ -49,6 +49,9 @@ mod structured_contract_migration_guard;
 #[path = "../sync_version_cli.rs"]
 mod sync_version_cli;
 
+#[path = "../sync_version_python_wrapper.rs"]
+mod sync_version_python_wrapper;
+
 #[path = "../token_quota_containment.rs"]
 mod token_quota_containment;
 
@@ -66,6 +69,9 @@ mod validator_mcp;
 
 #[path = "../validator_runtime_contract.rs"]
 mod validator_runtime_contract;
+
+#[path = "../validator_touched_loc_workflow.rs"]
+mod validator_touched_loc_workflow;
 
 #[path = "../worktree_reservation_harness.rs"]
 mod worktree_reservation_harness;

@@ -35,6 +35,10 @@ fn runtime_workflow_rejects_every_untrusted_write_permission()
             "permissions: { contents: read, pull-requests: write }\n\njobs:",
             1,
         ),
+        workflow.replace(
+            "finalize-release:\n    name: Publish marketplace release\n    needs: [publish-release, publish-runtime-tool]\n    if: startsWith(github.ref, 'refs/tags/')\n    runs-on: ubuntu-latest\n    environment: release\n    permissions:\n      contents: write",
+            "finalize-release:\n    name: Publish marketplace release\n    needs: [publish-release, publish-runtime-tool]\n    if: startsWith(github.ref, 'refs/tags/')\n    runs-on: ubuntu-latest\n    environment: release\n    permissions:\n      contents: write\n      issues: write",
+        ),
     ] {
         assert!(
             assert_release_write_permissions_are_trusted(&mutation).is_err(),

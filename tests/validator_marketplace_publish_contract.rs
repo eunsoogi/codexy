@@ -33,6 +33,11 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
         "gh release create \"$release_tag\"",
         "gh release edit \"$release_tag\"",
         "needs: [build-runtime-tool, verify-release-source, publish-release]",
+        "--draft",
+        "finalize-release:",
+        "needs: [publish-release, publish-runtime-tool]",
+        "gh release edit \"$RELEASE_TAG\" --draft=false",
+        "--json isDraft --jq .isDraft",
     ] {
         // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
         assert!(
@@ -40,6 +45,14 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
             "runtime workflow must package release artifacts; missing {required:?}"
         );
     }
+    let stage = workflow.find("publish-release:").ok_or("stage release job")?;
+    let publish_runtime = workflow
+        .find("publish-runtime-tool:")
+        .ok_or("runtime publication job")?;
+    let finalize = workflow
+        .find("finalize-release:")
+        .ok_or("release finalization job")?;
+    assert!(stage < publish_runtime && publish_runtime < finalize);
     // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
     assert!(
         workflow.find("--target \"$GITHUB_SHA\"").is_none(),
@@ -182,25 +195,6 @@ fn workflow_trigger_block<'a>(workflow: &'a str, trigger: &str) -> Option<&'a st
         })
         .unwrap_or(rest.len());
     Some(&rest[..end])
-}
-
-#[test]
-fn touched_loc_workflow_runs_for_all_pull_requests() -> Result<(), Box<dyn std::error::Error>> {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let workflow = std::fs::read_to_string(root.join(".github/workflows/touched-loc-gate.yml"))?;
-
-    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
-    assert!(workflow.find("pull_request:").is_some());
-    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
-    assert!(
-        workflow.find("paths:").is_none(),
-        "touched LOC gate must not use a narrow paths filter"
-    );
-    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
-    assert!(workflow.find("fetch-depth: 0").is_some());
-    // structured-contract: non-contract substring rationale: verifies generated GitHub Actions source text
-    assert!(workflow.find("--check-touched-loc").is_some());
-    Ok(())
 }
 
 #[test]

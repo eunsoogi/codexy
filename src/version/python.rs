@@ -23,6 +23,17 @@ fn package_version(text: &str) -> Option<&str> {
         .find_map(|line| line.strip_prefix("version = \"")?.strip_suffix('"'))
 }
 
+fn wrapper_has_pin(text: &str, expected_pin: &str) -> bool {
+    let quoted = format!("\"{expected_pin}\"");
+    text.lines()
+        .filter(|line| !line.trim_start().starts_with('#'))
+        .any(|line| {
+            line.split(" #")
+                .next()
+                .is_some_and(|active| active.contains(&quoted))
+        })
+}
+
 pub(super) fn check_version(expected: &str) -> Result<()> {
     let path = pyproject()?;
     let text = fs::read_to_string(&path)
@@ -39,7 +50,7 @@ pub(super) fn check_version(expected: &str) -> Result<()> {
     for wrapper in wrappers()? {
         let wrapper_text = fs::read_to_string(&wrapper)
             .with_context(|| format!("missing required file: {}", display_relative(&wrapper)))?;
-        if !wrapper_text.contains(&expected_pin) {
+        if !wrapper_has_pin(&wrapper_text, &expected_pin) {
             bail!(
                 "version mismatch: {} must pin {expected_pin}",
                 display_relative(&wrapper)
@@ -64,8 +75,8 @@ pub(super) fn set_version(current: &str, requested: &str) -> Result<()> {
         &path,
         text.replace(&current_line, &format!("version = \"{requested}\"")),
     )?;
-    let current_pin = format!("{PACKAGE_NAME}=={current}");
-    let requested_pin = format!("{PACKAGE_NAME}=={requested}");
+    let current_pin = format!("\"{PACKAGE_NAME}=={current}\"");
+    let requested_pin = format!("\"{PACKAGE_NAME}=={requested}\"");
     for wrapper in wrappers()? {
         let text = fs::read_to_string(&wrapper)?;
         if text.matches(&current_pin).count() != 1 {
@@ -77,4 +88,25 @@ pub(super) fn set_version(current: &str, requested: &str) -> Result<()> {
         fs::write(&wrapper, text.replace(&current_pin, &requested_pin))?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::wrapper_has_pin;
+
+    #[test]
+    fn wrapper_pin_requires_exact_active_shell_token() {
+        assert!(wrapper_has_pin(
+            "exec uvx --from \"codexy-runtime-tools==1.2.1\" tool",
+            "codexy-runtime-tools==1.2.1"
+        ));
+        assert!(!wrapper_has_pin(
+            "exec uvx --from \"codexy-runtime-tools==1.2.10\" tool",
+            "codexy-runtime-tools==1.2.1"
+        ));
+        assert!(!wrapper_has_pin(
+            "# exec uvx --from \"codexy-runtime-tools==1.2.1\" tool",
+            "codexy-runtime-tools==1.2.1"
+        ));
+    }
 }

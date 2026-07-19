@@ -7,8 +7,7 @@ from pathlib import Path
 from unittest import mock
 
 from codexy_runtime_tools import runtime
-from codexy_runtime_tools.cache import runtime_cache_key
-from runtime_fixture import configuration
+from runtime_fixture import configuration, install_paths
 
 
 class Executed(BaseException):
@@ -20,33 +19,7 @@ class RuntimeFlowTests(unittest.TestCase):
         return configuration(root, **overrides)
 
     def install_paths(self, config: runtime.Configuration, cache: Path) -> tuple[Path, Path]:
-        source = (
-            "\n".join(
-                (
-                    "package-override",
-                    config.package_path,
-                    config.package_url,
-                    config.artifacts_api,
-                    config.package_sha256,
-                )
-            )
-            if config.package_override
-            else "package-default"
-        )
-        key = runtime_cache_key(
-            manifest=config.manifest,
-            package_override=config.package_override,
-            identity=[
-                config.git_repository,
-                config.git_ref,
-                config.platform,
-                runtime.PROTOCOL,
-                source,
-                f"codexy-mcp-{config.server}",
-            ],
-        )
-        root = cache / key
-        return root / "bin" / f"codexy-mcp-{config.server}", root / "plugin.json"
+        return install_paths(config, cache)
 
     def seed_cached_runtime(
         self, config: runtime.Configuration, cache: Path, version: str = "1.2.1"
