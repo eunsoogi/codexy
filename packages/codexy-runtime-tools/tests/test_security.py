@@ -4,10 +4,26 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from codexy_runtime_tools.package import _safe_extract_tar, acquire_package
+from codexy_runtime_tools.package import _safe_extract_tar, _safe_extract_zip, acquire_package
 
 
 class ArchiveSecurityTests(unittest.TestCase):
+    def test_malformed_tar_is_translated_to_package_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "malformed.tar.gz"
+            archive.write_bytes(b"not a gzip archive")
+            with self.assertRaisesRegex(ValueError, "invalid runtime package archive"):
+                _safe_extract_tar(archive, root / "extract")
+
+    def test_malformed_zip_is_translated_to_package_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "malformed.zip"
+            archive.write_bytes(b"not a zip archive")
+            with self.assertRaisesRegex(ValueError, "invalid artifact archive"):
+                _safe_extract_zip(archive, root / "extract")
+
     def test_duplicate_tar_members_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

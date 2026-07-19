@@ -25,6 +25,13 @@ def _download(url: str, destination: Path, token: str = "") -> None:
 
 
 def _safe_extract_tar(archive: Path, destination: Path) -> None:
+    try:
+        _extract_tar(archive, destination)
+    except tarfile.TarError as error:
+        raise ValueError(f"invalid runtime package archive: {error}") from error
+
+
+def _extract_tar(archive: Path, destination: Path) -> None:
     destination_resolved = destination.resolve()
     with tarfile.open(archive, "r:gz") as package:
         members = package.getmembers()
@@ -46,6 +53,13 @@ def _safe_extract_tar(archive: Path, destination: Path) -> None:
 
 
 def _safe_extract_zip(archive: Path, destination: Path) -> None:
+    try:
+        _extract_zip(archive, destination)
+    except zipfile.BadZipFile as error:
+        raise ValueError(f"invalid artifact archive: {error}") from error
+
+
+def _extract_zip(archive: Path, destination: Path) -> None:
     destination_resolved = destination.resolve()
     with zipfile.ZipFile(archive) as zipped:
         members = zipped.infolist()

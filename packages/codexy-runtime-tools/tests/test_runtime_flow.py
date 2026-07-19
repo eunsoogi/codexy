@@ -8,6 +8,7 @@ from unittest import mock
 
 from codexy_runtime_tools import runtime
 from codexy_runtime_tools.cache import runtime_cache_key
+from runtime_fixture import configuration
 
 
 class Executed(BaseException):
@@ -16,30 +17,7 @@ class Executed(BaseException):
 
 class RuntimeFlowTests(unittest.TestCase):
     def config(self, root: Path, **overrides: object) -> runtime.Configuration:
-        plugin_root = root / "plugin root 유니코드"
-        manifest = plugin_root / ".codex-plugin" / "plugin.json"
-        manifest.parent.mkdir(parents=True)
-        manifest.write_text(json.dumps({"version": "1.2.1"}), encoding="utf-8")
-        values: dict[str, object] = {
-            "server": "lsp",
-            "plugin_root": plugin_root,
-            "arguments": ["--stdio"],
-            "platform": "linux-x86_64",
-            "manifest": manifest,
-            "release": "1.2.1",
-            "runtime_name": "codexy-mcp-lsp-linux-x86_64.bin",
-            "package_path": "",
-            "package_url": "https://example.test/package.tar.gz",
-            "artifacts_api": "",
-            "package_override": False,
-            "package_sha256": "",
-            "git_repository": "https://example.test/codexy.git",
-            "git_ref": "a" * 40,
-            "offline": False,
-            "git_fallback": False,
-        }
-        values.update(overrides)
-        return runtime.Configuration(**values)  # type: ignore[arg-type]
+        return configuration(root, **overrides)
 
     def install_paths(self, config: runtime.Configuration, cache: Path) -> tuple[Path, Path]:
         source = (
@@ -102,6 +80,27 @@ class RuntimeFlowTests(unittest.TestCase):
                 runtime.run(config)
             acquire.assert_called_once()
 
+    def test_bundled_runtime_receives_installed_plugin_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = self.config(root)
+            bundled = config.plugin_root / "runtime" / config.runtime_name
+            bundled.parent.mkdir(parents=True)
+            bundled.write_text("#!/bin/sh\n", encoding="utf-8")
+            bundled.chmod(0o755)
+
+            with (
+                mock.patch.object(runtime, "execute", side_effect=Executed) as execute,
+                self.assertRaises(Executed),
+            ):
+                runtime.run(config)
+
+            execute.assert_called_once_with(
+                bundled,
+                ["--stdio"],
+                {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)},
+            )
+
     def test_matching_cached_runtime_is_reused_offline_without_acquisition(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -116,7 +115,11 @@ class RuntimeFlowTests(unittest.TestCase):
             ):
                 runtime.run(config)
             acquire.assert_not_called()
-            execute.assert_called_once_with(installed, ["--stdio"])
+            execute.assert_called_once_with(
+                installed,
+                ["--stdio"],
+                {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)},
+            )
 
     def test_stale_marker_reacquires_instead_of_reusing_old_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -161,6 +164,25 @@ class RuntimeFlowTests(unittest.TestCase):
                 runtime.run(config)
             install_git.assert_called_once()
 
+    def test_malformed_release_archive_uses_explicit_git_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = self.config(root, git_fallback=True)
+            cache = root / "cache"
+            with (
+                mock.patch.object(runtime, "_cache_root", return_value=cache),
+                mock.patch.object(
+                    runtime,
+                    "install_package",
+                    side_effect=ValueError("invalid runtime package archive"),
+                ),
+                mock.patch.object(runtime, "install_git") as install_git,
+                mock.patch.object(runtime, "execute", side_effect=Executed),
+                self.assertRaises(Executed),
+            ):
+                runtime.run(config)
+            install_git.assert_called_once()
+
     def test_failed_release_without_fallback_reports_diagnostic(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -190,7 +212,11 @@ class RuntimeFlowTests(unittest.TestCase):
                 self.assertRaises(Executed),
             ):
                 runtime.run(config)
-            execute.assert_called_once_with(installed, ["--stdio"])
+            execute.assert_called_once_with(
+                installed,
+                ["--stdio"],
+                {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)},
+            )
 
     def test_explicit_override_without_digest_is_rejected_at_load(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

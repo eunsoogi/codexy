@@ -39,9 +39,13 @@ def executable(path: Path) -> bool:
     )
 
 
-def execute(path: Path | str, arguments: list[str]) -> NoReturn:
+def execute(
+    path: Path | str, arguments: list[str], environment: dict[str, str] | None = None
+) -> NoReturn:
     command = str(path)
-    os.execvpe(command, [command, *arguments], os.environ.copy())
+    runtime_environment = os.environ.copy()
+    runtime_environment.update(environment or {})
+    os.execvpe(command, [command, *arguments], runtime_environment)
     raise AssertionError("exec returned unexpectedly")
 
 

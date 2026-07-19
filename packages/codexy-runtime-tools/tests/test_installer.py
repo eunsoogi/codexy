@@ -5,10 +5,28 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from codexy_runtime_tools.installer import install_git
+from codexy_runtime_tools.installer import execute, install_git
 
 
 class GitInstallerTests(unittest.TestCase):
+    def test_execute_adds_plugin_root_to_runtime_environment(self) -> None:
+        with (
+            mock.patch.dict("os.environ", {"PRESERVED": "yes"}, clear=True),
+            mock.patch("codexy_runtime_tools.installer.os.execvpe") as execvpe,
+            self.assertRaisesRegex(AssertionError, "exec returned unexpectedly"),
+        ):
+            execute(
+                "/runtime",
+                ["--stdio"],
+                {"CODEXY_PLUGIN_ROOT": "/installed/plugin"},
+            )
+
+        execvpe.assert_called_once_with(
+            "/runtime",
+            ["/runtime", "--stdio"],
+            {"PRESERVED": "yes", "CODEXY_PLUGIN_ROOT": "/installed/plugin"},
+        )
+
     def test_successful_git_install_records_reusable_release_marker(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

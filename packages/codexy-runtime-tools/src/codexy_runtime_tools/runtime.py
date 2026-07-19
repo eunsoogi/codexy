@@ -133,13 +133,21 @@ def _cache_root(server: str) -> Path:
     return root / "codexy" / "runtime"
 
 
+def _execute(config: Configuration, path: Path) -> NoReturn:
+    execute(
+        path,
+        config.arguments,
+        {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)},
+    )
+
+
 def run(config: Configuration) -> NoReturn:
     runtime_dir = _absolute_env_path("CODEXY_RUNTIME_DIR")
     if runtime_dir:
         runtime = runtime_dir / config.runtime_name
         if not executable(runtime):
             _fail(f"codexy-mcp-{config.server} runtime not found in CODEXY_RUNTIME_DIR: {runtime}")
-        execute(runtime, config.arguments)
+        _execute(config, runtime)
     if config.platform not in SUPPORTED_PLATFORMS:
         _fail(
             f"codexy-mcp-{config.server} bundled runtime supports: "
@@ -147,7 +155,7 @@ def run(config: Configuration) -> NoReturn:
         )
     bundled = config.plugin_root / "runtime" / config.runtime_name
     if executable(bundled):
-        execute(bundled, config.arguments)
+        _execute(config, bundled)
     source_components = [
         config.package_path, config.package_url, config.artifacts_api, config.package_sha256
     ]
@@ -161,9 +169,9 @@ def run(config: Configuration) -> NoReturn:
     installed = install_root / "bin" / f"codexy-mcp-{config.server}"
     marker = install_root / "plugin.json"
     if executable(installed) and config.package_override:
-        execute(installed, config.arguments)
+        _execute(config, installed)
     if executable(installed) and marker.is_file() and releases_match(config.manifest, marker)[0]:
-        execute(installed, config.arguments)
+        _execute(config, installed)
     if config.offline:
         _fail(
             f"codexy-mcp-{config.server} offline mode has no cached or bundled runtime "
@@ -172,7 +180,7 @@ def run(config: Configuration) -> NoReturn:
     try:
         _notice(f"acquiring exact release package v{config.release} for {config.server}")
         install_package(config, install_root, installed)
-        execute(installed, config.arguments)
+        _execute(config, installed)
     except (OSError, RuntimeError, ValueError) as package_error:
         if config.package_override:
             _fail(f"codexy-mcp-{config.server} explicit package source failed: {package_error}")
@@ -181,7 +189,7 @@ def run(config: Configuration) -> NoReturn:
         _notice(f"release package failed ({package_error}); explicit Git fallback uses {config.git_ref}")
     try:
         install_git(config, install_root, installed)
-        execute(installed, config.arguments)
+        _execute(config, installed)
     except (OSError, RuntimeError) as git_error:
         _fail(f"codexy-mcp-{config.server} pinned Git runtime failed: {git_error}")
 
