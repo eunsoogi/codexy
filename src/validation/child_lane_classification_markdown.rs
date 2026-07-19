@@ -142,7 +142,7 @@ fn is_block_tag(line: &str) -> bool {
         .take_while(|character| character.is_ascii_alphanumeric())
         .count();
     let tag = &line[..tag_length];
-    let known = "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul"
+    let known = "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h1|h2|h3|h4|h5|h6|head|header|hgroup|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|source|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul"
         .split('|')
         .any(|candidate| candidate == tag);
     let suffix = &line[tag_length..];
@@ -201,7 +201,7 @@ fn starts_container_block(line: &str, paragraph_open: bool) -> bool {
         })
 }
 
-fn is_thematic_break(line: &str) -> bool {
+pub(super) fn is_thematic_break(line: &str) -> bool {
     let mut marker = None;
     let mut count = 0;
     for ch in line.chars().filter(|ch| !ch.is_whitespace()) {

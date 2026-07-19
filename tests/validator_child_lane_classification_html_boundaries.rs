@@ -84,3 +84,11 @@ fn list_item_blocks_end_when_their_list_item_ends() -> TestResult {
 fn unclosed_list_item_comment_keeps_the_table_hidden() -> TestResult {
     assert_rejected(&setup_after(&format!("- <!--\n  unclosed\n{TABLE}")))
 }
+
+#[test]
+fn type_six_hgroup_and_search_hide_paragraph_interrupted_tables() -> TestResult {
+    for tag in ["hgroup", "search"] {
+        assert_rejected(&setup_after(&format!("paragraph\n<{tag}>\n{TABLE}")))?;
+    }
+    Ok(())
+}

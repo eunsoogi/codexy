@@ -1,5 +1,5 @@
 use super::child_lane_classification_markdown::{
-    is_in_non_rendering_block, is_indented_code_line, list_continuation_indent,
+    is_in_non_rendering_block, is_indented_code_line, is_thematic_break, list_continuation_indent,
 };
 use super::child_lane_classification_owner::is_child_completion_owner;
 
@@ -91,6 +91,7 @@ fn table_can_start(raw_lines: &[&str], index: usize) -> bool {
                 || trimmed.starts_with('<')
                 || trimmed.ends_with("-->")
                 || trimmed.starts_with(['`', '~'])
+                || is_thematic_break(trimmed)
                 || is_indented_code_line(line)
         })
 }

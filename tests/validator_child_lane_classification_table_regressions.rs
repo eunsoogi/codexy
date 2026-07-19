@@ -77,3 +77,10 @@ fn list_tables_keep_each_row_in_the_list_and_ignore_indented_code_duplicates() -
     assert!(run_validator(&evidence)?.status.success());
     Ok(())
 }
+
+#[test]
+fn table_after_a_thematic_break_is_allowed() -> TestResult {
+    let evidence = format!("---\n{TABLE}\nChild branch codexy/461-table was created after classification.\n");
+    assert!(run_validator(&evidence)?.status.success());
+    Ok(())
+}
