@@ -1,4 +1,4 @@
-use super::child_lane_classification_table::{is_table_header, is_table_line};
+use super::child_lane_classification_table::{is_table_header, is_table_line, table_row};
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
@@ -32,8 +32,12 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
 }
 
 fn is_child_owned_lane_evidence(line: &str) -> bool {
-    let line = metadata_key(line);
-    matches!(line, "child-owned" | "child-owned lane")
+    let line = context_metadata_key(line);
+    table_row(line).is_some_and(|(key, value)| {
+        key == "owner decision"
+            && (value.starts_with("current-thread-owned")
+                || is_child_delegation_owner_decision(value))
+    }) || matches!(line, "child-owned" | "child-owned lane")
         || has_present_child_owner_metadata(line)
         || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
         || "lane ownership: child-owned|owner: child-owned|lane owner: child-owned|owner decision: child-owned|owner decision: current-thread-owned child implementation|owner decision: current-thread-owned implementation lane"
@@ -50,7 +54,7 @@ fn has_present_child_owner_metadata(line: &str) -> bool {
 }
 
 fn is_parent_owned_lane_evidence(line: &str) -> bool {
-    let line = metadata_key(line);
+    let line = context_metadata_key(line);
     if field_value(line, "owner decision").is_some_and(|value| {
         is_parent_owned_value(value) && !is_child_delegation_owner_decision(value)
     }) {
@@ -62,7 +66,7 @@ fn is_parent_owned_lane_evidence(line: &str) -> bool {
 }
 
 fn is_later_lane_boundary(lines: &[&str], index: usize, line: &str) -> bool {
-    let line = metadata_key(line);
+    let line = context_metadata_key(line);
     is_parent_owned_lane_evidence(line)
         || "pr:|pull request:|review response:|maintainer reassignment:"
             .split('|')
@@ -72,7 +76,7 @@ fn is_later_lane_boundary(lines: &[&str], index: usize, line: &str) -> bool {
 }
 
 fn is_lane_context_boundary(lines: &[&str], index: usize, line: &str) -> bool {
-    let line = metadata_key(line);
+    let line = context_metadata_key(line);
     "pr:|pull request:|review response:|maintainer reassignment:"
         .split('|')
         .any(|marker| line.starts_with(marker))
@@ -96,7 +100,7 @@ fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
         if line.is_empty() {
             continue;
         }
-        if metadata_key(line) == "task classification:" {
+        if context_metadata_key(line) == "task classification:" {
             return true;
         }
         if is_table_header(line) {
@@ -142,4 +146,11 @@ fn is_task_classification_field(line: &str) -> bool {
                 | "blocker"
         )
     })
+}
+
+fn context_metadata_key(line: &str) -> &str {
+    let line = metadata_key(line);
+    line.split_once(". ")
+        .filter(|(prefix, _)| prefix.chars().all(|character| character.is_ascii_digit()))
+        .map_or(line, |(_, value)| metadata_key(value))
 }

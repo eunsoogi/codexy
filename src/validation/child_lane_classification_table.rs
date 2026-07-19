@@ -196,16 +196,21 @@ fn is_current_thread_owner(value: &str) -> bool {
 
 fn has_owner_denial(value: &str) -> bool {
     value
-        .split(|character: char| !character.is_alphanumeric())
-        .any(|word| {
-            matches!(
-                word,
-                "not" | "no" | "without" | "absent" | "never" | "neither"
-            )
+        .split([';', ',', '—'])
+        .filter(|clause| !clause.contains("parent") && !clause.contains("부모"))
+        .any(|clause| {
+            clause
+                .split(|character: char| !character.is_alphanumeric())
+                .any(|word| {
+                    matches!(
+                        word,
+                        "not" | "no" | "without" | "absent" | "never" | "neither"
+                    )
+                })
+                || ["아님", "아니다", "않음", "않다", "없음", "없다", "소유하지"]
+                    .iter()
+                    .any(|marker| clause.contains(marker))
         })
-        || ["아님", "아니다", "않음", "않다", "없음", "없다", "소유하지"]
-            .iter()
-            .any(|marker| value.contains(marker))
 }
 
 #[cfg(test)]

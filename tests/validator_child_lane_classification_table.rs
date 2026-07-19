@@ -11,7 +11,7 @@ fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error:
 
 fn evidence(classification: &str) -> String {
     format!(
-        "Lane ownership: child-owned\n{classification}\nChild branch codexy/461-table was created after classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+        "{classification}\nChild branch codexy/461-table was created after classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
     )
 }
 
@@ -51,6 +51,16 @@ fn validator_allows_ordered_english_and_korean_classification_tables() -> TestRe
         .collect::<Vec<_>>()
         .join("\n");
     assert_allowed(&shallow_indent)?;
+    for owner in [
+        "current-thread-owned implementation lane; not parent-owned",
+        "current-thread-owned implementation lane; no parent implementation edits",
+        "current-thread-owned — 구현 소유자이며 부모 소유자가 아님",
+    ] {
+        assert_allowed(&ENGLISH_TABLE.replace(
+            "current-thread-owned implementation lane for #461",
+            owner,
+        ))?;
+    }
     assert_allowed(
         r#"| Task classification | Decision |
 | --- | --- |
@@ -91,6 +101,15 @@ Stop/blocker: None"#,
 fn validator_rejects_duplicate_table_after_same_lane_setup() -> TestResult {
     let evidence = format!(
         "Lane ownership: child-owned\n{ENGLISH_TABLE}\nChild branch codexy/461-table was created after classification.\n{ENGLISH_TABLE}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+    );
+    assert!(!run_ownership_validator(&evidence)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_setup_before_unprefixed_table() -> TestResult {
+    let evidence = format!(
+        "Child branch codexy/461-table was created before classification.\n{ENGLISH_TABLE}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
     );
     assert!(!run_ownership_validator(&evidence)?.status.success());
     Ok(())
@@ -144,6 +163,20 @@ fn validator_rejects_negated_implementation_owner() -> TestResult {
             "contradictory owner must be rejected: {owner}"
         );
     }
+    Ok(())
+}
+
+
+#[test]
+fn validator_rejects_numbered_child_context_with_contradictory_owner() -> TestResult {
+    let classification = ENGLISH_TABLE.replace(
+        "current-thread-owned implementation lane for #461",
+        "current-thread-owned implementation lane; does not own implementation",
+    );
+    let evidence = format!(
+        "1. Lane ownership: child-owned\n{classification}\nChild branch codexy/461-table was created after classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+    );
+    assert!(!run_ownership_validator(&evidence)?.status.success());
     Ok(())
 }
 
