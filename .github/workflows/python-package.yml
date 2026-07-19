@@ -1,0 +1,56 @@
+name: Build and publish runtime bootstrap package
+
+on:
+  pull_request:
+    paths:
+      - "packages/eunsoogi-codexy/**"
+      - ".github/workflows/python-package.yml"
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run focused package tests
+        run: PYTHONPATH=packages/eunsoogi-codexy/src python -m unittest discover -s packages/eunsoogi-codexy/tests -p 'test_*.py'
+      - name: Build distribution
+        run: |
+          python -m pip install --disable-pip-version-check build
+          python -m build --outdir dist packages/eunsoogi-codexy
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/eunsoogi-codexy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify the tag matches the package version
+        run: |
+          version="$(python -c 'import tomllib; print(tomllib.load(open("packages/eunsoogi-codexy/pyproject.toml", "rb"))["project"]["version"])')"
+          test "v${version}" = "$GITHUB_REF_NAME"
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
