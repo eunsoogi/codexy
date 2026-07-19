@@ -81,6 +81,28 @@ class McpWrapperTests(unittest.TestCase):
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertEqual(completed.stdout.splitlines(), [str(root), "--stdio"])
 
+    def test_platform_override_runs_matching_bundled_runtime_before_uvx(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            uname = bin_dir / "uname"
+            uname.write_text('#!/bin/sh\n[ "$1" = "-s" ] && echo Darwin || echo arm64\n')
+            uname.chmod(0o755)
+            for server in ("lsp", "codegraph"):
+                mcp = root / "mcp"
+                mcp.mkdir(exist_ok=True)
+                wrapper = mcp / f"codexy-mcp-{server}"
+                shutil.copyfile(self.wrapper(server), wrapper)
+                wrapper.chmod(0o755)
+                runtime = root / "runtime" / f"codexy-mcp-{server}-linux-x86_64.bin"
+                runtime.parent.mkdir(exist_ok=True)
+                runtime.write_text('#!/bin/sh\necho platform-bundle "$@"\n')
+                runtime.chmod(0o755)
+                completed = subprocess.run([wrapper, "--stdio"], env={"PATH": str(bin_dir), "UV_OFFLINE": "1", "CODEXY_RUNTIME_PLATFORM": "linux-x86_64"}, capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(completed.stdout.strip(), "platform-bundle --stdio")
+
     def test_wrapper_routes_runtime_overrides_through_bootstrap(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
