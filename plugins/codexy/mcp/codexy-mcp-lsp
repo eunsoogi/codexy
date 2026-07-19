@@ -9,11 +9,6 @@ case "$(uname -m)" in arm64|aarch64) runtime_arch=arm64 ;; x86_64|amd64|AMD64) r
 runtime_platform=${CODEXY_RUNTIME_PLATFORM:-$runtime_os-$runtime_arch}
 package_sha256=${CODEXY_RUNTIME_PACKAGE_SHA256:-}
 case "$package_sha256" in *[A-Z]*) package_sha256=$(printf '%s' "$package_sha256" | tr '[:upper:]' '[:lower:]') ;; esac
-json_release() {
-  if command -v jq >/dev/null 2>&1; then
-    jq -er 'if type == "object" then .version | if type == "string" then . else empty end else empty end' "$1" 2>/dev/null || true
-  fi
-}
 bundled_runtime="$plugin_root/runtime/codexy-mcp-lsp-${runtime_platform}.bin"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   case "$CODEXY_RUNTIME_DIR" in /*) ;; *) echo "CODEXY_RUNTIME_DIR must be absolute" >&2; exit 127 ;; esac
@@ -35,8 +30,8 @@ elif [ -n "${HOME:-}" ]; then
 else
   cache_root=""
 fi
-if [ -n "$cache_root" ]; then
-  release=$(json_release "$plugin_root/.codex-plugin/plugin.json")
+if [ -n "$cache_root" ] && command -v sed >/dev/null 2>&1 && command -v head >/dev/null 2>&1; then
+  release=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$plugin_root/.codex-plugin/plugin.json" | head -n 1)
   if [ -n "$release" ]; then
     package_override=0
     if [ -n "${CODEXY_RUNTIME_PACKAGE_PATH:-}" ] || [ "${CODEXY_RUNTIME_PACKAGE_URL+x}" = x ] || [ "${CODEXY_RUNTIME_ARTIFACTS_API_URL+x}" = x ]; then
@@ -58,8 +53,16 @@ ${package_sha256}"
     fi
     cached="$cache_root/v2-$cache_hash/bin/codexy-mcp-lsp"
     marker="$cache_root/v2-$cache_hash/plugin.json"
-    marker_release=$(json_release "$marker")
-    if [ -n "$cache_hash" ] && [ -x "$cached" ] && { [ "$package_override" -eq 1 ] || [ "$marker_release" = "$release" ]; }; then
+    marker_matches=0
+    if command -v jq >/dev/null 2>&1; then
+      marker_release=$(jq -er 'if type == "object" then .version | if type == "string" then . else empty end else empty end' "$marker" 2>/dev/null || true)
+      if [ "$marker_release" = "$release" ]; then
+        marker_matches=1
+      fi
+    elif command -v cmp >/dev/null 2>&1 && cmp -s "$marker" "$plugin_root/.codex-plugin/plugin.json"; then
+      marker_matches=1
+    fi
+    if [ -n "$cache_hash" ] && [ -x "$cached" ] && { [ "$package_override" -eq 1 ] || [ "$marker_matches" -eq 1 ]; }; then
       export CODEXY_PLUGIN_ROOT="$plugin_root"
       exec "$cached" "$@"
     fi

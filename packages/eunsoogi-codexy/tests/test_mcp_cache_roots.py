@@ -11,6 +11,45 @@ REPOSITORY = Path(__file__).resolve().parents[3]
 
 
 class McpCacheRootTests(unittest.TestCase):
+    def test_valid_cache_marker_reuses_runtime_without_jq(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            for command, body in {
+                "uname": '[ "$1" = "-s" ] && echo Linux || echo x86_64',
+                "sha256sum": 'exec /sbin/sha256sum "$@"',
+                "awk": 'read value rest\nprintf "%s\\n" "$value"',
+                "sed": 'exec /usr/bin/sed "$@"',
+                "head": 'exec /usr/bin/head "$@"',
+                "cmp": 'exec /usr/bin/cmp "$@"',
+            }.items():
+                executable = bin_dir / command
+                executable.write_text(f"#!/bin/sh\n{body}\n")
+                executable.chmod(0o755)
+            manifest = REPOSITORY / "plugins" / "codexy" / ".codex-plugin" / "plugin.json"
+            cache = root / "cache"
+            for server in ("lsp", "codegraph"):
+                key = runtime_cache_key(
+                    manifest=manifest,
+                    package_override=False,
+                    identity=["https://github.com/eunsoogi/codexy", "", "linux-x86_64", "stdio-newline-v1", "package-default\n", f"codexy-mcp-{server}"],
+                )
+                cached = cache / key / "bin" / f"codexy-mcp-{server}"
+                cached.parent.mkdir(parents=True)
+                cached.write_text('#!/bin/sh\necho cached-runtime\n')
+                cached.chmod(0o755)
+                (cached.parents[1] / "plugin.json").write_bytes(manifest.read_bytes())
+                wrapper = REPOSITORY / "plugins" / "codexy" / "mcp" / f"codexy-mcp-{server}"
+                completed = subprocess.run(
+                    [wrapper],
+                    env={"PATH": str(bin_dir), "UV_OFFLINE": "1", "CODEXY_RUNTIME_CACHE_DIR": str(cache)},
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(completed.stdout.strip(), "cached-runtime")
+
     def test_malformed_cache_marker_never_executes_cached_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
