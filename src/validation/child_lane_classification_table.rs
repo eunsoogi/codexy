@@ -82,8 +82,8 @@ fn table_can_start(raw_lines: &[&str], index: usize) -> bool {
         || raw_lines.get(index - 1).is_some_and(|line| {
             let trimmed = line.trim();
             trimmed.is_empty()
-                || trimmed.starts_with("Lane ownership:")
-                || trimmed.starts_with("Owner decision:")
+                || starts_metadata_boundary(trimmed, "Lane ownership:")
+                || starts_metadata_boundary(trimmed, "Owner decision:")
                 || trimmed.starts_with('#')
                 || trimmed.starts_with('>')
                 || trimmed.starts_with('<')
@@ -91,6 +91,11 @@ fn table_can_start(raw_lines: &[&str], index: usize) -> bool {
                 || trimmed.starts_with(['`', '~'])
                 || is_indented_code_line(line)
         })
+}
+
+fn starts_metadata_boundary(line: &str, boundary: &str) -> bool {
+    line.get(..boundary.len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(boundary))
 }
 
 fn list_block_boundary(raw_lines: &[&str], index: usize) -> bool {
