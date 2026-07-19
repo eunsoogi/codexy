@@ -1,4 +1,6 @@
-use super::child_lane_classification_boundaries::{classifications, owner_at};
+use super::child_lane_classification_boundaries::{
+    child_candidate_requires_guard, child_table_owns_handoff_pr, classifications, owner_at,
+};
 use super::child_lane_owner_decision::{
     is_affirmative_child_owned_value, is_child_delegation_owner_decision, is_parent_owned_value,
 };
@@ -69,13 +71,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         let pr_metadata = line
             .split_once(':')
             .is_some_and(|(key, _)| metadata_key(key) == "pr");
-        let table_owns_following_pr = tables.iter().any(|table| {
-            table.end < index
-                && owner_at(&tables, table.start).is_some_and(is_child_delegation_owner_decision)
-                && lines[table.end + 1..index]
-                    .iter()
-                    .all(|line| line.is_empty())
-        });
+        let table_owns_following_pr = child_table_owns_handoff_pr(&tables, &lines, index);
         let pr_boundary = pr_metadata
             && !table_owns_following_pr
             && index > 0
@@ -90,6 +86,11 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
         let line_setup_recovered = line_has_parent_setup_recovery(&lines, index);
+        if child_candidate_requires_guard(&tables, &lines, index)
+            && (line_parent_fix || line_parent_setup)
+        {
+            return true;
+        }
         if (starts_lane || pr_boundary || ownership_boundary) && child_owned {
             if child_owned_lane_has_violation(parent_fix, parent_setup, reassigned, setup_recovered)
             {

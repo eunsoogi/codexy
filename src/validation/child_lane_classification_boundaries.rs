@@ -91,21 +91,11 @@ pub(super) fn classifications(source: &str) -> Vec<ClassificationTable> {
 }
 
 pub(super) fn is_classification_key(key: &str) -> bool {
-    matches!(
-        key,
-        "lane type"
-            | "secondary surfaces"
-            | "owner decision"
-            | "atomic scope"
-            | "required skills"
-            | "required tools/evidence"
-            | "required tools"
-            | "required evidence"
-            | "first allowed action"
-            | "stop/blocker"
-            | "stop blocker"
-            | "blocker"
-    )
+    FIELDS.contains(&key)
+        || matches!(
+            key,
+            "required tools" | "required evidence" | "stop blocker" | "blocker"
+        )
 }
 
 pub(super) fn owner_at(tables: &[ClassificationTable], index: usize) -> Option<&str> {
@@ -113,6 +103,42 @@ pub(super) fn owner_at(tables: &[ClassificationTable], index: usize) -> Option<&
         .iter()
         .find(|table| table.start == index && table.canonical)
         .map(|table| table.owner.as_str())
+}
+
+pub(super) fn child_table_owns_handoff_pr(
+    tables: &[ClassificationTable],
+    lines: &[&str],
+    pr_index: usize,
+) -> bool {
+    tables.iter().any(|table| {
+        table.end < pr_index
+            && owner_at(tables, table.start).is_some_and(is_child_delegation_owner_decision)
+            && lines[table.end + 1..pr_index]
+                .iter()
+                .all(|line| is_handoff_metadata(line))
+    })
+}
+
+pub(super) fn child_candidate_requires_guard(
+    tables: &[ClassificationTable],
+    lines: &[&str],
+    index: usize,
+) -> bool {
+    tables.iter().any(|table| {
+        !table.canonical
+            && table.end < index
+            && is_child_delegation_owner_decision(&table.owner)
+            && (table.end + 1..index).all(|line| {
+                !is_lane_boundary(lines, line) && !tables.iter().any(|table| table.start == line)
+            })
+    })
+}
+
+fn is_handoff_metadata(line: &str) -> bool {
+    line.is_empty()
+        || line.split_once(':').is_some_and(|(key, _)| {
+            matches!(metadata_key(key), "issue" | "branch" | "worktree path")
+        })
 }
 
 pub(super) fn rendered_child_context_applies(

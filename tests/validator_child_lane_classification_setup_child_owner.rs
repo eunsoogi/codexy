@@ -141,6 +141,25 @@ fn rendered_table_is_the_only_classification_source() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_incomplete_child_table_for_ownership_and_goal_evidence() -> TestResult {
+    let incomplete = canonical_table().replacen("| Stop/blocker | None |\n", "", 1);
+    assert_rejected(&format!(
+        "{incomplete}\nReview response: parent-authored implementation commit abc123 fixed feedback\n"
+    ))?;
+    assert_rejected(&format!(
+        "{incomplete}\nSource thread id: parent-461\nGoal tool call: create_goal\n"
+    ))
+}
+
+#[test]
+fn validator_keeps_table_ownership_across_handoff_metadata_before_pr() -> TestResult {
+    assert_rejected(&format!(
+        "{}\nIssue: #461\nBranch: eunsoogi/461-main-rendered-table\nWorktree path: /tmp/codexy-461\nPR: #468\nReview response: parent-authored implementation commit abc123 fixed feedback\n",
+        canonical_table()
+    ))
+}
+
+#[test]
 fn task_classification_skill_requires_the_compact_table() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;

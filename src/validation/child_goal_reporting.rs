@@ -1,8 +1,11 @@
 use std::collections::BTreeSet;
 
-use super::child_lane_classification_boundaries::{classifications, owner_at};
+use super::child_lane_classification_boundaries::ClassificationTable;
+use super::child_lane_classification_boundaries::{
+    child_candidate_requires_guard, child_table_owns_handoff_pr, classifications, owner_at,
+};
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
-use super::child_lane_ownership_phrases::{field_value, metadata_key};
+use super::child_lane_ownership_phrases::field_value;
 use super::child_terminal_handoff::{
     check as check_terminal_handoffs, is_local_task_target, is_terminal_goal_call,
     without_metadata_prefix,
@@ -17,9 +20,14 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         .map(without_metadata_prefix)
         .collect::<Vec<_>>();
     let mut errors = Vec::new();
+    if lines.iter().enumerate().any(|(index, line)| {
+        is_goal_reporting(line) && child_candidate_requires_guard(&tables, &lines, index)
+    }) {
+        errors.push("incomplete child classification table cannot authorize goal reporting".into());
+    }
     let mut start = 0;
     for end in 1..=lines.len() {
-        if end == lines.len() || is_lane_boundary(lines[end], owner_at(&tables, end)) {
+        if end == lines.len() || is_lane_boundary(&lines, &tables, end) {
             if is_child_owned(lines[start], owner_at(&tables, start)) {
                 errors.extend(check_lane(&lines[start..end]));
             }
@@ -30,12 +38,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 
 fn check_lane(lines: &[&str]) -> Vec<String> {
-    let has_goal_reporting = lines.iter().any(|line| {
-        line.starts_with("source thread id:")
-            || line.starts_with("goal tool call:")
-            || line.starts_with("parent goal pre-delivery:")
-            || line.starts_with("parent goal post-result:")
-    });
+    let has_goal_reporting = lines.iter().any(|line| is_goal_reporting(line));
     let source = lines
         .iter()
         .find_map(|line| line.strip_prefix("source thread id: "))
@@ -65,7 +68,8 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
 
     for line in lines {
         if let Some(value) = line.strip_prefix("goal transition key: ") {
-            key = valid_transition_key(value).then_some(value);
+            key = (value.split(':').count() == 3 && value.split(':').all(|part| !part.is_empty()))
+                .then_some(value);
             continue;
         }
         if let Some(operation) = event_operation(line, "parent goal pre-delivery: operation=") {
@@ -122,10 +126,7 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
 }
 fn event_operation<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
     line.strip_prefix(prefix)
-        .map(|value| value.split(';').next().unwrap_or(value))
-}
-fn valid_transition_key(key: &str) -> bool {
-    key.split(':').count() == 3 && key.split(':').all(|part| !part.is_empty())
+        .and_then(|value| value.split(';').next())
 }
 fn pre_delivery_is_confirmed(
     line: &str,
@@ -197,12 +198,11 @@ fn is_local_agent_route(line: &str) -> bool {
         })
 }
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
-    if key.is_some_and(|value| field(line, "transition key") == Some(value)) {
-        true
-    } else {
+    let matches = key.is_some_and(|value| field(line, "transition key") == Some(value));
+    if !matches {
         errors.push("goal receipt does not match its stable transition key".into());
-        false
     }
+    matches
 }
 fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let prefix = format!("{name}=");
@@ -228,14 +228,20 @@ fn invalid_value(value: Option<&str>) -> bool {
             || item.contains(" unavailable")
     })
 }
-fn is_lane_boundary(line: &str, table_owner: Option<&str>) -> bool {
-    table_owner.is_some()
+fn is_goal_reporting(line: &str) -> bool {
+    "source thread id:|goal tool call:|parent goal pre-delivery:|parent goal post-result:"
+        .split('|')
+        .any(|prefix| line.starts_with(prefix))
+}
+fn is_lane_boundary(lines: &[&str], tables: &[ClassificationTable], index: usize) -> bool {
+    let line = lines[index];
+    owner_at(tables, index).is_some()
         || ["lane ownership", "owner decision"]
-            .into_iter()
-            .any(|field| {
-                line.split_once(':')
-                    .is_some_and(|(key, _)| metadata_key(key) == field)
-            })
+            .iter()
+            .any(|field| field_value(line, field).is_some())
+        || (field_value(line, "pr").is_some()
+            && tables.iter().any(|table| table.start < index)
+            && !child_table_owns_handoff_pr(tables, lines, index))
 }
 fn is_child_owned(line: &str, table_owner: Option<&str>) -> bool {
     table_owner.is_some_and(is_child_delegation_owner_decision)
