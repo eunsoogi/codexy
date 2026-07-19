@@ -134,3 +134,50 @@ Maintainer reassignment: none
 "#,
     )
 }
+
+#[test]
+fn rendered_table_is_the_only_classification_source() -> TestResult {
+    let table = r#"| Task classification | Decision |
+| --- | --- |
+| Lane type | implementation |
+| Secondary surfaces | workflow, validators |
+| Owner decision | current-thread-owned child implementation lane |
+| Atomic scope | issue-sized |
+| Required skills | task-classification, codex-orchestration, git-workflow |
+| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |
+| First allowed action | create branch after classification |
+| Stop/blocker | None |
+"#;
+    let footer = "Review response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n";
+    assert_allowed(&format!(
+        "{table}\nChild branch codexy/461-table was created after classification.\n{footer}"
+    ))?;
+    assert_rejected(&format!(
+        "{table}\nReview response: parent-authored implementation commit abc123 fixed feedback\n"
+    ))?;
+    assert_rejected(&format!("{table}\nSource thread id: parent-461\nGoal tool call: create_goal\n"))?;
+    assert_rejected(&format!(
+        "Lane ownership: child-owned\n```text\n{table}```\nChild branch codexy/461-table was created after classification.\n{footer}"
+    ))
+}
+
+#[test]
+fn task_classification_skill_requires_the_compact_table() -> TestResult {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
+    let prompt: serde_yaml::Value = serde_yaml::from_str(&std::fs::read_to_string(
+        root.join("plugins/codexy/skills/task-classification/agents/openai.yaml"),
+    )?)?;
+    assert_eq!(
+        skill
+            .lines()
+            .filter(|line| *line == "| Task classification | Decision |")
+            .count(),
+        1
+    );
+    assert_eq!(
+        prompt["interface"]["default_prompt"].as_str(),
+        Some("You MUST use $task-classification first and emit one ordered eight-row GFM table naming lane type, secondary surfaces, owner decision, atomic scope, required skills, required tools/evidence, first allowed action, and blocker before Codexy setup, delegation, implementation, PR, review-response, or merge work begins.")
+    );
+    Ok(())
+}

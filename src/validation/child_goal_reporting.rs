@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use super::child_lane_classification_boundaries::{classifications, owner_at};
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
 use super::child_terminal_handoff::{
@@ -9,6 +10,7 @@ use super::child_terminal_handoff::{
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
+    let tables = classifications(&text);
     let lines = text
         .lines()
         .map(str::trim)
@@ -17,8 +19,8 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     let mut errors = Vec::new();
     let mut start = 0;
     for end in 1..=lines.len() {
-        if end == lines.len() || is_lane_boundary(lines[end]) {
-            if is_child_owned(lines[start]) {
+        if end == lines.len() || is_lane_boundary(lines[end], owner_at(&tables, end)) {
+            if is_child_owned(lines[start], owner_at(&tables, start)) {
                 errors.extend(check_lane(&lines[start..end]));
             }
             start = end;
@@ -226,15 +228,17 @@ fn invalid_value(value: Option<&str>) -> bool {
             || item.contains(" unavailable")
     })
 }
-fn is_lane_boundary(line: &str) -> bool {
-    ["lane ownership", "owner decision"]
-        .into_iter()
-        .any(|field| {
-            line.split_once(':')
-                .is_some_and(|(key, _)| metadata_key(key) == field)
-        })
+fn is_lane_boundary(line: &str, table_owner: Option<&str>) -> bool {
+    table_owner.is_some()
+        || ["lane ownership", "owner decision"]
+            .into_iter()
+            .any(|field| {
+                line.split_once(':')
+                    .is_some_and(|(key, _)| metadata_key(key) == field)
+            })
 }
-fn is_child_owned(line: &str) -> bool {
-    line.contains("lane ownership: child-owned")
+fn is_child_owned(line: &str, table_owner: Option<&str>) -> bool {
+    table_owner.is_some_and(is_child_delegation_owner_decision)
+        || line.contains("lane ownership: child-owned")
         || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
 }

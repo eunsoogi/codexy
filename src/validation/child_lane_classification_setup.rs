@@ -1,10 +1,14 @@
-use super::child_lane_classification_boundaries::current_lane_start;
+use super::child_lane_classification_boundaries::{
+    ClassificationTable, classifications, current_lane_start, is_classification_key,
+    rendered_child_context_applies,
+};
 use super::child_lane_classification_setup_context::child_lane_context_applies;
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
+    let tables = classifications(evidence);
     let setup_clauses = lines
         .iter()
         .enumerate()
@@ -13,25 +17,46 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 .into_iter()
                 .map(move |clause| (index, clause))
         })
-        .filter(|(index, _)| child_lane_context_applies(&lines, *index))
+        .filter(|(index, _)| {
+            child_lane_context_applies(&lines, *index)
+                || rendered_child_context_applies(&lines, &tables, *index)
+        })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {
         return Vec::new();
     }
     if setup_clauses.iter().any(|(setup_index, setup_clause)| {
-        formal_child_classification_complete_index_before(&lines, *setup_index).is_none()
+        formal_child_classification_complete_index_before(&lines, &tables, *setup_index).is_none()
             || line_claims_setup_before_classification(setup_clause)
     }) {
         return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed".to_owned()];
     }
     Vec::new()
 }
+
 fn formal_child_classification_complete_index_before(
     lines: &[&str],
+    tables: &[ClassificationTable],
     setup_index: usize,
 ) -> Option<usize> {
-    let mut seen: Option<ClassificationFields> = None;
     let lane_start = current_lane_start(lines, setup_index);
+    tables
+        .iter()
+        .filter(|table| table.start >= lane_start && table.end < setup_index)
+        .filter(|table| {
+            is_child_completion_owner(&table.owner) || is_current_thread_owner(&table.owner)
+        })
+        .map(|table| table.end)
+        .next_back()
+        .or_else(|| legacy_classification_complete_index_before(lines, lane_start, setup_index))
+}
+
+fn legacy_classification_complete_index_before(
+    lines: &[&str],
+    lane_start: usize,
+    setup_index: usize,
+) -> Option<usize> {
+    let mut seen = None::<ClassificationFields>;
     for (index, line) in lines.iter().enumerate().take(setup_index).skip(lane_start) {
         if metadata_key(trimmed_value(line)) == "task classification:" {
             seen = Some(ClassificationFields::default());
@@ -53,6 +78,7 @@ fn formal_child_classification_complete_index_before(
     }
     None
 }
+
 #[derive(Default)]
 struct ClassificationFields {
     lane_type: bool,
@@ -64,6 +90,7 @@ struct ClassificationFields {
     stop_blocker: bool,
     child_owner_decision: bool,
 }
+
 impl ClassificationFields {
     fn record(&mut self, key: &str, value: &str) {
         if value.is_empty() {
@@ -82,28 +109,9 @@ impl ClassificationFields {
                 self.required_tools = true
             }
             "first allowed action" => self.first_allowed_action = true,
-            key if Self::is_stop_blocker_key(key) => self.stop_blocker = true,
+            "stop/blocker" | "stop blocker" | "blocker" => self.stop_blocker = true,
             _ => {}
         }
-    }
-
-    fn records_key(key: &str) -> bool {
-        matches!(
-            key,
-            "lane type"
-                | "secondary surfaces"
-                | "owner decision"
-                | "atomic scope"
-                | "required skills"
-                | "required tools/evidence"
-                | "required tools"
-                | "required evidence"
-                | "first allowed action"
-        ) || Self::is_stop_blocker_key(key)
-    }
-
-    fn is_stop_blocker_key(key: &str) -> bool {
-        matches!(key, "stop/blocker" | "stop blocker" | "blocker")
     }
 
     fn is_complete(&self) -> bool {
@@ -120,14 +128,13 @@ impl ClassificationFields {
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     let line = trimmed_value(line);
     if line.split_once(':').is_some_and(|(key, value)| {
-        ClassificationFields::records_key(metadata_key(key))
-            && !line_claims_setup_before_classification(value)
+        is_classification_key(metadata_key(key)) && !line_claims_setup_before_classification(value)
     }) {
         return Vec::new();
     }
     let clauses = line
         .split_once(':')
-        .filter(|(key, _)| ClassificationFields::records_key(metadata_key(key)))
+        .filter(|(key, _)| is_classification_key(metadata_key(key)))
         .map(|(_, value)| value)
         .unwrap_or(line);
     setup_clauses(clauses)

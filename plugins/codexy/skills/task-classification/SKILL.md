@@ -103,19 +103,18 @@ plugin repair until classification evidence exists in the thread.
 
 ## Required Output
 
-MUST use this shape before taking the first workflow action:
+MUST emit exactly one ordered GFM table before taking the first workflow action:
 
-```text
-Task classification:
-Lane type:
-Secondary surfaces:
-Owner decision:
-Atomic scope:
-Required skills:
-Required tools/evidence:
-First allowed action:
-Stop/blocker:
-```
+| Task classification | Decision |
+| --- | --- |
+| Lane type | |
+| Secondary surfaces | |
+| Owner decision | |
+| Atomic scope | |
+| Required skills | |
+| Required tools/evidence | |
+| First allowed action | |
+| Stop/blocker | |
 
 ## Classification Output
 
@@ -137,7 +136,7 @@ Stop/blocker:
 - Missing classification evidence blocks branch/worktree setup, delegation,
   validation/QA, implementation, PR handling, review-response routing, merge
   work, release work, and PR-readiness claims.
-- Child lanes MUST emit the complete `Task classification:` block before
+- Child lanes MUST emit the complete classification table before
   creating or switching to an implementation branch or worktree. Handoff
   evidence MUST NOT report child-created branch/worktree setup before that
   block; `scripts/validate-plugin-config --check-child-lane-ownership
@@ -170,7 +169,7 @@ Stop/blocker:
 - Creating a branch or worktree before deciding whether the lane is
   parent-owned or child-owned.
 - Creating or switching to a child implementation branch or worktree after a
-  thread rename but before the complete `Task classification:` block.
+  thread rename but before the complete classification table.
 - Treating review response, merge, validation, release, and implementation as
   one generic task.
 - Letting a parent patch a child-owned implementation or review-response lane.

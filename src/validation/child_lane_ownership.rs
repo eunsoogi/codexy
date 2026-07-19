@@ -1,3 +1,4 @@
+use super::child_lane_classification_boundaries::classifications;
 use super::child_lane_owner_decision::{
     is_affirmative_child_owned_value, is_child_delegation_owner_decision, is_parent_owned_value,
 };
@@ -46,6 +47,7 @@ fn has_unreported_worktree_mismatch_before_goal(evidence: &str) -> bool {
 }
 fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
+    let tables = classifications(evidence);
     let (
         mut child_owned,
         mut parent_fix,
@@ -61,7 +63,12 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let mut pending_setup_recovered = Some(false);
     let mut pending_pr_seen = false;
     for (index, line) in lines.iter().enumerate() {
-        let starts_lane = is_affirmative_child_owned_line(line);
+        let table_owner = tables
+            .iter()
+            .find(|table| table.start == index)
+            .map(|table| table.owner.as_str());
+        let starts_lane = table_owner.is_some_and(is_child_delegation_owner_decision)
+            || is_affirmative_child_owned_line(line);
         let pr_metadata = is_pr_boundary(line);
         let pr_boundary = pr_metadata
             && index > 0
@@ -69,8 +76,9 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
                 .is_some_and(|previous| !is_affirmative_child_owned_line(previous))
                 || (child_owned && child_header_open && child_pr_seen))
             && !(child_owned && child_header_open && !child_pr_seen);
-        let ownership_boundary =
-            is_lane_ownership_boundary(line) || is_parent_owned_owner_boundary(line);
+        let ownership_boundary = is_lane_ownership_boundary(line)
+            || table_owner.is_some_and(is_parent_owned_value)
+            || is_parent_owned_owner_boundary(line);
         let line_parent_setup = line_has_parent_implementation_setup(&lines, index);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
