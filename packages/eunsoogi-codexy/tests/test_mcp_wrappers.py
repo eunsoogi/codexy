@@ -54,6 +54,33 @@ class McpWrapperTests(unittest.TestCase):
             self.assertIn("eunsoogi-codexy==1.2.1", arguments)
             self.assertEqual(arguments[-4:], ["--plugin-root", str(root), "--", "--stdio"])
 
+    def test_wrapper_runs_bundled_runtime_before_uvx(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            uname = bin_dir / "uname"
+            uname.write_text('#!/bin/sh\n[ "$1" = "-s" ] && echo Darwin || echo arm64\n')
+            uname.chmod(0o755)
+            for server in ("lsp", "codegraph"):
+                mcp = root / "mcp"
+                mcp.mkdir(exist_ok=True)
+                wrapper = mcp / f"codexy-mcp-{server}"
+                shutil.copyfile(self.wrapper(server), wrapper)
+                wrapper.chmod(0o755)
+                runtime = root / "runtime" / f"codexy-mcp-{server}-darwin-arm64.bin"
+                runtime.parent.mkdir(exist_ok=True)
+                runtime.write_text('#!/bin/sh\nprintf "%s\\n" "$CODEXY_PLUGIN_ROOT" "$@"\n')
+                runtime.chmod(0o755)
+
+                completed = subprocess.run(
+                    [wrapper, "--stdio"], env={"PATH": str(bin_dir)}, capture_output=True,
+                    text=True, check=False,
+                )
+
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(completed.stdout.splitlines(), [str(root), "--stdio"])
+
 
 if __name__ == "__main__":
     unittest.main()

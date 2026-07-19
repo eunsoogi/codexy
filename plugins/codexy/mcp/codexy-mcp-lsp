@@ -4,6 +4,13 @@ case "$0" in */*) script_dir=${0%/*} ;; *) script_dir=. ;; esac
 self_dir=$(CDPATH= cd -- "$script_dir" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
 bundled_platforms="darwin-arm64 linux-x86_64"
+case "$(uname -s)" in Darwin) runtime_os=darwin ;; Linux) runtime_os=linux ;; *) runtime_os=unknown ;; esac
+case "$(uname -m)" in arm64|aarch64) runtime_arch=arm64 ;; x86_64|amd64|AMD64) runtime_arch=x86_64 ;; *) runtime_arch=unknown ;; esac
+bundled_runtime="$plugin_root/runtime/codexy-mcp-lsp-${runtime_os}-${runtime_arch}.bin"
+if [ -x "$bundled_runtime" ]; then
+  export CODEXY_PLUGIN_ROOT="$plugin_root"
+  exec "$bundled_runtime" "$@"
+fi
 unset UV_INDEX UV_EXTRA_INDEX_URL UV_FIND_LINKS UV_CONSTRAINT UV_OVERRIDE UV_INSECURE_HOST UV_CONFIG_FILE
 export UV_NO_CONFIG=1 UV_DEFAULT_INDEX=https://pypi.org/simple
 if [ -n "${CODEXY_UVX_PATH:-}" ]; then
