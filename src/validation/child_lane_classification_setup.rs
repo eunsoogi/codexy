@@ -1,8 +1,10 @@
 use super::child_lane_classification_boundaries::{
-    child_candidate_requires_guard, classification_owner_before, classifications,
-    next_lane_boundary,
+    ClassificationTable, classification_owner_before, classifications, handoff, is_lane_boundary,
+    is_ownership_boundary, next_lane_boundary,
 };
-use super::child_lane_owner_decision::is_child_delegation_owner_decision;
+use super::child_lane_owner_decision::{
+    is_child_delegation_owner_decision, is_parent_owned_value, is_supported_owner_decision,
+};
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
@@ -37,9 +39,39 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     Vec::new()
 }
 
+pub(super) fn child_candidate_requires_guard(
+    tables: &[ClassificationTable],
+    lines: &[&str],
+    index: usize,
+) -> bool {
+    tables.iter().any(|table| {
+        let parent_child_transition = is_parent_owned_value(&table.owner)
+            && (table.end + 1..index).any(|line| {
+                is_ownership_boundary(lines[line])
+                    && lines[line]
+                        .split_once(':')
+                        .is_some_and(|(_, value)| is_child_delegation_owner_decision(value))
+            });
+        table.start < index
+            && (parent_child_transition
+                || ((is_child_delegation_owner_decision(&table.owner)
+                    || !is_supported_owner_decision(&table.owner))
+                    && ((!table.canonical
+                        && (table.end >= index
+                            || handoff(table, lines, index, true)
+                            || (table.end + 1..index).all(|line| {
+                                !is_lane_boundary(lines, line)
+                                    && !tables.iter().any(|table| table.start == line)
+                            })))
+                        || (table.canonical
+                            && table.end < index
+                            && handoff(table, lines, index, false)))))
+    })
+}
+
 fn has_rendered_or_legacy_child_context(
     lines: &[&str],
-    tables: &[super::child_lane_classification_boundaries::ClassificationTable],
+    tables: &[ClassificationTable],
     setup_index: usize,
     setup_clause: &str,
 ) -> bool {

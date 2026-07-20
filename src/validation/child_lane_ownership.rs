@@ -1,7 +1,8 @@
 use super::child_lane_classification_boundaries::{
-    child_candidate_requires_guard, child_table_owns_handoff_pr, classification_owner_before,
-    classifications, is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
+    child_table_owns_handoff_pr, classification_owner_before, classifications,
+    is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
 };
+use super::child_lane_classification_setup::child_candidate_requires_guard;
 use super::child_lane_owner_decision::{
     is_affirmative_child_owned_value, is_child_delegation_owner_decision,
 };

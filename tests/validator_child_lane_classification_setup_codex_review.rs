@@ -180,6 +180,16 @@ fn validator_allows_no_setup_occurred_inside_required_tools_metadata() -> TestRe
     )))
 }
 
+#[test]
+fn validator_rejects_negated_external_owners_and_parent_to_child_goal_lane() -> TestResult {
+    for owner in ["not external/human-owned implementation lane", "without external/human-owned implementation lane"] {
+        let output = run_ownership_validator(&format!("{}\nChild branch codexy/461-table was created after classification.\n", canonical_table(owner, "goal")))?;
+        assert!(!output.status.success(), "{owner}: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    let goal = "Source thread id: parent-461\nGoal control state: source_thread_id=parent-461\nGoal transition key: one:two:three\nParent goal pre-delivery: operation=create_goal; parent task=parent-461; issue=#461; plan step=repair; branch=b; worktree=/tmp/w; head=abc; clean/index=clean; evidence=table; next action=goal; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; parent task=parent-461; exact tool result=active; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\n";
+    assert_rejected(&format!("{}\nOwner: child-owned\n{goal}", canonical_table("parent-owned implementation lane", "goal")))
+}
+
 fn setup_after(table: String) -> String {
     format!("Lane ownership: child-owned\n{table}\nChild branch codexy/231-branch-classification-guard was created after classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n")
 }

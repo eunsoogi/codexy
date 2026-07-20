@@ -38,7 +38,13 @@ pub(super) fn is_supported_owner_decision(value: &str) -> bool {
     is_child_delegation_owner_decision(value)
         || is_parent_owned_value(value)
         || is_current_thread_child_implementation(value)
-        || has_owner_token(value, "external/human-owned")
+        || is_external_human_owned_value(value)
+}
+
+fn is_external_human_owned_value(value: &str) -> bool {
+    has_owner_token(value, "external/human-owned")
+        && !value.contains("not external/human-owned")
+        && !value.contains("without external/human-owned")
 }
 
 fn has_owner_token(value: &str, owner: &str) -> bool {

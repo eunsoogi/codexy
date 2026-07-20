@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
 
 use super::child_lane_classification_boundaries::{
-    ClassificationTable, child_candidate_requires_guard, child_table_ownership_boundary,
-    child_table_owns_handoff_pr, classification_owner_before, classifications,
-    is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
+    ClassificationTable, child_table_ownership_boundary, child_table_owns_handoff_pr,
+    classification_owner_before, classifications, is_legacy_ownership_boundary, owner_at,
+    table_ownership_boundary,
 };
+use super::child_lane_classification_setup::child_candidate_requires_guard;
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::field_value;
 use super::child_terminal_handoff::{
@@ -148,20 +149,12 @@ fn pre_delivery_is_confirmed(
         errors.push("goal report names the wrong parent task id".into());
         return false;
     }
-    let required = [
-        "issue",
-        "plan step",
-        "branch",
-        "worktree",
-        "head",
-        "clean/index",
-        "evidence",
-        "next action",
-    ];
     if field(line, "operation") != Some(operation)
         || field(line, "delivery") != Some("confirmed")
         || field(line, "task surface") != Some("codex task/thread")
-        || required.iter().any(|name| invalid_value(field(line, name)))
+        || "issue|plan step|branch|worktree|head|clean/index|evidence|next action"
+            .split('|')
+            .any(|name| invalid_value(field(line, name)))
     {
         errors.push("goal pre-delivery report is missing required pre-delivery fields".into());
         return false;
@@ -208,9 +201,9 @@ fn is_local_agent_route(line: &str) -> bool {
 }
 fn matches_key(line: &str, key: Option<&str>, errors: &mut Vec<String>) -> bool {
     let matches = key.is_some_and(|value| field(line, "transition key") == Some(value));
-    if !matches {
-        errors.push("goal receipt does not match its stable transition key".into());
-    }
+    errors.extend(
+        (!matches).then_some("goal receipt does not match its stable transition key".into()),
+    );
     matches
 }
 fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {

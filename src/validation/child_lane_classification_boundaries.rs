@@ -20,7 +20,7 @@ pub(super) struct ClassificationTable {
     pub(super) start: usize,
     pub(super) end: usize,
     pub(super) owner: String,
-    canonical: bool,
+    pub(super) canonical: bool,
 }
 
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
@@ -39,7 +39,7 @@ pub(super) fn next_lane_boundary(lines: &[&str], index: usize) -> usize {
         .map_or(lines.len(), |(index, _)| index)
 }
 
-fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
+pub(super) fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
     let line = metadata_key(trimmed_value(lines[index]));
     "pr:|pull request:|review response:|maintainer reassignment:"
         .split('|')
@@ -159,26 +159,6 @@ pub(super) fn child_table_ownership_boundary(
         })
 }
 
-pub(super) fn child_candidate_requires_guard(
-    tables: &[ClassificationTable],
-    lines: &[&str],
-    index: usize,
-) -> bool {
-    tables.iter().any(|table| {
-        table.start < index
-            && (is_child_delegation_owner_decision(&table.owner)
-                || !is_supported_owner_decision(&table.owner))
-            && ((!table.canonical
-                && (table.end >= index
-                    || handoff(table, lines, index, true)
-                    || (table.end + 1..index).all(|line| {
-                        !is_lane_boundary(lines, line)
-                            && !tables.iter().any(|table| table.start == line)
-                    })))
-                || (table.canonical && table.end < index && handoff(table, lines, index, false)))
-    })
-}
-
 pub(super) fn classification_owner_before<'a>(
     lines: &[&str],
     tables: &'a [ClassificationTable],
@@ -202,7 +182,12 @@ pub(super) fn classification_owner_before<'a>(
     (complete.len() == 1).then(|| complete[0].owner.as_str())
 }
 
-fn handoff(table: &ClassificationTable, lines: &[&str], at: usize, separated: bool) -> bool {
+pub(super) fn handoff(
+    table: &ClassificationTable,
+    lines: &[&str],
+    at: usize,
+    separated: bool,
+) -> bool {
     let metadata = &lines[table.end + 1..at];
     metadata
         .first()
