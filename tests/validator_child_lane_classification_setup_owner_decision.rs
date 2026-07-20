@@ -214,6 +214,21 @@ fn validator_rejects_child_setup_under_parent_owned_table() -> TestResult {
     ))
 }
 
+#[test]
+fn validator_rejects_child_setup_after_pull_request_handoff_for_nonchild_tables() -> TestResult {
+    for table in [
+        complete_parent_owned_owner_decision_classification().to_owned(),
+        complete_parent_owned_owner_decision_classification()
+            .replace("parent-owned for branch/worktree setup; parent owns implementation", "external/human-owned implementation lane"),
+    ] {
+        assert_rejected(&format!(
+            "{table}\nPull request: #468\nChild branch codexy/461-table was created after classification.\n{}",
+            ownership_footer()
+        ))?;
+    }
+    Ok(())
+}
+
 fn complete_parent_owned_owner_decision_classification() -> &'static str {
     "| Task classification | Decision |\n| --- | --- |\n| Lane type | validation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | parent-owned for branch/worktree setup; parent owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |\n"
 }

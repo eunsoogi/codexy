@@ -213,7 +213,7 @@ pub(super) fn handoff(
                 || line.split_once(':').is_some_and(|(key, _)| {
                     matches!(
                         metadata_key(key),
-                        "issue" | "branch" | "worktree path" | "pr"
+                        "issue" | "branch" | "worktree path" | "pr" | "pull request"
                     )
                 })
         })
