@@ -37,6 +37,27 @@ fn classification_context_keeps_handoff_order_and_owner_invariants() -> TestResu
     Ok(())
 }
 
+#[test]
+fn gfm_fences_and_cell_constructs_preserve_rendered_table_boundaries() -> TestResult {
+    let child = canonical_table("current-thread-owned child implementation lane");
+    for fenced in [
+        format!("~~~markdown\n{child}~~~\n"),
+        format!("````markdown\nexample:\n```\n{child}````\n"),
+    ] {
+        assert_allowed(&format!(
+            "{fenced}Review response: parent-authored implementation commit abc123 fixed feedback\n"
+        ))?;
+    }
+    for tools in ["cargo test \\| Sentinel", "`cargo test | Sentinel`"] {
+        let table = child.replacen("goal, plan, codegraph, LSP, Sentinel", tools, 1);
+        assert_allowed(&format!(
+            "{table}Child branch codexy/461-table was created after classification.\n{}",
+            valid_goal_receipt()
+        ))?;
+    }
+    Ok(())
+}
+
 fn invalid_tables() -> Vec<String> {
     vec![
         canonical_table("current-thread-owned child implementation lane")

@@ -46,18 +46,20 @@ struct TableRow {
     cells: Vec<String>,
     prefixed: bool,
 }
-
 fn tables(lines: &[&str]) -> Vec<ClassificationTable> {
     let mut tables = Vec::new();
     let mut start = 0;
-    let mut fenced = false;
+    let mut fenced = None;
     while start < lines.len() {
-        if lines[start].starts_with("```") {
-            fenced = !fenced;
+        if let Some(fence) = fenced {
+            if fence_closes(fence, lines[start]) {
+                fenced = None;
+            }
             start += 1;
             continue;
         }
-        if fenced {
+        if let Some(fence) = fence_opener(lines[start]) {
+            fenced = Some(fence);
             start += 1;
             continue;
         }
@@ -81,20 +83,71 @@ fn tables(lines: &[&str]) -> Vec<ClassificationTable> {
     }
     tables
 }
-
 fn table_row(line: &str) -> Option<TableRow> {
     let (line, prefixed) = without_list_prefix(line);
     let line = line.trim();
     line.contains('|').then(|| TableRow {
-        cells: line
-            .trim_matches('|')
-            .split('|')
-            .map(|cell| cell.trim().to_ascii_lowercase())
-            .collect(),
+        cells: table_cells(line),
         prefixed,
     })
 }
-
+fn fence_opener(line: &str) -> Option<(u8, usize)> {
+    let bytes = line.trim_start().as_bytes();
+    let marker = *bytes.first()?;
+    matches!(marker, b'`' | b'~')
+        .then(|| {
+            let length = bytes.iter().take_while(|byte| **byte == marker).count();
+            (marker, length)
+        })
+        .filter(|(_, length)| *length >= 3)
+}
+fn fence_closes((marker, length): (u8, usize), line: &str) -> bool {
+    let bytes = line.trim_start().as_bytes();
+    let closing = bytes.iter().take_while(|byte| **byte == marker).count();
+    closing >= length && bytes[closing..].iter().all(u8::is_ascii_whitespace)
+}
+fn table_cells(line: &str) -> Vec<String> {
+    let line = line.trim();
+    let bytes = line.as_bytes();
+    let first = usize::from(bytes.first() == Some(&b'|'));
+    let last =
+        bytes.len() - usize::from(bytes.last() == Some(&b'|') && !escaped(bytes, bytes.len() - 1));
+    let line = &line[first..last];
+    let mut cells = Vec::new();
+    let (mut start, mut index, mut code_length) = (0, 0, None);
+    while index < line.len() {
+        let byte = line.as_bytes()[index];
+        if byte == b'`' && !escaped(line.as_bytes(), index) {
+            let length = line.as_bytes()[index..]
+                .iter()
+                .take_while(|byte| **byte == b'`')
+                .count();
+            code_length = if code_length == Some(length) {
+                None
+            } else {
+                code_length.or(Some(length))
+            };
+            index += length;
+        } else {
+            if byte == b'|' && code_length.is_none() && !escaped(line.as_bytes(), index) {
+                cells.push(line[start..index].trim().to_ascii_lowercase());
+                start = index + 1;
+            }
+            index += 1;
+        }
+    }
+    cells.push(line[start..].trim().to_ascii_lowercase());
+    cells
+}
+fn escaped(bytes: &[u8], index: usize) -> bool {
+    bytes[..index]
+        .iter()
+        .rev()
+        .take_while(|byte| **byte == b'\\')
+        .count()
+        % 2
+        == 1
+}
 fn without_list_prefix(line: &str) -> (&str, bool) {
     let line = line.trim_start();
     if let Some(rest) = line
@@ -111,7 +164,6 @@ fn without_list_prefix(line: &str) -> (&str, bool) {
     }
     (line, false)
 }
-
 fn classification_table(
     start: usize,
     end: usize,
@@ -155,14 +207,12 @@ fn classification_table(
             }),
     })
 }
-
 fn separator(cells: &[String]) -> bool {
     !cells.is_empty()
         && cells.iter().all(|cell| {
             !cell.is_empty() && cell.bytes().all(|byte| matches!(byte, b'-' | b':' | b' '))
         })
 }
-
 fn valid_separator(cells: &[String]) -> bool {
     separator(cells)
         && cells.iter().all(|cell| {
@@ -173,7 +223,6 @@ fn valid_separator(cells: &[String]) -> bool {
                 >= 3
         })
 }
-
 fn has_multiple_owner_tokens(owner: &str) -> bool {
     [
         "child-owned",
@@ -186,7 +235,6 @@ fn has_multiple_owner_tokens(owner: &str) -> bool {
     .count()
         > 1
 }
-
 fn affirmative_token(owner: &str, token: &str) -> bool {
     owner.match_indices(token).any(|(index, _)| {
         !owner[..index]

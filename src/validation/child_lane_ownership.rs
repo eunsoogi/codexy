@@ -10,8 +10,12 @@ use super::child_lane_ownership_fixes::line_has_parent_authored_fix;
 use super::child_lane_ownership_phrases::*;
 use super::child_lane_ownership_recovery::line_has_parent_setup_recovery;
 use super::child_lane_ownership_setup::line_has_parent_implementation_setup;
-pub(super) fn check(evidence: &str, classification: &ClassificationEvidence<'_>) -> Vec<String> {
-    let mut errors = super::child_lane_thread_tools::check(evidence, evidence);
+pub(super) fn check(
+    evidence: &str,
+    raw_evidence: &str,
+    classification: &ClassificationEvidence<'_>,
+) -> Vec<String> {
+    let mut errors = super::child_lane_thread_tools::check(evidence, raw_evidence);
     errors.extend(super::child_lane_classification_setup::check(
         classification,
     ));

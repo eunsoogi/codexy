@@ -56,7 +56,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::ChildLaneOwnership { evidence } => {
             let normalized = evidence.to_ascii_lowercase();
             let classification = ClassificationEvidence::parse(&normalized);
-            let mut errors = child_lane_ownership::check(&normalized, &classification);
+            let mut errors = child_lane_ownership::check(&normalized, &evidence, &classification);
             errors.extend(child_goal_reporting::check(&normalized, &classification));
             errors
         }
