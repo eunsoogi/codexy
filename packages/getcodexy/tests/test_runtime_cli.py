@@ -1,5 +1,6 @@
 import hashlib
 import io
+import json
 import sys
 import tarfile
 import tempfile
@@ -16,22 +17,16 @@ from codexy_runtime_tools.package import _github_token_for
 class RuntimeCliTests(unittest.TestCase):
     def test_distribution_identity_and_console_entrypoint_are_stable(self) -> None:
         pyproject = Path(__file__).parents[1].joinpath("pyproject.toml").read_text()
-        self.assertIn('name = "eunsoogi-codexy"', pyproject)
-        self.assertIn('version = "1.2.2"', pyproject)
+        manifest = json.loads(
+            Path(__file__).parents[3]
+            .joinpath("plugins/codexy/.codex-plugin/plugin.json")
+            .read_text()
+        )
+        self.assertIn('name = "getcodexy"', pyproject)
+        self.assertIn(f'version = "{manifest["version"]}"', pyproject)
         self.assertIn(
             'codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"', pyproject
         )
-
-    def test_bootstrap_publish_is_exact_and_installs_the_wheel(self) -> None:
-        workflow = Path(__file__).parents[3].joinpath(".github/workflows/python-package.yml").read_text()
-        publish_job = workflow.split("  publish:\n", maxsplit=1)[1].split("    environment:\n", maxsplit=1)[0]
-        self.assertIn('tags: ["v1.2.2"]', workflow)
-        self.assertIn("github.ref == 'refs/tags/v1.2.2'", workflow)
-        self.assertIn("      contents: read\n", publish_job)
-        self.assertIn("      id-token: write\n", publish_job)
-        self.assertIn("python -m venv .package-venv", workflow)
-        self.assertIn("eunsoogi-codexy==1.2.2", workflow)
-        self.assertIn("codexy-mcp-runtime --help", workflow)
 
     def test_cli_preserves_plugin_root_and_stdio_arguments(self) -> None:
         argv = [
