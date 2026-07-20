@@ -73,14 +73,14 @@ fn is_owner_token_at(value: &str, owner: &str, index: usize) -> bool {
 }
 
 fn has_english_negation_before(value: &str, index: usize) -> bool {
-    let prefix =
-        value[..index].trim_end_matches(|character: char| !character.is_ascii_alphabetic());
-    matches!(
-        prefix
-            .rsplit(|character: char| !character.is_ascii_alphabetic())
-            .next(),
-        Some("not" | "no" | "without")
-    )
+    value[..index]
+        .rsplit(|character| matches!(character, ',' | ';' | '.'))
+        .next()
+        .is_some_and(|clause| {
+            clause
+                .split(|character: char| !character.is_ascii_alphabetic())
+                .any(|word| matches!(word, "not" | "no" | "without"))
+        })
 }
 
 fn has_child_delegation(value: &str) -> bool {

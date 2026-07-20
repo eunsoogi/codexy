@@ -182,11 +182,12 @@ fn validator_allows_no_setup_occurred_inside_required_tools_metadata() -> TestRe
 
 #[test]
 fn validator_rejects_negated_external_owners_and_parent_to_child_goal_lane() -> TestResult {
-    for owner in ["not external/human-owned implementation lane", "without external/human-owned implementation lane"] {
+    let goal = "Source thread id: parent-461\nGoal control state: source_thread_id=parent-461\nGoal transition key: one:two:three\nParent goal pre-delivery: operation=create_goal; parent task=parent-461; issue=#461; plan step=repair; branch=b; worktree=/tmp/w; head=abc; clean/index=clean; evidence=table; next action=goal; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; parent task=parent-461; exact tool result=active; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\n";
+    for owner in ["not external/human-owned implementation lane", "without external/human-owned implementation lane", "not currently current-thread-owned child implementation lane", "no longer child-owned implementation lane", "without being external/human-owned implementation lane"] {
         let output = run_ownership_validator(&format!("{}\nChild branch codexy/461-table was created after classification.\n", canonical_table(owner, "goal")))?;
         assert!(!output.status.success(), "{owner}: {}", String::from_utf8_lossy(&output.stderr));
+        assert_rejected(&format!("{}\n{goal}", canonical_table(owner, "goal")))?;
     }
-    let goal = "Source thread id: parent-461\nGoal control state: source_thread_id=parent-461\nGoal transition key: one:two:three\nParent goal pre-delivery: operation=create_goal; parent task=parent-461; issue=#461; plan step=repair; branch=b; worktree=/tmp/w; head=abc; clean/index=clean; evidence=table; next action=goal; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; parent task=parent-461; exact tool result=active; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\n";
     assert_rejected(&format!("{}\nOwner: child-owned\n{goal}", canonical_table("parent-owned implementation lane", "goal")))
 }
 
@@ -213,7 +214,8 @@ fn validator_rejects_ambiguous_tables_and_conflicting_owner_decisions() -> TestR
     assert_allowed(&format!(
         "{}\nChild branch codexy/461-table was created after classification.\n",
         canonical_table("child-owned implementation lane", "goal")
-    ))
+    ))?;
+    assert_rejected(&canonical_table("current-thread-owned child implementation lane", "goal").replace("First allowed action | create branch after classification |", "First allowed action | Child branch was created before task classification |"))
 }
 
 fn setup_after(table: String) -> String {

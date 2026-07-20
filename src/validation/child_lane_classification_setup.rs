@@ -21,6 +21,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         })
         .filter(|(index, clause)| {
             child_candidate_requires_guard(&tables, &lines, *index)
+                || line_claims_setup_before_classification(clause)
                 || (!tables
                     .iter()
                     .any(|table| table.start <= *index && *index <= table.end)

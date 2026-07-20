@@ -164,7 +164,7 @@ fn validator_allows_child_owned_owner_decision_with_parent_owned_negation() -> T
 fn validator_rejects_noncanonical_current_thread_owner_variants() -> TestResult {
     for owner in [
         "current-thread-owned, but not current-thread-owned",
-        "current-thread-owned — 현재 작업이 구현을 소유하지 않음",
+        "current-thread-owned child implementation lane — 현재 작업이 구현을 소유하지 않음",
         "current-thread-ownedness",
         "parent-ownedness",
     ] {
@@ -190,6 +190,9 @@ fn validator_rejects_no_and_without_owner_decisions() -> TestResult {
         "without parent-owned implementation lane",
         "no external/human-owned implementation lane",
         "without external/human-owned implementation lane",
+        "not currently current-thread-owned child implementation lane",
+        "no longer child-owned implementation lane",
+        "without being external/human-owned implementation lane",
     ] {
         assert_rejected(&format!(
             "{}\nChild branch codexy/461-table was created after classification.\n{}",
