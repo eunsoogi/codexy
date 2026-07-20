@@ -97,6 +97,10 @@ fn validator_rejects_external_or_invalid_rendered_classification_before_child_se
             "current-thread-owned child implementation lane",
             "external/human-owned implementation lane",
         ),
+        complete_child_classification().replace(
+            "current-thread-owned child implementation lane",
+            "undecided",
+        ),
         complete_child_classification().replace("| Task classification | Decision |", "| Task classification | Result |"),
         complete_child_classification().replacen(
             "| Atomic scope | issue-sized |",

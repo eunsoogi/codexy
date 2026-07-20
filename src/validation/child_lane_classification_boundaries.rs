@@ -1,4 +1,6 @@
-use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
+use super::child_lane_owner_decision::{
+    is_child_delegation_owner_decision, is_parent_owned_value, is_supported_owner_decision,
+};
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
@@ -164,7 +166,8 @@ pub(super) fn child_candidate_requires_guard(
 ) -> bool {
     tables.iter().any(|table| {
         table.start < index
-            && is_child_delegation_owner_decision(&table.owner)
+            && (is_child_delegation_owner_decision(&table.owner)
+                || !is_supported_owner_decision(&table.owner))
             && ((!table.canonical
                 && (table.end >= index
                     || (table.end + 1..index).all(|line| {
@@ -232,6 +235,7 @@ fn classification_owner(rows: &[Vec<String>]) -> Option<(String, bool)> {
         matches!(header.as_slice(), [first, second] if first.trim().eq_ignore_ascii_case(HEADER[0]) && second.trim().eq_ignore_ascii_case(HEADER[1]))
     })
         && rows.len() == FIELDS.len() + 1
+        && is_supported_owner_decision(&owner)
         && rows.iter().skip(1).zip(FIELDS).all(|(row, field)| {
             matches!(row.as_slice(), [key, value] if key.trim().eq_ignore_ascii_case(field) && !value.trim().is_empty())
         });

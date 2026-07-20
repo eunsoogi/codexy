@@ -31,6 +31,14 @@ pub(super) fn is_parent_owned_value(value: &str) -> bool {
     value.starts_with("parent-owned") && !value.contains("not parent-owned")
 }
 
+pub(super) fn is_supported_owner_decision(value: &str) -> bool {
+    let value = trimmed_value(value);
+    is_child_delegation_owner_decision(value)
+        || is_parent_owned_value(value)
+        || value.starts_with("current-thread-owned")
+        || value.starts_with("external/human-owned")
+}
+
 fn has_child_delegation(value: &str) -> bool {
     (value.contains("child delegation")
         || value.contains("child-lane setup")
