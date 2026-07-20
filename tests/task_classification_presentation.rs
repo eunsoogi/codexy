@@ -47,8 +47,14 @@ fn task_classification_uses_one_ordered_table() -> TestResult {
     let prompt = std::fs::read_to_string(
         root.join("plugins/codexy/skills/task-classification/agents/openai.yaml"),
     )?;
-    assert!(prompt.contains("one ordered two-column GFM table"));
-    assert!(prompt.contains(&FIELDS.join(", ")));
+    let prompt: serde_yaml::Value = serde_yaml::from_str(&prompt)?;
+    let default_prompt = prompt["interface"]["default_prompt"]
+        .as_str()
+        .ok_or("missing task-classification default prompt")?;
+    assert_eq!(
+        default_prompt,
+        "You MUST use $task-classification first to render one ordered two-column GFM table with exactly these eight rows: Lane type, Secondary surfaces, Owner decision, Atomic scope, Required skills, Required tools/evidence, First allowed action, Stop/blocker; you MUST complete it before Codexy setup, delegation, implementation, PR, review-response, or merge work begins."
+    );
     Ok(())
 }
 
