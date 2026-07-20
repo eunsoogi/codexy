@@ -31,6 +31,17 @@ Maintainer reassignment: none
 }
 
 #[test]
+fn validator_rejects_malformed_handoff_and_unseparated_pre_pr_setup() -> Result<(), Box<dyn std::error::Error>> {
+    let table = "| Task classification | Decision |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | workflow |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal |\n| First allowed action | create branch |\n";
+    let malformed = ["Child branch codexy/461-table was created after classification.", "Review response: parent-authored implementation commit abc fixed feedback", "Source thread id: parent-461\nGoal tool call: create_goal"]
+        .into_iter().all(|action| run_ownership_validator(&format!("{table}\nIssue: #461\nBranch: b\nWorktree path: /tmp/w\nPR: #468\n{action}\n")).is_ok_and(|output| !output.status.success()));
+    let canonical = format!("{table}| Stop/blocker | None |\n");
+    let unseparated = !run_ownership_validator(&format!("{canonical}Issue: #461\nBranch: b\nWorktree path: /tmp/w\nChild branch codexy/461-table was created after classification.\n"))?.status.success();
+    assert!(malformed && unseparated);
+    Ok(())
+}
+
+#[test]
 fn validator_allows_inline_child_reads_then_absent_parent_reads()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(

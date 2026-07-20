@@ -170,6 +170,7 @@ pub(super) fn child_candidate_requires_guard(
                 || !is_supported_owner_decision(&table.owner))
             && ((!table.canonical
                 && (table.end >= index
+                    || handoff(table, lines, index, true)
                     || (table.end + 1..index).all(|line| {
                         !is_lane_boundary(lines, line)
                             && !tables.iter().any(|table| table.start == line)
@@ -189,7 +190,13 @@ pub(super) fn classification_owner_before<'a>(
         .filter(|table| {
             table.canonical
                 && table.end < index
-                && (table_in_lane(table, lane_start, lines) || handoff(table, lines, index, true))
+                && (handoff(table, lines, index, true)
+                    || ((table.start >= lane_start
+                        || (table.end < lane_start
+                            && lines[table.end + 1..lane_start]
+                                .iter()
+                                .all(|line| line.is_empty())))
+                        && !handoff(table, lines, index, false)))
         })
         .collect::<Vec<_>>();
     (complete.len() == 1).then(|| complete[0].owner.as_str())
@@ -209,14 +216,6 @@ fn handoff(table: &ClassificationTable, lines: &[&str], at: usize, separated: bo
                     )
                 })
         })
-}
-
-fn table_in_lane(table: &ClassificationTable, lane_start: usize, lines: &[&str]) -> bool {
-    table.start >= lane_start
-        || (table.end < lane_start
-            && lines[table.end + 1..lane_start]
-                .iter()
-                .all(|line| line.is_empty()))
 }
 
 fn classification_owner(rows: &[Vec<String>]) -> Option<(String, bool)> {

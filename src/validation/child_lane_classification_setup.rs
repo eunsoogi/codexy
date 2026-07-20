@@ -16,12 +16,12 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 .into_iter()
                 .map(move |clause| (index, clause))
         })
-        .filter(|(index, _)| {
+        .filter(|(index, clause)| {
             child_candidate_requires_guard(&tables, &lines, *index)
                 || (!tables
                     .iter()
                     .any(|table| table.start <= *index && *index <= table.end)
-                    && has_rendered_or_legacy_child_context(&lines, &tables, *index))
+                    && has_rendered_or_legacy_child_context(&lines, &tables, *index, clause))
         })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {
@@ -41,11 +41,14 @@ fn has_rendered_or_legacy_child_context(
     lines: &[&str],
     tables: &[super::child_lane_classification_boundaries::ClassificationTable],
     setup_index: usize,
+    setup_clause: &str,
 ) -> bool {
     classification_owner_before(lines, tables, setup_index).is_some_and(|owner| {
         is_child_delegation_owner_decision(owner)
             || owner.is_empty()
             || owner.starts_with("external/human-owned")
+            || (owner.starts_with("parent-owned")
+                && (has_child_setup_actor(setup_clause) || has_child_setup_subject(setup_clause)))
     }) || legacy_child_context(lines, setup_index)
 }
 

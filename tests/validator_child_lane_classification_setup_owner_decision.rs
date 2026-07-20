@@ -160,6 +160,34 @@ fn validator_allows_child_owned_owner_decision_with_parent_owned_negation() -> T
     ))
 }
 
+#[test]
+fn validator_rejects_noncanonical_current_thread_owner_variants() -> TestResult {
+    for owner in [
+        "current-thread-owned, but not current-thread-owned",
+        "current-thread-owned — 현재 작업이 구현을 소유하지 않음",
+        "current-thread-ownedness",
+        "parent-ownedness",
+    ] {
+        assert_rejected(&format!(
+            "{}\nChild branch codexy/461-table was created after classification.\n{}",
+            complete_child_classification()
+                .replacen("Lane ownership: child-owned\n", "", 1)
+                .replace("current-thread-owned child implementation lane", owner),
+            ownership_footer()
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_child_setup_under_parent_owned_table() -> TestResult {
+    assert_rejected(&format!(
+        "{}\nChild branch codexy/461-table was created after classification.\n{}",
+        complete_parent_owned_owner_decision_classification(),
+        ownership_footer()
+    ))
+}
+
 fn complete_parent_owned_owner_decision_classification() -> &'static str {
     "| Task classification | Decision |\n| --- | --- |\n| Lane type | validation |\n| Secondary surfaces | workflow, validators |\n| Owner decision | parent-owned for branch/worktree setup; parent owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification, codex-orchestration, git-workflow |\n| Required tools/evidence | goal, plan, codegraph, LSP, Sentinel |\n| First allowed action | create branch after classification |\n| Stop/blocker | None |\n"
 }
