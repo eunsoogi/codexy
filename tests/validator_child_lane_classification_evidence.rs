@@ -114,6 +114,47 @@ fn unseparated_prose_is_part_of_the_rendered_table_and_fails_closed() -> TestRes
     ))
 }
 
+#[test]
+fn later_classification_and_line_endings_preserve_lane_invariants() -> TestResult {
+    let child = canonical_table("current-thread-owned child implementation lane");
+    for owner in [
+        "current-thread-owned child implementation lane",
+        "parent-owned implementation lane",
+        "external/human-owned implementation lane",
+        "child-owned or parent-owned",
+    ] {
+        assert_rejected(&format!(
+            "Child branch codexy/461-table was created.\n{}",
+            canonical_table(owner)
+        ))?;
+    }
+    assert_rejected(&format!(
+        "Child branch codexy/461-table was created.\n{}",
+        child.replacen("Task classification", "Task classifications", 1)
+    ))?;
+    assert_allowed(&format!(
+        "{child}\nChild branch codexy/461-table was created after classification.\nPull request: #999\n{}",
+        canonical_table("parent-owned implementation lane")
+    ))?;
+
+    let preamble = "context\n".repeat(24);
+    let cases = [
+        format!("{preamble}{child}\nChild branch codexy/461-table was created after classification.\n"),
+        format!("{preamble}~~~markdown\n{child}~~~\nReview response: parent-authored implementation commit abc123 fixed feedback\n"),
+        format!("{preamble}<!--\n{child}-->\nReview response: parent-authored implementation commit abc123 fixed feedback\n"),
+        format!("{preamble}{}Review response: parent-authored implementation commit abc123 fixed feedback\n", child.replacen("Task classification", "Task classifications", 1)),
+    ];
+    for lf in cases {
+        let crlf = lf.replace('\n', "\r\n");
+        assert_eq!(
+            run_validator(&lf)?.status.success(),
+            run_validator(&crlf)?.status.success(),
+            "LF/CRLF changed classification evidence outcome:\n{lf}"
+        );
+    }
+    Ok(())
+}
+
 fn invalid_tables() -> Vec<String> {
     vec![
         canonical_table("current-thread-owned child implementation lane")

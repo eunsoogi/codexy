@@ -174,7 +174,6 @@ pub(super) fn candidate_requires_guard(
                                 && !evidence.tables().iter().any(|table| table.start == line)
                         })))
                 || (table.canonical
-                    && is_child_delegation_owner_decision(&table.owner)
                     && ((table.end < index && handoff(table, lines, index, false))
                         || (table.start > index
                             && (index + 1..table.start)

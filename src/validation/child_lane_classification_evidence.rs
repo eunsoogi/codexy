@@ -3,7 +3,6 @@ use std::ops::Range;
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
 use super::child_lane_owner_decision::is_supported_owner_decision;
-
 const FIELDS: [&str; 8] = [
     "lane type",
     "secondary surfaces",
@@ -15,13 +14,11 @@ const FIELDS: [&str; 8] = [
     "stop/blocker",
 ];
 const OWNER_TOKENS: &str = "child-owned|current-thread-owned|parent-owned|external/human-owned";
-
 #[derive(Debug)]
 pub(super) struct ClassificationEvidence<'a> {
     lines: Vec<&'a str>,
     tables: Vec<ClassificationTable>,
 }
-
 #[derive(Debug)]
 pub(super) struct ClassificationTable {
     pub(super) start: usize,
@@ -29,11 +26,10 @@ pub(super) struct ClassificationTable {
     pub(super) owner: String,
     pub(super) canonical: bool,
 }
-
 impl<'a> ClassificationEvidence<'a> {
     pub(super) fn parse(source: &'a str) -> Self {
-        let raw_lines = source.lines().collect::<Vec<_>>();
-        let lines = raw_lines.iter().map(|line| line.trim()).collect();
+        let raw_lines = source_lines(source);
+        let lines = raw_lines.iter().map(|(line, _)| line.trim()).collect();
         let (rendered, excluded) = rendered_tables(source);
         let mut tables = rendered
             .iter()
@@ -47,22 +43,18 @@ impl<'a> ClassificationEvidence<'a> {
         tables.extend(invalid_candidates(&raw_lines, &blocked_spans));
         Self { lines, tables }
     }
-
     pub(super) fn lines(&self) -> &[&'a str] {
         &self.lines
     }
-
     pub(super) fn tables(&self) -> &[ClassificationTable] {
         &self.tables
     }
 }
-
 #[derive(Debug)]
 struct RenderedTable {
     span: Range<usize>,
     rows: Vec<Vec<String>>,
 }
-
 fn rendered_tables(source: &str) -> (Vec<RenderedTable>, Vec<Range<usize>>) {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_TABLES);
@@ -106,7 +98,6 @@ fn rendered_tables(source: &str) -> (Vec<RenderedTable>, Vec<Range<usize>>) {
     }
     (tables, excluded)
 }
-
 fn append_cell(table: &mut Option<RenderedTable>, text: &str) {
     if let Some(cell) = table
         .as_mut()
@@ -116,7 +107,6 @@ fn append_cell(table: &mut Option<RenderedTable>, text: &str) {
         cell.push_str(text);
     }
 }
-
 fn classification_table(table: &RenderedTable, source: &str) -> Option<ClassificationTable> {
     let rows = table
         .rows
@@ -146,8 +136,8 @@ fn classification_table(table: &RenderedTable, source: &str) -> Option<Classific
                 })
         });
     shaped.then_some(ClassificationTable {
-        start: line_index(source, table.span.start),
-        end: line_index(source, table.span.end.saturating_sub(1)),
+        start: source[..table.span.start].matches('\n').count(),
+        end: source[..table.span.end.saturating_sub(1)].matches('\n').count(),
         owner: owner.clone(),
         canonical: matches!(header.as_slice(), [first, second] if first == "task classification" && second == "decision")
             && valid_delimiter(source, &table.span, header.len())
@@ -159,7 +149,6 @@ fn classification_table(table: &RenderedTable, source: &str) -> Option<Classific
             }),
     })
 }
-
 fn valid_delimiter(source: &str, span: &Range<usize>, columns: usize) -> bool {
     source[span.clone()].lines().nth(1).is_some_and(|line| {
         let mut cells = line.trim().trim_matches('|').split('|').map(str::trim);
@@ -174,23 +163,36 @@ fn valid_delimiter(source: &str, span: &Range<usize>, columns: usize) -> bool {
             })
     })
 }
-
-fn invalid_candidates(lines: &[&str], blocked_spans: &[Range<usize>]) -> Vec<ClassificationTable> {
-    let (mut tables, mut start, mut offset) = (Vec::new(), 0, 0);
+fn source_lines(source: &str) -> Vec<(&str, Range<usize>)> {
+    let mut offset = 0;
+    source
+        .split_inclusive('\n')
+        .map(|raw| {
+            let line = raw
+                .strip_suffix("\r\n")
+                .or_else(|| raw.strip_suffix('\n'))
+                .unwrap_or(raw);
+            let span = offset..offset + line.len();
+            offset += raw.len();
+            (line, span)
+        })
+        .collect()
+}
+fn invalid_candidates(
+    lines: &[(&str, Range<usize>)],
+    blocked_spans: &[Range<usize>],
+) -> Vec<ClassificationTable> {
+    let (mut tables, mut start) = (Vec::new(), 0);
     while start < lines.len() {
-        let end = offset + lines[start].len();
-        if !lines[start].contains('|') || covered(offset..end, blocked_spans) {
-            offset = end + 1;
+        if !lines[start].0.contains('|') || covered(lines[start].1.clone(), blocked_spans) {
             start += 1;
             continue;
         }
         let first = start;
         while start < lines.len() {
-            let end = offset + lines[start].len();
-            if !lines[start].contains('|') || covered(offset..end, blocked_spans) {
+            if !lines[start].0.contains('|') || covered(lines[start].1.clone(), blocked_spans) {
                 break;
             }
-            offset = end + 1;
             start += 1;
         }
         if recognizable(&lines[first..start]) {
@@ -204,29 +206,26 @@ fn invalid_candidates(lines: &[&str], blocked_spans: &[Range<usize>]) -> Vec<Cla
     }
     tables
 }
-
 fn covered(span: Range<usize>, spans: &[Range<usize>]) -> bool {
     spans
         .iter()
         .any(|other| span.start < other.end && other.start < span.end)
 }
-
-fn recognizable(lines: &[&str]) -> bool {
-    let text = lines.join("\n").to_ascii_lowercase();
+fn recognizable(lines: &[(&str, Range<usize>)]) -> bool {
+    let text = lines
+        .iter()
+        .fold(String::new(), |mut text, (line, _)| {
+            text.push_str(line);
+            text.push('\n');
+            text
+        })
+        .to_ascii_lowercase();
     text.contains("task classification")
         || (text.contains("owner decision")
             && FIELDS
                 .iter()
                 .any(|field| *field != "owner decision" && text.contains(field)))
 }
-
-fn line_index(source: &str, offset: usize) -> usize {
-    source[..offset.min(source.len())]
-        .bytes()
-        .filter(|byte| *byte == b'\n')
-        .count()
-}
-
 fn has_multiple_owner_tokens(owner: &str) -> bool {
     OWNER_TOKENS
         .split('|')
@@ -234,7 +233,6 @@ fn has_multiple_owner_tokens(owner: &str) -> bool {
         .count()
         > 1
 }
-
 fn affirmative_token(owner: &str, token: &str) -> bool {
     owner.match_indices(token).any(|(index, _)| {
         !owner[..index]
