@@ -162,13 +162,13 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
     assert!(classification.contains("name: task-classification"));
     assert!(classification.contains("MUST run this skill first for any Codexy work"));
     assert!(classification.contains("Classification Output"));
-    assert!(classification.contains("Lane type:"));
-    assert!(classification.contains("Owner decision:"));
-    assert!(classification.contains("Required skills:"));
-    assert!(classification.contains("Required tools/evidence:"));
+    assert!(classification.contains("| Lane type |"));
+    assert!(classification.contains("| Owner decision |"));
+    assert!(classification.contains("| Required skills |"));
+    assert!(classification.contains("| Required tools/evidence |"));
     assert!(classification.contains("lane-relevant required evidence"));
     assert!(classification.contains("unavailable-tool fallbacks"));
-    assert!(classification.contains("First allowed action:"));
+    assert!(classification.contains("| First allowed action |"));
 
     for lane_type in [
         "orchestration/lane setup",

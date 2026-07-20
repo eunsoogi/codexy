@@ -70,6 +70,9 @@ mod validator_gpt_5_6_routing_review_feedback;
 #[path = "../validator_prompt_metadata.rs"]
 mod validator_prompt_metadata;
 
+#[path = "../task_classification_presentation.rs"]
+mod task_classification_presentation;
+
 #[path = "../validator_role_instruction_policy.rs"]
 mod validator_role_instruction_policy;
 
