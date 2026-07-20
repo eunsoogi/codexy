@@ -1,6 +1,7 @@
 use super::child_lane_classification_boundaries::{
-    ClassificationTable, classification_owner_before, classifications, handoff, is_lane_boundary,
-    is_ownership_boundary, next_lane_boundary,
+    ClassificationTable, classification_owner_before, classifications, handoff,
+    has_multiple_canonical_tables_before, is_lane_boundary, is_ownership_boundary,
+    next_lane_boundary,
 };
 use super::child_lane_owner_decision::{
     is_child_delegation_owner_decision, is_parent_owned_value, is_supported_owner_decision,
@@ -44,6 +45,7 @@ pub(super) fn child_candidate_requires_guard(
     lines: &[&str],
     index: usize,
 ) -> bool {
+    let multiple_canonical_tables = has_multiple_canonical_tables_before(lines, tables, index);
     tables.iter().any(|table| {
         let parent_child_transition = is_parent_owned_value(&table.owner)
             && (table.end + 1..index).any(|line| {
@@ -53,7 +55,8 @@ pub(super) fn child_candidate_requires_guard(
                         .is_some_and(|(_, value)| is_child_delegation_owner_decision(value))
             });
         table.start < index
-            && (parent_child_transition
+            && (multiple_canonical_tables
+                || parent_child_transition
                 || ((is_child_delegation_owner_decision(&table.owner)
                     || !is_supported_owner_decision(&table.owner))
                     && ((!table.canonical

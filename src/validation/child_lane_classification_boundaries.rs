@@ -164,8 +164,25 @@ pub(super) fn classification_owner_before<'a>(
     tables: &'a [ClassificationTable],
     index: usize,
 ) -> Option<&'a str> {
+    let complete = applicable_canonical_tables(lines, tables, index);
+    (complete.len() == 1).then(|| complete[0].owner.as_str())
+}
+
+pub(super) fn has_multiple_canonical_tables_before(
+    lines: &[&str],
+    tables: &[ClassificationTable],
+    index: usize,
+) -> bool {
+    applicable_canonical_tables(lines, tables, index).len() > 1
+}
+
+fn applicable_canonical_tables<'a>(
+    lines: &[&str],
+    tables: &'a [ClassificationTable],
+    index: usize,
+) -> Vec<&'a ClassificationTable> {
     let lane_start = current_lane_start(lines, index);
-    let complete = tables
+    tables
         .iter()
         .filter(|table| {
             table.canonical
@@ -178,8 +195,7 @@ pub(super) fn classification_owner_before<'a>(
                                 .all(|line| line.is_empty())))
                         && !handoff(table, lines, index, false)))
         })
-        .collect::<Vec<_>>();
-    (complete.len() == 1).then(|| complete[0].owner.as_str())
+        .collect()
 }
 
 pub(super) fn handoff(

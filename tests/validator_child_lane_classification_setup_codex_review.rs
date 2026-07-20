@@ -190,6 +190,32 @@ fn validator_rejects_negated_external_owners_and_parent_to_child_goal_lane() -> 
     assert_rejected(&format!("{}\nOwner: child-owned\n{goal}", canonical_table("parent-owned implementation lane", "goal")))
 }
 
+#[test]
+fn validator_rejects_ambiguous_tables_and_conflicting_owner_decisions() -> TestResult {
+    let child = canonical_table("current-thread-owned child implementation lane", "goal");
+    assert_rejected(&format!(
+        "{child}\n{child}\nChild branch codexy/461-table was created after classification.\n"
+    ))?;
+    for owner in [
+        "external/human-owned or child-owned implementation lane",
+        "child-owned or external/human-owned implementation lane",
+    ] {
+        assert_rejected(&format!(
+            "{}\nChild branch codexy/461-table was created after classification.\n",
+            canonical_table(owner, "goal")
+        ))?;
+    }
+    let goal = "Source thread id: parent-461\nGoal control state: source_thread_id=parent-461\nGoal transition key: one:two:three\nParent goal pre-delivery: operation=create_goal; parent task=parent-461; issue=#461; plan step=repair; branch=b; worktree=/tmp/w; head=abc; clean/index=clean; evidence=table; next action=goal; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; parent task=parent-461; exact tool result=active; delivery=confirmed; task surface=codex task/thread; transition key=one:two:three\n";
+    assert_rejected(&format!(
+        "{}\n{goal}",
+        canonical_table("child-owned or external/human-owned implementation lane", "goal")
+    ))?;
+    assert_allowed(&format!(
+        "{}\nChild branch codexy/461-table was created after classification.\n",
+        canonical_table("child-owned implementation lane", "goal")
+    ))
+}
+
 fn setup_after(table: String) -> String {
     format!("Lane ownership: child-owned\n{table}\nChild branch codexy/231-branch-classification-guard was created after classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n")
 }
