@@ -6,26 +6,19 @@ use serde_json::Value;
 use crate::paths::{display_relative, repo_root};
 
 mod cargo;
+mod python;
 
 const PLUGIN_NAME: &str = "codexy";
+const PLUGIN_MANIFEST: &str = "plugins/codexy/.codex-plugin/plugin.json";
+const MARKETPLACE: &str = ".agents/plugins/marketplace.json";
+const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
-fn plugin_manifest() -> Result<PathBuf> {
-    Ok(repo_root()?
-        .join("plugins")
-        .join(PLUGIN_NAME)
-        .join(".codex-plugin/plugin.json"))
-}
-
-fn marketplace_path() -> Result<PathBuf> {
-    Ok(repo_root()?.join(".agents/plugins/marketplace.json"))
-}
-
-fn release_publish_contract_path() -> Result<PathBuf> {
-    Ok(repo_root()?.join(".agents/plugins/release-publish-contract.json"))
+fn repo_path(relative: &str) -> Result<PathBuf> {
+    Ok(repo_root()?.join(relative))
 }
 
 fn package_manifests() -> Result<Vec<PathBuf>> {
-    let path = repo_root()?.join("package.json");
+    let path = repo_path("package.json")?;
     Ok(if path.exists() {
         vec![path]
     } else {
@@ -60,6 +53,19 @@ fn require_semver(version: &str) -> Result<()> {
     } else {
         bail!("version must be semver-like MAJOR.MINOR.PATCH: {version:?}")
     }
+}
+
+fn require_matching_version(
+    version: &str,
+    label: &str,
+    expected: &str,
+    expected_label: &str,
+) -> Result<()> {
+    require_semver(version)?;
+    if version != expected {
+        bail!("version mismatch: {label}={version}, {expected_label}={expected}");
+    }
+    Ok(())
 }
 
 fn string_field<'a>(data: &'a Value, field: &str, label: &str) -> Result<&'a str> {
@@ -119,9 +125,9 @@ pub fn check_versions() -> Result<String> {
 }
 
 pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
-    let manifest_path = plugin_manifest()?;
-    let market_path = marketplace_path()?;
-    let publish_path = release_publish_contract_path()?;
+    let manifest_path = repo_path(PLUGIN_MANIFEST)?;
+    let market_path = repo_path(MARKETPLACE)?;
+    let publish_path = repo_path(PUBLISH_CONTRACT)?;
     let manifest = load_json(&manifest_path)?;
     let mut marketplace = load_json(&market_path)?;
     let publish = load_json(&publish_path)?;
@@ -132,14 +138,12 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         "version",
         "marketplace plugin entry",
     )?;
-    require_semver(marketplace_version)?;
-    if manifest_version != marketplace_version {
-        bail!(
-            "version mismatch: {}={manifest_version}, {}={marketplace_version}",
-            display_relative(&manifest_path),
-            display_relative(&market_path)
-        );
-    }
+    require_matching_version(
+        marketplace_version,
+        &display_relative(&market_path),
+        manifest_version,
+        &display_relative(&manifest_path),
+    )?;
     let manifest_platforms = string_array_field(
         &manifest,
         "supportedPlatforms",
@@ -160,14 +164,12 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         );
     }
     let publish_version = string_field(&publish, "version", &display_relative(&publish_path))?;
-    require_semver(publish_version)?;
-    if publish_version != manifest_version {
-        bail!(
-            "version mismatch: {}={publish_version}, {}={manifest_version}",
-            display_relative(&publish_path),
-            display_relative(&manifest_path)
-        );
-    }
+    require_matching_version(
+        publish_version,
+        &display_relative(&publish_path),
+        manifest_version,
+        &display_relative(&manifest_path),
+    )?;
     let package_platforms = publish
         .get("package")
         .and_then(Value::as_object)
@@ -197,15 +199,14 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
     for path in package_manifests()? {
         let package = load_json(&path)?;
         let package_version = string_field(&package, "version", &display_relative(&path))?;
-        require_semver(package_version)?;
-        if package_version != manifest_version {
-            bail!(
-                "version mismatch: {}={package_version}, {}={manifest_version}",
-                display_relative(&path),
-                display_relative(&manifest_path)
-            );
-        }
+        require_matching_version(
+            package_version,
+            &display_relative(&path),
+            manifest_version,
+            &display_relative(&manifest_path),
+        )?;
     }
+    python::check_version(manifest_version)?;
     cargo::check_version(manifest_version)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
@@ -224,9 +225,9 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
 /// be read, JSON is invalid, or updated files cannot be written.
 pub fn set_version(version: &str) -> Result<String> {
     require_semver(version)?;
-    let manifest_path = plugin_manifest()?;
-    let market_path = marketplace_path()?;
-    let publish_path = release_publish_contract_path()?;
+    let manifest_path = repo_path(PLUGIN_MANIFEST)?;
+    let market_path = repo_path(MARKETPLACE)?;
+    let publish_path = repo_path(PUBLISH_CONTRACT)?;
     let mut manifest = load_json(&manifest_path)?;
     let mut marketplace = load_json(&market_path)?;
     let mut publish = load_json(&publish_path)?;
@@ -242,5 +243,6 @@ pub fn set_version(version: &str) -> Result<String> {
         package["version"] = Value::String(version.to_owned());
         write_json(&path, &package)?;
     }
+    python::set_version(version)?;
     Ok(format!("plugin version synchronized to {version}"))
 }
