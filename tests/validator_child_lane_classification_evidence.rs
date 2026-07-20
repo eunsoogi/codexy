@@ -51,7 +51,7 @@ fn gfm_fences_and_cell_constructs_preserve_rendered_table_boundaries() -> TestRe
     for tools in ["cargo test \\| Sentinel", "`cargo test | Sentinel`"] {
         let table = child.replacen("goal, plan, codegraph, LSP, Sentinel", tools, 1);
         assert_allowed(&format!(
-            "{table}Child branch codexy/461-table was created after classification.\n{}",
+            "{table}\nChild branch codexy/461-table was created after classification.\n{}",
             valid_goal_receipt()
         ))?;
     }
@@ -87,6 +87,31 @@ fn indented_tables_are_code_examples_not_classification_evidence() -> TestResult
         child.replacen("| Task classification", "- | Task classification", 1)
     ))?;
     Ok(())
+}
+
+#[test]
+fn rendered_tables_exclude_html_and_retain_malformed_candidates() -> TestResult {
+    let child = canonical_table("current-thread-owned child implementation lane");
+    assert_allowed(&format!(
+        "<!--\n{child}-->\nReview response: parent-authored implementation commit abc123 fixed feedback\n"
+    ))?;
+    let malformed_delimiter = child.replacen("| --- | --- |", "| --- |", 1);
+    for payload in [
+        "Child branch codexy/461-table was created after classification.\n",
+        "Review response: parent-authored implementation commit abc123 fixed feedback\n",
+        "Source thread id: parent-461\nGoal tool call: create_goal\n",
+    ] {
+        assert_rejected(&format!("{malformed_delimiter}\n{payload}"))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn unseparated_prose_is_part_of_the_rendered_table_and_fails_closed() -> TestResult {
+    let child = canonical_table("current-thread-owned child implementation lane");
+    assert_rejected(&format!(
+        "{child}Child branch codexy/461-table was created after classification.\n"
+    ))
 }
 
 fn invalid_tables() -> Vec<String> {

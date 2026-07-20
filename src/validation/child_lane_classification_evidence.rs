@@ -1,3 +1,7 @@
+use std::ops::Range;
+
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+
 use super::child_lane_owner_decision::is_supported_owner_decision;
 
 const FIELDS: [&str; 8] = [
@@ -10,6 +14,7 @@ const FIELDS: [&str; 8] = [
     "first allowed action",
     "stop/blocker",
 ];
+const OWNER_TOKENS: &str = "child-owned|current-thread-owned|parent-owned|external/human-owned";
 
 #[derive(Debug)]
 pub(super) struct ClassificationEvidence<'a> {
@@ -24,217 +29,212 @@ pub(super) struct ClassificationTable {
     pub(super) owner: String,
     pub(super) canonical: bool,
 }
+
 impl<'a> ClassificationEvidence<'a> {
     pub(super) fn parse(source: &'a str) -> Self {
         let raw_lines = source.lines().collect::<Vec<_>>();
-        let lines = raw_lines.iter().map(|line| line.trim()).collect::<Vec<_>>();
-        let tables = tables(&raw_lines);
+        let lines = raw_lines.iter().map(|line| line.trim()).collect();
+        let (rendered, excluded) = rendered_tables(source);
+        let mut tables = rendered
+            .iter()
+            .filter_map(|table| classification_table(table, source))
+            .collect::<Vec<_>>();
+        let blocked_spans = rendered
+            .iter()
+            .map(|table| table.span.clone())
+            .chain(excluded)
+            .collect::<Vec<_>>();
+        tables.extend(invalid_candidates(&raw_lines, &blocked_spans));
         Self { lines, tables }
     }
+
     pub(super) fn lines(&self) -> &[&'a str] {
         &self.lines
     }
+
     pub(super) fn tables(&self) -> &[ClassificationTable] {
         &self.tables
     }
 }
+
 #[derive(Debug)]
-struct TableRow {
-    cells: Vec<String>,
-    prefixed: bool,
+struct RenderedTable {
+    span: Range<usize>,
+    rows: Vec<Vec<String>>,
 }
-fn tables(lines: &[&str]) -> Vec<ClassificationTable> {
-    let mut tables = Vec::new();
-    let mut start = 0;
-    let mut fenced = None;
-    while start < lines.len() {
-        if is_indented_code(lines[start]) {
-            start += 1;
-            continue;
-        }
-        if let Some(fence) = fenced {
-            if fence_closes(fence, lines[start]) {
-                fenced = None;
+
+fn rendered_tables(source: &str) -> (Vec<RenderedTable>, Vec<Range<usize>>) {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    let (mut tables, mut excluded, mut open) = (Vec::new(), Vec::new(), None);
+    for (event, span) in Parser::new_ext(source, options).into_offset_iter() {
+        match event {
+            Event::Start(Tag::CodeBlock(_)) | Event::Start(Tag::HtmlBlock) => excluded.push(span),
+            Event::Html(_) | Event::InlineHtml(_) => excluded.push(span),
+            Event::Start(Tag::Table(_)) => {
+                open = Some(RenderedTable {
+                    span,
+                    rows: Vec::new(),
+                })
             }
-            start += 1;
-            continue;
-        }
-        if let Some(fence) = fence_opener(lines[start]) {
-            fenced = Some(fence);
-            start += 1;
-            continue;
-        }
-        let Some(first) = table_row(lines[start]) else {
-            start += 1;
-            continue;
-        };
-        let mut rows = vec![first];
-        let mut end = start + 1;
-        while end < lines.len() {
-            if is_indented_code(lines[end]) {
-                break;
+            Event::Start(Tag::TableHead) | Event::Start(Tag::TableRow) => {
+                if let Some(table) = &mut open {
+                    table.rows.push(Vec::new());
+                }
             }
-            let Some(row) = table_row(lines[end]) else {
-                break;
-            };
-            rows.push(row);
-            end += 1;
-        }
-        tables.extend(classification_table(start, end - 1, &rows));
-        start = end;
-    }
-    tables
-}
-fn table_row(line: &str) -> Option<TableRow> {
-    let (line, prefixed) = without_list_prefix(line);
-    line.trim().contains('|').then(|| TableRow {
-        cells: table_cells(line),
-        prefixed,
-    })
-}
-fn fence_opener(line: &str) -> Option<(u8, usize)> {
-    let bytes = line.trim_start().as_bytes();
-    let marker = *bytes.first()?;
-    let length = bytes.iter().take_while(|byte| **byte == marker).count();
-    (matches!(marker, b'`' | b'~') && length >= 3).then_some((marker, length))
-}
-fn fence_closes((marker, length): (u8, usize), line: &str) -> bool {
-    let bytes = line.trim_start().as_bytes();
-    let closing = bytes.iter().take_while(|byte| **byte == marker).count();
-    closing >= length && bytes[closing..].iter().all(u8::is_ascii_whitespace)
-}
-fn table_cells(line: &str) -> Vec<String> {
-    let line = line.trim();
-    let bytes = line.as_bytes();
-    let first = usize::from(bytes.first() == Some(&b'|'));
-    let last =
-        bytes.len() - usize::from(bytes.last() == Some(&b'|') && !escaped(bytes, bytes.len() - 1));
-    let line = &line[first..last];
-    let mut cells = Vec::new();
-    let (mut start, mut index, mut code_length) = (0, 0, None);
-    while index < line.len() {
-        let byte = line.as_bytes()[index];
-        if byte == b'`' && !escaped(line.as_bytes(), index) {
-            let length = line.as_bytes()[index..]
-                .iter()
-                .take_while(|byte| **byte == b'`')
-                .count();
-            code_length = if code_length == Some(length) {
-                None
-            } else {
-                code_length.or(Some(length))
-            };
-            index += length;
-        } else {
-            if byte == b'|' && code_length.is_none() && !escaped(line.as_bytes(), index) {
-                cells.push(line[start..index].trim().to_ascii_lowercase());
-                start = index + 1;
+            Event::Start(Tag::TableCell) => {
+                if let Some(table) = &mut open {
+                    if table.rows.is_empty() {
+                        table.rows.push(Vec::new());
+                    }
+                    table
+                        .rows
+                        .last_mut()
+                        .expect("table row")
+                        .push(String::new());
+                }
             }
-            index += 1;
+            Event::Text(text) | Event::Code(text) => append_cell(&mut open, &text),
+            Event::SoftBreak | Event::HardBreak => append_cell(&mut open, " "),
+            Event::End(TagEnd::Table) => {
+                if let Some(table) = open.take() {
+                    tables.push(table);
+                }
+            }
+            _ => {}
         }
     }
-    cells.push(line[start..].trim().to_ascii_lowercase());
-    cells
+    (tables, excluded)
 }
-fn escaped(bytes: &[u8], index: usize) -> bool {
-    bytes[..index]
-        .iter()
-        .rev()
-        .take_while(|byte| **byte == b'\\')
-        .count()
-        % 2
-        == 1
-}
-fn is_indented_code(line: &str) -> bool {
-    line.starts_with('\t') || line.starts_with("    ")
-}
-fn without_list_prefix(line: &str) -> (&str, bool) {
-    let line = line.trim_start();
-    if let Some(rest) = line
-        .strip_prefix("- [ ] ")
-        .or_else(|| line.strip_prefix("- [x] "))
-        .or_else(|| line.strip_prefix("+ "))
-        .or_else(|| line.strip_prefix("- "))
+
+fn append_cell(table: &mut Option<RenderedTable>, text: &str) {
+    if let Some(cell) = table
+        .as_mut()
+        .and_then(|table| table.rows.last_mut())
+        .and_then(|row| row.last_mut())
     {
-        return (rest, true);
+        cell.push_str(text);
     }
-    let digits = line.bytes().take_while(u8::is_ascii_digit).count();
-    if digits > 0 && line.as_bytes().get(digits) == Some(&b'.') {
-        return (&line[digits + 1..], true);
-    }
-    (line, false)
 }
-fn classification_table(
-    start: usize,
-    end: usize,
-    rows: &[TableRow],
-) -> Option<ClassificationTable> {
-    let header = rows.first()?;
-    let fields = rows
+
+fn classification_table(table: &RenderedTable, source: &str) -> Option<ClassificationTable> {
+    let rows = table
+        .rows
         .iter()
-        .filter(|row| !separator(&row.cells))
+        .map(|row| {
+            row.iter()
+                .map(|cell| cell.trim().to_ascii_lowercase())
+                .collect::<Vec<_>>()
+        })
         .collect::<Vec<_>>();
-    let owner = fields
+    let header = rows.first()?;
+    let owner = rows
         .iter()
         .skip(1)
-        .find_map(|row| (row.cells.first()? == "owner decision").then_some(row.cells.get(1)?))
+        .find_map(|row| (row.first()? == "owner decision").then_some(row.get(1)?))
         .cloned()
         .unwrap_or_default();
-    let classification_shaped = header
-        .cells
+    let shaped = header
         .first()
         .is_some_and(|cell| cell.contains("task classification"))
-        || fields.iter().skip(1).any(|row| {
-            row.cells.first().is_some_and(|key| key == "owner decision")
-                && fields.iter().skip(1).any(|other| {
-                    other.cells.first().is_some_and(|key| {
+        || rows.iter().skip(1).any(|row| {
+            row.first().is_some_and(|key| key == "owner decision")
+                && rows.iter().skip(1).any(|other| {
+                    other.first().is_some_and(|key| {
                         key != "owner decision" && FIELDS.contains(&key.as_str())
                     })
                 })
         });
-    classification_shaped.then_some(ClassificationTable {
-        start,
-        end,
+    shaped.then_some(ClassificationTable {
+        start: line_index(source, table.span.start),
+        end: line_index(source, table.span.end.saturating_sub(1)),
         owner: owner.clone(),
-        canonical: !rows.iter().any(|row| row.prefixed)
-            && matches!(header.cells.as_slice(), [first, second] if first == "task classification" && second == "decision")
-            && rows.get(1).is_some_and(|row| valid_separator(&row.cells))
-            && fields.len() == FIELDS.len() + 1
+        canonical: matches!(header.as_slice(), [first, second] if first == "task classification" && second == "decision")
+            && valid_delimiter(source, &table.span, header.len())
+            && rows.len() == FIELDS.len() + 1
             && is_supported_owner_decision(&owner)
             && !has_multiple_owner_tokens(&owner)
-            && fields.iter().skip(1).zip(FIELDS).all(|(row, field)| {
-                matches!(row.cells.as_slice(), [key, value] if key == field && !value.is_empty())
+            && rows.iter().skip(1).zip(FIELDS).all(|(row, field)| {
+                matches!(row.as_slice(), [key, value] if key == field && !value.is_empty())
             }),
     })
 }
-fn separator(cells: &[String]) -> bool {
-    !cells.is_empty()
-        && cells.iter().all(|cell| {
-            !cell.is_empty() && cell.bytes().all(|byte| matches!(byte, b'-' | b':' | b' '))
-        })
+
+fn valid_delimiter(source: &str, span: &Range<usize>, columns: usize) -> bool {
+    source[span.clone()].lines().nth(1).is_some_and(|line| {
+        let mut cells = line.trim().trim_matches('|').split('|').map(str::trim);
+        cells.clone().count() == columns
+            && cells.all(|cell| {
+                cell.trim_matches(':')
+                    .bytes()
+                    .filter(|byte| *byte == b'-')
+                    .count()
+                    >= 3
+                    && cell.bytes().all(|byte| matches!(byte, b'-' | b':' | b' '))
+            })
+    })
 }
-fn valid_separator(cells: &[String]) -> bool {
-    separator(cells)
-        && cells.iter().all(|cell| {
-            cell.trim_matches(':')
-                .bytes()
-                .filter(|byte| *byte == b'-')
-                .count()
-                >= 3
-        })
+
+fn invalid_candidates(lines: &[&str], blocked_spans: &[Range<usize>]) -> Vec<ClassificationTable> {
+    let (mut tables, mut start, mut offset) = (Vec::new(), 0, 0);
+    while start < lines.len() {
+        let end = offset + lines[start].len();
+        if !lines[start].contains('|') || covered(offset..end, blocked_spans) {
+            offset = end + 1;
+            start += 1;
+            continue;
+        }
+        let first = start;
+        while start < lines.len() {
+            let end = offset + lines[start].len();
+            if !lines[start].contains('|') || covered(offset..end, blocked_spans) {
+                break;
+            }
+            offset = end + 1;
+            start += 1;
+        }
+        if recognizable(&lines[first..start]) {
+            tables.push(ClassificationTable {
+                start: first,
+                end: start - 1,
+                owner: String::new(),
+                canonical: false,
+            });
+        }
+    }
+    tables
 }
+
+fn covered(span: Range<usize>, spans: &[Range<usize>]) -> bool {
+    spans
+        .iter()
+        .any(|other| span.start < other.end && other.start < span.end)
+}
+
+fn recognizable(lines: &[&str]) -> bool {
+    let text = lines.join("\n").to_ascii_lowercase();
+    text.contains("task classification")
+        || (text.contains("owner decision")
+            && FIELDS
+                .iter()
+                .any(|field| *field != "owner decision" && text.contains(field)))
+}
+
+fn line_index(source: &str, offset: usize) -> usize {
+    source[..offset.min(source.len())]
+        .bytes()
+        .filter(|byte| *byte == b'\n')
+        .count()
+}
+
 fn has_multiple_owner_tokens(owner: &str) -> bool {
-    [
-        "child-owned",
-        "current-thread-owned",
-        "parent-owned",
-        "external/human-owned",
-    ]
-    .into_iter()
-    .filter(|token| affirmative_token(owner, token))
-    .count()
+    OWNER_TOKENS
+        .split('|')
+        .filter(|token| affirmative_token(owner, token))
+        .count()
         > 1
 }
+
 fn affirmative_token(owner: &str, token: &str) -> bool {
     owner.match_indices(token).any(|(index, _)| {
         !owner[..index]
