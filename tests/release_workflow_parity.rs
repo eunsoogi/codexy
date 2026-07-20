@@ -26,17 +26,40 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow =
         std::fs::read_to_string(root.join(".github/workflows/plugin-version-bump.yml"))?;
-    let _: Value = serde_yaml::from_str(&workflow)?;
-    let staging = workflow
+    let document: Value = serde_yaml::from_str(&workflow)?;
+    let jobs = document
+        .get("jobs")
+        .and_then(Value::as_mapping)
+        .ok_or("workflow jobs")?;
+    let steps = jobs
+        .get(Value::String("open-version-pr".into()))
+        .and_then(|job| job.get("steps"))
+        .and_then(Value::as_sequence)
+        .ok_or("version-bump steps")?;
+    let sync = named_step_run(steps, "Synchronize plugin version")?;
+    assert_eq!(sync, "scripts/sync-plugin-version --version \"$VERSION\"");
+    let open_pr = named_step_run(steps, "Open version bump pull request")?;
+    let staging = open_pr
         .lines()
-        .find(|line| line.trim_start().starts_with("git add "))
+        .map(str::trim)
+        .find(|line| line.starts_with("git add "))
         .ok_or("missing version-bump staging command")?;
     assert!(
-        staging.contains("packages/getcodexy/pyproject.toml"),
+        staging
+            .split_ascii_whitespace()
+            .any(|argument| argument == "packages/getcodexy/pyproject.toml"),
         "version-bump staging omits Python metadata"
     );
-    assert!(workflow.contains("scripts/sync-plugin-version --version \"$VERSION\""));
     Ok(())
+}
+
+fn named_step_run<'a>(steps: &'a [Value], name: &str) -> Result<&'a str, &'static str> {
+    steps
+        .iter()
+        .find(|step| step.get("name").and_then(Value::as_str) == Some(name))
+        .and_then(|step| step.get("run"))
+        .and_then(Value::as_str)
+        .ok_or("named workflow step or run command missing")
 }
 
 fn assert_workflow_gate(text: &str) -> Result<(), Box<dyn std::error::Error>> {
