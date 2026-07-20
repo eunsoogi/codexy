@@ -136,6 +136,9 @@ mod validator_child_lane_active_threads;
 #[path = "../validator_child_lane_classification_setup.rs"]
 mod validator_child_lane_classification_setup;
 
+#[path = "../validator_child_lane_classification_evidence.rs"]
+mod validator_child_lane_classification_evidence;
+
 #[path = "../validator_child_lane_classification_setup_child_owner.rs"]
 mod validator_child_lane_classification_setup_child_owner;
 

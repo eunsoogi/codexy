@@ -1,11 +1,10 @@
 use std::collections::BTreeSet;
 
 use super::child_lane_classification_boundaries::{
-    ClassificationTable, child_table_ownership_boundary, child_table_owns_handoff_pr,
-    classification_owner_before, classifications, is_legacy_ownership_boundary, owner_at,
-    table_ownership_boundary,
+    candidate_requires_guard, child_table_ownership_boundary, child_table_owns_handoff_pr,
+    classification_owner_before, is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
 };
-use super::child_lane_classification_setup::child_candidate_requires_guard;
+use super::child_lane_classification_evidence::ClassificationEvidence;
 use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::field_value;
 use super::child_terminal_handoff::{
@@ -13,28 +12,27 @@ use super::child_terminal_handoff::{
     without_metadata_prefix,
 };
 
-pub(super) fn check(evidence: &str) -> Vec<String> {
-    let text = evidence.to_ascii_lowercase();
-    let tables = classifications(&text);
-    let lines = text
+pub(super) fn check(_evidence: &str, classification: &ClassificationEvidence<'_>) -> Vec<String> {
+    let lines = classification
         .lines()
-        .map(str::trim)
+        .iter()
+        .copied()
         .map(without_metadata_prefix)
         .collect::<Vec<_>>();
     let mut errors = Vec::new();
     if lines.iter().enumerate().any(|(index, line)| {
         is_goal_reporting(line)
-            && (child_candidate_requires_guard(&tables, &lines, index)
-                || classification_owner_before(&lines, &tables, index)
+            && (candidate_requires_guard(classification, index)
+                || classification_owner_before(classification, index)
                     .is_some_and(|owner| owner.starts_with("external/human-owned")))
     }) {
         errors.push("invalid table cannot authorize child goal reporting".into());
     }
     let mut start = 0;
     for end in 1..=lines.len() {
-        if end == lines.len() || is_lane_boundary(&lines, &tables, end) {
-            if owner_at(&tables, start).is_some_and(is_child_delegation_owner_decision)
-                || child_table_ownership_boundary(&tables, &lines, start)
+        if end == lines.len() || is_lane_boundary(&lines, classification, end) {
+            if owner_at(classification, start).is_some_and(is_child_delegation_owner_decision)
+                || child_table_ownership_boundary(classification, start)
                 || lines[start].contains("lane ownership: child-owned")
                 || field_value(lines[start], "owner decision")
                     .is_some_and(is_child_delegation_owner_decision)
@@ -233,11 +231,18 @@ fn is_goal_reporting(line: &str) -> bool {
         .split('|')
         .any(|prefix| line.starts_with(prefix))
 }
-fn is_lane_boundary(lines: &[&str], tables: &[ClassificationTable], index: usize) -> bool {
-    owner_at(tables, index).is_some()
+fn is_lane_boundary(
+    lines: &[&str],
+    classification: &ClassificationEvidence<'_>,
+    index: usize,
+) -> bool {
+    owner_at(classification, index).is_some()
         || is_legacy_ownership_boundary(lines[index])
-        || table_ownership_boundary(tables, lines, index)
+        || table_ownership_boundary(classification, index)
         || (field_value(lines[index], "pr").is_some()
-            && tables.iter().any(|table| table.start < index)
-            && !child_table_owns_handoff_pr(tables, lines, index))
+            && classification
+                .tables()
+                .iter()
+                .any(|table| table.start < index)
+            && !child_table_owns_handoff_pr(classification, index))
 }

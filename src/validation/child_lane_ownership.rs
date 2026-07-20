@@ -1,8 +1,8 @@
 use super::child_lane_classification_boundaries::{
-    child_table_owns_handoff_pr, classification_owner_before, classifications,
+    candidate_requires_guard, child_table_owns_handoff_pr, classification_owner_before,
     is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
 };
-use super::child_lane_classification_setup::child_candidate_requires_guard;
+use super::child_lane_classification_evidence::ClassificationEvidence;
 use super::child_lane_owner_decision::{
     is_affirmative_child_owned_value, is_child_delegation_owner_decision,
 };
@@ -10,14 +10,15 @@ use super::child_lane_ownership_fixes::line_has_parent_authored_fix;
 use super::child_lane_ownership_phrases::*;
 use super::child_lane_ownership_recovery::line_has_parent_setup_recovery;
 use super::child_lane_ownership_setup::line_has_parent_implementation_setup;
-pub(super) fn check(evidence: &str) -> Vec<String> {
-    let normalized = evidence.to_ascii_lowercase();
-    let mut errors = super::child_lane_thread_tools::check(&normalized, evidence);
-    errors.extend(super::child_lane_classification_setup::check(&normalized));
-    if has_unreported_worktree_mismatch_before_goal(&normalized) {
+pub(super) fn check(evidence: &str, classification: &ClassificationEvidence<'_>) -> Vec<String> {
+    let mut errors = super::child_lane_thread_tools::check(evidence, evidence);
+    errors.extend(super::child_lane_classification_setup::check(
+        classification,
+    ));
+    if has_unreported_worktree_mismatch_before_goal(evidence) {
         errors.push("worktree mismatch must be reported before goal continuation".to_owned());
     }
-    if has_unreassigned_parent_authored_fix(&normalized) {
+    if has_unreassigned_parent_authored_fix(classification) {
         errors.push("child-owned lane contains parent-authored implementation or review-response evidence without explicit maintainer reassignment; parent implementation setup evidence is also a workflow defect".to_owned());
     }
     errors
@@ -49,9 +50,8 @@ fn has_unreported_worktree_mismatch_before_goal(evidence: &str) -> bool {
     }
     false
 }
-fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
-    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
-    let tables = classifications(evidence);
+fn has_unreassigned_parent_authored_fix(classification: &ClassificationEvidence<'_>) -> bool {
+    let lines = classification.lines();
     let (
         mut child_owned,
         mut parent_fix,
@@ -68,13 +68,13 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let mut pending_pr_seen = false;
     for (index, line) in lines.iter().enumerate() {
         let metadata = metadata_key(line);
-        let table_owner = owner_at(&tables, index);
+        let table_owner = owner_at(classification, index);
         let starts_lane = table_owner.is_some_and(is_child_delegation_owner_decision)
             || is_affirmative_child_owned_line(line);
         let pr_metadata = line
             .split_once(':')
             .is_some_and(|(key, _)| metadata_key(key) == "pr");
-        let table_owns_following_pr = child_table_owns_handoff_pr(&tables, &lines, index);
+        let table_owns_following_pr = child_table_owns_handoff_pr(classification, index);
         let pr_boundary = pr_metadata
             && !table_owns_following_pr
             && index > 0
@@ -84,17 +84,16 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
             && !(child_owned && child_header_open && !child_pr_seen);
         let ownership_boundary = table_owner.is_some()
             || is_legacy_ownership_boundary(line)
-            || table_ownership_boundary(&tables, &lines, index);
+            || table_ownership_boundary(classification, index);
         let line_parent_setup = line_has_parent_implementation_setup(&lines, index);
         let line_parent_fix = line_has_parent_authored_fix(&lines, index);
         let line_reassigned = line_has_explicit_maintainer_reassignment(&lines, index);
         let line_setup_recovered = line_has_parent_setup_recovery(&lines, index);
-        if child_candidate_requires_guard(&tables, &lines, index)
-            && (line_parent_fix || line_parent_setup)
+        if candidate_requires_guard(classification, index) && (line_parent_fix || line_parent_setup)
         {
             return true;
         }
-        if classification_owner_before(&lines, &tables, index)
+        if classification_owner_before(classification, index)
             .is_some_and(|owner| owner.starts_with("external/human-owned"))
             && metadata.starts_with("review response:")
             && line.contains("child-authored")

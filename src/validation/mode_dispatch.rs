@@ -3,9 +3,10 @@ use std::path::Path;
 use anyhow::{Result, bail};
 
 use super::{
-    Mode, child_goal_reporting, child_lane_ownership, completion_handoff, conventional_commit,
-    github_labels, hooks, instruction_policy, issue_intake, lsp, manifest, mcp, merge_message,
-    orchestration_routing, roles, runtime, touched_loc,
+    Mode, child_goal_reporting, child_lane_classification_evidence::ClassificationEvidence,
+    child_lane_ownership, completion_handoff, conventional_commit, github_labels, hooks,
+    instruction_policy, issue_intake, lsp, manifest, mcp, merge_message, orchestration_routing,
+    roles, runtime, touched_loc,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -53,8 +54,10 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         }
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
         Mode::ChildLaneOwnership { evidence } => {
-            let mut errors = child_lane_ownership::check(&evidence);
-            errors.extend(child_goal_reporting::check(&evidence));
+            let normalized = evidence.to_ascii_lowercase();
+            let classification = ClassificationEvidence::parse(&normalized);
+            let mut errors = child_lane_ownership::check(&normalized, &classification);
+            errors.extend(child_goal_reporting::check(&normalized, &classification));
             errors
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),

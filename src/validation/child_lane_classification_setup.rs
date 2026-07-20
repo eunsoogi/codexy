@@ -1,16 +1,12 @@
 use super::child_lane_classification_boundaries::{
-    ClassificationTable, classification_owner_before, classifications, handoff,
-    has_multiple_canonical_tables_before, is_lane_boundary, is_ownership_boundary,
-    next_lane_boundary,
+    candidate_requires_guard, classification_owner_before, next_lane_boundary,
 };
-use super::child_lane_owner_decision::{
-    is_child_delegation_owner_decision, is_parent_owned_value, is_supported_owner_decision,
-};
+use super::child_lane_classification_evidence::ClassificationEvidence;
+use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 
-pub(super) fn check(evidence: &str) -> Vec<String> {
-    let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
-    let tables = classifications(evidence);
+pub(super) fn check(evidence: &ClassificationEvidence<'_>) -> Vec<String> {
+    let lines = evidence.lines();
     let setup_clauses = lines
         .iter()
         .enumerate()
@@ -20,19 +16,20 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 .map(move |clause| (index, clause))
         })
         .filter(|(index, clause)| {
-            child_candidate_requires_guard(&tables, &lines, *index)
+            candidate_requires_guard(evidence, *index)
                 || line_claims_setup_before_classification(clause)
-                || (!tables
+                || (!evidence
+                    .tables()
                     .iter()
                     .any(|table| table.start <= *index && *index <= table.end)
-                    && has_rendered_or_legacy_child_context(&lines, &tables, *index, clause))
+                    && has_rendered_or_legacy_child_context(evidence, *index, clause))
         })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {
         return Vec::new();
     }
     if setup_clauses.iter().any(|(setup_index, setup_clause)| {
-        !classification_owner_before(&lines, &tables, *setup_index)
+        !classification_owner_before(evidence, *setup_index)
             .is_some_and(is_child_delegation_owner_decision)
             || line_claims_setup_before_classification(setup_clause)
     }) {
@@ -41,47 +38,13 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     Vec::new()
 }
 
-pub(super) fn child_candidate_requires_guard(
-    tables: &[ClassificationTable],
-    lines: &[&str],
-    index: usize,
-) -> bool {
-    let multiple_canonical_tables = has_multiple_canonical_tables_before(lines, tables, index);
-    tables.iter().any(|table| {
-        let parent_child_transition = is_parent_owned_value(&table.owner)
-            && (table.end + 1..index).any(|line| {
-                is_ownership_boundary(lines[line])
-                    && lines[line]
-                        .split_once(':')
-                        .is_some_and(|(_, value)| is_child_delegation_owner_decision(value))
-            });
-        table.start != index
-            && (multiple_canonical_tables
-                || parent_child_transition
-                || ((is_child_delegation_owner_decision(&table.owner)
-                    || !is_supported_owner_decision(&table.owner))
-                    && ((!table.canonical
-                        && (table.end >= index
-                            || handoff(table, lines, index, true)
-                            || (table.end + 1..index).all(|line| {
-                                !is_lane_boundary(lines, line)
-                                    && !tables.iter().any(|table| table.start == line)
-                            })))
-                        || (table.canonical
-                            && ((table.end < index && handoff(table, lines, index, false))
-                                || (table.start > index
-                                    && (index + 1..table.start)
-                                        .all(|line| !is_lane_boundary(lines, line))))))))
-    })
-}
-
 fn has_rendered_or_legacy_child_context(
-    lines: &[&str],
-    tables: &[ClassificationTable],
+    evidence: &ClassificationEvidence<'_>,
     setup_index: usize,
     setup_clause: &str,
 ) -> bool {
-    classification_owner_before(lines, tables, setup_index).is_some_and(|owner| {
+    let lines = evidence.lines();
+    classification_owner_before(evidence, setup_index).is_some_and(|owner| {
         is_child_delegation_owner_decision(owner)
             || owner.is_empty()
             || owner.starts_with("external/human-owned")

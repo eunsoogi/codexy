@@ -1,27 +1,6 @@
-use super::child_lane_owner_decision::{
-    is_child_delegation_owner_decision, is_parent_owned_value, is_supported_owner_decision,
-};
+use super::child_lane_classification_evidence::{ClassificationEvidence, ClassificationTable};
+use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
-use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
-
-const HEADER: [&str; 2] = ["task classification", "decision"];
-const FIELDS: [&str; 8] = [
-    "lane type",
-    "secondary surfaces",
-    "owner decision",
-    "atomic scope",
-    "required skills",
-    "required tools/evidence",
-    "first allowed action",
-    "stop/blocker",
-];
-
-pub(super) struct ClassificationTable {
-    pub(super) start: usize,
-    pub(super) end: usize,
-    pub(super) owner: String,
-    pub(super) canonical: bool,
-}
 
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
     (0..setup_index)
@@ -65,124 +44,75 @@ pub(super) fn is_legacy_ownership_boundary(line: &str) -> bool {
         || field_value(line, "owner").is_some_and(is_parent_owned_value)
 }
 
-pub(super) fn classifications(source: &str) -> Vec<ClassificationTable> {
-    let mut tables = Vec::new();
-    let mut current = None::<(usize, Vec<Vec<String>>)>;
-    let mut row = None::<Vec<String>>;
-    let mut cell = None::<String>;
-    for (event, range) in Parser::new_ext(source, Options::ENABLE_TABLES).into_offset_iter() {
-        match event {
-            Event::Start(Tag::Table(_)) => {
-                current = Some((line_at(source, range.start), Vec::new()))
-            }
-            Event::Start(Tag::TableHead | Tag::TableRow) => row = Some(Vec::new()),
-            Event::Start(Tag::TableCell) => cell = Some(String::new()),
-            Event::Text(text) | Event::Code(text) => {
-                if let Some(cell) = &mut cell {
-                    cell.push_str(&text);
-                }
-            }
-            Event::SoftBreak | Event::HardBreak => {
-                if let Some(cell) = &mut cell {
-                    cell.push(' ');
-                }
-            }
-            Event::End(TagEnd::TableCell) => {
-                if let (Some(row), Some(cell)) = (&mut row, cell.take()) {
-                    row.push(cell);
-                }
-            }
-            Event::End(TagEnd::TableHead | TagEnd::TableRow) => {
-                if let (Some((_, rows)), Some(row)) = (&mut current, row.take()) {
-                    rows.push(row);
-                }
-            }
-            Event::End(TagEnd::Table) => {
-                if let Some((start, rows)) = current.take() {
-                    if let Some((owner, canonical)) = classification_owner(&rows) {
-                        tables.push(ClassificationTable {
-                            start,
-                            end: start + rows.len(),
-                            owner,
-                            canonical,
-                        });
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    tables
-}
-
-pub(super) fn owner_at(tables: &[ClassificationTable], index: usize) -> Option<&str> {
-    tables
+pub(super) fn owner_at<'a>(
+    evidence: &'a ClassificationEvidence<'_>,
+    index: usize,
+) -> Option<&'a str> {
+    evidence
+        .tables()
         .iter()
         .find(|table| table.start == index && table.canonical)
         .map(|table| table.owner.as_str())
 }
 
 pub(super) fn child_table_owns_handoff_pr(
-    tables: &[ClassificationTable],
-    lines: &[&str],
+    evidence: &ClassificationEvidence<'_>,
     pr_index: usize,
 ) -> bool {
-    classification_owner_before(lines, tables, pr_index)
-        .is_some_and(is_child_delegation_owner_decision)
+    classification_owner_before(evidence, pr_index).is_some_and(is_child_delegation_owner_decision)
 }
 
 pub(super) fn table_ownership_boundary(
-    tables: &[ClassificationTable],
-    lines: &[&str],
+    evidence: &ClassificationEvidence<'_>,
     index: usize,
 ) -> bool {
-    is_ownership_boundary(lines[index])
-        && classification_owner_before(lines, tables, index).is_some()
+    is_ownership_boundary(evidence.lines()[index])
+        && classification_owner_before(evidence, index).is_some()
 }
 
 pub(super) fn child_table_ownership_boundary(
-    tables: &[ClassificationTable],
-    lines: &[&str],
+    evidence: &ClassificationEvidence<'_>,
     index: usize,
 ) -> bool {
-    table_ownership_boundary(tables, lines, index)
-        && lines[index].split_once(':').is_some_and(|(key, value)| {
-            let key = metadata_key(key);
-            is_child_delegation_owner_decision(value)
-                || (key == "child owner"
-                    && !value.is_empty()
-                    && !value.starts_with("external/human-owned")
-                    && !is_parent_owned_value(value)
-                    && !value.starts_with("not ")
-                    && !value.starts_with("without ")
-                    && !matches!(value, "no" | "none" | "false" | "missing" | "absent"))
-        })
+    table_ownership_boundary(evidence, index)
+        && evidence.lines()[index]
+            .split_once(':')
+            .is_some_and(|(key, value)| {
+                let key = metadata_key(key);
+                is_child_delegation_owner_decision(value)
+                    || (key == "child owner"
+                        && !value.is_empty()
+                        && !value.starts_with("external/human-owned")
+                        && !is_parent_owned_value(value)
+                        && !value.starts_with("not ")
+                        && !value.starts_with("without ")
+                        && !matches!(value, "no" | "none" | "false" | "missing" | "absent"))
+            })
 }
 
 pub(super) fn classification_owner_before<'a>(
-    lines: &[&str],
-    tables: &'a [ClassificationTable],
+    evidence: &'a ClassificationEvidence<'_>,
     index: usize,
 ) -> Option<&'a str> {
-    let complete = applicable_canonical_tables(lines, tables, index);
+    let complete = applicable_canonical_tables(evidence, index);
     (complete.len() == 1).then(|| complete[0].owner.as_str())
 }
 
 pub(super) fn has_multiple_canonical_tables_before(
-    lines: &[&str],
-    tables: &[ClassificationTable],
+    evidence: &ClassificationEvidence<'_>,
     index: usize,
 ) -> bool {
-    applicable_canonical_tables(lines, tables, index).len() > 1
+    applicable_canonical_tables(evidence, index).len() > 1
 }
 
 fn applicable_canonical_tables<'a>(
-    lines: &[&str],
-    tables: &'a [ClassificationTable],
+    evidence: &'a ClassificationEvidence<'_>,
     index: usize,
 ) -> Vec<&'a ClassificationTable> {
+    let lines = evidence.lines();
     let lane_start = current_lane_start(lines, index);
-    tables
+    evidence
+        .tables()
         .iter()
         .filter(|table| {
             table.canonical
@@ -219,32 +149,35 @@ pub(super) fn handoff(
         })
 }
 
-fn classification_owner(rows: &[Vec<String>]) -> Option<(String, bool)> {
-    matches!(rows.first()?.as_slice(), [key, _] if key.trim().eq_ignore_ascii_case(HEADER[0]))
-        .then_some(())?;
-    let mut owner = String::new();
-    for row in rows.iter().skip(1) {
-        let [key, value] = row.as_slice() else {
-            break;
-        };
-        if key.trim().eq_ignore_ascii_case("owner decision") {
-            owner = value.to_ascii_lowercase();
-        }
-    }
-    let canonical = rows.first().is_some_and(|header| {
-        matches!(header.as_slice(), [first, second] if first.trim().eq_ignore_ascii_case(HEADER[0]) && second.trim().eq_ignore_ascii_case(HEADER[1]))
+pub(super) fn candidate_requires_guard(
+    evidence: &ClassificationEvidence<'_>,
+    index: usize,
+) -> bool {
+    let lines = evidence.lines();
+    let multiple = has_multiple_canonical_tables_before(evidence, index);
+    evidence.tables().iter().any(|table| {
+        let parent_child_transition = is_parent_owned_value(&table.owner)
+            && (table.end + 1..index).any(|line| {
+                is_ownership_boundary(lines[line])
+                    && lines[line]
+                        .split_once(':')
+                        .is_some_and(|(_, value)| is_child_delegation_owner_decision(value))
+            });
+        table.start != index
+            && (multiple
+                || parent_child_transition
+                || (!table.canonical
+                    && (table.end >= index
+                        || handoff(table, lines, index, true)
+                        || (table.end + 1..index).all(|line| {
+                            !is_lane_boundary(lines, line)
+                                && !evidence.tables().iter().any(|table| table.start == line)
+                        })))
+                || (table.canonical
+                    && is_child_delegation_owner_decision(&table.owner)
+                    && ((table.end < index && handoff(table, lines, index, false))
+                        || (table.start > index
+                            && (index + 1..table.start)
+                                .all(|line| !is_lane_boundary(lines, line))))))
     })
-        && rows.len() == FIELDS.len() + 1
-        && is_supported_owner_decision(&owner)
-        && rows.iter().skip(1).zip(FIELDS).all(|(row, field)| {
-            matches!(row.as_slice(), [key, value] if key.trim().eq_ignore_ascii_case(field) && !value.trim().is_empty())
-        });
-    Some((owner, canonical))
-}
-
-fn line_at(source: &str, offset: usize) -> usize {
-    source[..offset]
-        .bytes()
-        .filter(|byte| *byte == b'\n')
-        .count()
 }
