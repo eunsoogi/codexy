@@ -58,6 +58,37 @@ fn gfm_fences_and_cell_constructs_preserve_rendered_table_boundaries() -> TestRe
     Ok(())
 }
 
+#[test]
+fn indented_tables_are_code_examples_not_classification_evidence() -> TestResult {
+    let child = canonical_table("current-thread-owned child implementation lane");
+    for indent in ["    ", "\t"] {
+        let table = child
+            .lines()
+            .map(|line| format!("{indent}{line}\n"))
+            .collect::<String>();
+        for action in [
+            "Review response: parent-authored implementation commit abc123 fixed feedback\n",
+            "Child branch codexy/461-table was created after classification.\n",
+        ] {
+            assert_allowed(&format!("{table}{action}"))?;
+        }
+    }
+    for indent in ["", " ", "   "] {
+        let table = child
+            .lines()
+            .map(|line| format!("{indent}{line}\n"))
+            .collect::<String>();
+        assert_rejected(&format!(
+            "{table}Review response: parent-authored implementation commit abc123 fixed feedback\n"
+        ))?;
+    }
+    assert_rejected(&format!(
+        "{}Review response: parent-authored implementation commit abc123 fixed feedback\n",
+        child.replacen("| Task classification", "- | Task classification", 1)
+    ))?;
+    Ok(())
+}
+
 fn invalid_tables() -> Vec<String> {
     vec![
         canonical_table("current-thread-owned child implementation lane")

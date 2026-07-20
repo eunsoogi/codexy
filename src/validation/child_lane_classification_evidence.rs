@@ -24,23 +24,20 @@ pub(super) struct ClassificationTable {
     pub(super) owner: String,
     pub(super) canonical: bool,
 }
-
 impl<'a> ClassificationEvidence<'a> {
     pub(super) fn parse(source: &'a str) -> Self {
-        let lines = source.lines().map(str::trim).collect::<Vec<_>>();
-        let tables = tables(&lines);
+        let raw_lines = source.lines().collect::<Vec<_>>();
+        let lines = raw_lines.iter().map(|line| line.trim()).collect::<Vec<_>>();
+        let tables = tables(&raw_lines);
         Self { lines, tables }
     }
-
     pub(super) fn lines(&self) -> &[&'a str] {
         &self.lines
     }
-
     pub(super) fn tables(&self) -> &[ClassificationTable] {
         &self.tables
     }
 }
-
 #[derive(Debug)]
 struct TableRow {
     cells: Vec<String>,
@@ -51,6 +48,10 @@ fn tables(lines: &[&str]) -> Vec<ClassificationTable> {
     let mut start = 0;
     let mut fenced = None;
     while start < lines.len() {
+        if is_indented_code(lines[start]) {
+            start += 1;
+            continue;
+        }
         if let Some(fence) = fenced {
             if fence_closes(fence, lines[start]) {
                 fenced = None;
@@ -70,23 +71,23 @@ fn tables(lines: &[&str]) -> Vec<ClassificationTable> {
         let mut rows = vec![first];
         let mut end = start + 1;
         while end < lines.len() {
+            if is_indented_code(lines[end]) {
+                break;
+            }
             let Some(row) = table_row(lines[end]) else {
                 break;
             };
             rows.push(row);
             end += 1;
         }
-        if let Some(table) = classification_table(start, end - 1, &rows) {
-            tables.push(table);
-        }
+        tables.extend(classification_table(start, end - 1, &rows));
         start = end;
     }
     tables
 }
 fn table_row(line: &str) -> Option<TableRow> {
     let (line, prefixed) = without_list_prefix(line);
-    let line = line.trim();
-    line.contains('|').then(|| TableRow {
+    line.trim().contains('|').then(|| TableRow {
         cells: table_cells(line),
         prefixed,
     })
@@ -94,12 +95,8 @@ fn table_row(line: &str) -> Option<TableRow> {
 fn fence_opener(line: &str) -> Option<(u8, usize)> {
     let bytes = line.trim_start().as_bytes();
     let marker = *bytes.first()?;
-    matches!(marker, b'`' | b'~')
-        .then(|| {
-            let length = bytes.iter().take_while(|byte| **byte == marker).count();
-            (marker, length)
-        })
-        .filter(|(_, length)| *length >= 3)
+    let length = bytes.iter().take_while(|byte| **byte == marker).count();
+    (matches!(marker, b'`' | b'~') && length >= 3).then_some((marker, length))
 }
 fn fence_closes((marker, length): (u8, usize), line: &str) -> bool {
     let bytes = line.trim_start().as_bytes();
@@ -147,6 +144,9 @@ fn escaped(bytes: &[u8], index: usize) -> bool {
         .count()
         % 2
         == 1
+}
+fn is_indented_code(line: &str) -> bool {
+    line.starts_with('\t') || line.starts_with("    ")
 }
 fn without_list_prefix(line: &str) -> (&str, bool) {
     let line = line.trim_start();
