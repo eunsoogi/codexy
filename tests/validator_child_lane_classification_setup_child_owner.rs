@@ -173,21 +173,21 @@ fn validator_keeps_table_ownership_across_handoff_metadata_before_pr() -> TestRe
     );
     assert_rejected(&format!(
         "{handoff}Review response: parent-authored implementation commit abc123 fixed feedback\n"
-    ))?;
-    assert_rejected(&format!(
-        "{handoff}Child branch codexy/461-table was created before task classification.\n"
     ))
 }
 
 #[test]
 fn validator_rejects_no_blank_table_handoff_for_setup_ownership_and_goal_evidence() -> TestResult {
     let handoff = format!(
-        "{}Issue: #461\nBranch: eunsoogi/461-main-rendered-table\nWorktree path: /tmp/codexy-461\nPR: #468\n",
+        "{}- Issue: #461\n- Branch: eunsoogi/461-main-rendered-table\n- Worktree path: /tmp/codexy-461\n- PR: #468\n",
         canonical_table()
     );
-    assert_rejected(&format!(
+    let output = run_ownership_validator(&format!(
         "{handoff}Child branch codexy/461-table was created before task classification.\n"
     ))?;
+    assert!(String::from_utf8_lossy(&output.stderr).contains(
+        "child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed"
+    ));
     assert_rejected(&format!(
         "{handoff}Review response: parent-authored implementation commit abc123 fixed feedback\n"
     ))?;

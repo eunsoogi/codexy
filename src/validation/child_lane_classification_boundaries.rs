@@ -163,14 +163,15 @@ pub(super) fn child_candidate_requires_guard(
     index: usize,
 ) -> bool {
     tables.iter().any(|table| {
-        !table.canonical
-            && table.start < index
+        table.start < index
             && is_child_delegation_owner_decision(&table.owner)
-            && (table.end >= index
-                || (table.end + 1..index).all(|line| {
-                    !is_lane_boundary(lines, line)
-                        && !tables.iter().any(|table| table.start == line)
-                }))
+            && ((!table.canonical
+                && (table.end >= index
+                    || (table.end + 1..index).all(|line| {
+                        !is_lane_boundary(lines, line)
+                            && !tables.iter().any(|table| table.start == line)
+                    })))
+                || (table.canonical && table.end < index && handoff(table, lines, index, false)))
     })
 }
 
@@ -185,17 +186,18 @@ pub(super) fn classification_owner_before<'a>(
         .filter(|table| {
             table.canonical
                 && table.end < index
-                && (table_in_lane(table, lane_start, lines)
-                    || table_handoff_reaches(table, lines, index))
+                && (table_in_lane(table, lane_start, lines) || handoff(table, lines, index, true))
         })
         .collect::<Vec<_>>();
     (complete.len() == 1).then(|| complete[0].owner.as_str())
 }
 
-fn table_handoff_reaches(table: &ClassificationTable, lines: &[&str], index: usize) -> bool {
-    let handoff = &lines[table.end + 1..index];
-    handoff.first().is_some_and(|line| line.is_empty())
-        && handoff.iter().all(|line| {
+fn handoff(table: &ClassificationTable, lines: &[&str], at: usize, separated: bool) -> bool {
+    let metadata = &lines[table.end + 1..at];
+    metadata
+        .first()
+        .is_some_and(|line| line.is_empty() == separated)
+        && metadata.iter().all(|line| {
             line.is_empty()
                 || line.split_once(':').is_some_and(|(key, _)| {
                     matches!(
