@@ -181,6 +181,17 @@ fn archive_repository(
         .arg(&repo)
         .status()?;
     assert!(tar_status.success(), "tar extract failed");
+    for relative in [
+        "packages/getcodexy/pyproject.toml",
+        "src/version.rs",
+        "src/version/python.rs",
+    ] {
+        let destination = repo.join(relative);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join(relative), destination)?;
+    }
     Ok(repo)
 }
 
@@ -192,6 +203,7 @@ fn version_surface_contents(
         ".agents/plugins/release-publish-contract.json",
         "Cargo.lock",
         "Cargo.toml",
+        "packages/getcodexy/pyproject.toml",
         "plugins/codexy/.codex-plugin/plugin.json",
     ]
     .into_iter()

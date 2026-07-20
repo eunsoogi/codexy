@@ -3,8 +3,8 @@ requires = ["uv_build==0.9.26"]
 build-backend = "uv_build"
 
 [project]
-name = "eunsoogi-codexy"
-version = "1.2.2"
+name = "getcodexy"
+version = "1.2.1"
 description = "Version-pinned MCP runtime bootstrap tools for Codexy"
 requires-python = ">=3.10"
 license = "MIT"

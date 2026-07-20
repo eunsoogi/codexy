@@ -21,6 +21,24 @@ fn checks_tag_parity_before_release_mutations() -> Result<(), Box<dyn std::error
     Ok(())
 }
 
+#[test]
+fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error>> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workflow =
+        std::fs::read_to_string(root.join(".github/workflows/plugin-version-bump.yml"))?;
+    let _: Value = serde_yaml::from_str(&workflow)?;
+    let staging = workflow
+        .lines()
+        .find(|line| line.trim_start().starts_with("git add "))
+        .ok_or("missing version-bump staging command")?;
+    assert!(
+        staging.contains("packages/getcodexy/pyproject.toml"),
+        "version-bump staging omits Python metadata"
+    );
+    assert!(workflow.contains("scripts/sync-plugin-version --version \"$VERSION\""));
+    Ok(())
+}
+
 fn assert_workflow_gate(text: &str) -> Result<(), Box<dyn std::error::Error>> {
     let document: Value = serde_yaml::from_str(text)?;
     let root = document.as_mapping().ok_or("workflow root")?;
