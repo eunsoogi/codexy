@@ -67,6 +67,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
     let mut pending_setup_recovered = Some(false);
     let mut pending_pr_seen = false;
     for (index, line) in lines.iter().enumerate() {
+        let metadata = metadata_key(line);
         let table_owner = owner_at(&tables, index);
         let starts_lane = table_owner.is_some_and(is_child_delegation_owner_decision)
             || is_affirmative_child_owned_line(line);
@@ -95,7 +96,7 @@ fn has_unreassigned_parent_authored_fix(evidence: &str) -> bool {
         }
         if classification_owner_before(&lines, &tables, index)
             .is_some_and(|owner| owner.starts_with("external/human-owned"))
-            && line.starts_with("review response:")
+            && metadata.starts_with("review response:")
             && line.contains("child-authored")
         {
             return true;

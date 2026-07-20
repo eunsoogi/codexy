@@ -42,6 +42,19 @@ fn validator_rejects_malformed_handoff_and_unseparated_pre_pr_setup() -> Result<
 }
 
 #[test]
+fn validator_rejects_list_prefixed_external_review_response() -> Result<(), Box<dyn std::error::Error>> {
+    let table = "| Task classification | Decision |\n| --- | --- |\n| Lane type | review response |\n| Secondary surfaces | workflow |\n| Owner decision | external/human-owned review lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal |\n| First allowed action | inspect feedback |\n| Stop/blocker | none |\n";
+    for (line, valid) in [("Review response: child-authored commit def456 fixed feedback", false), ("Review response: external maintainer handled feedback", true)] {
+        for prefix in ["", "- "] {
+            assert_eq!(run_ownership_validator(&format!("{table}\n{prefix}{line}\n"))?.status.success(), valid, "{prefix}{line}");
+        }
+    }
+    let parent = table.replace("external/human-owned review lane", "parent-owned but no longer parent-owned review lane");
+    assert!(!run_ownership_validator(&format!("{parent}\nChild branch codexy/461-table was created after classification.\n"))?.status.success());
+    Ok(())
+}
+
+#[test]
 fn validator_allows_inline_child_reads_then_absent_parent_reads()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
