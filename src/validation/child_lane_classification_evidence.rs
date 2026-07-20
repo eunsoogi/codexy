@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
-use super::child_lane_owner_decision::is_supported_owner_decision;
+use super::child_lane_owner_decision::OwnerDecision;
 const FIELDS: [&str; 8] = [
     "lane type",
     "secondary surfaces",
@@ -13,7 +13,6 @@ const FIELDS: [&str; 8] = [
     "first allowed action",
     "stop/blocker",
 ];
-const OWNER_TOKENS: &str = "child-owned|current-thread-owned|parent-owned|external/human-owned";
 #[derive(Debug)]
 pub(super) struct ClassificationEvidence<'a> {
     lines: Vec<&'a str>,
@@ -23,7 +22,7 @@ pub(super) struct ClassificationEvidence<'a> {
 pub(super) struct ClassificationTable {
     pub(super) start: usize,
     pub(super) end: usize,
-    pub(super) owner: String,
+    pub(super) owner: Option<OwnerDecision>,
     pub(super) canonical: bool,
 }
 impl<'a> ClassificationEvidence<'a> {
@@ -124,6 +123,7 @@ fn classification_table(table: &RenderedTable, source: &str) -> Option<Classific
         .find_map(|row| (row.first()? == "owner decision").then_some(row.get(1)?))
         .cloned()
         .unwrap_or_default();
+    let owner = OwnerDecision::parse(&owner);
     let shaped = header
         .first()
         .is_some_and(|cell| cell.contains("task classification"))
@@ -138,12 +138,11 @@ fn classification_table(table: &RenderedTable, source: &str) -> Option<Classific
     shaped.then_some(ClassificationTable {
         start: source[..table.span.start].matches('\n').count(),
         end: source[..table.span.end.saturating_sub(1)].matches('\n').count(),
-        owner: owner.clone(),
+        owner,
         canonical: matches!(header.as_slice(), [first, second] if first == "task classification" && second == "decision")
             && valid_delimiter(source, &table.span, header.len())
             && rows.len() == FIELDS.len() + 1
-            && is_supported_owner_decision(&owner)
-            && !has_multiple_owner_tokens(&owner)
+            && owner.is_some()
             && rows.iter().skip(1).zip(FIELDS).all(|(row, field)| {
                 matches!(row.as_slice(), [key, value] if key == field && !value.is_empty())
             }),
@@ -199,7 +198,7 @@ fn invalid_candidates(
             tables.push(ClassificationTable {
                 start: first,
                 end: start - 1,
-                owner: String::new(),
+                owner: None,
                 canonical: false,
             });
         }
@@ -225,23 +224,4 @@ fn recognizable(lines: &[(&str, Range<usize>)]) -> bool {
             && FIELDS
                 .iter()
                 .any(|field| *field != "owner decision" && text.contains(field)))
-}
-fn has_multiple_owner_tokens(owner: &str) -> bool {
-    OWNER_TOKENS
-        .split('|')
-        .filter(|token| affirmative_token(owner, token))
-        .count()
-        > 1
-}
-fn affirmative_token(owner: &str, token: &str) -> bool {
-    owner.match_indices(token).any(|(index, _)| {
-        !owner[..index]
-            .rsplit(|character| matches!(character, ',' | ';' | '.'))
-            .next()
-            .is_some_and(|clause| {
-                clause
-                    .split(|character: char| !character.is_ascii_alphabetic())
-                    .any(|word| matches!(word, "not" | "no" | "without"))
-            })
-    })
 }

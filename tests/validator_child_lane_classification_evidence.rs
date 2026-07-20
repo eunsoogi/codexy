@@ -19,15 +19,22 @@ fn invalid_recognizable_tables_fail_closed_for_every_sensitive_consumer() -> Tes
 #[test]
 fn classification_context_keeps_handoff_order_and_owner_invariants() -> TestResult {
     let child = canonical_table("current-thread-owned child implementation lane");
+    for child in [
+        child.clone(),
+        canonical_table("current-thread-owned"),
+        canonical_table("implementation belongs to current-thread-owned; details follow"),
+    ] {
+        assert_allowed(&format!(
+            "{child}\nIssue: #461\nBranch: codexy/461\nWorktree path: /tmp/461\nPull request: #468\nChild branch codexy/461-table was created after classification.\n{}",
+            valid_goal_receipt()
+        ))?;
+    }
     let parent = canonical_table("parent-owned implementation lane");
     let external = canonical_table("external/human-owned implementation lane");
-    assert_allowed(&format!(
-        "{child}\nIssue: #461\nBranch: codexy/461\nWorktree path: /tmp/461\nPull request: #468\nChild branch codexy/461-table was created after classification.\n{}",
-        valid_goal_receipt()
-    ))?;
     for evidence in [
         format!("{parent}\nChild branch codexy/461-table was created after classification."),
         format!("{external}\nReview response: child-authored commit def456 fixed feedback"),
+        format!("{}\nChild branch codexy/461-table was created after classification.", canonical_table("implementation blocked on external/human-owned maintainer")),
         format!("{child}\n{child}\nChild branch codexy/461-table was created after classification."),
         format!("{child}- Issue: #461\n- PR: #468\nChild branch codexy/461-table was created after classification."),
         format!("Child branch codexy/461-table was created.\n{child}"),

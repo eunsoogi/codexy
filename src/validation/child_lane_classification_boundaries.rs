@@ -1,5 +1,7 @@
 use super::child_lane_classification_evidence::{ClassificationEvidence, ClassificationTable};
-use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
+use super::child_lane_owner_decision::{
+    OwnerDecision, is_child_delegation_owner_decision, is_parent_owned_value,
+};
 use super::child_lane_ownership_phrases::{field_value, metadata_key, trimmed_value};
 
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
@@ -20,10 +22,16 @@ pub(super) fn next_lane_boundary(lines: &[&str], index: usize) -> usize {
 
 pub(super) fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
     let line = metadata_key(trimmed_value(lines[index]));
-    "pr:|pull request:|review response:|maintainer reassignment:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
+    is_handoff_metadata(lines[index])
+        || "review response:|maintainer reassignment:"
+            .split('|')
+            .any(|marker| line.starts_with(marker))
         || is_ownership_boundary(lines[index])
+}
+
+pub(super) fn is_handoff_metadata(line: &str) -> bool {
+    let line = metadata_key(trimmed_value(line));
+    line.starts_with("pr:") || line.starts_with("pull request:")
 }
 
 pub(super) fn is_ownership_boundary(line: &str) -> bool {
@@ -52,7 +60,8 @@ pub(super) fn owner_at<'a>(
         .tables()
         .iter()
         .find(|table| table.start == index && table.canonical)
-        .map(|table| table.owner.as_str())
+        .and_then(|table| table.owner)
+        .map(OwnerDecision::as_str)
 }
 
 pub(super) fn child_table_owns_handoff_pr(
@@ -95,7 +104,10 @@ pub(super) fn classification_owner_before<'a>(
     index: usize,
 ) -> Option<&'a str> {
     let complete = applicable_canonical_tables(evidence, index);
-    (complete.len() == 1).then(|| complete[0].owner.as_str())
+    (complete.len() == 1)
+        .then(|| complete[0].owner)
+        .flatten()
+        .map(OwnerDecision::as_str)
 }
 
 pub(super) fn has_multiple_canonical_tables_before(
@@ -140,11 +152,9 @@ pub(super) fn handoff(
         .is_some_and(|line| line.is_empty() == separated)
         && metadata.iter().all(|line| {
             line.is_empty()
+                || is_handoff_metadata(line)
                 || line.split_once(':').is_some_and(|(key, _)| {
-                    matches!(
-                        metadata_key(key),
-                        "issue" | "branch" | "worktree path" | "pr" | "pull request"
-                    )
+                    matches!(metadata_key(key), "issue" | "branch" | "worktree path")
                 })
         })
 }
@@ -156,7 +166,7 @@ pub(super) fn candidate_requires_guard(
     let lines = evidence.lines();
     let multiple = has_multiple_canonical_tables_before(evidence, index);
     evidence.tables().iter().any(|table| {
-        let parent_child_transition = is_parent_owned_value(&table.owner)
+        let parent_child_transition = table.owner == Some(OwnerDecision::Parent)
             && (table.end + 1..index).any(|line| {
                 is_ownership_boundary(lines[line])
                     && lines[line]

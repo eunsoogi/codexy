@@ -50,3 +50,16 @@ fn validator_normalizes_list_prefixes_for_external_review_response_metadata()
     assert!(run_validator(&format!("{table}\nReview response: human-authored commit def456 fixed feedback\n"))?.status.success());
     Ok(())
 }
+
+#[test]
+fn validator_separates_later_parent_fix_after_both_pr_metadata_aliases()
+-> Result<(), Box<dyn std::error::Error>> {
+    let table = "| Task classification | Decision |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | workflow |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal |\n| First allowed action | create branch |\n| Stop/blocker | None |\n";
+    for boundary in ["PR", "Pull request"] {
+        let output = run_validator(&format!(
+            "{table}\nPR: #468\nReview response: child-authored commit def456 fixed feedback\n{boundary}: #999\nReview response: parent-authored implementation commit abc123 fixed feedback\n"
+        ))?;
+        assert!(output.status.success(), "{boundary} should end the child lane");
+    }
+    Ok(())
+}

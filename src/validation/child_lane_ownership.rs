@@ -1,6 +1,6 @@
 use super::child_lane_classification_boundaries::{
     candidate_requires_guard, child_table_owns_handoff_pr, classification_owner_before,
-    is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
+    is_handoff_metadata, is_legacy_ownership_boundary, owner_at, table_ownership_boundary,
 };
 use super::child_lane_classification_evidence::ClassificationEvidence;
 use super::child_lane_owner_decision::{
@@ -75,9 +75,7 @@ fn has_unreassigned_parent_authored_fix(classification: &ClassificationEvidence<
         let table_owner = owner_at(classification, index);
         let starts_lane = table_owner.is_some_and(is_child_delegation_owner_decision)
             || is_affirmative_child_owned_line(line);
-        let pr_metadata = line
-            .split_once(':')
-            .is_some_and(|(key, _)| metadata_key(key) == "pr");
+        let pr_metadata = is_handoff_metadata(line);
         let table_owns_following_pr = child_table_owns_handoff_pr(classification, index);
         let pr_boundary = pr_metadata
             && !table_owns_following_pr
@@ -190,7 +188,7 @@ fn previous_non_empty_line<'a>(lines: &'a [&str], index: usize) -> Option<&'a st
 }
 fn is_child_lane_header_metadata(line: &str) -> bool {
     line.is_empty()
-        || line.starts_with("pr:")
+        || is_handoff_metadata(line)
         || is_affirmative_child_owned_line(line)
         || is_exact_child_header_metadata_line(line)
 }
