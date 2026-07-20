@@ -180,6 +180,29 @@ fn validator_rejects_noncanonical_current_thread_owner_variants() -> TestResult 
 }
 
 #[test]
+fn validator_rejects_no_and_without_owner_decisions() -> TestResult {
+    for owner in [
+        "no current-thread-owned child implementation lane",
+        "without current-thread-owned child implementation lane",
+        "no child-owned implementation lane",
+        "without child-owned implementation lane",
+        "no parent-owned implementation lane",
+        "without parent-owned implementation lane",
+        "no external/human-owned implementation lane",
+        "without external/human-owned implementation lane",
+    ] {
+        assert_rejected(&format!(
+            "{}\nChild branch codexy/461-table was created after classification.\n{}",
+            complete_child_classification()
+                .replacen("Lane ownership: child-owned\n", "", 1)
+                .replace("current-thread-owned child implementation lane", owner),
+            ownership_footer()
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_child_setup_under_parent_owned_table() -> TestResult {
     assert_rejected(&format!(
         "{}\nChild branch codexy/461-table was created after classification.\n{}",
