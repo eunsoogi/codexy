@@ -55,7 +55,7 @@ pub(super) fn child_candidate_requires_guard(
                         .split_once(':')
                         .is_some_and(|(_, value)| is_child_delegation_owner_decision(value))
             });
-        table.start < index
+        table.start != index
             && (multiple_canonical_tables
                 || parent_child_transition
                 || ((is_child_delegation_owner_decision(&table.owner)
@@ -68,8 +68,10 @@ pub(super) fn child_candidate_requires_guard(
                                     && !tables.iter().any(|table| table.start == line)
                             })))
                         || (table.canonical
-                            && table.end < index
-                            && handoff(table, lines, index, false)))))
+                            && ((table.end < index && handoff(table, lines, index, false))
+                                || (table.start > index
+                                    && (index + 1..table.start)
+                                        .all(|line| !is_lane_boundary(lines, line))))))))
     })
 }
 

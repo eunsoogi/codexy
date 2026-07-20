@@ -38,3 +38,15 @@ fn validator_allows_reassignment_notes_key() -> Result<(), Box<dyn std::error::E
     );
     Ok(())
 }
+
+#[test]
+fn validator_normalizes_list_prefixes_for_external_review_response_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
+    let table = "| Task classification | Decision |\n| --- | --- |\n| Lane type | review response |\n| Secondary surfaces | validators |\n| Owner decision | external/human-owned implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | validator |\n| First allowed action | wait |\n| Stop/blocker | None |\n";
+    for prefix in ["", "1. ", "+ ", "- [ ] "] {
+        let output = run_validator(&format!("{table}\n{prefix}Review response: child-authored commit def456 fixed feedback\n"))?;
+        assert!(!output.status.success(), "validator should reject `{prefix}` child-authored external review response");
+    }
+    assert!(run_validator(&format!("{table}\nReview response: human-authored commit def456 fixed feedback\n"))?.status.success());
+    Ok(())
+}

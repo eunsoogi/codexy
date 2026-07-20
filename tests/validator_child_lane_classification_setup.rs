@@ -188,11 +188,13 @@ fn validator_allows_child_setup_after_classification_with_prior_absence() -> Tes
 
 #[test]
 fn validator_rejects_later_child_setup_before_classification() -> TestResult {
-    assert_rejected(&format!(
-        "{}\nChild created implementation branch codexy/231-branch-classification-guard after classification.\nChild worktree was created before task classification evidence completed.\n{}",
-        complete_child_classification(),
-        ownership_footer()
-    ))
+    for evidence in [
+        format!("{}\nChild created implementation branch codexy/231-branch-classification-guard after classification.\nChild worktree was created before task classification evidence completed.\n{}", complete_child_classification(), ownership_footer()),
+        format!("Child branch codexy/461-table was created.\n{}\n{}", complete_child_classification(), ownership_footer()),
+    ] {
+        assert_rejected(&evidence)?;
+    }
+    Ok(())
 }
 
 #[test]

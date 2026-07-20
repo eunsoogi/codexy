@@ -12,10 +12,14 @@ pub(super) fn next_line_bullet_value<'a>(lines: &'a [&str], index: usize) -> Opt
 
 pub(super) fn has_passive_parent_fix(line: &str) -> bool {
     let authored = parent_verification_prefix(line);
-    (authored.contains(" by parent")
-        || authored.contains(" by the parent")
-        || authored.contains(" by orchestrator")
-        || authored.contains(" by the orchestrator"))
+    [
+        " by parent",
+        " by the parent",
+        " by orchestrator",
+        " by the orchestrator",
+    ]
+    .into_iter()
+    .any(|marker| authored.contains(marker))
         && has_fix_marker(authored)
 }
 
@@ -46,12 +50,18 @@ pub(super) fn has_draft_handoff_phrase(line: &str, marker: &str) -> bool {
     line.find(marker).is_some_and(|index| {
         let after_draft = &line[index..];
         after_draft.contains("draft")
-            && (after_draft.contains("handoff") || after_draft.contains("routed"))
-            && !after_draft.contains(&format!("{marker} implementation commit"))
-            && !after_draft.contains(&format!("{marker} fix commit"))
-            && !after_draft.contains(&format!("{marker} commit"))
-            && !after_draft.contains(&format!("{marker} review-response"))
-            && !after_draft.contains(&format!("{marker} review response"))
+            && ["handoff", "routed"]
+                .into_iter()
+                .any(|term| after_draft.contains(term))
+            && [
+                "implementation commit",
+                "fix commit",
+                "commit",
+                "review-response",
+                "review response",
+            ]
+            .into_iter()
+            .all(|suffix| !after_draft.contains(&format!("{marker} {suffix}")))
     })
 }
 
@@ -62,9 +72,9 @@ pub(super) fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
 
 pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
     line.split_once(':').is_some_and(|(key, _)| {
-        let key = metadata_key(key);
+        let (key, unchecked_task) = metadata_prefix(key);
         key.contains("maintainer reassignment")
-            && (key.starts_with("[ ]")
+            && (unchecked_task
                 || "no|not|without|missing|absent|pending|requested|needed|required|denied|rejected"
                     .split('|')
                 .into_iter()
@@ -76,11 +86,23 @@ pub(super) fn has_non_affirmative_reassignment_key(line: &str) -> bool {
 }
 
 pub(super) fn metadata_key(key: &str) -> &str {
-    let key = key.trim().trim_start_matches(['-', '*']).trim_start();
-    key.strip_prefix("[x]")
+    metadata_prefix(key).0
+}
+
+fn metadata_prefix(key: &str) -> (&str, bool) {
+    let key = key.trim().trim_start_matches(['-', '*', '+']).trim_start();
+    let unchecked_task = key.starts_with("[ ]");
+    let key = key
+        .strip_prefix("[ ]")
+        .or_else(|| key.strip_prefix("[x]"))
         .or_else(|| key.strip_prefix("[X]"))
         .unwrap_or(key)
-        .trim_start()
+        .trim_start();
+    let numbered = key.trim_start_matches(|character: char| character.is_ascii_digit());
+    (
+        numbered.strip_prefix('.').unwrap_or(key).trim_start(),
+        unchecked_task,
+    )
 }
 
 pub(super) fn is_metadata_field(line: &str) -> bool {
@@ -97,39 +119,12 @@ pub(super) fn is_positive_reassignment_value(value: &str) -> bool {
 pub(super) fn is_negative_reassignment_value(value: &str) -> bool {
     let value = trimmed_value(value);
     has_absent_value(value)
-        || value.starts_with("no ")
-        || value.starts_with("missing ")
-        || value.starts_with("absent ")
-        || [
-            "pending ",
-            "requested ",
-            "needed ",
-            "required ",
-            "denied ",
-            "rejected ",
-        ]
-        .into_iter()
-        .any(|prefix| value.starts_with(prefix))
-        || value.starts_with("not ")
-        || value.starts_with("without ")
-        || value.starts_with("[ ]")
-        || ["does not include ", "does not have "]
-            .into_iter()
-            .any(|marker| value.contains(marker))
-        || value.contains(" not reassigned to ")
-        || value.contains(" not reassigned implementation ownership to ")
+        || "no |missing |absent |pending |requested |needed |required |denied |rejected |not |without |[ ]|we need |waiting for |there is no |there was no "
+            .split('|').any(|prefix| value.starts_with(prefix))
+        || "does not include |does not have | not reassigned to | not reassigned implementation ownership to | not provided| is missing from | not granted| not yet granted| was not granted| not been granted"
+            .split('|').any(|marker| value.contains(marker))
         || has_negated_reassignment_action(value)
-        || value.starts_with("we need ")
-        || value.starts_with("waiting for ")
-        || value.starts_with("there is no ")
-        || value.starts_with("there was no ")
-        || value.contains(" not provided")
         || value.ends_with(" is missing")
-        || value.contains(" is missing from ")
-        || value.contains(" not granted")
-        || value.contains(" not yet granted")
-        || value.contains(" was not granted")
-        || value.contains(" not been granted")
         || [" denied", " rejected"]
             .into_iter()
             .any(|marker| value.contains(marker))
