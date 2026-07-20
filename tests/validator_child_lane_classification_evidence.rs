@@ -103,6 +103,21 @@ fn rendered_tables_exclude_html_and_retain_malformed_candidates() -> TestResult 
     ] {
         assert_rejected(&format!("{malformed_delimiter}\n{payload}"))?;
     }
+    let inline_html = malformed_delimiter
+        .replacen("Task classification", "<em>Task classification</em>", 1)
+        .replacen("Owner decision", "<em>Owner decision</em>", 1);
+    for payload in [
+        "Child branch codexy/461-table was created after classification.\n",
+        "Review response: parent-authored implementation commit abc123 fixed feedback\n",
+        "Source thread id: parent-461\nGoal tool call: create_goal\n",
+    ] {
+        assert_rejected(&format!("{inline_html}\n{payload}"))?;
+    }
+    let inline_canonical = child.replacen("Task classification", "<em>Task classification</em>", 1);
+    assert_allowed(&format!(
+        "{inline_canonical}\nChild branch codexy/461-table was created after classification.\n{}",
+        valid_goal_receipt()
+    ))?;
     Ok(())
 }
 

@@ -62,7 +62,7 @@ fn rendered_tables(source: &str) -> (Vec<RenderedTable>, Vec<Range<usize>>) {
     for (event, span) in Parser::new_ext(source, options).into_offset_iter() {
         match event {
             Event::Start(Tag::CodeBlock(_)) | Event::Start(Tag::HtmlBlock) => excluded.push(span),
-            Event::Html(_) | Event::InlineHtml(_) => excluded.push(span),
+            Event::Html(_) => excluded.push(span),
             Event::Start(Tag::Table(_)) => {
                 open = Some(RenderedTable {
                     span,
