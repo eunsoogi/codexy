@@ -156,7 +156,7 @@ fn assert_release_write_permissions_are_trusted(workflow: &str) -> Result<(), St
             .ok_or_else(|| format!("{job_name} steps must be a sequence"))?;
         for step in steps {
             let step = mapping(step, "workflow step")?;
-            if field(step, "uses").and_then(Value::as_str) != Some("actions/checkout@v4") {
+            if field(step, "uses").and_then(Value::as_str) != Some("actions/checkout@v5") {
                 continue;
             }
             checkout_count += 1;

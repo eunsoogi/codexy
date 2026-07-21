@@ -56,7 +56,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
@@ -102,7 +102,7 @@ jobs:
           done
 
       - name: Upload runtime binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: codexy-mcp-runtimes-${{ matrix.platform }}
           path: dist/runtimes-${{ matrix.platform }}/*.bin
@@ -114,14 +114,14 @@ jobs:
     needs: build-runtime
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download generated runtime binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: codexy-mcp-runtimes-*
           path: dist/generated-runtimes
@@ -147,7 +147,7 @@ jobs:
           scripts/inspect-release-archive "dist/codexy-marketplace-plugin.tar.gz" "$plugin_root"
 
       - name: Upload marketplace package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: codexy-marketplace-plugin
           path: dist/codexy-marketplace-plugin.tar.gz
@@ -162,14 +162,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download marketplace package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: codexy-marketplace-plugin
           path: dist
