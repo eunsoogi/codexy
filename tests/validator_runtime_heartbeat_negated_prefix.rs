@@ -1,6 +1,6 @@
 use std::fs;
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -17,7 +17,7 @@ fn validate_discovery_clause(replacement: &str) -> TestResult<std::process::Outp
         "fixture discovery clause was not replaced"
     );
     fs::write(path, updated)?;
-    support::validator(&plugin_root, "--check")
+    support::validator_instruction_policy(&plugin_root)
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn validator_accepts_mandatory_modal_prefix_for_discovery_clause() -> TestResult
 #[test]
 fn validator_accepts_unnegated_discovery_clause() -> TestResult {
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         output.status.success(),
         "validator rejected the unnegated discovery clause: {}",

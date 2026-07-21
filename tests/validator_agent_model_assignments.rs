@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
 
-mod support;
+use crate::support;
 
 use support::{
     TestResult, assert_privacy_diagnostic, public_contract_import_check,

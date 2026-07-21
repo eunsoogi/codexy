@@ -1,6 +1,6 @@
 use std::fs;
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -13,7 +13,7 @@ fn validate_discovery_name(replacement: &str) -> TestResult<std::process::Output
     let updated = original.replace(AUTOMATION_UPDATE, replacement);
     assert_ne!(updated, original, "fixture discovery name was not replaced");
     fs::write(path, updated)?;
-    support::validator(&plugin_root, "--check")
+    support::validator_instruction_policy(&plugin_root)
 }
 
 #[test]

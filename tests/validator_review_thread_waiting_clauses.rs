@@ -1,4 +1,4 @@
-use std::{path::Path, process::Command};
+use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
@@ -177,15 +177,7 @@ fn validate_handoff_with_pr_state(handoff: &str) -> OutputResult {
 }
 
 fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-completion-handoff",
-            "--handoff-file",
-            handoff_path.to_str().ok_or("handoff path")?,
-            "--pr-state-file",
-            pr_state_path.to_str().ok_or("pr state path")?,
-        ])
-        .output()?)
+    crate::support::validator_completion_handoff_files(&handoff_path, &pr_state_path)
 }
 
 fn mixed_review_thread_pr_state() -> &'static str {

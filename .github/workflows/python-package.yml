@@ -1,0 +1,64 @@
+name: Build and publish runtime bootstrap package
+
+on:
+  pull_request:
+    paths:
+      - "packages/getcodexy/**"
+      - ".github/workflows/python-package.yml"
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run focused package tests
+        run: PYTHONPATH=packages/getcodexy/src python -m unittest discover -s packages/getcodexy/tests -p 'test_*.py'
+      - name: Build distribution
+        run: |
+          python -m pip install --disable-pip-version-check build
+          python -m build --outdir dist packages/getcodexy
+      - name: Verify installed wheel and console entrypoint
+        run: |
+          version="$(python -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
+          python -m venv .package-venv
+          .package-venv/bin/python -m pip install --no-index --find-links dist "getcodexy==${version}"
+          .package-venv/bin/python -c 'import codexy_runtime_tools'
+          .package-venv/bin/codexy-mcp-runtime --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/getcodexy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify the tag matches the package version
+        run: |
+          version="$(python -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
+          test "v${version}" = "$GITHUB_REF_NAME"
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,4 +1,4 @@
-use std::{path::Path, process::Command};
+use std::path::Path;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[test]
 fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
@@ -206,15 +206,7 @@ fn validator_rejects_unapproved_sentinel_fallback_requirement_as_readiness() -> 
     Ok(())
 }
 fn validate_file(handoff_path: &Path, pr_state_path: &Path) -> TestResult<std::process::Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-completion-handoff",
-            "--handoff-file",
-            handoff_path.to_str().ok_or("handoff path")?,
-            "--pr-state-file",
-            pr_state_path.to_str().ok_or("pr state path")?,
-        ])
-        .output()?)
+    crate::support::validator_completion_handoff_files(&handoff_path, &pr_state_path)
 }
 fn accept_open_pr_handoff(handoff: &str, failure_message: &str) -> TestResult {
     let output = validate_open_pr_handoff(handoff)?;

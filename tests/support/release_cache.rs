@@ -11,15 +11,16 @@ use super::{
 };
 
 pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_refresh(
+    fixture: &WrapperFixture,
+    root: &std::path::Path,
     server: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let fixture = WrapperFixture::new(temp.path())?;
-    let cache = temp.path().join("runtime-cache");
+    let cache = root.join(format!("runtime-cache-{server}"));
     install_unversioned_cached_runtime(&cache, server)?;
     let release_version = release_version::current_plugin_release(&fixture.plugin_root)?;
-    let release = create_runtime_package(temp.path(), server, &release_version)?;
-    let fake_bin = create_fake_curl_bin(temp.path(), &release)?;
+    let release_root = root.join(format!("release-{server}"));
+    let release = create_runtime_package(&release_root, server, &release_version)?;
+    let fake_bin = create_fake_curl_bin(&release_root, &release)?;
 
     let output = run_wrapper_help(&fixture, server, &cache, &fake_bin)?;
     assert!(
@@ -28,14 +29,13 @@ pub(crate) fn assert_wrapper_ignores_unversioned_cache_before_default_package_re
         )),
         "unversioned cache must not bypass the active release package, got {output:?}"
     );
-    assert!(
-        std::fs::read_to_string(temp.path().join("curl.log"))?
-            .contains("releases/latest/download/codexy-marketplace-plugin.tar.gz"),
+    assert_eq!(
+        std::fs::read_to_string(release_root.join("curl.log"))?.trim(),
+        "https://github.com/eunsoogi/codexy/releases/latest/download/codexy-marketplace-plugin.tar.gz",
         "unversioned cache invalidation must refresh the release package"
     );
     Ok(())
 }
-
 pub(crate) fn assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes(
     server: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {

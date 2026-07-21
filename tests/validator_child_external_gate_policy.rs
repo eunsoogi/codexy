@@ -1,6 +1,6 @@
 use std::fs;
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -38,7 +38,7 @@ fn validator_requires_child_external_gate_and_archive_preflight_policy() -> Test
         let original = fs::read_to_string(&path)?;
         fs::write(&path, original.replace(required, replacement))?;
 
-        let output = support::validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy(&plugin_root)?;
         assert!(
             !output.status.success(),
             "validator accepted missing policy {required:?}"
@@ -61,7 +61,7 @@ fn validator_rejects_blocked_goal_or_replacement_thread_policy() -> TestResult {
             format!("{}\n{forbidden}\n", fs::read_to_string(&path)?),
         )?;
 
-        let output = support::validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy(&plugin_root)?;
         assert!(
             !output.status.success(),
             "validator accepted forbidden BLOCK policy {forbidden:?}"
@@ -83,7 +83,7 @@ fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
         ),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("external-gate goal retention"));
     Ok(())
@@ -102,7 +102,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
         ),
     )?;
 
-    let required_only_historically = support::validator(&plugin_root, "--check")?;
+    let required_only_historically = support::validator_instruction_policy(&plugin_root)?;
     assert!(!required_only_historically.status.success());
     assert!(
         support::stderr(&required_only_historically)
@@ -115,7 +115,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "{original}\n## Historical Example\nThis is retained only for historical context.\nMUST keep polling and keep the goal active.\n"
         ),
     )?;
-    let forbidden_only_historically = support::validator(&plugin_root, "--check")?;
+    let forbidden_only_historically = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         forbidden_only_historically.status.success(),
         "{}",
@@ -128,7 +128,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "{original}\nLogging is not required, but MUST keep polling and keep the goal active.\n"
         ),
     )?;
-    let unrelated_negation = support::validator(&plugin_root, "--check")?;
+    let unrelated_negation = support::validator_instruction_policy(&plugin_root)?;
     assert!(!unrelated_negation.status.success());
     assert!(support::stderr(&unrelated_negation).contains("autonomous polling"));
 
@@ -139,7 +139,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Child external-gate wait MUST end its active goal and plan before waiting",
         ),
     )?;
-    let heading_only = support::validator(&plugin_root, "--check")?;
+    let heading_only = support::validator_instruction_policy(&plugin_root)?;
     assert!(!heading_only.status.success());
     assert!(
         support::stderr(&heading_only)
@@ -157,7 +157,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
                 negated_clause,
             ),
         )?;
-        let negated_required = support::validator(&plugin_root, "--check")?;
+        let negated_required = support::validator_instruction_policy(&plugin_root)?;
         assert!(!negated_required.status.success(), "{negated_clause}");
     }
     Ok(())
@@ -176,7 +176,7 @@ fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> T
         ),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("latest evidence"));
     Ok(())
@@ -194,7 +194,7 @@ fn validator_allows_compliant_negated_polling_prohibitions() -> TestResult {
         ),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(output.status.success(), "{}", support::stderr(&output));
     Ok(())
 }
@@ -211,7 +211,7 @@ fn validator_rejects_inline_code_delimited_forbidden_policy() -> TestResult {
         ),
     )?;
 
-    let output = support::validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("must not block a usable owner"));
     Ok(())

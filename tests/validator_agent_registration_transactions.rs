@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-mod support;
+use crate::support;
 
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 const PERSONAL: &[u8] = b"name = \"personal\"\ndescription = \"keep these bytes\"\n";

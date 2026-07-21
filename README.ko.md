@@ -35,6 +35,9 @@ Codexy에는 다음이 포함됩니다.
 - 플러그인 설정, pull request 준비 상태, 릴리스 작업을 확인하는 검증기와 GitHub
   기반 검증 절차
 
+전체 에이전트, 스킬, MCP 구성과 실제 작업 흐름은
+[구성과 작업 흐름 안내서](docs/architecture.md)에서 확인할 수 있습니다.
+
 ## Codexy 설치
 
 Codex 플러그인 마켓플레이스에서 Codexy를 설치합니다. 이 저장소가 아직

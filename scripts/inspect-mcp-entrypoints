@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Print relative executable entrypoints declared by a plugin MCP config."""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        raise SystemExit("usage: inspect-mcp-entrypoints <mcp-config>")
+    with Path(sys.argv[1]).open(encoding="utf-8") as file:
+        config = json.load(file)
+    servers = config.get("mcp_servers", config)
+    if not isinstance(servers, dict):
+        raise SystemExit("MCP config server map must be an object")
+    for server in servers.values():
+        if not isinstance(server, dict):
+            continue
+        command = server.get("command")
+        if isinstance(command, str):
+            command_items = [command, *server.get("args", [])]
+        elif isinstance(command, list):
+            command_items = command
+        else:
+            command_items = []
+        for item in command_items:
+            if isinstance(item, str) and item.startswith("./"):
+                print(item[2:])
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

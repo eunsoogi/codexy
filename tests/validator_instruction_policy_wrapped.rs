@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -77,6 +77,9 @@ fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
 }
 
 fn validator(plugin_root: &Path, mode: &str) -> TestResult<Output> {
+    if mode == "--check" {
+        return support::validator_instruction_policy(plugin_root);
+    }
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",

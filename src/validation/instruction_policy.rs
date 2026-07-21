@@ -41,24 +41,26 @@ pub(super) fn check_roles(plugin_root: &Path) -> Vec<String> {
 fn check_surfaces(surfaces: Vec<PathBuf>, errors: &mut Vec<String>) {
     for path in surfaces {
         match fs::read_to_string(&path) {
-            Ok(text) => {
-                if !path.ends_with(".codex-plugin/plugin.json") {
-                    instruction_policy_text::check_text(&path, &text, errors, false);
-                }
-                check_structured_prompts(&path, &text, errors);
-                runtime_heartbeat::check(&path, &text, errors);
-                execution_budget::check(&path, &text, errors);
-                child_thread_ledger::check(&path, &text, errors);
-                loc_policy::check(&path, &text, errors);
-                super::connector_review_policy::check(&path, &text, errors);
-                sentinel_scope_policy::check(&path, &text, errors);
-            }
+            Ok(text) => check_surface(&path, &text, errors),
             Err(error) => errors.push(format!(
                 "{} could not be read: {error}",
                 display_relative(&path)
             )),
         }
     }
+}
+
+pub(super) fn check_surface(path: &Path, text: &str, errors: &mut Vec<String>) {
+    if !path.ends_with(".codex-plugin/plugin.json") {
+        instruction_policy_text::check_text(path, text, errors, false);
+    }
+    check_structured_prompts(path, text, errors);
+    runtime_heartbeat::check(path, text, errors);
+    execution_budget::check(path, text, errors);
+    child_thread_ledger::check(path, text, errors);
+    loc_policy::check(path, text, errors);
+    super::connector_review_policy::check(path, text, errors);
+    sentinel_scope_policy::check(path, text, errors);
 }
 
 fn check_structured_prompts(path: &Path, text: &str, errors: &mut Vec<String>) {

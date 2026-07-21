@@ -1,7 +1,7 @@
 use std::process::Command;
 
 #[allow(unused)]
-mod support;
+use crate::support;
 
 #[test]
 fn validator_cli_rejects_node_command_with_tab_separator() -> Result<(), Box<dyn std::error::Error>>

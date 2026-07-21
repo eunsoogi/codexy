@@ -43,38 +43,6 @@ pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
     Ok(())
 }
 
-pub(crate) fn archive_gate_with_test_validator(
-    root: &std::path::Path,
-) -> std::io::Result<std::path::PathBuf> {
-    let scripts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts");
-    let gate = root.join("inspect-release-archive");
-    let max_runtime_bytes = max_test_runtime_bytes()?;
-    let source = std::fs::read_to_string(scripts.join("inspect-release-archive"))?;
-    let source = source
-        .strip_prefix("#!/bin/sh\n")
-        .expect("archive gate must use a POSIX shell shebang");
-    std::fs::write(
-        &gate,
-        format!(
-            "#!/bin/sh\n# Cargo test binaries include debug metadata; production defaults remain in the source gate.\nMAX_ARCHIVE_FILE_BYTES={}\nMAX_ARCHIVE_TOTAL_BYTES={}\nexport MAX_ARCHIVE_FILE_BYTES MAX_ARCHIVE_TOTAL_BYTES\n{source}",
-            max_runtime_bytes,
-            max_runtime_bytes.saturating_mul(3),
-        ),
-    )?;
-    std::fs::copy(
-        scripts.join("inspect-mcp-response"),
-        root.join("inspect-mcp-response"),
-    )?;
-    std::fs::copy(
-        env!("CARGO_BIN_EXE_codexy-validate"),
-        root.join("validate-plugin-config"),
-    )?;
-    make_executable(&gate)?;
-    make_executable(&root.join("inspect-mcp-response"))?;
-    make_executable(&root.join("validate-plugin-config"))?;
-    Ok(gate)
-}
-
 pub(crate) fn create_archive(
     root: &std::path::Path,
     archive: &std::path::Path,
@@ -162,6 +130,19 @@ fn reap_archive_process(child: &mut Child) {
 pub(crate) fn complete_plugin_fixture(
     root: &std::path::Path,
 ) -> std::io::Result<std::path::PathBuf> {
+    complete_plugin_fixture_with_runtime(root, true)
+}
+
+pub(crate) fn complete_plugin_fixture_with_stubbed_runtime(
+    root: &std::path::Path,
+) -> std::io::Result<std::path::PathBuf> {
+    complete_plugin_fixture_with_runtime(root, false)
+}
+
+fn complete_plugin_fixture_with_runtime(
+    root: &std::path::Path,
+    native_host_runtime: bool,
+) -> std::io::Result<std::path::PathBuf> {
     let plugin_root = root.join("plugins/codexy");
     copy_tree(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
@@ -172,6 +153,7 @@ pub(crate) fn complete_plugin_fixture(
     let host_platform = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => "darwin-arm64",
         ("linux", "x86_64") => "linux-x86_64",
+        ("windows", "x86_64") => "windows-x86_64",
         (os, architecture) => {
             return Err(std::io::Error::other(format!(
                 "unsupported test host platform: {os}-{architecture}"
@@ -179,14 +161,8 @@ pub(crate) fn complete_plugin_fixture(
         }
     };
     for (server, binary) in [
-        (
-            "lsp",
-            std::path::Path::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp")),
-        ),
-        (
-            "codegraph",
-            std::path::Path::new(env!("CARGO_BIN_EXE_codexy-mcp-codegraph")),
-        ),
+        ("lsp", env!("CARGO_BIN_EXE_codexy-mcp-lsp")),
+        ("codegraph", env!("CARGO_BIN_EXE_codexy-mcp-codegraph")),
     ] {
         for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
             let extension = if platform == "windows-x86_64" {
@@ -195,17 +171,17 @@ pub(crate) fn complete_plugin_fixture(
                 "bin"
             };
             let path = runtime.join(format!("codexy-mcp-{server}-{platform}.{extension}"));
-            let bytes = if platform == host_platform {
-                std::fs::read(binary)?
+            if native_host_runtime && platform == host_platform {
+                std::fs::copy(binary, &path)?;
             } else {
-                match platform {
+                let header = match platform {
                     "darwin-arm64" => vec![0xcf, 0xfa, 0xed, 0xfe],
                     "linux-x86_64" => vec![0x7f, b'E', b'L', b'F'],
                     "windows-x86_64" => pe_fixture::x86_64_executable(),
                     _ => unreachable!(),
-                }
-            };
-            std::fs::write(&path, bytes)?;
+                };
+                std::fs::write(&path, header)?;
+            }
             make_executable(&path)?;
             if platform == "windows-x86_64" {
                 std::fs::copy(
@@ -216,15 +192,4 @@ pub(crate) fn complete_plugin_fixture(
         }
     }
     Ok(plugin_root)
-}
-
-fn max_test_runtime_bytes() -> std::io::Result<u64> {
-    [
-        env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
-        env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
-    ]
-    .into_iter()
-    .map(|binary| std::fs::metadata(binary).map(|metadata| metadata.len().saturating_add(1)))
-    .collect::<std::io::Result<Vec<_>>>()
-    .map(|sizes| sizes.into_iter().max().unwrap_or(1))
 }

@@ -28,10 +28,26 @@ green and MUST keep broader verification proportional to risk.
 7. Refactor only after GREEN, keeping proofs green after each cleanup.
 8. MUST run broader checks sized to blast radius before PR, handoff, or merge.
 
+## Root-Cause And Harness Discipline
+
+- MUST identify the root-cause boundary before selecting a repair RED.
+- MUST place permutation cases at the pure or unit layer when observable behavior
+  does not require filesystem, process, network, or UI wiring.
+- MUST keep one faithful boundary test when observable CLI, process, discovery, persistence, network, or UI behavior requires that boundary.
+- A new standalone integration crate MUST document required isolation. Otherwise,
+  MUST add the case to an existing domain integration target.
+- Performance RED MUST measure the original required workload exactly once.
+- Performance RED evidence MUST record compile cost, execution cost, integration-target count, and nested subprocess or build count.
+- MUST NOT satisfy performance acceptance with skips, filters, retries, sleeps, relaxed budgets, cache or runner upgrades as the sole fix, sharding alone, or a representative subset.
+
 ## Required Output
 
 ```text
 Behavior:
+Root-cause boundary:
+Harness cost:
+Integration target:
+Performance RED:
 RED command:
 RED reason:
 GREEN command:

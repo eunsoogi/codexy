@@ -1,4 +1,3 @@
-use std::process::Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]
@@ -236,13 +235,5 @@ fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(&pr_state_path, pr_state)?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-completion-handoff",
-            "--handoff-file",
-            handoff_path.to_str().ok_or("handoff path")?,
-            "--pr-state-file",
-            pr_state_path.to_str().ok_or("pr state path")?,
-        ])
-        .output()?)
+    crate::support::validator_completion_handoff_files(&handoff_path, &pr_state_path)
 }

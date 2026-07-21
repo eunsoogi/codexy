@@ -53,7 +53,7 @@ jobs:
           fi
           branch="codexy/version-${VERSION}"
           git switch -c "${branch}"
-          git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json
+          git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml
           if [ -f package.json ]; then
             git add package.json
           fi
@@ -63,7 +63,7 @@ jobs:
           cat >"${body_file}" <<EOF
           ## Summary
           - Bump the Codexy plugin version to ${VERSION}.
-          - Keep plugin manifest and marketplace metadata in sync.
+          - Keep plugin, marketplace, and getcodexy metadata in sync.
 
           ## Rationale
           - Codexy plugin releases need explicit version synchronization before review and merge.
@@ -72,6 +72,7 @@ jobs:
           - .agents/plugins/marketplace.json
           - .agents/plugins/release-publish-contract.json
           - plugins/codexy/.codex-plugin/plugin.json
+          - packages/getcodexy/pyproject.toml
 
           ## Verification
           - scripts/sync-plugin-version --check

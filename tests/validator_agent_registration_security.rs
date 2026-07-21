@@ -1,5 +1,5 @@
+use crate::support;
 use std::process::{Command, Output};
-mod support;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const BEGIN: &str = "# BEGIN CODEXY MANAGED AGENTS";

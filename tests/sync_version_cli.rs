@@ -60,27 +60,12 @@ fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error
 }
 
 #[test]
-fn sync_version_script_check_rejects_stale_cargo_lock() -> Result<(), Box<dyn std::error::Error>> {
+fn sync_version_script_check_rejects_stale_cargo_lock_and_stale_python_metadata()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let archive = temp.path().join("repo.tar");
-    let repo = temp.path().join("repo");
-    let archive_status = Command::new("git")
-        .args(["archive", "--format=tar", "HEAD"])
-        .arg("-o")
-        .arg(&archive)
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .status()?;
-    assert!(archive_status.success(), "git archive failed");
-    fs::create_dir(&repo)?;
-    let tar_status = Command::new("tar")
-        .arg("-xf")
-        .arg(&archive)
-        .arg("-C")
-        .arg(&repo)
-        .status()?;
-    assert!(tar_status.success(), "tar extract failed");
+    let repo = archive_repository(&temp, "repo")?;
     fs::copy(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/sync-plugin-version"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/sync-plugin-version"),
         repo.join("scripts/sync-plugin-version"),
     )?;
 
@@ -101,10 +86,27 @@ fn sync_version_script_check_rejects_stale_cargo_lock() -> Result<(), Box<dyn st
         String::from_utf8_lossy(&output.stderr)
     );
     let after = fs::read_to_string(&lock_path)?;
-    assert!(
-        after.contains("name = \"codexy-runtime\"\nversion = \"9.9.9\""),
-        "sync-version --check auto-healed Cargo.lock:\n{after}"
+    assert_eq!(
+        stale_codexy_runtime_lock_version(&after, "9.9.9")?,
+        after,
+        "sync-version --check changed the stale Cargo.lock"
     );
+
+    fs::write(&lock_path, lock_text)?;
+    let python_path = repo.join("packages/getcodexy/pyproject.toml");
+    let python_text = fs::read_to_string(&python_path)?;
+    let version_line = python_text
+        .lines()
+        .find(|line| line.starts_with("version = "))
+        .ok_or("Python package version line")?;
+    let stale_python = python_text.replacen(version_line, "version = \"9.9.9\"", 1);
+    fs::write(&python_path, &stale_python)?;
+    let stale_output = Command::new(repo.join("scripts/sync-plugin-version"))
+        .arg("--check")
+        .current_dir(&repo)
+        .output()?;
+    assert!(!stale_output.status.success(), "stale Python metadata passed");
+    assert_eq!(fs::read_to_string(&python_path)?, stale_python);
     Ok(())
 }
 
@@ -151,8 +153,12 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
         "the compiled helper mutated its baked-in build root"
     );
     for (path, contents) in version_surface_contents(&diagnostic_root)? {
+        let text = String::from_utf8_lossy(&contents);
         assert!(
-            String::from_utf8_lossy(&contents).contains("9.9.9"),
+            text.lines().map(str::trim).any(|line| matches!(
+                line,
+                "version = \"9.9.9\"" | "\"version\": \"9.9.9\","
+            )),
             "supplied diagnostic root was not updated at {}",
             path.display()
         );
@@ -181,6 +187,17 @@ fn archive_repository(
         .arg(&repo)
         .status()?;
     assert!(tar_status.success(), "tar extract failed");
+    for relative in [
+        "packages/getcodexy/pyproject.toml",
+        "src/version.rs",
+        "src/version/python.rs",
+    ] {
+        let destination = repo.join(relative);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join(relative), destination)?;
+    }
     Ok(repo)
 }
 
@@ -192,6 +209,7 @@ fn version_surface_contents(
         ".agents/plugins/release-publish-contract.json",
         "Cargo.lock",
         "Cargo.toml",
+        "packages/getcodexy/pyproject.toml",
         "plugins/codexy/.codex-plugin/plugin.json",
     ]
     .into_iter()

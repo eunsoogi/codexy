@@ -1,6 +1,6 @@
 use std::{path::Path, process::Command};
 
-mod support;
+use crate::support;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 

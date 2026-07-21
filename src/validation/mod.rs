@@ -71,6 +71,7 @@ mod mcp_runtime;
 mod merge_message;
 mod mode_dispatch;
 mod orchestration_routing;
+mod orchestration_routing_api;
 mod orchestration_routing_assignment;
 mod orchestration_routing_effort;
 mod orchestration_routing_luna_policy;
@@ -101,6 +102,7 @@ use std::path::Path;
 use anyhow::Result;
 
 pub use mode_dispatch::{errors, run};
+pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -146,6 +148,30 @@ pub enum Mode {
 /// Returns an error when LSP configuration files cannot be read or parsed.
 pub fn covered_extensions(plugin_root: &Path) -> Result<Vec<String>> {
     lsp::covered_extensions(plugin_root)
+}
+
+/// Returns touched-LOC diagnostics for an explicit repository root.
+///
+/// This is the library boundary used by high-volume semantic tests; CLI tests
+/// remain responsible for command parsing and process-level parity.
+///
+/// # Errors
+///
+/// Returns an error when Git state or a governed file cannot be inspected.
+pub fn touched_loc_diagnostics(root: &Path, base_ref: &str) -> Result<Vec<String>> {
+    touched_loc::diagnostics_at(root, base_ref)
+}
+
+/// Returns instruction-policy diagnostics for one explicit surface.
+///
+/// # Errors
+///
+/// Returns an error when the surface cannot be read.
+pub fn instruction_policy_diagnostics(path: &Path) -> Result<Vec<String>> {
+    let text = std::fs::read_to_string(path)?;
+    let mut errors = Vec::new();
+    instruction_policy::check_surface(path, &text, &mut errors);
+    Ok(errors)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

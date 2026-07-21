@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-mod support;
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const MANAGED: &[u8] = b"# CODEXY MANAGED AGENT\nname = \"codexy-sentinel\"\n";
