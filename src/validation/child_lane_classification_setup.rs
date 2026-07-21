@@ -26,7 +26,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     }
     Vec::new()
 }
-fn formal_child_classification_complete_index_before(
+pub(super) fn formal_child_classification_complete_index_before(
     lines: &[&str],
     setup_index: usize,
 ) -> Option<usize> {

@@ -30,6 +30,27 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
         .any(|(_, line)| is_child_owned_lane_evidence(line))
 }
 
+pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> bool {
+    for (candidate_index, line) in lines
+        .iter()
+        .enumerate()
+        .take(index + 1)
+        .rev()
+        .map(|(candidate_index, line)| (candidate_index, trimmed_value(line)))
+    {
+        if candidate_index != index && is_lane_context_boundary(lines, candidate_index, line) {
+            return is_child_owned_lane_evidence(line);
+        }
+        if is_parent_owned_lane_evidence(line) {
+            return false;
+        }
+        if is_child_owned_lane_evidence(line) {
+            return true;
+        }
+    }
+    false
+}
+
 fn is_child_owned_lane_evidence(line: &str) -> bool {
     let line = metadata_key(line);
     matches!(line, "child-owned" | "child-owned lane")
