@@ -64,9 +64,9 @@ fn python_package_workflow_binds_parity_to_publish_job()
     let comment_only = format!("          echo \"parity removed\"\n          # {}", command.trim());
     let without_publish_parity = workflow.replacen(command, &comment_only, 1);
     let wrong_job = without_publish_parity.replacen(
-        "      - uses: actions/upload-artifact@v6",
+        "      - uses: actions/upload-artifact@v7",
         &format!(
-            "      - name: Misplaced parity proof\n        run: {}\n      - uses: actions/upload-artifact@v6",
+            "      - name: Misplaced parity proof\n        run: {}\n      - uses: actions/upload-artifact@v7",
             command.trim()
         ),
         1,

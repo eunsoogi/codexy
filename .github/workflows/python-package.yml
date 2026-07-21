@@ -15,8 +15,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Run focused package tests
@@ -32,7 +32,7 @@ jobs:
           .package-venv/bin/python -m pip install --no-index --find-links dist "getcodexy==${version}"
           .package-venv/bin/python -c 'import codexy_runtime_tools'
           .package-venv/bin/codexy-mcp-runtime --help
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: python-package
           path: dist/*
@@ -49,15 +49,15 @@ jobs:
       url: https://pypi.org/p/getcodexy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Verify the tag matches the package version
         run: |
           version="$(python -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
           test "v${version}" = "$GITHUB_REF_NAME"
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: python-package
           path: dist

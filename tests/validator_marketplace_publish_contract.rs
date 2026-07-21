@@ -12,7 +12,7 @@ fn runtime_workflow_packages_release_artifacts_without_snapshot_branch()
     for required in [
         "package-plugin:",
         "needs: build-runtime",
-        "actions/download-artifact@v7",
+        "actions/download-artifact@v8",
         "pattern: codexy-mcp-runtimes-*",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
