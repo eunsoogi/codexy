@@ -1,33 +1,20 @@
 use crate::support;
 
-use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
 
-use support::{
-    WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo,
-    run_wrapper_command_with_timeout,
-};
+use support::{WrapperFixture, run_wrapper_command_with_timeout};
 
 #[test]
-fn mcp_wrappers_try_packaged_runtime_before_cargo_bootstrap()
+fn mcp_wrappers_try_bundled_runtime_before_pinned_uvx_bootstrap()
 -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
-        let wrapper_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        let wrapper_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("plugins/codexy/mcp")
             .join(format!("codexy-mcp-{server}"));
         let wrapper = std::fs::read_to_string(&wrapper_path)?;
 
-        assert_package_fallback_precedes_cargo_bootstrap(&wrapper, &wrapper_path)?;
-    }
-    Ok(())
-}
-
-#[test]
-fn mcp_wrappers_use_package_runtime_without_invoking_cargo_when_package_exists()
--> Result<(), Box<dyn std::error::Error>> {
-    for server in ["lsp", "codegraph"] {
-        assert_wrapper_uses_package_runtime_without_cargo(server)?;
+        assert_bundled_runtime_precedes_uvx(&wrapper, &wrapper_path)?;
     }
     Ok(())
 }
@@ -105,9 +92,9 @@ fn matching_pids(marker: &str) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
         .collect()
 }
 
-fn assert_package_fallback_precedes_cargo_bootstrap(
+fn assert_bundled_runtime_precedes_uvx(
     wrapper: &str,
-    wrapper_path: &Path,
+    wrapper_path: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let bundled_runtime_check = find_required(
         wrapper,
@@ -115,36 +102,44 @@ fn assert_package_fallback_precedes_cargo_bootstrap(
         wrapper_path,
         "bundled runtime check",
     )?;
-    let package_fallback = find_required(
+    let uvx_check = find_required(
         wrapper,
-        "if [ \"$runtime_package_requested\" = 1 ]; then",
+        "if ! command -v uvx >/dev/null 2>&1; then",
         wrapper_path,
-        "package fallback",
+        "uvx availability check",
     )?;
-    let cargo_bootstrap = find_required(
+    let uvx_bootstrap = find_required(
         wrapper,
-        "if [ \"$cargo_available\" = 1 ]; then\n  if [ \"$runtime_ref_is_pinned\" = 1 ]; then",
+        "exec uvx --from getcodexy==1.2.2 codexy-mcp-runtime",
         wrapper_path,
-        "Cargo bootstrap",
+        "pinned uvx bootstrap",
     )?;
 
     assert!(
-        bundled_runtime_check < package_fallback,
-        "{} should check bundled runtime before package fallback",
+        bundled_runtime_check < uvx_check,
+        "{} should check bundled runtime before uvx",
         wrapper_path.display()
     );
     assert!(
-        package_fallback < cargo_bootstrap,
-        "{} should try packaged runtime fallback before Cargo bootstrap",
+        uvx_check < uvx_bootstrap,
+        "{} should check uvx before dispatching it",
         wrapper_path.display()
     );
+    for forbidden in ["python3", "codexy-runtime-cache-key.py", "cargo ", "curl "] {
+        let retains_forbidden_startup = wrapper.contains(forbidden);
+        assert!(
+            !retains_forbidden_startup,
+            "{} must not retain legacy {forbidden:?} startup logic",
+            wrapper_path.display(),
+        );
+    }
     Ok(())
 }
 
 fn find_required(
     text: &str,
     needle: &str,
-    wrapper_path: &Path,
+    wrapper_path: &std::path::Path,
     label: &str,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     text.find(needle)

@@ -1,46 +1,11 @@
 #!/bin/sh
 set -eu
+
 self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
-repo_root=$(CDPATH= cd -- "$plugin_root/../.." 2>/dev/null && pwd || true)
 export CODEXY_PLUGIN_ROOT="$plugin_root"
+
 bundled_platforms="darwin-arm64 linux-x86_64"
-cargo_available=0
-if command -v cargo >/dev/null 2>&1; then
-  cargo_available=1
-fi
-runtime_git_repository_was_set=0
-runtime_git_ref_was_set=0
-if [ -n "${CODEXY_RUNTIME_GIT_REPOSITORY+x}" ]; then
-  runtime_git_repository_was_set=1
-fi
-if [ -n "${CODEXY_RUNTIME_GIT_REF+x}" ]; then
-  runtime_git_ref_was_set=1
-fi
-runtime_git_repository=${CODEXY_RUNTIME_GIT_REPOSITORY:-https://github.com/eunsoogi/codexy}
-runtime_git_ref=${CODEXY_RUNTIME_GIT_REF:-main}
-runtime_cache_protocol="stdio-newline-v1"
-runtime_package_path=${CODEXY_RUNTIME_PACKAGE_PATH:-}
-runtime_package_url=${CODEXY_RUNTIME_PACKAGE_URL:-}
-runtime_artifacts_api_url=${CODEXY_RUNTIME_ARTIFACTS_API_URL:-}
-runtime_package_override_was_set=0
-if [ -n "${CODEXY_RUNTIME_PACKAGE_PATH+x}" ] \
-  || [ -n "${CODEXY_RUNTIME_PACKAGE_URL+x}" ] \
-  || [ -n "${CODEXY_RUNTIME_ARTIFACTS_API_URL+x}" ]; then
-  runtime_package_override_was_set=1
-fi
-if [ -z "$runtime_package_path" ] \
-  && [ -z "$runtime_package_url" ] \
-  && [ -z "$runtime_artifacts_api_url" ] \
-  && [ "$runtime_git_repository_was_set" = 0 ] \
-  && [ "$runtime_git_ref_was_set" = 0 ]; then
-  runtime_package_url="https://github.com/eunsoogi/codexy/releases/latest/download/codexy-marketplace-plugin.tar.gz"
-  runtime_artifacts_api_url="https://api.github.com/repos/eunsoogi/codexy/actions/artifacts?name=codexy-marketplace-plugin&per_page=100"
-fi
-runtime_package_requested=0
-if [ -n "$runtime_package_path" ] || [ -n "$runtime_package_url" ] || [ -n "$runtime_artifacts_api_url" ]; then
-  runtime_package_requested=1
-fi
 platform=${CODEXY_RUNTIME_PLATFORM:-}
 if [ -z "$platform" ]; then
   os=$(uname -s 2>/dev/null || echo unknown)
@@ -58,8 +23,8 @@ if [ -z "$platform" ]; then
   esac
   platform="$os-$arch"
 fi
+
 runtime_name="codexy-mcp-lsp-$platform.bin"
-bundled_runtime="$plugin_root/runtime/$runtime_name"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   case "$CODEXY_RUNTIME_DIR" in
     /*) ;;
@@ -74,14 +39,8 @@ if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   echo "codexy-mcp-lsp runtime not found for $platform in CODEXY_RUNTIME_DIR: $CODEXY_RUNTIME_DIR/$runtime_name" >&2
   exit 127
 fi
-if [ -n "$repo_root" ] \
-  && [ -f "$repo_root/Cargo.toml" ] \
-  && grep -Eq '^name = "codexy-runtime"$' "$repo_root/Cargo.toml" \
-  && [ -f "$repo_root/src/bin/codexy-mcp-lsp.rs" ] \
-  && [ -f "$repo_root/plugins/codexy/.codex-plugin/plugin.json" ] \
-  && [ "$cargo_available" = 1 ]; then
-  exec cargo run --locked --quiet --manifest-path "$repo_root/Cargo.toml" --bin codexy-mcp-lsp -- "$@"
-fi
+
+bundled_runtime="$plugin_root/runtime/$runtime_name"
 case " $bundled_platforms " in
   *" $platform "*)
     if [ -x "$bundled_runtime" ]; then
@@ -93,157 +52,10 @@ case " $bundled_platforms " in
     exit 127
     ;;
 esac
-if [ -n "${CODEXY_RUNTIME_CACHE_DIR:-}" ]; then
-  runtime_cache_root=$CODEXY_RUNTIME_CACHE_DIR
-else
-  if [ -z "${XDG_CACHE_HOME:-}" ] && [ -z "${HOME:-}" ]; then
-    echo "codexy-mcp-lsp cannot bootstrap runtime without HOME, XDG_CACHE_HOME, or CODEXY_RUNTIME_CACHE_DIR" >&2
-    exit 127
-  fi
-  runtime_cache_root=${XDG_CACHE_HOME:-$HOME/.cache}/codexy/runtime
-fi
-case "$runtime_cache_root" in
-  /*) ;;
-  *)
-    echo "codexy-mcp-lsp runtime cache dir must be absolute: $runtime_cache_root" >&2
-    exit 127
-    ;;
-esac
-if [ "$runtime_package_override_was_set" = 1 ]; then
-  runtime_cache_source=$(printf 'package-override\n%s\n%s\n%s' "$runtime_package_path" "$runtime_package_url" "$runtime_artifacts_api_url")
-elif [ "$runtime_package_requested" = 1 ]; then
-  runtime_cache_source="package-default"
-else
-  runtime_cache_source="git"
-fi
-plugin_manifest="$plugin_root/.codex-plugin/plugin.json"
-runtime_cache_helper="$self_dir/codexy-runtime-cache-key.py"
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "codexy-mcp-lsp runtime cache requires python3 on PATH" >&2
+
+if ! command -v uvx >/dev/null 2>&1; then
+  echo "codexy-mcp-lsp requires uvx on PATH; install uv or provide a bundled runtime" >&2
   exit 127
 fi
-if [ ! -f "$runtime_cache_helper" ] || [ ! -x "$runtime_cache_helper" ]; then
-  echo "codexy-mcp-lsp runtime cache helper is missing or not executable: $runtime_cache_helper" >&2
-  exit 127
-fi
-if ! runtime_cache_key=$(python3 "$runtime_cache_helper" "$plugin_manifest" "$runtime_package_override_was_set" "$runtime_git_repository" "$runtime_git_ref" "$platform" "$runtime_cache_protocol" "$runtime_cache_source" "codexy-mcp-lsp"); then
-  echo "codexy-mcp-lsp cannot derive runtime cache key from plugin manifest: $plugin_manifest" >&2
-  exit 127
-fi
-runtime_install_root="$runtime_cache_root/$runtime_cache_key"
-installed_runtime="$runtime_install_root/bin/codexy-mcp-lsp"
-runtime_ref_is_pinned=0
-case "$runtime_git_ref" in
-  *[!0123456789abcdefABCDEF]*|"") ;;
-  *)
-    if [ "$(printf '%s' "$runtime_git_ref" | wc -c | tr -d ' ')" = 40 ]; then runtime_ref_is_pinned=1; fi
-    ;;
-esac
-if [ "$runtime_package_override_was_set" = 0 ] && [ -x "$installed_runtime" ]; then
-  if [ "$runtime_package_requested" = 0 ]; then exec "$installed_runtime" "$@"; fi
-  cached_manifest="$runtime_install_root/plugin.json"
-  if [ -f "$cached_manifest" ] && python3 "$runtime_cache_helper" --compare-release "$plugin_manifest" "$cached_manifest" >/dev/null; then exec "$installed_runtime" "$@"; fi
-  rm -rf "$runtime_install_root"
-fi
-if [ "$runtime_package_requested" = 1 ]; then
-  package_tmp_dir="$runtime_install_root/package.$$"
-  package_archive="$runtime_install_root/codexy-marketplace-plugin.tar.gz"
-  package_zip="$runtime_install_root/codexy-marketplace-plugin.zip"
-  package_json="$runtime_install_root/codexy-marketplace-plugin.json"
-  rm -rf "$package_tmp_dir" "$package_archive" "$package_zip" "$package_json"
-  if mkdir -p "$package_tmp_dir" "$runtime_install_root"; then
-    package_ready=0
-    if [ -n "$runtime_package_path" ]; then
-      case "$runtime_package_path" in
-        /*) ;;
-        *)
-          echo "codexy-mcp-lsp runtime package path must be absolute: $runtime_package_path" >&2
-          exit 127
-          ;;
-      esac
-      if cp "$runtime_package_path" "$package_archive"; then
-        package_ready=1
-      fi
-    elif [ -n "$runtime_package_url" ] && command -v curl >/dev/null 2>&1; then
-      if curl -fsSL "$runtime_package_url" -o "$package_archive"; then
-        package_ready=1
-      fi
-    fi
-    if [ "$package_ready" != 1 ] \
-      && [ -n "$runtime_artifacts_api_url" ] \
-      && command -v curl >/dev/null 2>&1 \
-      && command -v unzip >/dev/null 2>&1; then
-      github_token=${GH_TOKEN:-${GITHUB_TOKEN:-}}
-      if [ -z "$github_token" ] && command -v gh >/dev/null 2>&1; then
-        github_token=$(gh auth token 2>/dev/null || true)
-      fi
-      if [ -z "$github_token" ]; then
-        echo "codexy-mcp-lsp artifact fallback requires GH_TOKEN, GITHUB_TOKEN, or authenticated gh" >&2
-      else
-        curl -fsSL -H "Authorization: Bearer $github_token" -H "Accept: application/vnd.github+json" "$runtime_artifacts_api_url" -o "$package_json" || true
-        archive_download_url=""
-        if [ -f "$package_json" ]; then
-          archive_download_url=$(tr '\n' ' ' < "$package_json" \
-            | sed 's/}[[:space:]]*,[[:space:]]*{/}\
-{/g' \
-            | sed -n '/"head_branch"[[:space:]]*:[[:space:]]*"main"/{
-                /"head_repository_id"[[:space:]]*:[[:space:]]*1269350143/{
-                  /"expired"[[:space:]]*:[[:space:]]*true/!s/.*"archive_download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
-                }
-              }' \
-            | head -n 1)
-        fi
-        if [ -n "$archive_download_url" ]; then
-          curl -fL -H "Authorization: Bearer $github_token" -H "Accept: application/vnd.github+json" "$archive_download_url" -o "$package_zip" || true
-          if [ -f "$package_zip" ] && unzip -q "$package_zip" -d "$package_tmp_dir/artifact"; then
-            zipped_package=$(find "$package_tmp_dir/artifact" -name "codexy-marketplace-plugin.tar.gz" -type f | head -n 1)
-            if [ -n "$zipped_package" ] && cp "$zipped_package" "$package_archive"; then
-              package_ready=1
-            fi
-          fi
-        fi
-      fi
-    fi
-    if [ "$package_ready" = 1 ] && tar -xzf "$package_archive" -C "$package_tmp_dir"; then
-      packaged_runtime=$(find "$package_tmp_dir" -path "*/runtime/$runtime_name" -type f | head -n 1)
-      if [ -n "$packaged_runtime" ] && [ -f "$packaged_runtime" ]; then
-        package_manifest=$(find "$package_tmp_dir" -path "*/plugins/codexy/.codex-plugin/plugin.json" -type f | head -n 1)
-        if [ "$runtime_package_override_was_set" = 0 ] && ! package_release_error=$(python3 "$runtime_cache_helper" --compare-release "$plugin_manifest" "$package_manifest"); then
-          rm -rf "$runtime_install_root"
-          echo "codexy-mcp-lsp $package_release_error" >&2
-          exit 127
-        fi
-        mkdir -p "$(dirname "$installed_runtime")"
-        if [ "$runtime_package_override_was_set" = 0 ]; then cp "$package_manifest" "$runtime_install_root/plugin.json"; fi
-        cp "$packaged_runtime" "$installed_runtime"
-        chmod 755 "$installed_runtime"
-        rm -rf "$package_tmp_dir" "$package_archive"
-        exec "$installed_runtime" "$@"
-      fi
-    fi
-  fi
-  rm -rf "$package_tmp_dir" "$package_archive" "$package_zip" "$package_json"
-fi
-if [ "$cargo_available" = 1 ]; then
-  if [ "$runtime_ref_is_pinned" = 1 ]; then
-    cargo install --locked --git "$runtime_git_repository" --rev "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp
-  else
-    if ! cargo install --force --locked --git "$runtime_git_repository" --branch "$runtime_git_ref" --root "$runtime_install_root" --bin codexy-mcp-lsp; then
-      if [ -x "$installed_runtime" ]; then
-        exec "$installed_runtime" "$@"
-      fi
-    fi
-  fi
-  if [ -x "$installed_runtime" ]; then
-    if [ "$runtime_package_requested" = 1 ] && [ "$runtime_package_override_was_set" = 0 ]; then cp "$plugin_manifest" "$runtime_install_root/plugin.json"; fi
-    exec "$installed_runtime" "$@"
-  fi
-fi
-if [ "$cargo_available" != 1 ] && [ -x "$installed_runtime" ]; then
-  exec "$installed_runtime" "$@"
-fi
-if [ -x "$bundled_runtime" ]; then
-  exec "$bundled_runtime" "$@"
-fi
-echo "codexy-mcp-lsp bundled runtime missing for declared platform $platform: $bundled_runtime" >&2
-exit 127
+
+exec uvx --from getcodexy==1.2.2 codexy-mcp-runtime lsp --plugin-root "$plugin_root" -- "$@"
