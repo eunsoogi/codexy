@@ -1,6 +1,8 @@
+use super::child_lane_classification_boundaries::current_lane_record_start;
 use super::child_lane_owner_decision::{
     LaneOwnershipMetadata, OwnerSelection, parse_lane_ownership_metadata,
 };
+use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 #[derive(Clone, Copy)]
 enum AuthoritySource {
@@ -22,6 +24,28 @@ enum LaneAuthorityState {
     Absent,
     Invalid,
     Valid(LaneAuthority),
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum AuthorityRecordAction {
+    Control,
+    Setup { explicit_child_scope: bool },
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum LaneAuthorityRecordState {
+    Absent,
+    Incomplete,
+    Invalid,
+    Complete(LaneAuthority),
+}
+
+enum AuthorityRecordBuildState {
+    Absent,
+    Source(AuthoritySource),
+    Owner(LaneAuthority),
+    Invalid,
+    Complete(LaneAuthority),
 }
 
 impl LaneAuthorityContext {
@@ -52,6 +76,85 @@ impl LaneAuthority {
                 )
         )
     }
+
+    fn is_non_child_owner(self) -> bool {
+        matches!(
+            self.owner,
+            OwnerSelection::ParentOwned | OwnerSelection::ExternalHumanOwned
+        )
+    }
+}
+
+impl LaneAuthorityRecordState {
+    pub(super) fn validation_applies(
+        self,
+        classification_complete: bool,
+        action: AuthorityRecordAction,
+    ) -> Option<bool> {
+        let authority = match self {
+            Self::Absent => return None,
+            Self::Incomplete | Self::Invalid => return Some(true),
+            Self::Complete(_) if !classification_complete => return Some(true),
+            Self::Complete(authority) => authority,
+        };
+        if authority.authorizes_child_setup() || !authority.is_non_child_owner() {
+            return Some(true);
+        }
+        Some(match action {
+            AuthorityRecordAction::Control => false,
+            AuthorityRecordAction::Setup {
+                explicit_child_scope,
+            } => explicit_child_scope,
+        })
+    }
+}
+
+pub(super) fn lane_authority_record_state_before(
+    lines: &[&str],
+    end: usize,
+) -> LaneAuthorityRecordState {
+    let mut state = AuthorityRecordBuildState::Absent;
+    for line in lines
+        .iter()
+        .take(end)
+        .skip(current_lane_record_start(lines, end))
+        .map(|line| trimmed_value(line))
+    {
+        let normalized = metadata_key(line);
+        if is_record_reset_boundary(normalized) {
+            state = AuthorityRecordBuildState::Absent;
+        } else if normalized.starts_with("ownership metadata source:") {
+            state = parse_authority_source(line).map_or(
+                AuthorityRecordBuildState::Invalid,
+                AuthorityRecordBuildState::Source,
+            );
+        } else if normalized.starts_with("lane ownership:") {
+            state = match (state, parse_lane_ownership_metadata(line)) {
+                (
+                    AuthorityRecordBuildState::Source(source),
+                    LaneOwnershipMetadata::Valid(owner),
+                ) => AuthorityRecordBuildState::Owner(LaneAuthority { owner, source }),
+                _ => AuthorityRecordBuildState::Invalid,
+            };
+        } else if normalized == "task classification:" {
+            state = match (line, state) {
+                ("task classification:", AuthorityRecordBuildState::Owner(authority)) => {
+                    AuthorityRecordBuildState::Complete(authority)
+                }
+                _ => AuthorityRecordBuildState::Invalid,
+            };
+        }
+    }
+    match state {
+        AuthorityRecordBuildState::Absent => LaneAuthorityRecordState::Absent,
+        AuthorityRecordBuildState::Source(_) | AuthorityRecordBuildState::Owner(_) => {
+            LaneAuthorityRecordState::Incomplete
+        }
+        AuthorityRecordBuildState::Invalid => LaneAuthorityRecordState::Invalid,
+        AuthorityRecordBuildState::Complete(authority) => {
+            LaneAuthorityRecordState::Complete(authority)
+        }
+    }
 }
 
 pub(super) fn lane_authority_context_before(
@@ -72,16 +175,10 @@ pub(super) fn lane_authority_context_before(
             state: LaneAuthorityState::Absent,
         };
     };
-    let source = match *source {
-        "ownership metadata source: parent-supplied" => AuthoritySource::ParentSupplied,
-        "ownership metadata source: current-thread-classified" => {
-            AuthoritySource::CurrentThreadClassified
-        }
-        _ => {
-            return LaneAuthorityContext {
-                state: LaneAuthorityState::Invalid,
-            };
-        }
+    let Some(source) = parse_authority_source(source) else {
+        return LaneAuthorityContext {
+            state: LaneAuthorityState::Invalid,
+        };
     };
     let state = match parse_lane_ownership_metadata(ownership) {
         LaneOwnershipMetadata::Absent => LaneAuthorityState::Absent,
@@ -91,4 +188,20 @@ pub(super) fn lane_authority_context_before(
         }
     };
     LaneAuthorityContext { state }
+}
+
+fn parse_authority_source(line: &str) -> Option<AuthoritySource> {
+    match line {
+        "ownership metadata source: parent-supplied" => Some(AuthoritySource::ParentSupplied),
+        "ownership metadata source: current-thread-classified" => {
+            Some(AuthoritySource::CurrentThreadClassified)
+        }
+        _ => None,
+    }
+}
+
+fn is_record_reset_boundary(line: &str) -> bool {
+    "pr:|pull request:|review response:|maintainer reassignment:"
+        .split('|')
+        .any(|marker| line.starts_with(marker))
 }

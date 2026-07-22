@@ -199,7 +199,9 @@ fn validator_allows_child_owned_owner_decision_with_parent_owned_negation() -> T
 }
 
 fn complete_parent_owned_owner_decision_classification() -> &'static str {
-    r#"Task classification:
+    r#"Ownership metadata source: current-thread-classified
+Lane ownership: parent-owned
+Task classification:
 Lane type: validation
 Secondary surfaces: workflow, validators
 Owner decision: parent-owned for branch/worktree setup; parent owns implementation

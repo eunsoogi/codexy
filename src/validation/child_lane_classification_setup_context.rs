@@ -1,4 +1,9 @@
-use super::child_lane_classification_boundaries::current_lane_start;
+use super::child_lane_classification_authority::{
+    AuthorityRecordAction, lane_authority_record_state_before,
+};
+use super::child_lane_classification_boundaries::{
+    current_lane_start, is_inside_task_classification,
+};
 use super::child_lane_classification_control::normalize_metadata_prefix;
 use super::child_lane_classification_setup::{
     has_complete_gfm_display_before, latest_classification_before,
@@ -16,6 +21,18 @@ pub(super) fn child_setup_context_applies(
     setup_index: usize,
     explicit_child_scope: bool,
 ) -> bool {
+    let classification_complete = latest_classification_before(lines, setup_index)
+        .is_some_and(|snapshot| snapshot.has_complete_authority_record());
+    if let Some(applies) = lane_authority_record_state_before(lines, setup_index)
+        .validation_applies(
+            classification_complete,
+            AuthorityRecordAction::Setup {
+                explicit_child_scope,
+            },
+        )
+    {
+        return applies;
+    }
     for (index, line) in lines
         .iter()
         .enumerate()
@@ -55,6 +72,13 @@ pub(super) fn child_setup_context_applies(
 }
 
 pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> bool {
+    let classification_complete = latest_classification_before(lines, index)
+        .is_some_and(|snapshot| snapshot.has_complete_authority_record());
+    if let Some(applies) = lane_authority_record_state_before(lines, index)
+        .validation_applies(classification_complete, AuthorityRecordAction::Control)
+    {
+        return applies;
+    }
     for (candidate_index, line) in
         lines
             .iter()
@@ -188,59 +212,4 @@ fn is_owner_metadata(line: &str) -> bool {
     "owner:|child owner:|lane owner:|owner decision:"
         .split('|')
         .any(|marker| line.starts_with(marker))
-}
-
-fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
-    for line in lines
-        .iter()
-        .take(index)
-        .rev()
-        .map(|line| trimmed_value(line))
-    {
-        if line.is_empty() {
-            continue;
-        }
-        if metadata_key(line) == "task classification:" {
-            return true;
-        }
-        if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
-            return false;
-        }
-        if !is_task_classification_field(line) {
-            return false;
-        }
-    }
-    false
-}
-
-fn is_lane_boundary_terminator(line: &str) -> bool {
-    "review response:|maintainer reassignment:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
-}
-
-fn is_hard_lane_boundary(line: &str) -> bool {
-    "pr:|pull request:|lane ownership:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
-}
-
-fn is_task_classification_field(line: &str) -> bool {
-    line.split_once(':').is_some_and(|(key, _)| {
-        matches!(
-            metadata_key(key),
-            "lane type"
-                | "secondary surfaces"
-                | "owner decision"
-                | "atomic scope"
-                | "required skills"
-                | "required tools/evidence"
-                | "required tools"
-                | "required evidence"
-                | "first allowed action"
-                | "stop/blocker"
-                | "stop blocker"
-                | "blocker"
-        )
-    })
 }

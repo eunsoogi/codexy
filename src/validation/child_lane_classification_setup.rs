@@ -56,6 +56,10 @@ impl ClassificationSnapshot {
     pub(super) fn has_complete_child_display(&self) -> bool {
         self.fields.has_complete_child_display()
     }
+
+    pub(super) fn has_complete_authority_record(&self) -> bool {
+        self.fields.has_complete_authority_record()
+    }
 }
 
 pub(super) fn has_complete_gfm_display_before(lines: &[&str], end: usize) -> bool {

@@ -7,6 +7,22 @@ pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
         .map_or(0, |index| index + 1)
 }
 
+pub(super) fn current_lane_record_start(lines: &[&str], end: usize) -> usize {
+    let start = current_lane_start(lines, end);
+    let Some(boundary) = start.checked_sub(1) else {
+        return 0;
+    };
+    let line = metadata_key(trimmed_value(lines[boundary]));
+    if line.starts_with("lane ownership:")
+        && boundary > 0
+        && metadata_key(trimmed_value(lines[boundary - 1]))
+            .starts_with("ownership metadata source:")
+    {
+        return boundary - 1;
+    }
+    boundary
+}
+
 fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
     let raw_line = trimmed_value(lines[index]);
     if raw_line.starts_with('|') {
@@ -31,7 +47,7 @@ fn is_owner_metadata(line: &str) -> bool {
         .any(|marker| line.starts_with(marker))
 }
 
-fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
+pub(super) fn is_inside_task_classification(lines: &[&str], index: usize) -> bool {
     for line in lines
         .iter()
         .take(index)
