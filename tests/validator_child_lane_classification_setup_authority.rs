@@ -7,6 +7,7 @@ fn validator_rejects_non_authoritative_classification_metadata_before_control() 
         valid.replacen("Ownership metadata source: parent-supplied\n", "", 1),
         valid.replacen("Ownership metadata source: parent-supplied", "Ownership metadata source: parent supplied", 1),
         valid.replacen("Task classification:\n| Field | Value |\n| --- | --- |\n", "| Field | Value |\n| --- | --- |\n", 1),
+        valid.replacen("| Field | Value |\n| --- | --- |\n", "", 1),
         valid.replacen("Ownership metadata source: parent-supplied", "- Ownership metadata source: parent-supplied", 1),
         valid.replacen("Lane ownership: child-owned", "Lane ownership: parent-owned", 1),
         valid.replacen("Lane ownership: child-owned", "Lane ownership: unknown", 1),

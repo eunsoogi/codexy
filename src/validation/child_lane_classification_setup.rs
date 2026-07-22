@@ -45,11 +45,23 @@ pub(super) fn formal_child_classification_complete_index_before(
         if line.is_empty() {
             continue;
         }
-        let Some((key, value)) = classification_table_row(line).or_else(|| line.split_once(':'))
-        else {
+        let Some(fields) = seen.as_mut() else {
             continue;
         };
-        let Some(fields) = seen.as_mut() else {
+        if classification_table_row(line) == Some(("field", "value")) {
+            fields.table_header = true;
+            continue;
+        }
+        if fields.table_header && !fields.table_separator && is_table_separator(line) {
+            fields.table_separator = true;
+            continue;
+        }
+        let row = classification_table_row(line);
+        let Some((key, value)) = (if row.is_some() {
+            fields.table_separator.then_some(row).flatten()
+        } else {
+            line.split_once(':')
+        }) else {
             continue;
         };
         fields.record(metadata_key(key), trimmed_value(value));
@@ -60,6 +72,13 @@ pub(super) fn formal_child_classification_complete_index_before(
     None
 }
 
+fn is_table_separator(line: &str) -> bool {
+    classification_table_row(line).is_some_and(|(key, value)| {
+        key.chars().all(|character| character == '-')
+            && value.chars().all(|character| character == '-')
+    })
+}
+
 fn classification_table_row(line: &str) -> Option<(&str, &str)> {
     let row = line.strip_prefix('|')?.strip_suffix('|')?;
     let (key, value) = row.split_once('|')?;
@@ -67,6 +86,8 @@ fn classification_table_row(line: &str) -> Option<(&str, &str)> {
 }
 #[derive(Default)]
 struct ClassificationFields {
+    table_header: bool,
+    table_separator: bool,
     lane_type: bool,
     secondary_surfaces: bool,
     atomic_scope: bool,
