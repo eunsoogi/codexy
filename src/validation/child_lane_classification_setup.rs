@@ -89,7 +89,7 @@ pub(super) fn has_complete_gfm_display_before(lines: &[&str], end: usize) -> boo
             GfmClassificationTableEvent::NotGfm => {}
         }
     }
-    fields.has_complete_child_display()
+    !table.has_unconfirmed_header() && fields.has_complete_child_display()
 }
 
 pub(super) fn latest_classification_before(
@@ -134,6 +134,9 @@ pub(super) fn latest_classification_before(
             GfmClassificationTableEvent::NotGfm => {}
         }
         colon_block.consume_colon(fields, line, authority);
+    }
+    if table.has_unconfirmed_header() {
+        seen = Some(ClassificationFields::default());
     }
     classification_start
         .zip(seen)

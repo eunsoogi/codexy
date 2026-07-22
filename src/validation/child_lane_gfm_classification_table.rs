@@ -91,6 +91,13 @@ pub(super) enum GfmClassificationTableEvent<'a> {
 }
 
 impl GfmClassificationTable {
+    pub(super) fn has_unconfirmed_header(&self) -> bool {
+        matches!(
+            self.state,
+            GfmClassificationTableState::SchemaKeyHeader | GfmClassificationTableState::OtherHeader
+        )
+    }
+
     pub(super) fn consume<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
         match self.state {
             GfmClassificationTableState::Neutral => self.consume_neutral(line),
@@ -180,16 +187,7 @@ impl GfmClassificationTable {
             self.state = GfmClassificationTableState::Neutral;
             return GfmClassificationTableEvent::NotGfm;
         }
-        match classification_table_row(line) {
-            Some((key, _)) if ClassificationTableSchema::records_key(metadata_key(key)) => {
-                self.invalidate()
-            }
-            Some(_) => GfmClassificationTableEvent::Ignore,
-            None => {
-                self.state = GfmClassificationTableState::Neutral;
-                GfmClassificationTableEvent::NotGfm
-            }
-        }
+        self.invalidate()
     }
 
     fn invalidate(&mut self) -> GfmClassificationTableEvent<'static> {

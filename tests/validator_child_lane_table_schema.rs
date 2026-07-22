@@ -1,6 +1,25 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn validator_rejects_arbitrary_ninth_gfm_classification_row() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    std::fs::write(
+        &path,
+        format!(
+            "{}\n| Approval | skipped |\nPlan tool call: update_plan\n",
+            classification_table()
+        ),
+    )?;
+    let output = crate::support::validator_child_lane_ownership_file(&path)?;
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains(
+        "child-owned lane control evidence includes create_goal or update_plan before formal $task-classification evidence completed"
+    ));
+    Ok(())
+}
+
+#[test]
 fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> TestResult {
     let complete = classification_table();
     let repeated_table = complete
