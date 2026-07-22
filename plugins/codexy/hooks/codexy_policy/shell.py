@@ -11,7 +11,7 @@ from .github_alias import expand as expand_gh_alias
 from .github import forbidden as gh_forbidden
 from .execution_context import ExecutionContext, at as context_at, git_config, remote_url
 from .invocation import resolve
-from .repository import OWNED, UrlRewrite, github_identity, identity, repository_owned, rewrite_url
+from .repository import OWNED, UrlRewrite, git_directory_owned, github_identity, identity, repository_owned, rewrite_url
 from .shell_context import changed_directory, flag
 from .shell_groups import Command, GroupSyntaxError, Sequence, parse
 
@@ -21,9 +21,10 @@ CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
 POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GH_REPO)\s*=")
 
 
-def forbidden(command: str, cwd: str, gh_repo: str | None = None, depth: int = 0) -> bool:
-    environment = (("GH_REPO", gh_repo),) if gh_repo is not None else ()
-    return _forbidden(command, ExecutionContext(cwd, repository_owned(cwd), None, gh_repo, environment), depth)
+def forbidden(command: str, cwd: str, gh_repo: str | None = None, git_dir: str | None = None, depth: int = 0) -> bool:
+    environment = tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir)) if value is not None)
+    owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
+    return _forbidden(command, ExecutionContext(cwd, owned, git_dir, gh_repo, environment), depth)
 
 
 def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
@@ -135,7 +136,7 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, 
         return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1), None
     if invocation.operation is None:
         return False, None
-    if invocation.operation == "remote" and invocation.arguments[:1] == ["set-url"]:
+    if invocation.operation == "remote" and invocation.arguments[:1] in (["add"], ["set-url"]):
         if len(invocation.arguments) != 3 or not invocation.arguments[1] or any(char in invocation.arguments[1] + invocation.arguments[2] for char in "\0\r\n"):
             return True, None
         return False, (invocation.arguments[1], invocation.arguments[2])

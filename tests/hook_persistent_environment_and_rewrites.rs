@@ -42,6 +42,49 @@ fn persistent_environment_state_tracks_shell_scope() -> TestResult {
 }
 
 #[test]
+fn inherited_git_dir_selects_owned_repository() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    let git_dir = owned.join(".git");
+
+    assert_case_with_context(
+        &root,
+        &foreign,
+        "git push --force origin topic",
+        true,
+        None,
+        None,
+        Some(&git_dir),
+    )
+}
+
+#[test]
+fn clone_outside_a_checkout_remains_admitted() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let outside = workspace.path().join("outside");
+    std::fs::create_dir(&outside)?;
+
+    assert_case(&root, &outside, "git clone https://github.com/openai/codex.git clone-target", false)
+}
+
+#[test]
+fn remote_add_updates_sequential_force_push_admission() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    assert_case(
+        &root,
+        &foreign,
+        "git remote add owned git@github.com:eunsoogi/codexy.git && git push --force owned topic",
+        true,
+    )
+}
+
+#[test]
 fn sequential_remote_url_mutations_update_push_admission() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
@@ -107,18 +150,18 @@ fn effective_shell_invocation_and_repository_context_reaches_admission() -> Test
     assert_case(&root, &foreign, &format!(". '{}' && git push --force origin topic", sourced.display()), true)?;
     assert_case(&root, &foreign, "if true; then echo ok; fi", false)?;
     assert_case(&root, &owned, "if true; then echo ok; fi", true)?;
-    assert_case_with_context(&root, &foreign, "gh pr merge 453 --merge", true, None, Some("eunsoogi/codexy"))?;
+    assert_case_with_context(&root, &foreign, "gh pr merge 453 --merge", true, None, Some("eunsoogi/codexy"), None)?;
     assert_case(&root, &foreign, "gh pr merge 453 --merge", false)?;
 
     let home = workspace.path().join("home");
     std::fs::create_dir(&home)?;
     std::fs::write(home.join(".gitconfig"), "[url \"git@github.com:\"]\n\tinsteadOf = https://mirror.invalid/\n")?;
-    assert_case_with_context(&root, &mirror, "git push --force origin topic", true, Some(&home), None)?;
+    assert_case_with_context(&root, &mirror, "git push --force origin topic", true, Some(&home), None, None)?;
     assert_case(&root, &mirror, "git push --force origin topic", false)
 }
 
 fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
-    assert_case_with_context(root, cwd, command, denied, None, None)
+    assert_case_with_context(root, cwd, command, denied, None, None, None)
 }
 
 fn assert_case_with_context(
@@ -128,12 +171,14 @@ fn assert_case_with_context(
     denied: bool,
     home: Option<&std::path::Path>,
     gh_repo: Option<&str>,
+    git_dir: Option<&std::path::Path>,
 ) -> TestResult {
     let input = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
     child.arg("PreToolUse").env_clear().env("PLUGIN_ROOT", root).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     if let Some(home) = home { child.env("HOME", home); }
     if let Some(gh_repo) = gh_repo { child.env("GH_REPO", gh_repo); }
+    if let Some(git_dir) = git_dir { child.env("GIT_DIR", git_dir); }
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
     let output = child.wait_with_output()?;

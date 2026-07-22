@@ -91,6 +91,8 @@ def _normalize(
     if not arguments:
         return GitInvocation(None, [], cwd, cwd_owned, git_dir, rewrites=tuple(rewrites))
     operation, rest = arguments[0], arguments[1:]
+    if operation.casefold() == "clone":
+        return GitInvocation(operation, rest, cwd, cwd_owned, git_dir, rewrites=tuple(rewrites))
     push_like = operation.casefold() in {"push", "send-pack"}
     if rewrites or push_like:
         active_rewrites = git_url_rewrites(cwd, git_dir)

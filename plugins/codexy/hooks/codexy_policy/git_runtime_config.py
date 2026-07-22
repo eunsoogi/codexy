@@ -28,7 +28,9 @@ def apply_remote_urls(config: str | None, remote_urls: tuple[tuple[str, str], ..
         for name, value in remote_urls:
             section = sections.get(name)
             if section is None:
-                return None
+                section = f'remote "{name}"'
+                parser.add_section(section)
+                sections[name] = section
             parser[section]["url"] = value
         output = StringIO()
         parser.write(output)

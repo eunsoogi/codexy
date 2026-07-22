@@ -60,7 +60,8 @@ def evaluate(event: str, payload: bytes) -> bytes:
     if not isinstance(tool_input, dict) or not isinstance(tool_input.get("command"), str) or not isinstance(data.get("cwd"), str):
         return deny(event)
     inherited_repository = os.environ.get("GH_REPO") or None
-    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"], inherited_repository) else b""
+    inherited_git_dir = os.environ.get("GIT_DIR") or None
+    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"], inherited_repository, inherited_git_dir) else b""
 
 
 def _github(event: str, tool: str, data: object) -> bytes:
