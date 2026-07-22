@@ -54,6 +54,10 @@ fn pull_request_url_cannot_impersonate_governing_issue_without_mutation() -> Tes
         "https://github.com/eunsoogi/codexy?redirect=/issues/301",
         "https://github.com/eunsoogi/codexy#/issues/301",
         "https://github.com//codexy/issues/301",
+        "https://github.com/eun soo/codexy/issues/301",
+        "https://github.com/eunsoogi/code xy/issues/301",
+        "https://github.com/./codexy/issues/301",
+        "https://github.com/eunsoogi/./issues/301",
         "https://github.com/eunsoogi/codexy/issues/301/",
     ] {
         let temp = tempfile::tempdir()?;

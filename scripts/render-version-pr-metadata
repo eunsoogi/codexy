@@ -54,7 +54,8 @@ def validate_issue(issue: object, repository_labels: object) -> tuple[int, str, 
     if not isinstance(url, str):
         fail(f"governing issue #{number} requires a canonical issue URL")
     canonical_url = re.compile(
-        rf"https://github\.com/[^/?#]+/[^/?#]+/issues/{number}"
+        rf"https://github\.com/[A-Za-z0-9](?:[A-Za-z0-9-]{{0,38}})?/"
+        rf"[A-Za-z0-9][A-Za-z0-9._-]*/issues/{number}"
     )
     if canonical_url.fullmatch(url) is None:
         fail(f"governing issue #{number} requires a canonical issue URL")
