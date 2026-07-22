@@ -1,49 +1,28 @@
-name: Plugin marketplace packages
+name: Verify selected marketplace runtime package
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Version tag to create or update, for example v1.0.0"
-        required: true
-      previous_tag:
-        description: "Optional previous tag for changelog range"
-        required: false
-  push:
-    branches: [main]
-    tags: ["v*"]
-    paths:
-      - "Cargo.lock"
-      - "Cargo.toml"
-      - "src/**"
-      - "plugins/codexy/**"
-      - ".agents/plugins/marketplace.json"
-      - "scripts/generate-release-changelog"
-      - "scripts/inspect-release-archive"
-      - "scripts/inspect-mcp-response"
-      - "tests/release_archive_gate.rs"
-      - ".agents/plugins/release-publish-contract.json"
-      - ".github/workflows/plugin-runtime-binaries.yml"
   pull_request:
     paths:
-      - "Cargo.lock"
-      - "Cargo.toml"
-      - "src/**"
       - "plugins/codexy/**"
-      - ".agents/plugins/marketplace.json"
-      - "scripts/generate-release-changelog"
+      - ".agents/plugins/**"
       - "scripts/inspect-release-archive"
-      - "scripts/inspect-mcp-response"
-      - "tests/release_archive_gate.rs"
-      - ".agents/plugins/release-publish-contract.json"
+      - "scripts/validate-plugin-config"
+      - ".github/workflows/plugin-runtime-binaries.yml"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/codexy/**"
+      - ".agents/plugins/**"
+      - "scripts/inspect-release-archive"
+      - "scripts/validate-plugin-config"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
 permissions:
   contents: read
 
 jobs:
-  build-runtime:
-    name: Build ${{ matrix.platform }} MCP runtimes
+  verify-selected-package:
+    name: Verify ${{ matrix.platform }} selected package
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -53,177 +32,76 @@ jobs:
             runner: ubuntu-latest
           - platform: darwin-arm64
             runner: macos-14
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-          fetch-depth: 0
           persist-credentials: false
-
-      - name: Build MCP runtime binaries
+      - name: Download and verify selected immutable bytes
         run: |
-          cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
-
-      - name: Package platform runtime binaries
-        env:
-          PLATFORM: ${{ matrix.platform }}
+          url="$(jq -r .artifact.url plugins/codexy/runtime-release.json)"
+          digest="$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)"
+          mkdir -p dist
+          curl --fail --location "$url" -o dist/selected.tar.gz
+          sha256sum dist/selected.tar.gz | grep "$digest"
+      - name: Assemble state-aware marketplace package without rebuilding
         run: |
-          mkdir -p "dist/runtimes-${PLATFORM}"
-          cp target/release/codexy-mcp-lsp "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
-          cp target/release/codexy-mcp-codegraph "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
-          chmod 755 "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
-          chmod 755 "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
-          file "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
-          file "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
-
-      - name: Smoke test native MCP runtimes
-        env:
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          for server in lsp codegraph; do
-            response_file="$(mktemp)"
-            RUNTIME="dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" RESPONSE_FILE="$response_file" \
-              python3 - <<'PY'
-          import os, subprocess
-          requests = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}
-          {"jsonrpc":"2.0","method":"notifications/initialized"}
-          {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-          """
-          completed = subprocess.run(
-              [os.environ["RUNTIME"], "--stdio"], input=requests, text=True,
-              capture_output=True, timeout=15, check=True,
-          )
-          open(os.environ["RESPONSE_FILE"], "w", encoding="utf-8").write(completed.stdout)
-          PY
-            scripts/inspect-mcp-response "$response_file" "$server"
-            rm -f "$response_file"
-          done
-
-      - name: Upload runtime binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: codexy-mcp-runtimes-${{ matrix.platform }}
-          path: dist/runtimes-${{ matrix.platform }}/*.bin
-          if-no-files-found: error
-
-  package-plugin:
-    name: Assemble marketplace plugin package
-    runs-on: ubuntu-latest
-    needs: build-runtime
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Download generated runtime binaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: codexy-mcp-runtimes-*
-          path: dist/generated-runtimes
-          merge-multiple: true
-
-      - name: Assemble marketplace plugin package
-        env:
-          PACKAGE_ROOT: dist/codexy-marketplace-plugin
-        run: |
-          package_root="$PACKAGE_ROOT"
-          plugin_root="${package_root}/plugins/codexy"
-          rm -rf "$package_root"
-          mkdir -p "${package_root}/plugins"
-          scripts/validate-plugin-config --plugin-root plugins/codexy --check
-          rsync -a --exclude '*.bin' plugins/codexy/ "$plugin_root/"
-          mkdir -p "${plugin_root}/runtime"
-          cp dist/generated-runtimes/*.bin "${plugin_root}/runtime/"
-          chmod 755 "${plugin_root}"/runtime/*.bin
-          file "${plugin_root}"/runtime/*.bin
-          scripts/validate-plugin-config --plugin-root "$plugin_root" --check-runtime-artifacts
-          scripts/validate-plugin-config --plugin-root "$plugin_root" --check-hooks
-          tar -C "$package_root" -czf "dist/codexy-marketplace-plugin.tar.gz" plugins/codexy
-          scripts/inspect-release-archive "dist/codexy-marketplace-plugin.tar.gz" "$plugin_root"
-
-      - name: Upload marketplace package artifact
-        uses: actions/upload-artifact@v4
+          state="$(jq -r .state plugins/codexy/runtime-release.json)"
+          case "$state" in
+            legacy-public)
+              mkdir -p dist/legacy dist/final/plugins
+              tar -xzf dist/selected.tar.gz -C dist/legacy \
+                plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin
+              staged=dist/final/plugins/codexy
+              rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
+              mkdir -p "$staged/runtime"
+              for platform in darwin-arm64 linux-x86_64; do
+                for server in lsp codegraph; do
+                  path="runtime/codexy-mcp-${server}-${platform}.bin"
+                  digest="$(jq -r ".platforms[\"$platform\"][\"$server\"].sha256" plugins/codexy/runtime-release.json)"
+                  test "$(sha256sum "dist/legacy/plugins/codexy/$path" | awk '{print $1}')" = "$digest"
+                  cp "dist/legacy/plugins/codexy/$path" "$staged/$path"
+                  cmp "dist/legacy/plugins/codexy/$path" "$staged/$path"
+                done
+              done
+              test ! -e "$staged/runtime-candidate.json"
+              tar -C dist/final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+              scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
+              ;;
+            candidate-proven)
+              mkdir -p dist/candidate dist/final/plugins
+              tar -xzf dist/selected.tar.gz -C dist/candidate \
+                plugins/codexy/runtime-candidate.json \
+                plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin
+              candidate=dist/candidate/plugins/codexy
+              staged=dist/final/plugins/codexy
+              test ! -e "$candidate/runtime-release.json"
+              test "$(sha256sum "$candidate/runtime-candidate.json" | awk '{print $1}')" = "$(jq -r .artifact.payloadManifestSha256 plugins/codexy/runtime-release.json)"
+              rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
+              mkdir -p "$staged/runtime"
+              cp "$candidate/runtime-candidate.json" "$staged/runtime-candidate.json"
+              for platform in darwin-arm64 linux-x86_64; do
+                for server in lsp codegraph; do
+                  path="$(jq -r ".platforms[\"$platform\"][\"$server\"].path" plugins/codexy/runtime-release.json)"
+                  digest="$(jq -r ".platforms[\"$platform\"][\"$server\"].sha256" plugins/codexy/runtime-release.json)"
+                  test "$path" = "runtime/codexy-mcp-${server}-${platform}.bin"
+                  test "$(sha256sum "$candidate/$path" | awk '{print $1}')" = "$digest"
+                  cp "$candidate/$path" "$staged/$path"
+                  cmp "$candidate/$path" "$staged/$path"
+                done
+              done
+              tar -C dist/final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+              scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
+              ;;
+            *) echo "unsupported runtime-release state: $state" >&2; exit 1 ;;
+          esac
+      - uses: actions/upload-artifact@v4
         with:
           name: codexy-marketplace-plugin
           path: dist/codexy-marketplace-plugin.tar.gz
           if-no-files-found: error
-
-  publish-release:
-    name: Publish marketplace release
-    needs: package-plugin
-    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Download marketplace package artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: codexy-marketplace-plugin
-          path: dist
-
-      - name: Resolve release tag
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          RELEASE_EVENT_TAG: ${{ github.event.release.tag_name }}
-          WORKFLOW_RELEASE_TAG: ${{ inputs.release_tag }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          case "$EVENT_NAME" in
-            release)
-              release_tag="$RELEASE_EVENT_TAG"
-              ;;
-            workflow_dispatch)
-              release_tag="$WORKFLOW_RELEASE_TAG"
-              ;;
-            *)
-              release_tag="$REF_NAME"
-              ;;
-          esac
-          if [ -z "$release_tag" ]; then
-            echo "release_tag is required for manual release runs" >&2
-            exit 1
-          fi
-          echo "RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
-
-      - name: Verify release tag parity
-        run: scripts/sync-plugin-version --check --tag "$RELEASE_TAG"
-
-      - name: Generate commit-log changelog
-        env:
-          PREVIOUS_TAG: ${{ inputs.previous_tag }}
-        run: |
-          git fetch --tags --force
-          release_tag="$RELEASE_TAG"
-          release_target="$(git rev-list -n 1 "$release_tag")"
-          echo "RELEASE_TARGET=$release_target" >> "$GITHUB_ENV"
-          scripts/generate-release-changelog "$release_tag" "$PREVIOUS_TAG" > release-notes.md
-
-      - name: Create or update GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          release_tag="$RELEASE_TAG"
-          if gh release view "$release_tag" >/dev/null 2>&1; then
-            gh release edit "$release_tag" --title "$release_tag" --notes-file release-notes.md --target "$RELEASE_TARGET"
-          else
-            gh release create "$release_tag" --title "$release_tag" --notes-file release-notes.md --target "$RELEASE_TARGET"
-          fi
-
-      - name: Attach marketplace package to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release upload "$RELEASE_TAG" "dist/codexy-marketplace-plugin.tar.gz" --clobber

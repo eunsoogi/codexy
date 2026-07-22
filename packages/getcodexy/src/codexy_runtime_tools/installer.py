@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -60,10 +61,13 @@ def install_package(config: InstallConfig, install_root: Path, installed: Path) 
             expected_sha256=config.package_sha256,
             work=work,
         )
+        release_contract = getattr(config, "release_contract", None)
+        if release_contract is not None:
+            release_contract.verify_archive(archive, platform=config.platform)
         packaged_runtime, package_manifest = unpack_runtime(
             archive=archive, work=work, runtime_name=config.runtime_name
         )
-        if not config.package_override:
+        if not config.package_override and release_contract is None:
             matches, message = releases_match(config.manifest, package_manifest)
             if not matches:
                 raise RuntimeError(message)
@@ -82,11 +86,8 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
     cargo = shutil.which("cargo")
     if not cargo:
         raise RuntimeError("cargo is unavailable for the configured Git runtime source")
-    revision = len(config.git_ref) == 40 and all(
-        character in "0123456789abcdefABCDEF" for character in config.git_ref
-    )
-    if not revision:
-        raise RuntimeError("CODEXY_RUNTIME_GIT_REF must be an exact 40-hex commit")
+    if config.git_repository != "https://github.com/eunsoogi/codexy" or not re.fullmatch(r"[0-9a-f]{40}", config.git_ref):
+        raise RuntimeError("Git fallback requires the canonical repository and lowercase 40-hex commit")
     command = [
         cargo,
         "install",
@@ -101,7 +102,8 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
         "--bin",
         f"codexy-mcp-{config.server}",
     ]
-    completed = subprocess.run(command, check=False)
+    environment = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "GITHUB_TOKEN"}}
+    completed = subprocess.run(command, check=False, env=environment)
     if completed.returncode or not executable(installed):
         raise RuntimeError(f"cargo install exited with status {completed.returncode}")
     shutil.copyfile(config.manifest, install_root / "plugin.json")

@@ -17,13 +17,8 @@ from codexy_runtime_tools.package import _github_token_for
 class RuntimeCliTests(unittest.TestCase):
     def test_distribution_identity_and_console_entrypoint_are_stable(self) -> None:
         pyproject = Path(__file__).parents[1].joinpath("pyproject.toml").read_text()
-        manifest = json.loads(
-            Path(__file__).parents[3]
-            .joinpath("plugins/codexy/.codex-plugin/plugin.json")
-            .read_text()
-        )
         self.assertIn('name = "getcodexy"', pyproject)
-        self.assertIn(f'version = "{manifest["version"]}"', pyproject)
+        self.assertRegex(pyproject, r'version = "[0-9]+\.[0-9]+\.[0-9]+"')
         self.assertIn(
             'codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"', pyproject
         )
@@ -78,7 +73,7 @@ class RuntimeCliTests(unittest.TestCase):
             install_root, installed = root / "cache", root / "cache/bin/codexy-mcp-lsp"
             manifest = root / "plugin.json"
             manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
-            config = SimpleNamespace(server="lsp", manifest=manifest, git_repository="https://example.test/codexy.git", git_ref="a" * 40)
+            config = SimpleNamespace(server="lsp", manifest=manifest, git_repository="https://github.com/eunsoogi/codexy", git_ref="a" * 40)
 
             def cargo_install(*_: object, **__: object) -> SimpleNamespace:
                 installed.parent.mkdir(parents=True)

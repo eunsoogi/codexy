@@ -5,8 +5,10 @@ use serde_json::Value;
 
 use crate::paths::{display_relative, repo_root};
 
+pub mod activation;
+mod bootstrap;
 mod cargo;
-mod python;
+mod wrappers;
 
 const PLUGIN_NAME: &str = "codexy";
 const PLUGIN_MANIFEST: &str = "plugins/codexy/.codex-plugin/plugin.json";
@@ -206,7 +208,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             &display_relative(&manifest_path),
         )?;
     }
-    python::check_version(manifest_version)?;
+    wrappers::check_version(bootstrap::VERSION)?;
     cargo::check_version(manifest_version)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
@@ -243,6 +245,5 @@ pub fn set_version(version: &str) -> Result<String> {
         package["version"] = Value::String(version.to_owned());
         write_json(&path, &package)?;
     }
-    python::set_version(version)?;
     Ok(format!("plugin version synchronized to {version}"))
 }

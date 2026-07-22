@@ -1,0 +1,135 @@
+name: Publish immutable runtime candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_tag:
+        description: "New immutable runtime-candidate-* tag"
+        required: true
+        type: string
+      source_commit:
+        description: "Exact immutable source commit to build"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-runtime:
+    name: Build ${{ matrix.platform }} candidate
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-latest
+          - platform: darwin-arm64
+            runner: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact source commit
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+      - name: Build candidate MCP runtimes
+        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
+      - name: Package declared platform binaries
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          for server in lsp codegraph; do
+            path="runtime/codexy-mcp-${server}-${PLATFORM}.bin"
+            mkdir -p "$(dirname "$path")"
+            cp "target/release/codexy-mcp-${server}" "$path"
+            chmod 755 "$path"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-candidate-${{ matrix.platform }}
+          path: runtime
+          if-no-files-found: error
+
+  publish-candidate:
+    needs: build-runtime
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: runtime-candidate-*
+          path: staged-runtime
+          merge-multiple: true
+      - name: Assemble canonical candidate archive and receipt
+        env:
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          case "$CANDIDATE_TAG" in runtime-candidate-*) ;; *) exit 1;; esac
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          root=dist/candidate/plugins/codexy
+          mkdir -p dist/candidate/plugins
+          rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ "$root/"
+          cp -R staged-runtime "$root/runtime"
+          CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ROOT="$root" python3 - <<'PY'
+          import hashlib, json, os
+          root = os.environ["ROOT"]
+          platforms = {}
+          for platform in ("darwin-arm64", "linux-x86_64"):
+              inventory = {}
+              for server in ("lsp", "codegraph"):
+                  path = f"runtime/codexy-mcp-{server}-{platform}.bin"
+                  data = open(f"{root}/{path}", "rb").read()
+                  inventory[server] = {"path": path, "sha256": hashlib.sha256(data).hexdigest()}
+              platforms[platform] = inventory
+          candidate = {"schema":"codexy-runtime-candidate/v1","source":{"repository":"https://github.com/eunsoogi/codexy","commit":os.environ["SOURCE_COMMIT"]},"artifact":{"tag":os.environ["CANDIDATE_TAG"]},"compatibility":{"bootstrapApi":1,"pluginRuntimeApi":1,"transport":"stdio-newline-v1","mcpProtocol":"2024-11-05"},"platforms":platforms}
+          open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode())
+          PY
+          tar -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+          archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
+          manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
+          CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" python3 - <<'PY'
+          import json, os
+          candidate = json.load(open("dist/candidate/plugins/codexy/runtime-candidate.json"))
+          receipt = {"schema":"codexy-runtime-candidate-receipt/v1","candidate":candidate,"artifact":{"url":f"https://github.com/eunsoogi/codexy/releases/download/{os.environ['CANDIDATE_TAG']}/codexy-marketplace-plugin.tar.gz","sha256":os.environ["ARCHIVE_SHA"],"payloadManifestSha256":os.environ["MANIFEST_SHA"]},"provenance":{"repositoryId":1269350143,"workflowPath":".github/workflows/runtime-candidate.yml","runId":int(os.environ["GITHUB_RUN_ID"]),"runAttempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),"workflowRunUrl":f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"}}
+          open("dist/runtime-candidate-receipt.json", "wb").write(json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode())
+          open("dist/runtime-candidate-provenance.json", "w", encoding="utf-8").write(json.dumps(receipt["provenance"], sort_keys=True, separators=(",", ":")))
+          PY
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/codexy-marketplace-plugin.tar.gz
+      - name: Create candidate tag and release once
+        env:
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          test "$(git ls-remote --tags origin "refs/tags/$CANDIDATE_TAG")" = ""
+          gh release view "$CANDIDATE_TAG" >/dev/null 2>&1 && exit 1
+          git tag -a "$CANDIDATE_TAG" -m "Runtime candidate $CANDIDATE_TAG" "$SOURCE_COMMIT"
+          git push origin "$CANDIDATE_TAG"
+          gh release create "$CANDIDATE_TAG" dist/codexy-marketplace-plugin.tar.gz dist/runtime-candidate-receipt.json dist/runtime-candidate-provenance.json --target "$SOURCE_COMMIT" --title "$CANDIDATE_TAG" --notes "Immutable runtime candidate."
+      - name: Re-download and verify anonymous public bytes
+        env:
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+        run: |
+          base="https://github.com/eunsoogi/codexy/releases/download/$CANDIDATE_TAG"
+          curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
+          curl --fail --location "$base/runtime-candidate-receipt.json" -o public-receipt.json
+          cmp dist/runtime-candidate-receipt.json public-receipt.json
+          sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
+          tar -xOf public.tar.gz plugins/codexy/runtime-candidate.json > public-candidate.json
+          cmp dist/candidate/plugins/codexy/runtime-candidate.json public-candidate.json
+          sha256sum public-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 public-receipt.json)"

@@ -40,6 +40,9 @@ mod release_tag_parity;
 #[path = "../release_workflow_parity.rs"]
 mod release_workflow_parity;
 
+#[path = "../runtime_publication_activation.rs"]
+mod runtime_publication_activation;
+
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import platform as host_platform
 import sys
@@ -9,6 +11,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from .cache import plugin_release, releases_match, runtime_cache_key
+from .contract import RuntimeRelease, load as load_runtime_release
 from .installer import executable, execute, install_git, install_package
 
 
@@ -68,6 +71,7 @@ class Configuration:
     git_ref: str
     offline: bool
     git_fallback: bool
+    release_contract: RuntimeRelease | None = None
 
     @classmethod
     def load(cls, server: str, plugin_root: Path, arguments: list[str]) -> "Configuration":
@@ -89,7 +93,14 @@ class Configuration:
             or any(character not in "0123456789abcdefABCDEF" for character in package_sha256)
         ):
             _fail("explicit runtime package source requires CODEXY_RUNTIME_PACKAGE_SHA256")
-        if not package_override:
+        release_path = plugin_root / "runtime-release.json"
+        try:
+            release_contract = load_runtime_release(plugin_root) if release_path.is_file() else None
+        except ValueError as error:
+            _fail(f"codexy-mcp-{server} cannot read runtime release: {error}")
+        if release_contract and not package_override:
+            package_url, package_sha256 = release_contract.artifact.url, release_contract.artifact.sha256
+        elif not package_override:
             package_url = f"{REPOSITORY}/releases/download/v{release}/codexy-marketplace-plugin.tar.gz"
         return cls(
             server=server, plugin_root=plugin_root, arguments=arguments,
@@ -97,10 +108,13 @@ class Configuration:
             runtime_name=f"codexy-mcp-{server}-{_host_platform()}.bin",
             package_path=package_path, package_url=package_url, artifacts_api=artifacts_api,
             package_override=package_override, package_sha256=package_sha256,
-            git_repository=os.environ.get("CODEXY_RUNTIME_GIT_REPOSITORY", REPOSITORY),
-            git_ref=os.environ.get("CODEXY_RUNTIME_GIT_REF", ""),
+            git_repository=(os.environ.get("CODEXY_RUNTIME_GIT_REPOSITORY", REPOSITORY)
+                if not release_contract else release_contract.source.repository),
+            git_ref=(os.environ.get("CODEXY_RUNTIME_GIT_REF", "")
+                if not release_contract else release_contract.source.commit),
             offline=os.environ.get("UV_OFFLINE", "").lower() in {"1", "true", "yes"},
             git_fallback=os.environ.get("CODEXY_RUNTIME_GIT_FALLBACK") == "1",
+            release_contract=release_contract,
         )
 
 
@@ -134,18 +148,29 @@ def run(config: Configuration) -> NoReturn:
     if executable(bundled):
         _execute(config, bundled)
     source = "\n".join(("package-override", config.package_path, config.package_url, config.artifacts_api, config.package_sha256)) if config.package_override else "\n".join(("package-default", config.package_sha256))
-    key = runtime_cache_key(manifest=config.manifest, package_override=config.package_override, identity=[config.git_repository, config.git_ref, config.platform, PROTOCOL, source, f"codexy-mcp-{config.server}"])
+    key = (config.release_contract.cache_key(platform=config.platform, server=config.server)
+        if config.release_contract else runtime_cache_key(manifest=config.manifest, package_override=config.package_override, identity=[config.git_repository, config.git_ref, config.platform, PROTOCOL, source, f"codexy-mcp-{config.server}"]))
     install_root = _cache_root(config.server) / key
-    installed, marker = install_root / "bin" / f"codexy-mcp-{config.server}", install_root / "plugin.json"
-    if executable(installed) and config.package_override:
+    installed, marker = install_root / "bin" / f"codexy-mcp-{config.server}", install_root / "runtime-marker.json"
+    if executable(installed) and config.package_override and not config.release_contract:
         _execute(config, installed)
-    if executable(installed) and marker.is_file() and releases_match(config.manifest, marker)[0]:
-        _execute(config, installed)
+    if executable(installed):
+        if config.release_contract and marker.is_file():
+            try:
+                valid = config.release_contract.valid_marker(json.loads(marker.read_text()), platform=config.platform, server=config.server, binary=installed.read_bytes())
+            except (OSError, ValueError, json.JSONDecodeError):
+                valid = False
+            if valid:
+                _execute(config, installed)
+        elif not config.release_contract and releases_match(config.manifest, install_root / "plugin.json")[0]:
+            _execute(config, installed)
     if config.offline:
         _fail(f"codexy-mcp-{config.server} offline mode has no cached or bundled runtime for {config.platform}")
     try:
         _notice(f"acquiring exact release package v{config.release} for {config.server}")
         install_package(config, install_root, installed)
+        if config.release_contract:
+            marker.write_text(json.dumps(config.release_contract.marker(platform=config.platform, server=config.server, binary_sha256=hashlib.sha256(installed.read_bytes()).hexdigest()), sort_keys=True), encoding="utf-8")
         _execute(config, installed)
     except (OSError, RuntimeError, ValueError) as package_error:
         if config.package_override:

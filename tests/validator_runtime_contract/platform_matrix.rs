@@ -11,6 +11,7 @@ fn validator_cli_rejects_supported_platform_without_bundled_mcp_runtimes()
     manifest["supportedPlatforms"] =
         serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]);
     std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
+    add_windows_runtime_release(&plugin_root)?;
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
@@ -33,7 +34,7 @@ fn validator_cli_rejects_supported_platform_without_bundled_mcp_runtimes()
 }
 
 #[test]
-fn validator_cli_rejects_supported_platform_without_build_matrix_coverage()
+fn validator_cli_rejects_platform_outside_immutable_runtime_inventory()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
@@ -43,6 +44,7 @@ fn validator_cli_rejects_supported_platform_without_build_matrix_coverage()
     manifest["supportedPlatforms"] =
         serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]);
     std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
+    add_windows_runtime_release(&plugin_root)?;
     for server in ["lsp", "codegraph"] {
         let wrapper_path = plugin_root.join(format!("mcp/codexy-mcp-{server}"));
         let wrapper = std::fs::read_to_string(&wrapper_path)?.replace(
@@ -62,14 +64,43 @@ fn validator_cli_rejects_supported_platform_without_build_matrix_coverage()
 
     assert!(
         !output.status.success(),
-        "validator should reject advertised platforms without release matrix coverage"
+        "validator should reject platforms outside the immutable runtime inventory"
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("runtime build matrix must cover supported platform windows-x86_64"),
+            .contains("immutable runtime package must retain platforms"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+fn add_windows_runtime_release(plugin_root: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    let path = plugin_root.join("runtime-release.json");
+    let mut release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+    release["state"] = serde_json::json!("candidate-proven");
+    release["platforms"]["windows-x86_64"] = serde_json::json!({
+        "lsp": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "codegraph": { "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+    });
+    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+        for server in ["lsp", "codegraph"] {
+            release["platforms"][platform][server]["path"] =
+                serde_json::json!(format!("runtime/codexy-mcp-{server}-{platform}.bin"));
+        }
+    }
+    std::fs::write(&path, serde_json::to_string_pretty(&release)?)?;
+    let candidate = serde_json::json!({
+        "schema": "codexy-runtime-candidate/v1",
+        "source": release["source"].clone(),
+        "artifact": { "tag": release["artifact"]["tag"].clone() },
+        "compatibility": release["compatibility"].clone(),
+        "platforms": release["platforms"].clone(),
+    });
+    std::fs::write(
+        plugin_root.join("runtime-candidate.json"),
+        serde_json::to_string(&candidate)?,
+    )?;
     Ok(())
 }
 

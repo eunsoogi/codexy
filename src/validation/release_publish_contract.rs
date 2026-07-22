@@ -138,21 +138,19 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("reading {}", display_relative(path)))?;
     for required in [
-        "Assemble marketplace plugin package",
+        "verify-selected-package:",
+        "Download and verify selected immutable bytes",
+        "curl --fail --location \"$url\"",
+        "sha256sum dist/selected.tar.gz",
+        "Assemble state-aware marketplace package without rebuilding",
+        "legacy-public)",
+        "candidate-proven)",
+        "runtime-candidate.json",
+        "payloadManifestSha256",
+        "for platform in darwin-arm64 linux-x86_64",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
-        "scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-runtime-artifacts",
-        "scripts/generate-release-changelog",
-        "tags:",
-        "\"v*\"",
-        "Generate commit-log changelog",
-        "git rev-list -n 1 \"$release_tag\"",
-        "scripts/generate-release-changelog \"$release_tag\" \"$PREVIOUS_TAG\" > release-notes.md",
-        "Create or update GitHub release",
-        "--target \"$RELEASE_TARGET\"",
-        "gh release create \"$release_tag\"",
-        "gh release edit \"$release_tag\"",
-        "gh release upload",
+        "scripts/inspect-release-archive",
     ] {
         if !text.contains(required) {
             bail!(
@@ -161,23 +159,11 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
             );
         }
     }
-    if text.contains("--target \"$GITHUB_SHA\"") {
-        bail!(
-            "{} must target the commit behind release_tag, not the workflow ref",
-            display_relative(path)
-        );
-    }
-    if text
-        .matches("ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}")
-        .count()
-        < 2
-    {
-        bail!(
-            "{} must check out the requested release tag before building runtime binaries and package archive",
-            display_relative(path)
-        );
-    }
     for forbidden in [
+        "cargo build",
+        "build-runtime",
+        "actions/download-artifact",
+        "gh release",
         "Publish generated marketplace snapshot",
         "MARKETPLACE_BRANCH",
         "dist/marketplace-root",

@@ -50,6 +50,31 @@ if tar -tvzf "$archive" | awk '$1 ~ /^l/ { print "symlink archive entry: " $0; b
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
+release_contract="$extract_root/plugins/codexy/runtime-release.json"
+[ -f "$release_contract" ] || { echo "packaged runtime-release.json missing" >&2; exit 1; }
+release_state=$(python3 - "$release_contract" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    contract = json.load(source)
+print(contract.get("state", ""))
+PY
+)
+case "$release_state" in
+  legacy-public) ;;
+  candidate-proven)
+    candidate_contract="$extract_root/plugins/codexy/runtime-candidate.json"
+    [ -f "$candidate_contract" ] || { echo "candidate-proven package lacks runtime-candidate.json" >&2; exit 1; }
+    expected_candidate_sha=$(python3 - "$release_contract" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    print(json.load(source)["artifact"]["payloadManifestSha256"])
+PY
+)
+    actual_candidate_sha=$(sha256sum "$candidate_contract" | awk '{print $1}')
+    [ "$expected_candidate_sha" = "$actual_candidate_sha" ] || { echo "runtime-candidate.json digest differs from payload manifest" >&2; exit 1; }
+    ;;
+  *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
+esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 "$script_dir/inspect-mcp-entrypoints" "$extract_root/plugins/codexy/.mcp.json" >"$tmp_dir/mcp-entrypoints"
