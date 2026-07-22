@@ -58,6 +58,15 @@ impl LaneAuthorityContext {
 }
 
 impl LaneAuthority {
+    fn new(source: AuthoritySource, owner: OwnerSelection) -> Option<Self> {
+        matches!(
+            (source, owner),
+            (AuthoritySource::ParentSupplied, OwnerSelection::ChildOwned)
+                | (AuthoritySource::CurrentThreadClassified, _)
+        )
+        .then_some(Self { owner, source })
+    }
+
     pub(super) fn owner(self) -> OwnerSelection {
         self.owner
     }
@@ -133,7 +142,10 @@ pub(super) fn lane_authority_record_state_before(
                 (
                     AuthorityRecordBuildState::Source(source),
                     LaneOwnershipMetadata::Valid(owner),
-                ) => AuthorityRecordBuildState::Owner(LaneAuthority { owner, source }),
+                ) => LaneAuthority::new(source, owner).map_or(
+                    AuthorityRecordBuildState::Invalid,
+                    AuthorityRecordBuildState::Owner,
+                ),
                 _ => AuthorityRecordBuildState::Invalid,
             };
         } else if normalized == "task classification:" {
@@ -183,9 +195,8 @@ pub(super) fn lane_authority_context_before(
     let state = match parse_lane_ownership_metadata(ownership) {
         LaneOwnershipMetadata::Absent => LaneAuthorityState::Absent,
         LaneOwnershipMetadata::Invalid => LaneAuthorityState::Invalid,
-        LaneOwnershipMetadata::Valid(owner) => {
-            LaneAuthorityState::Valid(LaneAuthority { owner, source })
-        }
+        LaneOwnershipMetadata::Valid(owner) => LaneAuthority::new(source, owner)
+            .map_or(LaneAuthorityState::Invalid, LaneAuthorityState::Valid),
     };
     LaneAuthorityContext { state }
 }
