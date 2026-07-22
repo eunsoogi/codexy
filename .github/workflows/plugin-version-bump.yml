@@ -54,6 +54,11 @@ jobs:
           mkdir -p "$state_dir"
           gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" \
             --json number,state,url,labels,milestone,assignees > "$state_dir/issue.json"
+          canonical_issue=$(scripts/canonicalize-version-pr-issue \
+            --requested "$ISSUE" \
+            --issue-json "$state_dir/issue.json" \
+            --repository "$GITHUB_REPOSITORY")
+          printf 'ISSUE=%s\n' "$canonical_issue" >> "$GITHUB_ENV"
           gh label list --repo "$GITHUB_REPOSITORY" --limit 100 \
             --json name > "$state_dir/repository-labels.json"
           scripts/render-version-pr-metadata \
@@ -78,6 +83,5 @@ jobs:
       - name: Open version bump pull request
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE: ${{ inputs.issue }}
           VERSION: ${{ inputs.version }}
         run: scripts/reconcile-version-pr

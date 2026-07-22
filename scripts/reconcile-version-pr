@@ -20,6 +20,10 @@ git diff --name-only -z --diff-filter=ACMRTUXB > "$state_dir/changed-files.z"
 refresh_version_pr_snapshot() {
   gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" \
     --json number,state,url,labels,milestone,assignees > "$state_dir/issue.json"
+  ISSUE=$(scripts/canonicalize-version-pr-issue \
+    --requested "$ISSUE" \
+    --issue-json "$state_dir/issue.json" \
+    --repository "$GITHUB_REPOSITORY")
   gh label list --repo "$GITHUB_REPOSITORY" --limit 100 \
     --json name > "$state_dir/repository-labels.json"
   scripts/render-version-pr-metadata \

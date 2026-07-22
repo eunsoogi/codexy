@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
+use super::workflow_command::WorkflowScriptCommand;
 use super::{read_base_text, rust_module, token_coverage};
 
 pub(super) fn has_new_module_boundary(
@@ -52,10 +53,10 @@ fn workflow_script_extraction(root: &Path, base_ref: &str, current: &str) -> Res
             .or_else(|| line.strip_prefix("- run:"))
             .map(str::trim)
     }) {
-        if command.split_ascii_whitespace().count() != 1 || !command.starts_with("scripts/") {
+        let Some(parsed) = WorkflowScriptCommand::parse(command) else {
             continue;
-        }
-        let path = PathBuf::from(command.trim_matches(['\'', '"']));
+        };
+        let path = parsed.executable;
         if path
             .file_name()
             .and_then(|name| name.to_str())

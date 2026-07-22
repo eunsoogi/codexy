@@ -76,6 +76,21 @@ class CanonicalIssueIdentity:
             raise ValueError(f"{context} must belong to {repository}")
 
 
+def canonicalize_requested_issue(
+    requested: str, issue: object, repository: str
+) -> CanonicalIssueIdentity:
+    if not requested or not requested.isascii() or not requested.isdigit():
+        raise ValueError("requested issue must be a positive integer")
+    requested_number = int(requested)
+    if requested_number < 1:
+        raise ValueError("requested issue must be a positive integer")
+    identity = CanonicalIssueIdentity.from_issue(issue)
+    identity.require_repository(repository, "requested issue")
+    if identity.number != requested_number:
+        raise ValueError("requested issue does not match the fetched issue")
+    return identity
+
+
 def parse_body_closing_references(
     body: str, repository: str
 ) -> tuple[CanonicalIssueIdentity, ...]:

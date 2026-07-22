@@ -43,3 +43,46 @@ fn touched_loc_accepts_cohesive_workflow_script_extraction() -> TestResult {
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
+
+#[test]
+fn touched_loc_parses_only_safe_static_script_commands() -> TestResult {
+    for command in [
+        "scripts/reconcile-release --check",
+        "scripts/reconcile-release --mode=check release",
+    ] {
+        assert_workflow_extraction(command, true)?;
+    }
+    for command in [
+        "command scripts/reconcile-release --check",
+        "scripts/reconcile-release > result.txt",
+        "scripts/reconcile-release $(echo --check)",
+        "scripts/reconcile-release `echo --check`",
+        "scripts/reconcile-release ${MODE}",
+        "scripts/reconcile-release | tee result.txt",
+        "scripts/reconcile-release && echo done",
+        "scripts/reconcile-release; echo done",
+        "/scripts/reconcile-release --check",
+        "scripts/../reconcile-release --check",
+        "cargo run --bin reconcile-release",
+    ] {
+        assert_workflow_extraction(command, false)?;
+    }
+    Ok(())
+}
+
+fn assert_workflow_extraction(command: &str, accepted: bool) -> TestResult {
+    let baseline = format!(
+        "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n{}",
+        regular_lines(247)
+    );
+    let repo = fixture(".github/workflows/release.yml", baseline)?;
+    write(
+        repo.path(),
+        ".github/workflows/release.yml",
+        &format!("name: fixture\njobs:\n  release:\n    steps:\n      - run: {command}\n"),
+    )?;
+    write(repo.path(), "scripts/reconcile-release", &regular_lines(247))?;
+    let output = validate(repo.path())?;
+    assert_eq!(output.status.success(), accepted, "{command}: {}", stderr(&output));
+    Ok(())
+}

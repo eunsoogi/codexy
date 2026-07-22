@@ -67,6 +67,10 @@ impl WorkflowFixture {
     }
 
     pub(super) fn run(&self) -> std::io::Result<Output> {
+        self.run_with_issue("301")
+    }
+
+    pub(super) fn run_with_issue(&self, issue: &str) -> std::io::Result<Output> {
         let path = format!(
             "{}:{}",
             self.bin.display(),
@@ -80,7 +84,7 @@ impl WorkflowFixture {
             .env("GITHUB_STEP_SUMMARY", self._temporary.path().join("summary.md"))
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("GH_TOKEN", "fixture")
-            .env("ISSUE", "301")
+            .env("ISSUE", issue)
             .env("VERSION", "1.3.1")
             .env("PYTHONDONTWRITEBYTECODE", "1")
             .output()
@@ -101,11 +105,16 @@ impl WorkflowFixture {
     pub(super) fn mutation_sentinel(&self) -> PathBuf {
         self.state.join("mutation-sentinel")
     }
+
+    pub(super) fn gate_events(&self) -> std::io::Result<String> {
+        fs::read_to_string(self.state.join("gates.log"))
+    }
 }
 
 fn copy_production(root: &Path, repo: &Path, bin: &Path) -> std::io::Result<()> {
     for path in [
         "scripts/reconcile-version-pr",
+        "scripts/canonicalize-version-pr-issue",
         "scripts/plan-version-pr-reconciliation",
         "scripts/render-version-pr-metadata",
         "scripts/version_pr_identity.py",

@@ -52,3 +52,44 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
     assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
     Ok(())
 }
+
+#[test]
+fn governing_issue_request_is_canonicalized_before_mutation() -> TestResult {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    for request in ["301", "0301"] {
+        let fixture = WorkflowFixture::new(root, Scenario::NewPr)?;
+        let output = fixture.run_with_issue(request)?;
+        assert!(
+            output.status.success(),
+            "{request}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let gates = fixture.gate_events()?;
+        let merge_gate = gates
+            .lines()
+            .find(|line| line.starts_with("--check-merge-message "))
+            .ok_or("merge-message gate")?;
+        let arguments = merge_gate.split_ascii_whitespace().collect::<Vec<_>>();
+        let issue_index = arguments
+            .iter()
+            .position(|argument| *argument == "--expected-issue")
+            .ok_or("expected issue argument")?;
+        assert_eq!(arguments.get(issue_index + 1), Some(&"301"), "{request}");
+    }
+
+    for request in ["0", "not-a-number", "301;echo"] {
+        let fixture = WorkflowFixture::new(root, Scenario::NewPr)?;
+        let output = fixture.run_with_issue(request)?;
+        assert!(!output.status.success(), "{request} was accepted");
+        assert_eq!(fixture.mutation_events()?, Vec::<String>::new(), "{request}");
+        assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
+    }
+
+    let fixture = WorkflowFixture::new(root, Scenario::NewPr)?;
+    let output = fixture.run_with_issue("302")?;
+    assert!(!output.status.success(), "request/API mismatch was accepted");
+    assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
+    assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
+    Ok(())
+}
