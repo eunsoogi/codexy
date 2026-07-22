@@ -23,7 +23,9 @@ MAX_ALIAS_DEPTH = 8
 class GitInvocation:
     operation: str | None
     arguments: list[str]
+    cwd: str
     cwd_owned: bool | None
+    git_dir: str | None
     alias_command: str | None = None
 
 
@@ -80,7 +82,7 @@ def _normalize(
     if git_dir is not None:
         cwd_owned = git_directory_owned(cwd, git_dir)
     if not arguments:
-        return GitInvocation(None, [], cwd_owned)
+        return GitInvocation(None, [], cwd, cwd_owned, git_dir)
     operation, rest = arguments[0], arguments[1:]
     aliases = git_aliases(cwd, git_dir)
     if aliases is None:
@@ -88,11 +90,11 @@ def _normalize(
     aliases.update(inline_aliases)
     command = aliases.get(operation)
     if command is None:
-        return GitInvocation(operation, rest, cwd_owned)
+        return GitInvocation(operation, rest, cwd, cwd_owned, git_dir)
     if depth >= MAX_ALIAS_DEPTH or operation in seen:
         return None
     if command.lstrip().startswith("!"):
-        return GitInvocation(None, [], cwd_owned, command.lstrip()[1:].strip())
+        return GitInvocation(None, [], cwd, cwd_owned, git_dir, command.lstrip()[1:].strip())
     try:
         expanded = shlex.split(command, posix=True)
     except ValueError:

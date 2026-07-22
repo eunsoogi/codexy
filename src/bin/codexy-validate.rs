@@ -71,6 +71,8 @@ struct Cli {
     base_ref: String,
     #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_completion_handoff", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc"])]
     print_covered_extensions: bool,
+    #[arg(long)]
+    print_hook_policy_discovery: bool,
 }
 
 fn main() -> Result<()> {
@@ -80,6 +82,13 @@ fn main() -> Result<()> {
         for extension in validation::covered_extensions(&plugin_root)? {
             println!("{extension}");
         }
+        return Ok(());
+    }
+    if cli.print_hook_policy_discovery {
+        println!(
+            "{}",
+            validation::hook_policy_inventory_discovery(&plugin_root)?
+        );
         return Ok(());
     }
     let mode = if cli.check_lsp {

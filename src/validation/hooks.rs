@@ -6,6 +6,7 @@ mod context;
 mod model;
 mod policy_inventory;
 mod policy_inventory_discovery;
+mod policy_inventory_frontmatter;
 mod post_compact;
 mod safety;
 
@@ -37,6 +38,12 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         Ok(()) => Vec::new(),
         Err(error) => vec![error.to_string()],
     }
+}
+
+pub(super) fn policy_inventory_discovery_json(plugin_root: &Path) -> Result<String> {
+    Ok(serde_json::to_string(
+        &policy_inventory_discovery::discover(plugin_root)?,
+    )?)
 }
 
 fn check_inner(plugin_root: &Path) -> Result<()> {

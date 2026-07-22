@@ -25,6 +25,9 @@ mod hook_git_normalization_policy;
 #[path = "../hook_mutation_admission_matrix.rs"]
 mod hook_mutation_admission_matrix;
 
+#[path = "../hook_effective_context_continuation.rs"]
+mod hook_effective_context_continuation;
+
 #[path = "../hook_pr_admission_policy.rs"]
 mod hook_pr_admission_policy;
 

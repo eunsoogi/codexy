@@ -106,7 +106,15 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
     if invocation is None:
         return True
     if invocation.alias_command is not None:
-        return not invocation.alias_command or _forbidden(invocation.alias_command, context, depth + 1)
+        alias_context = ExecutionContext(
+            invocation.cwd,
+            invocation.cwd_owned,
+            invocation.git_dir,
+            context.gh_repo,
+            context.environment,
+            context.opaque_environment,
+        )
+        return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1)
     if invocation.operation is None:
         return False
     target_owned = _explicit_owned(invocation.arguments)

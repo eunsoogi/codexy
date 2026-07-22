@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any
 
 from .body import has_sections
+from .github_target import PullRequestSelector, pull_request
 from .merge import positive_int
 from .pull_request import create as pr_create, shell_update
 from .repository import OWNED, github_identity, read_text
@@ -53,6 +54,7 @@ class Mutation:
     body: BodyEvidence | None = None
     issue: int | None = None
     merge_method: str | None = None
+    selector: PullRequestSelector | None = None
 
 
 def admitted(mutation: Mutation) -> bool:
@@ -89,9 +91,7 @@ def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: 
     target = _target(args, cwd_owned if gh_repo_owned is None else gh_repo_owned)
     if target is None:
         return True
-    filtered, owned = target
-    if not owned:
-        return False
+    filtered, default_owned, repository = target
     operation = filtered[:2]
     if operation == ["pr", "merge"]:
         mutation = _merge(filtered[2:])
@@ -105,7 +105,17 @@ def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: 
         mutation = _form(MutationKind.ISSUE_UPDATE, filtered[2:], cwd)
     else:
         return False
-    return mutation is None or not admitted(mutation)
+    if mutation is None:
+        return True
+    selector_repository = mutation.selector.repository if mutation.selector is not None else None
+    if repository is not None and selector_repository is not None:
+        if github_identity(repository) != github_identity(selector_repository):
+            return True
+    selected_repository = selector_repository or repository
+    owned = default_owned if selected_repository is None else github_identity(selected_repository) == OWNED
+    if not owned:
+        return False
+    return not admitted(mutation)
 
 
 def _connector(kind: MutationKind, data: dict[str, Any], *, number: str | None = None, require_title: bool = False, require_body: bool = False, issue: bool = False) -> Mutation | None:
@@ -124,7 +134,7 @@ def _connector(kind: MutationKind, data: dict[str, Any], *, number: str | None =
     return Mutation(kind, True, int(value) if positive_int(value) else None, title, BodyEvidence(body, BodySource.INLINE) if isinstance(body, str) else None, int(linked) if positive_int(linked) else None)
 
 
-def _target(args: list[str], default: bool | None) -> tuple[list[str], bool] | None:
+def _target(args: list[str], default: bool | None) -> tuple[list[str], bool, str | None] | None:
     filtered, repository, index = [], None, 0
     while index < len(args):
         arg = args[index]
@@ -143,9 +153,7 @@ def _target(args: list[str], default: bool | None) -> tuple[list[str], bool] | N
         else:
             filtered.append(arg)
             index += 1
-    if repository is None:
-        return filtered, default is not False
-    return filtered, github_identity(repository) == OWNED
+    return filtered, default is not False, repository
 
 
 def _merge(args: list[str]) -> Mutation | None:
@@ -168,9 +176,9 @@ def _merge(args: list[str]) -> Mutation | None:
             return None
         positionals.append(args[index])
         index += 1
-    if len(methods) != 1 or len(positionals) != 1 or (number := _cli_number(positionals[0])) is None:
+    if len(methods) != 1 or len(positionals) != 1 or (selector := pull_request(positionals[0])) is None:
         return None
-    return Mutation(MutationKind.PR_MERGE, True, number, merge_method=methods[0])
+    return Mutation(MutationKind.PR_MERGE, True, selector.number, merge_method=methods[0], selector=selector)
 
 
 def _form(kind: MutationKind, args: list[str], cwd: str) -> Mutation | None:
@@ -208,10 +216,15 @@ def _form(kind: MutationKind, args: list[str], cwd: str) -> Mutation | None:
         positionals.append(args[index])
         index += 1
     create = kind in {MutationKind.ISSUE_CREATE, MutationKind.PR_CREATE}
-    number = None if create or len(positionals) != 1 else _cli_number(positionals[0])
+    selector = None
+    if not create and len(positionals) == 1 and kind == MutationKind.PR_UPDATE:
+        selector = pull_request(positionals[0])
+        number = selector.number if selector is not None else None
+    else:
+        number = None if create or len(positionals) != 1 else _cli_number(positionals[0])
     if (create and positionals) or (not create and number is None):
         return None
-    return Mutation(kind, True, number, title, BodyEvidence(body, body_source) if body_source is not None else None)
+    return Mutation(kind, True, number, title, BodyEvidence(body, body_source) if body_source is not None else None, selector=selector)
 
 
 def _cli_number(value: str) -> int | None:

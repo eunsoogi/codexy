@@ -97,7 +97,9 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
             result = _xargs(args)
             if result is None:
                 return None
-            return _unwrap(result, context, depth + 1)
+            if not result:
+                return Invocation(None, [], context)
+            return Invocation(name(result[0]), result[1:], context, opaque=True)
         if executable in SHELL_INTERPRETERS:
             for index, argument in enumerate(args):
                 if command_option(argument):
@@ -206,10 +208,14 @@ def _xargs(args: list[str]) -> list[str] | None:
     flags = {"-0", "--null", "-o", "--open-tty", "-p", "--interactive", "-r", "--no-run-if-empty", "-t", "--verbose", "-x", "--exit"}
     while args and args[0].startswith("-"):
         option = args[0]
+        if option in {"--help", "--version"}:
+            return [] if len(args) == 1 else None
         if option == "--":
             return args[1:]
         if option in values:
-            args = args[2:] if len(args) > 1 else []
+            if len(args) < 2:
+                return None
+            args = args[2:]
         elif option in flags or option.startswith(tuple(item + "=" for item in values if item.startswith("--"))) or any(option.startswith(item) and len(option) > len(item) for item in values if len(item) == 2):
             args = args[1:]
         else:

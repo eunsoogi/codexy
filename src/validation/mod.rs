@@ -173,6 +173,13 @@ pub fn instruction_policy_diagnostics(path: &Path) -> Result<Vec<String>> {
     Ok(errors)
 }
 
+/// Returns canonical semantic policy-inventory discovery as JSON.
+/// # Errors
+/// Returns an error when Markdown or YAML instruction surfaces cannot be parsed.
+pub fn hook_policy_inventory_discovery(plugin_root: &Path) -> Result<String> {
+    hooks::policy_inventory_discovery_json(plugin_root)
+}
+
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {
     value
         .and_then(serde_json::Value::as_str)

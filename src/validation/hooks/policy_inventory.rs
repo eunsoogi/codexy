@@ -62,9 +62,9 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
             display_relative(&path)
         )
     })?;
-    if inventory.version != 4 || inventory.generated_from != "skills/**/*.md" {
+    if inventory.version != 5 || inventory.generated_from != "skills/**/*.md" {
         bail!(
-            "{} must identify semantic-block inventory version 4",
+            "{} must identify semantic Markdown and YAML inventory version 5",
             display_relative(&path)
         );
     }

@@ -4,10 +4,11 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result};
 use regex::Regex;
+use serde::Serialize;
 
 use crate::paths::display_relative;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub(super) struct Discovered {
     pub(super) id: String,
     pub(super) digest: String,
@@ -28,7 +29,7 @@ pub(super) fn discover(plugin_root: &Path) -> Result<Vec<Discovered>> {
         let text = fs::read_to_string(&path)?;
         let mut ordinal = 0;
         let mut seen = BTreeMap::<String, usize>::new();
-        for block in semantic_blocks(&text) {
+        for block in semantic_blocks(&text)? {
             for _ in pattern.find_iter(&block.text) {
                 ordinal += 1;
                 let occurrence = seen
@@ -60,33 +61,26 @@ enum BlockKind {
     Paragraph,
 }
 
-fn semantic_blocks(markdown: &str) -> Vec<MarkdownBlock> {
+fn semantic_blocks(markdown: &str) -> Result<Vec<MarkdownBlock>> {
     let list = Regex::new(r"^(\s*)(?:[-+*]|[0-9]+[.)])\s+").expect("static list pattern");
-    let mut blocks = Vec::new();
+    let lines = markdown.lines().collect::<Vec<_>>();
+    let (frontmatter, body_start) = super::policy_inventory_frontmatter::parse(&lines)?;
+    let mut blocks = frontmatter
+        .into_iter()
+        .filter_map(|scalar| {
+            let text = normalize(&scalar.text);
+            (!text.is_empty()).then_some(MarkdownBlock {
+                line: scalar.line,
+                text,
+            })
+        })
+        .collect::<Vec<_>>();
     let mut current: Option<(usize, BlockKind, Vec<String>)> = None;
     let mut fence: Option<(char, usize)> = None;
-    let mut frontmatter = markdown
-        .lines()
-        .next()
-        .is_some_and(|line| line.trim() == "---");
-    for (index, line) in markdown.lines().enumerate() {
+    for (index, line) in lines.iter().enumerate().skip(body_start) {
         let line_number = index + 1;
         let trimmed = line.trim();
         let marker = line.trim_start();
-        if frontmatter {
-            if line_number == 1 {
-                continue;
-            }
-            if trimmed == "---" {
-                frontmatter = false;
-            } else if !trimmed.is_empty() {
-                blocks.push(MarkdownBlock {
-                    line: line_number,
-                    text: normalize(trimmed),
-                });
-            }
-            continue;
-        }
         if let Some((character, length)) = fence {
             let closing = marker.chars().take_while(|item| *item == character).count();
             if closing >= length && marker[closing..].trim().is_empty() {
@@ -127,7 +121,7 @@ fn semantic_blocks(markdown: &str) -> Vec<MarkdownBlock> {
         }
     }
     flush(&mut current, &mut blocks);
-    blocks
+    Ok(blocks)
 }
 
 fn flush(current: &mut Option<(usize, BlockKind, Vec<String>)>, blocks: &mut Vec<MarkdownBlock>) {
@@ -227,6 +221,30 @@ mod tests {
             found[2].text,
             "Detached continuation MUST form a paragraph."
         );
+        Ok(())
+    }
+
+    #[test]
+    fn frontmatter_scalars_use_complete_yaml_values_and_stable_locations() -> Result<()> {
+        let folded = rules(
+            "---\nname: example\ndescription: >-\n  Agent MUST inspect the complete\n  repository scope.\n---\n# Example\n",
+        )?;
+        let literal = rules(
+            "---\nname: example\ndescription: |-\n  Agent MUST inspect the complete\n  repository scope.\n---\n# Example\n",
+        )?;
+        let plain = rules(
+            "---\nname: example\ndescription: Agent MUST inspect the complete repository scope.\n---\n# Example\n",
+        )?;
+        let expected = "Agent MUST inspect the complete repository scope.";
+        assert_eq!(folded[0].text, expected);
+        assert_eq!(folded[0].source, "skills/example/SKILL.md:3:1");
+        assert_eq!(folded[0].digest, literal[0].digest);
+        assert_eq!(folded[0].digest, plain[0].digest);
+
+        let changed = rules(
+            "---\nname: example\ndescription: >-\n  Agent MUST inspect the complete\n  filesystem scope.\n---\n# Example\n",
+        )?;
+        assert_ne!(folded[0].digest, changed[0].digest);
         Ok(())
     }
 }
