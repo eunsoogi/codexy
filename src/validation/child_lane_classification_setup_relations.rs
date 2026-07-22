@@ -168,6 +168,9 @@ fn action_is_passive(words: &[&str], start: usize, action: usize) -> bool {
 fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
     match words[index] {
         "create" if has_completed_auxiliary(words, index) => Some(()),
+        "creating" if action_is_passive(words, 0, index) && !is_future_plan(words, index) => {
+            Some(())
+        }
         "creates" | "created" if !is_future_plan(words, index) => Some(()),
         "creation" if words.get(index + 1) == Some(&"occurred") => Some(()),
         "switch"
@@ -218,7 +221,8 @@ fn action_is_negated(words: &[&str], start: usize, action: usize, end: usize) ->
             index >= start
                 && matches!(
                     (words[index], words[index + 1]),
-                    ("isn", "t")
+                    ("didn", "t")
+                        | ("isn", "t")
                         | ("aren", "t")
                         | ("wasn", "t")
                         | ("weren", "t")

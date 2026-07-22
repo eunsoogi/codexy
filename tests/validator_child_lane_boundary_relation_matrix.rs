@@ -84,8 +84,20 @@ fn validator_distinguishes_completed_setup_events_from_plans_and_nouns() -> Test
         "Ownership metadata source: parent-supplied\nLane ownership: child-owned";
     for (setup, expected) in [
         (
+            "The child was creating branch codexy/463 before classification.",
+            false,
+        ),
+        (
             "The child will create branch codexy/463 after classification.",
             true,
+        ),
+        (
+            "The child didn't set up worktree for codexy/463 before classification.",
+            true,
+        ),
+        (
+            "The child did set up worktree for codexy/463 before classification.",
+            false,
         ),
         (
             "Branch creation requirements for codexy/463 follow classification.",
