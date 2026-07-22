@@ -65,13 +65,13 @@ pub(super) fn diagnostics(receipt: &str) -> Vec<String> {
         if empty(&cluster.defect_class)
             || empty(&cluster.violated_invariant)
             || empty(&cluster.structural_boundary)
-            || cluster.threads.is_empty()
-            || cluster.matrix.positive.is_empty()
-            || cluster.matrix.negative.is_empty()
+            || !nonempty_list(&cluster.threads)
+            || !nonempty_list(&cluster.matrix.positive)
+            || !nonempty_list(&cluster.matrix.negative)
         {
             errors.push("root-cause cluster is missing typed class, invariant, boundary, thread, or matrix evidence".into());
         }
-        if !classes.insert(&cluster.defect_class) {
+        if !classes.insert(canonical(&cluster.defect_class)) {
             errors.push(format!(
                 "root-cause cluster `{}` must consolidate same-class examples",
                 cluster.defect_class
@@ -117,7 +117,7 @@ fn check_repair(cluster: &DefectCluster, state: ReceiptState, errors: &mut Vec<S
 fn check_reopen(cluster: &DefectCluster, reopen: &Reopen, errors: &mut Vec<String>) {
     match reopen {
         Reopen::DistinctInvariant { invariant }
-            if !empty(invariant) && invariant != &cluster.violated_invariant => {}
+            if !empty(invariant) && canonical(invariant) != canonical(&cluster.violated_invariant) => {}
         Reopen::StructuralRepairIncomplete { evidence } if !empty(evidence) => {}
         _ => errors.push(format!(
             "reopened cluster `{}` must name a distinct invariant or prove the prior structural repair incomplete",
@@ -135,10 +135,23 @@ fn normalize(value: &str) -> String {
 }
 
 fn empty(value: &str) -> bool {
-    value.trim().is_empty()
+    canonical(value).is_empty()
+}
+
+fn canonical(value: &str) -> String {
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase()
+}
+
+fn nonempty_list(values: &[String]) -> bool {
+    !values.is_empty() && values.iter().all(|value| !empty(value))
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ReviewClusterReceipt {
     state: ReceiptState,
     clusters: Vec<DefectCluster>,
@@ -153,6 +166,7 @@ enum ReceiptState {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DefectCluster {
     defect_class: String,
     violated_invariant: String,
@@ -164,6 +178,7 @@ struct DefectCluster {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RepresentativeMatrix {
     positive: Vec<String>,
     negative: Vec<String>,

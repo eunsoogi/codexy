@@ -129,6 +129,7 @@ pub enum Mode {
         handoff: String,
         pr_state: String,
     },
+    ReviewResponseCluster(String),
     Mcp,
     Hooks,
     Roles,

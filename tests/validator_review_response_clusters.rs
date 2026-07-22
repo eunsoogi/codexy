@@ -1,6 +1,9 @@
 use codexy_runtime::validation::review_response_cluster_diagnostics;
 
 use crate::support::{self, copy_plugin_fixture, stderr, TestResult};
+use serde_json::json;
+use std::{fs, process::Command};
+use tempfile::tempdir;
 
 const REQUIRED_CONTRACTS: &[(&str, &str)] = &[
     (
@@ -109,4 +112,76 @@ fn review_cluster_harness_rejects_phrase_only_and_same_class_reopen() {
             "invalid receipt unexpectedly passed: {receipt}"
         );
     }
+}
+
+#[test]
+fn shipped_cli_validates_review_cluster_receipt_files() -> TestResult {
+    let valid = structural_receipt();
+    assert!(run_receipt_file(&valid).status.success());
+
+    let missing = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .arg("--check-review-response-cluster")
+        .output()?;
+    assert!(!missing.status.success());
+
+    for receipt in [
+        "not JSON".to_owned(),
+        "{}".to_owned(),
+        valid.replace("\"state\":\"repaired\"", "\"state\":\"repaired\",\"extra\":true"),
+    ] {
+        assert!(!run_receipt_file(&receipt).status.success(), "{receipt}");
+    }
+    for value in [
+        "classification-boundary",
+        "owners use authoritative metadata",
+        "metadata parser",
+        "PRRT_classification_one",
+        "canonical metadata",
+        "GFM owner table",
+        "authoritative metadata classifier",
+    ] {
+        assert!(
+            !run_receipt_file(&valid.replace(value, "   ")).status.success(),
+            "blank {value} unexpectedly passed"
+        );
+    }
+    let duplicate = with_second_cluster(&valid, " classification-boundary ");
+    assert!(!run_receipt_file(&duplicate).status.success(), "{duplicate}");
+
+    let distinct = with_second_cluster(&valid, "command-normalization");
+    assert!(run_receipt_file(&distinct).status.success(), "{distinct}");
+    Ok(())
+}
+
+fn structural_receipt() -> String {
+    r#"{"state":"repaired","clusters":[{"defect_class":"classification-boundary","violated_invariant":"owners use authoritative metadata","structural_boundary":"metadata parser","threads":["PRRT_classification_one"],"matrix":{"positive":["canonical metadata"],"negative":["GFM owner table"]},"repair":{"kind":"structural","boundary":"metadata parser","strategy":"authoritative metadata classifier","removed_case_specific_behavior":true}}]}"#.into()
+}
+
+fn with_second_cluster(receipt: &str, defect_class: &str) -> String {
+    let mut parsed: serde_json::Value = serde_json::from_str(receipt).expect("valid receipt");
+    parsed["clusters"].as_array_mut().expect("clusters").push(json!({
+        "defect_class": defect_class,
+        "violated_invariant": "second invariant",
+        "structural_boundary": "command normalizer",
+        "threads": ["PRRT_second"],
+        "matrix": {"positive": ["canonical command"], "negative": ["foreign repository"]},
+        "repair": {
+            "kind": "structural",
+            "boundary": "command normalizer",
+            "strategy": "canonical command resolver",
+            "removed_case_specific_behavior": true
+        }
+    }));
+    parsed.to_string()
+}
+
+fn run_receipt_file(receipt: &str) -> std::process::Output {
+    let directory = tempdir().expect("tempdir");
+    let path = directory.path().join("receipt.json");
+    fs::write(&path, receipt).expect("receipt");
+    Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--check-review-response-cluster", "--review-response-cluster-file"])
+        .arg(path)
+        .output()
+        .expect("validator")
 }
