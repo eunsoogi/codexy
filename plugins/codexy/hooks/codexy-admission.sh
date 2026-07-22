@@ -13,11 +13,11 @@ if [ -z "$plugin_root" ]; then
   plugin_root=${0%/hooks/codexy-admission.sh}
 fi
 
-# The fixed PATH admits supported macOS tools; HOME is retained only for effective Git policy.
+# The fixed PATH admits supported macOS tools; selectors needed for effective policy are retained.
 runtime_home=${HOME-}
 if env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" python3 -I -B -c \
   'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' && \
-  env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" python3 -I -B "${plugin_root}/hooks/codexy-admission.py" \
+  env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" GH_REPO="${GH_REPO-}" python3 -I -B "${plugin_root}/hooks/codexy-admission.py" \
   --event "$event"; then
   exit 0
 fi

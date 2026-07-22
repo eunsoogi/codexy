@@ -71,10 +71,49 @@ fn command_scoped_url_rewrites_use_git_longest_match_semantics() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn effective_shell_invocation_and_repository_context_reaches_admission() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    let mirror = repository(workspace.path(), "mirror", "https://mirror.invalid/eunsoogi/codexy.git")?;
+    let sourced = workspace.path().join("enter-owned.sh");
+    std::fs::write(&sourced, format!("cd '{}'\n", owned.display()))?;
+
+    assert_case(&root, &foreign, &format!("cd '{}' >/dev/null && git push --force origin topic", owned.display()), true)?;
+    assert_case(&root, &foreign, &format!("cd '{}' && git push --force origin topic", owned.display()), true)?;
+    assert_case(&root, &foreign, &format!("source '{}' && git push --force origin topic", sourced.display()), true)?;
+    assert_case(&root, &foreign, &format!(". '{}' && git push --force origin topic", sourced.display()), true)?;
+    assert_case(&root, &foreign, "if true; then echo ok; fi", false)?;
+    assert_case(&root, &owned, "if true; then echo ok; fi", true)?;
+    assert_case_with_context(&root, &foreign, "gh pr merge 453 --merge", true, None, Some("eunsoogi/codexy"))?;
+    assert_case(&root, &foreign, "gh pr merge 453 --merge", false)?;
+
+    let home = workspace.path().join("home");
+    std::fs::create_dir(&home)?;
+    std::fs::write(home.join(".gitconfig"), "[url \"git@github.com:\"]\n\tinsteadOf = https://mirror.invalid/\n")?;
+    assert_case_with_context(&root, &mirror, "git push --force origin topic", true, Some(&home), None)?;
+    assert_case(&root, &mirror, "git push --force origin topic", false)
+}
+
 fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
+    assert_case_with_context(root, cwd, command, denied, None, None)
+}
+
+fn assert_case_with_context(
+    root: &std::path::Path,
+    cwd: &std::path::Path,
+    command: &str,
+    denied: bool,
+    home: Option<&std::path::Path>,
+    gh_repo: Option<&str>,
+) -> TestResult {
     let input = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
     child.arg("PreToolUse").env_clear().env("PLUGIN_ROOT", root).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    if let Some(home) = home { child.env("HOME", home); }
+    if let Some(gh_repo) = gh_repo { child.env("GH_REPO", gh_repo); }
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
     let output = child.wait_with_output()?;

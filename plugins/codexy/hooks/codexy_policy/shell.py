@@ -16,10 +16,13 @@ from .shell_groups import Command, GroupSyntaxError, Sequence, parse
 
 OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
+POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GH_REPO)\s*=")
 
 
-def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
-    return _forbidden(command, ExecutionContext(cwd, repository_owned(cwd), None, None), depth)
+def forbidden(command: str, cwd: str, gh_repo: str | None = None, depth: int = 0) -> bool:
+    environment = (("GH_REPO", gh_repo),) if gh_repo is not None else ()
+    return _forbidden(command, ExecutionContext(cwd, repository_owned(cwd), None, gh_repo, environment), depth)
 
 
 def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
@@ -46,8 +49,8 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
             if _forbidden(nested, context, depth + 1):
                 return True
         lexical_command = SUBCOMMAND.sub("__codexy_subcommand__", command)
-        if re.search(r"<<<?|\b(?:if|for|while|until|case)\b", command):
-            return True
+        if CONTROL.search(command):
+            return POLICY_STATE.search(command) is not None
     try:
         lexer = shlex.shlex(_separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
@@ -93,6 +96,8 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         return True, context
     if invocation.executable is None:
         return False, invocation.context
+    if invocation.executable in {".", "source"}:
+        return True, context
     if invocation.executable == "git":
         return _git(invocation.arguments, invocation.context, depth), context
     if invocation.executable == "gh":

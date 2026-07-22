@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,12 +14,17 @@ class DirectoryChange:
     opaque: bool = False
 
 
+REDIRECTION = re.compile(r"^\d*(?:>>|<>|>|<)(.*)$")
+
+
 def changed_directory(tokens: list[str], cwd: str) -> DirectoryChange:
     while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
         tokens = tokens[1:]
     if not tokens or name(tokens[0]) != "cd":
         return DirectoryChange(cwd)
-    args = tokens[1:]
+    args = _without_redirections(tokens[1:])
+    if args is None:
+        return DirectoryChange(cwd, True)
     mode, error_exit = "L", False
     while args and args[0].startswith("-") and args[0] != "-":
         option = args.pop(0)
@@ -44,6 +50,22 @@ def resolve_cwd(cwd: str, target: str) -> str:
     return os.path.abspath(os.path.join(cwd, target))
 
 
+def _without_redirections(args: list[str]) -> list[str] | None:
+    result, index = [], 0
+    while index < len(args):
+        match = REDIRECTION.fullmatch(args[index])
+        if match is None:
+            result.append(args[index])
+            index += 1
+        elif match.group(1):
+            index += 1
+        elif index + 1 < len(args):
+            index += 2
+        else:
+            return None
+    return result
+
+
 def command_option(value: str) -> bool:
     return value.lower() in {"-command", "/c"} or (value.startswith("-") and not value.startswith("--") and "c" in value.lower()[1:])
 
@@ -53,5 +75,7 @@ def flag(args: list[str], short: str, long: str) -> bool:
 
 
 def name(value: str) -> str:
+    if value == ".":
+        return value
     command = Path(value).name.lower()
     return command[:-4] if command.endswith(".exe") else command

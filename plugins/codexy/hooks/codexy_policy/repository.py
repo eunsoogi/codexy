@@ -110,6 +110,32 @@ def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
     return aliases
 
 
+def git_url_rewrites(cwd: str, git_dir: str | None = None) -> list[UrlRewrite] | None:
+    """Return URL rewrites across every active Git configuration scope."""
+    command = ["git", "-C", cwd]
+    if git_dir is not None:
+        command.append(f"--git-dir={git_dir}")
+    command.extend(["config", "--includes", "--null", "--get-regexp", r"^url\..*\.(insteadof|pushinsteadof)$"])
+    try:
+        result = subprocess.run(command, capture_output=True, check=False, timeout=1)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode not in {0, 1} or len(result.stdout) > 65536:
+        return None
+    rewrites: list[UrlRewrite] = []
+    try:
+        for record in (item for item in result.stdout.split(b"\0") if item):
+            variable, separator, value = record.partition(b"\n")
+            key, prefix = variable.decode("utf-8", "strict"), value.decode("utf-8", "strict")
+            match = re.fullmatch(r"url\.(.+)\.(insteadof|pushinsteadof)", key, re.IGNORECASE)
+            if not separator or match is None or not prefix or any(char in key + prefix for char in "\0\r\n"):
+                return None
+            rewrites.append(UrlRewrite(prefix, match.group(1), match.group(2).casefold() == "pushinsteadof"))
+    except UnicodeError:
+        return None
+    return rewrites
+
+
 def _aliases_from_config(config: str | None) -> dict[str, str] | None:
     if config is None:
         return None

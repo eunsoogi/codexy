@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 from .github import connector_admitted
@@ -58,7 +59,8 @@ def evaluate(event: str, payload: bytes) -> bytes:
         return b""
     if not isinstance(tool_input, dict) or not isinstance(tool_input.get("command"), str) or not isinstance(data.get("cwd"), str):
         return deny(event)
-    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"]) else b""
+    inherited_repository = os.environ.get("GH_REPO") or None
+    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"], inherited_repository) else b""
 
 
 def _github(event: str, tool: str, data: object) -> bytes:
