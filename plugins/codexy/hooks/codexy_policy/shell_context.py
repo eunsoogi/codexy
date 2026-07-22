@@ -3,20 +3,41 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 
-def changed_directory(tokens: list[str], cwd: str) -> str:
+@dataclass(frozen=True)
+class DirectoryChange:
+    cwd: str
+    opaque: bool = False
+
+
+def changed_directory(tokens: list[str], cwd: str) -> DirectoryChange:
     while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
         tokens = tokens[1:]
     if not tokens or name(tokens[0]) != "cd":
-        return cwd
+        return DirectoryChange(cwd)
     args = tokens[1:]
-    while args and args[0] in {"-L", "-P"}:
-        args = args[1:]
-    if args[:1] == ["--"]:
-        args = args[1:]
-    return resolve_cwd(cwd, args[0]) if len(args) == 1 else cwd
+    mode, error_exit = "L", False
+    while args and args[0].startswith("-") and args[0] != "-":
+        option = args.pop(0)
+        if option == "--":
+            break
+        if option.startswith("--") or any(flag not in "LPe@" for flag in option[1:]):
+            return DirectoryChange(cwd)
+        for flag in option[1:]:
+            if flag in "LP":
+                mode = flag
+            elif flag == "e":
+                error_exit = True
+    if error_exit and mode != "P":
+        return DirectoryChange(cwd)
+    if not args or args == ["-"]:
+        return DirectoryChange(cwd, True)
+    if len(args) != 1 or not args[0]:
+        return DirectoryChange(cwd)
+    return DirectoryChange(resolve_cwd(cwd, args[0]))
 
 
 def resolve_cwd(cwd: str, target: str) -> str:

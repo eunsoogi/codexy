@@ -98,6 +98,50 @@ fn malformed_or_opaque_groups_fail_closed() -> TestResult {
     assert_case(&root, &owned, "(printf `date`)", true)
 }
 
+#[test]
+fn cd_option_grammar_propagates_only_effective_directory_changes() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned space", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    let owned_path = owned.display();
+    for command in [
+        format!("cd -P -e '{owned_path}' && git push --force origin topic"),
+        format!("cd -Pe '{owned_path}' && git push --force origin topic"),
+        format!("cd -eP -- '{owned_path}' && git push --force origin topic"),
+        format!("cd -L -P -e '{owned_path}' && git push --force origin topic"),
+        format!("{{ cd -P -e '{owned_path}'; git push --force origin topic; }}"),
+        format!("(cd -P -e '{owned_path}' && git push --force origin topic)"),
+        format!("false || cd -P -e '{owned_path}' && git push --force origin topic"),
+        format!("cd -P -@ '{owned_path}' && git push --force origin topic"),
+    ] {
+        assert_case(&root, &foreign, &command, true)?;
+    }
+    for command in [
+        format!("cd -e '{owned_path}' && git push --force origin topic"),
+        format!("cd -P -e -L '{owned_path}' && git push --force origin topic"),
+        format!("cd '{owned_path}' extra && git push --force origin topic"),
+        format!("cd -Z '{owned_path}' && git push --force origin topic"),
+    ] {
+        assert_case(&root, &foreign, &command, false)?;
+    }
+    for command in ["cd", "cd --", "cd -", "cd -P -e"] {
+        assert_case(&root, &foreign, command, true)?;
+    }
+    assert_case(
+        &root,
+        &owned,
+        "(cd -P ../foreign); git push --force origin topic",
+        true,
+    )?;
+    assert_case(
+        &root,
+        &owned,
+        "{ cd -P ../foreign; }; git push --force origin topic",
+        false,
+    )
+}
+
 fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
     let input = json!({
         "hook_event_name": "PreToolUse",

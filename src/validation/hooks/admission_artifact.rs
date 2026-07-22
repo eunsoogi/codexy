@@ -51,6 +51,10 @@ const POLICY_SOURCES: &[Source] = &[
         contents: include_str!("../../../plugins/codexy/hooks/codexy_policy/git_command.py"),
     },
     Source {
+        path: "codexy_policy/git_options.py",
+        contents: include_str!("../../../plugins/codexy/hooks/codexy_policy/git_options.py"),
+    },
+    Source {
         path: "codexy_policy/github.py",
         contents: include_str!("../../../plugins/codexy/hooks/codexy_policy/github.py"),
     },

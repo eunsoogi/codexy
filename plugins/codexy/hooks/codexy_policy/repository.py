@@ -71,13 +71,13 @@ def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
         return None
     try:
         parser = configparser.ConfigParser(interpolation=None, strict=True)
-        parser.optionxform = str
         parser.read_string(config)
     except configparser.Error:
         return None
-    if not parser.has_section("alias"):
+    sections = [section for section in parser.sections() if section.casefold() == "alias"]
+    if not sections:
         return {}
-    aliases = dict(parser["alias"])
+    aliases = {key.casefold(): value for section in sections for key, value in parser[section].items()}
     return aliases if all(key and "=" not in key and "\n" not in value and "\r" not in value for key, value in aliases.items()) else None
 
 

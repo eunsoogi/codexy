@@ -84,14 +84,15 @@ def _normalize(
     if not arguments:
         return GitInvocation(None, [], cwd, cwd_owned, git_dir)
     operation, rest = arguments[0], arguments[1:]
+    alias_name = operation.casefold()
     aliases = git_aliases(cwd, git_dir)
     if aliases is None:
         return None
     aliases.update(inline_aliases)
-    command = aliases.get(operation)
+    command = aliases.get(alias_name)
     if command is None:
         return GitInvocation(operation, rest, cwd, cwd_owned, git_dir)
-    if depth >= MAX_ALIAS_DEPTH or operation in seen:
+    if depth >= MAX_ALIAS_DEPTH or alias_name in seen:
         return None
     if command.lstrip().startswith("!"):
         return GitInvocation(None, [], cwd, cwd_owned, git_dir, command.lstrip()[1:].strip())
@@ -101,14 +102,18 @@ def _normalize(
         return None
     if not expanded:
         return None
-    return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, seen | {operation}, depth + 1)
+    return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, seen | {alias_name}, depth + 1)
 
 
 def _alias_option(value: str) -> tuple[str, str] | None:
-    if not value.startswith("alias.") or "=" not in value:
+    if "=" not in value:
         return None
-    key, command = value[6:].split("=", 1)
-    return (key, command) if key and all(part and part.replace("_", "").isalnum() for part in key.split(".")) else None
+    variable, command = value.split("=", 1)
+    section, separator, key = variable.partition(".")
+    if section.casefold() != "alias" or not separator:
+        return None
+    canonical = key.casefold()
+    return (canonical, command) if canonical and all(part and part.replace("_", "").isalnum() for part in canonical.split(".")) else None
 
 
 def _option_value(option: str, arguments: list[str]) -> tuple[str, str | None]:

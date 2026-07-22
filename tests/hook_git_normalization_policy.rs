@@ -52,6 +52,75 @@ fn effective_invocation_resolves_wrappers_and_git_aliases_before_policy() -> Tes
     Ok(())
 }
 
+#[test]
+fn git_alias_names_are_canonical_across_config_and_invocation_case() -> TestResult {
+    let root = root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    append_config(
+        &owned,
+        "[Alias]\n\tShip = push --force\n\tSafe = status\n\tShell = !git push --force\n\tLoop-A = loop-b\n\tloop-B = LOOP-A\n",
+    )?;
+    append_config(&foreign, "[alias]\n\tDeliver = push --force git@github.com:eunsoogi/codexy.git\n")?;
+    for command in [
+        "git ship origin topic",
+        "git SHIP origin topic",
+        "git shell origin topic",
+        "git LOOP-A",
+        "git -c alias.Ship='push --force' ship origin topic",
+        "git -c Alias.Ship='push --force' SHIP origin topic",
+    ] {
+        assert_deny(&bash(&root, &owned, command)?).map_err(|error| format!("{command}: {error}"))?;
+    }
+    assert_deny(&bash(&root, &foreign, "git deliver topic")?)?;
+    assert_deny(&bash(
+        &root,
+        &foreign,
+        "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=Alias.Ship GIT_CONFIG_VALUE_0='!git push --force git@github.com:eunsoogi/codexy.git topic' git SHIP",
+    )?)?;
+    assert_eq!(bash(&root, &owned, "git safe")?, b"");
+    assert_eq!(bash(&root, &owned, "git SAFE")?, b"");
+    assert_eq!(bash(&root, &owned, "git -c Alias.Safe=status SAFE")?, b"");
+    Ok(())
+}
+
+#[test]
+fn policy_sensitive_git_options_use_bounded_long_option_normalization() -> TestResult {
+    let root = root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    for command in [
+        "git reset --hard HEAD",
+        "git reset --har HEAD",
+        "git reset --h HEAD",
+        "git reset --hazard HEAD",
+        "git clean --force -d",
+        "git clean --for -d",
+        "git clean --unknown",
+        "git push --mirror origin",
+        "git push --mir origin",
+        "git push --force-w origin topic",
+        "git push --for origin topic",
+        "git push --unknown origin topic",
+    ] {
+        assert_deny(&bash(&root, &owned, command)?).map_err(|error| format!("{command}: {error}"))?;
+    }
+    for command in [
+        "git reset --soft HEAD",
+        "git reset --kee HEAD",
+        "git clean --dry-run",
+        "git clean --dry",
+        "git push --dry-run origin topic",
+        "git push --porcelain origin topic",
+    ] {
+        assert_eq!(bash(&root, &owned, command)?, b"", "{command}");
+    }
+    assert_eq!(bash(&root, &foreign, "git push --unknown origin topic")?, b"");
+    Ok(())
+}
+
 fn bash(root: &std::path::Path, cwd: &std::path::Path, command: &str) -> TestResult<Vec<u8>> {
     let payload = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));

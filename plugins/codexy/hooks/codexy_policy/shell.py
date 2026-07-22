@@ -6,6 +6,7 @@ import re
 import shlex
 
 from .git_command import normalize as normalize_git
+from .git_options import normalize as normalize_git_options
 from .github import forbidden as gh_forbidden
 from .execution_context import ExecutionContext, at as context_at, git_config
 from .invocation import resolve
@@ -66,7 +67,10 @@ def _sequence(sequence: Sequence, context: ExecutionContext, depth: int) -> tupl
         if isinstance(step.node, Command):
             tokens = list(step.node.tokens)
             denied, resulting_context = _segment(tokens, active, depth)
-            resulting_context = context_at(resulting_context, changed_directory(tokens, active.cwd))
+            directory = changed_directory(tokens, active.cwd)
+            if directory.opaque:
+                return True, active
+            resulting_context = context_at(resulting_context, directory.cwd)
         else:
             denied, nested_context = _sequence(step.node.body, active, depth + 1)
             resulting_context = active if step.node.kind == "subshell" else nested_context
@@ -120,10 +124,13 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
         return False
     target_owned = _explicit_owned(invocation.arguments)
     applies = target_owned is True or (target_owned is None and invocation.cwd_owned is not False)
+    arguments = normalize_git_options(invocation.operation, invocation.arguments)
+    if arguments is None:
+        return applies
     if invocation.operation == "push":
-        forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in invocation.arguments)
+        forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in arguments)
         return applies and forced
-    return applies and ((invocation.operation == "reset" and "--hard" in invocation.arguments) or (invocation.operation == "clean" and flag(invocation.arguments, "f", "--force")))
+    return applies and ((invocation.operation == "reset" and "--hard" in arguments) or (invocation.operation == "clean" and flag(arguments, "f", "--force")))
 
 
 def _separate_lines(command: str) -> str:
