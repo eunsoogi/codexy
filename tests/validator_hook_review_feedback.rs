@@ -4,93 +4,79 @@ use std::process::Command;
 use crate::support;
 
 #[test]
-fn validator_cli_rejects_quoted_hook_entrypoint_shell_syntax()
--> Result<(), Box<dyn std::error::Error>> {
-    for malicious_name in [
-        "$(touch pwned; printf codexy-routing-context.sh)",
-        "`touch pwned`codexy-routing-context.sh",
+fn validator_rejects_quoted_entrypoint_shell_syntax() -> Result<(), Box<dyn std::error::Error>> {
+    for name in [
+        "$(touch pwned; printf codexy-issue-title-check.sh)",
+        "`touch pwned`check.sh",
     ] {
         let temp = tempfile::tempdir()?;
-        let plugin_root = temp.path().join("codexy");
-        copy_plugin(&plugin_root)?;
+        let root = fixture(temp.path())?;
         std::fs::copy(
-            plugin_root.join("hooks/codexy-routing-context.sh"),
-            plugin_root.join("hooks").join(malicious_name),
+            root.join("hooks/codexy-issue-title-check.sh"),
+            root.join("hooks").join(name),
         )?;
-        set_session_start_hook_command(
-            &plugin_root,
-            &format!("\"${{PLUGIN_ROOT}}/hooks/{malicious_name}\" SessionStart"),
+        set_command(
+            &root,
+            &format!("\"${{PLUGIN_ROOT}}/hooks/{name}\" PostToolUse"),
         )?;
-
-        let output = validate_hooks(&plugin_root)?;
-        assert!(
-            !output.status.success(),
-            "validator should reject quoted hook entrypoints with shell syntax: {malicious_name}"
-        );
+        let output = validate(&root)?;
+        assert!(!output.status.success());
         assert!(
             String::from_utf8_lossy(&output.stderr)
-                .contains("entrypoint paths must not contain shell syntax"),
-            "unexpected stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
+                .contains("entrypoint paths must not contain shell syntax")
         );
     }
     Ok(())
 }
 
 #[test]
-fn validator_cli_rejects_command_hooks_without_timeout() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_requires_generic_hook_timeouts() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
-    let hooks_path = plugin_root.join("hooks/hooks.json");
-    let mut hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    hooks_config["hooks"]["SessionStart"][0]["hooks"][0]
+    let root = fixture(temp.path())?;
+    let path = root.join("hooks/hooks.json");
+    let mut hooks = read(&path)?;
+    hooks["hooks"]["PostToolUse"][0]["hooks"][0]
         .as_object_mut()
-        .ok_or("SessionStart hook must be an object")?
+        .ok_or("handler")?
         .remove("timeout");
-    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
-
-    let output = validate_hooks(&plugin_root)?;
+    std::fs::write(path, serde_json::to_string_pretty(&hooks)?)?;
+    let output = validate(&root)?;
+    assert!(!output.status.success());
     assert!(
-        !output.status.success(),
-        "validator should reject command hooks without explicit timeouts"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("hook timeout is required"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+        String::from_utf8_lossy(&output.stderr).contains("hook timeout must be a positive integer")
     );
     Ok(())
 }
 
-fn set_session_start_hook_command(
-    plugin_root: &std::path::Path,
-    command: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let hooks_path = plugin_root.join("hooks/hooks.json");
-    let mut hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    hooks_config["hooks"]["SessionStart"][0]["hooks"][0]["command"] = serde_json::json!(command);
-    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
-    Ok(())
+fn fixture(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let root = base.join("codexy");
+    support::copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &root,
+    )?;
+    let path = root.join("hooks/hooks.json");
+    let mut hooks = read(&path)?;
+    hooks["hooks"]["PostToolUse"] = serde_json::json!([{"hooks":[{"type":"command","command":"\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid","timeout":3}]}]);
+    std::fs::write(path, serde_json::to_string_pretty(&hooks)?)?;
+    Ok(root)
 }
 
-fn validate_hooks(
-    plugin_root: &std::path::Path,
-) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+fn set_command(root: &std::path::Path, command: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let path = root.join("hooks/hooks.json");
+    let mut hooks = read(&path)?;
+    hooks["hooks"]["PostToolUse"][0]["hooks"][0]["command"] = serde_json::json!(command);
+    std::fs::write(path, serde_json::to_string_pretty(&hooks)?)?;
+    Ok(())
+}
+fn read(path: &std::path::Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
+}
+fn validate(root: &std::path::Path) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
+            root.to_str().ok_or("root")?,
             "--check-hooks",
         ])
         .output()?)
-}
-
-fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {
-    support::copy_dir(
-        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        plugin_root,
-    )
 }

@@ -43,7 +43,11 @@ pub(crate) fn repository_violations() -> Result<Vec<String>, Box<dyn std::error:
         .lines()
         .filter(|path| path.ends_with(".rs"))
     {
-        let current = fs::read_to_string(root.join(relative))?;
+        let current_path = root.join(relative);
+        if !current_path.is_file() {
+            continue;
+        }
+        let current = fs::read_to_string(current_path)?;
         let base = Command::new("git")
             .args(["show", &format!("origin/main:{relative}")])
             .current_dir(root)

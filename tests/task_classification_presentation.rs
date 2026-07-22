@@ -16,33 +16,23 @@ const FIELDS: [&str; 8] = [
 #[test]
 fn task_classification_uses_one_ordered_table() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/task-classification/SKILL.md"),
-    )?;
+    let skill =
+        std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
     let table = required_output_table(&skill)?;
 
     assert_eq!(field_names(table)?, FIELDS);
     assert!(field_names(&table.replacen("| Stop/blocker |", "", 1)).is_err());
-    assert!(field_names(&table.replace(
-        "| Stop/blocker |",
-        "| First allowed action |"
-    ))
-    .is_err());
-    assert!(field_names(&table.replace(
-        "| Lane type |",
-        "| Secondary surfaces |"
-    ))
-    .is_err());
-    assert!(field_names(&table.replacen(
-        "| Lane type |",
-        "| __swap__ |",
-        1
-    ).replacen(
-        "| Secondary surfaces |",
-        "| Lane type |",
-        1
-    ).replacen("| __swap__ |", "| Secondary surfaces |", 1))
-    .is_err());
+    assert!(field_names(&table.replace("| Stop/blocker |", "| First allowed action |")).is_err());
+    assert!(field_names(&table.replace("| Lane type |", "| Secondary surfaces |")).is_err());
+    assert!(
+        field_names(
+            &table
+                .replacen("| Lane type |", "| __swap__ |", 1)
+                .replacen("| Secondary surfaces |", "| Lane type |", 1)
+                .replacen("| __swap__ |", "| Secondary surfaces |", 1)
+        )
+        .is_err()
+    );
 
     let prompt = std::fs::read_to_string(
         root.join("plugins/codexy/skills/task-classification/agents/openai.yaml"),
@@ -85,11 +75,7 @@ fn field_names(table: &str) -> Result<Vec<&str>, String> {
     let names: Vec<_> = rows[2..]
         .iter()
         .map(|row| {
-            let cells: Vec<_> = row
-                .trim_matches('|')
-                .split('|')
-                .map(str::trim)
-                .collect();
+            let cells: Vec<_> = row.trim_matches('|').split('|').map(str::trim).collect();
             if cells.len() == 2 && !cells[1].is_empty() {
                 Ok(cells[0])
             } else {

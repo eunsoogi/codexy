@@ -6,6 +6,8 @@ use serde_json::Value;
 use crate::paths::{display_relative, repo_root};
 
 mod cargo;
+mod install;
+mod package;
 mod python;
 
 const PLUGIN_NAME: &str = "codexy";
@@ -15,15 +17,6 @@ const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
 fn repo_path(relative: &str) -> Result<PathBuf> {
     Ok(repo_root()?.join(relative))
-}
-
-fn package_manifests() -> Result<Vec<PathBuf>> {
-    let path = repo_path("package.json")?;
-    Ok(if path.exists() {
-        vec![path]
-    } else {
-        Vec::new()
-    })
 }
 
 fn load_json(path: &PathBuf) -> Result<Value> {
@@ -196,7 +189,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             package_platforms
         );
     }
-    for path in package_manifests()? {
+    for path in package::paths()? {
         let package = load_json(&path)?;
         let package_version = string_field(&package, "version", &display_relative(&path))?;
         require_matching_version(
@@ -207,6 +200,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         )?;
     }
     python::check_version(manifest_version)?;
+    install::check_version(manifest_version)?;
     cargo::check_version(manifest_version)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
@@ -238,11 +232,12 @@ pub fn set_version(version: &str) -> Result<String> {
     write_json(&market_path, &marketplace)?;
     write_json(&publish_path, &publish)?;
     cargo::set_version(version)?;
-    for path in package_manifests()? {
+    for path in package::paths()? {
         let mut package = load_json(&path)?;
         package["version"] = Value::String(version.to_owned());
         write_json(&path, &package)?;
     }
     python::set_version(version)?;
+    install::set_version(version)?;
     Ok(format!("plugin version synchronized to {version}"))
 }

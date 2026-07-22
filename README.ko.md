@@ -40,44 +40,14 @@ Codexy에는 다음이 포함됩니다.
 
 ## Codexy 설치
 
-Codex 플러그인 마켓플레이스에서 Codexy를 설치합니다. 이 저장소가 아직
-마켓플레이스 소스로 등록되어 있지 않다면 먼저 추가하세요.
+설치기를 내려받아 실행합니다.
 
 ```sh
-codex plugin marketplace add \
-  eunsoogi/codexy \
-  --ref main
+curl -fsSLO https://raw.githubusercontent.com/eunsoogi/codexy/main/install
+chmod +x install && ./install
 ```
 
-그다음 플러그인을 설치합니다.
-
-```sh
-codex plugin add codexy@codexy
-```
-
-Codex에서 설치된 플러그인과 MCP 서버를 확인합니다.
-
-```sh
-codex plugin list
-codex mcp list
-```
-
-새로 설치한 플러그인, 스킬 또는 MCP가 현재 세션에 나타나지 않으면 Codex를
-재시작하거나 새 Codex 세션을 여세요.
-
-최초 설치 또는 공식 플러그인 업데이트 후 Codex를 열기 전에 설치된 플러그인
-루트 부트스트랩을 한 번 실행합니다.
-
-```sh
-codex plugin list --marketplace codexy --json | python3 -c 'import json,os,stat,sys; d=json.load(sys.stdin); xs=[p for p in d["installed"] if p.get("pluginId")=="codexy@codexy" and p.get("name")=="codexy" and p.get("marketplaceName")=="codexy" and p.get("installed") is True and p.get("enabled") is True and p.get("source",{}).get("source")=="local" and p.get("marketplaceSource")=={"sourceType":"git","source":"https://github.com/eunsoogi/codexy.git"}]; len(xs)==1 or sys.exit("expected one enabled official Codexy install"); root=os.path.normpath(xs[0]["source"]["path"]); (os.path.isabs(root) and os.path.realpath(root)==root) or sys.exit("unsafe plugin path"); manifest=json.load(open(os.path.join(root,".codex-plugin","plugin.json"))); (manifest.get("name")=="codexy" and manifest.get("repository")=="https://github.com/eunsoogi/codexy") or sys.exit("unexpected plugin identity"); path=os.path.join(root,"bootstrap-codexy-agents"); mode=os.lstat(path).st_mode; (stat.S_ISREG(mode) and not stat.S_ISLNK(mode) and os.access(path,os.X_OK)) or sys.exit("unsafe bootstrap"); os.execv(path,[path])'
-```
-
-이 명령은 첫 작업 전에 정확한 specialist agent를 준비합니다.
-`RESTART_REQUIRED`가 표시되면 Codex를 한 번 시작하거나 재시작하세요. 읽기 전용
-`SessionStart` 검사는 공식 업데이트로 기존 projection이 오래됐는지 감지하고 같은
-명령을 안내하며, 훅은 사용자 상태를 다시 쓰지 않습니다. 작업 안의 부트스트랩은
-안전망으로 유지됩니다. Codexy는 MCP 바이너리를 소스 플러그인에 넣지 않고
-일치하는 GitHub Release 자산에서 런타임을 부트스트랩합니다.
+설치기는 Codexy를 새로 고치고 specialist agent를 준비합니다. 완료 후 Codex를 시작하세요.
 
 ## Codexy로 작업하는 흐름
 

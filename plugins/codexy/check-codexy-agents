@@ -43,5 +43,5 @@ if [ "$expected" -eq 12 ] && [ "$exact" -eq "$expected" ] && [ "$managed" -eq "$
   printf '%s\n' "D bootstrap: READY"
   exit 0
 fi
-printf '%s\n' "D bootstrap: UPDATE_REQUIRED (run the README pre-start bootstrap command, then restart Codex)"
+printf '%s\n' "D bootstrap: UPDATE_REQUIRED (run the root installer before starting Codex)"
 exit 1

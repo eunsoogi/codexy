@@ -29,7 +29,7 @@ validate_arguments() {
         exit 2
         ;;
       --config|--config=*)
-        echo "bootstrap-codexy-agents does not support --config because SessionStart checks the active CODEX_HOME discovery root" >&2
+        echo "bootstrap-codexy-agents does not support --config; pass the active CODEX_HOME discovery root" >&2
         exit 2
         ;;
       --codex-home=?*)

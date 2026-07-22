@@ -94,11 +94,7 @@ fn assert_status(addition: &str, accepted: bool) -> TestResult {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
     )?
-    .replacen(
-        "## Read Next",
-        &format!("{addition}\n\n## Read Next"),
-        1,
-    );
+    .replacen("## Read Next", &format!("{addition}\n\n## Read Next"), 1);
     assert_eq!(
         validate(skill)?.is_empty(),
         accepted,

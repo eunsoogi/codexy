@@ -18,7 +18,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     }
     if !update_checker.is_file() {
         errors.push(format!(
-            "{} read-only update checker must exist for SessionStart",
+            "{} read-only update checker must exist for explicit update validation",
             display_relative(&update_checker)
         ));
     }
@@ -74,41 +74,5 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             ));
         }
     }
-    check_routing_hook(
-        &mut errors,
-        &plugin_root.join("hooks/codexy-routing-context.sh"),
-    );
     errors
-}
-
-fn check_routing_hook(errors: &mut Vec<String>, routing_hook: &Path) {
-    const ROOT_ASSIGNMENT: &str = "plugin_root=$(CDPATH= cd -- \"$script_dir/..\" && pwd -P)";
-    const READ_ONLY_CALL: &str =
-        "if registration_check=$(\"$plugin_root/check-codexy-agents\"); then";
-    let Ok(contents) = std::fs::read_to_string(routing_hook) else {
-        errors.push(format!(
-            "{} must exist for the read-only agent update check",
-            display_relative(routing_hook)
-        ));
-        return;
-    };
-    let root_assignments = contents
-        .lines()
-        .filter(|line| line.trim() == ROOT_ASSIGNMENT)
-        .count();
-    let bootstrap_lines: Vec<_> = contents
-        .lines()
-        .filter(|line| line.contains("check-codexy-agents"))
-        .map(str::trim)
-        .collect();
-    if root_assignments != 1
-        || bootstrap_lines.as_slice() != [READ_ONLY_CALL]
-        || contents.contains("bootstrap-codexy-agents")
-        || contents.contains("register-codexy-agents")
-    {
-        errors.push(format!(
-            "{} must contain only the exact plugin-root read-only agent update check",
-            display_relative(routing_hook)
-        ));
-    }
 }
