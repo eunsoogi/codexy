@@ -8,7 +8,11 @@ pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
 }
 
 fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
-    let line = metadata_key(trimmed_value(lines[index]));
+    let raw_line = trimmed_value(lines[index]);
+    if raw_line.starts_with('|') {
+        return false;
+    }
+    let line = metadata_key(raw_line);
     if "pr:|pull request:"
         .split('|')
         .any(|marker| line.starts_with(marker))

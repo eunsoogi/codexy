@@ -15,6 +15,7 @@ mod child_lane_classification_control;
 mod child_lane_classification_fields;
 mod child_lane_classification_setup;
 mod child_lane_classification_setup_context;
+mod child_lane_gfm_classification_table;
 mod child_lane_owner_decision;
 mod child_lane_ownership;
 mod child_lane_ownership_fixes;

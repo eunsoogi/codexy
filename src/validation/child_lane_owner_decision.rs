@@ -1,13 +1,5 @@
 use super::child_lane_ownership_phrases::{has_absent_field_value, trimmed_value};
 
-pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
-    let value = trimmed_value(value);
-    is_affirmative_child_owner_decision(value)
-        || (!has_negated_child_routing_requirement(value)
-            && has_child_delegation(value)
-            && has_routing_only_parent_context(value))
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum OwnerSelection {
     ParentOwned,
@@ -16,34 +8,53 @@ pub(super) enum OwnerSelection {
     ExternalHumanOwned,
 }
 
-struct OwnerDecision {
-    selection: OwnerSelection,
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OwnerAffirmation {
+    Affirmative,
+    Denied,
 }
 
-enum OwnerAssertion {
-    Because,
-    ImplementationLane,
+struct OwnerDecision {
+    selection: OwnerSelection,
+    affirmation: OwnerAffirmation,
+}
+
+pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
+    let value = trimmed_value(value);
+    is_affirmative_child_owner_decision(value)
+        || matches!(
+            owner_prefix(value),
+            Some(OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned)
+        ) && (value.contains("child implementation lane")
+            || value.contains("implementation lane"))
+        || (!has_negated_child_routing_requirement(value)
+            && has_child_delegation(value)
+            && has_routing_only_parent_context(value))
 }
 
 pub(super) fn is_affirmative_owner_decision_for(value: &str, authority: OwnerSelection) -> bool {
-    parse_owner_selection(value) == Some(authority)
-        && parse_affirmative_owner_decision(value).is_some()
+    matches!(
+        parse_owner_decision(value),
+        Some(OwnerDecision {
+            selection,
+            affirmation: OwnerAffirmation::Affirmative,
+        }) if selection == authority
+    )
 }
 
 pub(super) fn is_affirmative_child_owner_decision(value: &str) -> bool {
     matches!(
-        parse_affirmative_owner_decision(value),
+        parse_owner_decision(value),
         Some(OwnerDecision {
-            selection: OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
+            selection: OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned,
+            affirmation: OwnerAffirmation::Affirmative,
         })
     )
 }
 
+/// Parses the complete normalized authoritative metadata value, never an owner prefix.
 pub(super) fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
-    let owner = trimmed_value(value)
-        .split_once(char::is_whitespace)
-        .map_or(trimmed_value(value), |(owner, _)| owner);
-    match owner {
+    match trimmed_value(value) {
         "parent-owned" => Some(OwnerSelection::ParentOwned),
         "child-owned" => Some(OwnerSelection::ChildOwned),
         "current-thread-owned" => Some(OwnerSelection::CurrentThreadOwned),
@@ -52,50 +63,49 @@ pub(super) fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
     }
 }
 
-fn parse_affirmative_owner_decision(value: &str) -> Option<OwnerDecision> {
-    let (owner, assertion) = trimmed_value(value).split_once(char::is_whitespace)?;
-    let selection = parse_owner_selection(owner)?;
-    parse_owner_assertion(selection, assertion).map(|_| OwnerDecision { selection })
-}
-
-fn parse_owner_assertion(selection: OwnerSelection, assertion: &str) -> Option<OwnerAssertion> {
-    let assertion = trimmed_value(assertion);
-    if assertion
-        .strip_prefix("because ")
-        .is_some_and(|rationale| !rationale.trim().is_empty())
-    {
-        return Some(OwnerAssertion::Because);
-    }
-    if !matches!(
-        selection,
-        OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
-    ) {
+fn parse_owner_decision(value: &str) -> Option<OwnerDecision> {
+    let (affirmation, value) = trimmed_value(value).split_once(char::is_whitespace)?;
+    let affirmation = match affirmation {
+        "affirmative" => OwnerAffirmation::Affirmative,
+        "denied" => OwnerAffirmation::Denied,
+        _ => return None,
+    };
+    let (selection, rationale) = value
+        .split_once(char::is_whitespace)
+        .map_or((value, None), |(selection, remainder)| {
+            (selection, Some(remainder))
+        });
+    if rationale.is_some_and(|rationale| {
+        !rationale
+            .strip_prefix("because ")
+            .is_some_and(|text| !text.trim().is_empty())
+    }) {
         return None;
     }
-    matches!(
-        assertion,
-        "child implementation lane" | "implementation lane"
-    )
-    .then_some(OwnerAssertion::ImplementationLane)
-    .or_else(|| {
-        assertion
-            .strip_prefix("implementation lane for ")
-            .filter(|rationale| !rationale.trim().is_empty())
-            .map(|_| OwnerAssertion::ImplementationLane)
+    Some(OwnerDecision {
+        selection: parse_owner_selection(selection)?,
+        affirmation,
     })
+}
+
+fn owner_prefix(value: &str) -> Option<OwnerSelection> {
+    let value = trimmed_value(value);
+    let selection = value
+        .split_once(char::is_whitespace)
+        .map_or(value, |(owner, _)| owner);
+    parse_owner_selection(selection)
 }
 
 pub(super) fn is_affirmative_child_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
-    parse_owner_selection(value) == Some(OwnerSelection::ChildOwned)
+    owner_prefix(value) == Some(OwnerSelection::ChildOwned)
         && !value.contains("not child-owned")
         && !has_absent_field_value(value, "child-owned")
 }
 
 pub(super) fn is_parent_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
-    parse_owner_selection(value) == Some(OwnerSelection::ParentOwned)
-        && !value.contains("not parent-owned")
+    owner_prefix(value) == Some(OwnerSelection::ParentOwned) && !value.contains("not parent-owned")
 }
 
 fn has_child_delegation(value: &str) -> bool {

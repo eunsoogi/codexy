@@ -4,20 +4,20 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 fn validator_requires_display_owner_to_match_governing_authority() -> TestResult {
     let cases = [
         (
-            "current-thread matching contrastive rationale",
+            "current-thread exact metadata with explicit affirmation",
             classification(
                 "current-thread-classified",
                 "current-thread-owned",
-                "current-thread-owned because parent-owned is reserved for orchestration",
+                "affirmative current-thread-owned because parent-owned is reserved for orchestration",
             ),
             true,
         ),
         (
-            "child matching rationale",
+            "child exact metadata with explicit affirmation",
             classification(
                 "current-thread-classified",
                 "child-owned",
-                "child-owned because the delegated child owns implementation",
+                "affirmative child-owned because the delegated child owns implementation",
             ),
             true,
         ),
@@ -26,7 +26,7 @@ fn validator_requires_display_owner_to_match_governing_authority() -> TestResult
             classification(
                 "current-thread-classified",
                 "current-thread-owned",
-                "child-owned because the delegated child owns implementation",
+                "affirmative child-owned because the delegated child owns implementation",
             ),
             false,
         ),
@@ -35,7 +35,7 @@ fn validator_requires_display_owner_to_match_governing_authority() -> TestResult
             classification(
                 "current-thread-classified",
                 "child-owned",
-                "current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
             ),
             false,
         ),
@@ -44,7 +44,7 @@ fn validator_requires_display_owner_to_match_governing_authority() -> TestResult
             classification(
                 "current-thread-classified",
                 "parent-owned",
-                "current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
             ),
             false,
         ),
@@ -53,14 +53,14 @@ fn validator_requires_display_owner_to_match_governing_authority() -> TestResult
             classification(
                 "current-thread-classified",
                 "unknown",
-                "current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
             ),
             false,
         ),
         (
             "missing authority metadata",
             classification_without_metadata(
-                "current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
             ),
             false,
         ),
@@ -69,13 +69,67 @@ fn validator_requires_display_owner_to_match_governing_authority() -> TestResult
             classification(
                 "current-thread-classified",
                 "current-thread-owned",
-                "current-thread-ownedness because the active thread owns issue-sized work",
+                "affirmative current-thread-ownedness because the active thread owns issue-sized work",
             ),
             false,
         ),
         (
             "missing display owner row",
             classification_without_owner("current-thread-classified", "current-thread-owned"),
+            false,
+        ),
+        (
+            "multiple authoritative selections fail closed",
+            classification(
+                "current-thread-classified",
+                "child-owned or parent-owned",
+                "affirmative child-owned because the delegated child owns implementation",
+            ),
+            false,
+        ),
+        (
+            "conjoined authoritative selections fail closed",
+            classification(
+                "current-thread-classified",
+                "child-owned and parent-owned",
+                "affirmative child-owned because the delegated child owns implementation",
+            ),
+            false,
+        ),
+        (
+            "authoritative prose suffix fails closed",
+            classification(
+                "current-thread-classified",
+                "child-owned for implementation",
+                "affirmative child-owned because the delegated child owns implementation",
+            ),
+            false,
+        ),
+        (
+            "denied display decision fails closed",
+            classification(
+                "current-thread-classified",
+                "current-thread-owned",
+                "denied current-thread-owned because not allowed to act",
+            ),
+            false,
+        ),
+        (
+            "unmarked display rationale fails closed",
+            classification(
+                "current-thread-classified",
+                "current-thread-owned",
+                "current-thread-owned because not allowed to act",
+            ),
+            false,
+        ),
+        (
+            "ambiguous display selection fails closed",
+            classification(
+                "current-thread-classified",
+                "current-thread-owned",
+                "affirmative current-thread-owned or child-owned",
+            ),
             false,
         ),
     ];
@@ -89,9 +143,9 @@ fn validator_requires_display_owner_to_match_governing_authority() -> TestResult
             classification(
                 "current-thread-classified",
                 "current-thread-owned",
-                "current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
             ),
-            classification_table("child-owned because the delegated child owns implementation"),
+            classification_table("affirmative child-owned because the delegated child owns implementation"),
         ),
         false,
     )?;
@@ -102,9 +156,9 @@ fn validator_requires_display_owner_to_match_governing_authority() -> TestResult
             classification(
                 "current-thread-classified",
                 "current-thread-owned",
-                "current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
             ),
-            classification_table("current-thread-owned because unknown ownership is elsewhere"),
+            classification_table("affirmative current-thread-owned because unknown ownership is elsewhere"),
         ),
         true,
     )

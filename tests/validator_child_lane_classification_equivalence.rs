@@ -24,8 +24,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "documented current-thread rationale",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
                 1,
             ),
             true,
@@ -33,8 +33,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "contrastive parent rationale",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "current-thread-owned because parent-owned is reserved for orchestration",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because parent-owned is reserved for orchestration",
                 1,
             ),
             true,
@@ -42,8 +42,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "contrastive unknown rationale",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "current-thread-owned because unknown ownership remains unresolved elsewhere",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because unknown ownership remains unresolved elsewhere",
                 1,
             ),
             true,
@@ -51,8 +51,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "post-boundary current-thread display text",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "current-thread-owned because the active thread is not current-thread-owned",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread is not current-thread-owned",
                 1,
             ),
             true,
@@ -60,8 +60,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "ambiguous current-thread owner",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "current-thread-owned or parent-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative current-thread-owned or parent-owned",
                 1,
             ),
             false,
@@ -69,7 +69,7 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "missing current-thread rationale",
             complete.replacen(
-                "current-thread-owned child implementation lane",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
                 "current-thread-owned",
                 1,
             ),
@@ -78,8 +78,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "parent-selected owner",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "parent-owned because the parent owns issue-sized work",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative parent-owned because the parent owns issue-sized work",
                 1,
             ),
             false,
@@ -87,8 +87,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "unknown-selected owner",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "unknown ownership because the owner was not classified",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative unknown ownership because the owner was not classified",
                 1,
             ),
             false,
@@ -96,8 +96,8 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
         (
             "ambiguous-selected owner",
             complete.replacen(
-                "current-thread-owned child implementation lane",
-                "ambiguous ownership because two owners are named",
+                "affirmative current-thread-owned because the active thread owns issue-sized work",
+                "affirmative ambiguous ownership because two owners are named",
                 1,
             ),
             false,
@@ -117,5 +117,5 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
 }
 
 fn complete_gfm_classification() -> &'static str {
-    "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+    "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative current-thread-owned because the active thread owns issue-sized work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }

@@ -1,10 +1,11 @@
 use super::child_lane_classification_authority::lane_authority_context_before;
 use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
-use super::child_lane_classification_fields::{
-    ClassificationFields, GfmClassificationTable, GfmClassificationTableEvent,
-};
+use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup_context::child_lane_context_applies;
+use super::child_lane_gfm_classification_table::{
+    GfmClassificationTable, GfmClassificationTableEvent,
+};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
@@ -94,9 +95,6 @@ pub(super) fn latest_classification_before(
             table = GfmClassificationTable::default();
             continue;
         }
-        if line.is_empty() {
-            continue;
-        }
         let Some(fields) = seen.as_mut() else {
             continue;
         };
@@ -116,6 +114,9 @@ pub(super) fn latest_classification_before(
                 continue;
             }
             GfmClassificationTableEvent::NotGfm => {}
+        }
+        if line.is_empty() {
+            continue;
         }
         if let Some((key, value)) = line.split_once(':') {
             fields.record(metadata_key(key), trimmed_value(value), authority, false);

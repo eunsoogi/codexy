@@ -115,8 +115,13 @@ For an undelegated lane, agents MUST replace `parent-supplied` with
 `current-thread-classified` and MUST use exactly one owner value:
 `parent-owned`, `child-owned`, `current-thread-owned`, or
 `external/human-owned`. A delegated child lane MUST use the parent-supplied
-form. The GFM `Owner decision` cell explains the decision but MUST NOT be used
-as control authority.
+form. The GFM `Owner decision` cell is display/audit evidence and MUST NOT be
+used as control authority. Its value MUST use the typed grammar
+`affirmative <owner>` or `denied <owner>`, optionally followed by
+`because <opaque rationale>`; `<owner>` MUST be exactly one of the owner
+values above. An affirmative display owner MUST equal the authoritative
+metadata owner before it can support a classification. Rationale text is not
+authority and MUST NOT determine affirmation or selection.
 
 ## Required Output
 
@@ -127,7 +132,7 @@ two-column GFM table before taking the first workflow action:
 | --- | --- |
 | Lane type | One primary taxonomy entry. |
 | Secondary surfaces | Relevant secondary surfaces or `None`. |
-| Owner decision | The owner and why that owner is allowed to act. |
+| Owner decision | `affirmative <owner>` with an optional `because <rationale>`, or `denied <owner>`. |
 | Atomic scope | Whether the request is issue-sized, bundled, or needs splitting before setup. |
 | Required skills | The Codexy skills to read before acting. |
 | Required tools/evidence | Lane-relevant required evidence and unavailable-tool fallbacks. |
@@ -138,7 +143,8 @@ two-column GFM table before taking the first workflow action:
 
 - The `Lane type` row names one primary taxonomy entry.
 - The `Secondary surfaces` row names relevant secondary surfaces or `None`.
-- The `Owner decision` row names the owner and why that owner is allowed to act.
+- The `Owner decision` row MUST use the typed affirmation and exact owner grammar;
+  its optional rationale explains the decision but does not create authority.
 - The `Atomic scope` row states whether the request is issue-sized, bundled, or needs
   splitting before setup.
 - The `Required skills` row lists the Codexy skills to read before acting.

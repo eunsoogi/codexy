@@ -15,6 +15,16 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
             true,
         ),
         (
+            "differently headed results remain neutral",
+            format!("{complete}\n{}", checks_table()),
+            true,
+        ),
+        (
+            "arbitrary nonclassification headers remain neutral",
+            format!("{complete}\n{}", audit_table()),
+            true,
+        ),
+        (
             "later recognized incomplete table invalidates",
             format!("{complete}\n{incomplete}"),
             false,
@@ -79,11 +89,19 @@ fn assert_result(name: &str, classification: &str, expected: bool) -> TestResult
 }
 
 fn classification_table() -> &'static str {
-    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }
 
 fn results_table() -> &'static str {
     "| Field | Value |\n| --- | --- |\n| Result | pass |\n| Evidence | captured |"
+}
+
+fn checks_table() -> &'static str {
+    "| Check | Status |\n| --- | --- |\n| Rust tests | pass |\n| Evidence | captured |"
+}
+
+fn audit_table() -> &'static str {
+    "| Artifact | Outcome |\n| --- | --- |\n| Config | valid |\n| CI | green |"
 }
 
 fn controls() -> &'static str {
