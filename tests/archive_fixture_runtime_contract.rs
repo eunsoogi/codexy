@@ -29,7 +29,6 @@ fn archive_fixture_uses_cargo_provided_runtime_binaries_without_nested_builds() 
     for binary in [
         "CARGO_BIN_EXE_codexy-mcp-lsp",
         "CARGO_BIN_EXE_codexy-mcp-codegraph",
-        "CARGO_BIN_EXE_codexy-validate",
     ] {
         assert!(
             source

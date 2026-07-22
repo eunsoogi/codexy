@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   rust-test:
-    name: Rust test suite
+    name: Rust test suite (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -25,3 +25,17 @@ jobs:
 
       - name: Enforce exact full Rust workload budget
         run: scripts/profile-rust-tests
+
+  windows-rust-test:
+    name: Rust test suite (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run full Rust workload
+        run: cargo test --locked --all-targets

@@ -15,6 +15,10 @@ use job::Job;
 mod finish;
 use finish::{finish_after_output_exceeded, finish_after_timeout};
 
+#[cfg(test)]
+#[path = "process_windows/tests.rs"]
+mod tests;
+
 pub(super) const MAX_HOOK_OUTPUT_BYTES: usize = 1024 * 1024;
 
 pub(in crate::validation::hooks) fn output_with_timeout(
@@ -147,6 +151,7 @@ fn receive(
         }
         Ok(ReaderEvent::Failed(error)) => Err(error.into()),
         Err(mpsc::RecvTimeoutError::Timeout) => Ok(Receive::Open),
+        Err(mpsc::RecvTimeoutError::Disconnected) if *closed >= 2 => Ok(Receive::Open),
         Err(mpsc::RecvTimeoutError::Disconnected) => bail!("hook output reader disconnected"),
     }
 }
@@ -209,10 +214,12 @@ struct CollectedOutput {
 
 impl CollectedOutput {
     fn extend(&mut self, stream: Stream, bytes: &[u8]) {
-        match stream {
-            Stream::Stdout => self.stdout.extend_from_slice(bytes),
-            Stream::Stderr => self.stderr.extend_from_slice(bytes),
-        }
+        let buffer = match stream {
+            Stream::Stdout => &mut self.stdout,
+            Stream::Stderr => &mut self.stderr,
+        };
+        let remaining = MAX_HOOK_OUTPUT_BYTES.saturating_sub(buffer.len());
+        buffer.extend_from_slice(&bytes[..bytes.len().min(remaining)]);
     }
 
     fn exceeded(&self) -> bool {
