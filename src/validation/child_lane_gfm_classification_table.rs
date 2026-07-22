@@ -2,19 +2,28 @@ use super::child_lane_classification_schema::ClassificationTableSchema;
 use super::child_lane_ownership_phrases::metadata_key;
 
 pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
+    let cells = gfm_table_cells(line)?;
+    let [key, value] = cells.as_slice() else {
+        return None;
+    };
+    Some((*key, *value))
+}
+
+fn gfm_table_cells(line: &str) -> Option<Vec<&str>> {
     let line = line.strip_prefix('|')?;
     let closing_pipe = line.len().checked_sub(1)?;
     (!is_escaped_pipe(line, closing_pipe)).then_some(())?;
     let row = line.strip_suffix('|')?;
-    let separator = row
-        .match_indices('|')
-        .find_map(|(index, _)| (!is_escaped_pipe(row, index)).then_some(index))?;
-    let (key, value) = row.split_at(separator);
-    let value = &value[1..];
-    (!value
-        .match_indices('|')
-        .any(|(index, _)| !is_escaped_pipe(value, index)))
-    .then_some((key.trim(), value.trim()))
+    let mut cells = Vec::new();
+    let mut start = 0;
+    for (index, _) in row.match_indices('|') {
+        if !is_escaped_pipe(row, index) {
+            cells.push(row[start..index].trim());
+            start = index + 1;
+        }
+    }
+    cells.push(row[start..].trim());
+    Some(cells)
 }
 
 fn is_escaped_pipe(row: &str, pipe_index: usize) -> bool {
@@ -27,9 +36,27 @@ fn is_escaped_pipe(row: &str, pipe_index: usize) -> bool {
         == 1
 }
 
-fn is_table_separator(line: &str) -> bool {
-    classification_table_row(line)
-        .is_some_and(|(key, value)| is_gfm_delimiter_cell(key) && is_gfm_delimiter_cell(value))
+enum GfmDelimiterRow {
+    Valid,
+    Invalid,
+    Absent,
+}
+
+fn parse_table_separator(line: &str) -> GfmDelimiterRow {
+    let Some(cells) = gfm_table_cells(line) else {
+        return GfmDelimiterRow::Absent;
+    };
+    if cells.len() == 2 && cells.iter().all(|cell| is_gfm_delimiter_cell(cell)) {
+        return GfmDelimiterRow::Valid;
+    }
+    if cells.iter().any(|cell| is_delimiter_candidate_cell(cell)) {
+        return GfmDelimiterRow::Invalid;
+    }
+    GfmDelimiterRow::Absent
+}
+
+fn is_delimiter_candidate_cell(cell: &str) -> bool {
+    cell.is_empty() || matches!(cell.chars().next(), Some('-' | ':'))
 }
 
 fn is_gfm_delimiter_cell(cell: &str) -> bool {
@@ -88,12 +115,16 @@ impl GfmClassificationTable {
     }
 
     fn consume_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
-        if is_table_separator(line) {
-            self.state = GfmClassificationTableState::Classification { next_field: 0 };
-            GfmClassificationTableEvent::Replace
-        } else {
-            self.state = GfmClassificationTableState::Neutral;
-            GfmClassificationTableEvent::NotGfm
+        match parse_table_separator(line) {
+            GfmDelimiterRow::Valid => {
+                self.state = GfmClassificationTableState::Classification { next_field: 0 };
+                GfmClassificationTableEvent::Replace
+            }
+            GfmDelimiterRow::Invalid => self.invalidate(),
+            GfmDelimiterRow::Absent => {
+                self.state = GfmClassificationTableState::Neutral;
+                GfmClassificationTableEvent::NotGfm
+            }
         }
     }
 
@@ -138,7 +169,7 @@ impl GfmClassificationTable {
     }
 
     fn consume_other_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
-        if is_table_separator(line) {
+        if matches!(parse_table_separator(line), GfmDelimiterRow::Valid) {
             self.state = GfmClassificationTableState::Neutral;
             return GfmClassificationTableEvent::NotGfm;
         }
