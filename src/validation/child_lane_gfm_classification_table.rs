@@ -1,4 +1,4 @@
-use super::child_lane_classification_fields::ClassificationFields;
+use super::child_lane_classification_schema::ClassificationTableSchema;
 use super::child_lane_ownership_phrases::metadata_key;
 
 pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
@@ -43,104 +43,113 @@ pub(super) struct GfmClassificationTable {
     state: GfmClassificationTableState,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 enum GfmClassificationTableState {
     #[default]
     Neutral,
-    Header,
-    Candidate,
-    CandidateUnknown,
-    Classification,
-    ClassificationHeader,
-    ClassificationUnknown,
+    CanonicalHeader,
+    Classification {
+        next_field: usize,
+    },
+    Complete,
+    OtherHeader,
 }
 
 pub(super) enum GfmClassificationTableEvent<'a> {
     Ignore,
+    Replace,
     Record(&'a str, &'a str),
-    ReplaceAndRecord(&'a str, &'a str),
     Invalidate,
     NotGfm,
 }
 
 impl GfmClassificationTable {
     pub(super) fn consume<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
-        match &mut self.state {
-            GfmClassificationTableState::Neutral => classification_table_row(line)
-                .is_some()
-                .then(|| {
-                    self.state = GfmClassificationTableState::Header;
-                    GfmClassificationTableEvent::Ignore
-                })
-                .unwrap_or(GfmClassificationTableEvent::NotGfm),
-            GfmClassificationTableState::Header => {
-                self.state = if is_table_separator(line) {
-                    GfmClassificationTableState::Candidate
-                } else {
-                    GfmClassificationTableState::Neutral
-                };
+        match self.state {
+            GfmClassificationTableState::Neutral => self.consume_neutral(line),
+            GfmClassificationTableState::CanonicalHeader => self.consume_header(line),
+            GfmClassificationTableState::Classification { next_field } => {
+                self.consume_classification(line, next_field)
+            }
+            GfmClassificationTableState::Complete => self.consume_complete(line),
+            GfmClassificationTableState::OtherHeader => self.consume_other_header(line),
+        }
+    }
+
+    fn consume_neutral<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
+        match classification_table_row(line) {
+            Some((key, value)) if ClassificationTableSchema::has_canonical_header(key, value) => {
+                self.state = GfmClassificationTableState::CanonicalHeader;
+                GfmClassificationTableEvent::Ignore
+            }
+            Some(_) => GfmClassificationTableEvent::Ignore,
+            None => GfmClassificationTableEvent::NotGfm,
+        }
+    }
+
+    fn consume_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
+        if is_table_separator(line) {
+            self.state = GfmClassificationTableState::Classification { next_field: 0 };
+            GfmClassificationTableEvent::Replace
+        } else {
+            self.state = GfmClassificationTableState::Neutral;
+            GfmClassificationTableEvent::NotGfm
+        }
+    }
+
+    fn consume_classification<'a>(
+        &mut self,
+        line: &'a str,
+        next_field: usize,
+    ) -> GfmClassificationTableEvent<'a> {
+        let Some((key, value)) = classification_table_row(line) else {
+            return self.invalidate();
+        };
+        let key = metadata_key(key);
+        if ClassificationTableSchema::accepts(next_field, key, value) {
+            self.state = (next_field + 1 == ClassificationTableSchema::field_count())
+                .then_some(GfmClassificationTableState::Complete)
+                .unwrap_or(GfmClassificationTableState::Classification {
+                    next_field: next_field + 1,
+                });
+            return GfmClassificationTableEvent::Record(key, value);
+        }
+        self.invalidate()
+    }
+
+    fn consume_complete<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
+        match classification_table_row(line) {
+            Some((key, value)) if ClassificationTableSchema::has_canonical_header(key, value) => {
+                self.state = GfmClassificationTableState::CanonicalHeader;
+                GfmClassificationTableEvent::Ignore
+            }
+            Some((key, _)) if ClassificationTableSchema::records_key(metadata_key(key)) => {
+                self.invalidate()
+            }
+            Some(_) => {
+                self.state = GfmClassificationTableState::OtherHeader;
+                GfmClassificationTableEvent::Ignore
+            }
+            None => {
+                self.state = GfmClassificationTableState::Neutral;
                 GfmClassificationTableEvent::NotGfm
             }
-            GfmClassificationTableState::Candidate => match classification_table_row(line) {
-                Some((key, value)) if Self::is_classification_key(key) => {
-                    self.state = GfmClassificationTableState::Classification;
-                    GfmClassificationTableEvent::ReplaceAndRecord(key, value)
-                }
-                Some(_) => {
-                    self.state = GfmClassificationTableState::CandidateUnknown;
-                    GfmClassificationTableEvent::Ignore
-                }
-                None if malformed_classification_row(line) => self.invalidate(),
-                None => GfmClassificationTableEvent::NotGfm,
-            },
-            GfmClassificationTableState::CandidateUnknown => {
-                if is_table_separator(line) {
-                    self.state = GfmClassificationTableState::Candidate;
-                    return GfmClassificationTableEvent::Ignore;
-                }
-                match classification_table_row(line) {
-                    Some((key, _)) if Self::is_classification_key(key) => self.invalidate(),
-                    Some(_) => GfmClassificationTableEvent::Ignore,
-                    None if malformed_classification_row(line) => self.invalidate(),
-                    None => {
-                        self.state = GfmClassificationTableState::Neutral;
-                        GfmClassificationTableEvent::NotGfm
-                    }
-                }
+        }
+    }
+
+    fn consume_other_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
+        if is_table_separator(line) {
+            self.state = GfmClassificationTableState::Neutral;
+            return GfmClassificationTableEvent::NotGfm;
+        }
+        match classification_table_row(line) {
+            Some((key, _)) if ClassificationTableSchema::records_key(metadata_key(key)) => {
+                self.invalidate()
             }
-            GfmClassificationTableState::Classification => match classification_table_row(line) {
-                Some((key, value)) if Self::is_classification_key(key) => {
-                    GfmClassificationTableEvent::Record(key, value)
-                }
-                Some(("field", "value")) => {
-                    self.state = GfmClassificationTableState::ClassificationHeader;
-                    GfmClassificationTableEvent::Ignore
-                }
-                Some(_) => {
-                    self.state = GfmClassificationTableState::ClassificationUnknown;
-                    GfmClassificationTableEvent::Ignore
-                }
-                None if line.starts_with('|') => self.invalidate(),
-                None => {
-                    self.state = GfmClassificationTableState::Neutral;
-                    GfmClassificationTableEvent::NotGfm
-                }
-            },
-            GfmClassificationTableState::ClassificationHeader => {
-                self.state = if is_table_separator(line) {
-                    GfmClassificationTableState::Candidate
-                } else {
-                    GfmClassificationTableState::Neutral
-                };
+            Some(_) => GfmClassificationTableEvent::Ignore,
+            None => {
+                self.state = GfmClassificationTableState::Neutral;
                 GfmClassificationTableEvent::NotGfm
-            }
-            GfmClassificationTableState::ClassificationUnknown => {
-                if is_table_separator(line) {
-                    self.state = GfmClassificationTableState::Candidate;
-                    GfmClassificationTableEvent::Ignore
-                } else {
-                    self.invalidate()
-                }
             }
         }
     }
@@ -149,16 +158,4 @@ impl GfmClassificationTable {
         self.state = GfmClassificationTableState::Neutral;
         GfmClassificationTableEvent::Invalidate
     }
-
-    fn is_classification_key(key: &str) -> bool {
-        ClassificationFields::records_key(metadata_key(key))
-    }
-}
-
-fn malformed_classification_row(line: &str) -> bool {
-    line.starts_with('|')
-        && line
-            .strip_prefix('|')
-            .and_then(|line| line.split_once('|'))
-            .is_some_and(|(key, _)| ClassificationFields::records_key(metadata_key(key)))
 }

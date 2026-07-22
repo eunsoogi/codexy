@@ -10,9 +10,9 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
     let incomplete = repeated_table.replacen("| Stop/blocker | None |", "", 1);
     let cases = [
         (
-            "unrelated two-column results remain neutral",
+            "later canonical incomplete results table invalidates",
             format!("{complete}\n{}", results_table()),
-            true,
+            false,
         ),
         (
             "differently headed results remain neutral",
@@ -23,6 +23,42 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
             "arbitrary nonclassification headers remain neutral",
             format!("{complete}\n{}", audit_table()),
             true,
+        ),
+        (
+            "wrong header cannot authorize classification rows",
+            complete.replacen("| Field | Value |", "| Check | Status |", 1),
+            false,
+        ),
+        (
+            "later wrong-header classification-like rows remain neutral",
+            format!(
+                "{complete}\n{}",
+                repeated_table.replacen("| Field | Value |", "| Check | Status |", 1)
+            ),
+            true,
+        ),
+        (
+            "adjacent canonical rows reordered fail closed",
+            complete.replacen(
+                "| Lane type | implementation |\n| Secondary surfaces | validators |",
+                "| Secondary surfaces | validators |\n| Lane type | implementation |",
+                1,
+            ),
+            false,
+        ),
+        (
+            "duplicate canonical row fails closed",
+            complete.replacen(
+                "| Secondary surfaces | validators |",
+                "| Lane type | implementation |",
+                1,
+            ),
+            false,
+        ),
+        (
+            "trailing classification row fails closed",
+            format!("{complete}\n| Lane type | another implementation |"),
+            false,
         ),
         (
             "later recognized incomplete table invalidates",
@@ -49,9 +85,9 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
             true,
         ),
         (
-            "nonclassification table rows remain neutral",
+            "canonical classification-like rows replace prior classification",
             format!("{complete}\n{}", results_table()),
-            true,
+            false,
         ),
         (
             "mixed candidate fails closed",
@@ -71,6 +107,55 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
     for (name, classification, expected) in cases {
         assert_result(name, &classification, expected)?;
     }
+    let rows = classification_rows();
+    for index in 0..rows.len() - 1 {
+        let mut reordered = rows.to_vec();
+        reordered.swap(index, index + 1);
+        assert_result(
+            "each adjacent canonical reorder fails closed",
+            &classification_with_rows(&reordered, "| Field | Value |"),
+            false,
+        )?;
+    }
+    let mut reversed = rows.to_vec();
+    reversed.reverse();
+    assert_result(
+        "wider canonical permutation fails closed",
+        &classification_with_rows(&reversed, "| Field | Value |"),
+        false,
+    )?;
+    for index in 0..rows.len() {
+        let mut duplicated = rows.to_vec();
+        duplicated.insert(index, rows[index]);
+        assert_result(
+            "each duplicate canonical field fails closed",
+            &classification_with_rows(&duplicated, "| Field | Value |"),
+            false,
+        )?;
+        let mut omitted = rows.to_vec();
+        omitted.remove(index);
+        assert_result(
+            "each omitted canonical field fails closed",
+            &classification_with_rows(&omitted, "| Field | Value |"),
+            false,
+        )?;
+    }
+    for header in [
+        "| Check | Status |",
+        "| Fields | Value |",
+        "| Field | Values |",
+    ] {
+        assert_result(
+            "wrong header cannot authorize canonical-looking rows",
+            &classification_with_rows(&rows, header),
+            false,
+        )?;
+    }
+    assert_result(
+        "malformed canonical delimiter cannot authorize",
+        &classification_table().replacen("| --- | --- |", "| -- | --- |", 1),
+        false,
+    )?;
     Ok(())
 }
 
@@ -88,8 +173,28 @@ fn assert_result(name: &str, classification: &str, expected: bool) -> TestResult
     Ok(())
 }
 
-fn classification_table() -> &'static str {
-    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+fn classification_table() -> String {
+    classification_with_rows(&classification_rows(), "| Field | Value |")
+}
+
+fn classification_with_rows(rows: &[&str], header: &str) -> String {
+    format!(
+        "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n{header}\n| --- | --- |\n{}",
+        rows.join("\n")
+    )
+}
+
+fn classification_rows() -> [&'static str; 8] {
+    [
+        "| Lane type | implementation |",
+        "| Secondary surfaces | validators |",
+        "| Owner decision | affirmative child-owned because the delegated child owns implementation |",
+        "| Atomic scope | issue-sized |",
+        "| Required skills | task-classification |",
+        "| Required tools/evidence | goal, plan |",
+        "| First allowed action | implement after classification |",
+        "| Stop/blocker | None |",
+    ]
 }
 
 fn results_table() -> &'static str {

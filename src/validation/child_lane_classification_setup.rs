@@ -64,12 +64,11 @@ pub(super) fn has_complete_gfm_display_before(lines: &[&str], end: usize) -> boo
         match table.consume(line) {
             GfmClassificationTableEvent::Ignore => {}
             GfmClassificationTableEvent::Invalidate => fields = ClassificationFields::default(),
-            GfmClassificationTableEvent::ReplaceAndRecord(key, value) => {
-                fields = ClassificationFields::default();
-                fields.record(metadata_key(key), trimmed_value(value), None, true);
-            }
+            GfmClassificationTableEvent::Replace => fields = ClassificationFields::default(),
             GfmClassificationTableEvent::Record(key, value) => {
-                fields.record(metadata_key(key), trimmed_value(value), None, true);
+                if !fields.record(metadata_key(key), trimmed_value(value), None, true) {
+                    fields = ClassificationFields::default();
+                }
             }
             GfmClassificationTableEvent::NotGfm => {}
         }
@@ -104,13 +103,14 @@ pub(super) fn latest_classification_before(
                 *fields = ClassificationFields::default();
                 continue;
             }
-            GfmClassificationTableEvent::ReplaceAndRecord(key, value) => {
+            GfmClassificationTableEvent::Replace => {
                 *fields = ClassificationFields::default();
-                fields.record(metadata_key(key), trimmed_value(value), authority, true);
                 continue;
             }
             GfmClassificationTableEvent::Record(key, value) => {
-                fields.record(metadata_key(key), trimmed_value(value), authority, true);
+                if !fields.record(metadata_key(key), trimmed_value(value), authority, true) {
+                    *fields = ClassificationFields::default();
+                }
                 continue;
             }
             GfmClassificationTableEvent::NotGfm => {}
@@ -119,7 +119,12 @@ pub(super) fn latest_classification_before(
             continue;
         }
         if let Some((key, value)) = line.split_once(':') {
-            fields.record(metadata_key(key), trimmed_value(value), authority, false);
+            let key = metadata_key(key);
+            if ClassificationFields::records_key(key)
+                && !fields.record(key, trimmed_value(value), authority, false)
+            {
+                *fields = ClassificationFields::default();
+            }
         }
     }
     classification_start
