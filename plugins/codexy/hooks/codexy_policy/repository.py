@@ -44,12 +44,29 @@ def identity(url: str) -> tuple[str, str, str] | None:
 
 def repository_owned(cwd: str) -> bool | None:
     config = _find_config(Path(cwd))
+    return _config_owned(config)
+
+
+def git_directory_owned(cwd: str, target: str) -> bool | None:
+    path = Path(target)
+    if not path.is_absolute():
+        path = Path(cwd) / path
+    return _config_owned(_text(path / "config"))
+
+
+def _config_owned(config: str | None) -> bool | None:
     if config is None:
         return None
     try:
         parser = configparser.ConfigParser(interpolation=None, strict=True)
         parser.read_string(config)
-        identities = [identity(parser[name].get("url", "")) for name in parser.sections() if REMOTE.fullmatch(name)]
+        identities = [
+            identity(parser[name].get(key, ""))
+            for name in parser.sections()
+            if REMOTE.fullmatch(name)
+            for key in ("url", "pushurl")
+            if parser[name].get(key)
+        ]
     except configparser.Error:
         return None
     if not identities or any(item is None for item in identities) or len(set(identities)) != 1:

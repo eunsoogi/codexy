@@ -7,7 +7,7 @@ import re
 import shlex
 from pathlib import Path
 
-from .repository import OWNED, identity, repository_owned
+from .repository import OWNED, git_directory_owned, identity, repository_owned
 from .titles import issue_title, pr_title
 from .wrappers import option_value, sudo_command, time_command, timeout_command
 
@@ -53,13 +53,16 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
             return True
         if following == "|" and index + 1 < len(segments) and _name(segments[index + 1][0][0]) in {"sh", "bash", "zsh", "dash", "pwsh", "powershell"}:
             return active_owned is not False
-        if following in {";", "&&"}:
-            active_cwd = _changed_directory(segment, active_cwd)
+        changed_cwd = _changed_directory(segment, active_cwd)
+        if following in {";", "&&"} or (following == "||" and (active_owned is False or repository_owned(changed_cwd) is not False)):
+            active_cwd = changed_cwd
     return False
 
 
 def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) -> bool:
     while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
+        if tokens[0].startswith("GIT_DIR="):
+            cwd_owned = git_directory_owned(cwd, tokens[0].split("=", 1)[1])
         tokens = tokens[1:]
     for _ in range(8):
         if not tokens or _name(tokens[0]) not in WRAPPERS:
@@ -67,6 +70,8 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
         name, tokens = _name(tokens[0]), tokens[1:]
         if name == "env":
             while tokens and (tokens[0].startswith("-") or "=" in tokens[0]):
+                if tokens[0].startswith("GIT_DIR="):
+                    cwd_owned = git_directory_owned(cwd, tokens[0].split("=", 1)[1])
                 if tokens[0] in {"-S", "--split-string"}:
                     return len(tokens) < 2 or forbidden(tokens[1], cwd, depth + 1)
                 if tokens[0].startswith("--split-string="):

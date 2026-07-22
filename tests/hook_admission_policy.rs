@@ -112,6 +112,36 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
 }
 
 #[test]
+fn shell_policy_tracks_git_dir_assignments() -> TestResult {
+    let root = root();
+    let owned = repository("git@github.com:eunsoogi/codexy.git")?;
+    let other = repository("https://github.com/openai/codex.git")?;
+    let command = format!("GIT_DIR='{}/.git' git push --force origin topic", owned.path().display());
+    assert_deny(&bash(&root, other.path(), &command)?, "PreToolUse")?;
+    let command = format!("env GIT_DIR='{}/.git' git push --force origin topic", owned.path().display());
+    assert_deny(&bash(&root, other.path(), &command)?, "PreToolUse")
+}
+
+#[test]
+fn shell_policy_tracks_persistent_pushurls() -> TestResult {
+    let root = root();
+    let repository = repository_with_pushurl(
+        "https://github.com/openai/codex.git",
+        "git@github.com:eunsoogi/codexy.git",
+    )?;
+    assert_deny(&bash(&root, repository.path(), "git push --force origin topic")?, "PreToolUse")
+}
+
+#[test]
+fn shell_policy_propagates_guarded_cd_success() -> TestResult {
+    let root = root();
+    let owned = repository("git@github.com:eunsoogi/codexy.git")?;
+    let other = repository("https://github.com/openai/codex.git")?;
+    let command = format!("cd '{}' || exit; git push --force origin main", owned.path().display());
+    assert_deny(&bash(&root, other.path(), &command)?, "PreToolUse")
+}
+
+#[test]
 fn packaged_launcher_is_plugin_local_and_does_not_write_state() -> TestResult {
     let source = root();
     let extracted = tempfile::tempdir()?;
@@ -179,6 +209,15 @@ fn repository(remote: &str) -> TestResult<tempfile::TempDir> {
     let temp = tempfile::tempdir()?;
     std::fs::create_dir(temp.path().join(".git"))?;
     std::fs::write(temp.path().join(".git/config"), format!("[remote \"origin\"]\n\turl = {remote}\n"))?;
+    Ok(temp)
+}
+
+fn repository_with_pushurl(remote: &str, pushurl: &str) -> TestResult<tempfile::TempDir> {
+    let temp = repository(remote)?;
+    std::fs::write(
+        temp.path().join(".git/config"),
+        format!("[remote \"origin\"]\n\turl = {remote}\n\tpushurl = {pushurl}\n"),
+    )?;
     Ok(temp)
 }
 
