@@ -11,18 +11,51 @@ pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
 
 pub(super) fn is_affirmative_current_thread_owner_decision(value: &str) -> bool {
     let value = trimmed_value(value);
-    let Some((owner, rationale)) = value.split_once(char::is_whitespace) else {
-        return false;
-    };
-    let rationale = trimmed_value(rationale);
-    owner == "current-thread-owned"
-        && !rationale.is_empty()
-        && !matches!(
-            rationale.split_ascii_whitespace().next(),
-            Some("or" | "and")
-        )
-        && !rationale.starts_with(['/', ','])
-        && !rationale.contains("not current-thread-owned")
+    matches!(
+        parse_owner_assertion(value),
+        Some((OwnerSelection::CurrentThreadOwned, _))
+    )
+}
+
+#[derive(PartialEq)]
+enum OwnerSelection {
+    CurrentThreadOwned,
+}
+
+enum OwnerAssertion {
+    Because,
+    ImplementationLane,
+}
+
+fn parse_owner_assertion(value: &str) -> Option<(OwnerSelection, OwnerAssertion)> {
+    let (owner, assertion) = value.split_once(char::is_whitespace)?;
+    let selection = parse_owner_selection(owner)?;
+    parse_current_thread_assertion(assertion).map(|assertion| (selection, assertion))
+}
+
+fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
+    (value == "current-thread-owned").then_some(OwnerSelection::CurrentThreadOwned)
+}
+
+fn parse_current_thread_assertion(assertion: &str) -> Option<OwnerAssertion> {
+    let assertion = trimmed_value(assertion);
+    if assertion
+        .strip_prefix("because ")
+        .is_some_and(|rationale| !rationale.trim().is_empty())
+    {
+        return Some(OwnerAssertion::Because);
+    }
+    matches!(
+        assertion,
+        "child implementation lane" | "implementation lane"
+    )
+    .then_some(OwnerAssertion::ImplementationLane)
+    .or_else(|| {
+        assertion
+            .strip_prefix("implementation lane for ")
+            .filter(|rationale| !rationale.trim().is_empty())
+            .map(|_| OwnerAssertion::ImplementationLane)
+    })
 }
 
 pub(super) fn is_affirmative_child_owned_value(value: &str) -> bool {

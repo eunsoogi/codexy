@@ -49,13 +49,13 @@ fn validator_normalizes_gfm_and_owner_decision_equivalence_classes() -> TestResu
             true,
         ),
         (
-            "negated current-thread owner",
+            "post-boundary current-thread display text",
             complete.replacen(
                 "current-thread-owned child implementation lane",
                 "current-thread-owned because the active thread is not current-thread-owned",
                 1,
             ),
-            false,
+            true,
         ),
         (
             "ambiguous current-thread owner",
