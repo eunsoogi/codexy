@@ -26,6 +26,7 @@ fn windows_install_proves_direct_pe_and_codex_configured_launch() {
             "$env:PATHEXT = \".EXE\"",
             "%~dp0cmd-sentinel-ran",
             "$start.ArgumentList.Add(\"app-server\")",
+            "$appServer.StandardInput.WriteLine('{\"method\":\"initialized\"}')",
             "mcpServerStatus/list",
             "$appServerFailure = $_.Exception.Message",
             "Codex app-server stderr: $appServerStderr",

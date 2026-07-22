@@ -435,6 +435,7 @@ jobs:
               if ($null -eq $line) { throw "Codex app-server closed before initialize" }
               $message = $line | ConvertFrom-Json
             } until ($message.id -eq 1)
+            $appServer.StandardInput.WriteLine('{"method":"initialized"}')
 
             $statuses = @()
             for ($attempt = 0; $attempt -lt 15; $attempt++) {
