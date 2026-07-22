@@ -138,8 +138,12 @@ fn archive_fixture_compression_is_shared_and_uses_the_fast_lossless_mode()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let helper = std::fs::read_to_string(root.join("tests/support/release_archive.rs"))?;
+    let process = std::fs::read_to_string(
+        root.join("tests/support/release_archive/archive_process.rs"),
+    )?;
+    let shared_archive_fixture = format!("{helper}\n{process}");
     support::assert_structured_literals(
-        &helper,
+        &shared_archive_fixture,
         "shared archive fixture compression",
         &["pub(crate) fn create_archive", "[\"-1\", \"-c\"]"],
     );

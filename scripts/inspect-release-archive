@@ -7,8 +7,15 @@ max_bytes=${MAX_ARCHIVE_FILE_BYTES:-52428800}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
-command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required" >&2; exit 127; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
+if command -v sha256sum >/dev/null 2>&1; then
+  digest_file() { sha256sum "$1" | awk '{print $1}'; }
+elif command -v shasum >/dev/null 2>&1; then
+  digest_file() { shasum -a 256 "$1" | awk '{print $1}'; }
+else
+  echo "sha256sum or shasum is required" >&2
+  exit 127
+fi
 response_checker="$script_dir/inspect-mcp-response"
 [ -x "$response_checker" ] || { echo "MCP response checker missing" >&2; exit 1; }
 [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
@@ -50,6 +57,31 @@ if tar -tvzf "$archive" | awk '$1 ~ /^l/ { print "symlink archive entry: " $0; b
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
+release_contract="$extract_root/plugins/codexy/runtime-release.json"
+[ -f "$release_contract" ] || { echo "packaged runtime-release.json missing" >&2; exit 1; }
+release_state=$(python3 - "$release_contract" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    contract = json.load(source)
+print(contract.get("state", ""))
+PY
+)
+case "$release_state" in
+  legacy-public) ;;
+  candidate-proven)
+    candidate_contract="$extract_root/plugins/codexy/runtime-candidate.json"
+    [ -f "$candidate_contract" ] || { echo "candidate-proven package lacks runtime-candidate.json" >&2; exit 1; }
+    expected_candidate_sha=$(python3 - "$release_contract" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    print(json.load(source)["artifact"]["payloadManifestSha256"])
+PY
+)
+    actual_candidate_sha=$(digest_file "$candidate_contract")
+    [ "$expected_candidate_sha" = "$actual_candidate_sha" ] || { echo "runtime-candidate.json digest differs from payload manifest" >&2; exit 1; }
+    ;;
+  *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
+esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 "$script_dir/inspect-mcp-entrypoints" "$extract_root/plugins/codexy/.mcp.json" >"$tmp_dir/mcp-entrypoints"
@@ -89,8 +121,8 @@ while IFS= read -r relative; do
     echo "packaged file bytes differ: $relative" >&2
     exit 1
   }
-  expected_digest=$(sha256sum "$plugin_root/$relative" | awk '{print $1}')
-  actual_digest=$(sha256sum "$extract_root/plugins/codexy/$relative" | awk '{print $1}')
+  expected_digest=$(digest_file "$plugin_root/$relative")
+  actual_digest=$(digest_file "$extract_root/plugins/codexy/$relative")
   [ "$expected_digest" = "$actual_digest" ] || {
     echo "packaged file digest differs: $relative" >&2
     exit 1
@@ -178,7 +210,7 @@ case "$local_path_status" in
 esac
 
 printf 'archive_sha256 '
-sha256sum "$archive" | awk '{print $1}'
+digest_file "$archive"
 
 platform=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/;s/amd64/x86_64/')
 for server in lsp codegraph; do

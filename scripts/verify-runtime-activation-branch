@@ -1,0 +1,61 @@
+#!/bin/sh
+set -eu
+
+branch="${1:?branch is required}"
+base="${2:-origin/main}"
+bootstrap_version="${3:?bootstrap version is required}"
+receipt="${4:?candidate receipt is required}"
+expected="$(printf '%s\n' \
+  .agents/plugins/release-publish-contract.json \
+  plugins/codexy/mcp/codexy-mcp-codegraph \
+  plugins/codexy/mcp/codexy-mcp-lsp \
+  plugins/codexy/runtime-candidate.json \
+  plugins/codexy/runtime-release.json \
+  src/version/bootstrap.rs | LC_ALL=C sort)"
+actual="$(git diff --name-only "$base...HEAD" | LC_ALL=C sort)"
+test "$actual" = "$expected" || {
+  printf '%s\n' "activation branch differs from verified contract" >&2
+  exit 1
+}
+
+git diff --quiet
+git diff --cached --quiet
+expected_root="$(mktemp -d)"
+trap 'rm -rf "$expected_root"' EXIT HUP INT TERM
+git archive "$base" | tar -x -C "$expected_root"
+if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME:-}"; then
+  test "${CODEXY_TEST_MODE:-}" = 1 || {
+    printf '%s\n' "test activator override requires CODEXY_TEST_MODE=1" >&2
+    exit 1
+  }
+  activator="$CODEXY_TEST_ACTIVATE_RUNTIME"
+else
+  activator="$expected_root/scripts/activate-runtime-contract"
+  test -f "$activator" && test ! -L "$activator" && test -x "$activator" || {
+    printf '%s\n' "verified base is missing its activation contract" >&2
+    exit 1
+  }
+fi
+"$activator" \
+  --repo-root "$expected_root" \
+  --bootstrap-version "$bootstrap_version" \
+  --candidate-receipt "$receipt"
+for path in $expected; do
+  test -f "$path" && test ! -L "$path"
+  test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
+  cmp "$expected_root/$path" "$path"
+  if test -x "$expected_root/$path"; then
+    test -x "$path"
+  else
+    test ! -x "$path"
+  fi
+done
+
+states="$(gh pr list --head "$branch" --state all --json state --jq '.[].state')"
+case "$states" in
+  ''|OPEN) ;;
+  *)
+    printf '%s\n' "activation branch has a closed or ambiguous pull request" >&2
+    exit 1
+    ;;
+esac
