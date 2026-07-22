@@ -19,6 +19,12 @@ mod hook_admission_policy;
 #[path = "../hook_policy_composition.rs"]
 mod hook_policy_composition;
 
+#[path = "../hook_git_normalization_policy.rs"]
+mod hook_git_normalization_policy;
+
+#[path = "../hook_pr_admission_policy.rs"]
+mod hook_pr_admission_policy;
+
 #[path = "../validator_hook_admission_artifact.rs"]
 mod validator_hook_admission_artifact;
 

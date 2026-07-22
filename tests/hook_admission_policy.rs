@@ -44,7 +44,7 @@ fn github_owned_mutations_follow_canonical_contracts() -> TestResult {
     for title in ["fix(a.b): invalid scope", " fix(hooks): leading"] {
         assert_deny(&github(&root, "github_create_pull_request", json!({"title":title}))?, "PreToolUse")?;
     }
-    assert_eq!(github(&root, "github_create_pull_request", json!({"title":"security: harden"}))?, b"");
+    assert_deny(&github(&root, "github_create_pull_request", json!({"title":"security: harden"}))?, "PreToolUse")?;
     assert_deny(&github(&root, "github_update_issue", json!({"issue_number":true}))?, "PreToolUse")?;
     assert_deny(&github(&root, "github_enable_auto_merge", json!({"pr_number":453}))?, "PreToolUse")?;
     assert_deny(&github(&root, "github_create_issue", json!({"title":"bad","unknown":1}))?, "PreToolUse")?;
@@ -108,8 +108,8 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
     assert_deny(&bash(&root, owned.path(), "env -S 'git push --force origin topic'")?, "PreToolUse")?;
     assert_deny(&bash(&root, owned.path(), "gh pr edit 479 -t 'Plain title'")?, "PreToolUse")?;
     assert_deny(&bash(&root, owned.path(), "gh issue edit 453 -t 'fix: bad'")?, "PreToolUse")?;
-    assert_eq!(bash(&root, owned.path(), "gh pr create --title 'fix(hooks): valid title' --body x")?, b"");
-    assert_eq!(bash(&root, owned.path(), "gh pr edit 479 --body x")?, b"");
+    assert_deny(&bash(&root, owned.path(), "gh pr create --title 'fix(hooks): valid title' --body x")?, "PreToolUse")?;
+    assert_deny(&bash(&root, owned.path(), "gh pr edit 479 --body x")?, "PreToolUse")?;
     assert_eq!(bash(&root, other.path(), "echo $(printf safe)")?, b"");
     assert_eq!(bash(&root, outside.path(), "printf safe")?, b"");
     Ok(())

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
+from .body import has_sections
 from .merge import positive_int, valid as merge_valid
+from .pull_request import create as pr_create, update as pr_update
 from .shell import forbidden as shell_forbidden
-from .titles import issue_title, pr_title
+from .titles import issue_title
 
 MAX_INPUT = 1024 * 1024
 OWNED = "eunsoogi/codexy"
@@ -79,9 +80,9 @@ def _github(event: str, tool: str, data: object) -> bytes:
     elif tool.endswith("update_issue"):
         invalid = not positive_int(data.get("issue_number")) or ("title" in data and not issue_title(data["title"])) or ("body" in data and not _issue_body(data["body"]))
     elif tool.endswith("create_pull_request"):
-        invalid = not pr_title(data.get("title"))
+        invalid = not pr_create(data)
     elif tool.endswith("update_pull_request"):
-        invalid = not positive_int(data.get("pr_number")) or ("title" in data and not pr_title(data["title"]))
+        invalid = not pr_update(data)
     elif tool.endswith("merge_pull_request"):
         invalid = not merge_valid(data)
     return deny(event) if invalid else b""
@@ -92,41 +93,4 @@ def _nonblank(data: dict[str, Any], field: str) -> bool:
 
 
 def _issue_body(value: object) -> bool:
-    if not isinstance(value, str):
-        return False
-    return REQUIRED_ISSUE_SECTIONS.issubset(_visible_headings(value))
-
-
-def _visible_headings(value: str) -> set[str]:
-    headings: set[str] = set()
-    fence: str | None = None
-    in_comment = False
-    for raw in value.splitlines():
-        if fence is not None:
-            if re.fullmatch(rf"{re.escape(fence)}[ \t]*", raw.lstrip(" ")):
-                fence = None
-            continue
-        if raw.startswith(("    ", "\t")):
-            continue
-        visible, rest = "", raw
-        while rest:
-            if in_comment:
-                end = rest.find("-->")
-                if end < 0:
-                    rest = ""
-                else:
-                    rest, in_comment = rest[end + 3 :], False
-            else:
-                start = rest.find("<!--")
-                if start < 0:
-                    visible += rest
-                    rest = ""
-                else:
-                    visible, rest, in_comment = visible + rest[:start], rest[start + 4 :], True
-        trimmed = visible.lstrip(" ")
-        marker = re.match(r"(`{3,}|~{3,})", trimmed)
-        if marker:
-            fence = marker.group(1)
-        elif trimmed.strip() in REQUIRED_ISSUE_SECTIONS:
-            headings.add(trimmed.strip())
-    return headings
+    return has_sections(value, REQUIRED_ISSUE_SECTIONS)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import shlex
 
+from .git_command import normalize as normalize_git
 from .github import forbidden as gh_forbidden
 from .repository import OWNED, git_directory_owned, github_identity, identity, repository_owned
 from .shell_context import changed_directory as _changed_directory, command_option as _command_option, flag as _flag, name as _name, resolve_cwd as _resolve_cwd
@@ -174,35 +175,14 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
 
 
 def _git(args: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None) -> bool:
-    while args and args[0].startswith("-"):
-        option = args[0]
-        if option == "-c" or option.startswith("-c="):
-            if option == "-c":
-                if len(args) < 2:
-                    return True
-                config, args = args[1], args[2:]
-            else:
-                config, args = option[3:], args[1:]
-            if config.startswith("alias.") and "=!" in config:
-                return forbidden(config.split("=!", 1)[1], cwd, 1)
-            if cwd_owned is not False or _config_owned(config):
-                return True
-            continue
-        if option in {"--config-env", "--git-dir", "--work-tree"} or option.startswith(("--config-env=", "--git-dir=", "--work-tree=")):
-            return cwd_owned is not False or _explicit_owned(args) is True
-        if option == "-C":
-            if len(args) < 2:
-                return True
-            cwd = os.path.abspath(os.path.join(cwd, args[1]))
-            cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
-            args = args[2:]
-        elif option in {"--no-pager", "--paginate", "--bare"}:
-            args = args[1:]
-        else:
-            return cwd_owned is not False
-    if not args:
+    invocation = normalize_git(args, cwd, cwd_owned, git_dir, _config_owned)
+    if invocation is None:
+        return True
+    if invocation.alias_command is not None:
+        return forbidden(invocation.alias_command, cwd, 1)
+    if invocation.operation is None:
         return False
-    operation, rest = args[0], args[1:]
+    operation, rest, cwd_owned = invocation.operation, invocation.arguments, invocation.cwd_owned
     target_owned = _explicit_owned(rest)
     applies = target_owned is True or (target_owned is None and cwd_owned is not False)
     if operation == "push":
