@@ -116,6 +116,36 @@ fn sync_version_script_check_rejects_stale_cargo_lock_and_stale_python_metadata(
 }
 
 #[test]
+fn sync_version_script_check_rejects_commented_current_installer_pin()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let repo = archive_repository(&temp, "repo")?;
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/sync-plugin-version"),
+        repo.join("scripts/sync-plugin-version"),
+    )?;
+
+    let install_path = repo.join("install");
+    let original = fs::read_to_string(&install_path)?;
+    let stale = original.replacen("getcodexy==1.2.2", "getcodexy==9.9.9", 1);
+    let decoy = format!(
+        "# getcodexy==1.2.2 codexy-update --pre-session\n{stale}"
+    );
+    fs::write(&install_path, &decoy)?;
+
+    let output = Command::new(repo.join("scripts/sync-plugin-version"))
+        .arg("--check")
+        .current_dir(&repo)
+        .output()?;
+    assert!(
+        !output.status.success(),
+        "sync-version --check accepted a commented current pin with a stale executable command"
+    );
+    assert_eq!(fs::read_to_string(&install_path)?, decoy);
+    Ok(())
+}
+
+#[test]
 fn sync_version_cli_updates_only_the_supplied_isolated_root()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
