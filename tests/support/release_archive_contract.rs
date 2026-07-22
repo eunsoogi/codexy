@@ -52,6 +52,8 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str) {
             "$archivePath = (Resolve-Path -LiteralPath \"dist/codexy-marketplace-plugin.tar.gz\").Path",
             "Push-Location -LiteralPath $marketplaceRoot",
             "mcpServerStatus/list",
+            "for ($attempt = 0; $attempt -lt 15; $attempt++)",
+            "Start-Sleep -Seconds 2",
             "MCP status evidence",
             "needs: [package-plugin, windows-installed-mcp]",
         ],

@@ -357,24 +357,39 @@ jobs:
               $message = $line | ConvertFrom-Json
             } until ($message.id -eq 1)
 
-            $statusRequest = '{"method":"mcpServerStatus/list","id":2,"params":{"cursor":null,"limit":100,"detail":"full","threadId":null}}'
-            $appServer.StandardInput.WriteLine($statusRequest)
-            do {
-              $line = $appServer.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(45)).GetAwaiter().GetResult()
-              if ($null -eq $line) { throw "Codex app-server closed before MCP status" }
-              $message = $line | ConvertFrom-Json
-            } until ($message.id -eq 2)
-
             $expected = @{
               lsp = @{ Server = "codexy-lsp"; Tool = "lsp_status" }
               codegraph = @{ Server = "codexy-codegraph"; Tool = "codegraph_index" }
             }
-            foreach ($server in @("lsp", "codegraph")) {
-            $status = $message.result.data | Where-Object name -eq $server
-            if ($status.serverInfo.name -ne $expected[$server].Server) {
-              $evidence = $status | ConvertTo-Json -Depth 8 -Compress
-              throw "$server did not start through the installed Codex MCP surface; MCP status evidence: $evidence"
+            $statuses = @()
+            for ($attempt = 0; $attempt -lt 15; $attempt++) {
+              $requestId = 2 + $attempt
+              $statusRequest = @{
+                method = "mcpServerStatus/list"
+                id = $requestId
+                params = @{ cursor = $null; limit = 100; detail = "full"; threadId = $null }
+              } | ConvertTo-Json -Depth 4 -Compress
+              $appServer.StandardInput.WriteLine($statusRequest)
+              do {
+                $line = $appServer.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(10)).GetAwaiter().GetResult()
+                if ($null -eq $line) { throw "Codex app-server closed before MCP status" }
+                $message = $line | ConvertFrom-Json
+              } until ($message.id -eq $requestId)
+              $statuses = @($message.result.data)
+              $allReady = $true
+              foreach ($server in @("lsp", "codegraph")) {
+                $status = $statuses | Where-Object name -eq $server
+                if ($status.serverInfo.name -ne $expected[$server].Server) { $allReady = $false }
+              }
+              if ($allReady) { break }
+              if ($attempt -lt 14) { Start-Sleep -Seconds 2 }
             }
+            foreach ($server in @("lsp", "codegraph")) {
+              $status = $statuses | Where-Object name -eq $server
+              if ($status.serverInfo.name -ne $expected[$server].Server) {
+                $evidence = $status | ConvertTo-Json -Depth 8 -Compress
+                throw "$server did not start through the installed Codex MCP surface; MCP status evidence: $evidence"
+              }
               if ($expected[$server].Tool -notin @($status.tools.PSObject.Properties.Name)) {
                 throw "$server did not expose its expected tool through Codex"
               }
