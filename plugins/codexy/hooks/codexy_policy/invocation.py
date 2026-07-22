@@ -106,6 +106,11 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if executable == "nohup":
             tokens = args[1:] if args[:1] == ["--"] else args
             continue
+        if executable == "coproc":
+            if not args:
+                return None
+            tokens = args
+            continue
         if executable == "xargs":
             result = _xargs(args)
             if result is None:

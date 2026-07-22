@@ -7,6 +7,7 @@ import shlex
 
 from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
+from .github_alias import expand as expand_gh_alias
 from .github import forbidden as gh_forbidden
 from .execution_context import ExecutionContext, at as context_at, git_config
 from .invocation import resolve
@@ -102,7 +103,8 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         return _git(invocation.arguments, invocation.context, depth), context
     if invocation.executable == "gh":
         gh_owned = github_identity(invocation.context.gh_repo) == OWNED if invocation.context.gh_repo is not None else None
-        return gh_forbidden(invocation.arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
+        arguments = expand_gh_alias(invocation.arguments)
+        return arguments is None or gh_forbidden(arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
     if invocation.executable == "rm":
         return invocation.context.cwd_owned is not False and _rm(invocation.arguments), context
     return False, context
@@ -142,8 +144,12 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
 
 
 def _separate_lines(command: str) -> str:
-    result, quote, escaped = [], None, False
-    for char in command:
+    result, quote, escaped, index = [], None, False, 0
+    while index < len(command):
+        char = command[index]
+        if char == "\\" and quote != "'" and command[index + 1 : index + 2] == "\n":
+            index += 2
+            continue
         if escaped:
             result.append(char)
             escaped = False
@@ -155,6 +161,7 @@ def _separate_lines(command: str) -> str:
             result.append(char)
         else:
             result.append(";" if char == "\n" and quote is None else char)
+        index += 1
     return "".join(result)
 
 

@@ -28,6 +28,8 @@ def forbidden(args: list[str], default_owned: bool) -> bool:
     match = REPOSITORY.match(endpoint)
     if match is None:
         return False
+    if tuple(part.casefold() for part in match.groups()) == ("{owner}", "{repo}"):
+        return default_owned
     return github_identity(f"{match.group(1)}/{match.group(2)}") == OWNED
 
 

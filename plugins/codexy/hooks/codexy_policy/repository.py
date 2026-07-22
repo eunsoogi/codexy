@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from .git_runtime_config import remote_config
+
 OWNED = ("github.com", "eunsoogi", "codexy")
 REMOTE = re.compile(r'^remote "[^"\r\n]+"$')
 SCP = re.compile(r"^(?:[A-Za-z0-9._-]+@)?(?P<host>[A-Za-z0-9.-]+):(?P<path>[^\s?#]+)$")
@@ -65,7 +67,9 @@ def repository_owned_with_rewrites(
     cwd: str, git_dir: str | None, rewrites: list[UrlRewrite], push: bool,
 ) -> bool | None:
     """Classify repository remotes after command-scoped Git URL rewriting."""
-    config = _git_config(cwd, git_dir)
+    config = remote_config(cwd, git_dir, push)
+    if config == "":
+        config = _git_config(cwd, git_dir)
     return _config_owned(config, rewrites, push)
 
 

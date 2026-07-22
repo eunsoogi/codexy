@@ -65,6 +65,108 @@ fn forced_git_send_pack_for_the_owned_repository_is_denied() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn backslash_continued_git_push_is_denied() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(
+        workspace.path(),
+        "owned",
+        "git@github.com:eunsoogi/codexy.git",
+    )?;
+
+    assert_deny(&bash(
+        &root,
+        &owned,
+        concat!("git pu", "\\\n", "sh --force origin topic"),
+    )?)
+}
+
+#[test]
+fn coprocess_mutations_are_denied() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(
+        workspace.path(),
+        "owned",
+        "git@github.com:eunsoogi/codexy.git",
+    )?;
+
+    assert_deny(&bash(&root, &owned, "coproc git push --force origin topic")?)?;
+    assert_deny(&bash(&root, &owned, "coproc gh pr merge 453 --merge")?)?;
+    assert_eq!(bash(&root, &owned, "coproc printf safe")?, b"");
+    Ok(())
+}
+
+#[test]
+fn included_owned_remote_is_part_of_the_effective_push_target() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let included = workspace.path().join("included.gitconfig");
+    std::fs::write(
+        &included,
+        "[remote \"origin\"]\n\turl = git@github.com:eunsoogi/codexy.git\n",
+    )?;
+    let mixed = workspace.path().join("mixed");
+    std::fs::create_dir_all(&mixed)?;
+    let initialized = Command::new("git").args(["-C", mixed.to_str().ok_or("mixed path")?, "init", "-q"]).status()?;
+    assert!(initialized.success(), "git init failed");
+    std::fs::write(
+        mixed.join(".git/config"),
+        format!(
+            "[include]\n\tpath = {}\n[remote \"origin\"]\n\turl = https://github.com/openai/codex.git\n",
+            included.display()
+        ),
+    )?;
+
+    assert_deny(&bash(&root, &mixed, "git push --force origin topic")?)?;
+    assert_eq!(bash(&root, &mixed, "git push origin topic")?, b"");
+    Ok(())
+}
+
+#[test]
+fn github_api_current_repository_placeholders_are_denied() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(
+        workspace.path(),
+        "owned",
+        "git@github.com:eunsoogi/codexy.git",
+    )?;
+
+    assert_deny(&bash(
+        &root,
+        &owned,
+        "gh api --method PUT 'repos/{owner}/{repo}/pulls/453/merge' -f merge_method=merge",
+    )?)?;
+    assert_eq!(
+        bash(&root, &owned, "gh api --method GET 'repos/{owner}/{repo}/pulls/453'")?,
+        b""
+    );
+    Ok(())
+}
+
+#[test]
+fn configured_github_alias_is_expanded_before_admission() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let home = tempfile::tempdir()?;
+    let owned = repository(
+        workspace.path(),
+        "owned",
+        "git@github.com:eunsoogi/codexy.git",
+    )?;
+    std::fs::create_dir_all(home.path().join(".config/gh"))?;
+    std::fs::write(
+        home.path().join(".config/gh/config.yml"),
+        "aliases:\n    land: pr merge 453 --merge\n    inspect: pr view 453\n",
+    )?;
+
+    assert_deny(&bash_with_home(&root, &owned, "gh land", Some(home.path()))?)?;
+    assert_eq!(bash_with_home(&root, &owned, "gh inspect", Some(home.path()))?, b"");
+    Ok(())
+}
+
 fn assert_deny(bytes: &[u8]) -> TestResult {
     let value: Value = serde_json::from_slice(bytes)?;
     assert_eq!(
@@ -75,6 +177,15 @@ fn assert_deny(bytes: &[u8]) -> TestResult {
 }
 
 fn bash(root: &std::path::Path, cwd: &std::path::Path, command: &str) -> TestResult<Vec<u8>> {
+    bash_with_home(root, cwd, command, None)
+}
+
+fn bash_with_home(
+    root: &std::path::Path,
+    cwd: &std::path::Path,
+    command: &str,
+    home: Option<&std::path::Path>,
+) -> TestResult<Vec<u8>> {
     let payload = json!({
         "hook_event_name": "PreToolUse",
         "tool_name": "Bash",
@@ -89,6 +200,12 @@ fn bash(root: &std::path::Path, cwd: &std::path::Path, command: &str) -> TestRes
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if let Some(home) = home {
+        child.env("HOME", home);
+        if let Some(path) = std::env::var_os("PATH") {
+            child.env("PATH", path);
+        }
+    }
     let mut child = child.spawn()?;
     child
         .stdin
