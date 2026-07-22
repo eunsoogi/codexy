@@ -74,7 +74,8 @@ fn validator_allows_child_setup_after_complete_task_classification() -> TestResu
 #[test]
 fn validator_rejects_child_setup_after_incomplete_task_classification() -> TestResult {
     assert_rejected(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Owner decision: current-thread-owned child implementation lane
@@ -97,7 +98,8 @@ fn validator_rejects_child_setup_after_unrelated_parent_classification() -> Test
         "parent-owned orchestration; child thread/worktree owner required after setup",
     ] {
         assert_rejected(&format!(
-            r#"Lane ownership: child-owned
+            r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: validation
 Secondary surfaces: workflow, validators
@@ -231,15 +233,15 @@ fn validator_rejects_child_setup_claimed_before_classification_after_block() -> 
 }
 
 fn complete_child_classification() -> &'static str {
-    "Lane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: run git worktree add -b codexy/231-branch-classification-guard after classification\nStop/blocker: None"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: run git worktree add -b codexy/231-branch-classification-guard after classification\nStop/blocker: None"
 }
 
 fn complete_current_thread_classification() -> &'static str {
-    "Lane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: current-thread-owned implementation lane for issue #231\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None"
+    "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: current-thread-owned implementation lane for issue #231\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None"
 }
 
 fn complete_parent_classification() -> &'static str {
-    "Lane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: workflow, validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None"
+    "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: workflow, validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None"
 }
 
 fn ownership_footer() -> &'static str {

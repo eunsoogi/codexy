@@ -23,7 +23,8 @@ fn assert_allowed(evidence: &str) -> TestResult {
 #[test]
 fn validator_rejects_external_owner_decision_before_child_setup() -> TestResult {
     assert_rejected(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -54,7 +55,8 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_routing_only_child_delegation_classification_completion() -> TestResult {
     assert_allowed(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -74,7 +76,8 @@ Maintainer reassignment: none
 #[test]
 fn validator_rejects_before_the_task_classification_setup_claim() -> TestResult {
     assert_rejected(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -92,9 +95,10 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_list_style_task_classification_header() -> TestResult {
-    assert_allowed(
-        r#"Lane ownership: child-owned
+fn validator_rejects_list_style_task_classification_header() -> TestResult {
+    assert_rejected(
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 - Task classification:
 - Lane type: implementation
 - Secondary surfaces: workflow, validators
@@ -125,7 +129,8 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_setup_terms_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -164,7 +169,8 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_negated_setup_terms_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -184,7 +190,8 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_negative_test_setup_terms_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -204,7 +211,8 @@ Maintainer reassignment: none
 #[test]
 fn validator_rejects_mixed_negative_test_metadata_and_actual_setup_claim() -> TestResult {
     assert_rejected(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -223,7 +231,8 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_no_setup_occurred_inside_required_tools_metadata() -> TestResult {
     assert_allowed(
-        r#"Lane ownership: child-owned
+        r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators

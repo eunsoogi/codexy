@@ -95,6 +95,7 @@ Branch codexy/neutral-lane was created after classification.
 Review response: child-authored commit def456 fixed feedback
 Maintainer reassignment: none
 PR: #2
+Ownership metadata source: parent-supplied
 Lane ownership: child-owned
 Task classification:
 Lane type: implementation
@@ -116,6 +117,7 @@ Maintainer reassignment: none
 fn validator_allows_setup_before_next_lane_ownership_boundary() -> TestResult {
     assert_allowed(
         r#"Branch codexy/neutral-lane was created after classification.
+Ownership metadata source: parent-supplied
 Lane ownership: child-owned
 Task classification:
 Lane type: implementation
@@ -134,8 +136,8 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_allows_classification_before_child_lane_metadata() -> TestResult {
-    assert_allowed(&format!(
+fn validator_rejects_classification_before_child_lane_metadata() -> TestResult {
+    assert_rejected(&format!(
         "{}\nLane ownership: child-owned\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
         complete_child_classification().replacen("Lane ownership: child-owned\n", "", 1),
         ownership_footer()
@@ -147,6 +149,8 @@ fn validator_allows_setup_before_next_owner_decision_boundary() -> TestResult {
     assert_allowed(
         r#"Branch codexy/neutral-lane was created after classification.
 Owner decision: child-owned implementation lane
+Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -216,7 +220,8 @@ Stop/blocker: None"#
 }
 
 fn complete_child_classification() -> &'static str {
-    r#"Lane ownership: child-owned
+    r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
@@ -229,7 +234,8 @@ Stop/blocker: None"#
 }
 
 fn complete_child_classification_with_parent_owned_negation() -> &'static str {
-    r#"Lane ownership: child-owned
+    r#"Ownership metadata source: parent-supplied
+Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators

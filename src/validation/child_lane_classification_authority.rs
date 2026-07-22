@@ -1,19 +1,26 @@
-pub(super) fn has_parent_supplied_child_metadata_before(
+pub(super) fn has_authoritative_ownership_metadata_before(
     lines: &[&str],
     classification_start: usize,
 ) -> bool {
-    let metadata_end = classification_start
-        .checked_sub(1)
-        .filter(|index| lines.get(*index) == Some(&"task classification:"))
-        .unwrap_or(classification_start);
-    let Some((source, ownership)) = metadata_end
+    if lines.get(classification_start) != Some(&"task classification:") {
+        return false;
+    }
+    let Some((source, ownership)) = classification_start
         .checked_sub(2)
-        .and_then(|start| lines.get(start..metadata_end))
+        .and_then(|start| lines.get(start..classification_start))
         .and_then(|metadata| metadata.first().zip(metadata.get(1)))
     else {
         return false;
     };
 
-    *source == "ownership metadata source: parent-supplied"
-        && *ownership == "lane ownership: child-owned"
+    matches!(
+        (*source, *ownership),
+        (
+            "ownership metadata source: parent-supplied",
+            "lane ownership: child-owned"
+        ) | (
+            "ownership metadata source: current-thread-classified",
+            "lane ownership: current-thread-owned"
+        )
+    )
 }
