@@ -14,6 +14,16 @@ contain non-blank `defect_class`, `violated_invariant`, `structural_boundary`,
 canonicalized before equality checks, so whitespace and case variants MUST NOT
 split one defect class.
 
+Validation is phase-ordered: every supplied scalar, list, repair, and reopen
+subobject is parsed, normalized, and validated before state rules are applied.
+`planned` clusters may omit `repair`, but a supplied repair MUST be structural;
+`repaired` clusters MUST include a structural repair; `reopened` clusters MUST
+include a structural repair and every `reopened` receipt MUST include `reopen`
+evidence for its reopened class. Only `reopened` clusters may include `reopen`
+evidence. Canonical identity uses Unicode
+normalization, case folding, whitespace, and insignificant separators, while
+retaining materially different identifier content.
+
 For `repaired` and `reopened` states, every cluster MUST have:
 
 ```json

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use serde::Deserialize;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::paths::display_relative;
 
@@ -62,26 +63,19 @@ pub(super) fn diagnostics(receipt: &str) -> Vec<String> {
     let mut classes = std::collections::BTreeSet::new();
     let mut reopened = false;
     for cluster in &receipt.clusters {
-        if empty(&cluster.defect_class)
-            || empty(&cluster.violated_invariant)
-            || empty(&cluster.structural_boundary)
-            || !nonempty_list(&cluster.threads)
-            || !nonempty_list(&cluster.matrix.positive)
-            || !nonempty_list(&cluster.matrix.negative)
-        {
-            errors.push("root-cause cluster is missing typed class, invariant, boundary, thread, or matrix evidence".into());
-        }
+        check_content(cluster, &mut errors);
         if !classes.insert(canonical(&cluster.defect_class)) {
             errors.push(format!(
                 "root-cause cluster `{}` must consolidate same-class examples",
                 cluster.defect_class
             ));
         }
-        check_repair(cluster, receipt.state, &mut errors);
+        check_supplied_repair(cluster, &mut errors);
         if let Some(reopen) = &cluster.reopen {
             reopened = true;
             check_reopen(cluster, reopen, &mut errors);
         }
+        check_state_transition(cluster, receipt.state, &mut errors);
     }
     if receipt.state == ReceiptState::Reopened && !reopened {
         errors.push("reopened review cluster receipt must prove a distinct invariant or incomplete structural repair".into());
@@ -89,10 +83,19 @@ pub(super) fn diagnostics(receipt: &str) -> Vec<String> {
     errors
 }
 
-fn check_repair(cluster: &DefectCluster, state: ReceiptState, errors: &mut Vec<String>) {
-    if state == ReceiptState::Planned {
-        return;
+fn check_content(cluster: &DefectCluster, errors: &mut Vec<String>) {
+    if empty(&cluster.defect_class)
+        || empty(&cluster.violated_invariant)
+        || empty(&cluster.structural_boundary)
+        || !nonempty_list(&cluster.threads)
+        || !nonempty_list(&cluster.matrix.positive)
+        || !nonempty_list(&cluster.matrix.negative)
+    {
+        errors.push("root-cause cluster is missing typed class, invariant, boundary, thread, or matrix evidence".into());
     }
+}
+
+fn check_supplied_repair(cluster: &DefectCluster, errors: &mut Vec<String>) {
     match &cluster.repair {
         Some(Repair::Structural {
             boundary,
@@ -107,10 +110,25 @@ fn check_repair(cluster: &DefectCluster, state: ReceiptState, errors: &mut Vec<S
             "root-cause cluster `{}` requires one structural repair, not a case-specific exception for `{quoted_input}`",
             cluster.defect_class
         )),
-        None => errors.push(format!(
-            "root-cause cluster `{}` requires one structural repair, not a case-specific exception",
+        None => {}
+    }
+}
+
+fn check_state_transition(cluster: &DefectCluster, state: ReceiptState, errors: &mut Vec<String>) {
+    let repair_required = matches!(state, ReceiptState::Repaired | ReceiptState::Reopened);
+    if repair_required && cluster.repair.is_none() {
+        errors.push(format!(
+            "{} root-cause cluster `{}` requires a structural repair",
+            state.name(),
             cluster.defect_class
-        )),
+        ));
+    }
+    if state != ReceiptState::Reopened && cluster.reopen.is_some() {
+        errors.push(format!(
+            "{} root-cause cluster `{}` must not include reopened evidence",
+            state.name(),
+            cluster.defect_class
+        ));
     }
 }
 
@@ -140,10 +158,18 @@ fn empty(value: &str) -> bool {
 
 fn canonical(value: &str) -> String {
     value
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-        .to_ascii_lowercase()
+        .nfkc()
+        .flat_map(char::to_lowercase)
+        .filter(|character| !is_insignificant_separator(*character))
+        .collect()
+}
+
+fn is_insignificant_separator(character: char) -> bool {
+    character.is_whitespace()
+        || matches!(
+            character,
+            '-' | '_' | '.' | ',' | ':' | ';' | '/' | '\\' | '‐' | '‑' | '‒' | '–' | '—' | '−'
+        )
 }
 
 fn nonempty_list(values: &[String]) -> bool {
@@ -163,6 +189,16 @@ enum ReceiptState {
     Planned,
     Repaired,
     Reopened,
+}
+
+impl ReceiptState {
+    const fn name(self) -> &'static str {
+        match self {
+            Self::Planned => "planned",
+            Self::Repaired => "repaired",
+            Self::Reopened => "reopened",
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -185,7 +221,7 @@ struct RepresentativeMatrix {
 }
 
 #[derive(Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum Repair {
     Structural {
         boundary: String,
@@ -198,7 +234,7 @@ enum Repair {
 }
 
 #[derive(Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum Reopen {
     DistinctInvariant { invariant: String },
     StructuralRepairIncomplete { evidence: String },
