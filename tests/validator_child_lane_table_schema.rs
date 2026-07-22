@@ -80,9 +80,9 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
             false,
         ),
         (
-            "header-only candidate remains neutral",
+            "header-only canonical candidate invalidates",
             format!("{complete}\n| Field | Value |"),
-            true,
+            false,
         ),
         (
             "canonical classification-like rows replace prior classification",

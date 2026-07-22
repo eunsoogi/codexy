@@ -122,10 +122,7 @@ impl GfmClassificationTable {
                 GfmClassificationTableEvent::Replace
             }
             GfmDelimiterRow::Invalid => self.invalidate(),
-            GfmDelimiterRow::Absent => {
-                self.state = GfmClassificationTableState::Neutral;
-                GfmClassificationTableEvent::NotGfm
-            }
+            GfmDelimiterRow::Absent => self.invalidate(),
         }
     }
 

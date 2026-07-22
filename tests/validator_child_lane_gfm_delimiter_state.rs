@@ -30,18 +30,21 @@ fn validator_distinguishes_invalid_replacement_delimiters_from_absent_tables() -
         &format!("{complete}\n{}", table("| --- | --- |", false)),
         false,
     )?;
-    for suffix in [
-        "| Field | Value |",
-        "| Check | Status |\n| --- | --- |\n| Result | pass |",
-        "| Field | Value |\nRequired evidence: tests",
-    ] {
-        assert_controls(
-            "header-only or unrelated table remains neutral",
-            &format!("{complete}\n{suffix}"),
-            true,
-        )?;
-    }
+    assert_controls(
+        "unrelated table remains neutral",
+        &format!("{complete}\n| Check | Status |\n| --- | --- |\n| Result | pass |"),
+        true,
+    )?;
     Ok(())
+}
+
+#[test]
+fn validator_invalidates_replacement_header_without_separator() -> TestResult {
+    let evidence = format!(
+        "{}\n| Field | Value |\n| Lane type | review response |\nPlan tool call: update_plan",
+        classification("| --- | --- |", true)
+    );
+    assert_evidence("replacement header without separator", &evidence, false)
 }
 
 #[test]
