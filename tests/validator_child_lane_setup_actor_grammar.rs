@@ -163,6 +163,25 @@ fn validator_resolves_setup_subject_and_agent_conflicts_by_grammatical_role() ->
     Ok(())
 }
 
+#[test]
+fn validator_fails_closed_for_coordinated_child_setup_subjects() -> TestResult {
+    for (label, setup, expected) in [
+        (
+            "coordinated child and parent subjects fail closed",
+            "The child and the parent created branch codexy/463 before classification.",
+            false,
+        ),
+        (
+            "coordinated parent and orchestrator subjects remain non-child",
+            "The parent and the orchestrator created branch codexy/463 before classification.",
+            true,
+        ),
+    ] {
+        assert_result(label, setup, expected)?;
+    }
+    Ok(())
+}
+
 fn assert_result(label: &str, setup: &str, expected: bool) -> TestResult {
     let evidence = format!("{}\n{setup}", parent_owned_classification());
     let temp = tempfile::tempdir()?;

@@ -38,7 +38,17 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                 .unwrap_or(0);
             let start = words[predicate_start..*action]
                 .iter()
-                .rposition(|word| matches!(*word, "then" | "but" | "however" | "and"))
+                .enumerate()
+                .rposition(|(offset, word)| {
+                    matches!(*word, "then" | "but" | "however")
+                        || (*word == "and"
+                            && !and_coordinates_setup_subjects(
+                                &words,
+                                predicate_start,
+                                predicate_start + offset,
+                                *action,
+                            ))
+                })
                 .map(|offset| predicate_start + offset + 1)
                 .unwrap_or(predicate_start);
             let end = actions.get(position + 1).copied().unwrap_or(words.len());
@@ -81,16 +91,43 @@ fn setup_action_indices<'a>(words: &'a [&'a str]) -> impl Iterator<Item = usize>
 }
 
 fn explicit_subject(words: &[&str], start: usize, action: usize) -> Option<SetupActor> {
-    words[start..action]
+    let mut saw_non_child = false;
+    for index in start..action {
+        if actor_is_introduced_by(words, start, index) {
+            continue;
+        }
+        match actor_word(words[index]) {
+            Some(SetupActor::Child) => return Some(SetupActor::Child),
+            Some(SetupActor::NonChild) => saw_non_child = true,
+            None => {}
+        }
+    }
+    saw_non_child.then_some(SetupActor::NonChild)
+}
+
+fn and_coordinates_setup_subjects(
+    words: &[&str],
+    start: usize,
+    conjunction: usize,
+    action: usize,
+) -> bool {
+    [start..conjunction, conjunction + 1..action]
         .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(offset, word)| {
-            let index = start + offset;
-            (!actor_is_introduced_by(words, start, index))
-                .then(|| actor_word(word))
-                .flatten()
+        .all(|range| {
+            words[range.clone()]
+                .iter()
+                .any(|word| actor_word(word).is_some())
+                && words[range.clone()]
+                    .iter()
+                    .all(|word| actor_word(word).is_some() || is_actor_modifier(word))
         })
+}
+
+fn is_actor_modifier(word: &str) -> bool {
+    matches!(
+        word,
+        "a" | "an" | "the" | "this" | "that" | "owning" | "thread" | "lane"
+    )
 }
 
 fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
