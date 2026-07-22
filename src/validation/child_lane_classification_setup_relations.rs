@@ -126,7 +126,7 @@ fn and_coordinates_setup_subjects(
 fn is_actor_modifier(word: &str) -> bool {
     matches!(
         word,
-        "a" | "an" | "the" | "this" | "that" | "owning" | "thread" | "lane"
+        "a" | "an" | "the" | "this" | "that" | "owning" | "thread" | "lane" | "owner" | "agent"
     )
 }
 
@@ -187,6 +187,11 @@ fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {
         }
         "switches" | "switched" => Some(SetupAction::Switch),
         "checkout" | "checkouts" => Some(SetupAction::Checkout),
+        "check"
+            if words.get(index + 1) == Some(&"out") && has_completed_auxiliary(words, index) =>
+        {
+            Some(SetupAction::Checkout)
+        }
         "checked" if words.get(index + 1) == Some(&"out") => Some(SetupAction::Checkout),
         "setup" => Some(SetupAction::Setup),
         "set" | "sets" if words.get(index + 1) == Some(&"up") => Some(SetupAction::Setup),
@@ -211,4 +216,11 @@ fn action_is_negated(words: &[&str], start: usize, action: usize) -> bool {
     words[action.saturating_sub(3).max(start)..action]
         .iter()
         .any(|word| matches!(*word, "no" | "not" | "never" | "without" | "neither"))
+        || action.checked_sub(2).is_some_and(|index| {
+            index >= start
+                && matches!(
+                    (words[index], words[index + 1]),
+                    ("isn", "t") | ("aren", "t") | ("wasn", "t") | ("weren", "t")
+                )
+        })
 }

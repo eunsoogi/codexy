@@ -182,6 +182,30 @@ fn validator_fails_closed_for_coordinated_child_setup_subjects() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_handles_setup_relation_grammar_boundaries() -> TestResult {
+    for (label, setup, expected) in [
+        (
+            "coordinated child subject with owner modifier fails closed",
+            "The child thread owner and the parent created branch codexy/463 before classification.",
+            false,
+        ),
+        (
+            "spaced base-form checkout fails closed",
+            "The child did check out worktree codexy/463 before classification.",
+            false,
+        ),
+        (
+            "contracted passive negation remains absent",
+            "Branch codexy/463 wasn't created by the child before classification.",
+            true,
+        ),
+    ] {
+        assert_result(label, setup, expected)?;
+    }
+    Ok(())
+}
+
 fn assert_result(label: &str, setup: &str, expected: bool) -> TestResult {
     let evidence = format!("{}\n{setup}", parent_owned_classification());
     let temp = tempfile::tempdir()?;
