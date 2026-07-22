@@ -39,6 +39,40 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
       - name: Build candidate MCP runtimes
         run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
+      - name: Smoke platform-local MCP protocols
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+
+          def smoke(binary, tool, arguments):
+              requests = [
+                  {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+                  {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": tool, "arguments": arguments}},
+              ]
+              completed = subprocess.run(
+                  [binary],
+                  input="\n".join(json.dumps(request) for request in requests) + "\n",
+                  capture_output=True,
+                  check=False,
+                  text=True,
+                  timeout=30,
+              )
+              if completed.returncode:
+                  raise SystemExit(f"{binary} failed: {completed.stderr}")
+              responses = {response["id"]: response for response in map(json.loads, completed.stdout.splitlines()) if "id" in response}
+              expected = {"protocolVersion": "2024-11-05"}
+              if responses[1]["result"]["protocolVersion"] != expected["protocolVersion"]:
+                  raise SystemExit(f"{binary} protocol mismatch")
+              if "error" in responses[2] or not responses[2]["result"]["content"]:
+                  raise SystemExit(f"{binary} tool smoke failed: {responses[2]}")
+
+          cases = [
+              {"binary": "target/release/codexy-mcp-lsp", "name": "lsp_status", "arguments": {"root": ".", "path": "Cargo.toml"}},
+              {"binary": "target/release/codexy-mcp-codegraph", "name": "codegraph_overview", "arguments": {"root": ".", "limit": 10}},
+          ]
+          for case in cases:
+              smoke(case["binary"], case["name"], case["arguments"])
+          PY
       - name: Package declared platform binaries
         env:
           PLATFORM: ${{ matrix.platform }}
@@ -127,11 +161,31 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: |
-          test "$(git ls-remote --tags origin "refs/tags/$CANDIDATE_TAG")" = ""
-          gh release view "$CANDIDATE_TAG" >/dev/null 2>&1 && exit 1
-          git tag -a "$CANDIDATE_TAG" -m "Runtime candidate $CANDIDATE_TAG" "$SOURCE_COMMIT"
-          git push origin "$CANDIDATE_TAG"
-          gh release create "$CANDIDATE_TAG" dist/codexy-marketplace-plugin.tar.gz dist/runtime-candidate-receipt.json dist/runtime-candidate-provenance.json --target "$SOURCE_COMMIT" --title "$CANDIDATE_TAG" --notes "Immutable runtime candidate."
+          remote_commit="$(git ls-remote --tags origin "refs/tags/$CANDIDATE_TAG^{}" | awk 'NR == 1 {print $1}')"
+          if test -z "$remote_commit"; then
+            remote_commit="$(git ls-remote --tags origin "refs/tags/$CANDIDATE_TAG" | awk 'NR == 1 {print $1}')"
+          fi
+          if test -z "$remote_commit"; then
+            git tag -a "$CANDIDATE_TAG" -m "Runtime candidate $CANDIDATE_TAG" "$SOURCE_COMMIT"
+            git push origin "$CANDIDATE_TAG"
+            remote_commit="$SOURCE_COMMIT"
+          fi
+          test "$remote_commit" = "$SOURCE_COMMIT"
+          if ! gh release view "$CANDIDATE_TAG" >/dev/null 2>&1; then
+            gh release create "$CANDIDATE_TAG" --target "$SOURCE_COMMIT" --title "$CANDIDATE_TAG" --notes "Immutable runtime candidate."
+          fi
+          recovery_dir="$(mktemp -d)"
+          trap 'rm -rf "$recovery_dir"' EXIT
+          for asset in dist/codexy-marketplace-plugin.tar.gz dist/runtime-candidate-receipt.json dist/runtime-candidate-provenance.json; do
+            name="$(basename "$asset")"
+            if gh release view "$CANDIDATE_TAG" --json assets --jq '.assets[].name' | grep -Fqx "$name"; then
+              public_asset="$recovery_dir/$name"
+              gh release download "$CANDIDATE_TAG" --pattern "$name" --output "$public_asset"
+              cmp "$asset" "$public_asset"
+            else
+              gh release upload "$CANDIDATE_TAG" "$asset"
+            fi
+          done
       - name: Re-download and verify anonymous public bytes
         env:
           CANDIDATE_TAG: ${{ inputs.candidate_tag }}

@@ -39,6 +39,9 @@ jobs:
           case "$CANDIDATE_TAG" in runtime-candidate-*) ;; *) exit 1;; esac
           curl --fail --location "https://pypi.org/pypi/getcodexy/${BOOTSTRAP_VERSION}/json" -o bootstrap.json
           test "$(jq -r .info.version bootstrap.json)" = "$BOOTSTRAP_VERSION"
+          python -m venv public-bootstrap
+          public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple "getcodexy==${BOOTSTRAP_VERSION}"
+          public-bootstrap/bin/codexy-mcp-runtime --help
           base="https://github.com/eunsoogi/codexy/releases/download/$CANDIDATE_TAG"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o candidate.tar.gz
           curl --fail --location "$base/runtime-candidate-receipt.json" -o candidate-receipt.json
@@ -62,6 +65,8 @@ jobs:
           test "$(jq -r .run_attempt run.json)" = "$(jq -r .provenance.runAttempt candidate-receipt.json)"
           test "$(jq -r .repository.id run.json)" = "1269350143"
           test "$(jq -r .html_url run.json)" = "$(jq -r .provenance.workflowRunUrl candidate-receipt.json)"
+          test "$(jq -r .status run.json)" = "completed"
+          test "$(jq -r .conclusion run.json)" = "success"
           gh attestation verify candidate.tar.gz --repo eunsoogi/codexy
       - name: Apply verified activation contract
         env:
