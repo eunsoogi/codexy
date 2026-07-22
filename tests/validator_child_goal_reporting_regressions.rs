@@ -2,7 +2,7 @@ use std::process::Output;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const COMPLETE_CHILD_CLASSIFICATION: &str = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: child-owned implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
+const COMPLETE_CHILD_CLASSIFICATION: &str = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
 
 #[test]
 fn validator_requires_pre_delivery_for_status_form_terminal_goals() -> TestResult {

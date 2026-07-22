@@ -100,7 +100,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: child-owned implementation lane
+Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -122,7 +122,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: child-owned implementation lane
+Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -139,13 +139,13 @@ Maintainer reassignment: none
 fn validator_allows_setup_before_next_owner_decision_boundary() -> TestResult {
     assert_allowed(
         r#"Branch codexy/neutral-lane was created after classification.
-Owner decision: child-owned implementation lane
+Owner decision: affirmative child-owned because the delegated child owns implementation
 Ownership metadata source: parent-supplied
 Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: child-owned implementation lane
+Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -165,7 +165,7 @@ fn validator_rejects_setup_before_same_classification_owner_decision() -> TestRe
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: affirmative current-thread-owned because the current thread owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -204,7 +204,7 @@ Lane ownership: parent-owned
 Task classification:
 Lane type: validation
 Secondary surfaces: workflow, validators
-Owner decision: parent-owned for branch/worktree setup; parent owns implementation
+Owner decision: affirmative parent-owned because the parent owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -218,7 +218,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: child-owned implementation lane
+Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -232,7 +232,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: child-owned implementation lane (not parent-owned)
+Owner decision: affirmative child-owned because parent-owned is not selected
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel

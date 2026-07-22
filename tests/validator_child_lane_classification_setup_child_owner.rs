@@ -202,7 +202,7 @@ fn validator_rejects_prefixed_child_ownership_and_control_before_classification(
 }
 
 fn complete_parent_classification() -> &'static str {
-    "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate evidence\nStop/blocker: None"
+    "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: validators\nOwner decision: affirmative parent-owned because the parent owns orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate evidence\nStop/blocker: None"
 }
 
 fn complete_child_classification() -> &'static str {

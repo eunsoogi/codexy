@@ -41,7 +41,7 @@ pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
 
 pub(super) fn is_affirmative_owner_decision_for(value: &str, authority: OwnerSelection) -> bool {
     matches!(
-        parse_owner_decision(value),
+        parse_explicit_owner_decision(trimmed_value(value)),
         Some(OwnerDecision {
             selection,
             affirmation: OwnerAffirmation::Affirmative,

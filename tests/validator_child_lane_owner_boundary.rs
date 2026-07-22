@@ -94,11 +94,7 @@ fn validator_shared_owner_boundary_matches_colon_and_gfm_decisions() -> TestResu
 }
 
 fn classification(source: &str, authority: &str, display: &str, gfm: bool) -> String {
-    let decision = if gfm {
-        format!("affirmative {display} because the selected lane owns implementation")
-    } else {
-        format!("{display} implementation lane")
-    };
+    let decision = format!("affirmative {display} because the selected lane owns implementation");
     let fields = if gfm {
         format!(
             "| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | {decision} |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"

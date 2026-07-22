@@ -1,8 +1,7 @@
 use super::child_lane_classification_authority::LaneAuthority;
 use super::child_lane_classification_schema::ClassificationTableSchema;
 use super::child_lane_owner_decision::{
-    OwnerSelection, is_affirmative_child_owner_decision, is_affirmative_owner_decision_for,
-    is_parent_owned_value,
+    is_affirmative_child_owner_decision, is_affirmative_owner_decision_for,
 };
 #[derive(Clone, Default)]
 pub(super) struct ClassificationFields {
@@ -27,8 +26,6 @@ impl ClassificationFields {
             self.child_display_owner_decision = child_owner_decision;
             self.authority_owner_decision = authority.is_some_and(|authority| {
                 is_affirmative_owner_decision_for(value, authority.owner())
-                    || (authority.owner() == OwnerSelection::ParentOwned
-                        && is_parent_owned_value(value))
             });
             self.child_owner_decision = authority
                 .is_some_and(|authority| authority.authorizes_child_setup())

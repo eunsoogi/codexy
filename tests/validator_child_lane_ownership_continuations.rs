@@ -192,7 +192,7 @@ fn validator_allows_explicit_child_created_setup_artifacts()
         "child-lane-created draft worktree before starting",
     ] {
         let output = run_ownership_validator(&format!(
-            "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: child-owned implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None\n{setup_evidence}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+            "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: create branch after classification\nStop/blocker: None\n{setup_evidence}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
         ))?;
 
         assert!(
