@@ -40,6 +40,21 @@ mod release_tag_parity;
 #[path = "../release_workflow_parity.rs"]
 mod release_workflow_parity;
 
+#[path = "../runtime_publication_activation.rs"]
+mod runtime_publication_activation;
+
+#[path = "../runtime_candidate_asset_recovery.rs"]
+mod runtime_candidate_asset_recovery;
+
+#[path = "../runtime_activation_branch_recovery.rs"]
+mod runtime_activation_branch_recovery;
+
+#[path = "../runtime_workflow_recovery.rs"]
+mod runtime_workflow_recovery;
+
+#[path = "../bootstrap_package_admission.rs"]
+mod bootstrap_package_admission;
+
 #[path = "../version_bump_pr_readiness.rs"]
 mod version_bump_pr_readiness;
 
@@ -81,6 +96,9 @@ mod version_bump_workflow_adapter;
 
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
+
+#[path = "../runtime_platform_detection.rs"]
+mod runtime_platform_detection;
 
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;

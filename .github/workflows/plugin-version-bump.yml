@@ -37,6 +37,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Admit selected runtime version advance
+        env:
+          VERSION: ${{ inputs.version }}
+        run: scripts/sync-plugin-version --admit-version "$VERSION"
+
       - name: Validate governing release issue
         env:
           GH_TOKEN: ${{ github.token }}
