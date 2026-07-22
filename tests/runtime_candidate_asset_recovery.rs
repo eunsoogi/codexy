@@ -12,7 +12,11 @@ fn existing_assets_stabilize_retry_bytes_with_a_success_binding() -> Result<(), 
     let output = fixture.run_with(200, 3)?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     let after = fixture.remote_bytes()?;
-    assert!(before.iter().all(|entry| after.contains(entry)));
+    assert!(
+        before
+            .iter()
+            .all(|entry| after.iter().any(|candidate| candidate == entry))
+    );
     let binding: Value = serde_json::from_slice(&fs::read(
         fixture.remote.join("runtime-candidate-publication-200-3.json"),
     )?)?;
