@@ -11,7 +11,11 @@ use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
 
-pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> bool {
+pub(super) fn child_setup_context_applies(
+    lines: &[&str],
+    setup_index: usize,
+    explicit_child_scope: bool,
+) -> bool {
     for (index, line) in lines
         .iter()
         .enumerate()
@@ -21,6 +25,7 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
     {
         if index != setup_index && is_lane_context_boundary(lines, index, line) {
             return requires_child_setup_validation(line)
+                || (explicit_child_scope && has_authoritative_non_child_owner(line))
                 || has_complete_child_classification_before(lines, setup_index);
         }
         if matches!(
@@ -30,7 +35,10 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
             return true;
         }
         if is_parent_owned_lane_evidence(line) {
-            return false;
+            return explicit_child_scope;
+        }
+        if has_authoritative_external_owner(line) {
+            return explicit_child_scope;
         }
         if is_child_owned_lane_evidence(line) {
             return true;
@@ -145,9 +153,21 @@ fn is_parent_owned_lane_evidence(line: &str) -> bool {
     })
 }
 
+fn has_authoritative_non_child_owner(line: &str) -> bool {
+    is_parent_owned_lane_evidence(line) || has_authoritative_external_owner(line)
+}
+
+fn has_authoritative_external_owner(line: &str) -> bool {
+    matches!(
+        parse_lane_ownership_metadata(metadata_key(line)),
+        LaneOwnershipMetadata::Valid(OwnerSelection::ExternalHumanOwned)
+    )
+}
+
 fn is_later_lane_boundary(lines: &[&str], index: usize, line: &str) -> bool {
     let line = metadata_key(line);
     is_parent_owned_lane_evidence(line)
+        || has_authoritative_external_owner(line)
         || "pr:|pull request:|review response:|maintainer reassignment:"
             .split('|')
             .any(|marker| line.starts_with(marker))

@@ -2,7 +2,7 @@ use super::child_lane_classification_authority::lane_authority_context_before;
 use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_fields::ClassificationFields;
-use super::child_lane_classification_setup_context::child_lane_context_applies;
+use super::child_lane_classification_setup_context::child_setup_context_applies;
 use super::child_lane_colon_classification_block::ColonClassificationBlock;
 use super::child_lane_gfm_classification_table::{
     GfmClassificationTable, GfmClassificationTableEvent,
@@ -19,7 +19,9 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 .into_iter()
                 .map(move |clause| (index, clause))
         })
-        .filter(|(index, _)| child_lane_context_applies(&lines, *index))
+        .filter(|(index, clause)| {
+            child_setup_context_applies(&lines, *index, clause_has_explicit_child_scope(clause))
+        })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {
         return Vec::new();
@@ -172,6 +174,9 @@ fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
             || has_codexy_branch_setup_subject(line))
         && !has_parent_setup_subject(line)
         && !has_absent_child_setup(line)
+}
+fn clause_has_explicit_child_scope(line: &str) -> bool {
+    has_child_setup_actor(line) || has_child_setup_subject(line)
 }
 fn has_unqualified_branch_or_worktree_setup(line: &str) -> bool {
     (line.contains("branch") || line.contains("worktree")) && has_setup_action(line)

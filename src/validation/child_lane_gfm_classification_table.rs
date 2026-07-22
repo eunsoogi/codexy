@@ -79,6 +79,7 @@ enum GfmClassificationTableState {
         next_field: usize,
     },
     Complete,
+    SchemaKeyHeader,
     OtherHeader,
 }
 
@@ -99,6 +100,7 @@ impl GfmClassificationTable {
                 self.consume_classification(line, next_field)
             }
             GfmClassificationTableState::Complete => self.consume_complete(line),
+            GfmClassificationTableState::SchemaKeyHeader => self.consume_schema_key_header(line),
             GfmClassificationTableState::OtherHeader => self.consume_other_header(line),
         }
     }
@@ -155,7 +157,8 @@ impl GfmClassificationTable {
                 GfmClassificationTableEvent::Ignore
             }
             Some((key, _)) if ClassificationTableSchema::records_key(metadata_key(key)) => {
-                self.invalidate()
+                self.state = GfmClassificationTableState::SchemaKeyHeader;
+                GfmClassificationTableEvent::Ignore
             }
             Some(_) => {
                 self.state = GfmClassificationTableState::OtherHeader;
@@ -166,6 +169,14 @@ impl GfmClassificationTable {
                 GfmClassificationTableEvent::NotGfm
             }
         }
+    }
+
+    fn consume_schema_key_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
+        if matches!(parse_table_separator(line), GfmDelimiterRow::Valid) {
+            self.state = GfmClassificationTableState::Neutral;
+            return GfmClassificationTableEvent::NotGfm;
+        }
+        self.invalidate()
     }
 
     fn consume_other_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
