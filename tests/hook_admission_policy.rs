@@ -75,6 +75,9 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
     for command in ["echo ok\ngit push --force origin main", "echo $(git push --force origin main)",
         "exec git push --force origin main", "FOO=1 git push --force origin main",
         "git -c alias.x='push --force' x origin main", "git push origin +main",
+        "git push --mirror origin", "sudo -u root git push --force origin topic",
+        "printf '%s\\n' origin topic | xargs git push --force",
+        "gh pr create --title 'Plain title' --body x",
         "gh pr merge 453 --admin=true", "rm -rf ${HOME}", "echo x | sh"]
     {
         assert_deny(&bash(&root, owned.path(), command)?, "PreToolUse")?;
@@ -82,8 +85,11 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
     assert_eq!(bash(&root, owned.path(), "printf '%s' 'git push --force is documented'")?, b"");
     assert_eq!(bash(&root, other.path(), "git push --force origin topic")?, b"");
     assert_deny(&bash(&root, other.path(), "git push --force git@github.com:eunsoogi/codexy.git main")?, "PreToolUse")?;
+    assert_deny(&bash(&root, other.path(), "echo $(git push --force git@github.com:eunsoogi/codexy.git topic)")?, "PreToolUse")?;
     let changed_directory = format!("git -C {} push --force origin main", owned.path().display());
     assert_deny(&bash(&root, other.path(), &changed_directory)?, "PreToolUse")?;
+    assert_eq!(bash(&root, owned.path(), "gh pr create --title 'fix(hooks): valid title' --body x")?, b"");
+    assert_eq!(bash(&root, other.path(), "echo $(printf safe)")?, b"");
     Ok(())
 }
 

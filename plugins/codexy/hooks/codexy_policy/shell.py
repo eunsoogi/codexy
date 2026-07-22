@@ -8,23 +8,32 @@ import shlex
 from pathlib import Path
 
 from .repository import OWNED, identity, repository_owned
+from .titles import issue_title, pr_title
 
 OPS = {";", "&&", "||", "|", "&"}
 WRAPPERS = {"env", "command", "sudo", "exec"}
 OPAQUE = re.compile(r"\$\(|`|\$\{|<<<?|\b(?:eval|if|for|while|until|case)\b")
+SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 
 
 def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
     cwd_owned = repository_owned(cwd)
     if depth > 3:
         return True
-    if cwd_owned is not False and (OPAQUE.search(command) or any(c in command for c in "(){}")):
-        return True
+    if OPAQUE.search(command):
+        if cwd_owned is not False:
+            return True
+        for match in SUBCOMMAND.finditer(command):
+            nested = match.group(1) if match.group(1) is not None else match.group(2)
+            if forbidden(nested, cwd, depth + 1):
+                return True
     try:
-        lexer = shlex.shlex(command.replace("\n", ";"), posix=True, punctuation_chars=";&|")
+        lexer = shlex.shlex(command.replace("\n", ";"), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
         tokens = list(lexer)
     except ValueError:
+        return cwd_owned is not False
+    if any(token in {"(", ")", "{", "}"} for token in tokens):
         return cwd_owned is not False
     segments, current = [], []
     for token in tokens:
@@ -59,6 +68,10 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
                     tokens = tokens[2:]
                 else:
                     tokens = tokens[1:]
+        elif name == "sudo":
+            tokens = _sudo_command(tokens)
+            if tokens is None:
+                return cwd_owned is not False
     if not tokens:
         return False
     name, args = _name(tokens[0]), tokens[1:]
@@ -67,6 +80,8 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
             if arg.lower() in {"-c", "-command", "/c"}:
                 return index + 1 >= len(args) or forbidden(args[index + 1], cwd, depth + 1)
         return cwd_owned is not False
+    if name == "xargs":
+        return _xargs(args, cwd, cwd_owned, depth)
     if name == "git":
         return _git(args, cwd, cwd_owned)
     if name == "gh":
@@ -97,19 +112,87 @@ def _git(args: list[str], cwd: str, cwd_owned: bool | None) -> bool:
     target_owned = _explicit_owned(rest)
     applies = target_owned is True or (target_owned is None and cwd_owned is not False)
     if operation == "push":
-        forced = any(arg == "--force" or arg.startswith("--force=") or arg == "--force-with-lease" or arg.startswith("--force-with-lease=") or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in rest)
+        forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in rest)
         return applies and forced
     return applies and ((operation == "reset" and "--hard" in rest) or (operation == "clean" and _flag(rest, "f", "--force")))
 
 
 def _gh(args: list[str], cwd_owned: bool | None) -> bool:
     owned = cwd_owned
-    for index, arg in enumerate(args):
-        if arg in {"-R", "--repo"} and index + 1 < len(args):
+    filtered, index = [], 0
+    while index < len(args):
+        arg = args[index]
+        if arg in {"-R", "--repo"}:
+            if index + 1 >= len(args):
+                return owned is not False
             owned = identity("https://github.com/" + args[index + 1]) == OWNED
+            index += 2
         elif arg.startswith("--repo="):
             owned = identity("https://github.com/" + arg.split("=", 1)[1]) == OWNED
-    return owned is not False and args[:2] == ["pr", "merge"] and any(arg == "--admin" or arg.startswith("--admin=") for arg in args[2:])
+            index += 1
+        else:
+            filtered.append(arg)
+            index += 1
+    if owned is False:
+        return False
+    operation = filtered[:2]
+    if operation == ["pr", "merge"]:
+        return any(arg == "--admin" or arg.startswith("--admin=") for arg in filtered[2:])
+    if operation in (["pr", "create"], ["pr", "edit"]):
+        present, title = _option_value(filtered[2:], "--title")
+        return (operation[1] == "create" and not present) or (present and not pr_title(title))
+    if operation in (["issue", "create"], ["issue", "edit"]):
+        present, title = _option_value(filtered[2:], "--title")
+        return (operation[1] == "create" and not present) or (present and not issue_title(title))
+    return False
+
+
+def _sudo_command(args: list[str]) -> list[str] | None:
+    value_options = {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "--close-from", "-D", "--chdir", "-R", "--chroot", "-T", "--command-timeout"}
+    flag_options = {"-A", "--askpass", "-b", "--background", "-E", "--preserve-env", "-H", "--set-home", "-K", "--remove-timestamp", "-k", "--reset-timestamp", "-n", "--non-interactive", "-S", "--stdin", "-V", "--version", "-v", "--validate"}
+    while args and args[0].startswith("-"):
+        option = args[0]
+        if option == "--":
+            return args[1:]
+        if option in value_options:
+            if len(args) < 2:
+                return None
+            args = args[2:]
+        elif option in flag_options or option.startswith(tuple(item + "=" for item in value_options if item.startswith("--"))):
+            args = args[1:]
+        elif len(option) > 2 and option[:2] in {"-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T"}:
+            args = args[1:]
+        else:
+            return None
+    return args
+
+
+def _xargs(args: list[str], cwd: str, cwd_owned: bool | None, depth: int) -> bool:
+    value_options = {"-a", "--arg-file", "-d", "--delimiter", "-E", "--eof", "-I", "--replace", "-L", "--max-lines", "-n", "--max-args", "-P", "--max-procs", "-s", "--max-chars"}
+    flag_options = {"-0", "--null", "-o", "--open-tty", "-p", "--interactive", "-r", "--no-run-if-empty", "-t", "--verbose", "-x", "--exit"}
+    while args and args[0].startswith("-"):
+        option = args[0]
+        if option == "--":
+            args = args[1:]
+            break
+        if option in value_options:
+            if len(args) < 2:
+                return cwd_owned is not False
+            args = args[2:]
+        elif option in flag_options or option.startswith(tuple(item + "=" for item in value_options if item.startswith("--"))):
+            args = args[1:]
+        else:
+            return cwd_owned is not False
+    return bool(args) and _segment(args, cwd, cwd_owned, depth + 1)
+
+
+def _option_value(args: list[str], option: str) -> tuple[bool, str | None]:
+    for index, arg in enumerate(args):
+        if arg == option:
+            return True, args[index + 1] if index + 1 < len(args) else None
+        if arg.startswith(option + "="):
+            return True, arg.split("=", 1)[1]
+    return False, None
 
 
 def _rm(args: list[str]) -> bool:
