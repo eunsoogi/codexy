@@ -7,6 +7,7 @@ mod module_boundary;
 mod rust_module;
 mod token_coverage;
 mod workflow_command;
+mod workflow_yaml;
 
 pub(super) fn formatting_only_error(
     root: &Path,

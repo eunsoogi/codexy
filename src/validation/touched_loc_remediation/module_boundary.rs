@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use super::workflow_command::WorkflowScriptCommand;
 use super::{read_base_text, rust_module, token_coverage};
+use super::{workflow_command::WorkflowScriptCommand, workflow_yaml};
 
 pub(super) fn has_new_module_boundary(
     root: &Path,
@@ -48,12 +48,8 @@ pub(super) fn has_new_module_boundary(
 
 fn workflow_script_extraction(root: &Path, base_ref: &str, current: &str) -> Result<String> {
     let mut scripts = std::collections::BTreeSet::new();
-    for command in current.lines().map(str::trim).filter_map(|line| {
-        line.strip_prefix("run:")
-            .or_else(|| line.strip_prefix("- run:"))
-            .map(str::trim)
-    }) {
-        let Some(parsed) = WorkflowScriptCommand::parse(command) else {
+    for command in workflow_yaml::run_commands(current) {
+        let Some(parsed) = WorkflowScriptCommand::parse(command.trim()) else {
             continue;
         };
         let path = parsed.executable;
