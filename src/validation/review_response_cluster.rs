@@ -52,7 +52,8 @@ pub(super) fn check_instruction_policy(path: &Path, text: &str, errors: &mut Vec
     }
 }
 
-pub(super) fn diagnostics(receipt: &str) -> Vec<String> {
+/// Returns typed root-cause review-cluster diagnostics for behavioral harnesses.
+pub fn diagnostics(receipt: &str) -> Vec<String> {
     let receipt = match serde_json::from_str::<ReviewClusterReceipt>(receipt) {
         Ok(receipt) => receipt,
         Err(error) => {

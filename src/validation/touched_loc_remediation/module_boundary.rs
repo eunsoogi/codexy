@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 
 use super::{read_base_text, rust_module, token_coverage};
+use super::{workflow_command::WorkflowScriptCommand, workflow_yaml};
 
 pub(super) fn has_new_module_boundary(
     root: &Path,
@@ -12,7 +13,7 @@ pub(super) fn has_new_module_boundary(
     current: &str,
 ) -> Result<bool> {
     let current_lines = current.lines().collect::<std::collections::HashSet<_>>();
-    let removed = base
+    let mut removed = base
         .lines()
         .filter(|line| !line.trim().is_empty() && !current_lines.contains(line))
         .collect::<Vec<_>>();
@@ -20,8 +21,17 @@ pub(super) fn has_new_module_boundary(
         return Ok(false);
     }
     let base_line_count = token_coverage::nonempty_line_count(base);
+    let workflow = path.starts_with(".github/workflows/")
+        && matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("yml" | "yaml")
+        );
     let extracted = match path.extension().and_then(|extension| extension.to_str()) {
         Some("md") => markdown_extraction(root, base_ref, path, current)?,
+        Some("yml" | "yaml") if workflow => {
+            removed.retain(|line| !matches!(line.trim(), "run: |" | "- run: |"));
+            workflow_script_extraction(root, base_ref, current)?
+        }
         _ => rust_module_extraction(root, base_ref, path, current)?,
     };
     let removed = removed.join("\n");
@@ -34,6 +44,26 @@ pub(super) fn has_new_module_boundary(
             || exact_line_coverage >= 2
                 && extracted_line_count.saturating_mul(4) >= base_line_count.saturating_mul(3))
             && extracted_line_count.saturating_mul(4) >= removed_line_count.saturating_mul(3))
+}
+
+fn workflow_script_extraction(root: &Path, base_ref: &str, current: &str) -> Result<String> {
+    let mut scripts = std::collections::BTreeSet::new();
+    for command in workflow_yaml::run_commands(current) {
+        let Some(parsed) = WorkflowScriptCommand::parse(command.trim()) else {
+            continue;
+        };
+        let path = parsed.executable;
+        if path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(mechanical_numbered_component)
+            || !root.join(&path).is_file()
+        {
+            continue;
+        }
+        scripts.insert(path);
+    }
+    extracted_new_lines(root, base_ref, scripts)
 }
 
 fn markdown_extraction(root: &Path, base_ref: &str, path: &Path, current: &str) -> Result<String> {

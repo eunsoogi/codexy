@@ -90,6 +90,9 @@ mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
 mod runtime;
+mod runtime_candidate_manifest;
+mod runtime_release_contract;
+mod runtime_release_schema;
 mod sentinel_handoff;
 mod sentinel_handoff_evidence;
 mod sentinel_handoff_reviewer;
@@ -103,6 +106,7 @@ use anyhow::Result;
 
 pub use mode_dispatch::{errors, run};
 pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
+pub use review_response_cluster::diagnostics as review_response_cluster_diagnostics;
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -173,11 +177,6 @@ pub fn instruction_policy_diagnostics(path: &Path) -> Result<Vec<String>> {
     let mut errors = Vec::new();
     instruction_policy::check_surface(path, &text, &mut errors);
     Ok(errors)
-}
-
-/// Returns typed root-cause review-cluster diagnostics for behavioral harnesses.
-pub fn review_response_cluster_diagnostics(receipt: &str) -> Vec<String> {
-    review_response_cluster::diagnostics(receipt)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

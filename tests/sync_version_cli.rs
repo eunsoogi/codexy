@@ -4,6 +4,11 @@ use std::{
     process::Command,
 };
 
+#[path = "sync_version_cli/isolation.rs"]
+mod isolation;
+#[path = "sync_version_cli/admission.rs"]
+mod admission;
+
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
@@ -60,7 +65,7 @@ fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error
 }
 
 #[test]
-fn sync_version_script_check_rejects_stale_cargo_lock_and_stale_python_metadata()
+fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let repo = archive_repository(&temp, "repo")?;
@@ -92,81 +97,26 @@ fn sync_version_script_check_rejects_stale_cargo_lock_and_stale_python_metadata(
         "sync-version --check changed the stale Cargo.lock"
     );
 
-    fs::write(&lock_path, lock_text)?;
-    let python_path = repo.join("packages/getcodexy/pyproject.toml");
-    let python_text = fs::read_to_string(&python_path)?;
-    let version_line = python_text
-        .lines()
-        .find(|line| line.starts_with("version = "))
-        .ok_or("Python package version line")?;
-    let stale_python = python_text.replacen(version_line, "version = \"9.9.9\"", 1);
-    fs::write(&python_path, &stale_python)?;
-    let stale_output = Command::new(repo.join("scripts/sync-plugin-version"))
-        .arg("--check")
-        .current_dir(&repo)
-        .output()?;
-    assert!(!stale_output.status.success(), "stale Python metadata passed");
-    assert_eq!(fs::read_to_string(&python_path)?, stale_python);
     Ok(())
 }
 
 #[test]
-fn sync_version_cli_updates_only_the_supplied_isolated_root()
+fn version_advance_requires_selected_public_identities_before_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let build_root = archive_repository(&temp, "build-root")?;
-    let diagnostic_root = archive_repository(&temp, "diagnostic-root")?;
-    fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/paths.rs"),
-        build_root.join("src/paths.rs"),
-    )?;
-    let build_target = build_root.join("target");
-
-    let build_status = Command::new("cargo")
-        .args([
-            "build",
-            "--locked",
-            "--quiet",
-            "--bin",
-            "codexy-sync-version",
-        ])
-        .env("CARGO_TARGET_DIR", &build_target)
-        .current_dir(&build_root)
-        .status()?;
-    assert!(build_status.success(), "isolated helper build failed");
-
-    let build_root_before = version_surface_contents(&build_root)?;
-    let output = Command::new(build_target.join("debug/codexy-sync-version"))
-        .args(["--version", "9.9.9"])
-        .env("CODEXY_REPO_ROOT", &diagnostic_root)
-        .current_dir(&diagnostic_root)
+    let repo = archive_repository(&temp, "pre-activation")?;
+    let before = isolation::version_surface_contents(&repo)?;
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--version", "1.3.0"])
+        .env("CODEXY_REPO_ROOT", &repo)
+        .current_dir(&repo)
         .output()?;
-    assert!(
-        output.status.success(),
-        "isolated diagnostic failed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(
-        version_surface_contents(&build_root)?,
-        build_root_before,
-        "the compiled helper mutated its baked-in build root"
-    );
-    for (path, contents) in version_surface_contents(&diagnostic_root)? {
-        let text = String::from_utf8_lossy(&contents);
-        assert!(
-            text.lines().map(str::trim).any(|line| matches!(
-                line,
-                "version = \"9.9.9\"" | "\"version\": \"9.9.9\","
-            )),
-            "supplied diagnostic root was not updated at {}",
-            path.display()
-        );
-    }
+    assert!(!output.status.success(), "pre-activation version advance unexpectedly succeeded");
+    assert_eq!(isolation::version_surface_contents(&repo)?, before);
     Ok(())
 }
 
-fn archive_repository(
+pub(super) fn archive_repository(
     temp: &tempfile::TempDir,
     name: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -188,36 +138,28 @@ fn archive_repository(
         .status()?;
     assert!(tar_status.success(), "tar extract failed");
     for relative in [
+        "Cargo.toml",
+        "Cargo.lock",
         "packages/getcodexy/pyproject.toml",
         "src/version.rs",
-        "src/version/python.rs",
+        "src/version/admission.rs",
+        "src/version/activation.rs",
+        "src/version/activation/receipt.rs",
+        "src/version/activation/receipt/fields.rs",
+        "src/version/bootstrap.rs",
+        "src/version/mutation.rs",
+        "src/version/wrappers.rs",
     ] {
         let destination = repo.join(relative);
         if let Some(parent) = destination.parent() {
             fs::create_dir_all(parent)?;
         }
-        fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join(relative), destination)?;
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(relative),
+            destination,
+        )?;
     }
     Ok(repo)
-}
-
-fn version_surface_contents(
-    root: &Path,
-) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {
-    [
-        ".agents/plugins/marketplace.json",
-        ".agents/plugins/release-publish-contract.json",
-        "Cargo.lock",
-        "Cargo.toml",
-        "packages/getcodexy/pyproject.toml",
-        "plugins/codexy/.codex-plugin/plugin.json",
-    ]
-    .into_iter()
-    .map(|relative| {
-        let path = root.join(relative);
-        Ok((path.clone(), fs::read(path)?))
-    })
-    .collect()
 }
 
 fn stale_codexy_runtime_lock_version(

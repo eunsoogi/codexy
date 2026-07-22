@@ -32,7 +32,7 @@ pub(crate) fn comparison_counts(
 pub(crate) fn repository_violations() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let output = Command::new("git")
-        .args(["diff", "--name-only", "origin/main", "--", "tests"])
+        .args(["diff", "--diff-filter=d", "-z", "--name-only", "origin/main", "--", "tests"])
         .current_dir(root)
         .output()?;
     if !output.status.success() {
@@ -40,7 +40,8 @@ pub(crate) fn repository_violations() -> Result<Vec<String>, Box<dyn std::error:
     }
     let mut violations = Vec::new();
     for relative in String::from_utf8(output.stdout)?
-        .lines()
+        .split('\0')
+        .filter(|path| !path.is_empty())
         .filter(|path| path.ends_with(".rs"))
     {
         let current = fs::read_to_string(root.join(relative))?;

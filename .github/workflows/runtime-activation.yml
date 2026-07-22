@@ -1,0 +1,127 @@
+name: Open verified runtime activation pull request
+
+on:
+  workflow_dispatch:
+    inputs:
+      bootstrap_version:
+        description: "Publicly verified getcodexy bootstrap version"
+        required: true
+        type: string
+      candidate_tag:
+        description: "Publicly verified immutable runtime-candidate-* tag"
+        required: true
+        type: string
+      source_commit:
+        description: "Exact source commit behind the candidate"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  open-activation-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Prove public bootstrap, release, run, and candidate bytes
+        env:
+          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$CANDIDATE_TAG" in runtime-candidate-*) ;; *) exit 1;; esac
+          curl --fail --location "https://pypi.org/pypi/getcodexy/${BOOTSTRAP_VERSION}/json" -o bootstrap.json
+          test "$(jq -r .info.version bootstrap.json)" = "$BOOTSTRAP_VERSION"
+          python -m venv public-bootstrap
+          public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple "getcodexy==${BOOTSTRAP_VERSION}"
+          public-bootstrap/bin/codexy-mcp-runtime --help
+          base="https://github.com/eunsoogi/codexy/releases/download/$CANDIDATE_TAG"
+          curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o candidate.tar.gz
+          curl --fail --location "$base/runtime-candidate-receipt.json" -o candidate-receipt.json
+          curl --fail --location "https://api.github.com/repos/eunsoogi/codexy/releases/tags/$CANDIDATE_TAG" -o release.json
+          test "$(jq -r .tag_name release.json)" = "$CANDIDATE_TAG"
+          test "$(jq -r .target_commitish release.json)" = "$SOURCE_COMMIT"
+          test "$(jq -r .schema candidate-receipt.json)" = "codexy-runtime-candidate-receipt/v1"
+          test "$(jq -r .candidate.schema candidate-receipt.json)" = "codexy-runtime-candidate/v1"
+          test "$(jq -r .candidate.source.commit candidate-receipt.json)" = "$SOURCE_COMMIT"
+          test "$(jq -r .candidate.artifact.tag candidate-receipt.json)" = "$CANDIDATE_TAG"
+          test "$(jq -r .provenance.repositoryId candidate-receipt.json)" = "1269350143"
+          sha256sum candidate.tar.gz | grep "$(jq -r .artifact.sha256 candidate-receipt.json)"
+          tar -xOf candidate.tar.gz plugins/codexy/runtime-candidate.json > embedded-candidate.json
+          sha256sum embedded-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 candidate-receipt.json)"
+          jq -cS .candidate candidate-receipt.json | tr -d '\n' > receipt-candidate.json
+          cmp receipt-candidate.json embedded-candidate.json
+          : > candidate-publication.json
+          jq -r '.assets[] | select(.name | test("^runtime-candidate-publication-[0-9]+-[0-9]+\\.json$")) | .browser_download_url' release.json > binding-urls.txt
+          while IFS= read -r binding_url; do
+            test -n "$binding_url" || continue
+            curl --fail --location "$binding_url" -o binding.json
+            test "$(jq -r .schema binding.json)" = "codexy-runtime-candidate-publication/v1" || continue
+            test "$(jq -r .candidateTag binding.json)" = "$CANDIDATE_TAG" || continue
+            test "$(jq -r .sourceCommit binding.json)" = "$SOURCE_COMMIT" || continue
+            test "$(jq -r .archiveSha256 binding.json)" = "$(sha256sum candidate.tar.gz | awk '{print $1}')" || continue
+            test "$(jq -r .receiptSha256 binding.json)" = "$(sha256sum candidate-receipt.json | awk '{print $1}')" || continue
+            test "$(jq -r .workflow.repositoryId binding.json)" = "1269350143" || continue
+            test "$(jq -r .workflow.path binding.json)" = ".github/workflows/runtime-candidate.yml" || continue
+            run_id="$(jq -r .workflow.runId binding.json)"
+            curl --fail --location "https://api.github.com/repos/eunsoogi/codexy/actions/runs/$run_id" -o run.json || continue
+            test "$(jq -r .head_sha run.json)" = "$SOURCE_COMMIT" || continue
+            test "$(jq -r .path run.json)" = ".github/workflows/runtime-candidate.yml" || continue
+            test "$(jq -r .run_attempt run.json)" = "$(jq -r .workflow.runAttempt binding.json)" || continue
+            test "$(jq -r .repository.id run.json)" = "1269350143" || continue
+            test "$(jq -r .html_url run.json)" = "$(jq -r .workflow.runUrl binding.json)" || continue
+            test "$(jq -r .status run.json)" = "completed" || continue
+            test "$(jq -r .conclusion run.json)" = "success" || continue
+            cp binding.json candidate-publication.json
+            break
+          done < binding-urls.txt
+          test -s candidate-publication.json
+          gh attestation verify candidate.tar.gz --repo eunsoogi/codexy
+      - name: Prepare activation branch
+        env:
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="codexy/runtime-activation-${CANDIDATE_TAG}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            git fetch origin "$branch"
+            git switch --track -c "$branch" "origin/$branch"
+            scripts/verify-runtime-activation-branch "$branch" origin/main "$BOOTSTRAP_VERSION" "$GITHUB_WORKSPACE/candidate-receipt.json"
+            printf '%s\n' existing > activation-branch-state
+          else
+            git switch -c "$branch"
+            printf '%s\n' new > activation-branch-state
+          fi
+      - name: Apply verified activation contract
+        env:
+          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+        run: scripts/activate-runtime-contract --repo-root "$GITHUB_WORKSPACE" --bootstrap-version "$BOOTSTRAP_VERSION" --candidate-receipt "$GITHUB_WORKSPACE/candidate-receipt.json"
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Create activation pull request
+        env:
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="codexy/runtime-activation-${CANDIDATE_TAG}"
+          git add .agents/plugins/release-publish-contract.json src/version/bootstrap.rs plugins/codexy/runtime-release.json plugins/codexy/runtime-candidate.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
+          if test "$(cat activation-branch-state)" = existing; then
+            git diff --cached --quiet || { echo "activation branch differs from verified contract" >&2; exit 1; }
+          else
+            git commit -m "feat(runtime): activate ${CANDIDATE_TAG}"
+            git push origin "$branch"
+          fi
+          if gh pr list --head "$branch" --state open --json number --jq 'length' | grep -Fqx 1; then
+            exit 0
+          fi
+          gh pr create --base main --head "$branch" --title "feat(runtime): activate ${CANDIDATE_TAG}" --label type/feature --label type/ci --label status/review --label priority/high --label area/plugin --label area/release --label area/qa --body "## Proof\n- Public PyPI, release, source, run, archive, receipt, and successful publication-binding checks passed.\n\nCloses #477\n\nCloses #451"
