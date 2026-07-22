@@ -4,8 +4,7 @@ use std::{
     process::Command,
 };
 
-type TestError = Box<dyn std::error::Error>;
-type TestResult = Result<(), TestError>;
+type TestResult = Result<(), Box<dyn std::error::Error>>;
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> TestResult {
     let output = installed_check(&["--check"])?;
@@ -80,19 +79,24 @@ fn sync_version_script_check_rejects_stale_cargo_lock_and_stale_python_metadata(
         .ok_or("Python package version line")?;
     let stale_python = python_text.replacen(version_line, "version = \"9.9.9\"", 1);
     fs::write(&python_path, &stale_python)?;
-    let stale_output = sync_check(&repo)?;
-    assert!(!stale_output.status.success(), "stale Python metadata passed");
+    assert!(!sync_check(&repo)?.status.success(), "stale Python metadata passed");
     assert_eq!(fs::read_to_string(&python_path)?, stale_python);
 
     fs::write(&python_path, python_text)?;
-    let version = plugin_version(&repo)?;
+    let contract_path = repo.join(".agents/plugins/release-publish-contract.json");
+    let contract_text = fs::read_to_string(&contract_path)?;
+    let stale_contract = contract_text.replacen(
+        "\"bootstrapVersion\": \"1.2.2\"",
+        "\"bootstrapVersion\": \"9.9.9\"",
+        1,
+    );
+    assert_ne!(contract_text, stale_contract, "bootstrap fixture did not change");
+    fs::write(&contract_path, &stale_contract)?;
     let wrapper_path = repo.join("plugins/codexy/mcp/codexy-mcp-lsp");
     let wrapper_text = fs::read_to_string(&wrapper_path)?;
-    let stale_wrapper = wrapper_text.replacen(&format!("getcodexy=={version}"), "getcodexy==9.9.9", 1);
-    fs::write(&wrapper_path, &stale_wrapper)?;
-    let stale_output = sync_check(&repo)?;
-    assert!(!stale_output.status.success(), "stale wrapper pin passed");
-    assert_eq!(fs::read_to_string(&wrapper_path)?, stale_wrapper);
+    assert!(!sync_check(&repo)?.status.success(), "wrapper/bootstrap divergence passed");
+    assert_eq!(fs::read_to_string(&contract_path)?, stale_contract);
+    assert_eq!(fs::read_to_string(&wrapper_path)?, wrapper_text);
     Ok(())
 }
 #[test]
@@ -120,6 +124,7 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root() -> TestResult {
     assert!(build_status.success(), "isolated helper build failed");
 
     let build_root_before = version_surface_contents(&build_root)?;
+    let diagnostic_before = version_surface_contents(&diagnostic_root)?;
     let output = Command::new(build_target.join("debug/codexy-sync-version"))
         .args(["--version", "9.9.9"])
         .env("CODEXY_REPO_ROOT", &diagnostic_root)
@@ -131,27 +136,20 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root() -> TestResult {
         build_root_before,
         "the compiled helper mutated its baked-in build root"
     );
-    for (path, contents) in version_surface_contents(&diagnostic_root)? {
-        let text = String::from_utf8_lossy(&contents);
-        let wrapper_server = match path.file_name().and_then(|name| name.to_str()) {
-            Some("codexy-mcp-lsp") => Some("lsp"),
-            Some("codexy-mcp-codegraph") => Some("codegraph"),
-            _ => None,
-        };
-        assert!(
-            text.lines().map(str::trim).any(|line| {
-                wrapper_server.map_or(matches!(line, "version = \"9.9.9\"" | "\"version\": \"9.9.9\","), |server| {
-                    line.split_ascii_whitespace().take(6).eq(["exec", "uvx", "--from", "getcodexy==9.9.9", "codexy-mcp-runtime", server])
-                })
-            }),
-            "supplied diagnostic root was not updated at {}",
-            path.display()
-        );
+    for ((path, before), (_, after)) in diagnostic_before.iter().zip(version_surface_contents(&diagnostic_root)?) {
+        if path.file_name().is_some_and(|name| name == "codexy-mcp-lsp" || name == "codexy-mcp-codegraph") {
+            assert_eq!(before, &after, "ordinary sync changed bootstrap pin at {}", path.display());
+        } else {
+            assert!(String::from_utf8_lossy(&after).lines().map(str::trim).any(|line| matches!(line, "version = \"9.9.9\"" | "\"version\": \"9.9.9\",")), "supplied diagnostic root was not updated at {}", path.display());
+        }
     }
+    let contract: serde_json::Value = serde_json::from_str(&fs::read_to_string(diagnostic_root.join(".agents/plugins/release-publish-contract.json"))?)?;
+    assert_eq!(contract["bootstrapVersion"], "1.2.2");
+    assert!(Command::new(build_target.join("debug/codexy-sync-version")).args(["--check", "--tag", "v9.9.9"]).env("CODEXY_REPO_ROOT", &diagnostic_root).status()?.success());
     Ok(())
 }
 
-fn archive_repository(temp: &tempfile::TempDir, name: &str) -> Result<PathBuf, TestError> {
+fn archive_repository(temp: &tempfile::TempDir, name: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let archive = temp.path().join(format!("{name}.tar"));
     let repo = temp.path().join(name);
     assert!(Command::new("git")
@@ -169,8 +167,10 @@ fn archive_repository(temp: &tempfile::TempDir, name: &str) -> Result<PathBuf, T
         .status()?
         .success(), "tar extract failed");
     for relative in [
+        ".agents/plugins/release-publish-contract.json",
         "packages/getcodexy/pyproject.toml",
         "src/version.rs",
+        "src/version/bootstrap.rs",
         "src/version/python.rs",
         "src/version/wrappers.rs",
     ] {
@@ -184,7 +184,7 @@ fn archive_repository(temp: &tempfile::TempDir, name: &str) -> Result<PathBuf, T
     Ok(repo)
 }
 
-fn version_surface_contents(root: &Path) -> Result<Vec<(PathBuf, Vec<u8>)>, TestError> {
+fn version_surface_contents(root: &Path) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {
     [
         ".agents/plugins/marketplace.json",
         ".agents/plugins/release-publish-contract.json",
@@ -203,27 +203,27 @@ fn version_surface_contents(root: &Path) -> Result<Vec<(PathBuf, Vec<u8>)>, Test
     .collect()
 }
 
-fn plugin_version(root: &Path) -> Result<String, TestError> {
+fn plugin_version(root: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(
         root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
     manifest["version"].as_str().map(ToOwned::to_owned).ok_or_else(|| "manifest version".into())
 }
 
-fn sync_check(root: &Path) -> Result<std::process::Output, TestError> {
+fn sync_check(root: &Path) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     Ok(Command::new(root.join("scripts/sync-plugin-version"))
         .arg("--check")
         .current_dir(root)
         .output()?)
 }
 
-fn installed_check(args: &[&str]) -> Result<std::process::Output, TestError> {
+fn installed_check(args: &[&str]) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .args(args)
         .output()?)
 }
 
-fn stale_codexy_runtime_lock_version(lock_text: &str, stale_version: &str) -> Result<String, TestError> {
+fn stale_codexy_runtime_lock_version(lock_text: &str, stale_version: &str) -> Result<String, Box<dyn std::error::Error>> {
     let mut in_codexy_runtime = false;
     let mut replaced = false;
     let mut lines = Vec::new();

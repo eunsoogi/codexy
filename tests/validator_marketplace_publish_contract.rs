@@ -201,6 +201,7 @@ fn release_contract_uses_main_for_current_marketplace_ref() -> Result<(), Box<dy
         publish["schema"],
         "codexy.internal.release-publish-contract.v1"
     );
+    assert_eq!(publish["bootstrapVersion"], "1.2.2");
     assert_eq!(snapshot["repository"], "https://github.com/eunsoogi/codexy");
     assert_eq!(snapshot["ref"], "main");
     assert_eq!(

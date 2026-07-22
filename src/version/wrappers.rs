@@ -1,4 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context as _, Result, bail};
 
@@ -24,27 +27,45 @@ pub(super) fn check_version(expected: &str) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn set_version(version: &str) -> Result<()> {
-    let updates = wrapper_paths()?
+pub(super) fn preflight() -> Result<()> {
+    for (path, server) in wrapper_paths()? {
+        wrapper_pin(&path, server)?;
+    }
+    Ok(())
+}
+
+pub(super) fn prepare_version_at(root: &Path, version: &str) -> Result<Vec<WrapperUpdate>> {
+    wrapper_paths_at(root)
         .into_iter()
         .map(|(path, server)| {
             let (mut text, range) = wrapper_pin(&path, server)?;
             text.replace_range(range, version);
-            Ok((path, text))
+            Ok(WrapperUpdate { path, text })
         })
-        .collect::<Result<Vec<_>>>()?;
-    for (path, text) in updates {
+        .collect()
+}
+
+pub(super) fn write_updates(updates: Vec<WrapperUpdate>) -> Result<()> {
+    for WrapperUpdate { path, text } in updates {
         fs::write(&path, text).with_context(|| format!("writing {}", display_relative(&path)))?;
     }
     Ok(())
 }
 
+pub(super) struct WrapperUpdate {
+    path: PathBuf,
+    text: String,
+}
+
 fn wrapper_paths() -> Result<Vec<(PathBuf, &'static str)>> {
-    let root = repo_root()?;
-    Ok(WRAPPERS
+    Ok(wrapper_paths_at(&repo_root()?))
+}
+
+fn wrapper_paths_at(root: &Path) -> Vec<(PathBuf, &'static str)> {
+    WRAPPERS
         .iter()
         .map(|(path, server)| (root.join(path), *server))
-        .collect())
+        .collect()
 }
 
 fn wrapper_pin(path: &PathBuf, server: &str) -> Result<(String, std::ops::Range<usize>)> {

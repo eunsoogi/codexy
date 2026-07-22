@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::paths::{display_relative, repo_root};
 
+mod bootstrap;
 mod cargo;
 mod python;
 mod wrappers;
@@ -111,12 +112,6 @@ fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
         .context("marketplace plugin index disappeared")
 }
 
-/// Checks plugin, marketplace, and package version parity.
-///
-/// # Errors
-///
-/// Returns an error when required files are missing, JSON is invalid, versions
-/// are malformed, or version values differ.
 pub fn check_versions() -> Result<String> {
     check_versions_for_tag(None)
 }
@@ -205,7 +200,10 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
     }
     python::check_version(manifest_version)?;
     cargo::check_version(manifest_version)?;
-    wrappers::check_version(manifest_version)?;
+    wrappers::check_version(&bootstrap::version(
+        &publish,
+        &display_relative(&publish_path),
+    )?)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
         if tag != expected_tag {
@@ -215,12 +213,6 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
     Ok(format!("plugin version sync ok: {manifest_version}"))
 }
 
-/// Synchronizes plugin, marketplace, and package versions.
-///
-/// # Errors
-///
-/// Returns an error when the requested version is invalid, required files cannot
-/// be read, JSON is invalid, or updated files cannot be written.
 pub fn set_version(version: &str) -> Result<String> {
     require_semver(version)?;
     let manifest_path = repo_path(PLUGIN_MANIFEST)?;
@@ -229,6 +221,7 @@ pub fn set_version(version: &str) -> Result<String> {
     let mut manifest = load_json(&manifest_path)?;
     let mut marketplace = load_json(&market_path)?;
     let mut publish = load_json(&publish_path)?;
+    wrappers::preflight()?;
     manifest["version"] = Value::String(version.to_owned());
     marketplace_plugin_mut(&mut marketplace)?["version"] = Value::String(version.to_owned());
     publish["version"] = Value::String(version.to_owned());
@@ -242,6 +235,10 @@ pub fn set_version(version: &str) -> Result<String> {
         write_json(&path, &package)?;
     }
     python::set_version(version)?;
-    wrappers::set_version(version)?;
     Ok(format!("plugin version synchronized to {version}"))
+}
+
+pub fn advance_bootstrap() -> Result<String> {
+    check_versions()?;
+    bootstrap::advance()
 }

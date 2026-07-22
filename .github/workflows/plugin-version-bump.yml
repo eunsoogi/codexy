@@ -7,13 +7,73 @@ on:
         description: "Target plugin version in MAJOR.MINOR.PATCH form"
         required: true
         type: string
+      advance_bootstrap:
+        description: "Advance MCP wrapper pins after the target package is public"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
+  verify-published-bootstrap:
+    if: ${{ inputs.advance_bootstrap }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify public PyPI bootstrap
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          python - <<'PY'
+          import json, os, re
+          from urllib.error import HTTPError
+          from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+          version = os.environ["VERSION"]
+          if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", version):
+              raise SystemExit("VERSION must be MAJOR.MINOR.PATCH")
+
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, target):
+                  raise HTTPError(req.full_url, code, "redirect rejected", headers, fp)
+
+          url = f"https://pypi.org/pypi/getcodexy/{version}/json"
+          response = build_opener(NoRedirect).open(Request(url), timeout=20)
+          raw = response.read(1_048_577)
+          if len(raw) > 1_048_576:
+              raise SystemExit("PyPI metadata exceeded one MiB")
+          payload = json.loads(raw)
+          if payload.get("info", {}).get("name") != "getcodexy" or payload["info"].get("version") != version:
+              raise SystemExit("PyPI metadata did not match getcodexy target")
+          files = [item for item in payload.get("urls", []) if not item.get("yanked")]
+          kinds = {item.get("packagetype") for item in files}
+          if not {"bdist_wheel", "sdist"} <= kinds:
+              raise SystemExit("PyPI release needs non-yanked wheel and sdist")
+          for item in files:
+              digest = item.get("digests", {}).get("sha256", "")
+              if not re.fullmatch(r"[0-9a-f]{64}", digest) or not item.get("url", "").startswith("https://files.pythonhosted.org/"):
+                  raise SystemExit("PyPI release artifact metadata was unsafe")
+          print(f"public getcodexy bootstrap available: {version}")
+          PY
+
   open-version-pr:
+    needs: verify-published-bootstrap
+    if: ${{ always() && (!inputs.advance_bootstrap || needs.verify-published-bootstrap.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -32,10 +92,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Synchronize plugin version
+      - name: Synchronize target version
+        if: ${{ !inputs.advance_bootstrap }}
         env:
           VERSION: ${{ inputs.version }}
         run: scripts/sync-plugin-version --version "$VERSION"
+
+      - name: Advance published bootstrap
+        if: ${{ inputs.advance_bootstrap }}
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          scripts/sync-plugin-version --check --tag "v$VERSION"
+          scripts/sync-plugin-version --advance-bootstrap
 
       - name: Verify version sync
         run: |
@@ -46,50 +115,65 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+          ADVANCE_BOOTSTRAP: ${{ inputs.advance_bootstrap }}
         run: |
           if git diff --quiet; then
             echo "Version is already synchronized to ${VERSION}."
             exit 0
           fi
-          branch="codexy/version-${VERSION}"
-          git switch -c "${branch}"
-          git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph packages/getcodexy/pyproject.toml
-          if [ -f package.json ]; then
-            git add package.json
+          if [ "$ADVANCE_BOOTSTRAP" = "true" ]; then
+            branch="codexy/bootstrap-${VERSION}"
+            title="chore(plugin): advance bootstrap to ${VERSION}"
+            git switch -c "${branch}"
+            git add .agents/plugins/release-publish-contract.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
+            summary="Advance the published getcodexy bootstrap pin to ${VERSION}."
+            changed_areas="- .agents/plugins/release-publish-contract.json
+          - plugins/codexy/mcp/codexy-mcp-lsp
+          - plugins/codexy/mcp/codexy-mcp-codegraph"
+            follow_up="- None."
+          else
+            branch="codexy/version-${VERSION}"
+            title="chore(plugin): bump version to ${VERSION}"
+            git switch -c "${branch}"
+            git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml
+            if [ -f package.json ]; then
+              git add package.json
+            fi
+            summary="Bump the Codexy plugin version to ${VERSION}; wrappers remain pinned to the published bootstrap version."
+            changed_areas="- Cargo.toml and Cargo.lock
+          - .agents/plugins/marketplace.json
+          - .agents/plugins/release-publish-contract.json
+          - plugins/codexy/.codex-plugin/plugin.json
+          - packages/getcodexy/pyproject.toml"
+            follow_up="- After public PyPI publication, dispatch this workflow with advance_bootstrap=true to open the reviewable wrapper-pin promotion PR."
           fi
-          git commit -m "chore(plugin): bump version to ${VERSION}"
+          git commit -m "${title}"
           git push origin "${branch}"
           body_file="$(mktemp)"
           cat >"${body_file}" <<EOF
           ## Summary
-          - Bump the Codexy plugin version to ${VERSION}.
-          - Keep plugin, marketplace, and getcodexy metadata in sync.
+          - ${summary}
 
           ## Rationale
-          - Codexy plugin releases need explicit version synchronization before review and merge.
+          - Main advances wrapper pins only after public PyPI availability is proved.
 
           ## Changed Areas
-          - .agents/plugins/marketplace.json
-          - .agents/plugins/release-publish-contract.json
-          - plugins/codexy/.codex-plugin/plugin.json
-          - plugins/codexy/mcp/codexy-mcp-lsp
-          - plugins/codexy/mcp/codexy-mcp-codegraph
-          - packages/getcodexy/pyproject.toml
+          ${changed_areas}
 
           ## Verification
           - scripts/sync-plugin-version --check
 
           ## Evidence
-          - Workflow validation completed before opening this PR.
+          - Workflow validation completed before opening this PR; bootstrap promotion additionally verified public PyPI availability.
 
           ## Not Run
           - None.
 
           ## Follow-ups
-          - None.
+          ${follow_up}
           EOF
           gh pr create \
-            --title "chore(plugin): bump version to ${VERSION}" \
+            --title "${title}" \
             --body-file "${body_file}" \
             --base main \
             --head "${branch}"
