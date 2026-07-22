@@ -60,6 +60,19 @@ def timeout_command(args: list[str]) -> list[str] | None:
     return args[1:] if len(args) >= 2 else None
 
 
+def command_command(args: list[str]) -> list[str] | None:
+    while args and args[0].startswith("-"):
+        option = args[0]
+        if option == "--":
+            return args[1:]
+        if len(option) < 2 or any(char not in "pVv" for char in option[1:]):
+            return None
+        if "V" in option or "v" in option:
+            return []
+        args = args[1:]
+    return args
+
+
 def option_value(args: list[str], options: tuple[str, ...]) -> tuple[bool, str | None]:
     for index, arg in enumerate(args):
         for option in options:

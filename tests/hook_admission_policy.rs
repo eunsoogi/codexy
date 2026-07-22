@@ -64,6 +64,7 @@ fn squash_merge_requires_head_subject_and_one_final_closing_reference() -> TestR
         json!({"pr_number":453,"merge_method":"squash","expected_head_sha":"a".repeat(40),"commit_title":"fix: x (#453)","commit_message":"Closes #1\nFixes #453"}),
         json!({"pr_number":453,"merge_method":"merge","expected_head_sha":"a".repeat(40),"commit_title":"fix: x (#453)","commit_message":"Fixes #453"}),
         json!({"pr_number":453,"merge_method":"squash","expected_head_sha":"a".repeat(40),"commit_title":"fix: x (#453)","commit_message":"Fixes #453."}),
+        json!({"pr_number":453,"merge_method":"squash","expected_head_sha":"a".repeat(40),"commit_title":"fix: x (#453)","commit_message":"  Fixes #453  "}),
     ] { assert_deny(&github(&root, "github_merge_pull_request", invalid)?, "PreToolUse")?; }
     Ok(())
 }
@@ -80,7 +81,8 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
         "git push --mirror origin", "sudo -u root git push --force origin topic",
         "printf '%s\\n' origin topic | xargs git push --force",
         "gh pr create --title 'Plain title' --body x",
-        "gh pr merge 453 --admin=true", "rm -rf ${HOME}", "echo x | sh"]
+        "gh pr merge 453 --admin=true", "command -p git push --force origin topic",
+        "rm -rf ${HOME}", "echo x | sh"]
     {
         assert_deny(&bash(&root, owned.path(), command)?, "PreToolUse")?;
     }
@@ -88,6 +90,8 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
     assert_eq!(bash(&root, other.path(), "git push --force origin topic")?, b"");
     assert_deny(&bash(&root, other.path(), "git push --force git@github.com:eunsoogi/codexy.git main")?, "PreToolUse")?;
     assert_deny(&bash(&root, other.path(), "echo $(git push --force git@github.com:eunsoogi/codexy.git topic)")?, "PreToolUse")?;
+    assert_deny(&bash(&root, other.path(), "GH_REPO=eunsoogi/codexy gh pr create --title 'Plain title'")?, "PreToolUse")?;
+    assert_deny(&bash(&root, other.path(), "eval 'git push --force git@github.com:eunsoogi/codexy.git topic'")?, "PreToolUse")?;
     for command in [
         "xargs -n1 git push --force git@github.com:eunsoogi/codexy.git",
         "sudo --preserve-env=FOO git push --force git@github.com:eunsoogi/codexy.git topic",
@@ -116,10 +120,19 @@ fn shell_policy_tracks_git_dir_assignments() -> TestResult {
     let root = root();
     let owned = repository("git@github.com:eunsoogi/codexy.git")?;
     let other = repository("https://github.com/openai/codex.git")?;
-    let command = format!("GIT_DIR='{}/.git' git push --force origin topic", owned.path().display());
-    assert_deny(&bash(&root, other.path(), &command)?, "PreToolUse")?;
-    let command = format!("env GIT_DIR='{}/.git' git push --force origin topic", owned.path().display());
-    assert_deny(&bash(&root, other.path(), &command)?, "PreToolUse")
+    for prefix in [
+        format!("GIT_DIR='{}/.git'", owned.path().display()),
+        format!("env GIT_DIR='{}/.git'", owned.path().display()),
+    ] {
+        for suffix in [
+            format!("git -C '{}' push --force origin topic", other.path().display()),
+            format!("env -C '{}' git push --force origin topic", other.path().display()),
+            "git push --force origin topic".to_owned(),
+        ] {
+            assert_deny(&bash(&root, other.path(), &format!("{prefix} {suffix}"))?, "PreToolUse")?;
+        }
+    }
+    Ok(())
 }
 
 #[test]
