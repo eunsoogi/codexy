@@ -75,6 +75,34 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
 }
 
 #[test]
+fn codegraph_search_does_not_require_ambient_ripgrep() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    std::fs::write(root.path().join("entry.rs"), "pub const ENTRY: u8 = 1;\n")?;
+    let mut command = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"));
+    command.env("PATH", "");
+    let mut client = McpClient::spawn_command(command)?;
+    let _init = client.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+
+    let search = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"codegraph_search","arguments":{
+            "root":root.path(),"query":"ENTRY","limit":10
+        }}
+    }))?;
+    let search_text = search["result"]["content"][0]["text"]
+        .as_str()
+        .ok_or("search text")?;
+    crate::support::assert_structured_literals(
+        search_text,
+        "codegraph search without ambient ripgrep",
+        &["ENTRY"],
+    );
+    Ok(())
+}
+
+#[test]
 fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
@@ -131,7 +159,14 @@ fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn
     let outside_dep = outside.path().join("dep.rs");
     std::fs::write(&outside_dep, "pub const OUTSIDE: u8 = 1;\n")?;
     let canonical_outside = outside_dep.canonicalize()?;
-    let mirrored_dep = root.path().join(canonical_outside.strip_prefix("/")?);
+    let mirrored_suffix = canonical_outside
+        .components()
+        .filter_map(|component| match component {
+            std::path::Component::Normal(value) => Some(value),
+            _ => None,
+        })
+        .collect::<std::path::PathBuf>();
+    let mirrored_dep = root.path().join(mirrored_suffix);
     let mirrored_dir = mirrored_dep.parent().ok_or("mirrored parent")?;
     std::fs::create_dir_all(mirrored_dir)?;
     std::fs::write(

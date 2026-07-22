@@ -22,6 +22,9 @@ mod validator_hook_hard_checks;
 #[path = "../validator_hook_loc_contract.rs"]
 mod validator_hook_loc_contract;
 
+#[path = "../validator_hook_process_platform.rs"]
+mod validator_hook_process_platform;
+
 #[path = "../validator_hook_purpose_topology.rs"]
 mod validator_hook_purpose_topology;
 

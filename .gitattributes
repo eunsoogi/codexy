@@ -1,0 +1,13 @@
+# Keep repository contracts portable across native Windows and Unix checkouts.
+*.md text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.sh text eol=lf
+
+# Versioned executable contract inputs without filename extensions.
+scripts/** text eol=lf
+plugins/codexy/bootstrap-codexy-agents text eol=lf
+plugins/codexy/check-codexy-agents text eol=lf
+plugins/codexy/mcp/codexy-mcp-* text eol=lf
+plugins/codexy/skills/**/scripts/** text eol=lf

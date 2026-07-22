@@ -151,6 +151,17 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
     return timeouts, runs
 
 
+def job_values(lines: list[str], key: str) -> list[str]:
+    values: list[str] = []
+    for line in lines:
+        if len(line) - len(line.lstrip(" ")) != 4:
+            continue
+        entry = yaml_mapping_entry(line)
+        if entry is not None and entry[0] == key:
+            values.append(yaml_scalar_value(entry[1]))
+    return values
+
+
 def enforce_workflow_contract(
     workflow: Path,
     required_timeout_minutes: int,
@@ -180,6 +191,24 @@ def enforce_workflow_contract(
     if rust_profiler_count != 1 or profiler_count != 1:
         sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
         raise SystemExit(1)
-    if workload_count:
-        sys.stderr.write("Rust workflow must not run the full workload outside its gate\n")
+    windows_lines = jobs.get("windows-rust-test")
+    if windows_lines is None:
+        if workload_count:
+            sys.stderr.write("Rust workflow must not run the full workload outside its gate\n")
+            raise SystemExit(1)
+        return
+    windows_runs = job_contract(windows_lines)[1]
+    windows_workload_count = sum(
+        invocation_count(command, workload) for command in windows_runs
+    )
+    exact_workload = " ".join(workload)
+    if (
+        job_values(windows_lines, "runs-on") != ["windows-latest"]
+        or windows_runs != [exact_workload]
+        or windows_workload_count != 1
+        or workload_count != windows_workload_count
+    ):
+        sys.stderr.write(
+            "Windows Rust job must run the exact full workload once on windows-latest\n"
+        )
         raise SystemExit(1)

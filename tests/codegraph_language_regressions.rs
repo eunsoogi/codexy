@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::{Component, PathBuf};
 
 use codexy_runtime::codegraph::{build_graph, neighborhood, reverse_deps};
 
@@ -89,7 +90,14 @@ fn codegraph_reverse_deps_preserves_escaping_target_paths() -> Result<(), Box<dy
     let outside_dep = outside.path().join("dep.rs");
     fs::write(&outside_dep, "pub const OUTSIDE: u8 = 1;\n")?;
     let canonical_outside = outside_dep.canonicalize()?;
-    let mirrored_inside = root.join(canonical_outside.strip_prefix("/")?);
+    let mirrored_suffix = canonical_outside
+        .components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => Some(value),
+            _ => None,
+        })
+        .collect::<PathBuf>();
+    let mirrored_inside = root.join(mirrored_suffix);
     fs::create_dir_all(mirrored_inside.parent().ok_or("mirrored parent")?)?;
     fs::write(
         &mirrored_inside,

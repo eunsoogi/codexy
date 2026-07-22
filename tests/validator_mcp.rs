@@ -34,8 +34,7 @@ fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
-    mcp_config["lsp"]["command"] = serde_json::json!("sh");
-    mcp_config["lsp"]["args"] = serde_json::json!(["./../outside.txt"]);
+    mcp_config["helper"] = serde_json::json!({"command": "sh", "args": ["./../outside.txt"]});
     std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
 
     let output = validator(&plugin_root, "--check-mcp")?;
@@ -59,8 +58,11 @@ fn validator_cli_rejects_script_runtime_mcp_entrypoints() -> Result<(), Box<dyn 
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
-    mcp_config["lsp"]["command"] = serde_json::json!(["no", "de"].join(""));
-    mcp_config["lsp"]["args"] = serde_json::json!([format!("./mcp/{script_name}"), "--stdio"]);
+    let runtime = ["no", "de"].join("");
+    mcp_config["helper"] = serde_json::json!({
+        "command": runtime,
+        "args": [format!("./mcp/{script_name}"), "--stdio"]
+    });
     std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
 
     let output = validator(&plugin_root, "--check-mcp")?;
@@ -91,13 +93,90 @@ fn validator_cli_accepts_installed_plugin_mcp_entrypoints() -> Result<(), Box<dy
                 .as_array()
                 .ok_or("MCP args must be an array")?
                 .iter()
-                .any(|arg| arg.as_str().is_some_and(|item| item.contains("../")))
+                .any(|arg| {
+                    arg.as_str()
+                        .is_some_and(|item| item.split('/').any(|component| component == ".."))
+                })
         );
     }
 
     let output = validator(&plugin_root, "--check-mcp")?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_hook_only_windows_override_in_mcp_config()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let mcp_path = plugin_root.join(".mcp.json");
+    let mut mcp_config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
+    mcp_config["lsp"]["commandWindows"] = serde_json::json!("./mcp/codexy-mcp-lsp.exe");
+    std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
+
+    let output = validator(&plugin_root, "--check-mcp")?;
+
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output).contains("must not use hook-only commandWindows in MCP config"),
+        "unexpected stderr: {}",
+        stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_noncanonical_required_mcp_commands_cross_host()
+-> Result<(), Box<dyn std::error::Error>> {
+    for command in [
+        "python3.exe",
+        r"C:\tools\codexy-mcp-lsp.exe",
+        "C:/tools/codexy-mcp-lsp.exe",
+        r".\..\outside.exe",
+        r"\\server\share\codexy-mcp-lsp.exe",
+        r"\\?\C:\codexy-mcp-lsp.exe",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_fixture(&plugin_root)?;
+        let mcp_path = plugin_root.join(".mcp.json");
+        let mut mcp_config: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
+        mcp_config["lsp"]["command"] = serde_json::json!(command);
+        std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
+
+        let output = validator(&plugin_root, "--check-mcp")?;
+        assert!(!output.status.success(), "unsafe command passed: {command}");
+        assert!(
+            stderr(&output).contains("must use the exact cross-platform plugin entrypoint"),
+            "unsafe command failed for the wrong reason: {command}: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_windows_suffixed_script_runtimes() -> Result<(), Box<dyn std::error::Error>>
+{
+    for command in ["python3.exe", "PY.EXE", r"C:\tools\node.exe"] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_fixture(&plugin_root)?;
+        let mcp_path = plugin_root.join(".mcp.json");
+        let mut mcp_config: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&mcp_path)?)?;
+        mcp_config["helper"] = serde_json::json!({"command": command, "args": ["--stdio"]});
+        std::fs::write(&mcp_path, serde_json::to_string_pretty(&mcp_config)?)?;
+
+        let output = validator(&plugin_root, "--check-mcp")?;
+        assert!(!output.status.success(), "unsafe runtime passed: {command}");
+        assert!(stderr(&output).contains("must not use JS/Python runtime command"));
+    }
     Ok(())
 }
 

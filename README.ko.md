@@ -62,6 +62,11 @@ codex plugin list
 codex mcp list
 ```
 
+릴리스 패키지에는 macOS ARM64, Linux x86_64, Windows x86_64용 네이티브 MCP
+런타임이 포함됩니다. Windows 패키지 검증은 공백과 유니코드가 포함된 드라이브
+경로에 Codexy를 설치한 뒤 WSL, Git Bash, POSIX 셸, 시스템 Python 없이 Codex를
+통해 두 MCP 서버를 시작합니다.
+
 새로 설치한 플러그인, 스킬 또는 MCP가 현재 세션에 나타나지 않으면 Codex를
 재시작하거나 새 Codex 세션을 여세요.
 

@@ -1,6 +1,11 @@
+#[cfg(unix)]
 pub(super) mod process;
+#[cfg(windows)]
+#[path = "context/process_windows.rs"]
+pub(super) mod process;
+#[cfg(unix)]
 mod process_finish;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod process_tests;
 
 use std::path::Path;

@@ -4,6 +4,8 @@ set -eu
 archive=${1:?archive path required}
 plugin_root=${2:?staged plugin root required}
 max_bytes=${MAX_ARCHIVE_FILE_BYTES:-52428800}
+max_entries=${MAX_ARCHIVE_ENTRIES:-10000}
+max_total_bytes=${MAX_ARCHIVE_TOTAL_BYTES:-268435456}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
@@ -16,36 +18,57 @@ response_checker="$script_dir/inspect-mcp-response"
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
-entries="$tmp_dir/entries"
-tar -tzf "$archive" >"$entries"
-canonicalize_entry() {
-  sed '
-:normalize
-s#^\./##
-s#/\./#/#g
-t normalize
-' | tr -s '/'
-}
-canonical_entries="$tmp_dir/canonical-entries"
-canonicalize_entry <"$entries" | sort >"$canonical_entries"
-duplicates=$(uniq -d "$canonical_entries")
-[ -z "$duplicates" ] || { echo "duplicate archive entries: $duplicates" >&2; exit 1; }
+python3 - "$archive" "$max_bytes" "$max_entries" "$max_total_bytes" <<'PY'
+import sys, tarfile, unicodedata
 
-while IFS= read -r entry; do
-  case "$entry" in
-    /*|../*|*/../*|*'/..') echo "unsafe archive path: $entry" >&2; exit 1 ;;
-  esac
-  canonical_entry=$(printf '%s\n' "$entry" | canonicalize_entry)
-  case "$entry" in
-    "$canonical_entry") ;;
-    *) echo "unsafe archive path: $entry" >&2; exit 1 ;;
-  esac
-  case "$entry" in
-    plugins/codexy/*) ;;
-    *) echo "unexpected archive root entry: $entry" >&2; exit 1 ;;
-  esac
-done <"$entries"
-if tar -tvzf "$archive" | awk '$1 ~ /^l/ { print "symlink archive entry: " $0; bad=1 } END { exit bad }'; then :; else exit 1; fi
+archive_path = sys.argv[1]
+max_bytes, max_entries, max_total_bytes = map(int, sys.argv[2:])
+seen = set()
+seen_canonical = set()
+total_bytes = 0
+devices = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
+with tarfile.open(archive_path, "r:gz") as archive:
+    for count, member in enumerate(archive, start=1):
+        name = member.name
+        if count > max_entries:
+            raise SystemExit(f"archive contains too many entries: {count}")
+        if not (member.isfile() or member.isdir()):
+            raise SystemExit(f"unsupported archive entry type: {name}")
+        if member.isfile() and member.size > max_bytes:
+            raise SystemExit(f"oversized archive entry: {name}")
+        total_bytes += member.size
+        if total_bytes > max_total_bytes:
+            raise SystemExit("archive uncompressed size exceeds the configured limit")
+        if any(ord(character) < 32 or ord(character) == 127 for character in name):
+            raise SystemExit(f"unsafe archive path: {name!r}")
+        if "\\" in name or ":" in name or name.startswith("/"):
+            raise SystemExit(f"unsafe archive path: {name}")
+        raw_parts = name.split("/")
+        if any(part == "" for part in raw_parts):
+            raise SystemExit(f"unsafe archive path: {name}")
+        if any(part == ".." for part in raw_parts):
+            raise SystemExit(f"unsafe archive path: {name}")
+        parts = tuple(part for part in raw_parts if part != ".")
+        canonical_name = "/".join(parts)
+        if canonical_name in seen_canonical:
+            raise SystemExit(f"duplicate archive entries: {canonical_name}")
+        seen_canonical.add(canonical_name)
+        if canonical_name != name:
+            raise SystemExit(f"unsafe archive path: {name}")
+        if not parts or parts[:2] != ("plugins", "codexy"):
+            raise SystemExit(f"unexpected archive root entry: {name}")
+        for part in parts:
+            folded = unicodedata.normalize("NFC", part).casefold()
+            if folded.rstrip(" .") != folded:
+                raise SystemExit(f"unsafe Windows-normalized archive path: {name}")
+            if folded.split(".", 1)[0] in devices:
+                raise SystemExit(f"unsafe Windows device archive path: {name}")
+        normalized_name = unicodedata.normalize("NFC", canonical_name)
+        identity = normalized_name.casefold()
+        if identity in seen:
+            raise SystemExit(f"case-folding archive entries collide: {name}")
+        seen.add(identity)
+PY
 
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
@@ -62,13 +85,13 @@ done <"$tmp_dir/mcp-entrypoints"
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 while IFS= read -r relative; do
   case "$relative" in
-    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin) ;;
+    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin|runtime/codexy-mcp-lsp-windows-x86_64.exe|runtime/codexy-mcp-codegraph-windows-x86_64.exe) ;;
     runtime/*) echo "unexpected runtime artifact: $relative" >&2; exit 1 ;;
   esac
 done <"$tmp_dir/actual"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 mkdir -p "$source_check_root"
-tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
+tar -C "$extract_root/plugins/codexy" --exclude=runtime --exclude='mcp/*.exe' -cf - . | tar -C "$source_check_root" -xf -
 "$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
 if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
   echo "archive contains a debug artifact" >&2
@@ -110,14 +133,14 @@ scan_archive_content() {
 scan_grep_content() {
   pattern=$1
   shift
-  find "$extract_root/plugins/codexy" -type f ! -path "$extract_root/plugins/codexy/runtime/*.bin" "$@" \
+  find "$extract_root/plugins/codexy" -type f ! -path "$extract_root/plugins/codexy/runtime/*" ! -path "$extract_root/plugins/codexy/mcp/*.exe" "$@" \
     -exec grep -a -Hn -E "$pattern" {} +
 }
 if command -v rg >/dev/null 2>&1; then
   set +e
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*' --glob '!**/mcp/*.exe' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*' --glob '!**/mcp/*.exe' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
   local_path_status=$?
   set -e
 else

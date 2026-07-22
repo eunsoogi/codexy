@@ -15,7 +15,8 @@
     "futureInstallRef": "version-tags",
     "platforms": [
       "darwin-arm64",
-      "linux-x86_64"
+      "linux-x86_64",
+      "windows-x86_64"
     ]
   },
   "sourceMarketplace": {

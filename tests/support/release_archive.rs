@@ -4,60 +4,16 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[path = "pe_fixture.rs"]
+mod pe_fixture;
+#[path = "release_archive_contract.rs"]
+mod release_archive_contract;
+#[allow(unused_imports)]
+pub(crate) use release_archive_contract::{
+    assert_archive_scanner_contract, assert_runtime_workflow_contract, assert_structured_literals,
+};
+
 const ARCHIVE_PROCESS_TIMEOUT: Duration = Duration::from_secs(30);
-
-pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[&str]) {
-    let missing: Vec<_> = required
-        .iter()
-        .filter(|literal| !text.contains(**literal))
-        .collect();
-    assert!(
-        missing.is_empty(),
-        "structured contract {rule_id} is missing required literals {missing:?}"
-    );
-}
-
-#[allow(dead_code)]
-pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
-    assert_structured_literals(
-        script,
-        "archive scanner behavior",
-        &[
-            "rg -a -n",
-            "grep -a -Hn",
-            "runtime/*.bin",
-            "! -name '*.md'",
-            "! -name '*.txt'",
-            "command -v python3",
-            "inspect-mcp-entrypoints",
-            "rg or grep is required",
-            "hygiene scan failed",
-            "duplicate archive entries",
-            "unexpected runtime artifact",
-            "unsafe archive path",
-        ],
-    );
-    assert_structured_literals(
-        checker,
-        "MCP response checker behavior",
-        &[
-            "invalid JSON-RPC version for response id",
-            "set(responses) != {1, 2}",
-        ],
-    );
-}
-
-#[allow(dead_code)]
-pub(crate) fn assert_runtime_workflow_contract(workflow: &str) {
-    assert_structured_literals(
-        workflow,
-        "runtime workflow coverage",
-        &[
-            "scripts/validate-plugin-config --plugin-root plugins/codexy --check\n          rsync -a",
-            "Smoke test native MCP runtimes",
-        ],
-    );
-}
 
 pub(crate) fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(target)?;
@@ -106,6 +62,7 @@ pub(crate) fn create_archive_with_commands(
         .args(["-C"])
         .arg(root)
         .args(["-cf", "-", "plugins/codexy"])
+        .env("COPYFILE_DISABLE", "1")
         .stdout(Stdio::piped())
         .spawn()?;
     let tar_stdout = match tar.stdout.take() {
@@ -196,6 +153,7 @@ fn complete_plugin_fixture_with_runtime(
     let host_platform = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => "darwin-arm64",
         ("linux", "x86_64") => "linux-x86_64",
+        ("windows", "x86_64") => "windows-x86_64",
         (os, architecture) => {
             return Err(std::io::Error::other(format!(
                 "unsupported test host platform: {os}-{architecture}"
@@ -206,19 +164,31 @@ fn complete_plugin_fixture_with_runtime(
         ("lsp", env!("CARGO_BIN_EXE_codexy-mcp-lsp")),
         ("codegraph", env!("CARGO_BIN_EXE_codexy-mcp-codegraph")),
     ] {
-        for platform in ["darwin-arm64", "linux-x86_64"] {
-            let path = runtime.join(format!("codexy-mcp-{server}-{platform}.bin"));
+        for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+            let extension = if platform == "windows-x86_64" {
+                "exe"
+            } else {
+                "bin"
+            };
+            let path = runtime.join(format!("codexy-mcp-{server}-{platform}.{extension}"));
             if native_host_runtime && platform == host_platform {
                 std::fs::copy(binary, &path)?;
             } else {
-                let header = if platform == "darwin-arm64" {
-                    vec![0xcf, 0xfa, 0xed, 0xfe]
-                } else {
-                    vec![0x7f, b'E', b'L', b'F']
+                let header = match platform {
+                    "darwin-arm64" => vec![0xcf, 0xfa, 0xed, 0xfe],
+                    "linux-x86_64" => vec![0x7f, b'E', b'L', b'F'],
+                    "windows-x86_64" => pe_fixture::x86_64_executable(),
+                    _ => unreachable!(),
                 };
-                std::fs::write(&path, header.repeat(1024))?;
+                std::fs::write(&path, header)?;
             }
             make_executable(&path)?;
+            if platform == "windows-x86_64" {
+                std::fs::copy(
+                    &path,
+                    plugin_root.join(format!("mcp/codexy-mcp-{server}.exe")),
+                )?;
+            }
         }
     }
     Ok(plugin_root)
