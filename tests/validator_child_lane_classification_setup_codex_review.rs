@@ -60,7 +60,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: routing-only child delegation to child thread thread-148; parent remains coordination-only
+Owner decision: affirmative child-owned because routing is delegated to child thread thread-148
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -134,7 +134,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: branch/worktree setup evidence for codexy/231-classification-guard, goal, plan, codegraph, LSP, Sentinel
@@ -174,7 +174,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: evidence that child branch/worktree setup did not occur before classification, goal, plan, codegraph, LSP, Sentinel
@@ -195,7 +195,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: negative test for child branch/worktree setup before classification, goal, plan, codegraph, LSP, Sentinel
@@ -236,7 +236,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: evidence that no child branch/worktree setup occurred before classification, goal, plan, codegraph, LSP, Sentinel

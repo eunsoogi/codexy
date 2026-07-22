@@ -100,7 +100,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -122,7 +122,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -145,7 +145,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -216,7 +216,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned implementation lane
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel

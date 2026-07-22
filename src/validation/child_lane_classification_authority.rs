@@ -1,4 +1,6 @@
-use super::child_lane_owner_decision::{OwnerSelection, parse_owner_selection};
+use super::child_lane_owner_decision::{
+    LaneOwnershipMetadata, OwnerSelection, parse_lane_ownership_metadata,
+};
 
 #[derive(Clone, Copy)]
 enum AuthoritySource {
@@ -13,12 +15,21 @@ pub(super) struct LaneAuthority {
 }
 
 pub(super) struct LaneAuthorityContext {
-    authority: Option<LaneAuthority>,
+    state: LaneAuthorityState,
+}
+
+enum LaneAuthorityState {
+    Absent,
+    Invalid,
+    Valid(LaneAuthority),
 }
 
 impl LaneAuthorityContext {
     pub(super) fn authority(&self) -> Option<LaneAuthority> {
-        self.authority
+        match self.state {
+            LaneAuthorityState::Valid(authority) => Some(authority),
+            LaneAuthorityState::Absent | LaneAuthorityState::Invalid => None,
+        }
     }
 }
 
@@ -48,14 +59,18 @@ pub(super) fn lane_authority_context_before(
     classification_start: usize,
 ) -> LaneAuthorityContext {
     if lines.get(classification_start) != Some(&"task classification:") {
-        return LaneAuthorityContext { authority: None };
+        return LaneAuthorityContext {
+            state: LaneAuthorityState::Absent,
+        };
     }
     let Some((source, ownership)) = classification_start
         .checked_sub(2)
         .and_then(|start| lines.get(start..classification_start))
         .and_then(|metadata| metadata.first().zip(metadata.get(1)))
     else {
-        return LaneAuthorityContext { authority: None };
+        return LaneAuthorityContext {
+            state: LaneAuthorityState::Absent,
+        };
     };
     let source = match *source {
         "ownership metadata source: parent-supplied" => AuthoritySource::ParentSupplied,
@@ -63,13 +78,17 @@ pub(super) fn lane_authority_context_before(
             AuthoritySource::CurrentThreadClassified
         }
         _ => {
-            return LaneAuthorityContext { authority: None };
+            return LaneAuthorityContext {
+                state: LaneAuthorityState::Invalid,
+            };
         }
     };
-    let owner = ownership
-        .strip_prefix("lane ownership: ")
-        .and_then(parse_owner_selection);
-    LaneAuthorityContext {
-        authority: owner.map(|owner| LaneAuthority { owner, source }),
-    }
+    let state = match parse_lane_ownership_metadata(ownership) {
+        LaneOwnershipMetadata::Absent => LaneAuthorityState::Absent,
+        LaneOwnershipMetadata::Invalid => LaneAuthorityState::Invalid,
+        LaneOwnershipMetadata::Valid(owner) => {
+            LaneAuthorityState::Valid(LaneAuthority { owner, source })
+        }
+    };
+    LaneAuthorityContext { state }
 }

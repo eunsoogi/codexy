@@ -67,7 +67,7 @@ pub(super) fn has_complete_gfm_display_before(lines: &[&str], end: usize) -> boo
             GfmClassificationTableEvent::Invalidate => fields = ClassificationFields::default(),
             GfmClassificationTableEvent::Replace => fields = ClassificationFields::default(),
             GfmClassificationTableEvent::Record(key, value) => {
-                if !fields.record(metadata_key(key), trimmed_value(value), None, true) {
+                if !fields.record(metadata_key(key), trimmed_value(value), None) {
                     fields = ClassificationFields::default();
                 }
             }

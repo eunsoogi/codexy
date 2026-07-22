@@ -149,6 +149,8 @@ mod validator_child_lane_owner_assertions;
 
 #[path = "../validator_child_lane_authority_consistency.rs"]
 mod validator_child_lane_authority_consistency;
+#[path = "../validator_child_lane_owner_boundary.rs"]
+mod validator_child_lane_owner_boundary;
 #[path = "../validator_child_lane_table_schema.rs"]
 mod validator_child_lane_table_schema;
 

@@ -1,8 +1,7 @@
 use super::child_lane_classification_authority::LaneAuthority;
 use super::child_lane_classification_schema::ClassificationTableSchema;
 use super::child_lane_owner_decision::{
-    is_affirmative_child_owned_value, is_affirmative_child_owner_decision,
-    is_affirmative_owner_decision_for, is_child_delegation_owner_decision, is_parent_owned_value,
+    is_affirmative_child_owner_decision, is_affirmative_owner_decision_for,
 };
 #[derive(Clone, Default)]
 pub(super) struct ClassificationFields {
@@ -17,27 +16,16 @@ impl ClassificationFields {
         key: &str,
         value: &str,
         authority: Option<LaneAuthority>,
-        gfm_display_row: bool,
     ) -> bool {
         if !ClassificationTableSchema::accepts(self.next_field, key, value) {
             return false;
         }
         if key.eq_ignore_ascii_case("owner decision") {
-            let child_owner_decision = if gfm_display_row {
-                is_affirmative_child_owner_decision(value)
-            } else {
-                !is_parent_owned_value(value)
-                    && (is_affirmative_child_owned_value(value)
-                        || is_child_delegation_owner_decision(value))
-            };
+            let child_owner_decision = is_affirmative_child_owner_decision(value);
             self.child_display_owner_decision = child_owner_decision;
             self.child_owner_decision = authority.is_some_and(|authority| {
                 authority.authorizes_child_setup()
-                    && if gfm_display_row {
-                        is_affirmative_owner_decision_for(value, authority.owner())
-                    } else {
-                        child_owner_decision
-                    }
+                    && is_affirmative_owner_decision_for(value, authority.owner())
             });
         }
         self.next_field += 1;

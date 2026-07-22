@@ -33,7 +33,7 @@ impl ColonClassificationBlock {
         value: &str,
         authority: Option<LaneAuthority>,
     ) {
-        self.record(fields, key, value, authority, true);
+        self.record(fields, key, value, authority);
     }
 
     pub(super) fn consume_colon(
@@ -53,7 +53,7 @@ impl ColonClassificationBlock {
         };
         let key = metadata_key(key);
         if ClassificationFields::records_key(key) {
-            self.record(fields, key, trimmed_value(value), authority, false);
+            self.record(fields, key, trimmed_value(value), authority);
         } else {
             self.state = ColonClassificationBlockState::Terminated;
         }
@@ -65,12 +65,11 @@ impl ColonClassificationBlock {
         key: &str,
         value: &str,
         authority: Option<LaneAuthority>,
-        gfm_display_row: bool,
     ) {
         if !matches!(self.state, ColonClassificationBlockState::Active) {
             return;
         }
-        if !fields.record(key, value, authority, gfm_display_row) {
+        if !fields.record(key, value, authority) {
             self.invalidate(fields);
         } else if fields.has_complete_shape() {
             self.state = ColonClassificationBlockState::Complete;

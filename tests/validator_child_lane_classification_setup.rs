@@ -233,7 +233,7 @@ fn validator_rejects_child_setup_claimed_before_classification_after_block() -> 
 }
 
 fn complete_child_classification() -> &'static str {
-    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: run git worktree add -b codexy/231-branch-classification-guard after classification\nStop/blocker: None"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: workflow, validators\nOwner decision: child-owned implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification, codex-orchestration, git-workflow\nRequired tools/evidence: goal, plan, codegraph, LSP, Sentinel\nFirst allowed action: run git worktree add -b codexy/231-branch-classification-guard after classification\nStop/blocker: None"
 }
 
 fn complete_current_thread_classification() -> &'static str {

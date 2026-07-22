@@ -3,7 +3,10 @@ use super::child_lane_classification_control::normalize_metadata_prefix;
 use super::child_lane_classification_setup::{
     has_complete_gfm_display_before, latest_classification_before,
 };
-use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
+use super::child_lane_owner_decision::{
+    LaneOwnershipMetadata, OwnerSelection, is_child_delegation_owner_decision,
+    is_parent_owned_value, parse_lane_ownership_metadata,
+};
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
@@ -17,8 +20,14 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
         .map(|(index, line)| (index, trimmed_value(line)))
     {
         if index != setup_index && is_lane_context_boundary(lines, index, line) {
-            return is_child_owned_lane_evidence(line)
+            return requires_child_setup_validation(line)
                 || has_complete_child_classification_before(lines, setup_index);
+        }
+        if matches!(
+            parse_lane_ownership_metadata(line),
+            LaneOwnershipMetadata::Invalid
+        ) {
+            return true;
         }
         if is_parent_owned_lane_evidence(line) {
             return false;
@@ -52,8 +61,14 @@ pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> 
             })
     {
         if candidate_index != index && is_lane_context_boundary(lines, candidate_index, line) {
-            return is_child_owned_lane_evidence(line)
+            return requires_child_setup_validation(line)
                 || has_complete_child_classification_before(lines, index);
+        }
+        if matches!(
+            parse_lane_ownership_metadata(line),
+            LaneOwnershipMetadata::Invalid
+        ) {
+            return true;
         }
         if is_parent_owned_lane_evidence(line) {
             return false;
@@ -72,7 +87,27 @@ fn is_child_owned_lane_evidence(line: &str) -> bool {
         || has_present_child_owner_metadata(line)
         || (!gfm_display_row
             && field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision))
-        || has_child_lane_owner_metadata(line)
+        || matches!(
+            parse_lane_ownership_metadata(line),
+            LaneOwnershipMetadata::Valid(
+                OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
+            )
+        )
+        || ["owner", "lane owner"].into_iter().any(|field| {
+            field_value(line, field).is_some_and(|value| {
+                matches!(trimmed_value(value), "child-owned" | "current-thread-owned")
+            })
+        })
+}
+
+fn requires_child_setup_validation(line: &str) -> bool {
+    matches!(
+        parse_lane_ownership_metadata(line),
+        LaneOwnershipMetadata::Invalid
+            | LaneOwnershipMetadata::Valid(
+                OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
+            )
+    ) || is_child_owned_lane_evidence(line)
 }
 
 fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool {
@@ -102,25 +137,12 @@ fn is_parent_owned_lane_evidence(line: &str) -> bool {
     {
         return true;
     }
-    has_parent_lane_owner_metadata(line)
-}
-
-fn has_child_lane_owner_metadata(line: &str) -> bool {
-    ["lane ownership", "owner", "lane owner"]
-        .into_iter()
-        .any(|field| {
-            field_value(line, field).is_some_and(|value| {
-                matches!(trimmed_value(value), "child-owned" | "current-thread-owned")
-            })
-        })
-}
-
-fn has_parent_lane_owner_metadata(line: &str) -> bool {
-    ["lane ownership", "owner", "lane owner"]
-        .into_iter()
-        .any(|field| {
-            field_value(line, field).is_some_and(|value| trimmed_value(value) == "parent-owned")
-        })
+    matches!(
+        parse_lane_ownership_metadata(line),
+        LaneOwnershipMetadata::Valid(OwnerSelection::ParentOwned)
+    ) || ["owner", "lane owner"].into_iter().any(|field| {
+        field_value(line, field).is_some_and(|value| trimmed_value(value) == "parent-owned")
+    })
 }
 
 fn is_later_lane_boundary(lines: &[&str], index: usize, line: &str) -> bool {

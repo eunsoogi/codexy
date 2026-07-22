@@ -1,4 +1,4 @@
-use super::child_lane_ownership_phrases::{has_absent_field_value, trimmed_value};
+use super::child_lane_ownership_phrases::{has_absent_field_value, metadata_key, trimmed_value};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum OwnerSelection {
@@ -6,6 +6,13 @@ pub(super) enum OwnerSelection {
     ChildOwned,
     CurrentThreadOwned,
     ExternalHumanOwned,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum LaneOwnershipMetadata {
+    Absent,
+    Invalid,
+    Valid(OwnerSelection),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -52,6 +59,17 @@ pub(super) fn is_affirmative_child_owner_decision(value: &str) -> bool {
     )
 }
 
+pub(super) fn parse_lane_ownership_metadata(line: &str) -> LaneOwnershipMetadata {
+    let Some((key, value)) = line.split_once(':') else {
+        return LaneOwnershipMetadata::Absent;
+    };
+    if metadata_key(key) != "lane ownership" {
+        return LaneOwnershipMetadata::Absent;
+    }
+    parse_owner_selection(value)
+        .map_or(LaneOwnershipMetadata::Invalid, LaneOwnershipMetadata::Valid)
+}
+
 /// Parses the complete normalized authoritative metadata value, never an owner prefix.
 pub(super) fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
     match trimmed_value(value) {
@@ -64,7 +82,12 @@ pub(super) fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
 }
 
 fn parse_owner_decision(value: &str) -> Option<OwnerDecision> {
-    let (affirmation, value) = trimmed_value(value).split_once(char::is_whitespace)?;
+    let value = trimmed_value(value);
+    parse_explicit_owner_decision(value).or_else(|| parse_legacy_owner_decision(value))
+}
+
+fn parse_explicit_owner_decision(value: &str) -> Option<OwnerDecision> {
+    let (affirmation, value) = value.split_once(char::is_whitespace)?;
     let affirmation = match affirmation {
         "affirmative" => OwnerAffirmation::Affirmative,
         "denied" => OwnerAffirmation::Denied,
@@ -85,6 +108,18 @@ fn parse_owner_decision(value: &str) -> Option<OwnerDecision> {
     Some(OwnerDecision {
         selection: parse_owner_selection(selection)?,
         affirmation,
+    })
+}
+
+fn parse_legacy_owner_decision(value: &str) -> Option<OwnerDecision> {
+    let (selection, assertion) = value.split_once(char::is_whitespace)?;
+    let remainder = assertion.strip_prefix("implementation lane")?;
+    if !remainder.is_empty() && !remainder.starts_with(char::is_whitespace) {
+        return None;
+    }
+    Some(OwnerDecision {
+        selection: parse_owner_selection(selection)?,
+        affirmation: OwnerAffirmation::Affirmative,
     })
 }
 
