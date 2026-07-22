@@ -57,6 +57,18 @@ fn validator_allows_absent_before_classification_clause_after_valid_setup() -> T
 }
 
 #[test]
+fn validator_retains_child_subject_after_negated_coordinated_setup_clause() -> TestResult {
+    assert_rejected(&format!(
+        "{}\nThe child did not create a worktree after classification and switched to branch codexy/463 before classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_parent_classification(),
+    ))?;
+    assert_allowed(&format!(
+        "{}\nThe child did not create a worktree after classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_parent_classification(),
+    ))
+}
+
+#[test]
 fn validator_rejects_codexy_worktree_setup_before_classification() -> TestResult {
     assert_rejected(
         r#"Lane ownership: child-owned

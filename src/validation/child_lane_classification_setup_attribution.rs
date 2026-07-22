@@ -54,7 +54,7 @@ fn setup_clauses(line: &str) -> Vec<&str> {
         .flat_map(|clause| clause.split(" and "))
         .map(str::trim)
         .collect::<Vec<_>>();
-    if !clauses.iter().any(|clause| has_absent_child_setup(clause)) {
+    if !has_absent_child_setup(line) {
         clauses.push(line);
     }
     clauses

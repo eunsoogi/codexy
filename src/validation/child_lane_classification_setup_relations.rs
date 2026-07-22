@@ -12,13 +12,9 @@ pub(super) struct SetupRelation {
 }
 
 pub(super) fn has_setup_action(line: &str) -> bool {
-    let words = words(line);
     let relations = setup_relations(line);
-    if relations.is_empty() {
-        setup_action_indices(&words).next().is_some()
-    } else {
-        relations.iter().any(|relation| !relation.negated)
-    }
+    relations.iter().any(|relation| !relation.negated)
+        || (relations.is_empty() && setup_action_indices(&words(line)).next().is_some())
 }
 
 pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
@@ -88,8 +84,13 @@ fn setup_action_indices<'a>(words: &'a [&'a str]) -> impl Iterator<Item = usize>
 
 fn explicit_subject(words: &[&str], start: usize, action: usize) -> Option<SetupActor> {
     let mut saw_non_child = false;
-    for index in start..action {
-        if actor_is_introduced_by(words, start, index) {
+    let subject_start = if start > 0 && words[start - 1] == "and" {
+        0
+    } else {
+        start
+    };
+    for index in subject_start..action {
+        if actor_is_introduced_by(words, subject_start, index) {
             continue;
         }
         match actor_word(words[index]) {
