@@ -117,7 +117,7 @@ if command -v rg >/dev/null 2>&1; then
   set +e
   scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!**/hooks/policy-inventory.json' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
   local_path_status=$?
   set -e
 else
@@ -125,7 +125,7 @@ else
   set +e
   scan_archive_content scan_grep_content "$hygiene_pattern"
   hygiene_status=$?
-  scan_archive_content scan_grep_content "$local_path_pattern" ! -name '*.md' ! -name '*.txt'
+  scan_archive_content scan_grep_content "$local_path_pattern" ! -path "$extract_root/plugins/codexy/hooks/policy-inventory.json" ! -name '*.md' ! -name '*.txt'
   local_path_status=$?
   set -e
 fi

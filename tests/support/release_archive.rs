@@ -26,6 +26,8 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
             "rg -a -n",
             "grep -a -Hn",
             "runtime/*.bin",
+            "!**/hooks/policy-inventory.json",
+            "hooks/policy-inventory.json\" ! -name '*.md'",
             "! -name '*.md'",
             "! -name '*.txt'",
             "command -v python3",

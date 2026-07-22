@@ -71,6 +71,22 @@ fn archive_gate_accepts_a_complete_valid_package_and_scans_text_files() {
     );
 }
 
+#[test]
+fn archive_gate_rejects_local_paths_in_json_outside_the_validated_policy_inventory() {
+    let (root, plugin_root, archive) = complete_archive_fixture("json-local-path");
+    std::fs::write(
+        plugin_root.join("assets/local-state.json"),
+        r#"{"path":"/Users/example/private-state"}"#,
+    )
+    .expect("JSON local-path fixture");
+    create_archive(root.path(), &archive).expect("archive fixture");
+    assert_gate_error(
+        &archive,
+        &plugin_root,
+        "archive contains a secret or local path",
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn archive_gate_rejects_a_non_executable_wrapper() {
