@@ -27,6 +27,10 @@ fn hook_process_boundary_routes_windows_to_bounded_job_execution() -> TestResult
         &[
             "ReaderEvent::Chunk",
             "MAX_HOOK_OUTPUT_BYTES",
+            "Job::new()",
+            "CREATE_SUSPENDED",
+            "job.assign(&child)",
+            "job.resume(&child)",
             "finish_after_timeout",
             "finish_after_output_exceeded",
             "mpsc::sync_channel",

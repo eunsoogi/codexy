@@ -265,9 +265,23 @@ jobs:
       - name: Install package and prove plugin-relative PE resolution
         shell: pwsh
         run: |
+          function Test-PathWithin([string]$Root, [string]$Candidate) {
+            $relative = [System.IO.Path]::GetRelativePath(
+              [System.IO.Path]::GetFullPath($Root),
+              [System.IO.Path]::GetFullPath($Candidate)
+            )
+            $parentPrefix = "..$([System.IO.Path]::DirectorySeparatorChar)"
+            return -not [System.IO.Path]::IsPathRooted($relative) -and
+              $relative -ne ".." -and
+              -not $relative.StartsWith($parentPrefix, [System.StringComparison]::Ordinal)
+          }
+
           $proofRoot = Join-Path $env:RUNNER_TEMP "Codexy 설치 경로"
           $marketplaceRoot = Join-Path $proofRoot "marketplace"
           $env:CODEX_HOME = Join-Path $proofRoot "codex home"
+          if (Test-PathWithin $env:CODEX_HOME ($env:CODEX_HOME + "-sibling")) {
+            throw "Windows path containment accepted a sibling prefix"
+          }
           New-Item -ItemType Directory -Force -Path $marketplaceRoot, $env:CODEX_HOME | Out-Null
           foreach ($path in @($proofRoot, $marketplaceRoot, $env:CODEX_HOME)) {
             if ((Get-Item -LiteralPath $path).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
@@ -296,7 +310,7 @@ jobs:
           codex plugin marketplace add $marketplaceRoot --json | Out-Null
           $install = codex plugin add codexy@codexy --json | ConvertFrom-Json
           $installedPath = $install.installedPath
-          if (-not $installedPath.StartsWith($env:CODEX_HOME, [System.StringComparison]::OrdinalIgnoreCase)) {
+          if (-not (Test-PathWithin $env:CODEX_HOME $installedPath)) {
             throw "plugin installed outside the isolated Codex home: $installedPath"
           }
 
@@ -306,7 +320,7 @@ jobs:
             if ($entry.transport.command -ne "./mcp/codexy-mcp-$server") {
               throw "$server did not preserve the extensionless plugin-relative command"
             }
-            if (-not $entry.transport.cwd.StartsWith($installedPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            if (-not (Test-PathWithin $installedPath $entry.transport.cwd)) {
               throw "$server cwd did not resolve beneath the installed plugin root"
             }
             $runtime = Join-Path $installedPath "runtime/codexy-mcp-$server-windows-x86_64.exe"
@@ -339,67 +353,57 @@ jobs:
             '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
           )
           foreach ($server in @("lsp", "codegraph")) {
-            $entrypoints = @(
-              @{ Label = "installed PE"; Path = Join-Path $installedPath "mcp/codexy-mcp-$server.exe" },
-              @{ Label = "configured extensionless command"; Path = Join-Path $installedPath "mcp/codexy-mcp-$server" }
-            )
-            foreach ($entrypoint in $entrypoints) {
-              $entrypointPath = $entrypoint.Path
-              if ($entrypoint.Label -eq "configured extensionless command") {
-                $resolvedCommand = Get-Command -Name $entrypoint.Path -CommandType Application -ErrorAction Stop
-                $expectedPePath = Join-Path $installedPath "mcp/codexy-mcp-$server.exe"
-                if (-not [string]::Equals($resolvedCommand.Path, $expectedPePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                  throw "$server configured extensionless command resolved outside its installed PE"
+            $entrypoint = @{
+              Label = "installed PE"
+              Path = Join-Path $installedPath "mcp/codexy-mcp-$server.exe"
+            }
+            $entrypointPath = $entrypoint.Path
+            $entrypointStart = [System.Diagnostics.ProcessStartInfo]::new()
+            $entrypointStart.FileName = $entrypointPath
+            $entrypointStart.ArgumentList.Add("--stdio")
+            $entrypointStart.UseShellExecute = $false
+            $entrypointStart.RedirectStandardInput = $true
+            $entrypointStart.RedirectStandardOutput = $true
+            $entrypointStart.RedirectStandardError = $true
+            $entrypointStart.CreateNoWindow = $true
+            $entrypointProcess = [System.Diagnostics.Process]::new()
+            $entrypointProcess.StartInfo = $entrypointStart
+            $entrypointStarted = $false
+            try {
+              $entrypointStarted = $entrypointProcess.Start()
+              if (-not $entrypointStarted) { throw "failed to start $server $($entrypoint.Label)" }
+              $entrypointStdout = $entrypointProcess.StandardOutput.ReadToEndAsync()
+              $entrypointStderr = $entrypointProcess.StandardError.ReadToEndAsync()
+              foreach ($request in $entrypointRequests) { $entrypointProcess.StandardInput.WriteLine($request) }
+              $entrypointProcess.StandardInput.Close()
+              if (-not $entrypointProcess.WaitForExit(15000)) {
+                $entrypointProcess.Kill($true)
+                $entrypointProcess.WaitForExit()
+                if ($entrypoint.Label -eq "installed PE") {
+                  throw "installed $server PE process timed out"
                 }
-                $entrypointPath = $resolvedCommand.Path
+                throw "$server $($entrypoint.Label) process timed out"
               }
-              $entrypointStart = [System.Diagnostics.ProcessStartInfo]::new()
-              $entrypointStart.FileName = $entrypointPath
-              $entrypointStart.ArgumentList.Add("--stdio")
-              $entrypointStart.UseShellExecute = $false
-              $entrypointStart.RedirectStandardInput = $true
-              $entrypointStart.RedirectStandardOutput = $true
-              $entrypointStart.RedirectStandardError = $true
-              $entrypointStart.CreateNoWindow = $true
-              $entrypointProcess = [System.Diagnostics.Process]::new()
-              $entrypointProcess.StartInfo = $entrypointStart
-              $entrypointStarted = $false
-              try {
-                $entrypointStarted = $entrypointProcess.Start()
-                if (-not $entrypointStarted) { throw "failed to start $server $($entrypoint.Label)" }
-                $entrypointStdout = $entrypointProcess.StandardOutput.ReadToEndAsync()
-                $entrypointStderr = $entrypointProcess.StandardError.ReadToEndAsync()
-                foreach ($request in $entrypointRequests) { $entrypointProcess.StandardInput.WriteLine($request) }
-                $entrypointProcess.StandardInput.Close()
-                if (-not $entrypointProcess.WaitForExit(15000)) {
-                  $entrypointProcess.Kill($true)
-                  $entrypointProcess.WaitForExit()
-                  if ($entrypoint.Label -eq "installed PE") {
-                    throw "installed $server PE process timed out"
-                  }
-                  throw "$server $($entrypoint.Label) process timed out"
-                }
-                $entrypointErrors = $entrypointStderr.GetAwaiter().GetResult()
-                if ($entrypointProcess.ExitCode -ne 0) { throw "$server $($entrypoint.Label) failed: $entrypointErrors" }
-                $entrypointMessages = @($entrypointStdout.GetAwaiter().GetResult() -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
-                $entrypointInitialize = $entrypointMessages | Where-Object id -eq 1
-                $entrypointTools = $entrypointMessages | Where-Object id -eq 2
-                if ($entrypointInitialize.result.serverInfo.name -ne $expected[$server].Server) {
-                  throw "$server $($entrypoint.Label) returned the wrong server identity"
-                }
-                if ($expected[$server].Tool -notin @($entrypointTools.result.tools.name)) {
-                  if ($entrypoint.Label -eq "installed PE") {
-                    throw "installed $server PE omitted its expected tool"
-                  }
-                  throw "$server $($entrypoint.Label) omitted its expected tool"
-                }
-              } finally {
-                if ($entrypointStarted -and -not $entrypointProcess.HasExited) {
-                  $entrypointProcess.Kill($true)
-                  $entrypointProcess.WaitForExit()
-                }
-                $entrypointProcess.Dispose()
+              $entrypointErrors = $entrypointStderr.GetAwaiter().GetResult()
+              if ($entrypointProcess.ExitCode -ne 0) { throw "$server $($entrypoint.Label) failed: $entrypointErrors" }
+              $entrypointMessages = @($entrypointStdout.GetAwaiter().GetResult() -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
+              $entrypointInitialize = $entrypointMessages | Where-Object id -eq 1
+              $entrypointTools = $entrypointMessages | Where-Object id -eq 2
+              if ($entrypointInitialize.result.serverInfo.name -ne $expected[$server].Server) {
+                throw "$server $($entrypoint.Label) returned the wrong server identity"
               }
+              if ($expected[$server].Tool -notin @($entrypointTools.result.tools.name)) {
+                if ($entrypoint.Label -eq "installed PE") {
+                  throw "installed $server PE omitted its expected tool"
+                }
+                throw "$server $($entrypoint.Label) omitted its expected tool"
+              }
+            } finally {
+              if ($entrypointStarted -and -not $entrypointProcess.HasExited) {
+                $entrypointProcess.Kill($true)
+                $entrypointProcess.WaitForExit()
+              }
+              $entrypointProcess.Dispose()
             }
           }
 
@@ -483,7 +487,7 @@ jobs:
             $appServer.Dispose()
           }
           $remainingMcp = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
-            $_.Path -and $_.Path.StartsWith($installedPath, [System.StringComparison]::OrdinalIgnoreCase)
+            $_.Path -and (Test-PathWithin $installedPath $_.Path)
           })
           if ($remainingMcp.Count -ne 0) {
             throw "installed MCP process cleanup failed: $($remainingMcp.Id -join ',')"

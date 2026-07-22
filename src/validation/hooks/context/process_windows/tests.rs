@@ -38,7 +38,7 @@ fn timeout_terminates_descendants_in_the_job() -> anyhow::Result<()> {
     let parent = write_batch(
         temp.path(),
         "parent.cmd",
-        "@echo off\r\n%SystemRoot%\\System32\\ping.exe -n 2 127.0.0.1 >nul\r\nstart \"\" /b \"%SystemRoot%\\System32\\cmd.exe\" /d /c call \"%~1\" \"%~2\"\r\n%SystemRoot%\\System32\\ping.exe -n 20 127.0.0.1 >nul\r\n",
+        "@echo off\r\nstart \"\" /b \"%SystemRoot%\\System32\\cmd.exe\" /d /c call \"%~1\" \"%~2\"\r\n%SystemRoot%\\System32\\ping.exe -n 20 127.0.0.1 >nul\r\n",
     )?;
     let marker = temp.path().join("descendant-survived");
     let output = output_with_timeout(
@@ -66,7 +66,7 @@ fn normal_parent_exit_still_terminates_descendants() -> anyhow::Result<()> {
     let parent = write_batch(
         temp.path(),
         "parent.cmd",
-        "@echo off\r\n%SystemRoot%\\System32\\ping.exe -n 2 127.0.0.1 >nul\r\nstart \"\" /b \"%SystemRoot%\\System32\\cmd.exe\" /d /c call \"%~1\" \"%~2\"\r\necho finished\r\n",
+        "@echo off\r\nstart \"\" /b \"%SystemRoot%\\System32\\cmd.exe\" /d /c call \"%~1\" \"%~2\"\r\necho finished\r\n",
     )?;
     let marker = temp.path().join("descendant-survived");
     let output = output_with_timeout(

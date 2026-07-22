@@ -12,7 +12,7 @@ type Handle = *mut c_void;
 pub(super) struct Job(Handle);
 
 impl Job {
-    pub(super) fn assign(child: &Child) -> Result<Self> {
+    pub(super) fn new() -> Result<Self> {
         // SAFETY: CreateJobObjectW has no pointer inputs; the returned handle is owned below.
         let handle = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
         if handle.is_null() {
@@ -34,11 +34,23 @@ impl Job {
         {
             bail!("configuring Windows hook job object failed");
         }
+        Ok(job)
+    }
+
+    pub(super) fn assign(&self, child: &Child) -> Result<()> {
         // SAFETY: child owns a live process handle and job is configured to terminate its tree.
-        if unsafe { AssignProcessToJobObject(job.0, child.as_raw_handle().cast()) } == 0 {
+        if unsafe { AssignProcessToJobObject(self.0, child.as_raw_handle().cast()) } == 0 {
             bail!("assigning hook child to Windows job object failed");
         }
-        Ok(job)
+        Ok(())
+    }
+
+    pub(super) fn resume(&self, child: &Child) -> Result<()> {
+        // SAFETY: child owns the process handle for a process created suspended below.
+        if unsafe { NtResumeProcess(child.as_raw_handle().cast()) } != 0 {
+            bail!("resuming suspended Windows hook process failed");
+        }
+        Ok(())
     }
 }
 
@@ -84,4 +96,9 @@ unsafe extern "system" {
     fn SetInformationJobObject(job: Handle, class: i32, info: *const c_void, size: u32) -> i32;
     fn AssignProcessToJobObject(job: Handle, process: Handle) -> i32;
     fn CloseHandle(handle: Handle) -> i32;
+}
+
+#[link(name = "ntdll")]
+unsafe extern "system" {
+    fn NtResumeProcess(process: Handle) -> i32;
 }

@@ -75,6 +75,34 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
 }
 
 #[test]
+fn codegraph_search_does_not_require_ambient_ripgrep() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    std::fs::write(root.path().join("entry.rs"), "pub const ENTRY: u8 = 1;\n")?;
+    let mut command = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"));
+    command.env("PATH", "");
+    let mut client = McpClient::spawn_command(command)?;
+    let _init = client.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+
+    let search = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"codegraph_search","arguments":{
+            "root":root.path(),"query":"ENTRY","limit":10
+        }}
+    }))?;
+    let search_text = search["result"]["content"][0]["text"]
+        .as_str()
+        .ok_or("search text")?;
+    crate::support::assert_structured_literals(
+        search_text,
+        "codegraph search without ambient ripgrep",
+        &["ENTRY"],
+    );
+    Ok(())
+}
+
+#[test]
 fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;

@@ -1,11 +1,21 @@
 pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[&str]) {
+    let normalized = text.replace("\r\n", "\n");
     let missing: Vec<_> = required
         .iter()
-        .filter(|literal| !text.contains(**literal))
+        .filter(|literal| !normalized.contains(**literal))
         .collect();
     assert!(
         missing.is_empty(),
         "structured contract {rule_id} is missing required literals {missing:?}"
+    );
+}
+
+#[test]
+fn structured_literals_treat_crlf_as_text_line_endings() {
+    assert_structured_literals(
+        "first line\r\nsecond line\r\n",
+        "CRLF source fixture",
+        &["first line\nsecond line\n"],
     );
 }
 

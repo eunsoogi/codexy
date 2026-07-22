@@ -1,4 +1,5 @@
 use std::io::{ErrorKind, Read};
+use std::os::windows::process::CommandExt as _;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc::{self, Receiver};
@@ -20,6 +21,7 @@ use finish::{finish_after_output_exceeded, finish_after_timeout};
 mod tests;
 
 pub(super) const MAX_HOOK_OUTPUT_BYTES: usize = 1024 * 1024;
+const CREATE_SUSPENDED: u32 = 0x0000_0004;
 
 pub(in crate::validation::hooks) fn output_with_timeout(
     script_path: &Path,
@@ -30,9 +32,11 @@ pub(in crate::validation::hooks) fn output_with_timeout(
     let isolated_home = tempfile::tempdir().context("creating isolated hook validation home")?;
     let system_root = std::env::var_os("SystemRoot").context("Windows SystemRoot unavailable")?;
     let system_path = Path::new(&system_root).join("System32");
+    let job = Job::new()?;
     let mut command = Command::new(script_path);
     command
         .args(args)
+        .creation_flags(CREATE_SUSPENDED)
         .env_clear()
         .env("USERPROFILE", isolated_home.path())
         .env("CODEX_HOME", isolated_home.path().join(".codex"))
@@ -43,14 +47,17 @@ pub(in crate::validation::hooks) fn output_with_timeout(
     let mut child = command
         .spawn()
         .with_context(|| format!("running {}", display_relative(script_path)))?;
-    let mut job = match Job::assign(&child) {
-        Ok(job) => Some(job),
-        Err(error) => {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(error);
-        }
-    };
+    if let Err(error) = job.assign(&child) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(error);
+    }
+    if let Err(error) = job.resume(&child) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(error);
+    }
+    let mut job = Some(job);
     let (sender, receiver) = mpsc::sync_channel(16);
     spawn_reader(
         child.stdout.take().context("capturing hook stdout")?,
