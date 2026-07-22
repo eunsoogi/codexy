@@ -37,13 +37,21 @@ def normalize(
     """Return a policy-ready effective Git invocation, or fail closed."""
     try:
         aliases: dict[str, str] = {}
+        rewrites: list[UrlRewrite] = []
         for key, value in environment_config.items():
-            alias = _alias_option(f"{key}={value}")
-            if alias is None:
+            config = f"{key}={value}"
+            alias = _alias_option(config)
+            is_url_config, rewrite = _url_rewrite(config)
+            if alias is not None:
+                alias_name, command = alias
+                aliases[alias_name] = command
+            elif is_url_config:
+                if rewrite is None:
+                    return None
+                rewrites.append(rewrite)
+            elif cwd_owned is not False or config_owned(config):
                 return None
-            alias_name, command = alias
-            aliases[alias_name] = command
-        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, aliases, [], set(), 0, remote_urls)
+        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, aliases, rewrites, set(), 0, remote_urls)
     except (OSError, TypeError, ValueError):
         return None
 

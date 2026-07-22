@@ -13,12 +13,37 @@ if [ -z "$plugin_root" ]; then
   plugin_root=${0%/hooks/codexy-admission.sh}
 fi
 
-# The fixed PATH admits supported macOS tools; selectors needed for effective policy are retained.
+# The fixed PATH admits supported macOS tools; only selectors needed for
+# effective policy cross the isolated launcher boundary.
 runtime_home=${HOME-}
-runtime_git_dir=${GIT_DIR-}
+set -- env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home"
+[ -z "${GH_REPO-}" ] || set -- "$@" "GH_REPO=$GH_REPO"
+[ -z "${GIT_DIR-}" ] || set -- "$@" "GIT_DIR=$GIT_DIR"
+if [ "${GIT_CONFIG_COUNT+x}" = x ]; then
+  set -- "$@" "GIT_CONFIG_COUNT=$GIT_CONFIG_COUNT"
+  case "$GIT_CONFIG_COUNT" in
+    ''|*[!0-9]*) ;;
+    *)
+      config_index=0
+      while [ "$config_index" -lt "$GIT_CONFIG_COUNT" ] && [ "$config_index" -lt 65 ]; do
+        eval "config_key_set=\${GIT_CONFIG_KEY_${config_index}+x}"
+        eval "config_value_set=\${GIT_CONFIG_VALUE_${config_index}+x}"
+        if [ "$config_key_set" = x ]; then
+          eval "config_key=\${GIT_CONFIG_KEY_${config_index}}"
+          set -- "$@" "GIT_CONFIG_KEY_${config_index}=$config_key"
+        fi
+        if [ "$config_value_set" = x ]; then
+          eval "config_value=\${GIT_CONFIG_VALUE_${config_index}}"
+          set -- "$@" "GIT_CONFIG_VALUE_${config_index}=$config_value"
+        fi
+        config_index=$((config_index + 1))
+      done
+      ;;
+  esac
+fi
 if env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" python3 -I -B -c \
   'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' && \
-  env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" GH_REPO="${GH_REPO-}" GIT_DIR="$runtime_git_dir" python3 -I -B "${plugin_root}/hooks/codexy-admission.py" \
+  "$@" python3 -I -B "${plugin_root}/hooks/codexy-admission.py" \
   --event "$event"; then
   exit 0
 fi

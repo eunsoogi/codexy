@@ -20,7 +20,15 @@ REDIRECTION = re.compile(r"^\d*(?:>>|<>|>|<)(.*)$")
 def changed_directory(tokens: list[str], cwd: str) -> DirectoryChange:
     while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
         tokens = tokens[1:]
-    if not tokens or name(tokens[0]) != "cd":
+    if not tokens:
+        return DirectoryChange(cwd)
+    command = name(tokens[0])
+    if command in {"popd", "pushd"}:
+        args = _without_redirections(tokens[1:])
+        if command == "popd" or args is None or len(args) != 1 or not args[0] or args[0].startswith(("+", "-")):
+            return DirectoryChange(cwd, True)
+        return DirectoryChange(resolve_cwd(cwd, args[0]))
+    if command != "cd":
         return DirectoryChange(cwd)
     args = _without_redirections(tokens[1:])
     if args is None:

@@ -8,6 +8,7 @@ from .repository import OWNED, github_identity
 
 FIELD_OPTIONS = {"-f", "-F", "--field", "--raw-field"}
 VALUE_OPTIONS = {"--cache", "--hostname", "--input", "--preview"}
+HEADER_OPTIONS = {"-H", "--header"}
 FLAG_OPTIONS = {"--include", "-i", "--paginate", "--slurp", "--silent", "--verbose"}
 MUTATION = re.compile(r"(?:^|[\s,{])mutation(?:[\s({]|$)", re.IGNORECASE)
 REPOSITORY = re.compile(r"^/?repos/([^/]+)/([^/]+)(?:/|$)", re.IGNORECASE)
@@ -62,6 +63,14 @@ def _parse(args: list[str]) -> tuple[str, str, dict[str, str]] | None:
                 return None
             index += 2
         elif any(token.startswith(option + "=") for option in VALUE_OPTIONS):
+            index += 1
+        elif token in HEADER_OPTIONS:
+            if index + 1 >= len(args):
+                return None
+            index += 2
+        elif token.startswith("-H") and len(token) > 2:
+            index += 1
+        elif token.startswith("--header="):
             index += 1
         elif token in FLAG_OPTIONS:
             index += 1

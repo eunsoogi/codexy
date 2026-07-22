@@ -57,6 +57,7 @@ fn inherited_git_dir_selects_owned_repository() -> TestResult {
         None,
         None,
         Some(&git_dir),
+        &[],
     )
 }
 
@@ -135,6 +136,36 @@ fn command_scoped_url_rewrites_use_git_longest_match_semantics() -> TestResult {
 }
 
 #[test]
+fn effective_admission_preserves_supported_shell_and_git_selectors() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(
+        workspace.path(),
+        "foreign",
+        "https://mirror.invalid/eunsoogi/codexy.git",
+    )?;
+
+    assert_case(
+        &root,
+        &foreign,
+        "gh api -X PUT -H 'Accept: application/vnd.github+json' repos/eunsoogi/codexy/pulls/453/merge -f merge_method=merge",
+        true,
+    )?;
+    assert_case(&root, &foreign, "gh api -X GET -H 'Accept: application/vnd.github+json' repos/eunsoogi/codexy/pulls/453", false)?;
+    assert_case(&root, &foreign, &format!("pushd '{}' && git push --force origin topic", owned.display()), true)?;
+    assert_case(&root, &foreign, &format!("pushd '{}' && git push origin topic", owned.display()), false)?;
+
+    let git_config = [
+        ("GIT_CONFIG_COUNT", "1"),
+        ("GIT_CONFIG_KEY_0", "url.git@github.com:.insteadOf"),
+        ("GIT_CONFIG_VALUE_0", "https://mirror.invalid/"),
+    ];
+    assert_case_with_context(&root, &foreign, "git push --force origin topic", true, None, None, None, &git_config)?;
+    assert_case_with_context(&root, &foreign, "git push origin topic", false, None, None, None, &git_config)
+}
+
+#[test]
 fn effective_shell_invocation_and_repository_context_reaches_admission() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
@@ -150,18 +181,18 @@ fn effective_shell_invocation_and_repository_context_reaches_admission() -> Test
     assert_case(&root, &foreign, &format!(". '{}' && git push --force origin topic", sourced.display()), true)?;
     assert_case(&root, &foreign, "if true; then echo ok; fi", false)?;
     assert_case(&root, &owned, "if true; then echo ok; fi", true)?;
-    assert_case_with_context(&root, &foreign, "gh pr merge 453 --merge", true, None, Some("eunsoogi/codexy"), None)?;
+    assert_case_with_context(&root, &foreign, "gh pr merge 453 --merge", true, None, Some("eunsoogi/codexy"), None, &[])?;
     assert_case(&root, &foreign, "gh pr merge 453 --merge", false)?;
 
     let home = workspace.path().join("home");
     std::fs::create_dir(&home)?;
     std::fs::write(home.join(".gitconfig"), "[url \"git@github.com:\"]\n\tinsteadOf = https://mirror.invalid/\n")?;
-    assert_case_with_context(&root, &mirror, "git push --force origin topic", true, Some(&home), None, None)?;
+    assert_case_with_context(&root, &mirror, "git push --force origin topic", true, Some(&home), None, None, &[])?;
     assert_case(&root, &mirror, "git push --force origin topic", false)
 }
 
 fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
-    assert_case_with_context(root, cwd, command, denied, None, None, None)
+    assert_case_with_context(root, cwd, command, denied, None, None, None, &[])
 }
 
 fn assert_case_with_context(
@@ -172,6 +203,7 @@ fn assert_case_with_context(
     home: Option<&std::path::Path>,
     gh_repo: Option<&str>,
     git_dir: Option<&std::path::Path>,
+    environment: &[(&str, &str)],
 ) -> TestResult {
     let input = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
@@ -179,6 +211,7 @@ fn assert_case_with_context(
     if let Some(home) = home { child.env("HOME", home); }
     if let Some(gh_repo) = gh_repo { child.env("GH_REPO", gh_repo); }
     if let Some(git_dir) = git_dir { child.env("GIT_DIR", git_dir); }
+    child.envs(environment.iter().copied());
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
     let output = child.wait_with_output()?;

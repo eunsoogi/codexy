@@ -61,7 +61,10 @@ def evaluate(event: str, payload: bytes) -> bytes:
         return deny(event)
     inherited_repository = os.environ.get("GH_REPO") or None
     inherited_git_dir = os.environ.get("GIT_DIR") or None
-    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"], inherited_repository, inherited_git_dir) else b""
+    inherited_git_config = tuple(
+        (key, value) for key, value in os.environ.items() if key.startswith("GIT_CONFIG_")
+    )
+    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"], inherited_repository, inherited_git_dir, inherited_git_config) else b""
 
 
 def _github(event: str, tool: str, data: object) -> bytes:

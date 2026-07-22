@@ -21,8 +21,11 @@ CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
 POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GH_REPO)\s*=")
 
 
-def forbidden(command: str, cwd: str, gh_repo: str | None = None, git_dir: str | None = None, depth: int = 0) -> bool:
-    environment = tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir)) if value is not None)
+def forbidden(
+    command: str, cwd: str, gh_repo: str | None = None, git_dir: str | None = None,
+    git_config_environment: tuple[tuple[str, str], ...] = (), depth: int = 0,
+) -> bool:
+    environment = tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir)) if value is not None) + git_config_environment
     owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
     return _forbidden(command, ExecutionContext(cwd, owned, git_dir, gh_repo, environment), depth)
 
