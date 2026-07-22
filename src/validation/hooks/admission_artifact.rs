@@ -83,6 +83,10 @@ const POLICY_SOURCES: &[Source] = &[
         contents: include_str!("../../../plugins/codexy/hooks/codexy_policy/shell_context.py"),
     },
     Source {
+        path: "codexy_policy/shell_groups.py",
+        contents: include_str!("../../../plugins/codexy/hooks/codexy_policy/shell_groups.py"),
+    },
+    Source {
         path: "codexy_policy/titles.py",
         contents: include_str!("../../../plugins/codexy/hooks/codexy_policy/titles.py"),
     },

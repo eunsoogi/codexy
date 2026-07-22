@@ -7,12 +7,12 @@ import shlex
 
 from .git_command import normalize as normalize_git
 from .github import forbidden as gh_forbidden
-from .execution_context import ExecutionContext, git_config
+from .execution_context import ExecutionContext, at as context_at, git_config
 from .invocation import resolve
-from .repository import OWNED, git_directory_owned, github_identity, identity, repository_owned
+from .repository import OWNED, github_identity, identity, repository_owned
 from .shell_context import changed_directory, flag
+from .shell_groups import Command, GroupSyntaxError, Sequence, parse
 
-OPS = {";", "&&", "||", "|", "&"}
 OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 
@@ -24,6 +24,7 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
 def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
     if depth > 3:
         return True
+    lexical_command = command
     if OPAQUE.search(command):
         if context.cwd_owned is not False:
             return True
@@ -43,39 +44,39 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
             nested = match.group(1) if match.group(1) is not None else match.group(2)
             if _forbidden(nested, context, depth + 1):
                 return True
+        lexical_command = SUBCOMMAND.sub("__codexy_subcommand__", command)
         if re.search(r"<<<?|\b(?:if|for|while|until|case)\b", command):
             return True
     try:
-        lexer = shlex.shlex(_separate_lines(command), posix=True, punctuation_chars=";&|(){}")
+        lexer = shlex.shlex(_separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
         tokens = list(lexer)
     except ValueError:
         return context.cwd_owned is not False
-    if any(token in {"(", ")", "{", "}"} for token in tokens):
-        return context.cwd_owned is not False
-    segments, current = [], []
-    for token in tokens:
-        if token in OPS:
-            if current:
-                segments.append((current, token))
-                current = []
-        else:
-            current.append(token)
-    if current:
-        segments.append((current, ""))
+    try:
+        sequence = parse(tokens)
+    except GroupSyntaxError:
+        return True
+    return _sequence(sequence, context, depth)[0]
+
+
+def _sequence(sequence: Sequence, context: ExecutionContext, depth: int) -> tuple[bool, ExecutionContext]:
     active = context
-    for index, (segment, following) in enumerate(segments):
-        denied, resulting_context = _segment(segment, active, depth)
+    for step in sequence.steps:
+        if isinstance(step.node, Command):
+            tokens = list(step.node.tokens)
+            denied, resulting_context = _segment(tokens, active, depth)
+            resulting_context = context_at(resulting_context, changed_directory(tokens, active.cwd))
+        else:
+            denied, nested_context = _sequence(step.node.body, active, depth + 1)
+            resulting_context = active if step.node.kind == "subshell" else nested_context
         if denied:
-            return True
-        changed_cwd = changed_directory(segment, active.cwd)
-        if following in {";", "&&"} or (following == "||" and (active.cwd_owned is False or _at(active, changed_cwd).cwd_owned is not False)):
-            active = _at(resulting_context, changed_cwd)
-        if following == "|" and index + 1 < len(segments):
-            next_invocation = resolve(segments[index + 1][0], active, depth)
-            if next_invocation is None or next_invocation.opaque:
-                return active.cwd_owned is not False
-    return False
+            return True, active
+        if step.following in {"", ";", "&&"} or (
+            step.following == "||" and (active.cwd_owned is False or resulting_context.cwd_owned is not False)
+        ):
+            active = resulting_context
+    return False, active
 
 
 def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[bool, ExecutionContext]:
@@ -123,11 +124,6 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
         forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in invocation.arguments)
         return applies and forced
     return applies and ((invocation.operation == "reset" and "--hard" in invocation.arguments) or (invocation.operation == "clean" and flag(invocation.arguments, "f", "--force")))
-
-
-def _at(context: ExecutionContext, cwd: str) -> ExecutionContext:
-    owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
-    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment)
 
 
 def _separate_lines(command: str) -> str:

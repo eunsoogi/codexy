@@ -28,6 +28,9 @@ mod hook_mutation_admission_matrix;
 #[path = "../hook_effective_context_continuation.rs"]
 mod hook_effective_context_continuation;
 
+#[path = "../hook_grouped_execution_context.rs"]
+mod hook_grouped_execution_context;
+
 #[path = "../hook_pr_admission_policy.rs"]
 mod hook_pr_admission_policy;
 
