@@ -42,6 +42,12 @@ def identity(url: str) -> tuple[str, str, str] | None:
     return (host.lower(), parts[0].lower(), parts[1].lower()) if len(parts) == 2 and all(parts) else None
 
 
+def github_identity(value: str) -> tuple[str, str, str] | None:
+    if "://" not in value:
+        value = "https://" + value if value.count("/") == 2 else "https://github.com/" + value
+    return identity(value)
+
+
 def repository_owned(cwd: str) -> bool | None:
     config = _find_config(Path(cwd))
     return _config_owned(config)
@@ -69,9 +75,9 @@ def _config_owned(config: str | None) -> bool | None:
         ]
     except configparser.Error:
         return None
-    if not identities or any(item is None for item in identities) or len(set(identities)) != 1:
+    if not identities or any(item is None for item in identities):
         return None
-    return identities[0] == OWNED
+    return OWNED in identities
 
 
 def _find_config(cwd: Path) -> str | None:

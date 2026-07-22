@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .repository import OWNED, identity
+from .repository import OWNED, github_identity
 from .titles import issue_title, pr_title
 from .wrappers import option_value
 
@@ -15,10 +15,10 @@ def forbidden(args: list[str], cwd_owned: bool | None, gh_repo_owned: bool | Non
         if arg in {"-R", "--repo"}:
             if index + 1 >= len(args):
                 return owned is not False
-            owned = identity("https://github.com/" + args[index + 1]) == OWNED
+            owned = github_identity(args[index + 1]) == OWNED
             index += 2
         elif arg.startswith("--repo="):
-            owned = identity("https://github.com/" + arg.split("=", 1)[1]) == OWNED
+            owned = github_identity(arg.split("=", 1)[1]) == OWNED
             index += 1
         else:
             filtered.append(arg)

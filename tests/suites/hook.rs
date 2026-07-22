@@ -16,6 +16,12 @@ mod validator_hook_loc_contract;
 #[path = "../hook_admission_policy.rs"]
 mod hook_admission_policy;
 
+#[path = "../hook_policy_composition.rs"]
+mod hook_policy_composition;
+
+#[path = "../validator_hook_admission_artifact.rs"]
+mod validator_hook_admission_artifact;
+
 #[path = "../validator_hook_official_events_red.rs"]
 mod validator_hook_official_events_red;
 

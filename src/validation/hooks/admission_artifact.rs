@@ -26,6 +26,10 @@ const FILES: &[(&str, &str)] = &[
         include_str!("../../../plugins/codexy/hooks/codexy_policy/admission.py"),
     ),
     (
+        "codexy_policy/github.py",
+        include_str!("../../../plugins/codexy/hooks/codexy_policy/github.py"),
+    ),
+    (
         "codexy_policy/merge.py",
         include_str!("../../../plugins/codexy/hooks/codexy_policy/merge.py"),
     ),

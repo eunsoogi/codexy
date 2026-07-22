@@ -8,7 +8,7 @@ import shlex
 from pathlib import Path
 
 from .github import forbidden as gh_forbidden
-from .repository import OWNED, git_directory_owned, identity, repository_owned
+from .repository import OWNED, git_directory_owned, github_identity, identity, repository_owned
 from .titles import issue_title, pr_title
 from .wrappers import command_command, sudo_command, time_command, timeout_command
 
@@ -27,9 +27,10 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
             return True
         try:
             opaque_tokens = shlex.split(command)
-            if _explicit_owned(opaque_tokens) is True:
-                return True
-            if opaque_tokens and _name(opaque_tokens[0]) == "eval" and any(forbidden(arg, cwd, depth + 1) for arg in opaque_tokens[1:]):
+            if opaque_tokens and _name(opaque_tokens[0]) == "eval":
+                if forbidden(" ".join(opaque_tokens[1:]), cwd, depth + 1):
+                    return True
+            elif _explicit_owned(opaque_tokens) is True:
                 return True
         except ValueError:
             return True
@@ -69,13 +70,13 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
 
 
 def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) -> bool:
-    git_dir_owned: bool | None = None
-    gh_repo_owned: bool | None = None
+    git_dir: str | None = None
+    gh_repo: str | None = None
     while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
         if tokens[0].startswith("GIT_DIR="):
-            cwd_owned = git_dir_owned = git_directory_owned(cwd, tokens[0].split("=", 1)[1])
+            git_dir = tokens[0].split("=", 1)[1]
         elif tokens[0].startswith("GH_REPO="):
-            gh_repo_owned = identity("https://github.com/" + tokens[0].split("=", 1)[1]) == OWNED
+            gh_repo = tokens[0].split("=", 1)[1]
         tokens = tokens[1:]
     for _ in range(8):
         if not tokens or _name(tokens[0]) not in WRAPPERS:
@@ -84,9 +85,9 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
         if name == "env":
             while tokens and (tokens[0].startswith("-") or "=" in tokens[0]):
                 if tokens[0].startswith("GIT_DIR="):
-                    cwd_owned = git_dir_owned = git_directory_owned(cwd, tokens[0].split("=", 1)[1])
+                    git_dir = tokens[0].split("=", 1)[1]
                 elif tokens[0].startswith("GH_REPO="):
-                    gh_repo_owned = identity("https://github.com/" + tokens[0].split("=", 1)[1]) == OWNED
+                    gh_repo = tokens[0].split("=", 1)[1]
                 if tokens[0] in {"-S", "--split-string"}:
                     return len(tokens) < 2 or forbidden(tokens[1], cwd, depth + 1)
                 if tokens[0].startswith("--split-string="):
@@ -94,13 +95,18 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
                 if tokens[0] in {"-u", "--unset", "-C", "--chdir"}:
                     if len(tokens) < 2:
                         return True
-                    if tokens[0] in {"-C", "--chdir"}:
+                    if tokens[0] == "-u" or tokens[0] == "--unset":
+                        if tokens[1] == "GIT_DIR":
+                            git_dir = None
+                        elif tokens[1] == "GH_REPO":
+                            gh_repo = None
+                    else:
                         cwd = _resolve_cwd(cwd, tokens[1])
-                        cwd_owned = git_dir_owned if git_dir_owned is not None else repository_owned(cwd)
+                        cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
                     tokens = tokens[2:]
                 elif tokens[0].startswith("--chdir="):
                     cwd = _resolve_cwd(cwd, tokens[0].split("=", 1)[1])
-                    cwd_owned = git_dir_owned if git_dir_owned is not None else repository_owned(cwd)
+                    cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
                     tokens = tokens[1:]
                 else:
                     tokens = tokens[1:]
@@ -126,16 +132,19 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
                 return cwd_owned is not False or _explicit_owned(wrapped) is True
     if not tokens:
         return False
+    if git_dir is not None:
+        cwd_owned = git_directory_owned(cwd, git_dir)
+    gh_repo_owned = github_identity(gh_repo) == OWNED if gh_repo is not None else None
     name, args = _name(tokens[0]), tokens[1:]
     if name in {"sh", "bash", "zsh", "dash", "pwsh", "powershell", "cmd"}:
         for index, arg in enumerate(args):
-            if arg.lower() in {"-c", "-command", "/c"}:
+            if _command_option(arg):
                 return index + 1 >= len(args) or forbidden(args[index + 1], cwd, depth + 1)
         return cwd_owned is not False
     if name == "xargs":
         return _xargs(args, cwd, cwd_owned, depth)
     if name == "git":
-        return _git(args, cwd, cwd_owned, git_dir_owned)
+        return _git(args, cwd, cwd_owned, git_dir)
     if name == "gh":
         return gh_forbidden(args, cwd_owned, gh_repo_owned)
     if name == "rm":
@@ -143,7 +152,7 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
     return False
 
 
-def _git(args: list[str], cwd: str, cwd_owned: bool | None, git_dir_owned: bool | None) -> bool:
+def _git(args: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None) -> bool:
     while args and args[0].startswith("-"):
         option = args[0]
         if option == "-c" or option.startswith("-c="):
@@ -162,7 +171,7 @@ def _git(args: list[str], cwd: str, cwd_owned: bool | None, git_dir_owned: bool 
             if len(args) < 2:
                 return True
             cwd = os.path.abspath(os.path.join(cwd, args[1]))
-            cwd_owned = git_dir_owned if git_dir_owned is not None else repository_owned(cwd)
+            cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
             args = args[2:]
         elif option in {"--no-pager", "--paginate", "--bare"}:
             args = args[1:]
@@ -226,6 +235,10 @@ def _explicit_owned(args: list[str]) -> bool | None:
 
 def _config_owned(config: str) -> bool:
     return "=" in config and identity(config.split("=", 1)[1]) == OWNED
+
+
+def _command_option(value: str) -> bool:
+    return value.lower() in {"-command", "/c"} or (value.startswith("-") and not value.startswith("--") and "c" in value.lower()[1:])
 
 
 def _flag(args: list[str], short: str, long: str) -> bool:
