@@ -35,12 +35,12 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
         ),
         (
             "differently headed results remain neutral",
-            format!("{complete}\n{}", checks_table()),
+            format!("{complete}\n\n{}", checks_table()),
             true,
         ),
         (
             "arbitrary nonclassification headers remain neutral",
-            format!("{complete}\n{}", audit_table()),
+            format!("{complete}\n\n{}", audit_table()),
             true,
         ),
         (
@@ -51,7 +51,7 @@ fn validator_uses_only_recognized_gfm_schemas_to_replace_classification() -> Tes
         (
             "later wrong-header classification-like rows remain neutral",
             format!(
-                "{complete}\n{}",
+                "{complete}\n\n{}",
                 repeated_table.replacen("| Field | Value |", "| Check | Status |", 1)
             ),
             true,

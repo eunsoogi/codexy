@@ -176,16 +176,14 @@ impl GfmClassificationTable {
 
     fn consume_schema_key_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
         if matches!(parse_table_separator(line), GfmDelimiterRow::Valid) {
-            self.state = GfmClassificationTableState::Neutral;
-            return GfmClassificationTableEvent::NotGfm;
+            return self.invalidate();
         }
         self.invalidate()
     }
 
     fn consume_other_header<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
         if matches!(parse_table_separator(line), GfmDelimiterRow::Valid) {
-            self.state = GfmClassificationTableState::Neutral;
-            return GfmClassificationTableEvent::NotGfm;
+            return self.invalidate();
         }
         self.invalidate()
     }

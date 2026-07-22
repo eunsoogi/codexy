@@ -31,8 +31,13 @@ fn validator_distinguishes_invalid_replacement_delimiters_from_absent_tables() -
         false,
     )?;
     assert_controls(
-        "unrelated table remains neutral",
-        &format!("{complete}\n| Check | Status |\n| --- | --- |\n| Result | pass |"),
+        "adjacent unrelated row and delimiter invalidate",
+        &format!("{complete}\n| Approval | skipped |\n| --- | --- |"),
+        false,
+    )?;
+    assert_controls(
+        "blank-separated unrelated table remains neutral",
+        &format!("{complete}\n\n| Approval | skipped |\n| --- | --- |"),
         true,
     )?;
     Ok(())
@@ -117,7 +122,7 @@ fn validator_preserves_complete_classification_until_table_grammar_is_known() ->
     ] {
         assert_controls(
             "schema-key-first evidence table remains neutral",
-            &format!("{complete}\n{header}\n| --- | --- |\n| Result | pass |"),
+            &format!("{complete}\n\n{header}\n| --- | --- |\n| Result | pass |"),
             true,
         )?;
     }
