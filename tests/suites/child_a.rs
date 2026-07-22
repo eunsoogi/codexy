@@ -146,6 +146,9 @@ mod validator_child_lane_authority_record_state;
 #[path = "../validator_child_lane_gfm_delimiter_state.rs"]
 mod validator_child_lane_gfm_delimiter_state;
 
+#[path = "../validator_child_lane_gfm_utf8_rows.rs"]
+mod validator_child_lane_gfm_utf8_rows;
+
 #[path = "../validator_child_lane_classification_equivalence.rs"]
 mod validator_child_lane_classification_equivalence;
 

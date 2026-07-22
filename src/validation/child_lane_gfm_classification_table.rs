@@ -11,9 +11,8 @@ pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
 
 fn gfm_table_cells(line: &str) -> Option<Vec<&str>> {
     let line = line.strip_prefix('|')?;
-    let closing_pipe = line.len().checked_sub(1)?;
-    (!is_escaped_pipe(line, closing_pipe)).then_some(())?;
     let row = line.strip_suffix('|')?;
+    (!is_escaped_pipe(row, row.len())).then_some(())?;
     let mut cells = Vec::new();
     let mut start = 0;
     for (index, _) in row.match_indices('|') {
