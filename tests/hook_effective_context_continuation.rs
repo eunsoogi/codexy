@@ -121,6 +121,46 @@ fn sequential_shell_state_tracks_exact_supported_mutations() -> TestResult {
 }
 
 #[test]
+fn dynamic_selector_assignment_fails_closed_without_blocking_static_assignment() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    assert_case(
+        &root,
+        &foreign,
+        "export GH_REPO=$(printf eunsoogi/codexy); gh pr merge 453 --merge",
+        true,
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "export GH_REPO=eunsoogi/codexy; gh pr merge 453 --merge",
+        true,
+    )
+}
+
+#[test]
+fn readonly_assignment_updates_selector_state_without_blocking_benign_state() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    assert_case(
+        &root,
+        &foreign,
+        "readonly GH_REPO=eunsoogi/codexy; export GH_REPO; gh pr merge 453 --merge",
+        true,
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "readonly NOTE=safe; export NOTE; printf safe",
+        false,
+    )
+}
+
+#[test]
 fn control_flow_expansion_and_pushurl_state_close_only_sensitive_gaps() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;

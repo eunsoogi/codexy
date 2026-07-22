@@ -6,7 +6,7 @@ import shlex
 from dataclasses import dataclass
 
 from .execution_context import (
-    ExecutionContext, assign, assignment, at, clear, expand_tokens,
+    ExecutionContext, assign, assigned_variables, assignment, at, clear, expand_tokens,
     export_variables, leading_assignments, unset, unset_variables,
 )
 from .shell_context import command_option, name, resolve_cwd
@@ -71,10 +71,10 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
             exported = export_variables(args, context)
             return None if exported is None else Invocation(None, [], exported)
         if executable in {"declare", "typeset"}:
-            if args[:1] != ["-x"] or len(args) != 2 or not assignment(args[1]):
-                return None
-            exported = export_variables(args[1:], context)
-            return None if exported is None else Invocation(None, [], exported)
+            args = args[1:] if args[:1] == ["-x"] and len(args) == 2 else []
+        if executable in {"declare", "typeset", "readonly"}:
+            declared = assigned_variables(args, context)
+            return None if declared is None else Invocation(None, [], declared)
         if executable == "unset":
             remaining = unset_variables(args, context)
             return None if remaining is None else Invocation(None, [], remaining)

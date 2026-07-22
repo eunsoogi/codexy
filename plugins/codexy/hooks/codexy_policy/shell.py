@@ -9,7 +9,7 @@ from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
 from .github_alias import expand as expand_gh_alias
 from .github import forbidden as gh_forbidden
-from .execution_context import ExecutionContext, assignment, at as context_at, git_config, remote_url
+from .execution_context import DYNAMIC_VALUE, ExecutionContext, assignment, at as context_at, git_config, remote_url
 from .invocation import resolve
 from .repository import OWNED, UrlRewrite, git_directory_owned, github_identity, identity, repository_owned, rewrite_url
 from .shell_context import changed_directory, flag
@@ -56,7 +56,7 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
             nested = match.group(1) if match.group(1) is not None else match.group(2)
             if _forbidden(nested, context, depth + 1):
                 return True
-        lexical_command = SUBCOMMAND.sub("__codexy_subcommand__", command)
+        lexical_command = SUBCOMMAND.sub(DYNAMIC_VALUE, command)
         if CONTROL.search(command):
             return POLICY_STATE.search(command) is not None or _dynamic_control_executable(command)
     try:

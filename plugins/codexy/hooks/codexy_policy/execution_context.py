@@ -9,6 +9,8 @@ from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 VARIABLE_REFERENCE = re.compile(r"\$(?:\{(?P<braced>[A-Za-z_][A-Za-z0-9_]*)\}|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))")
+DYNAMIC_VALUE = "__codexy_command_substitution__"
+POLICY_SELECTORS = {"GH_REPO", "GIT_DIR"}
 
 
 @dataclass(frozen=True)
@@ -30,7 +32,7 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     key, assigned = value.split("=", 1)
     expanded = expand(assigned, context)
     environment = dict(context.environment)
-    if expanded is None:
+    if expanded is None or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded):
         environment[key] = assigned
         return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, tuple(environment.items()), True, context.remote_urls)
     environment[key] = expanded
@@ -45,6 +47,15 @@ def leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[l
         context = assign(tokens[0], context)
         tokens = tokens[1:]
     return tokens, context
+
+
+def assigned_variables(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
+    """Apply one or more assignment-only shell declarations."""
+    if not arguments or any(not assignment(argument) for argument in arguments):
+        return None
+    for argument in arguments:
+        context = assign(argument, context)
+    return context
 
 
 def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
