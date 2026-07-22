@@ -2,6 +2,8 @@ use std::{fs, path::Path};
 
 use serde_yaml::Value;
 
+use crate::support;
+
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_candidate_run()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -11,15 +13,17 @@ fn activation_requires_clean_bootstrap_entrypoint_and_successful_candidate_run()
         "open-activation-pr",
         "Prove public bootstrap, release, run, and candidate bytes",
     )?;
-    for required in [
-        "python -m venv public-bootstrap",
-        "getcodexy==${BOOTSTRAP_VERSION}",
-        "public-bootstrap/bin/codexy-mcp-runtime --help",
-        "test \"$(jq -r .status run.json)\" = \"completed\"",
-        "test \"$(jq -r .conclusion run.json)\" = \"success\"",
-    ] {
-        assert!(proof.contains(required), "activation proof lacks {required:?}");
-    }
+    support::assert_structured_literals(
+        proof,
+        "activation bootstrap and candidate workflow proof",
+        &[
+            "python -m venv public-bootstrap",
+            "getcodexy==${BOOTSTRAP_VERSION}",
+            "public-bootstrap/bin/codexy-mcp-runtime --help",
+            "test \"$(jq -r .status run.json)\" = \"completed\"",
+            "test \"$(jq -r .conclusion run.json)\" = \"success\"",
+        ],
+    );
     Ok(())
 }
 
@@ -32,17 +36,19 @@ fn candidate_publication_recovers_without_overwriting_assets()
         "publish-candidate",
         "Create candidate tag and release once",
     )?;
-    for required in [
-        "refs/tags/$CANDIDATE_TAG^{}",
-        "test \"$remote_commit\" = \"$SOURCE_COMMIT\"",
-        "gh release view \"$CANDIDATE_TAG\"",
-        "gh release download \"$CANDIDATE_TAG\"",
-        "cmp \"$asset\" \"$public_asset\"",
-        "gh release upload \"$CANDIDATE_TAG\" \"$asset\"",
-    ] {
-        assert!(publish.contains(required), "recoverable publication lacks {required:?}");
-    }
-    assert!(!publish.contains("--clobber"), "immutable assets must not be overwritten");
+    support::assert_structured_literals(
+        publish,
+        "recoverable immutable candidate publication",
+        &[
+            "refs/tags/$CANDIDATE_TAG^{}",
+            "test \"$remote_commit\" = \"$SOURCE_COMMIT\"",
+            "gh release view \"$CANDIDATE_TAG\"",
+            "gh release download \"$CANDIDATE_TAG\"",
+            "cmp \"$asset\" \"$public_asset\"",
+            "gh release upload \"$CANDIDATE_TAG\" \"$asset\"",
+        ],
+    );
+    assert_eq!(publish.matches("--clobber").count(), 0, "immutable assets must not be overwritten");
     Ok(())
 }
 
@@ -57,16 +63,18 @@ fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
     let package = step_index(steps, "Package declared platform binaries")?;
     assert!(smoke.0 < package, "protocol smoke must precede packaging");
     let script = smoke.1["run"].as_str().ok_or("smoke run")?;
-    for required in [
-        "codexy-mcp-lsp",
-        "codexy-mcp-codegraph",
-        "\"method\": \"initialize\"",
-        "\"protocolVersion\": \"2024-11-05\"",
-        "\"name\": \"lsp_status\"",
-        "\"name\": \"codegraph_overview\"",
-    ] {
-        assert!(script.contains(required), "platform smoke lacks {required:?}");
-    }
+    support::assert_structured_literals(
+        script,
+        "platform-local MCP protocol smokes",
+        &[
+            "codexy-mcp-lsp",
+            "codexy-mcp-codegraph",
+            "\"method\": \"initialize\"",
+            "\"protocolVersion\": \"2024-11-05\"",
+            "\"name\": \"lsp_status\"",
+            "\"name\": \"codegraph_overview\"",
+        ],
+    );
     Ok(())
 }
 
