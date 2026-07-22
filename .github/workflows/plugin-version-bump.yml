@@ -81,6 +81,9 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           if git diff --quiet; then
+            scripts/plan-version-pr-reconciliation \
+              --has-changes false --pr-count 0 --remote-exists false \
+              --pr-matches-origin false
             echo "Version is already synchronized to ${VERSION}."
             exit 0
           fi
@@ -104,16 +107,29 @@ jobs:
             --jq '[.[] | {number, headRefOid: .head.sha, headRepository: .head.repo.full_name, headLabel: .head.label}]' \
             > "$state_dir/existing-prs.json"
           pr_count=$(jq 'length' "$state_dir/existing-prs.json")
-          if [ "$pr_count" -gt 1 ]; then
-            echo "More than one open PR exists for ${branch}." >&2
-            exit 1
-          fi
           remote_exists=false
           if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null; then
             remote_exists=true
           fi
+          pr_matches_origin=false
+          remote_oid=""
+          if [ "$remote_exists" = true ]; then
+            git fetch origin "$branch:refs/remotes/origin/$branch"
+            remote_oid=$(git rev-parse "origin/$branch")
+            if [ "$pr_count" -eq 1 ] && jq -e \
+              --arg repository "$GITHUB_REPOSITORY" \
+              --arg label "$owner:$branch" \
+              --arg oid "$remote_oid" \
+              '.[0] | .headRepository == $repository and .headLabel == $label and .headRefOid == $oid' \
+              "$state_dir/existing-prs.json" >/dev/null; then
+              pr_matches_origin=true
+            fi
+          fi
+          action=$(scripts/plan-version-pr-reconciliation \
+            --has-changes true --pr-count "$pr_count" --remote-exists "$remote_exists" \
+            --pr-matches-origin "$pr_matches_origin")
 
-          if [ "$pr_count" -eq 0 ] && [ "$remote_exists" = false ]; then
+          if [ "$action" = first-run ]; then
             git switch -c "$branch"
             git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml
             git add --pathspec-from-file="$state_dir/changed-files.z" --pathspec-file-nul
@@ -127,18 +143,7 @@ jobs:
               --head "$branch")
             pr_number=$(gh pr view "$pr_url" --repo "$GITHUB_REPOSITORY" \
               --json number --jq .number)
-          elif [ "$remote_exists" = true ]; then
-            git fetch origin "$branch:refs/remotes/origin/$branch"
-            remote_oid=$(git rev-parse "origin/$branch")
-            if [ "$pr_count" -eq 1 ] && ! jq -e \
-              --arg repository "$GITHUB_REPOSITORY" \
-              --arg label "$owner:$branch" \
-              --arg oid "$remote_oid" \
-              '.[0] | .headRepository == $repository and .headLabel == $label and .headRefOid == $oid' \
-              "$state_dir/existing-prs.json" >/dev/null; then
-              echo "Existing PR head does not match the verified origin branch." >&2
-              exit 1
-            fi
+          else
             expected_head_oid=$remote_oid
             git diff --binary --no-ext-diff > "$state_dir/expected.patch"
             git diff --binary --no-ext-diff origin/main..."origin/$branch" \
@@ -147,7 +152,7 @@ jobs:
               echo "Existing ${branch} does not match the requested version changes." >&2
               exit 1
             fi
-            if [ "$pr_count" -eq 0 ]; then
+            if [ "$action" = pushed-no-pr ]; then
               pr_url=$(gh pr create \
                 --title "$title" \
                 --body-file "$state_dir/metadata/body.md" \
@@ -162,9 +167,6 @@ jobs:
                 --body-file "$state_dir/metadata/body.md" \
                 --base main
             fi
-          else
-            echo "Branch and pull-request state disagree for ${branch}." >&2
-            exit 1
           fi
 
           gh api --method PUT \

@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Select the mutation-safe reconciliation action for a version-bump PR."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+
+
+def boolean(value: str) -> bool:
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    raise argparse.ArgumentTypeError("must be true or false")
+
+
+def plan(
+    has_changes: bool, pr_count: int, remote_exists: bool, pr_matches_origin: bool
+) -> str:
+    if not has_changes:
+        return "no-op"
+    if pr_count > 1:
+        raise ValueError("more than one open PR exists for the release branch")
+    if not remote_exists:
+        if pr_count == 0:
+            return "first-run"
+        raise ValueError("branch and pull-request state disagree")
+    if pr_count == 0:
+        return "pushed-no-pr"
+    if pr_matches_origin:
+        return "existing-pr-update"
+    raise ValueError("existing PR head does not match the verified origin branch")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--has-changes", required=True, type=boolean)
+    parser.add_argument("--pr-count", required=True, type=int)
+    parser.add_argument("--remote-exists", required=True, type=boolean)
+    parser.add_argument("--pr-matches-origin", required=True, type=boolean)
+    args = parser.parse_args()
+    if args.pr_count < 0:
+        parser.error("--pr-count must not be negative")
+    try:
+        print(plan(**vars(args)))
+        return 0
+    except ValueError as error:
+        print(f"plan-version-pr-reconciliation: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

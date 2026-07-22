@@ -59,6 +59,7 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         "if git ls-remote ",
         "gh api --method PUT ",
         "scripts/build-version-pr-state ",
+        "scripts/plan-version-pr-reconciliation ",
         "plugins/codexy/hooks/codexy-pr-title-check.sh ",
         "plugins/codexy/hooks/codexy-pr-label-check.sh ",
         "scripts/validate-plugin-config --check-completion-handoff ",
@@ -80,14 +81,20 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         r#"'.[0] | .headRepository == $repository and .headLabel == $label and .headRefOid == $oid' \"#,
     ));
     assert!(has_trimmed_line(reconcile, "--expected-head-oid \"$expected_head_oid\" \\"));
-    assert!(has_trimmed_line(reconcile, "if [ \"$pr_count\" -eq 0 ] && [ \"$remote_exists\" = false ]; then"));
-    assert!(has_trimmed_line(reconcile, "elif [ \"$remote_exists\" = true ]; then"));
+    assert!(has_trimmed_line(
+        reconcile,
+        r#"--has-changes true --pr-count "$pr_count" --remote-exists "$remote_exists" \"#,
+    ));
+    assert!(has_trimmed_line(
+        reconcile,
+        r#"--pr-matches-origin "$pr_matches_origin")"#,
+    ));
     assert!(has_trimmed_line(
         reconcile,
         r#"git diff --binary --no-ext-diff origin/main..."origin/$branch" \"#,
     ));
-    assert!(has_trimmed_line(reconcile, "if [ \"$pr_count\" -eq 0 ]; then"));
-    assert!(has_trimmed_line(reconcile, "echo \"Branch and pull-request state disagree for ${branch}.\" >&2"));
+    assert!(has_trimmed_line(reconcile, "if [ \"$action\" = first-run ]; then"));
+    assert!(has_trimmed_line(reconcile, "if [ \"$action\" = pushed-no-pr ]; then"));
     Ok(())
 }
 

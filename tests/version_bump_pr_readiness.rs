@@ -98,6 +98,19 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             "- `plugins/codexy/.codex-plugin/plugin.json`",
         ]
     );
+    assert_eq!(
+        markdown_section_lines(&body, "## Verification"),
+        [
+            "- `scripts/sync-plugin-version --check`",
+            "- `scripts/validate-plugin-config --check`",
+            "- `cargo test --locked`",
+            "- `git diff --check`",
+            "- `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title <title>`",
+            "- `plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`",
+            "- `scripts/validate-plugin-config --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`",
+            "- `plugins/codexy/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`",
+        ]
+    );
     assert!(body.ends_with("Fixes #301\n"));
     assert_eq!(
         labels,

@@ -46,6 +46,9 @@ mod version_bump_pr_readiness;
 #[path = "../version_bump_pr_metadata_failures.rs"]
 mod version_bump_pr_metadata_failures;
 
+#[path = "../version_bump_reconciliation_state_machine.rs"]
+mod version_bump_reconciliation_state_machine;
+
 #[path = "../version_bump_pr_state.rs"]
 mod version_bump_pr_state;
 

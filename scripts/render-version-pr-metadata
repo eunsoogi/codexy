@@ -51,8 +51,13 @@ def validate_issue(issue: object, repository_labels: object) -> tuple[int, str, 
     if issue.get("state") != "OPEN":
         fail(f"governing issue #{number} must be open")
     url = issue.get("url")
-    if not isinstance(url, str) or not url.startswith("https://github.com/"):
-        fail(f"governing issue #{number} requires a GitHub URL")
+    if not isinstance(url, str):
+        fail(f"governing issue #{number} requires a canonical issue URL")
+    canonical_url = re.compile(
+        rf"https://github\.com/[^/?#]+/[^/?#]+/issues/{number}"
+    )
+    if canonical_url.fullmatch(url) is None:
+        fail(f"governing issue #{number} requires a canonical issue URL")
     milestone = issue.get("milestone")
     if (
         not isinstance(milestone, dict)
@@ -124,6 +129,10 @@ def render(version: str, number: int, url: str, files: list[str]) -> tuple[str, 
 - `scripts/validate-plugin-config --check`
 - `cargo test --locked`
 - `git diff --check`
+- `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title <title>`
+- `plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`
+- `scripts/validate-plugin-config --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`
+- `plugins/codexy/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`
 
 ## Evidence
 
