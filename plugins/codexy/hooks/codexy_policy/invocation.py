@@ -61,6 +61,10 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         tokens = expanded
         executable = name(tokens[0])
         args = tokens[1:]
+        if executable in SHELL_INTERPRETERS | OPAQUE_INTERPRETERS and args == ["--version"]:
+            return Invocation(executable, args, context)
+        if executable == "builtin":
+            return None
         if executable == "export":
             exported = export_variables(args, context)
             return None if exported is None else Invocation(None, [], exported)

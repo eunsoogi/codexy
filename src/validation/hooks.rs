@@ -40,7 +40,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     }
 }
 
-pub(super) fn policy_inventory_discovery_json(plugin_root: &Path) -> Result<String> {
+pub fn policy_inventory_discovery_json(plugin_root: &Path) -> Result<String> {
     Ok(serde_json::to_string(
         &policy_inventory_discovery::discover(plugin_root)?,
     )?)

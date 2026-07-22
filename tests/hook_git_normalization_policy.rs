@@ -53,6 +53,28 @@ fn effective_invocation_resolves_wrappers_and_git_aliases_before_policy() -> Tes
 }
 
 #[test]
+fn command_admission_preserves_info_queries_and_effective_aliases() -> TestResult {
+    let root = root();
+    let workspace = tempfile::tempdir()?;
+    let home = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    std::fs::write(home.path().join(".gitconfig"), "[alias]\n\tship = push --force\n")?;
+
+    for command in ["python3 --version", "node --version", "bash --version"] {
+        assert_eq!(bash(&root, &foreign, command)?, b"", "{command}");
+    }
+    assert_deny(&bash(&root, &foreign, "python3 -c 'print(1)'")?)?;
+    assert_deny(&bash_with_home(&root, &owned, "git ship origin topic", home.path())?)?;
+    assert_deny(&bash(
+        &root,
+        &foreign,
+        &format!("builtin cd '{}' && git push --force origin topic", owned.display()),
+    )?)?;
+    Ok(())
+}
+
+#[test]
 fn git_alias_names_are_canonical_across_config_and_invocation_case() -> TestResult {
     let root = root();
     let workspace = tempfile::tempdir()?;
@@ -122,9 +144,28 @@ fn policy_sensitive_git_options_use_bounded_long_option_normalization() -> TestR
 }
 
 fn bash(root: &std::path::Path, cwd: &std::path::Path, command: &str) -> TestResult<Vec<u8>> {
+    bash_with_environment(root, cwd, command, None)
+}
+
+fn bash_with_home(
+    root: &std::path::Path,
+    cwd: &std::path::Path,
+    command: &str,
+    home: &std::path::Path,
+) -> TestResult<Vec<u8>> {
+    bash_with_environment(root, cwd, command, Some(home))
+}
+
+fn bash_with_environment(
+    root: &std::path::Path,
+    cwd: &std::path::Path,
+    command: &str,
+    home: Option<&std::path::Path>,
+) -> TestResult<Vec<u8>> {
     let payload = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
     child.arg("PreToolUse").env_clear().env("PLUGIN_ROOT", root).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    if let Some(home) = home { child.env("HOME", home); }
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&payload)?)?;
     let output = child.wait_with_output()?;

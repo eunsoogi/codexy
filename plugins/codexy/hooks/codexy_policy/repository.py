@@ -6,6 +6,7 @@ import configparser
 import os
 import re
 import stat
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -76,8 +77,40 @@ def git_directory_owned(cwd: str, target: str) -> bool | None:
 
 
 def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
-    """Return repository aliases only when their config is a safe regular file."""
-    config = _git_config(cwd, git_dir)
+    """Return Git's effective aliases across active configuration scopes."""
+    command = ["git", "-C", cwd]
+    if git_dir is not None:
+        command.append(f"--git-dir={git_dir}")
+    command.extend(["config", "--includes", "--null", "--get-regexp", r"^alias\."])
+    try:
+        result = subprocess.run(command, capture_output=True, check=False, timeout=1)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode not in {0, 1} or len(result.stdout) > 65536:
+        return None
+    aliases: dict[str, str] = {}
+    try:
+        records = [record for record in result.stdout.split(b"\0") if record]
+        for record in records:
+            variable, separator, value = record.partition(b"\n")
+            key = variable.decode("utf-8", "strict").casefold()
+            command_text = value.decode("utf-8", "strict")
+            if not separator or not key.startswith("alias."):
+                return None
+            alias = key.removeprefix("alias.")
+            if not alias or "=" in alias or any(char in command_text for char in "\0\r\n"):
+                return None
+            aliases[alias] = command_text
+    except UnicodeError:
+        return None
+    local = _aliases_from_config(_git_config(cwd, git_dir))
+    if local is None:
+        return None
+    aliases.update(local)
+    return aliases
+
+
+def _aliases_from_config(config: str | None) -> dict[str, str] | None:
     if config is None:
         return None
     try:
@@ -86,8 +119,6 @@ def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
     except configparser.Error:
         return None
     sections = [section for section in parser.sections() if section.casefold() == "alias"]
-    if not sections:
-        return {}
     aliases = {key.casefold(): value for section in sections for key, value in parser[section].items()}
     return aliases if all(key and "=" not in key and "\n" not in value and "\r" not in value for key, value in aliases.items()) else None
 
