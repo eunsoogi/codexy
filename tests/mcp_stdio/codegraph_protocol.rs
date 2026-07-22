@@ -159,7 +159,14 @@ fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn
     let outside_dep = outside.path().join("dep.rs");
     std::fs::write(&outside_dep, "pub const OUTSIDE: u8 = 1;\n")?;
     let canonical_outside = outside_dep.canonicalize()?;
-    let mirrored_dep = root.path().join(canonical_outside.strip_prefix("/")?);
+    let mirrored_suffix = canonical_outside
+        .components()
+        .filter_map(|component| match component {
+            std::path::Component::Normal(value) => Some(value),
+            _ => None,
+        })
+        .collect::<std::path::PathBuf>();
+    let mirrored_dep = root.path().join(mirrored_suffix);
     let mirrored_dir = mirrored_dep.parent().ok_or("mirrored parent")?;
     std::fs::create_dir_all(mirrored_dir)?;
     std::fs::write(
