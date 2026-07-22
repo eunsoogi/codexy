@@ -15,7 +15,12 @@ const WRAPPERS: [(&str, &str); 2] = [
 const PACKAGE_PREFIX: &str = "getcodexy==";
 
 pub(super) fn check_version(expected: &str) -> Result<()> {
-    for (path, server) in wrapper_paths()? {
+    check_version_at(&repo_root()?, expected)
+}
+
+pub(super) fn check_version_at(root: &Path, expected: &str) -> Result<()> {
+    for (relative, server) in WRAPPERS {
+        let path = root.join(relative);
         let actual = wrapper_pin(&path, server)?;
         if actual != expected {
             bail!(
@@ -47,14 +52,6 @@ pub(super) fn prepare_pin_updates(root: &Path, version: &str) -> Result<Vec<Wrap
 pub(super) struct WrapperUpdate {
     pub(super) path: PathBuf,
     pub(super) bytes: Vec<u8>,
-}
-
-fn wrapper_paths() -> Result<Vec<(PathBuf, &'static str)>> {
-    let root = repo_root()?;
-    Ok(WRAPPERS
-        .iter()
-        .map(|(path, server)| (root.join(path), *server))
-        .collect())
 }
 
 fn wrapper_pin(path: &PathBuf, server: &str) -> Result<String> {

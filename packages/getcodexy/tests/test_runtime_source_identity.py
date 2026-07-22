@@ -20,6 +20,25 @@ class Executed(BaseException):
 
 
 class RuntimeSourceIdentityTests(unittest.TestCase):
+    def test_explicit_source_cardinality_fails_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / ".codex-plugin/plugin.json"
+            manifest.parent.mkdir()
+            manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
+            cases = (
+                {"CODEXY_RUNTIME_PACKAGE_PATH": ""},
+                {
+                    "CODEXY_RUNTIME_PACKAGE_PATH": str(root / "package.tar.gz"),
+                    "CODEXY_RUNTIME_PACKAGE_URL": "https://example.test/package.tar.gz",
+                },
+            )
+            for sources in cases:
+                with self.subTest(sources=sorted(sources)), mock.patch.dict(os.environ, {
+                    **sources, "CODEXY_RUNTIME_PACKAGE_SHA256": "a" * 64,
+                }, clear=True), self.assertRaisesRegex(SystemExit, "127"):
+                    runtime.Configuration.load("lsp", root, [])
+
     def test_all_sha_pinned_override_sources_are_independent_and_cache_isolated(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

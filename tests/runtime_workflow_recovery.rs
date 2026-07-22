@@ -104,7 +104,7 @@ fn activation_pr_creation_reuses_an_existing_verified_branch()
         "resumable activation pull request",
         &[
             "git ls-remote --exit-code --heads origin \"$branch\"",
-            "scripts/verify-runtime-activation-branch \"$branch\"",
+            "scripts/verify-runtime-activation-branch \"$branch\" origin/main \"$BOOTSTRAP_VERSION\" \"$GITHUB_WORKSPACE/candidate-receipt.json\"",
         ],
     );
     let steps = activation["jobs"]["open-activation-pr"]["steps"]

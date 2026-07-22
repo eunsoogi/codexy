@@ -3,6 +3,9 @@ set -eu
 
 branch="${1:?branch is required}"
 base="${2:-origin/main}"
+bootstrap_version="${3:?bootstrap version is required}"
+receipt="${4:?candidate receipt is required}"
+activator="${CODEXY_ACTIVATE_RUNTIME:-scripts/activate-runtime-contract}"
 expected="$(printf '%s\n' \
   .agents/plugins/release-publish-contract.json \
   plugins/codexy/mcp/codexy-mcp-codegraph \
@@ -15,6 +18,26 @@ test "$actual" = "$expected" || {
   printf '%s\n' "activation branch differs from verified contract" >&2
   exit 1
 }
+
+git diff --quiet
+git diff --cached --quiet
+expected_root="$(mktemp -d)"
+trap 'rm -rf "$expected_root"' EXIT HUP INT TERM
+git archive "$base" | tar -x -C "$expected_root"
+"$activator" \
+  --repo-root "$expected_root" \
+  --bootstrap-version "$bootstrap_version" \
+  --candidate-receipt "$receipt"
+for path in $expected; do
+  test -f "$path" && test ! -L "$path"
+  test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
+  cmp "$expected_root/$path" "$path"
+  if test -x "$expected_root/$path"; then
+    test -x "$path"
+  else
+    test ! -x "$path"
+  fi
+done
 
 states="$(gh pr list --head "$branch" --state all --json state --jq '.[].state')"
 case "$states" in

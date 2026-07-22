@@ -19,6 +19,30 @@ class RuntimeSourceMode(str, Enum):
 
 
 @dataclass(frozen=True)
+class ExplicitRuntimeSource:
+    kind: str
+    value: str
+    sha256: str
+
+    @classmethod
+    def select(cls, *, requested: bool, package_path: str, package_url: str,
+               artifacts_api: str, package_sha256: str) -> "ExplicitRuntimeSource | None":
+        if not requested:
+            return None
+        sources = [(kind, value) for kind, value in (
+            ("path", package_path), ("url", package_url),
+            ("artifacts-api", artifacts_api)
+        ) if value]
+        if len(sources) != 1:
+            raise ValueError("explicit runtime package requires exactly one non-empty source")
+        if len(package_sha256) != 64 or any(
+            character not in "0123456789abcdef" for character in package_sha256
+        ):
+            raise ValueError("explicit runtime package source requires a lowercase SHA-256")
+        return cls(*sources[0], package_sha256)
+
+
+@dataclass(frozen=True)
 class RuntimeSourceIdentity:
     mode: RuntimeSourceMode
     package_sha256: str
@@ -26,15 +50,12 @@ class RuntimeSourceIdentity:
     release: RuntimeRelease | None = None
 
     @classmethod
-    def create(cls, *, override: bool, package_sha256: str, package_path: str,
-               package_url: str, artifacts_api: str,
+    def create(cls, *, explicit: ExplicitRuntimeSource | None, package_sha256: str,
+               package_url: str,
                release: RuntimeRelease | None) -> "RuntimeSourceIdentity":
-        if override:
-            kind, value = next((kind, value) for kind, value in (
-                ("path", package_path), ("url", package_url), ("artifacts-api", artifacts_api)
-            ) if value)
-            return cls(RuntimeSourceMode.EXPLICIT_OVERRIDE, package_sha256,
-                       {"kind": kind, "value": value})
+        if explicit:
+            return cls(RuntimeSourceMode.EXPLICIT_OVERRIDE, explicit.sha256,
+                       {"kind": explicit.kind, "value": explicit.value})
         if release:
             return cls(RuntimeSourceMode.SELECTED_RELEASE, release.artifact.sha256,
                        {"tag": release.artifact.tag, "url": release.artifact.url}, release)

@@ -17,6 +17,7 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
     assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 6);
     let release: Value = serde_json::from_str(&fs::read_to_string(fixture.release())?)?;
     assert_eq!(release["state"], "candidate-proven");
+    assert_eq!(release["artifact"]["tag"], "runtime-candidate-1.3.0");
     assert_eq!(release["source"]["commit"], "a".repeat(40));
     assert_eq!(
         release["platforms"]["darwin-arm64"]["lsp"]["path"],

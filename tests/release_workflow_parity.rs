@@ -44,6 +44,11 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
 #[test]
 fn ordinary_version_bump_stages_version_metadata_without_runtime_activation() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = document("plugin-version-bump.yml")?;
+    let workflow_steps = steps(&workflow, "open-version-pr")?;
+    let admission = step_index(&workflow, "open-version-pr", "Admit selected runtime version advance")?;
+    let mutation = step_index(&workflow, "open-version-pr", "Synchronize plugin version")?;
+    assert!(admission < mutation);
+    assert_eq!(workflow_steps[admission]["run"], "scripts/sync-plugin-version --admit-version \"$VERSION\"");
     let run = run(&workflow, "open-version-pr", "Open version bump pull request")?;
     let staged = lines(run).find(|line| line.starts_with("git add ")).ok_or("git add")?;
     assert!(staged.split_ascii_whitespace().any(|word| word == ".agents/plugins/release-publish-contract.json"));

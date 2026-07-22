@@ -87,13 +87,14 @@ jobs:
       - name: Prepare activation branch
         env:
           CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
           GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-${CANDIDATE_TAG}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
             git fetch origin "$branch"
             git switch --track -c "$branch" "origin/$branch"
-            scripts/verify-runtime-activation-branch "$branch"
+            scripts/verify-runtime-activation-branch "$branch" origin/main "$BOOTSTRAP_VERSION" "$GITHUB_WORKSPACE/candidate-receipt.json"
             printf '%s\n' existing > activation-branch-state
           else
             git switch -c "$branch"

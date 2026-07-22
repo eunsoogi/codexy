@@ -31,9 +31,10 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
     assert!(build_status.success(), "isolated helper build failed");
 
     let build_root_before = version_surface_contents(&build_root)?;
+    super::admission::activate(&diagnostic_root)?;
     let bootstrap_before = bootstrap_surface_contents(&diagnostic_root)?;
     let output = Command::new(build_target.join("debug/codexy-sync-version"))
-        .args(["--version", "9.9.9"])
+        .args(["--version", "1.3.0"])
         .env("CODEXY_REPO_ROOT", &diagnostic_root)
         .current_dir(&diagnostic_root)
         .output()?;
@@ -53,7 +54,7 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
         assert!(
             text.lines()
                 .map(str::trim)
-                .any(|line| matches!(line, "version = \"9.9.9\"" | "\"version\": \"9.9.9\",")),
+                .any(|line| matches!(line, "version = \"1.3.0\"" | "\"version\": \"1.3.0\",")),
             "supplied diagnostic root was not updated at {}",
             path.display()
         );
@@ -61,7 +62,7 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
     Ok(())
 }
 
-fn version_surface_contents(
+pub(super) fn version_surface_contents(
     root: &Path,
 ) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {
     contents(

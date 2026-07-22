@@ -40,11 +40,21 @@ pub(super) fn activation_from_receipt(receipt: &Value) -> Result<(Value, Value)>
     let compatibility = object_field(candidate, "compatibility", "candidate")?;
     let platforms = object_field(candidate, "platforms", "candidate")?;
     let release_platforms = release_platforms(platforms)?;
+    let release_artifact = json!({
+        "tag": tag,
+        "url": string(artifact, "url", "candidate artifact proof")?,
+        "sha256": string(artifact, "sha256", "candidate artifact proof")?,
+        "payloadManifestSha256": string(
+            artifact,
+            "payloadManifestSha256",
+            "candidate artifact proof",
+        )?,
+    });
     let release = json!({
         "schema": RELEASE_SCHEMA,
         "state": "candidate-proven",
         "source": source,
-        "artifact": artifact,
+        "artifact": release_artifact,
         "compatibility": compatibility,
         "platforms": release_platforms,
     });

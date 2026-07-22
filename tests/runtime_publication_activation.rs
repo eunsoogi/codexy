@@ -91,7 +91,8 @@ fn invalid_activation_is_byte_identical() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[test]
-fn ordinary_version_sync_preserves_runtime_pointers() -> Result<(), Box<dyn std::error::Error>> {
+fn already_selected_version_sync_preserves_runtime_pointers()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let repo = archive_repository(&temp)?;
     let preserved = [
@@ -120,8 +121,12 @@ fn ordinary_version_sync_preserves_runtime_pointers() -> Result<(), Box<dyn std:
     let mut before = before;
     let bootstrap = "packages/getcodexy/pyproject.toml";
     before.insert(bootstrap.into(), fs::read(repo.join(bootstrap))?);
+    let manifest: Json = serde_json::from_slice(&fs::read(
+        repo.join("plugins/codexy/.codex-plugin/plugin.json"),
+    )?)?;
+    let selected = manifest["version"].as_str().ok_or("selected version")?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", "9.9.9"])
+        .args(["--version", selected])
         .env("CODEXY_REPO_ROOT", &repo)
         .output()?;
     assert!(

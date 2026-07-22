@@ -6,6 +6,8 @@ use std::{
 
 #[path = "sync_version_cli/isolation.rs"]
 mod isolation;
+#[path = "sync_version_cli/admission.rs"]
+mod admission;
 
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {
@@ -98,6 +100,22 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it()
     Ok(())
 }
 
+#[test]
+fn version_advance_requires_selected_public_identities_before_mutation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let repo = archive_repository(&temp, "pre-activation")?;
+    let before = isolation::version_surface_contents(&repo)?;
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--version", "1.3.0"])
+        .env("CODEXY_REPO_ROOT", &repo)
+        .current_dir(&repo)
+        .output()?;
+    assert!(!output.status.success(), "pre-activation version advance unexpectedly succeeded");
+    assert_eq!(isolation::version_surface_contents(&repo)?, before);
+    Ok(())
+}
+
 pub(super) fn archive_repository(
     temp: &tempfile::TempDir,
     name: &str,
@@ -124,10 +142,12 @@ pub(super) fn archive_repository(
         "Cargo.lock",
         "packages/getcodexy/pyproject.toml",
         "src/version.rs",
+        "src/version/admission.rs",
         "src/version/activation.rs",
         "src/version/activation/receipt.rs",
         "src/version/activation/receipt/fields.rs",
         "src/version/bootstrap.rs",
+        "src/version/mutation.rs",
         "src/version/wrappers.rs",
     ] {
         let destination = repo.join(relative);

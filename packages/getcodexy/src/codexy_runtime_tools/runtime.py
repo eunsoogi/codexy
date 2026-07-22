@@ -13,7 +13,7 @@ from typing import NoReturn
 from .cache import plugin_release, releases_match, runtime_cache_key
 from .contract import RuntimeRelease, load as load_runtime_release
 from .installer import executable, execute, install_git, install_package
-from .source import RuntimeSourceIdentity
+from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
 
 
 SUPPORTED_PLATFORMS = ("darwin-arm64", "linux-x86_64")
@@ -88,13 +88,17 @@ class Configuration:
         artifacts_was_set = "CODEXY_RUNTIME_ARTIFACTS_API_URL" in os.environ
         package_url = os.environ.get("CODEXY_RUNTIME_PACKAGE_URL", "")
         artifacts_api = os.environ.get("CODEXY_RUNTIME_ARTIFACTS_API_URL", "")
-        package_override = bool(package_path_was_set or package_url_was_set or artifacts_was_set)
+        explicit_requested = bool(package_path_was_set or package_url_was_set or artifacts_was_set)
         package_sha256 = os.environ.get("CODEXY_RUNTIME_PACKAGE_SHA256", "").lower()
-        if package_override and (
-            len(package_sha256) != 64
-            or any(character not in "0123456789abcdefABCDEF" for character in package_sha256)
-        ):
-            _fail("explicit runtime package source requires CODEXY_RUNTIME_PACKAGE_SHA256")
+        try:
+            explicit_source = ExplicitRuntimeSource.select(
+                requested=explicit_requested, package_path=package_path,
+                package_url=package_url, artifacts_api=artifacts_api,
+                package_sha256=package_sha256,
+            )
+        except ValueError as error:
+            _fail(str(error))
+        package_override = explicit_source is not None
         release_path = plugin_root / "runtime-release.json"
         try:
             release_contract = load_runtime_release(plugin_root) if release_path.is_file() else None
@@ -105,9 +109,8 @@ class Configuration:
         elif not package_override:
             package_url = f"{REPOSITORY}/releases/download/v{release}/codexy-marketplace-plugin.tar.gz"
         source_identity = RuntimeSourceIdentity.create(
-            override=package_override, package_sha256=package_sha256,
-            package_path=package_path, package_url=package_url,
-            artifacts_api=artifacts_api, release=release_contract,
+            explicit=explicit_source, package_sha256=package_sha256,
+            package_url=package_url, release=release_contract,
         )
         return cls(
             server=server, plugin_root=plugin_root, arguments=arguments,
@@ -156,9 +159,12 @@ def run(config: Configuration) -> NoReturn:
     if executable(bundled):
         _execute(config, bundled)
     source_identity = config.source_identity or RuntimeSourceIdentity.create(
-        override=config.package_override, package_sha256=config.package_sha256,
-        package_path=config.package_path, package_url=config.package_url,
-        artifacts_api=config.artifacts_api, release=config.release_contract,
+        explicit=ExplicitRuntimeSource.select(
+            requested=config.package_override, package_path=config.package_path,
+            package_url=config.package_url, artifacts_api=config.artifacts_api,
+            package_sha256=config.package_sha256,
+        ), package_sha256=config.package_sha256,
+        package_url=config.package_url, release=config.release_contract,
     )
     source = ("\n".join(("package-override", config.package_path, config.package_url,
                          config.artifacts_api, config.package_sha256))
