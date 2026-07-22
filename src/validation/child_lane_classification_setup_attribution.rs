@@ -67,19 +67,48 @@ fn setup_actor(line: &str) -> Option<SetupActor> {
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     let action = words.iter().position(|word| is_setup_action_word(word))?;
-    if let Some(actor) = words
-        .iter()
-        .enumerate()
-        .skip(action + 1)
-        .find(|(_, word)| **word == "by")
-        .and_then(|(by, _)| words.iter().skip(by + 1).find_map(|word| actor_word(word)))
-    {
-        return Some(actor);
-    }
+    explicit_setup_subject(&words, action).or_else(|| setup_agents_fail_closed(&words))
+}
+
+fn explicit_setup_subject(words: &[&str], action: usize) -> Option<SetupActor> {
     words[..action]
         .iter()
+        .enumerate()
         .rev()
-        .find_map(|word| actor_word(word))
+        .find_map(|(index, word)| {
+            (!actor_is_introduced_by(words, index))
+                .then(|| actor_word(word))
+                .flatten()
+        })
+}
+
+fn setup_agents_fail_closed(words: &[&str]) -> Option<SetupActor> {
+    let mut saw_non_child = false;
+    for (index, word) in words.iter().enumerate() {
+        if !actor_is_introduced_by(words, index) {
+            continue;
+        }
+        match actor_word(word) {
+            Some(SetupActor::Child) => return Some(SetupActor::Child),
+            Some(SetupActor::NonChild) => saw_non_child = true,
+            None => {}
+        }
+    }
+    saw_non_child.then_some(SetupActor::NonChild)
+}
+
+fn actor_is_introduced_by(words: &[&str], actor: usize) -> bool {
+    words[..actor]
+        .iter()
+        .rposition(|word| *word == "by")
+        .is_some_and(|by| {
+            words[by + 1..actor].iter().all(|word| {
+                matches!(
+                    *word,
+                    "a" | "an" | "the" | "this" | "that" | "its" | "our" | "owning"
+                )
+            })
+        })
 }
 
 fn actor_word(word: &str) -> Option<SetupActor> {
