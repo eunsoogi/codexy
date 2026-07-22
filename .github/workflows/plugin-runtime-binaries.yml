@@ -318,12 +318,12 @@ jobs:
             }
           }
 
-          $sentinel = Join-Path $proofRoot "cmd-sentinel-ran"
+          $sentinel = Join-Path $installedPath "mcp/cmd-sentinel-ran"
           foreach ($server in @("lsp", "codegraph")) {
             $cmd = Join-Path $installedPath "mcp/codexy-mcp-$server.cmd"
             [System.IO.File]::WriteAllText(
               $cmd,
-              "@echo off`r`n>`"$sentinel`" echo unexpected-cmd-fallback`r`nexit /b 97`r`n",
+              "@echo off`r`n>`"%~dp0cmd-sentinel-ran`" echo unexpected-cmd-fallback`r`nexit /b 97`r`n",
               [System.Text.Encoding]::ASCII
             )
           }
@@ -339,47 +339,58 @@ jobs:
             '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
           )
           foreach ($server in @("lsp", "codegraph")) {
-            $entrypoint = Join-Path $installedPath "mcp/codexy-mcp-$server.exe"
-            $entrypointStart = [System.Diagnostics.ProcessStartInfo]::new()
-            $entrypointStart.FileName = $entrypoint
-            $entrypointStart.ArgumentList.Add("--stdio")
-            $entrypointStart.UseShellExecute = $false
-            $entrypointStart.RedirectStandardInput = $true
-            $entrypointStart.RedirectStandardOutput = $true
-            $entrypointStart.RedirectStandardError = $true
-            $entrypointStart.CreateNoWindow = $true
-            $entrypointProcess = [System.Diagnostics.Process]::new()
-            $entrypointProcess.StartInfo = $entrypointStart
-            $entrypointStarted = $false
-            try {
-              $entrypointStarted = $entrypointProcess.Start()
-              if (-not $entrypointStarted) { throw "failed to start installed $server PE" }
-              $entrypointStdout = $entrypointProcess.StandardOutput.ReadToEndAsync()
-              $entrypointStderr = $entrypointProcess.StandardError.ReadToEndAsync()
-              foreach ($request in $entrypointRequests) { $entrypointProcess.StandardInput.WriteLine($request) }
-              $entrypointProcess.StandardInput.Close()
-              if (-not $entrypointProcess.WaitForExit(15000)) {
-                $entrypointProcess.Kill($true)
-                $entrypointProcess.WaitForExit()
-                throw "installed $server PE process timed out"
+            $entrypoints = @(
+              @{ Label = "installed PE"; Path = Join-Path $installedPath "mcp/codexy-mcp-$server.exe" },
+              @{ Label = "configured extensionless command"; Path = Join-Path $installedPath "mcp/codexy-mcp-$server" }
+            )
+            foreach ($entrypoint in $entrypoints) {
+              $entrypointStart = [System.Diagnostics.ProcessStartInfo]::new()
+              $entrypointStart.FileName = $entrypoint.Path
+              $entrypointStart.ArgumentList.Add("--stdio")
+              $entrypointStart.UseShellExecute = $false
+              $entrypointStart.RedirectStandardInput = $true
+              $entrypointStart.RedirectStandardOutput = $true
+              $entrypointStart.RedirectStandardError = $true
+              $entrypointStart.CreateNoWindow = $true
+              $entrypointProcess = [System.Diagnostics.Process]::new()
+              $entrypointProcess.StartInfo = $entrypointStart
+              $entrypointStarted = $false
+              try {
+                $entrypointStarted = $entrypointProcess.Start()
+                if (-not $entrypointStarted) { throw "failed to start $server $($entrypoint.Label)" }
+                $entrypointStdout = $entrypointProcess.StandardOutput.ReadToEndAsync()
+                $entrypointStderr = $entrypointProcess.StandardError.ReadToEndAsync()
+                foreach ($request in $entrypointRequests) { $entrypointProcess.StandardInput.WriteLine($request) }
+                $entrypointProcess.StandardInput.Close()
+                if (-not $entrypointProcess.WaitForExit(15000)) {
+                  $entrypointProcess.Kill($true)
+                  $entrypointProcess.WaitForExit()
+                  if ($entrypoint.Label -eq "installed PE") {
+                    throw "installed $server PE process timed out"
+                  }
+                  throw "$server $($entrypoint.Label) process timed out"
+                }
+                $entrypointErrors = $entrypointStderr.GetAwaiter().GetResult()
+                if ($entrypointProcess.ExitCode -ne 0) { throw "$server $($entrypoint.Label) failed: $entrypointErrors" }
+                $entrypointMessages = @($entrypointStdout.GetAwaiter().GetResult() -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
+                $entrypointInitialize = $entrypointMessages | Where-Object id -eq 1
+                $entrypointTools = $entrypointMessages | Where-Object id -eq 2
+                if ($entrypointInitialize.result.serverInfo.name -ne $expected[$server].Server) {
+                  throw "$server $($entrypoint.Label) returned the wrong server identity"
+                }
+                if ($expected[$server].Tool -notin @($entrypointTools.result.tools.name)) {
+                  if ($entrypoint.Label -eq "installed PE") {
+                    throw "installed $server PE omitted its expected tool"
+                  }
+                  throw "$server $($entrypoint.Label) omitted its expected tool"
+                }
+              } finally {
+                if ($entrypointStarted -and -not $entrypointProcess.HasExited) {
+                  $entrypointProcess.Kill($true)
+                  $entrypointProcess.WaitForExit()
+                }
+                $entrypointProcess.Dispose()
               }
-              $entrypointErrors = $entrypointStderr.GetAwaiter().GetResult()
-              if ($entrypointProcess.ExitCode -ne 0) { throw "installed $server PE failed: $entrypointErrors" }
-              $entrypointMessages = @($entrypointStdout.GetAwaiter().GetResult() -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
-              $entrypointInitialize = $entrypointMessages | Where-Object id -eq 1
-              $entrypointTools = $entrypointMessages | Where-Object id -eq 2
-              if ($entrypointInitialize.result.serverInfo.name -ne $expected[$server].Server) {
-                throw "installed $server PE returned the wrong server identity"
-              }
-              if ($expected[$server].Tool -notin @($entrypointTools.result.tools.name)) {
-                throw "installed $server PE omitted its expected tool"
-              }
-            } finally {
-              if ($entrypointStarted -and -not $entrypointProcess.HasExited) {
-                $entrypointProcess.Kill($true)
-                $entrypointProcess.WaitForExit()
-              }
-              $entrypointProcess.Dispose()
             }
           }
 
@@ -399,6 +410,7 @@ jobs:
           $appServer = [System.Diagnostics.Process]::new()
           $appServer.StartInfo = $start
           $started = $false
+          $appServerFailure = $null
           try {
             $started = $appServer.Start()
             if (-not $started) { throw "failed to start Codex app-server" }
@@ -438,15 +450,19 @@ jobs:
               $status = $statuses | Where-Object name -eq $server
               if ($status.serverInfo.name -ne $expected[$server].Server) {
                 $evidence = $status | ConvertTo-Json -Depth 8 -Compress
-                throw "$server did not start through the installed Codex MCP surface; MCP status evidence: $evidence"
+                $appServerFailure = "$server did not start through the installed Codex MCP surface; MCP status evidence: $evidence"
+                break
               }
               if ($expected[$server].Tool -notin @($status.tools.PSObject.Properties.Name)) {
-                throw "$server did not expose its expected tool through Codex"
+                $appServerFailure = "$server did not expose its expected tool through Codex"
+                break
               }
             }
             if (Test-Path -LiteralPath $sentinel) {
-              throw "Codex selected a .cmd fallback instead of the PE entrypoint"
+              $appServerFailure = "Codex selected a .cmd fallback instead of the PE entrypoint"
             }
+          } catch {
+            $appServerFailure = $_.Exception.Message
           } finally {
             if ($started -and -not $appServer.HasExited) {
               $appServer.Kill($true)
@@ -462,6 +478,9 @@ jobs:
           })
           if ($remainingMcp.Count -ne 0) {
             throw "installed MCP process cleanup failed: $($remainingMcp.Id -join ',')"
+          }
+          if ($appServerFailure) {
+            throw "$appServerFailure; Codex app-server stderr: $appServerStderr"
           }
 
   publish-release:

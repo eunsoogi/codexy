@@ -79,5 +79,8 @@ mod validator_mcp;
 #[path = "../validator_runtime_contract.rs"]
 mod validator_runtime_contract;
 
+#[path = "../windows_mcp_install_workflow_contract.rs"]
+mod windows_mcp_install_workflow_contract;
+
 #[path = "../worktree_reservation_harness.rs"]
 mod worktree_reservation_harness;
