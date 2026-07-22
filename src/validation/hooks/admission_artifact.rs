@@ -41,6 +41,10 @@ const FILES: &[(&str, &str)] = &[
         "codexy_policy/titles.py",
         include_str!("../../../plugins/codexy/hooks/codexy_policy/titles.py"),
     ),
+    (
+        "codexy_policy/wrappers.py",
+        include_str!("../../../plugins/codexy/hooks/codexy_policy/wrappers.py"),
+    ),
 ];
 
 pub(super) fn is_launcher(path: &Path) -> bool {

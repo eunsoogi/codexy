@@ -9,9 +9,10 @@ from pathlib import Path
 
 from .repository import OWNED, identity, repository_owned
 from .titles import issue_title, pr_title
+from .wrappers import option_value, sudo_command, time_command, timeout_command
 
 OPS = {";", "&&", "||", "|", "&"}
-WRAPPERS = {"env", "command", "sudo", "exec"}
+WRAPPERS = {"env", "command", "sudo", "exec", "time", "timeout"}
 OPAQUE = re.compile(r"\$\(|`|\$\{|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 
@@ -45,11 +46,15 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
             current.append(token)
     if current:
         segments.append((current, ""))
+    active_cwd = cwd
     for index, (segment, following) in enumerate(segments):
-        if _segment(segment, cwd, cwd_owned, depth):
+        active_owned = repository_owned(active_cwd)
+        if _segment(segment, active_cwd, active_owned, depth):
             return True
         if following == "|" and index + 1 < len(segments) and _name(segments[index + 1][0][0]) in {"sh", "bash", "zsh", "dash", "pwsh", "powershell"}:
-            return cwd_owned is not False
+            return active_owned is not False
+        if following in {";", "&&"}:
+            active_cwd = _changed_directory(segment, active_cwd)
     return False
 
 
@@ -62,16 +67,38 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
         name, tokens = _name(tokens[0]), tokens[1:]
         if name == "env":
             while tokens and (tokens[0].startswith("-") or "=" in tokens[0]):
+                if tokens[0] in {"-S", "--split-string"}:
+                    return len(tokens) < 2 or forbidden(tokens[1], cwd, depth + 1)
+                if tokens[0].startswith("--split-string="):
+                    return forbidden(tokens[0].split("=", 1)[1], cwd, depth + 1)
                 if tokens[0] in {"-u", "--unset", "-C", "--chdir"}:
                     if len(tokens) < 2:
                         return True
+                    if tokens[0] in {"-C", "--chdir"}:
+                        cwd = _resolve_cwd(cwd, tokens[1])
+                        cwd_owned = repository_owned(cwd)
                     tokens = tokens[2:]
+                elif tokens[0].startswith("--chdir="):
+                    cwd = _resolve_cwd(cwd, tokens[0].split("=", 1)[1])
+                    cwd_owned = repository_owned(cwd)
+                    tokens = tokens[1:]
                 else:
                     tokens = tokens[1:]
         elif name == "sudo":
-            tokens = _sudo_command(tokens)
+            wrapped = tokens
+            tokens = sudo_command(tokens)
             if tokens is None:
-                return cwd_owned is not False
+                return cwd_owned is not False or _explicit_owned(wrapped) is True
+        elif name == "time":
+            wrapped = tokens
+            tokens = time_command(tokens)
+            if tokens is None:
+                return cwd_owned is not False or _explicit_owned(wrapped) is True
+        elif name == "timeout":
+            wrapped = tokens
+            tokens = timeout_command(tokens)
+            if tokens is None:
+                return cwd_owned is not False or _explicit_owned(wrapped) is True
     if not tokens:
         return False
     name, args = _name(tokens[0]), tokens[1:]
@@ -94,8 +121,18 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
 def _git(args: list[str], cwd: str, cwd_owned: bool | None) -> bool:
     while args and args[0].startswith("-"):
         option = args[0]
-        if option in {"-c", "--config-env", "--git-dir", "--work-tree"} or option.startswith(("-c=", "--config-env=", "--git-dir=", "--work-tree=")):
-            return cwd_owned is not False
+        if option == "-c" or option.startswith("-c="):
+            if option == "-c":
+                if len(args) < 2:
+                    return True
+                config, args = args[1], args[2:]
+            else:
+                config, args = option[3:], args[1:]
+            if cwd_owned is not False or _config_owned(config):
+                return True
+            continue
+        if option in {"--config-env", "--git-dir", "--work-tree"} or option.startswith(("--config-env=", "--git-dir=", "--work-tree=")):
+            return cwd_owned is not False or _explicit_owned(args) is True
         if option == "-C":
             if len(args) < 2:
                 return True
@@ -139,32 +176,12 @@ def _gh(args: list[str], cwd_owned: bool | None) -> bool:
     if operation == ["pr", "merge"]:
         return any(arg == "--admin" or arg.startswith("--admin=") for arg in filtered[2:])
     if operation in (["pr", "create"], ["pr", "edit"]):
-        present, title = _option_value(filtered[2:], "--title")
+        present, title = option_value(filtered[2:], ("--title", "-t"))
         return (operation[1] == "create" and not present) or (present and not pr_title(title))
     if operation in (["issue", "create"], ["issue", "edit"]):
-        present, title = _option_value(filtered[2:], "--title")
+        present, title = option_value(filtered[2:], ("--title", "-t"))
         return (operation[1] == "create" and not present) or (present and not issue_title(title))
     return False
-
-
-def _sudo_command(args: list[str]) -> list[str] | None:
-    value_options = {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "--close-from", "-D", "--chdir", "-R", "--chroot", "-T", "--command-timeout"}
-    flag_options = {"-A", "--askpass", "-b", "--background", "-E", "--preserve-env", "-H", "--set-home", "-K", "--remove-timestamp", "-k", "--reset-timestamp", "-n", "--non-interactive", "-S", "--stdin", "-V", "--version", "-v", "--validate"}
-    while args and args[0].startswith("-"):
-        option = args[0]
-        if option == "--":
-            return args[1:]
-        if option in value_options:
-            if len(args) < 2:
-                return None
-            args = args[2:]
-        elif option in flag_options or option.startswith(tuple(item + "=" for item in value_options if item.startswith("--"))):
-            args = args[1:]
-        elif len(option) > 2 and option[:2] in {"-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T"}:
-            args = args[1:]
-        else:
-            return None
-    return args
 
 
 def _xargs(args: list[str], cwd: str, cwd_owned: bool | None, depth: int) -> bool:
@@ -179,20 +196,26 @@ def _xargs(args: list[str], cwd: str, cwd_owned: bool | None, depth: int) -> boo
             if len(args) < 2:
                 return cwd_owned is not False
             args = args[2:]
-        elif option in flag_options or option.startswith(tuple(item + "=" for item in value_options if item.startswith("--"))):
+        elif option in flag_options or option.startswith(tuple(item + "=" for item in value_options if item.startswith("--"))) or any(option.startswith(short) and len(option) > len(short) for short in {"-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s"}):
             args = args[1:]
         else:
-            return cwd_owned is not False
+            return cwd_owned is not False or _explicit_owned(args) is True
     return bool(args) and _segment(args, cwd, cwd_owned, depth + 1)
 
 
-def _option_value(args: list[str], option: str) -> tuple[bool, str | None]:
-    for index, arg in enumerate(args):
-        if arg == option:
-            return True, args[index + 1] if index + 1 < len(args) else None
-        if arg.startswith(option + "="):
-            return True, arg.split("=", 1)[1]
-    return False, None
+def _changed_directory(tokens: list[str], cwd: str) -> str:
+    while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
+        tokens = tokens[1:]
+    if not tokens or _name(tokens[0]) != "cd":
+        return cwd
+    args = tokens[1:]
+    if args[:1] == ["--"]:
+        args = args[1:]
+    return _resolve_cwd(cwd, args[0]) if len(args) == 1 else cwd
+
+
+def _resolve_cwd(cwd: str, target: str) -> str:
+    return os.path.abspath(os.path.join(cwd, target))
 
 
 def _rm(args: list[str]) -> bool:
@@ -204,6 +227,10 @@ def _rm(args: list[str]) -> bool:
 def _explicit_owned(args: list[str]) -> bool | None:
     identities = [identity(arg) for arg in args if identity(arg) is not None]
     return None if not identities else OWNED in identities
+
+
+def _config_owned(config: str) -> bool:
+    return "=" in config and identity(config.split("=", 1)[1]) == OWNED
 
 
 def _flag(args: list[str], short: str, long: str) -> bool:

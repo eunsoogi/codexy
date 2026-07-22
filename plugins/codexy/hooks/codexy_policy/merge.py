@@ -27,7 +27,7 @@ def valid(tool_input: dict[str, object]) -> bool:
 def _unique_final_reference(message: str) -> bool:
     lines = [line for line in message.splitlines() if line.strip()]
     final = [] if not lines else lines[-1].split()
-    if len(final) != 2 or final[0] != "Fixes" or not final[1].startswith("#") or not _issue_ref(final[1]):
+    if len(final) != 2 or final[0] != "Fixes" or not final[1].startswith("#") or not _positive_digits(final[1][1:]):
         return False
     return sum(_closing_count(line) for line in lines) == 1
 

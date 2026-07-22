@@ -6,7 +6,6 @@ import json
 from typing import Any
 
 from .merge import positive_int, valid as merge_valid
-from .repository import repository_owned
 from .shell import forbidden as shell_forbidden
 from .titles import issue_title, pr_title
 
@@ -59,8 +58,7 @@ def evaluate(event: str, payload: bytes) -> bytes:
         return b""
     if not isinstance(tool_input, dict) or not isinstance(tool_input.get("command"), str) or not isinstance(data.get("cwd"), str):
         return deny(event)
-    owned = repository_owned(data["cwd"])
-    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"]) or owned is None else b""
+    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"]) else b""
 
 
 def _github(event: str, tool: str, data: object) -> bytes:
