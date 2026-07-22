@@ -134,3 +134,110 @@ Maintainer reassignment: none
 "#,
     )
 }
+
+#[test]
+fn validator_rejects_child_goal_before_task_classification() -> TestResult {
+    assert_rejected(&format!(
+        "Lane ownership: child-owned\n{}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        child_goal_call()
+    ))
+}
+
+#[test]
+fn validator_rejects_child_plan_before_task_classification() -> TestResult {
+    assert_rejected(
+        "Lane ownership: child-owned\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+    )
+}
+
+#[test]
+fn validator_allows_each_new_lane_classification_before_goal_and_plan() -> TestResult {
+    for (boundary, classification) in [
+        ("Lane ownership: child-owned", complete_child_classification()),
+        ("1. Lane ownership: child-owned", complete_child_classification_table()),
+    ] {
+        let fields = classification.split_once('\n').unwrap().1;
+        assert_allowed(&format!(
+            "{}\n{boundary}\n{fields}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+            complete_child_classification(), child_goal_call()
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_parent_goal_and_plan_before_later_complete_child_lane() -> TestResult {
+    assert_allowed(&format!(
+        "{}\nGoal tool call: create_goal\nPlan tool call: update_plan\n{}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_parent_classification(),
+        complete_child_classification(),
+        child_goal_call()
+    ))
+}
+
+#[test]
+fn validator_rejects_later_child_goal_and_plan_before_its_classification() -> TestResult {
+    for (boundary, control) in [
+        ("1. Lane ownership: child-owned", "5. Plan tool call: update_plan"),
+        ("- Lane ownership: child-owned", "- Plan tool call: update_plan"),
+        ("- [ ] Lane ownership: child-owned", "- [ ] Plan tool call: update_plan"),
+    ] {
+        assert_rejected(&format!(
+            "{}\n{boundary}\n{control}\n{}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+            complete_child_classification(), complete_child_classification()
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_numbered_or_bulleted_control_before_classification() -> TestResult {
+    for control in [
+        child_goal_call().replace(
+            "Goal tool call: create_goal",
+            "5. Goal tool call: create_goal",
+        ),
+        "- Plan tool call: update_plan".to_owned(),
+        "* Plan tool call: update_plan".to_owned(),
+        "- [ ] Plan tool call: update_plan".to_owned(),
+        child_goal_call().replace(
+            "Goal tool call: create_goal",
+            "1. [x] Goal tool call: create_goal",
+        ),
+    ] {
+        assert_rejected(&format!(
+            "Lane ownership: child-owned\n{control}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_prefixed_child_ownership_and_control_before_classification() -> TestResult {
+    for control in [
+        "5. Goal tool call: create_goal",
+        "- Plan tool call: update_plan",
+        "- [ ] Plan tool call: update_plan",
+    ] {
+        assert_rejected(&format!(
+            "1. Lane ownership: child-owned\n{control}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+        ))?;
+    }
+    Ok(())
+}
+
+fn complete_parent_classification() -> &'static str {
+    "Lane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate evidence\nStop/blocker: None"
+}
+
+fn complete_child_classification() -> &'static str {
+    "Lane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: implement after classification\nStop/blocker: None"
+}
+
+fn complete_child_classification_table() -> &'static str {
+    "Lane ownership: child-owned\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+}
+
+fn child_goal_call() -> &'static str {
+    "Source thread id: parent-335\nGoal control state: source_thread_id=parent-335\nGoal transition key: 335:create_goal:classification\nParent goal pre-delivery: operation=create_goal; parent task=parent-335; delivery=confirmed; task surface=codex task/thread; issue=#335; plan step=implement; branch=codexy/335; worktree=/worktree; head=abc; clean/index=clean; evidence=classification; next action=create goal; transition key=335:create_goal:classification\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-335; delivery=confirmed; task surface=codex task/thread; transition key=335:create_goal:classification"
+}
