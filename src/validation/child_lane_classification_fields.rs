@@ -56,6 +56,10 @@ impl ClassificationFields {
         self.has_required_fields() && self.child_display_owner_decision
     }
 
+    pub(super) fn has_complete_shape(&self) -> bool {
+        self.has_required_fields()
+    }
+
     fn has_required_fields(&self) -> bool {
         self.next_field == ClassificationTableSchema::field_count()
     }

@@ -3,6 +3,7 @@ use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup_context::child_lane_context_applies;
+use super::child_lane_colon_classification_block::ColonClassificationBlock;
 use super::child_lane_gfm_classification_table::{
     GfmClassificationTable, GfmClassificationTableEvent,
 };
@@ -81,7 +82,10 @@ pub(super) fn latest_classification_before(
     setup_index: usize,
 ) -> Option<ClassificationSnapshot> {
     let (mut seen, mut authority, mut classification_start) = (None, None, None);
-    let mut table = GfmClassificationTable::default();
+    let (mut table, mut colon_block) = (
+        GfmClassificationTable::default(),
+        ColonClassificationBlock::default(),
+    );
     let raw_lines = lines;
     let (lines, prefixed_lane_start) = normalized_metadata_lines(lines, setup_index);
     let lane_start = current_lane_start(&lines, setup_index).max(prefixed_lane_start);
@@ -92,6 +96,7 @@ pub(super) fn latest_classification_before(
             authority = context.authority();
             classification_start = Some(index);
             table = GfmClassificationTable::default();
+            colon_block = ColonClassificationBlock::default();
             continue;
         }
         let Some(fields) = seen.as_mut() else {
@@ -100,32 +105,20 @@ pub(super) fn latest_classification_before(
         match table.consume(line) {
             GfmClassificationTableEvent::Ignore => continue,
             GfmClassificationTableEvent::Invalidate => {
-                *fields = ClassificationFields::default();
+                colon_block.invalidate(fields);
                 continue;
             }
             GfmClassificationTableEvent::Replace => {
-                *fields = ClassificationFields::default();
+                colon_block.replace_with_gfm(fields);
                 continue;
             }
             GfmClassificationTableEvent::Record(key, value) => {
-                if !fields.record(metadata_key(key), trimmed_value(value), authority, true) {
-                    *fields = ClassificationFields::default();
-                }
+                colon_block.record_gfm(fields, metadata_key(key), trimmed_value(value), authority);
                 continue;
             }
             GfmClassificationTableEvent::NotGfm => {}
         }
-        if line.is_empty() {
-            continue;
-        }
-        if let Some((key, value)) = line.split_once(':') {
-            let key = metadata_key(key);
-            if ClassificationFields::records_key(key)
-                && !fields.record(key, trimmed_value(value), authority, false)
-            {
-                *fields = ClassificationFields::default();
-            }
-        }
+        colon_block.consume_colon(fields, line, authority);
     }
     classification_start
         .zip(seen)

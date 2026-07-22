@@ -152,6 +152,9 @@ mod validator_child_lane_authority_consistency;
 #[path = "../validator_child_lane_table_schema.rs"]
 mod validator_child_lane_table_schema;
 
+#[path = "../validator_child_lane_colon_block.rs"]
+mod validator_child_lane_colon_block;
+
 #[path = "../validator_child_lane_classification_setup_codex_review.rs"]
 mod validator_child_lane_classification_setup_codex_review;
 
