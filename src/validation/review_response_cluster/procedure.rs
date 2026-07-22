@@ -5,12 +5,55 @@ use crate::paths::display_relative;
 const REFERENCE_PATH: &str = "skills/git-workflow/references/review-response-clusters.md";
 const HEADING: &str = "## Required Procedure";
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+enum Obligation {
+    ReceiptCreate,
+    ReceiptValidate,
+    CaseExceptionProhibition,
+    ReopenEvidenceRestriction,
+}
+
+impl Obligation {
+    const ALL: [Self; 4] = [
+        Self::ReceiptCreate,
+        Self::ReceiptValidate,
+        Self::CaseExceptionProhibition,
+        Self::ReopenEvidenceRestriction,
+    ];
+
+    fn parse(id: &str) -> Option<Self> {
+        match id {
+            "receipt-create" => Some(Self::ReceiptCreate),
+            "receipt-validate" => Some(Self::ReceiptValidate),
+            "case-exception-prohibition" => Some(Self::CaseExceptionProhibition),
+            "reopen-evidence-restriction" => Some(Self::ReopenEvidenceRestriction),
+            _ => None,
+        }
+    }
+
+    fn id(self) -> &'static str {
+        match self {
+            Self::ReceiptCreate => "receipt-create",
+            Self::ReceiptValidate => "receipt-validate",
+            Self::CaseExceptionProhibition => "case-exception-prohibition",
+            Self::ReopenEvidenceRestriction => "reopen-evidence-restriction",
+        }
+    }
+
+    fn is_prohibition(self) -> bool {
+        matches!(
+            self,
+            Self::CaseExceptionProhibition | Self::ReopenEvidenceRestriction
+        )
+    }
+}
+
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     if !path.ends_with(REFERENCE_PATH) {
         return;
     }
     let mut in_procedure = false;
-    let mut saw_step = false;
+    let mut seen = std::collections::BTreeSet::new();
     for line in text.lines() {
         let line = line.trim();
         if line == HEADING {
@@ -20,27 +63,97 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         if in_procedure && line.starts_with("## ") {
             break;
         }
-        if in_procedure && is_numbered_step(line) {
-            saw_step = true;
-            if !line.split_whitespace().any(|word| word == "MUST") {
-                errors.push(format!(
-                    "{} review procedure step must use MUST or MUST NOT",
-                    display_relative(path)
-                ));
-            }
+        if !in_procedure {
+            continue;
+        }
+        let Some(content) = numbered_step_content(line) else {
+            continue;
+        };
+        let Some((id, obligation_text)) = obligation_parts(content) else {
+            errors.push(format!(
+                "{} review procedure numbered step must start with a stable obligation ID",
+                display_relative(path)
+            ));
+            continue;
+        };
+        let Some(obligation) = Obligation::parse(id) else {
+            errors.push(format!(
+                "{} review procedure contains unknown obligation ID [{id}]",
+                display_relative(path)
+            ));
+            continue;
+        };
+        if !seen.insert(obligation) {
+            errors.push(format!(
+                "{} review procedure contains duplicate obligation ID [{}]",
+                display_relative(path),
+                obligation.id()
+            ));
+        }
+        let has_must_not = has_must_not(obligation_text);
+        let valid_polarity = if obligation.is_prohibition() {
+            has_must_not
+        } else {
+            has_must(obligation_text) && !has_must_not
+        };
+        if !valid_polarity {
+            let required = if obligation.is_prohibition() {
+                "MUST NOT"
+            } else {
+                "MUST"
+            };
+            errors.push(format!(
+                "{} review procedure obligation [{}] must use {required}",
+                display_relative(path),
+                obligation.id()
+            ));
         }
     }
-    if !saw_step {
+    for obligation in Obligation::ALL {
+        if !seen.contains(&obligation) {
+            errors.push(format!(
+                "{} review procedure is missing obligation ID [{}]",
+                display_relative(path),
+                obligation.id()
+            ));
+        }
+    }
+    if seen.is_empty() {
         errors.push(format!(
-            "{} review procedure must include numbered MUST/MUST NOT steps",
+            "{} review procedure must include the complete typed obligation catalog",
             display_relative(path)
         ));
     }
 }
 
-fn is_numbered_step(line: &str) -> bool {
-    let Some((prefix, content)) = line.split_once(". ") else {
-        return false;
-    };
-    !prefix.is_empty() && prefix.bytes().all(|byte| byte.is_ascii_digit()) && !content.is_empty()
+fn numbered_step_content(line: &str) -> Option<&str> {
+    let (prefix, content) = line.split_once(". ")?;
+    if prefix.is_empty() || !prefix.bytes().all(|byte| byte.is_ascii_digit()) || content.is_empty()
+    {
+        return None;
+    }
+    Some(content)
+}
+
+fn obligation_parts(content: &str) -> Option<(&str, &str)> {
+    let remainder = content.strip_prefix('[')?;
+    let (id, text) = remainder.split_once("] ")?;
+    if id.is_empty() || text.is_empty() {
+        return None;
+    }
+    Some((id, text))
+}
+
+fn has_must(text: &str) -> bool {
+    words(text).any(|word| word == "MUST")
+}
+
+fn has_must_not(text: &str) -> bool {
+    let words = words(text).collect::<Vec<_>>();
+    words.windows(2).any(|pair| pair == ["MUST", "NOT"])
+}
+
+fn words(text: &str) -> impl Iterator<Item = &str> {
+    text.split(|character: char| !character.is_ascii_alphabetic())
+        .filter(|word| !word.is_empty())
 }

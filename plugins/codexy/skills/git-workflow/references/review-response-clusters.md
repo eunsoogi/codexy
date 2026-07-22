@@ -2,15 +2,16 @@
 
 ## Required Procedure
 
-1. Before editing actionable review feedback, MUST create one typed JSON receipt.
-2. Before implementation, MUST validate that exact receipt file:
+1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.
+2. [receipt-validate] Before implementation, MUST validate that exact receipt file:
 
 ```sh
 scripts/validate-plugin-config --check-review-response-cluster \
   --review-response-cluster-file receipt.json
 ```
 
-3. During repair, MUST NOT accept a case-specific exception as structural evidence.
+3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.
+4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include `reopen` evidence.
 
 ## Typed Receipt
 
@@ -26,7 +27,7 @@ subobject is parsed, normalized, and validated before state rules are applied.
 `planned` clusters may omit `repair`, but a supplied repair MUST be structural;
 `repaired` clusters MUST include a structural repair; `reopened` clusters MUST
 include a structural repair and every `reopened` receipt MUST include `reopen`
-evidence for its reopened class. Only `reopened` clusters may include `reopen`
+evidence for its reopened class. Non-reopened clusters MUST NOT include `reopen`
 evidence. Canonical identity uses Unicode
 normalization, full case folding, and Unicode punctuation/separator removal,
 while retaining materially different alphanumeric identifier content.

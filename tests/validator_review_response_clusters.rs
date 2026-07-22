@@ -41,19 +41,23 @@ fn instruction_policy_requires_review_cluster_contract_on_every_surface() -> Tes
 
 #[test]
 fn instruction_policy_requires_must_grammar_for_every_review_procedure_step() -> TestResult {
-    let procedure = "## Required Procedure\n\n1. Before edits, MUST create a typed receipt.\n2. Before implementation, MUST validate the receipt file.\n3. During repair, MUST NOT accept a case exception.\n\n## Typed Receipt\n";
+    let procedure = "## Required Procedure\n\n1. [receipt-create] Before edits, MUST create a typed receipt.\n2. [receipt-validate] Before implementation, MUST validate the receipt file.\n3. [case-exception-prohibition] During repair, MUST NOT accept a case exception.\n4. [reopen-evidence-restriction] Non-reopened states MUST NOT include reopen evidence.\n\n## Typed Receipt\n";
     for (required_step, bare_step) in [
         (
-            "1. Before edits, MUST create a typed receipt.",
-            "1. Before edits, create a typed receipt.",
+            "1. [receipt-create] Before edits, MUST create a typed receipt.",
+            "1. [receipt-create] Before edits, create a typed receipt.",
         ),
         (
-            "2. Before implementation, MUST validate the receipt file.",
-            "2. Before implementation, validate the receipt file.",
+            "2. [receipt-validate] Before implementation, MUST validate the receipt file.",
+            "2. [receipt-validate] Before implementation, validate the receipt file.",
         ),
         (
-            "3. During repair, MUST NOT accept a case exception.",
-            "3. During repair, NOT accept a case exception.",
+            "3. [case-exception-prohibition] During repair, MUST NOT accept a case exception.",
+            "3. [case-exception-prohibition] During repair, NOT accept a case exception.",
+        ),
+        (
+            "4. [reopen-evidence-restriction] Non-reopened states MUST NOT include reopen evidence.",
+            "4. [reopen-evidence-restriction] Non-reopened states include reopen evidence.",
         ),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
@@ -66,7 +70,7 @@ fn instruction_policy_requires_must_grammar_for_every_review_procedure_step() ->
             "bare procedure step unexpectedly passed: {bare_step}"
         );
         assert!(
-            stderr(&output).contains("review procedure step"),
+            stderr(&output).contains("review procedure"),
             "unexpected procedure diagnostic: {}",
             stderr(&output)
         );

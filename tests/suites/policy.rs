@@ -19,6 +19,9 @@ mod validator_instruction_policy_wrapped;
 #[path = "../validator_review_response_clusters.rs"]
 mod validator_review_response_clusters;
 
+#[path = "../validator_review_response_procedure_obligations.rs"]
+mod validator_review_response_procedure_obligations;
+
 #[path = "../validator_review_response_cluster_states.rs"]
 mod validator_review_response_cluster_states;
 
