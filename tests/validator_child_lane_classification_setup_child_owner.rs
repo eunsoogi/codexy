@@ -179,12 +179,47 @@ fn validator_rejects_later_child_goal_and_plan_before_its_classification() -> Te
     ))
 }
 
+#[test]
+fn validator_allows_canonical_classification_table_before_goal_and_plan() -> TestResult {
+    assert_allowed(&format!(
+        "{}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_child_classification_table(),
+        child_goal_call()
+    ))
+}
+
+#[test]
+fn validator_rejects_numbered_or_bulleted_control_before_classification() -> TestResult {
+    for control in [
+        child_goal_call().replace(
+            "Goal tool call: create_goal",
+            "5. Goal tool call: create_goal",
+        ),
+        "- Plan tool call: update_plan".to_owned(),
+        "* Plan tool call: update_plan".to_owned(),
+        "- [ ] Plan tool call: update_plan".to_owned(),
+        child_goal_call().replace(
+            "Goal tool call: create_goal",
+            "1. [x] Goal tool call: create_goal",
+        ),
+    ] {
+        assert_rejected(&format!(
+            "Lane ownership: child-owned\n{control}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+        ))?;
+    }
+    Ok(())
+}
+
 fn complete_parent_classification() -> &'static str {
     "Lane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate evidence\nStop/blocker: None"
 }
 
 fn complete_child_classification() -> &'static str {
     "Lane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: implement after classification\nStop/blocker: None"
+}
+
+fn complete_child_classification_table() -> &'static str {
+    "Lane ownership: child-owned\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }
 
 fn child_goal_call() -> &'static str {

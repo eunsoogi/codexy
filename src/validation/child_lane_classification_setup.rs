@@ -2,6 +2,7 @@ use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_setup_context::child_lane_context_applies;
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
+use super::child_terminal_handoff::without_metadata_prefix;
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
@@ -33,14 +34,20 @@ pub(super) fn formal_child_classification_complete_index_before(
     let mut seen: Option<ClassificationFields> = None;
     let lane_start = current_lane_start(lines, setup_index);
     for (index, line) in lines.iter().enumerate().take(setup_index).skip(lane_start) {
+        let line = without_metadata_prefix(line);
         if metadata_key(trimmed_value(line)) == "task classification:" {
+            seen = Some(ClassificationFields::default());
+            continue;
+        }
+        if classification_table_row(line) == Some(("field", "value")) {
             seen = Some(ClassificationFields::default());
             continue;
         }
         if line.is_empty() {
             continue;
         }
-        let Some((key, value)) = line.split_once(':') else {
+        let Some((key, value)) = classification_table_row(line).or_else(|| line.split_once(':'))
+        else {
             continue;
         };
         let Some(fields) = seen.as_mut() else {
@@ -52,6 +59,12 @@ pub(super) fn formal_child_classification_complete_index_before(
         }
     }
     None
+}
+
+fn classification_table_row(line: &str) -> Option<(&str, &str)> {
+    let row = line.strip_prefix('|')?.strip_suffix('|')?;
+    let (key, value) = row.split_once('|')?;
+    (!value.contains('|')).then_some((key.trim(), value.trim()))
 }
 #[derive(Default)]
 struct ClassificationFields {
