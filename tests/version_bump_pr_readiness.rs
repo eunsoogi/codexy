@@ -20,7 +20,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         serde_json::to_vec(&json!({
             "number": 301,
             "state": "OPEN",
-            "url": "https://github.com/eunsoogi/codexy/issues/301",
+            "url": "https://github.com/openai-codex/codexy.release_1/issues/301",
             "labels": [
                 {"name": "priority/medium"},
                 {"name": "status/ready"},
