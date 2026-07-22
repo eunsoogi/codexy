@@ -91,12 +91,13 @@ def _normalize(
     if not arguments:
         return GitInvocation(None, [], cwd, cwd_owned, git_dir, rewrites=tuple(rewrites))
     operation, rest = arguments[0], arguments[1:]
-    if rewrites or operation.casefold() == "push":
+    push_like = operation.casefold() in {"push", "send-pack"}
+    if rewrites or push_like:
         active_rewrites = git_url_rewrites(cwd, git_dir)
         if active_rewrites is None:
             return None
         rewrites = active_rewrites + rewrites
-        cwd_owned = repository_owned_with_rewrites(cwd, git_dir, rewrites, operation.casefold() == "push")
+        cwd_owned = repository_owned_with_rewrites(cwd, git_dir, rewrites, push_like)
     alias_name = operation.casefold()
     aliases = git_aliases(cwd, git_dir)
     if aliases is None:

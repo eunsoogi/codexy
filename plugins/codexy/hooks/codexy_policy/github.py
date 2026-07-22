@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any
 
 from .body import has_sections
+from .github_api import forbidden as api_forbidden
 from .github_target import PullRequestSelector, pull_request
 from .merge import positive_int
 from .pull_request import create as pr_create, shell_update
@@ -93,6 +94,9 @@ def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: 
         return True
     filtered, default_owned, repository = target
     operation = filtered[:2]
+    if filtered[:1] == ["api"]:
+        api_owned = default_owned if repository is None else github_identity(repository) == OWNED
+        return api_forbidden(filtered[1:], api_owned)
     if operation == ["pr", "merge"]:
         mutation = _merge(filtered[2:])
     elif operation == ["pr", "create"]:

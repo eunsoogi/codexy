@@ -127,14 +127,15 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
         return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1)
     if invocation.operation is None:
         return False
+    push_like = invocation.operation in {"push", "send-pack"}
     target_owned = _explicit_owned(
-        invocation.arguments, list(invocation.rewrites), invocation.operation == "push"
+        invocation.arguments, list(invocation.rewrites), push_like
     )
     applies = target_owned is True or (target_owned is None and invocation.cwd_owned is not False)
     arguments = normalize_git_options(invocation.operation, invocation.arguments)
     if arguments is None:
         return applies
-    if invocation.operation == "push":
+    if push_like:
         forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in arguments)
         return applies and forced
     return applies and ((invocation.operation == "reset" and "--hard" in arguments) or (invocation.operation == "clean" and flag(arguments, "f", "--force")))

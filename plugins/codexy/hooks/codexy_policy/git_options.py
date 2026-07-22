@@ -31,6 +31,16 @@ SCHEMAS: dict[str, dict[str, ValueMode]] = {
         "exec": "required", "progress": "none", "no-progress": "none",
         "help": "none",
     },
+    "send-pack": {
+        "all": "none", "atomic": "none", "dry-run": "none",
+        "exec": "required", "force": "none", "force-if-includes": "none",
+        "force-with-lease": "optional-equals", "helper-status": "none",
+        "mirror": "none", "no-force": "none", "no-force-with-lease": "none",
+        "no-mirror": "none", "progress": "none", "push-option": "required",
+        "quiet": "none", "receive-pack": "required", "remote": "required",
+        "signed": "optional-equals", "stateless-rpc": "none", "stdin": "none",
+        "thin": "none", "verbose": "none",
+    },
 }
 
 
