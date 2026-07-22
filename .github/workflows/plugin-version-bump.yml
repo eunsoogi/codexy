@@ -7,9 +7,14 @@ on:
         description: "Target plugin version in MAJOR.MINOR.PATCH form"
         required: true
         type: string
+      issue:
+        description: "Open governing release issue number"
+        required: true
+        type: string
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -20,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Pin working tree to main
         run: |
@@ -37,60 +42,51 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: scripts/sync-plugin-version --admit-version "$VERSION"
 
+      - name: Validate governing release issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ inputs.issue }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          case "$ISSUE" in
+            ''|*[!0-9]*) echo "Issue must be a positive integer." >&2; exit 1 ;;
+          esac
+          if [ "$ISSUE" -lt 1 ]; then
+            echo "Issue must be a positive integer." >&2
+            exit 1
+          fi
+          state_dir="$RUNNER_TEMP/version-pr"
+          mkdir -p "$state_dir"
+          gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" \
+            --json number,state,url,labels,milestone,assignees > "$state_dir/issue.json"
+          canonical_issue=$(scripts/canonicalize-version-pr-issue \
+            --requested "$ISSUE" \
+            --issue-json "$state_dir/issue.json" \
+            --repository "$GITHUB_REPOSITORY")
+          printf 'ISSUE=%s\n' "$canonical_issue" >> "$GITHUB_ENV"
+          gh label list --repo "$GITHUB_REPOSITORY" --limit 100 \
+            --json name > "$state_dir/repository-labels.json"
+          scripts/render-version-pr-metadata \
+            --version "$VERSION" \
+            --issue-json "$state_dir/issue.json" \
+            --repository-labels-json "$state_dir/repository-labels.json" \
+            --publication-phase provisional \
+            --validate-only
+
       - name: Synchronize plugin version
         env:
           VERSION: ${{ inputs.version }}
         run: scripts/sync-plugin-version --version "$VERSION"
 
-      - name: Verify version sync
+      - name: Validate release candidate
         run: |
           scripts/sync-plugin-version --check
+          scripts/validate-plugin-config --check
+          cargo test --locked
           git diff --check
 
       - name: Open version bump pull request
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
-        run: |
-          if git diff --quiet; then
-            echo "Version is already synchronized to ${VERSION}."
-            exit 0
-          fi
-          branch="codexy/version-${VERSION}"
-          git switch -c "${branch}"
-          git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json
-          if [ -f package.json ]; then
-            git add package.json
-          fi
-          git commit -m "chore(plugin): bump version to ${VERSION}"
-          git push origin "${branch}"
-          body_file="$(mktemp)"
-          cat >"${body_file}" <<EOF
-          ## Summary
-          - Bump the Codexy plugin version to ${VERSION}.
-          - Keep plugin and marketplace metadata in sync without moving bootstrap or runtime pointers.
-
-          ## Rationale
-          - Codexy plugin releases need explicit version synchronization before review and merge.
-
-          ## Changed Areas
-          - .agents/plugins/marketplace.json
-          - plugins/codexy/.codex-plugin/plugin.json
-
-          ## Verification
-          - scripts/sync-plugin-version --check
-
-          ## Evidence
-          - Workflow validation completed before opening this PR.
-
-          ## Not Run
-          - None.
-
-          ## Follow-ups
-          - None.
-          EOF
-          gh pr create \
-            --title "chore(plugin): bump version to ${VERSION}" \
-            --body-file "${body_file}" \
-            --base main \
-            --head "${branch}"
+        run: scripts/reconcile-version-pr

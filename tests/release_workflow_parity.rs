@@ -42,17 +42,61 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
 }
 
 #[test]
-fn ordinary_version_bump_stages_version_metadata_without_runtime_activation() -> Result<(), Box<dyn std::error::Error>> {
-    let workflow = document("plugin-version-bump.yml")?;
-    let workflow_steps = steps(&workflow, "open-version-pr")?;
-    let admission = step_index(&workflow, "open-version-pr", "Admit selected runtime version advance")?;
-    let mutation = step_index(&workflow, "open-version-pr", "Synchronize plugin version")?;
+fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error>> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workflow =
+        std::fs::read_to_string(root.join(".github/workflows/plugin-version-bump.yml"))?;
+    let document: Value = serde_yaml::from_str(&workflow)?;
+    let jobs = document
+        .get("jobs")
+        .and_then(Value::as_mapping)
+        .ok_or("workflow jobs")?;
+    let steps = jobs
+        .get(Value::String("open-version-pr".into()))
+        .and_then(|job| job.get("steps"))
+        .and_then(Value::as_sequence)
+        .ok_or("version-bump steps")?;
+    let sync = named_step_run(steps, "Synchronize plugin version")?;
+    assert_eq!(sync, "scripts/sync-plugin-version --version \"$VERSION\"");
+    let open_pr = named_step_run(steps, "Open version bump pull request")?;
+    assert_eq!(open_pr, "scripts/reconcile-version-pr");
+    let adapter = std::fs::read_to_string(root.join(open_pr))?;
+    let staging = adapter
+        .lines()
+        .map(str::trim)
+        .find(|line| line.starts_with("git add "))
+        .ok_or("missing version-bump staging command")?;
+    assert!(
+        staging
+            .split_ascii_whitespace()
+            .any(|argument| argument == "packages/getcodexy/pyproject.toml"),
+        "version-bump staging omits Python metadata"
+    );
+    let admission = steps
+        .iter()
+        .position(|step| step["name"] == "Admit selected runtime version advance")
+        .ok_or("version admission")?;
+    let mutation = steps
+        .iter()
+        .position(|step| step["name"] == "Synchronize plugin version")
+        .ok_or("version mutation")?;
     assert!(admission < mutation);
-    assert_eq!(workflow_steps[admission]["run"], "scripts/sync-plugin-version --admit-version \"$VERSION\"");
-    let run = run(&workflow, "open-version-pr", "Open version bump pull request")?;
-    let staged = lines(run).find(|line| line.starts_with("git add ")).ok_or("git add")?;
-    assert!(staged.split_ascii_whitespace().any(|word| word == ".agents/plugins/release-publish-contract.json"));
-    for excluded in ["packages/getcodexy/pyproject.toml", "runtime-release.json", "mcp/codexy-mcp"] { assert!(!staged.split_ascii_whitespace().any(|word| word == excluded)); }
+    assert_eq!(
+        steps[admission]["run"],
+        "scripts/sync-plugin-version --admit-version \"$VERSION\""
+    );
+    assert!(
+        staging
+            .split_ascii_whitespace()
+            .any(|argument| argument == ".agents/plugins/release-publish-contract.json")
+    );
+    for excluded in ["runtime-release.json", "mcp/codexy-mcp"] {
+        assert!(
+            !staging
+                .split_ascii_whitespace()
+                .any(|argument| argument == excluded)
+        );
+    }
     Ok(())
 }
 
@@ -76,3 +120,12 @@ fn assert_dispatch_only(value: &Value) -> Result<(), Box<dyn std::error::Error>>
 fn steps<'a>(value: &'a Value, job: &str) -> Result<&'a [Value], Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().map(Vec::as_slice).ok_or_else(|| "steps".into()) }
 fn step_index(value: &Value, job: &str, name: &str) -> Result<usize, Box<dyn std::error::Error>> { steps(value, job)?.iter().position(|step| step["name"] == name).ok_or_else(|| "step".into()) }
 fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> { steps(value, job)?.iter().find(|step| step["name"] == name).and_then(|step| step["run"].as_str()).ok_or_else(|| "run".into()) }
+
+fn named_step_run<'a>(steps: &'a [Value], name: &str) -> Result<&'a str, &'static str> {
+    steps
+        .iter()
+        .find(|step| step.get("name").and_then(Value::as_str) == Some(name))
+        .and_then(|step| step.get("run"))
+        .and_then(Value::as_str)
+        .ok_or("named workflow step or run command missing")
+}
