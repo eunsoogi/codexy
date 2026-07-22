@@ -14,13 +14,14 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
     let fixture = Fixture::new()?;
     assert_result(fixture.verify("main", "1.3.0")?, true, "exact retry");
     assert_result(
-        fixture.verify("main", "1.4.0")?,
+        fixture.activate(&fixture.repo, "1.4.0")?,
         false,
         "wrong candidate metadata",
     );
     fixture.add_wrong_base()?;
+    let wrong_base = fixture.archive_ref("wrong-base")?;
     assert_result(
-        fixture.verify("wrong-base", "1.3.0")?,
+        fixture.activate(&wrong_base, "1.3.0")?,
         false,
         "wrong base metadata",
     );
@@ -48,7 +49,6 @@ struct Fixture {
     repo: PathBuf,
     receipt: PathBuf,
     bin: PathBuf,
-    target: PathBuf,
 }
 
 impl Fixture {
@@ -71,11 +71,15 @@ impl Fixture {
                 .arg("-C")
                 .arg(&repo),
         )?;
-        fs::copy(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("scripts/verify-runtime-activation-branch"),
-            repo.join("scripts/verify-runtime-activation-branch"),
-        )?;
+        for relative in [
+            "scripts/activate-runtime-contract",
+            "scripts/verify-runtime-activation-branch",
+        ] {
+            fs::copy(
+                Path::new(env!("CARGO_MANIFEST_DIR")).join(relative),
+                repo.join(relative),
+            )?;
+        }
         git(&repo, &["init", "-b", "main"])?;
         git(&repo, &["config", "user.name", "test"])?;
         git(&repo, &["config", "user.email", "test@example.com"])?;
@@ -85,11 +89,10 @@ impl Fixture {
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
         command(
-            Command::new(repo.join("scripts/activate-runtime-contract"))
+            Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))
                 .args(["--repo-root", repo.to_str().ok_or("repo")?])
                 .args(["--bootstrap-version", "1.3.0"])
-                .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?])
-                .env("CARGO_TARGET_DIR", temp.path().join("cargo-target")),
+                .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?]),
         )?;
         git(&repo, &["add", ".agents/plugins/release-publish-contract.json"])?;
         git(&repo, &["add", "plugins/codexy/mcp", "plugins/codexy/runtime-candidate.json"])?;
@@ -103,7 +106,6 @@ impl Fixture {
             repo,
             receipt,
             bin,
-            target: PathBuf::from("cargo-target"),
         })
     }
 
@@ -116,8 +118,42 @@ impl Fixture {
                 "PATH",
                 format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
             )
-            .env("CARGO_TARGET_DIR", self._temp.path().join(&self.target))
+            .env("CODEXY_TEST_MODE", "1")
+            .env(
+                "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
+                env!("CARGO_BIN_EXE_codexy-activate-runtime"),
+            )
             .output()?)
+    }
+
+    fn activate(&self, root: &Path, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
+        Ok(Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))
+            .args(["--repo-root", root.to_str().ok_or("root")?])
+            .args(["--bootstrap-version", version])
+            .arg("--candidate-receipt")
+            .arg(&self.receipt)
+            .output()?)
+    }
+
+    fn archive_ref(&self, reference: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let archive = self._temp.path().join(format!("{reference}.tar"));
+        let root = self._temp.path().join(format!("{reference}-root"));
+        fs::create_dir(&root)?;
+        command(
+            Command::new("git")
+                .args(["archive", "--format=tar", reference])
+                .arg("-o")
+                .arg(&archive)
+                .current_dir(&self.repo),
+        )?;
+        command(
+            Command::new("tar")
+                .arg("-xf")
+                .arg(&archive)
+                .arg("-C")
+                .arg(&root),
+        )?;
+        Ok(root)
     }
 
     fn add_wrong_base(&self) -> Result<(), Box<dyn std::error::Error>> {
