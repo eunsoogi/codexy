@@ -15,6 +15,11 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     }
     let candidate_assembly = run(&candidate, "publish-candidate", "Assemble canonical candidate archive and receipt")?;
     assert!(lines(candidate_assembly).any(|line| line == "rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ \"$root/\""));
+    assert!(lines(candidate_assembly).any(|line| line == "slug=\"${CANDIDATE_TAG#runtime-candidate-}\""));
+    assert!(lines(candidate_assembly).any(|line| line == "case \"$slug\" in *[!A-Za-z0-9._-]*) exit 1;; esac"));
+    let copied = lines(candidate_assembly).position(|line| line == "cp -R staged-runtime \"$root/runtime\"").ok_or("candidate copy")?;
+    let executable = lines(candidate_assembly).position(|line| line == "chmod 755 \"$root/runtime/codexy-mcp-${server}-${platform}.bin\"").ok_or("candidate mode")?;
+    assert!(copied < executable);
     let candidate_publish = run(&candidate, "publish-candidate", "Create candidate tag and release once")?;
     assert!(command_present(candidate_publish, &["gh", "release", "create"]));
     assert!(!command_present(candidate_publish, &["gh", "release", "edit"]));
@@ -36,11 +41,12 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
 }
 
 #[test]
-fn ordinary_version_bump_does_not_stage_runtime_or_bootstrap_metadata() -> Result<(), Box<dyn std::error::Error>> {
+fn ordinary_version_bump_stages_version_metadata_without_runtime_activation() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = document("plugin-version-bump.yml")?;
     let run = run(&workflow, "open-version-pr", "Open version bump pull request")?;
     let staged = lines(run).find(|line| line.starts_with("git add ")).ok_or("git add")?;
-    for excluded in ["packages/getcodexy/pyproject.toml", "release-publish-contract.json", "runtime-release.json", "mcp/codexy-mcp"] { assert!(!staged.split_ascii_whitespace().any(|word| word == excluded)); }
+    assert!(staged.split_ascii_whitespace().any(|word| word == ".agents/plugins/release-publish-contract.json"));
+    for excluded in ["packages/getcodexy/pyproject.toml", "runtime-release.json", "mcp/codexy-mcp"] { assert!(!staged.split_ascii_whitespace().any(|word| word == excluded)); }
     Ok(())
 }
 

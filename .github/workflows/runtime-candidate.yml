@@ -77,12 +77,19 @@ jobs:
           CANDIDATE_TAG: ${{ inputs.candidate_tag }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: |
-          case "$CANDIDATE_TAG" in runtime-candidate-*) ;; *) exit 1;; esac
+          case "$CANDIDATE_TAG" in runtime-candidate-?*) ;; *) exit 1;; esac
+          slug="${CANDIDATE_TAG#runtime-candidate-}"
+          case "$slug" in *[!A-Za-z0-9._-]*) exit 1;; esac
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
           root=dist/candidate/plugins/codexy
           mkdir -p dist/candidate/plugins
           rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ "$root/"
           cp -R staged-runtime "$root/runtime"
+          for platform in darwin-arm64 linux-x86_64; do
+            for server in lsp codegraph; do
+              chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"
+            done
+          done
           CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ROOT="$root" python3 - <<'PY'
           import hashlib, json, os
           root = os.environ["ROOT"]
