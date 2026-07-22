@@ -46,17 +46,30 @@ fn touched_loc_accepts_cohesive_workflow_script_extraction() -> TestResult {
 
 #[test]
 fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
+    assert_workflow_extraction_with_script(
+        r#"scripts/validate-plugin-config --check-touched-loc --base-ref "origin/${{ github.base_ref }}""#,
+        "scripts/validate-plugin-config",
+        true,
+    )?;
+    assert_multiline_workflow_extraction(
+        "scripts/reconcile-release --message release\nbuild",
+        false,
+    )?;
     for command in [
         "scripts/reconcile-release --check",
         "scripts/reconcile-release --mode=check release",
+        "scripts/reconcile-release --message \"release build\"",
+        "scripts/reconcile-release --message 'release build'",
         "scripts/reconcile-release --check --tag \"$RELEASE_TAG\"",
         "scripts/reconcile-release --tag $RELEASE_TAG",
         "scripts/reconcile-release --tag ${RELEASE_TAG}",
         "scripts/reconcile-release --tag \"${RELEASE_TAG}\"",
+        r#"scripts/reconcile-release --artifact "release-${{ github.run_id }}""#,
     ] {
         assert_workflow_extraction(command, true)?;
     }
     for command in [
+        "\"scripts/reconcile-release\" --check",
         "command scripts/reconcile-release --check",
         "MODE=check scripts/reconcile-release",
         "scripts/reconcile-release > result.txt",
@@ -68,9 +81,22 @@ fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
         "scripts/reconcile-release $9",
         "scripts/reconcile-release \"$RELEASE_TAG",
         "scripts/reconcile-release prefix$RELEASE_TAG",
+        "scripts/reconcile-release prefix\"$RELEASE_TAG\"",
         "scripts/reconcile-release $RELEASE_TAG/suffix",
         "scripts/reconcile-release ${RELEASE_TAG:-latest}",
+        r#"scripts/reconcile-release --base ${{ github.base_ref }}"#,
+        r#"scripts/reconcile-release --base "origin/${{ github.base_ref }""#,
+        r#"scripts/reconcile-release --base "origin/${{ }}""#,
+        r#"scripts/reconcile-release --base "origin/${{ github. base_ref }}""#,
+        r#"scripts/reconcile-release --base "origin/${{ github.${{ base_ref }} }}""#,
+        "scripts/reconcile-release --message \"release build",
+        "scripts/reconcile-release --message 'release build",
+        r#"scripts/reconcile-release --message "release\ build""#,
+        "scripts/reconcile-release --message release\\ build",
         "scripts/reconcile-release *.tgz",
+        "scripts/reconcile-release <(echo --check)",
+        "scripts/reconcile-release < input.txt",
+        "scripts/reconcile-release || echo failed",
         "scripts/reconcile-release | tee result.txt",
         "scripts/reconcile-release|tee result.txt",
         "scripts/reconcile-release && echo done",
@@ -86,7 +112,35 @@ fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
     Ok(())
 }
 
+fn assert_multiline_workflow_extraction(command: &str, accepted: bool) -> TestResult {
+    let baseline = format!(
+        "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n{}",
+        regular_lines(247)
+    );
+    let repo = fixture(".github/workflows/release.yml", baseline)?;
+    let indented = command.replace('\n', "\n          ");
+    write(
+        repo.path(),
+        ".github/workflows/release.yml",
+        &format!(
+            "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n          {indented}\n"
+        ),
+    )?;
+    write(repo.path(), "scripts/reconcile-release", &regular_lines(247))?;
+    let output = validate(repo.path())?;
+    assert_eq!(output.status.success(), accepted, "{command}: {}", stderr(&output));
+    Ok(())
+}
+
 fn assert_workflow_extraction(command: &str, accepted: bool) -> TestResult {
+    assert_workflow_extraction_with_script(command, "scripts/reconcile-release", accepted)
+}
+
+fn assert_workflow_extraction_with_script(
+    command: &str,
+    extracted_script: &str,
+    accepted: bool,
+) -> TestResult {
     let baseline = format!(
         "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n{}",
         regular_lines(247)
@@ -97,7 +151,7 @@ fn assert_workflow_extraction(command: &str, accepted: bool) -> TestResult {
         ".github/workflows/release.yml",
         &format!("name: fixture\njobs:\n  release:\n    steps:\n      - run: {command}\n"),
     )?;
-    write(repo.path(), "scripts/reconcile-release", &regular_lines(247))?;
+    write(repo.path(), extracted_script, &regular_lines(247))?;
     let output = validate(repo.path())?;
     assert_eq!(output.status.success(), accepted, "{command}: {}", stderr(&output));
     Ok(())
