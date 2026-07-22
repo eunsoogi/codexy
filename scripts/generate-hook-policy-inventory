@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Regenerate inventory while preserving explicit digest-keyed review decisions."""
+
+import json
+import re
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1] / "plugins" / "codexy"
+OUTPUT = ROOT / "hooks" / "policy-inventory.json"
+PATTERN = re.compile(r"\bMUST(?: NOT)?\b")
+
+
+def digest(value: str) -> str:
+    result = 0xCBF29CE484222325
+    for byte in value.encode():
+        result = (result ^ byte) * 0x100000001B3 & 0xFFFFFFFFFFFFFFFF
+    return f"{result:016x}"
+
+
+def discovered() -> list[dict[str, str]]:
+    rules = []
+    for path in sorted((ROOT / "skills").rglob("*.md")):
+        relative = path.relative_to(ROOT).as_posix()
+        seen: defaultdict[str, int] = defaultdict(int)
+        ordinal = 0
+        for line_number, line in enumerate(path.read_text().splitlines(), 1):
+            text = " ".join(line.split())
+            for line_occurrence, _ in enumerate(PATTERN.finditer(line), 1):
+                ordinal += 1
+                seen[text] += 1
+                rule_digest = digest(f"{relative}\0{text}\0{seen[text]}")
+                rules.append({"id": f"norm-{rule_digest}", "digest": rule_digest,
+                              "source": f"{relative}:{line_number}:{ordinal}",
+                              "text": text, "lineOccurrence": str(line_occurrence)})
+    return rules
+
+
+def main() -> int:
+    old = json.loads(OUTPUT.read_text()) if OUTPUT.exists() else {"rules": []}
+    by_digest = {item.get("digest"): item for item in old["rules"] if item.get("digest")}
+    rules, uncovered = [], 0
+    for found in discovered():
+        prior = by_digest.get(found["digest"])
+        if prior is None or prior.get("text") != found["text"]:
+            prior = {"event": "unavailable", "input": "unavailable", "decision": "uncovered",
+                     "tests": [], "evidence": [], "positiveTests": [], "negativeTests": []}
+            uncovered += 1
+        item = {key: found[key] for key in ("id", "digest", "source", "text")}
+        item.update({key: value for key, value in prior.items()
+                     if key not in {"id", "digest", "source", "text"}})
+        rules.append(item)
+    enforced = sum(item["decision"] == "enforced" for item in rules)
+    reviewed = sum(item["decision"] == "reviewed-exception" for item in rules)
+    test_suites = {"admission": "tests/hook_admission_policy.rs",
+                   "inventory": "tests/validator_hook_policy_inventory.rs",
+                   "postcompact": "tests/validator_hook_postcompact_capability.rs",
+                   "thread-routing": "tests/hook_admission_policy.rs",
+                   "topology": "tests/validator_hook_event_topology.rs"}
+    payload = {"version": 3, "generatedFrom": "skills/**/*.md", "testSuites": test_suites,
+               "rules": rules, "summary": {"total": len(rules), "enforced": enforced,
+               "reviewedExceptions": reviewed, "uncovered": uncovered}}
+    OUTPUT.write_text(json.dumps(payload, separators=(",", ":")) + "\n")
+    return 1 if uncovered else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -68,18 +68,17 @@ fn validator_cli_rejects_connector_specific_policy_forms() -> TestResult {
 }
 
 #[test]
-fn validator_cli_allows_packaged_codexy_reviewer_instruction() -> TestResult {
+fn validator_does_not_misclassify_packaged_codexy_reviewer_instruction() -> TestResult {
     let (_temp, plugin_root) = plugin_fixture()?;
     let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str("\n- MUST run the packaged Codexy reviewer agent.\n");
     std::fs::write(&skill_path, skill)?;
     let output = validate(&plugin_root)?;
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(!output.status.success(), "the new MUST must remain uncovered");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("uncovered normative rules"));
+    assert!(!stderr.contains("Codex connector review policy is not allowed"));
     Ok(())
 }
 

@@ -45,6 +45,16 @@ pub(super) fn check_command(
         )
     })?;
     let resolved = plugin_root.join(&hook_path);
+    if std::fs::symlink_metadata(&resolved)
+        .with_context(|| format!("reading {}", display_relative(&resolved)))?
+        .file_type()
+        .is_symlink()
+    {
+        bail!(
+            "{} {event} hook command target must be a regular packaged file, not a symlink",
+            display_relative(path)
+        );
+    }
     if !resolved.is_file() {
         bail!(
             "{} {event} hook command target does not exist: {}",
