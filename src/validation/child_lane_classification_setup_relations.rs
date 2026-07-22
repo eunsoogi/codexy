@@ -212,7 +212,7 @@ fn action_is_negated(words: &[&str], start: usize, action: usize, end: usize) ->
     words[action.saturating_sub(3).max(start)..action]
         .iter()
         .any(|word| matches!(*word, "no" | "not" | "never" | "without" | "neither"))
-        || words[action + 1..end].iter().any(|word| *word == "no")
+        || has_negated_setup_object(words, action, end)
         || action.checked_sub(2).is_some_and(|index| {
             index >= start
                 && matches!(
@@ -226,4 +226,9 @@ fn action_is_negated(words: &[&str], start: usize, action: usize, end: usize) ->
                         | ("hadn", "t")
                 )
         })
+}
+
+fn has_negated_setup_object(words: &[&str], action: usize, end: usize) -> bool {
+    let object = action + usize::from(matches!(words.get(action + 1), Some(&"up" | &"out"))) + 1;
+    object + 1 < end && words[object] == "no" && matches!(words[object + 1], "branch" | "worktree")
 }
