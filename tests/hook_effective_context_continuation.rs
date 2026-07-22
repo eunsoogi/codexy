@@ -96,6 +96,30 @@ fn shell_alias_recursion_preserves_normalized_git_context() -> TestResult {
     )
 }
 
+#[test]
+fn sequential_shell_state_tracks_exact_supported_mutations() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    for command in [
+        format!("command cd '{}' && git push --force origin topic", owned.display()),
+        "git config remote.origin.url git@github.com:eunsoogi/codexy.git && git push --force origin topic".into(),
+        "declare -x GH_REPO=eunsoogi/codexy; gh pr merge 453 --merge".into(),
+    ] {
+        assert_case(&root, &foreign, &command, true)?;
+    }
+    for command in [
+        format!("command cd '{}' && git push --force origin topic", foreign.display()),
+        "git config remote.origin.url https://github.com/openai/codex.git && git push --force origin topic".into(),
+        "declare -x GH_REPO=openai/codex; gh pr merge 453 --merge".into(),
+    ] {
+        assert_case(&root, &foreign, &command, false)?;
+    }
+    Ok(())
+}
+
 fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
     let input = json!({
         "hook_event_name": "PreToolUse",

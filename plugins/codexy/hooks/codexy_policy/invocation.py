@@ -68,6 +68,11 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if executable == "export":
             exported = export_variables(args, context)
             return None if exported is None else Invocation(None, [], exported)
+        if executable in {"declare", "typeset"}:
+            if args[:1] != ["-x"] or len(args) != 2 or not assignment(args[1]):
+                return None
+            exported = export_variables(args[1:], context)
+            return None if exported is None else Invocation(None, [], exported)
         if executable == "unset":
             remaining = unset_variables(args, context)
             return None if remaining is None else Invocation(None, [], remaining)

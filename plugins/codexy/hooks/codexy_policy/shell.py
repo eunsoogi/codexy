@@ -19,6 +19,7 @@ OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
 POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GH_REPO)\s*=")
+REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.url", re.IGNORECASE)
 
 
 def forbidden(
@@ -75,10 +76,6 @@ def _sequence(sequence: Sequence, context: ExecutionContext, depth: int) -> tupl
         if isinstance(step.node, Command):
             tokens = list(step.node.tokens)
             denied, resulting_context = _segment(tokens, active, depth)
-            directory = changed_directory(tokens, active.cwd)
-            if directory.opaque:
-                return True, active
-            resulting_context = context_at(resulting_context, directory.cwd)
         else:
             denied, nested_context = _sequence(step.node.body, active, depth + 1)
             resulting_context = active if step.node.kind == "subshell" else nested_context
@@ -101,6 +98,13 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         return True, context
     if invocation.executable is None:
         return False, invocation.context
+    if invocation.executable in {"cd", "pushd", "popd"}:
+        directory = changed_directory(
+            [invocation.executable, *invocation.arguments], invocation.context.cwd
+        )
+        return (True, context) if directory.opaque else (
+            False, context_at(invocation.context, directory.cwd)
+        )
     if invocation.executable in {".", "source"}:
         return True, context
     if invocation.executable == "git":
@@ -139,6 +143,14 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, 
         return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1), None
     if invocation.operation is None:
         return False, None
+    if invocation.operation == "config":
+        remote = REMOTE_URL_CONFIG.fullmatch(invocation.arguments[0]) if invocation.arguments else None
+        if remote is not None and len(invocation.arguments) == 2 and invocation.arguments[1] and not any(
+            char in invocation.arguments[1] for char in "\0\r\n"
+        ):
+            return False, (remote.group(1), invocation.arguments[1])
+        if any(REMOTE_URL_CONFIG.fullmatch(argument) for argument in invocation.arguments):
+            return True, None
     if invocation.operation == "remote" and invocation.arguments[:1] in (["add"], ["set-url"]):
         if len(invocation.arguments) != 3 or not invocation.arguments[1] or any(char in invocation.arguments[1] + invocation.arguments[2] for char in "\0\r\n"):
             return True, None
