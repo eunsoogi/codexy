@@ -41,6 +41,28 @@ def executable(path: Path) -> bool:
     )
 
 
+def _publish_executable(
+    source: Path, destination: Path, *, require_staged_executable: bool = True
+) -> None:
+    if require_staged_executable and not executable(source):
+        raise RuntimeError(f"staged runtime is not executable: {source}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
+    try:
+        shutil.copyfile(source, temporary)
+        mode = (
+            stat.S_IMODE(source.stat().st_mode) & 0o777
+            if require_staged_executable
+            else 0o755
+        )
+        temporary.chmod(mode)
+        if not executable(temporary):
+            raise RuntimeError(f"copied runtime is not executable: {temporary}")
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def execute(
     path: Path | str, arguments: list[str], environment: dict[str, str] | None = None
 ) -> NoReturn:
@@ -75,13 +97,9 @@ def install_package(config: InstallConfig, install_root: Path, installed: Path) 
             matches, message = releases_match(config.manifest, package_manifest)
             if not matches:
                 raise RuntimeError(message)
-        installed.parent.mkdir(parents=True, exist_ok=True)
-        temporary_runtime = installed.with_name(f".{installed.name}.{os.getpid()}.tmp")
-        shutil.copyfile(packaged_runtime, temporary_runtime)
-        temporary_runtime.chmod(
-            temporary_runtime.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        _publish_executable(
+            packaged_runtime, installed, require_staged_executable=False
         )
-        os.replace(temporary_runtime, installed)
         if not config.package_override:
             shutil.copyfile(package_manifest, install_root / "plugin.json")
 
@@ -112,9 +130,11 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
         ]
         environment = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "GITHUB_TOKEN"}}
         completed = subprocess.run(command, check=False, env=environment)
-        if completed.returncode or not executable(staged_runtime):
+        if completed.returncode:
             raise RuntimeError(f"cargo install exited with status {completed.returncode}")
-        installed.parent.mkdir(parents=True, exist_ok=True)
-        temporary_runtime = installed.with_name(f".{installed.name}.{os.getpid()}.tmp")
-        shutil.copyfile(staged_runtime, temporary_runtime)
-        os.replace(temporary_runtime, installed)
+        try:
+            _publish_executable(staged_runtime, installed)
+        except RuntimeError as error:
+            raise RuntimeError(
+                f"cargo install exited with status {completed.returncode}: {error}"
+            ) from error

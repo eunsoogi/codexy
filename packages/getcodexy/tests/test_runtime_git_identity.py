@@ -27,6 +27,7 @@ class RuntimeGitIdentityTests(unittest.TestCase):
             config = replace(base, git_fallback=True)
 
             def install_git(_config: object, install_root: Path, installed: Path) -> None:
+                self.assertFalse((install_root / "runtime-marker.json").exists())
                 installed.parent.mkdir(parents=True)
                 installed.write_bytes(b"pinned Git runtime")
                 installed.chmod(0o755)

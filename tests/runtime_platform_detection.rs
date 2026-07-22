@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use crate::support::{WrapperFixture, make_executable, run_wrapper_command};
+use crate::support::{self, WrapperFixture, make_executable, run_wrapper_command};
 
 #[test]
 fn wrappers_share_platform_detection_across_supported_shells()
@@ -73,8 +73,11 @@ fn both_wrappers_consume_one_platform_authority() -> Result<(), Box<dyn std::err
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/mcp");
     for server in ["lsp", "codegraph"] {
         let wrapper = std::fs::read_to_string(root.join(format!("codexy-mcp-{server}")))?;
-        assert!(wrapper.contains(". \"$self_dir/runtime-platform.sh\""));
-        assert!(!wrapper.contains("uname -"));
+        support::assert_structured_literals(
+            &wrapper,
+            "shared runtime platform authority",
+            &[". \"$self_dir/runtime-platform.sh\"", "platform=$(codexy_runtime_platform)"],
+        );
     }
     Ok(())
 }
