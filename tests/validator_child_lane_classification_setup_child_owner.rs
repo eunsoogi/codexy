@@ -210,6 +210,20 @@ fn validator_rejects_numbered_or_bulleted_control_before_classification() -> Tes
     Ok(())
 }
 
+#[test]
+fn validator_rejects_prefixed_child_ownership_and_control_before_classification() -> TestResult {
+    for control in [
+        "5. Goal tool call: create_goal",
+        "- Plan tool call: update_plan",
+        "- [ ] Plan tool call: update_plan",
+    ] {
+        assert_rejected(&format!(
+            "1. Lane ownership: child-owned\n{control}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
+        ))?;
+    }
+    Ok(())
+}
+
 fn complete_parent_classification() -> &'static str {
     "Lane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate evidence\nStop/blocker: None"
 }

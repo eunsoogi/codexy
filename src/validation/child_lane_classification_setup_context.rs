@@ -2,6 +2,7 @@ use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_pa
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
+use super::child_terminal_handoff::without_metadata_prefix;
 
 pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> bool {
     for (index, line) in lines
@@ -31,12 +32,18 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
 }
 
 pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> bool {
-    for (candidate_index, line) in lines
-        .iter()
-        .enumerate()
-        .take(index + 1)
-        .rev()
-        .map(|(candidate_index, line)| (candidate_index, trimmed_value(line)))
+    for (candidate_index, line) in
+        lines
+            .iter()
+            .enumerate()
+            .take(index + 1)
+            .rev()
+            .map(|(candidate_index, line)| {
+                (
+                    candidate_index,
+                    trimmed_value(without_metadata_prefix(line)),
+                )
+            })
     {
         if candidate_index != index && is_lane_context_boundary(lines, candidate_index, line) {
             return is_child_owned_lane_evidence(line);
