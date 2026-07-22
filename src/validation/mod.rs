@@ -105,6 +105,7 @@ mod sentinel_handoff_reviewer;
 mod sentinel_handoff_status_evidence;
 mod touched_loc;
 mod touched_loc_remediation;
+mod value_arrays;
 
 use std::path::Path;
 
@@ -112,6 +113,7 @@ use anyhow::Result;
 
 pub use mode_dispatch::{errors, run};
 pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
+pub(super) use value_arrays::{json_array_strings, toml_array_strings};
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -228,26 +230,4 @@ fn load_toml(path: &Path) -> Result<toml::Value> {
 
 fn manifest_path(plugin_root: &Path) -> std::path::PathBuf {
     plugin_root.join(".codex-plugin/plugin.json")
-}
-
-fn json_array_strings(value: Option<&serde_json::Value>) -> Option<Vec<String>> {
-    value
-        .and_then(serde_json::Value::as_array)
-        .and_then(|items| {
-            items
-                .iter()
-                .map(serde_json::Value::as_str)
-                .collect::<Option<Vec<_>>>()
-                .map(|strings| strings.into_iter().map(ToOwned::to_owned).collect())
-        })
-}
-
-fn toml_array_strings(value: Option<&toml::Value>) -> Option<Vec<String>> {
-    value.and_then(toml::Value::as_array).and_then(|items| {
-        items
-            .iter()
-            .map(toml::Value::as_str)
-            .collect::<Option<Vec<_>>>()
-            .map(|strings| strings.into_iter().map(ToOwned::to_owned).collect())
-    })
 }
