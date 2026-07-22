@@ -45,17 +45,18 @@ fn reconciliation_mismatch_fails_before_mutation() -> TestResult {
 #[test]
 fn publication_phase_advances_only_after_every_readiness_gate() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for (name, labels, handoff, merge_message, expected) in [
-        ("provisional", false, false, false, Some("provisional")),
-        ("label-only", true, false, false, None),
-        ("handoff-without-merge", true, true, false, None),
-        ("proven", true, true, true, Some("proven")),
+    for (name, release, labels, handoff, merge_message, expected) in [
+        ("release-failure", false, false, false, false, None),
+        ("provisional", true, false, false, false, Some("provisional")),
+        ("label-only", true, true, false, false, None),
+        ("handoff-without-merge", true, true, true, false, None),
+        ("proven", true, true, true, true, Some("proven")),
     ] {
         let output = Command::new(root.join("scripts/plan-version-pr-reconciliation"))
             .args([
                 "--publication-phase",
                 "--release-candidate-passed",
-                "true",
+                if release { "true" } else { "false" },
                 "--labels-checked",
                 if labels { "true" } else { "false" },
                 "--completion-handoff-checked",

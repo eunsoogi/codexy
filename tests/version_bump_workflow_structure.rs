@@ -114,20 +114,27 @@ fn workflow_refreshes_snapshots_and_finalizes_only_after_readiness() -> TestResu
     let proven = workflow
         .rfind("--merge-message-checked true)")
         .ok_or("proven planner")?;
-    let final_render = workflow
-        .rfind("render_version_pr_metadata \"$publication_phase\"")
-        .ok_or("final render")?;
+    let final_publish = workflow
+        .rfind("publish_version_pr_metadata \"$publication_phase\"")
+        .ok_or("final publication")?;
+    let publish_helper = workflow.find("publish_version_pr_metadata() ").ok_or("publish helper")?;
+    let label_mutation = workflow.find("repos/$GITHUB_REPOSITORY/issues/$pr_number/labels").ok_or("label mutation")?;
     let final_edit = workflow.rfind("--body-file \"$state_dir/metadata/body.md\"").ok_or("final body edit")?;
+    let final_state = workflow
+        .rfind("scripts/build-version-pr-state ")
+        .ok_or("final rebuilt state")?;
 
     assert!(workflow.matches("refresh_version_pr_snapshot").count() >= 2);
-    assert_eq!(workflow.matches("render_version_pr_metadata \"$publication_phase\"").count(), 2);
+    assert_eq!(workflow.matches("publish_version_pr_metadata \"$publication_phase\"").count(), 2);
     assert!(provisional < provisional_render);
-    assert!(provisional_render < label_gate);
+    assert!(provisional_render < final_state);
+    assert!(final_state < label_gate);
     assert!(label_gate < handoff_gate);
     assert!(handoff_gate < merge_gate);
     assert!(merge_gate < proven);
-    assert!(proven < final_render);
-    assert!(final_render < final_edit);
+    assert!(proven < final_publish);
+    assert!(publish_helper < label_mutation);
+    assert!(label_mutation < final_edit);
     Ok(())
 }
 

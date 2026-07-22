@@ -24,6 +24,10 @@ fn refreshed_snapshot_replaces_stale_release_metadata_before_publication() -> Te
     )?;
     render(root, &issue, &taxonomy, &changes, &output)?;
     let stale_body = fs::read_to_string(output.join("body.md"))?;
+    let stale_labels = fs::read(output.join("labels.json"))?;
+    render(root, &issue, &taxonomy, &changes, &output)?;
+    assert_eq!(stale_body, fs::read_to_string(output.join("body.md"))?);
+    assert_eq!(stale_labels, fs::read(output.join("labels.json"))?);
 
     write_snapshot(
         &issue,

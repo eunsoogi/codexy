@@ -108,7 +108,6 @@ jobs:
           }
           render_version_pr_metadata() {
             phase=$1
-            refresh_version_pr_snapshot
             scripts/render-version-pr-metadata \
               --version "$VERSION" \
               --issue-json "$state_dir/issue.json" \
@@ -117,10 +116,22 @@ jobs:
               --output-dir "$state_dir/metadata" \
               --publication-phase "$phase"
           }
+          publish_version_pr_metadata() {
+            phase=$1
+            render_version_pr_metadata "$phase"
+            title=$(sed -n '1p' "$state_dir/metadata/title.txt")
+            gh api --method PUT \
+              "repos/$GITHUB_REPOSITORY/issues/$pr_number/labels" \
+              --input "$state_dir/metadata/labels.json" > "$state_dir/applied-labels.json"
+            gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
+              --title "$title" \
+              --body-file "$state_dir/metadata/body.md"
+          }
           publication_phase=$(scripts/plan-version-pr-reconciliation \
             --publication-phase --release-candidate-passed true \
             --labels-checked false --completion-handoff-checked false \
             --merge-message-checked false)
+          refresh_version_pr_snapshot
           render_version_pr_metadata "$publication_phase"
           title=$(sed -n '1p' "$state_dir/metadata/title.txt")
           plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$title"
@@ -192,9 +203,8 @@ jobs:
             fi
           fi
 
-          gh api --method PUT \
-            "repos/$GITHUB_REPOSITORY/issues/$pr_number/labels" \
-            --input "$state_dir/metadata/labels.json" > "$state_dir/applied-labels.json"
+          refresh_version_pr_snapshot
+          publish_version_pr_metadata "$publication_phase"
           gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
             --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,url,labels,closingIssuesReferences \
             > "$state_dir/pr-state.base.json"
@@ -240,8 +250,5 @@ jobs:
             --publication-phase --release-candidate-passed true \
             --labels-checked true --completion-handoff-checked true \
             --merge-message-checked true)
-          render_version_pr_metadata "$publication_phase"
-          gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
-            --title "$title" \
-            --body-file "$state_dir/metadata/body.md"
+          publish_version_pr_metadata "$publication_phase"
           cat "$state_dir/handoff.md" >> "$GITHUB_STEP_SUMMARY"
