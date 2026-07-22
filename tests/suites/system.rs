@@ -43,6 +43,9 @@ mod release_workflow_parity;
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
 
+#[path = "../repository_eol_contract.rs"]
+mod repository_eol_contract;
+
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;
 
