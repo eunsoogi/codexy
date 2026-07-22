@@ -1,5 +1,7 @@
 use serde_yaml::Value;
 
+use crate::support;
+
 #[test]
 fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn std::error::Error>> {
     let bootstrap = document("bootstrap-package.yml")?;
@@ -23,6 +25,13 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     let activation_proof = run(&activation, "open-activation-pr", "Prove public bootstrap, release, run, and candidate bytes")?;
     assert!(lines(activation_proof).any(|line| line == "jq -cS .candidate candidate-receipt.json | tr -d '\\n' > receipt-candidate.json"));
     assert!(command_present(activation_proof, &["gh", "attestation", "verify"]));
+    let activation_pr = run(&activation, "open-activation-pr", "Create activation pull request")?;
+    assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "plugins/codexy/runtime-candidate.json")));
+    support::assert_structured_literals(
+        activation_pr,
+        "activation pull request metadata",
+        &["--title \"feat(runtime): activate ${CANDIDATE_TAG}\"", "Closes #477", "Closes #451"],
+    );
     Ok(())
 }
 

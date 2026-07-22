@@ -145,6 +145,34 @@ class RuntimeContractTests(unittest.TestCase):
         self.assertNotEqual(prior.cache_key(platform="linux-x86_64", server="lsp"), digest_changed.cache_key(platform="linux-x86_64", server="lsp"))
         self.assertNotEqual(prior.cache_key(platform="linux-x86_64", server="lsp"), protocol_changed.cache_key(platform="linux-x86_64", server="lsp"))
 
+    def test_explicit_override_cannot_poison_selected_release_cache(self) -> None:
+        root, _ = self.load(legacy())
+        runtime = importlib.import_module("codexy_runtime_tools.runtime")
+        cache = root / "cache"
+        override = root / "override.tar.gz"
+        override.write_bytes(b"override archive")
+        installed_roots: list[Path] = []
+
+        def install_override(_config, install_root: Path, installed: Path) -> None:
+            installed.parent.mkdir(parents=True)
+            installed.write_bytes(b"override controlled runtime")
+            installed.chmod(0o755)
+            installed_roots.append(install_root)
+
+        environment = {
+            "CODEXY_RUNTIME_CACHE_DIR": str(cache),
+            "CODEXY_RUNTIME_PACKAGE_PATH": str(override),
+            "CODEXY_RUNTIME_PACKAGE_SHA256": hashlib.sha256(override.read_bytes()).hexdigest(),
+        }
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(runtime, "install_package", side_effect=install_override), mock.patch.object(runtime, "_execute", side_effect=SystemExit(0)), self.assertRaises(SystemExit):
+            runtime.run(runtime.Configuration.load("lsp", root, []))
+        self.assertEqual(len(installed_roots), 1)
+
+        with mock.patch.dict(os.environ, {"CODEXY_RUNTIME_CACHE_DIR": str(cache), "UV_OFFLINE": "1"}, clear=True), mock.patch.object(runtime, "_execute") as execute, self.assertRaises(SystemExit) as failure:
+            runtime.run(runtime.Configuration.load("lsp", root, []))
+        self.assertEqual(failure.exception.code, 127)
+        execute.assert_not_called()
+
     def test_marker_rejects_stale_identity_and_binary_digest(self) -> None:
         _, parsed = self.load(release())
         binary = BINARIES["lsp"]

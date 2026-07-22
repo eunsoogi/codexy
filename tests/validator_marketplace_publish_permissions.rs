@@ -22,10 +22,15 @@ fn candidate_and_activation_write_only_at_explicit_boundaries() -> Result<(), Bo
     let publish = run(&candidate, "publish-candidate", "Create candidate tag and release once")?;
     assert!(command(publish, &["gh", "release", "create"]));
     assert!(!command(publish, &["gh", "release", "edit"]));
+    assert!(!checkout_persists(&candidate, "build-runtime")?);
+    assert!(checkout_persists(&candidate, "publish-candidate")?);
+    assert_bot_identity(&candidate, "publish-candidate")?;
     let activation = document("runtime-activation.yml")?;
     let permissions = mapping(&activation["permissions"])?;
     assert_eq!(permissions[Value::String("contents".into())], "write");
     assert_eq!(permissions[Value::String("pull-requests".into())], "write");
+    assert!(checkout_persists(&activation, "open-activation-pr")?);
+    assert_bot_identity(&activation, "open-activation-pr")?;
     Ok(())
 }
 
@@ -34,3 +39,5 @@ fn mapping(value: &Value) -> Result<&Mapping, Box<dyn std::error::Error>> { valu
 fn assert_exact(mapping: &Mapping, name: &str, value: &str) -> Result<(), Box<dyn std::error::Error>> { assert_eq!(mapping.len(), 1); assert_eq!(mapping[Value::String(name.into())], value); Ok(()) }
 fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == name)).and_then(|step| step["run"].as_str()).ok_or_else(|| "run".into()) }
 fn command(run: &str, words: &[&str]) -> bool { run.lines().map(str::trim).any(|line| line.split_ascii_whitespace().collect::<Vec<_>>().windows(words.len()).any(|actual| actual == words)) }
+fn checkout_persists(value: &Value, job: &str) -> Result<bool, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["uses"] == "actions/checkout@v4")).and_then(|step| step["with"]["persist-credentials"].as_bool()).ok_or_else(|| "checkout credentials".into()) }
+fn assert_bot_identity(value: &Value, job: &str) -> Result<(), Box<dyn std::error::Error>> { let run = run(value, job, "Configure Git identity")?; assert!(run.lines().map(str::trim).any(|line| line == "git config user.name \"github-actions[bot]\"")); assert!(run.lines().map(str::trim).any(|line| line == "git config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"")); Ok(()) }

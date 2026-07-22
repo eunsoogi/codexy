@@ -14,7 +14,7 @@ const WORKFLOW_PATH: &str = ".github/workflows/runtime-candidate.yml";
 const PLATFORMS: [&str; 2] = ["darwin-arm64", "linux-x86_64"];
 const SERVERS: [&str; 2] = ["lsp", "codegraph"];
 
-pub(super) fn release_from_receipt(receipt: &Value) -> Result<Value> {
+pub(super) fn activation_from_receipt(receipt: &Value) -> Result<(Value, Value)> {
     let root = object(receipt, "candidate receipt")?;
     exact_keys(
         root,
@@ -40,14 +40,15 @@ pub(super) fn release_from_receipt(receipt: &Value) -> Result<Value> {
     let compatibility = object_field(candidate, "compatibility", "candidate")?;
     let platforms = object_field(candidate, "platforms", "candidate")?;
     let release_platforms = release_platforms(platforms)?;
-    Ok(json!({
+    let release = json!({
         "schema": RELEASE_SCHEMA,
         "state": "candidate-proven",
         "source": source,
         "artifact": artifact,
         "compatibility": compatibility,
         "platforms": release_platforms,
-    }))
+    });
+    Ok((release, Value::Object(candidate.clone())))
 }
 
 fn release_platforms(platforms: &Map<String, Value>) -> Result<Value> {

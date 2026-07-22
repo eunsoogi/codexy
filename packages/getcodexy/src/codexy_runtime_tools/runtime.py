@@ -149,7 +149,7 @@ def run(config: Configuration) -> NoReturn:
         _execute(config, bundled)
     source = "\n".join(("package-override", config.package_path, config.package_url, config.artifacts_api, config.package_sha256)) if config.package_override else "\n".join(("package-default", config.package_sha256))
     key = (config.release_contract.cache_key(platform=config.platform, server=config.server)
-        if config.release_contract else runtime_cache_key(manifest=config.manifest, package_override=config.package_override, identity=[config.git_repository, config.git_ref, config.platform, PROTOCOL, source, f"codexy-mcp-{config.server}"]))
+        if config.release_contract and not config.package_override else runtime_cache_key(manifest=config.manifest, package_override=config.package_override, identity=[config.git_repository, config.git_ref, config.platform, PROTOCOL, source, f"codexy-mcp-{config.server}"]))
     install_root = _cache_root(config.server) / key
     installed, marker = install_root / "bin" / f"codexy-mcp-{config.server}", install_root / "runtime-marker.json"
     if executable(installed) and config.package_override and not config.release_contract:

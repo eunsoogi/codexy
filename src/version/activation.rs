@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
+use sha2::{Digest as _, Sha256};
 use tempfile::NamedTempFile;
 
 use super::wrappers::{self, WrapperUpdate};
@@ -30,18 +31,32 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     if !repo_root.is_absolute() {
         bail!("repo root must be absolute: {}", repo_root.display());
     }
-    if bootstrap_version != super::bootstrap::VERSION {
+    if bootstrap_version != super::bootstrap::CANDIDATE_VERSION {
         bail!(
-            "bootstrap version must be public pin {}",
-            super::bootstrap::VERSION
+            "bootstrap version must be verified public candidate {}",
+            super::bootstrap::CANDIDATE_VERSION
         );
     }
     let receipt = read_json(receipt_path, "candidate receipt")?;
-    let release = receipt::release_from_receipt(&receipt)?;
-    let mut updates = vec![Update {
-        path: repo_root.join("plugins/codexy/runtime-release.json"),
-        bytes: format!("{}\n", serde_json::to_string_pretty(&release)?).into_bytes(),
-    }];
+    let (release, candidate) = receipt::activation_from_receipt(&receipt)?;
+    let candidate_bytes = serde_json::to_vec(&canonical(candidate))?;
+    let expected_manifest_sha = release["artifact"]["payloadManifestSha256"]
+        .as_str()
+        .context("validated receipt lost payload manifest SHA")?;
+    let actual_manifest_sha = format!("{:x}", Sha256::digest(&candidate_bytes));
+    if actual_manifest_sha != expected_manifest_sha {
+        bail!("candidate manifest bytes do not match receipt payload SHA-256");
+    }
+    let mut updates = vec![
+        Update {
+            path: repo_root.join("plugins/codexy/runtime-release.json"),
+            bytes: format!("{}\n", serde_json::to_string_pretty(&release)?).into_bytes(),
+        },
+        Update {
+            path: repo_root.join("plugins/codexy/runtime-candidate.json"),
+            bytes: candidate_bytes,
+        },
+    ];
     updates.extend(wrapper_updates(repo_root, bootstrap_version)?);
     Ok(updates)
 }
@@ -86,8 +101,31 @@ fn stage(update: &Update) -> Result<(PathBuf, NamedTempFile)> {
         .with_context(|| format!("staging {}", update.path.display()))?;
     temporary.write_all(&update.bytes)?;
     temporary.as_file().sync_all()?;
-    fs::set_permissions(temporary.path(), fs::metadata(&update.path)?.permissions())?;
+    match fs::metadata(&update.path) {
+        Ok(metadata) => fs::set_permissions(temporary.path(), metadata.permissions())?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(error).with_context(|| format!("reading {}", update.path.display()));
+        }
+    }
     Ok((update.path.clone(), temporary))
+}
+
+fn canonical(value: Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut entries = map.into_iter().collect::<Vec<_>>();
+            entries.sort_by(|left, right| left.0.cmp(&right.0));
+            Value::Object(
+                entries
+                    .into_iter()
+                    .map(|(key, value)| (key, canonical(value)))
+                    .collect(),
+            )
+        }
+        Value::Array(values) => Value::Array(values.into_iter().map(canonical).collect()),
+        other => other,
+    }
 }
 
 fn read_json(path: &Path, label: &str) -> Result<Value> {

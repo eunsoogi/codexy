@@ -66,7 +66,7 @@ jobs:
         with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
       - uses: actions/download-artifact@v4
         with:
           pattern: runtime-candidate-*
@@ -110,6 +110,10 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/codexy-marketplace-plugin.tar.gz
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Create candidate tag and release once
         env:
           CANDIDATE_TAG: ${{ inputs.candidate_tag }}

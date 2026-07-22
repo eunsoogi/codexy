@@ -28,7 +28,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
       - name: Prove public bootstrap, release, run, and candidate bytes
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
@@ -67,6 +67,10 @@ jobs:
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
         run: scripts/activate-runtime-contract --repo-root "$GITHUB_WORKSPACE" --bootstrap-version "$BOOTSTRAP_VERSION" --candidate-receipt "$GITHUB_WORKSPACE/candidate-receipt.json"
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Create activation pull request
         env:
           CANDIDATE_TAG: ${{ inputs.candidate_tag }}
@@ -74,7 +78,7 @@ jobs:
         run: |
           branch="codexy/runtime-activation-${CANDIDATE_TAG}"
           git switch -c "$branch"
-          git add plugins/codexy/runtime-release.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
+          git add plugins/codexy/runtime-release.json plugins/codexy/runtime-candidate.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
           git commit -m "feat(runtime): activate ${CANDIDATE_TAG}"
           git push origin "$branch"
-          gh pr create --base main --head "$branch" --title "Activate ${CANDIDATE_TAG}" --body "## Proof\n- Public PyPI, release, source, run, archive, and receipt checks passed.\n\n## Follow-up\n- Complete activation metadata review before merge."
+          gh pr create --base main --head "$branch" --title "feat(runtime): activate ${CANDIDATE_TAG}" --label type/feature --label type/ci --label status/review --label priority/high --label area/plugin --label area/release --label area/qa --body "## Proof\n- Public PyPI, release, source, run, archive, and receipt checks passed.\n\nCloses #477\n\nCloses #451"

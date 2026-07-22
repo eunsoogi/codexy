@@ -21,6 +21,7 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
             "build",
             "--locked",
             "--quiet",
+            "--no-default-features",
             "--bin",
             "codexy-sync-version",
         ])

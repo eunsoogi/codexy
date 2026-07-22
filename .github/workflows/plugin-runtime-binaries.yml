@@ -116,6 +116,6 @@ jobs:
           esac
       - uses: actions/upload-artifact@v4
         with:
-          name: codexy-marketplace-plugin
+          name: codexy-marketplace-plugin-${{ matrix.platform }}
           path: dist/codexy-marketplace-plugin.tar.gz
           if-no-files-found: error

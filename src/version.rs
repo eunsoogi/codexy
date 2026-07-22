@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::paths::{display_relative, repo_root};
 
+#[cfg(feature = "runtime-activation")]
 pub mod activation;
 mod bootstrap;
 mod cargo;

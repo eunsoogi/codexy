@@ -188,16 +188,19 @@ fn has_dispatch(document: &Yaml) -> bool {
     })
 }
 
-fn activation_bytes(root: &Path) -> Result<BTreeMap<PathBuf, Vec<u8>>, Box<dyn std::error::Error>> {
+fn activation_bytes(
+    root: &Path,
+) -> Result<BTreeMap<PathBuf, Option<Vec<u8>>>, Box<dyn std::error::Error>> {
     let mut bytes = BTreeMap::new();
     for relative in [
         "plugins/codexy/.codex-plugin/plugin.json",
         "plugins/codexy/runtime-release.json",
+        "plugins/codexy/runtime-candidate.json",
         "plugins/codexy/mcp/codexy-mcp-lsp",
         "plugins/codexy/mcp/codexy-mcp-codegraph",
     ] {
         let path = root.join(&relative);
-        bytes.insert(PathBuf::from(relative), fs::read(path)?);
+        bytes.insert(PathBuf::from(relative), fs::read(path).ok());
     }
     Ok(bytes)
 }

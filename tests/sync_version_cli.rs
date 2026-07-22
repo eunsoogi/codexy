@@ -120,6 +120,8 @@ pub(super) fn archive_repository(
         .status()?;
     assert!(tar_status.success(), "tar extract failed");
     for relative in [
+        "Cargo.toml",
+        "Cargo.lock",
         "packages/getcodexy/pyproject.toml",
         "src/version.rs",
         "src/version/activation.rs",

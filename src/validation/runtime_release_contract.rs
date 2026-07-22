@@ -87,12 +87,7 @@ fn check_artifact(artifact: &Map<String, Value>, state: &str, path: &Path) -> Re
         path,
     )?;
     let tag = string(artifact, "tag", path)?;
-    if !tag.starts_with('v') || tag.len() < 2 {
-        bail!(
-            "{} artifact.tag must be a release tag",
-            display_relative(path)
-        );
-    }
+    check_tag(tag, state, path)?;
     let url = string(artifact, "url", path)?;
     exact(
         url,
@@ -118,6 +113,31 @@ fn check_artifact(artifact: &Map<String, Value>, state: &str, path: &Path) -> Re
             )
         }
         "candidate-proven" => Ok(()),
+        _ => bail!(
+            "{} state must be legacy-public or candidate-proven",
+            display_relative(path)
+        ),
+    }
+}
+
+fn check_tag(tag: &str, state: &str, path: &Path) -> Result<()> {
+    match state {
+        "legacy-public" => exact(tag, LEGACY_TAG, "artifact.tag", path),
+        "candidate-proven" => {
+            let slug = tag.strip_prefix("runtime-candidate-").unwrap_or_default();
+            if !slug.is_empty()
+                && slug
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+            {
+                Ok(())
+            } else {
+                bail!(
+                    "{} artifact.tag must have a safe runtime-candidate slug",
+                    display_relative(path)
+                )
+            }
+        }
         _ => bail!(
             "{} state must be legacy-public or candidate-proven",
             display_relative(path)
