@@ -1,6 +1,8 @@
 """Squash-merge input validation with canonical closing-reference semantics."""
 
 from .titles import pr_title
+from .github_target import PullRequestSelector, pull_request
+from .repository import read_text
 
 CLOSING = {"close", "closes", "closed", "fix", "fixes", "fixed", "resolve", "resolves", "resolved"}
 
@@ -19,9 +21,58 @@ def valid(tool_input: dict[str, object]) -> bool:
     message = tool_input.get("commit_message")
     if not positive_int(number) or tool_input.get("merge_method") != "squash" or not valid_sha(tool_input.get("expected_head_sha")):
         return False
-    if not isinstance(title, str) or not title.endswith(f" (#{number})") or not pr_title(title[: -len(f" (#{number})")]):
+    return message_valid(number, title, message)
+
+
+def message_valid(number: object, title: object, message: object) -> bool:
+    if not positive_int(number) or not isinstance(title, str) or not title.endswith(f" (#{number})"):
         return False
-    return isinstance(message, str) and _unique_final_reference(message)
+    return pr_title(title[: -len(f" (#{number})")]) and isinstance(message, str) and _unique_final_reference(message)
+
+
+def cli(args: list[str], cwd: str) -> tuple[PullRequestSelector, str, str | None, str | None] | None:
+    methods, positionals, subject, body, index = [], [], None, None, 0
+    while index < len(args):
+        if args[index] in {"--squash", "--merge", "--rebase"}:
+            methods.append(args[index][2:])
+            index += 1
+            continue
+        matched, value, next_index = _option(args, index, ("--match-head-commit", "--subject", "--body", "--body-file"))
+        if matched:
+            if value is None or not value:
+                return None
+            if args[index].startswith("--subject"):
+                if subject is not None:
+                    return None
+                subject = value
+            elif args[index].startswith("--body-file"):
+                if body is not None or (body := read_text(cwd, value)) is None:
+                    return None
+            elif args[index].startswith("--body"):
+                if body is not None:
+                    return None
+                body = value
+            index = next_index
+            continue
+        if args[index] == "--delete-branch":
+            index += 1
+            continue
+        if args[index].startswith("-"):
+            return None
+        positionals.append(args[index])
+        index += 1
+    if len(methods) != 1 or len(positionals) != 1 or (selector := pull_request(positionals[0])) is None:
+        return None
+    return selector, methods[0], subject, body
+
+
+def _option(args: list[str], index: int, options: tuple[str, ...]) -> tuple[bool, str | None, int]:
+    for option in options:
+        if args[index] == option:
+            return True, args[index + 1] if index + 1 < len(args) else None, index + 2
+        if args[index].startswith(option + "="):
+            return True, args[index].split("=", 1)[1], index + 1
+    return False, None, index
 
 
 def _unique_final_reference(message: str) -> bool:

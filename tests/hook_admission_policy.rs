@@ -25,12 +25,12 @@ fn official_event_outputs_are_deterministic_deny_or_zero() -> TestResult {
 fn thread_routing_requires_explicit_model_and_thinking_only() -> TestResult {
     let root = root();
     for input in [json!({}), json!({"model":"gpt-5.6-sol"}), json!({"thinking":"high"}),
-        json!({"model":null,"thinking":"high"}), json!({"model":"gpt-5.6-sol","thinking":"  "})]
+        json!({"model":null,"thinking":"high"}), json!({"model":"gpt-5.6-sol","thinking":"  "}),
+        json!({"threadId":"child-453","prompt":"canary","model":"gpt-5.6-sol","thinking":"low"}),
+        json!({"threadId":"child-453","prompt":"canary","model":"gpt-5.6-terra","thinking":"high"})]
     {
         assert_deny(&run(&root, "PreToolUse", &payload("codex_app__send_message_to_thread", input, None))?, "PreToolUse")?;
     }
-    assert_eq!(run(&root, "PreToolUse", &payload("codex_app__send_message_to_thread",
-        json!({"threadId":"x","prompt":"canary","model":"explicit","thinking":"explicit"}), None))?, b"");
     Ok(())
 }
 
@@ -81,7 +81,7 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
         "git push --mirror origin", "sudo -u root git push --force origin topic",
         "printf '%s\\n' origin topic | xargs git push --force",
         "gh pr create --title 'Plain title' --body x",
-        "gh pr merge 453 --admin=true", "command -p git push --force origin topic",
+        "gh pr merge 453 --admin=true", "gh pr merge 453 --squash", "gh pr merge 453 --squash --subject garbage --body garbage", "command -p git push --force origin topic",
         "rm -rf ${HOME}", "echo x | sh"]
     {
         assert_deny(&bash(&root, owned.path(), command)?, "PreToolUse")?;
@@ -112,6 +112,7 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
     assert_deny(&bash(&root, owned.path(), "gh pr edit 479 --body x")?, "PreToolUse")?;
     assert_eq!(bash(&root, other.path(), "echo $(printf safe)")?, b"");
     assert_eq!(bash(&root, outside.path(), "printf safe")?, b"");
+    assert_eq!(bash(&root, owned.path(), "gh pr merge 453 --squash --subject 'fix(hooks): enforce policy (#453)' --body 'Summary\n\nFixes #453'")?, b"");
     Ok(())
 }
 

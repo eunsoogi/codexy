@@ -9,7 +9,7 @@ from typing import Any
 from .body import has_sections
 from .github_api import forbidden as api_forbidden
 from .github_target import PullRequestSelector, pull_request
-from .merge import positive_int
+from .merge import cli as cli_merge, message_valid, positive_int
 from .pull_request import create as pr_create, shell_update
 from .repository import OWNED, github_identity, read_text
 from .titles import issue_title
@@ -70,7 +70,7 @@ def admitted(mutation: Mutation) -> bool:
         return pr_create({"title": mutation.title, "body": body, "issue": mutation.issue})
     if mutation.kind == MutationKind.PR_UPDATE:
         return shell_update(mutation.number, mutation.title, body, mutation.body is not None)
-    return mutation.number is not None and mutation.merge_method == "squash"
+    return mutation.merge_method == "squash" and message_valid(mutation.number, mutation.title, body)
 
 
 def connector_admitted(tool: str, data: dict[str, Any]) -> bool:
@@ -98,7 +98,7 @@ def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: 
         api_owned = default_owned if repository is None else github_identity(repository) == OWNED
         return api_forbidden(filtered[1:], api_owned, cwd)
     if operation == ["pr", "merge"]:
-        mutation = _merge(filtered[2:])
+        mutation = _merge(filtered[2:], cwd)
     elif operation == ["pr", "create"]:
         mutation = _form(MutationKind.PR_CREATE, filtered[2:], cwd)
     elif operation == ["pr", "edit"]:
@@ -160,29 +160,12 @@ def _target(args: list[str], default: bool | None) -> tuple[list[str], bool, str
     return filtered, default is not False, repository
 
 
-def _merge(args: list[str]) -> Mutation | None:
-    methods, positionals, index = [], [], 0
-    while index < len(args):
-        if args[index] in {"--squash", "--merge", "--rebase"}:
-            methods.append(args[index][2:])
-            index += 1
-            continue
-        matched, value, next_index = _option(args, index, ("--match-head-commit", "--subject", "--body", "--body-file"))
-        if matched:
-            if value is None or not value:
-                return None
-            index = next_index
-            continue
-        if args[index] == "--delete-branch":
-            index += 1
-            continue
-        if args[index].startswith("-"):
-            return None
-        positionals.append(args[index])
-        index += 1
-    if len(methods) != 1 or len(positionals) != 1 or (selector := pull_request(positionals[0])) is None:
+def _merge(args: list[str], cwd: str) -> Mutation | None:
+    parsed = cli_merge(args, cwd)
+    if parsed is None:
         return None
-    return Mutation(MutationKind.PR_MERGE, True, selector.number, merge_method=methods[0], selector=selector)
+    selector, method, subject, body = parsed
+    return Mutation(MutationKind.PR_MERGE, True, selector.number, subject, BodyEvidence(body, BodySource.INLINE) if body is not None else None, merge_method=method, selector=selector)
 
 
 def _form(kind: MutationKind, args: list[str], cwd: str) -> Mutation | None:

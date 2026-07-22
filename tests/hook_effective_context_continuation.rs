@@ -45,7 +45,7 @@ fn pull_request_selectors_determine_the_typed_repository_target() -> TestResult 
         assert_case(&root, &foreign, command, true)?;
     }
     for command in [
-        "gh pr merge https://github.com/eunsoogi/codexy/pull/453 --squash",
+        "gh pr merge https://github.com/eunsoogi/codexy/pull/453 --squash --subject 'fix(hooks): enforce policy (#453)' --body 'Summary\n\nFixes #453'",
         "gh pr merge https://github.com/openai/codex/pull/453 --merge",
         "gh pr edit https://github.com/openai/codex/pull/453 --title 'Plain title'",
         "gh pr merge 453 --merge",

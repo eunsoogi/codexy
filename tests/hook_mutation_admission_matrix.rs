@@ -111,11 +111,11 @@ fn merge_admission_requires_canonical_squash() -> TestResult {
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     assert_case(&root, &owned, "gh pr merge 453 --merge", true)?;
     assert_case(&root, &owned, "gh pr merge --rebase 453", true)?;
-    assert_case(&root, &owned, "gh pr merge 453 --squash", false)?;
+    assert_case(&root, &owned, "gh pr merge 453 --squash", true)?;
     assert_case(
         &root,
         &owned,
-        "gh pr merge --delete-branch --squash --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 453",
+        "gh pr merge --delete-branch --squash --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --subject 'fix(hooks): enforce policy (#453)' --body 'Summary\n\nFixes #453' 453",
         false,
     )
 }

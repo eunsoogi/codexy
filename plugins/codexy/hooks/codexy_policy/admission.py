@@ -52,7 +52,8 @@ def evaluate(event: str, payload: bytes) -> bytes:
         return deny(event)
     tool, tool_input = data["tool_name"], data.get("tool_input")
     if tool == THREAD:
-        return b"" if isinstance(tool_input, dict) and _nonblank(tool_input, "model") and _nonblank(tool_input, "thinking") else deny(event)
+        # The hook payload does not carry the recipient's authoritative UI route.
+        return deny(event)
     if tool in FIELDS:
         return _github(event, tool, tool_input)
     if tool != "Bash":
@@ -83,7 +84,3 @@ def _github(event: str, tool: str, data: object) -> bytes:
     else:
         invalid = not connector_admitted(tool, data)
     return deny(event) if invalid else b""
-
-
-def _nonblank(data: dict[str, Any], field: str) -> bool:
-    return isinstance(data.get(field), str) and bool(data[field].strip())
