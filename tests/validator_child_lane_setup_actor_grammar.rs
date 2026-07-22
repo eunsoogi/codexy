@@ -200,6 +200,16 @@ fn validator_handles_setup_relation_grammar_boundaries() -> TestResult {
             "Branch codexy/463 wasn't created by the child before classification.",
             true,
         ),
+        (
+            "get-passive child agent governs parent recipient",
+            "The branch for the parent got created by the child before classification.",
+            false,
+        ),
+        (
+            "get-passive parent agent governs child recipient",
+            "The branch for the child got created by the parent before classification.",
+            true,
+        ),
     ] {
         assert_result(label, setup, expected)?;
     }

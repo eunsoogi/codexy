@@ -11,15 +11,6 @@ pub(super) struct SetupRelation {
     pub(super) before_classification: bool,
 }
 
-#[derive(Clone, Copy)]
-enum SetupAction {
-    Create,
-    Switch,
-    Checkout,
-    Setup,
-    WorktreeAdd,
-}
-
 pub(super) fn has_setup_action(line: &str) -> bool {
     let words = words(line);
     let relations = setup_relations(line);
@@ -166,37 +157,42 @@ fn actor_word(word: &str) -> Option<SetupActor> {
 fn action_is_passive(words: &[&str], start: usize, action: usize) -> bool {
     words[action.saturating_sub(3).max(start)..action]
         .iter()
-        .any(|word| matches!(*word, "is" | "are" | "was" | "were" | "been" | "being"))
+        .any(|word| {
+            matches!(
+                *word,
+                "is" | "are" | "was" | "were" | "been" | "being" | "get" | "got"
+            )
+        })
 }
 
-fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {
+fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
     match words[index] {
-        "create" if has_completed_auxiliary(words, index) => Some(SetupAction::Create),
-        "creates" | "created" if !is_future_plan(words, index) => Some(SetupAction::Create),
-        "creation" if words.get(index + 1) == Some(&"occurred") => Some(SetupAction::Create),
+        "create" if has_completed_auxiliary(words, index) => Some(()),
+        "creates" | "created" if !is_future_plan(words, index) => Some(()),
+        "creation" if words.get(index + 1) == Some(&"occurred") => Some(()),
         "switch"
             if has_completed_auxiliary(words, index)
                 || words.get(index.wrapping_sub(1)) == Some(&"git") =>
         {
-            Some(SetupAction::Switch)
+            Some(())
         }
-        "switches" | "switched" => Some(SetupAction::Switch),
-        "checkout" | "checkouts" => Some(SetupAction::Checkout),
+        "switches" | "switched" => Some(()),
+        "checkout" | "checkouts" => Some(()),
         "check"
             if words.get(index + 1) == Some(&"out") && has_completed_auxiliary(words, index) =>
         {
-            Some(SetupAction::Checkout)
+            Some(())
         }
-        "checked" if words.get(index + 1) == Some(&"out") => Some(SetupAction::Checkout),
-        "setup" => Some(SetupAction::Setup),
-        "set" | "sets" if words.get(index + 1) == Some(&"up") => Some(SetupAction::Setup),
+        "checked" if words.get(index + 1) == Some(&"out") => Some(()),
+        "setup" => Some(()),
+        "set" | "sets" if words.get(index + 1) == Some(&"up") => Some(()),
         "add"
             if has_completed_auxiliary(words, index)
                 || (index > 0 && words[index - 1] == "worktree") =>
         {
-            Some(SetupAction::WorktreeAdd)
+            Some(())
         }
-        "adds" | "added" => Some(SetupAction::WorktreeAdd),
+        "adds" | "added" => Some(()),
         _ => None,
     }
 }
