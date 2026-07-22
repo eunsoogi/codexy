@@ -55,6 +55,9 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str) {
             "for ($attempt = 0; $attempt -lt 15; $attempt++)",
             "Start-Sleep -Seconds 2",
             "MCP status evidence",
+            "$entrypointRequests = @(",
+            "installed $server PE omitted its expected tool",
+            "installed $server PE process timed out",
             "needs: [package-plugin, windows-installed-mcp]",
         ],
     );

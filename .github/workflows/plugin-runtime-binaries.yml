@@ -329,6 +329,60 @@ jobs:
           }
           $env:PATHEXT = ""
 
+          $expected = @{
+            lsp = @{ Server = "codexy-lsp"; Tool = "lsp_status" }
+            codegraph = @{ Server = "codexy-codegraph"; Tool = "codegraph_index" }
+          }
+          $entrypointRequests = @(
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"installed-windows-ci","version":"1"}}}',
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}',
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+          )
+          foreach ($server in @("lsp", "codegraph")) {
+            $entrypoint = Join-Path $installedPath "mcp/codexy-mcp-$server.exe"
+            $entrypointStart = [System.Diagnostics.ProcessStartInfo]::new()
+            $entrypointStart.FileName = $entrypoint
+            $entrypointStart.ArgumentList.Add("--stdio")
+            $entrypointStart.UseShellExecute = $false
+            $entrypointStart.RedirectStandardInput = $true
+            $entrypointStart.RedirectStandardOutput = $true
+            $entrypointStart.RedirectStandardError = $true
+            $entrypointStart.CreateNoWindow = $true
+            $entrypointProcess = [System.Diagnostics.Process]::new()
+            $entrypointProcess.StartInfo = $entrypointStart
+            $entrypointStarted = $false
+            try {
+              $entrypointStarted = $entrypointProcess.Start()
+              if (-not $entrypointStarted) { throw "failed to start installed $server PE" }
+              $entrypointStdout = $entrypointProcess.StandardOutput.ReadToEndAsync()
+              $entrypointStderr = $entrypointProcess.StandardError.ReadToEndAsync()
+              foreach ($request in $entrypointRequests) { $entrypointProcess.StandardInput.WriteLine($request) }
+              $entrypointProcess.StandardInput.Close()
+              if (-not $entrypointProcess.WaitForExit(15000)) {
+                $entrypointProcess.Kill($true)
+                $entrypointProcess.WaitForExit()
+                throw "installed $server PE process timed out"
+              }
+              $entrypointErrors = $entrypointStderr.GetAwaiter().GetResult()
+              if ($entrypointProcess.ExitCode -ne 0) { throw "installed $server PE failed: $entrypointErrors" }
+              $entrypointMessages = @($entrypointStdout.GetAwaiter().GetResult() -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
+              $entrypointInitialize = $entrypointMessages | Where-Object id -eq 1
+              $entrypointTools = $entrypointMessages | Where-Object id -eq 2
+              if ($entrypointInitialize.result.serverInfo.name -ne $expected[$server].Server) {
+                throw "installed $server PE returned the wrong server identity"
+              }
+              if ($expected[$server].Tool -notin @($entrypointTools.result.tools.name)) {
+                throw "installed $server PE omitted its expected tool"
+              }
+            } finally {
+              if ($entrypointStarted -and -not $entrypointProcess.HasExited) {
+                $entrypointProcess.Kill($true)
+                $entrypointProcess.WaitForExit()
+              }
+              $entrypointProcess.Dispose()
+            }
+          }
+
           $codexPackageRoot = Join-Path (npm root --global) "@openai/codex"
           $codexExecutables = @(Get-ChildItem -LiteralPath $codexPackageRoot -Recurse -Filter codex.exe -File)
           if ($codexExecutables.Count -ne 1) {
@@ -357,10 +411,6 @@ jobs:
               $message = $line | ConvertFrom-Json
             } until ($message.id -eq 1)
 
-            $expected = @{
-              lsp = @{ Server = "codexy-lsp"; Tool = "lsp_status" }
-              codegraph = @{ Server = "codexy-codegraph"; Tool = "codegraph_index" }
-            }
             $statuses = @()
             for ($attempt = 0; $attempt -lt 15; $attempt++) {
               $requestId = 2 + $attempt
