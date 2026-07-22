@@ -120,6 +120,34 @@ fn sequential_shell_state_tracks_exact_supported_mutations() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn control_flow_expansion_and_pushurl_state_close_only_sensitive_gaps() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    assert_case(
+        &root,
+        &foreign,
+        &format!("C=cd; G=git; if true; then $C {}; $G push --force origin topic; fi", owned.display()),
+        true,
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "git config remote.origin.pushurl git@github.com:eunsoogi/codexy.git && git push --force origin topic",
+        true,
+    )?;
+    assert_case(&root, &foreign, "if true; then printf '%s' \"$SAFE\"; fi", false)?;
+    assert_case(
+        &root,
+        &foreign,
+        "git config remote.origin.pushurl https://github.com/openai/codex.git && git push --force origin topic",
+        false,
+    )
+}
+
 fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
     let input = json!({
         "hook_event_name": "PreToolUse",

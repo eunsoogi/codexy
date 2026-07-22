@@ -11,7 +11,7 @@ REMOTE_VALUE = re.compile(r"^remote\.(.+)\.(url|pushurl)$", re.IGNORECASE)
 REMOTE_SECTION = re.compile(r'^remote "([^"\r\n]+)"$', re.IGNORECASE)
 
 
-def apply_remote_urls(config: str | None, remote_urls: tuple[tuple[str, str], ...]) -> str | None:
+def apply_remote_urls(config: str | None, remote_urls: tuple[tuple[str, str, str], ...]) -> str | None:
     """Apply tracked remote URL changes to a parsed local configuration."""
     if config is None:
         return None
@@ -25,13 +25,13 @@ def apply_remote_urls(config: str | None, remote_urls: tuple[tuple[str, str], ..
             for section in parser.sections()
             if (match := REMOTE_SECTION.fullmatch(section)) is not None
         }
-        for name, value in remote_urls:
+        for name, key, value in remote_urls:
             section = sections.get(name)
             if section is None:
                 section = f'remote "{name}"'
                 parser.add_section(section)
                 sections[name] = section
-            parser[section]["url"] = value
+            parser[section][key] = value
         output = StringIO()
         parser.write(output)
         return output.getvalue()
@@ -39,7 +39,7 @@ def apply_remote_urls(config: str | None, remote_urls: tuple[tuple[str, str], ..
         return None
 
 
-def remote_config(cwd: str, git_dir: str | None, push: bool, remote_urls: tuple[tuple[str, str], ...] = ()) -> str | None:
+def remote_config(cwd: str, git_dir: str | None, push: bool, remote_urls: tuple[tuple[str, str, str], ...] = ()) -> str | None:
     """Return a synthetic config containing every effective target URL."""
     command = ["git", "-C", cwd]
     if git_dir is not None:
@@ -66,11 +66,11 @@ def remote_config(cwd: str, git_dir: str | None, push: bool, remote_urls: tuple[
             remote[match.group(2).casefold()].append(value)
     except UnicodeError:
         return None
-    for name, value in remote_urls:
+    for name, key, value in remote_urls:
         remote = remotes.get(name)
         if remote is None:
             return None
-        remote["url"] = [value]
+        remote[key] = [value]
     targets: list[str] = []
     for remote in remotes.values():
         targets.extend((remote["pushurl"] or remote["url"]) if push else remote["url"] + remote["pushurl"])

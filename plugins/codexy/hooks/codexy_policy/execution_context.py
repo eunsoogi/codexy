@@ -19,7 +19,7 @@ class ExecutionContext:
     gh_repo: str | None
     environment: tuple[tuple[str, str], ...] = ()
     opaque_environment: bool = False
-    remote_urls: tuple[tuple[str, str], ...] = ()
+    remote_urls: tuple[tuple[str, str, str], ...] = ()
 
 
 def assignment(value: str) -> bool:
@@ -52,11 +52,12 @@ def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
     return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment, context.remote_urls)
 
 
-def remote_url(context: ExecutionContext, remote: str, value: str) -> ExecutionContext:
+def remote_url(context: ExecutionContext, remote: str, kind: str, value: str) -> ExecutionContext:
     """Record a supported remote URL change for later shell segments."""
-    remotes = dict(context.remote_urls)
-    remotes[remote.casefold()] = value
-    return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment, tuple(remotes.items()))
+    remotes = {(name, key): current for name, key, current in context.remote_urls}
+    remotes[(remote.casefold(), kind)] = value
+    values = tuple((name, key, current) for (name, key), current in remotes.items())
+    return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment, values)
 
 
 def unset(context: ExecutionContext, key: str) -> ExecutionContext:

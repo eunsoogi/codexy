@@ -32,7 +32,7 @@ class GitInvocation:
 
 def normalize(
     arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None,
-    config_owned: Callable[[str], bool], environment_config: dict[str, str], remote_urls: tuple[tuple[str, str], ...] = (),
+    config_owned: Callable[[str], bool], environment_config: dict[str, str], remote_urls: tuple[tuple[str, str, str], ...] = (),
 ) -> GitInvocation | None:
     """Return a policy-ready effective Git invocation, or fail closed."""
     try:
@@ -59,7 +59,7 @@ def normalize(
 def _normalize(
     arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None,
     config_owned: Callable[[str], bool], inline_aliases: dict[str, str], rewrites: list[UrlRewrite],
-    seen: set[str], depth: int, remote_urls: tuple[tuple[str, str], ...],
+    seen: set[str], depth: int, remote_urls: tuple[tuple[str, str, str], ...],
 ) -> GitInvocation | None:
     while arguments and arguments[0].startswith("-"):
         option = arguments.pop(0)

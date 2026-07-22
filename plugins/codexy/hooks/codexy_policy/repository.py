@@ -65,7 +65,7 @@ def repository_owned(cwd: str) -> bool | None:
 
 def repository_owned_with_rewrites(
     cwd: str, git_dir: str | None, rewrites: list[UrlRewrite], push: bool,
-    remote_urls: tuple[tuple[str, str], ...] = (),
+    remote_urls: tuple[tuple[str, str, str], ...] = (),
 ) -> bool | None:
     """Classify repository remotes after command-scoped Git URL rewriting."""
     config = remote_config(cwd, git_dir, push, remote_urls)
@@ -161,7 +161,7 @@ def read_text(cwd: str, target: str) -> str | None:
 
 def _config_owned(
     config: str | None, inline_rewrites: list[UrlRewrite] | None = None, push: bool = False,
-    remote_urls: tuple[tuple[str, str], ...] = (),
+    remote_urls: tuple[tuple[str, str, str], ...] = (),
 ) -> bool | None:
     config = apply_remote_urls(config, remote_urls)
     if config is None:

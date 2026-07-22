@@ -9,7 +9,7 @@ from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
 from .github_alias import expand as expand_gh_alias
 from .github import forbidden as gh_forbidden
-from .execution_context import ExecutionContext, at as context_at, git_config, remote_url
+from .execution_context import ExecutionContext, assignment, at as context_at, git_config, remote_url
 from .invocation import resolve
 from .repository import OWNED, UrlRewrite, git_directory_owned, github_identity, identity, repository_owned, rewrite_url
 from .shell_context import changed_directory, flag
@@ -19,7 +19,9 @@ OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
 POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GH_REPO)\s*=")
-REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.url", re.IGNORECASE)
+DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
+CONTROL_COMMAND_START = {"if", "then", "elif", "else", "while", "until", "do"}
+REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.(url|pushurl)", re.IGNORECASE)
 
 
 def forbidden(
@@ -56,7 +58,7 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
                 return True
         lexical_command = SUBCOMMAND.sub("__codexy_subcommand__", command)
         if CONTROL.search(command):
-            return POLICY_STATE.search(command) is not None
+            return POLICY_STATE.search(command) is not None or _dynamic_control_executable(command)
     try:
         lexer = shlex.shlex(_separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
@@ -123,7 +125,7 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
     return False, context
 
 
-def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str] | None]:
+def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str, str] | None]:
     environment_config = git_config(context)
     if environment_config is None:
         return True, None
@@ -148,13 +150,13 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, 
         if remote is not None and len(invocation.arguments) == 2 and invocation.arguments[1] and not any(
             char in invocation.arguments[1] for char in "\0\r\n"
         ):
-            return False, (remote.group(1), invocation.arguments[1])
+            return False, (remote.group(1), remote.group(2).casefold(), invocation.arguments[1])
         if any(REMOTE_URL_CONFIG.fullmatch(argument) for argument in invocation.arguments):
             return True, None
     if invocation.operation == "remote" and invocation.arguments[:1] in (["add"], ["set-url"]):
         if len(invocation.arguments) != 3 or not invocation.arguments[1] or any(char in invocation.arguments[1] + invocation.arguments[2] for char in "\0\r\n"):
             return True, None
-        return False, (invocation.arguments[1], invocation.arguments[2])
+        return False, (invocation.arguments[1], "url", invocation.arguments[2])
     push_like = invocation.operation in {"push", "send-pack"}
     target_owned = _explicit_owned(
         invocation.arguments, list(invocation.rewrites), push_like
@@ -189,6 +191,22 @@ def _separate_lines(command: str) -> str:
             result.append(";" if char == "\n" and quote is None else char)
         index += 1
     return "".join(result)
+
+
+def _dynamic_control_executable(command: str) -> bool:
+    lexer = shlex.shlex(_separate_lines(command), posix=True, punctuation_chars=";&|(){}")
+    lexer.whitespace_split, lexer.commenters = True, ""
+    command_start = True
+    for token in lexer:
+        if token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"} or token.casefold() in CONTROL_COMMAND_START:
+            command_start = True
+        elif command_start and (token == "!" or assignment(token)):
+            continue
+        else:
+            if command_start and DYNAMIC_NAME.fullmatch(token):
+                return True
+            command_start = False
+    return False
 
 
 def _rm(args: list[str]) -> bool:
