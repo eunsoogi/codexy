@@ -40,7 +40,7 @@ fn github_owned_mutations_follow_canonical_contracts() -> TestResult {
     for title in ["Fix: broken", " Improve hooks", "Ämprove hooks"] {
         assert_deny(&github(&root, "github_create_issue", json!({"title":title}))?, "PreToolUse")?;
     }
-    assert_eq!(github(&root, "github_create_issue", json!({"title":"Improve hooks"}))?, b"");
+    assert_eq!(github(&root, "github_create_issue", json!({"title":"Improve hooks","body":"## Problem\nA\n## Scope\nB\n## Acceptance Criteria\nC\n## Verification\nD"}))?, b"");
     for title in ["fix(a.b): invalid scope", " fix(hooks): leading"] {
         assert_deny(&github(&root, "github_create_pull_request", json!({"title":title}))?, "PreToolUse")?;
     }

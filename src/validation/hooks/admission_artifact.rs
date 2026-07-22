@@ -42,6 +42,10 @@ const FILES: &[(&str, &str)] = &[
         include_str!("../../../plugins/codexy/hooks/codexy_policy/shell.py"),
     ),
     (
+        "codexy_policy/shell_context.py",
+        include_str!("../../../plugins/codexy/hooks/codexy_policy/shell_context.py"),
+    ),
+    (
         "codexy_policy/titles.py",
         include_str!("../../../plugins/codexy/hooks/codexy_policy/titles.py"),
     ),

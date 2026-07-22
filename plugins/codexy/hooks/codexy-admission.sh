@@ -13,9 +13,10 @@ if [ -z "$plugin_root" ]; then
   plugin_root=${0%/hooks/codexy-admission.sh}
 fi
 
-# The absolute interpreter and plugin-relative source avoid PATH, package managers,
-# imports outside this archive, bytecode writes, caches, and network bootstrap.
-if env -i /usr/bin/python3 -I -B "${plugin_root}/hooks/codexy-admission.py" \
+# The fixed PATH admits supported macOS Python locations without inheriting user state.
+if env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin python3 -I -B -c \
+  'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' && \
+  env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin python3 -I -B "${plugin_root}/hooks/codexy-admission.py" \
   --event "$event"; then
   exit 0
 fi

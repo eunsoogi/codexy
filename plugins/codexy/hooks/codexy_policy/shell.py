@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import os
 import re
 import shlex
-from pathlib import Path
 
 from .github import forbidden as gh_forbidden
 from .repository import OWNED, git_directory_owned, github_identity, identity, repository_owned
+from .shell_context import changed_directory as _changed_directory, command_option as _command_option, flag as _flag, name as _name, resolve_cwd as _resolve_cwd
 from .titles import issue_title, pr_title
-from .wrappers import command_command, sudo_command, time_command, timeout_command
+from .wrappers import command_command, exec_command, nohup_command, sudo_command, sudo_directory, time_command, timeout_command
 
 OPS = {";", "&&", "||", "|", "&"}
-WRAPPERS = {"env", "command", "sudo", "exec", "time", "timeout"}
+WRAPPERS = {"env", "command", "sudo", "exec", "nohup", "time", "timeout"}
 OPAQUE = re.compile(r"\$\(|`|\$\{|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 
@@ -28,7 +27,10 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
         try:
             opaque_tokens = shlex.split(command)
             if opaque_tokens and _name(opaque_tokens[0]) == "eval":
-                if forbidden(" ".join(opaque_tokens[1:]), cwd, depth + 1):
+                evaluated = opaque_tokens[1:]
+                if evaluated[:1] == ["--"]:
+                    evaluated = evaluated[1:]
+                if forbidden(" ".join(evaluated), cwd, depth + 1):
                     return True
             elif _explicit_owned(opaque_tokens) is True:
                 return True
@@ -38,6 +40,8 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
             nested = match.group(1) if match.group(1) is not None else match.group(2)
             if forbidden(nested, cwd, depth + 1):
                 return True
+        if re.search(r"\$\{|<<<?|\b(?:if|for|while|until|case)\b", command):
+            return True
     try:
         lexer = shlex.shlex(command.replace("\n", ";"), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
@@ -84,18 +88,23 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
         name, tokens = _name(tokens[0]), tokens[1:]
         if name == "env":
             while tokens and (tokens[0].startswith("-") or "=" in tokens[0]):
-                if tokens[0].startswith("GIT_DIR="):
-                    git_dir = tokens[0].split("=", 1)[1]
-                elif tokens[0].startswith("GH_REPO="):
-                    gh_repo = tokens[0].split("=", 1)[1]
-                if tokens[0] in {"-S", "--split-string"}:
+                option = tokens[0]
+                if option.startswith("GIT_DIR="):
+                    git_dir = option.split("=", 1)[1]
+                elif option.startswith("GH_REPO="):
+                    gh_repo = option.split("=", 1)[1]
+                if option in {"-S", "--split-string"}:
                     return len(tokens) < 2 or forbidden(tokens[1], cwd, depth + 1)
-                if tokens[0].startswith("--split-string="):
-                    return forbidden(tokens[0].split("=", 1)[1], cwd, depth + 1)
-                if tokens[0] in {"-u", "--unset", "-C", "--chdir"}:
+                if option.startswith("--split-string="):
+                    return forbidden(option.split("=", 1)[1], cwd, depth + 1)
+                attached = option[:2] if option.startswith(("-u", "-C")) and len(option) > 2 else option
+                value = option[2:] if attached != option else None
+                if attached in {"-u", "--unset", "-C", "--chdir"}:
+                    if value is not None:
+                        tokens = [attached, value, *tokens[1:]]
                     if len(tokens) < 2:
                         return True
-                    if tokens[0] == "-u" or tokens[0] == "--unset":
+                    if attached == "-u" or attached == "--unset":
                         if tokens[1] == "GIT_DIR":
                             git_dir = None
                         elif tokens[1] == "GH_REPO":
@@ -104,17 +113,29 @@ def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) ->
                         cwd = _resolve_cwd(cwd, tokens[1])
                         cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
                     tokens = tokens[2:]
-                elif tokens[0].startswith("--chdir="):
-                    cwd = _resolve_cwd(cwd, tokens[0].split("=", 1)[1])
+                elif option.startswith("--chdir="):
+                    cwd = _resolve_cwd(cwd, option.split("=", 1)[1])
                     cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
                     tokens = tokens[1:]
                 else:
                     tokens = tokens[1:]
         elif name == "sudo":
+            directory = sudo_directory(tokens)
             wrapped = tokens
             tokens = sudo_command(tokens)
             if tokens is None:
                 return cwd_owned is not False or _explicit_owned(wrapped) is True
+            if directory is not None:
+                cwd = _resolve_cwd(cwd, directory)
+                cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
+        elif name == "exec":
+            tokens = exec_command(tokens)
+            if tokens is None:
+                return cwd_owned is not False
+        elif name == "nohup":
+            tokens = nohup_command(tokens)
+            if tokens is None:
+                return cwd_owned is not False
         elif name == "time":
             wrapped = tokens
             tokens = time_command(tokens)
@@ -162,6 +183,8 @@ def _git(args: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None)
                 config, args = args[1], args[2:]
             else:
                 config, args = option[3:], args[1:]
+            if config.startswith("alias.") and "=!" in config:
+                return forbidden(config.split("=!", 1)[1], cwd, 1)
             if cwd_owned is not False or _config_owned(config):
                 return True
             continue
@@ -207,21 +230,6 @@ def _xargs(args: list[str], cwd: str, cwd_owned: bool | None, depth: int) -> boo
     return bool(args) and _segment(args, cwd, cwd_owned, depth + 1)
 
 
-def _changed_directory(tokens: list[str], cwd: str) -> str:
-    while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
-        tokens = tokens[1:]
-    if not tokens or _name(tokens[0]) != "cd":
-        return cwd
-    args = tokens[1:]
-    if args[:1] == ["--"]:
-        args = args[1:]
-    return _resolve_cwd(cwd, args[0]) if len(args) == 1 else cwd
-
-
-def _resolve_cwd(cwd: str, target: str) -> str:
-    return os.path.abspath(os.path.join(cwd, target))
-
-
 def _rm(args: list[str]) -> bool:
     targets = [arg for arg in args if not arg.startswith("-")]
     broad = {"/", "/*", "~", "$HOME", "${HOME}"}
@@ -235,16 +243,3 @@ def _explicit_owned(args: list[str]) -> bool | None:
 
 def _config_owned(config: str) -> bool:
     return "=" in config and identity(config.split("=", 1)[1]) == OWNED
-
-
-def _command_option(value: str) -> bool:
-    return value.lower() in {"-command", "/c"} or (value.startswith("-") and not value.startswith("--") and "c" in value.lower()[1:])
-
-
-def _flag(args: list[str], short: str, long: str) -> bool:
-    return any(arg == long or arg.startswith(long + "=") or (arg.startswith("-") and not arg.startswith("--") and short in arg[1:]) for arg in args)
-
-
-def _name(value: str) -> str:
-    name = Path(value).name.lower()
-    return name[:-4] if name.endswith(".exe") else name

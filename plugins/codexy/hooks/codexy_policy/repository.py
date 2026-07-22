@@ -66,8 +66,13 @@ def _config_owned(config: str | None) -> bool | None:
     try:
         parser = configparser.ConfigParser(interpolation=None, strict=True)
         parser.read_string(config)
+        rewrites = [
+            (parser[name].get("insteadOf", ""), name[5:-1])
+            for name in parser.sections()
+            if name.startswith('url "') and name.endswith('"') and parser[name].get("insteadOf")
+        ]
         identities = [
-            identity(parser[name].get(key, ""))
+            identity(_rewrite(parser[name].get(key, ""), rewrites))
             for name in parser.sections()
             if REMOTE.fullmatch(name)
             for key in ("url", "pushurl")
@@ -78,6 +83,14 @@ def _config_owned(config: str | None) -> bool | None:
     if not identities or any(item is None for item in identities):
         return None
     return OWNED in identities
+
+
+def _rewrite(value: str, rewrites: list[tuple[str, str]]) -> str:
+    matches = [(prefix, replacement) for prefix, replacement in rewrites if value.startswith(prefix)]
+    if not matches:
+        return value
+    prefix, replacement = max(matches, key=lambda item: len(item[0]))
+    return replacement + value[len(prefix):]
 
 
 def _find_config(cwd: Path) -> str | None:

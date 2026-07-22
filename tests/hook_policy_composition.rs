@@ -16,22 +16,62 @@ fn shell_policy_models_composed_execution_context() -> TestResult {
         "multi-foreign",
         &["https://github.com/openai/codex.git", "https://github.com/rust-lang/cargo.git"],
     )?;
+    let rewritten = repository(
+        workspace.path(),
+        "rewritten",
+        &["shortcut:codexy.git"],
+    )?;
+    std::fs::write(
+        rewritten.join(".git/config"),
+        "[remote \"origin\"]\n\turl = shortcut:codexy.git\n[url \"git@github.com:eunsoogi/\"]\n\tinsteadOf = shortcut:\n",
+    )?;
     for command in [
-        "GIT_DIR=../owned/.git git -C foreign push --force origin topic",
-        "GIT_DIR=../owned/.git env -C foreign git push --force origin topic",
+        "GIT_DIR=owned/.git git -C foreign push --force origin topic",
+        "GIT_DIR=owned/.git env -C foreign git push --force origin topic",
         "bash -lc 'git push --force git@github.com:eunsoogi/codexy.git topic'",
         "eval 'git push --force' 'git@github.com:eunsoogi/codexy.git topic'",
         "GH_REPO=github.com/eunsoogi/codexy gh pr create --title 'Plain title'",
+        "eval -- 'git push --force' 'git@github.com:eunsoogi/codexy.git topic'",
+        "env -Cowned git push --force origin topic",
+        "cd -L owned && git push --force origin topic",
+        "cd -P owned && git push --force origin topic",
+        "sudo -D owned git push --force origin topic",
+        "sudo --chdir=owned git push --force origin topic",
+        "exec -a policy git push --force origin topic",
+        "exec -c git push --force origin topic",
+        "exec -l git push --force origin topic",
+        "nohup git push --force origin topic",
+        "git -c alias.push=!git\\ push\\ --force\\ git@github.com:eunsoogi/codexy.git\\ topic push",
+        "if true; then cd owned; git push --force origin topic; fi",
     ] {
         let output = bash(&root, workspace.path(), command)?;
         assert_deny(&output).map_err(|error| format!("{command}: {output:?}: {error}"))?;
     }
-    assert_eq!(bash(&root, &foreign, "GIT_DIR=../owned/.git env -u GIT_DIR git push --force origin topic")?, b"");
-    assert_eq!(bash(&root, &foreign, "env -u GH_REPO gh pr create --title 'Plain title'")?, b"");
+    assert_eq!(bash(&root, &foreign, "GIT_DIR=owned/.git env -uGIT_DIR git push --force origin topic")?, b"");
+    assert_eq!(bash(&root, &foreign, "GH_REPO=eunsoogi/codexy env -uGH_REPO gh pr create --title 'Plain title'")?, b"");
     assert_eq!(bash(&root, &foreign, "eval 'printf %s' git@github.com:eunsoogi/codexy.git")?, b"");
+    assert_eq!(bash(&root, &foreign, "eval -- 'printf %s' git@github.com:eunsoogi/codexy.git")?, b"");
     assert_eq!(bash(&root, &multi_foreign, "git reset --hard HEAD")?, b"");
+    let rewritten_output = bash(&root, &rewritten, "git push --force origin topic")?;
+    assert_deny(&rewritten_output).map_err(|error| format!("rewrite: {rewritten_output:?}: {error}"))?;
+    let missing_body = github(&root, "Missing body")?;
+    assert_deny(&missing_body).map_err(|error| format!("body: {missing_body:?}: {error}"))?;
+    let hidden_body = github(&root, "```markdown\n## Problem\n```\n## Scope\n## Acceptance Criteria\n## Verification")?;
+    assert_deny(&hidden_body).map_err(|error| format!("hidden body: {hidden_body:?}: {error}"))?;
+    assert_eq!(github(&root, "## Problem\nA\n## Scope\nB\n## Acceptance Criteria\nC\n## Verification\nD")?, b"");
     assert!(owned.exists());
     Ok(())
+}
+
+fn github(root: &std::path::Path, body: &str) -> TestResult<Vec<u8>> {
+    let input = json!({"hook_event_name":"PreToolUse","tool_name":"mcp__codex_apps__github_create_issue","tool_input":{"repository_full_name":"eunsoogi/codexy","title":"Improve hooks","body":body}});
+    let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
+    child.arg("PreToolUse").env_clear().env("PLUGIN_ROOT", root).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = child.spawn()?;
+    child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
+    let output = child.wait_with_output()?;
+    assert!(output.status.success(), "launcher failed: {}", String::from_utf8_lossy(&output.stderr));
+    Ok(output.stdout)
 }
 
 fn plugin_root() -> std::path::PathBuf { std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy") }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from .merge import positive_int, valid as merge_valid
@@ -12,6 +13,7 @@ from .titles import issue_title, pr_title
 MAX_INPUT = 1024 * 1024
 OWNED = "eunsoogi/codexy"
 THREAD = "codex_app__send_message_to_thread"
+REQUIRED_ISSUE_SECTIONS = {"## Problem", "## Scope", "## Acceptance Criteria", "## Verification"}
 FIELDS = {
     "mcp__codex_apps__github_create_issue": {"assignees", "body", "labels", "milestone", "repository_full_name", "title"},
     "mcp__codex_apps__github_update_issue": {"assignees", "body", "issue_number", "labels", "milestone", "repository_full_name", "state", "state_reason", "title"},
@@ -73,9 +75,9 @@ def _github(event: str, tool: str, data: object) -> bytes:
     if tool.endswith("enable_auto_merge"):
         invalid = True
     elif tool.endswith("create_issue"):
-        invalid = not issue_title(data.get("title"))
+        invalid = not issue_title(data.get("title")) or not _issue_body(data.get("body"))
     elif tool.endswith("update_issue"):
-        invalid = not positive_int(data.get("issue_number")) or ("title" in data and not issue_title(data["title"]))
+        invalid = not positive_int(data.get("issue_number")) or ("title" in data and not issue_title(data["title"])) or ("body" in data and not _issue_body(data["body"]))
     elif tool.endswith("create_pull_request"):
         invalid = not pr_title(data.get("title"))
     elif tool.endswith("update_pull_request"):
@@ -87,3 +89,44 @@ def _github(event: str, tool: str, data: object) -> bytes:
 
 def _nonblank(data: dict[str, Any], field: str) -> bool:
     return isinstance(data.get(field), str) and bool(data[field].strip())
+
+
+def _issue_body(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    return REQUIRED_ISSUE_SECTIONS.issubset(_visible_headings(value))
+
+
+def _visible_headings(value: str) -> set[str]:
+    headings: set[str] = set()
+    fence: str | None = None
+    in_comment = False
+    for raw in value.splitlines():
+        if fence is not None:
+            if re.fullmatch(rf"{re.escape(fence)}[ \t]*", raw.lstrip(" ")):
+                fence = None
+            continue
+        if raw.startswith(("    ", "\t")):
+            continue
+        visible, rest = "", raw
+        while rest:
+            if in_comment:
+                end = rest.find("-->")
+                if end < 0:
+                    rest = ""
+                else:
+                    rest, in_comment = rest[end + 3 :], False
+            else:
+                start = rest.find("<!--")
+                if start < 0:
+                    visible += rest
+                    rest = ""
+                else:
+                    visible, rest, in_comment = visible + rest[:start], rest[start + 4 :], True
+        trimmed = visible.lstrip(" ")
+        marker = re.match(r"(`{3,}|~{3,})", trimmed)
+        if marker:
+            fence = marker.group(1)
+        elif trimmed.strip() in REQUIRED_ISSUE_SECTIONS:
+            headings.add(trimmed.strip())
+    return headings

@@ -73,6 +73,47 @@ def command_command(args: list[str]) -> list[str] | None:
     return args
 
 
+def exec_command(args: list[str]) -> list[str] | None:
+    value_options = {"-a"}
+    while args and args[0].startswith("-"):
+        option = args[0]
+        if option == "--":
+            return args[1:]
+        if option in value_options:
+            if len(args) < 2:
+                return None
+            args = args[2:]
+        elif option in {"-c", "-l"}:
+            args = args[1:]
+        elif option.startswith("-a") and len(option) > 2:
+            args = args[1:]
+        else:
+            return None
+    return args
+
+
+def nohup_command(args: list[str]) -> list[str] | None:
+    return args[1:] if args[:1] == ["--"] else args
+
+
+def sudo_directory(args: list[str]) -> str | None:
+    while args and args[0].startswith("-"):
+        option = args[0]
+        if option in {"-D", "--chdir"}:
+            return args[1] if len(args) > 1 else None
+        if option.startswith("--chdir="):
+            return option.split("=", 1)[1]
+        if option.startswith("-D") and len(option) > 2:
+            return option[2:]
+        if option == "--":
+            return None
+        if option in {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "--close-from", "-R", "--chroot", "-T", "--command-timeout"}:
+            args = args[2:]
+        else:
+            args = args[1:]
+    return None
+
+
 def option_value(args: list[str], options: tuple[str, ...]) -> tuple[bool, str | None]:
     for index, arg in enumerate(args):
         for option in options:
