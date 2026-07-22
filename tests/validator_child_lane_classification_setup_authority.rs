@@ -63,6 +63,32 @@ fn validator_allows_aligned_gfm_classification_delimiter() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_rejects_current_thread_owned_actions_before_classification() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    std::fs::write(
+        &path,
+        "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nGoal tool call: create_goal\nPlan tool call: update_plan\nChild branch codexy/463 was created before task classification.\n",
+    )?;
+
+    assert!(!crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_allows_complete_current_thread_owned_classification() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    let classification = complete_gfm_classification()
+        .replacen("parent-supplied", "current-thread-classified", 1)
+        .replacen("child-owned", "current-thread-owned", 1);
+    std::fs::write(&path, format!("{classification}\nGoal tool call: create_goal\nPlan tool call: update_plan\nChild branch codexy/463 was created after classification.\n"))?;
+
+    assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    Ok(())
+}
+
 fn complete_gfm_classification() -> &'static str {
     "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }

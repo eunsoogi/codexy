@@ -67,7 +67,7 @@ fn is_child_owned_lane_evidence(line: &str) -> bool {
     matches!(line, "child-owned" | "child-owned lane")
         || has_present_child_owner_metadata(line)
         || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
-        || "lane ownership: child-owned|owner: child-owned|lane owner: child-owned|owner decision: child-owned|owner decision: current-thread-owned child implementation|owner decision: current-thread-owned implementation lane"
+        || "lane ownership: child-owned|lane ownership: current-thread-owned|owner: child-owned|owner: current-thread-owned|lane owner: child-owned|lane owner: current-thread-owned|owner decision: child-owned|owner decision: current-thread-owned child implementation|owner decision: current-thread-owned implementation lane"
             .split('|')
             .any(|marker| line.starts_with(marker))
 }
