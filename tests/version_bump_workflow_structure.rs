@@ -59,7 +59,12 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
     assert!(!reconcile.split_ascii_whitespace().any(|token| token == "--force"));
     assert!(trimmed_line_position(reconcile, "gh pr list ") < trimmed_line_position(reconcile, "git push "));
     assert!(has_trimmed_line(reconcile, "if [ \"$pr_count\" -eq 0 ] && [ \"$remote_exists\" = false ]; then"));
-    assert!(has_trimmed_line(reconcile, "elif [ \"$pr_count\" -eq 1 ] && [ \"$remote_exists\" = true ]; then"));
+    assert!(has_trimmed_line(reconcile, "elif [ \"$remote_exists\" = true ]; then"));
+    assert!(has_trimmed_line(
+        reconcile,
+        r#"git diff --binary --no-ext-diff origin/main..."origin/$branch" \"#,
+    ));
+    assert!(has_trimmed_line(reconcile, "if [ \"$pr_count\" -eq 0 ]; then"));
     assert!(has_trimmed_line(reconcile, "echo \"Branch and pull-request state disagree for ${branch}.\" >&2"));
     Ok(())
 }

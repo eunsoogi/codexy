@@ -122,20 +122,30 @@ jobs:
               --head "$branch")
             pr_number=$(gh pr view "$pr_url" --repo "$GITHUB_REPOSITORY" \
               --json number --jq .number)
-          elif [ "$pr_count" -eq 1 ] && [ "$remote_exists" = true ]; then
-            pr_number=$(jq -r '.[0].number' "$state_dir/existing-prs.json")
+          elif [ "$remote_exists" = true ]; then
             git fetch origin "$branch:refs/remotes/origin/$branch"
             git diff --binary --no-ext-diff > "$state_dir/expected.patch"
-            git diff --binary --no-ext-diff origin/main "origin/$branch" \
+            git diff --binary --no-ext-diff origin/main..."origin/$branch" \
               > "$state_dir/remote.patch"
             if ! cmp -s "$state_dir/expected.patch" "$state_dir/remote.patch"; then
               echo "Existing ${branch} does not match the requested version changes." >&2
               exit 1
             fi
-            gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
-              --title "$title" \
-              --body-file "$state_dir/metadata/body.md" \
-              --base main
+            if [ "$pr_count" -eq 0 ]; then
+              pr_url=$(gh pr create \
+                --title "$title" \
+                --body-file "$state_dir/metadata/body.md" \
+                --base main \
+                --head "$branch")
+              pr_number=$(gh pr view "$pr_url" --repo "$GITHUB_REPOSITORY" \
+                --json number --jq .number)
+            else
+              pr_number=$(jq -r '.[0].number' "$state_dir/existing-prs.json")
+              gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
+                --title "$title" \
+                --body-file "$state_dir/metadata/body.md" \
+                --base main
+            fi
           else
             echo "Branch and pull-request state disagree for ${branch}." >&2
             exit 1
