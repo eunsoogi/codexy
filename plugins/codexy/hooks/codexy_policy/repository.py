@@ -60,6 +60,27 @@ def git_directory_owned(cwd: str, target: str) -> bool | None:
     return _config_owned(_text(path / "config"))
 
 
+def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
+    """Return repository aliases only when their config is a safe regular file."""
+    if git_dir is None:
+        config = _find_config(Path(cwd))
+    else:
+        path = Path(git_dir)
+        config = _text((path if path.is_absolute() else Path(cwd) / path) / "config")
+    if config is None:
+        return None
+    try:
+        parser = configparser.ConfigParser(interpolation=None, strict=True)
+        parser.optionxform = str
+        parser.read_string(config)
+    except configparser.Error:
+        return None
+    if not parser.has_section("alias"):
+        return {}
+    aliases = dict(parser["alias"])
+    return aliases if all(key and "=" not in key and "\n" not in value and "\r" not in value for key, value in aliases.items()) else None
+
+
 def _config_owned(config: str | None) -> bool | None:
     if config is None:
         return None

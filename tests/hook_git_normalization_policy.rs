@@ -28,6 +28,30 @@ fn git_global_options_are_normalized_before_policy_evaluation() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn effective_invocation_resolves_wrappers_and_git_aliases_before_policy() -> TestResult {
+    let root = root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    append_config(&owned, "[alias]\n\tship = push --force\n\tsafe = status\n\tshell = !git push --force\n\tloop-a = loop-b\n\tloop-b = loop-a\n")?;
+    append_config(&foreign, "[alias]\n\tship = push --force git@github.com:eunsoogi/codexy.git\n")?;
+    for command in [
+        "nice git push --force origin topic",
+        "nice -n 10 git push --force origin topic",
+        "git ship origin topic",
+        "git -c alias.ship='push --force' ship origin topic",
+        "git shell origin topic",
+        "git loop-a",
+    ] {
+        assert_deny(&bash(&root, &owned, command)?).map_err(|error| format!("{command}: {error}"))?;
+    }
+    assert_deny(&bash(&root, &foreign, "git ship topic")?)?;
+    assert_eq!(bash(&root, &owned, "git safe")?, b"");
+    assert_eq!(bash(&root, &foreign, "nice git push --force origin topic")?, b"");
+    Ok(())
+}
+
 fn bash(root: &std::path::Path, cwd: &std::path::Path, command: &str) -> TestResult<Vec<u8>> {
     let payload = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
@@ -51,6 +75,13 @@ fn repository(root: &std::path::Path, name: &str, remote: &str) -> TestResult<st
     std::fs::create_dir_all(path.join(".git"))?;
     std::fs::write(path.join(".git/config"), format!("[remote \"origin\"]\n\turl = {remote}\n"))?;
     Ok(path)
+}
+
+fn append_config(path: &std::path::Path, text: &str) -> TestResult {
+    use std::io::Write as _;
+    let mut config = std::fs::OpenOptions::new().append(true).open(path.join(".git/config"))?;
+    config.write_all(text.as_bytes())?;
+    Ok(())
 }
 
 fn root() -> std::path::PathBuf { std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy") }

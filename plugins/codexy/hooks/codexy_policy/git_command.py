@@ -1,11 +1,12 @@
-"""Total Git global-option normalization for shell policy evaluation."""
+"""Total Git normalization and recursive alias resolution for shell policy."""
 
 from __future__ import annotations
 
+import shlex
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .repository import git_directory_owned, repository_owned
+from .repository import git_aliases, git_directory_owned, repository_owned
 from .shell_context import resolve_cwd
 
 NO_ARGUMENT_OPTIONS = {
@@ -15,6 +16,7 @@ NO_ARGUMENT_OPTIONS = {
     "--html-path", "--man-path", "--info-path",
 }
 VALUE_OPTIONS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--super-prefix", "--config-env", "--exec-path"}
+MAX_ALIAS_DEPTH = 8
 
 
 @dataclass(frozen=True)
@@ -26,25 +28,18 @@ class GitInvocation:
 
 
 def normalize(
-    arguments: list[str],
-    cwd: str,
-    cwd_owned: bool | None,
-    git_dir: str | None,
-    config_owned: Callable[[str], bool],
+    arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None, config_owned: Callable[[str], bool]
 ) -> GitInvocation | None:
-    """Return a policy-ready invocation, or ``None`` for unsupported composition."""
+    """Return a policy-ready effective Git invocation, or fail closed."""
     try:
-        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned)
+        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, {}, set(), 0)
     except (OSError, TypeError, ValueError):
         return None
 
 
 def _normalize(
-    arguments: list[str],
-    cwd: str,
-    cwd_owned: bool | None,
-    git_dir: str | None,
-    config_owned: Callable[[str], bool],
+    arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None,
+    config_owned: Callable[[str], bool], inline_aliases: dict[str, str], seen: set[str], depth: int,
 ) -> GitInvocation | None:
     while arguments and arguments[0].startswith("-"):
         option = arguments.pop(0)
@@ -61,9 +56,11 @@ def _normalize(
             cwd = resolve_cwd(cwd, value)
             cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
         elif name == "-c":
-            if value.startswith("alias.") and "=!" in value:
-                return GitInvocation(None, [], cwd_owned, value.split("=!", 1)[1])
-            if cwd_owned is not False or config_owned(value):
+            alias = _alias_option(value)
+            if alias is not None:
+                key, command = alias
+                inline_aliases[key] = command
+            elif cwd_owned is not False or config_owned(value):
                 return None
         elif name == "--git-dir":
             git_dir = value
@@ -74,7 +71,34 @@ def _normalize(
             return None
     if git_dir is not None:
         cwd_owned = git_directory_owned(cwd, git_dir)
-    return GitInvocation(arguments[0] if arguments else None, arguments[1:], cwd_owned)
+    if not arguments:
+        return GitInvocation(None, [], cwd_owned)
+    operation, rest = arguments[0], arguments[1:]
+    aliases = git_aliases(cwd, git_dir)
+    if aliases is None:
+        return None
+    aliases.update(inline_aliases)
+    command = aliases.get(operation)
+    if command is None:
+        return GitInvocation(operation, rest, cwd_owned)
+    if depth >= MAX_ALIAS_DEPTH or operation in seen:
+        return None
+    if command.lstrip().startswith("!"):
+        return GitInvocation(None, [], cwd_owned, command.lstrip()[1:].strip())
+    try:
+        expanded = shlex.split(command, posix=True)
+    except ValueError:
+        return None
+    if not expanded:
+        return None
+    return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, seen | {operation}, depth + 1)
+
+
+def _alias_option(value: str) -> tuple[str, str] | None:
+    if not value.startswith("alias.") or "=" not in value:
+        return None
+    key, command = value[6:].split("=", 1)
+    return (key, command) if key and all(part and part.replace("_", "").isalnum() for part in key.split(".")) else None
 
 
 def _option_value(option: str, arguments: list[str]) -> tuple[str, str | None]:
@@ -82,8 +106,8 @@ def _option_value(option: str, arguments: list[str]) -> tuple[str, str | None]:
         return option, arguments[0] if arguments else None
     for name in ("--git-dir", "--work-tree", "--namespace", "--super-prefix", "--config-env", "--exec-path"):
         if option.startswith(name + "="):
-            return name, option[len(name) + 1 :]
+            return name, option[len(name) + 1:]
     for name in ("-C", "-c"):
         if option.startswith(name) and len(option) > len(name):
-            return name, option[len(name) :].removeprefix("=")
+            return name, option[len(name):].removeprefix("=")
     return option, None
