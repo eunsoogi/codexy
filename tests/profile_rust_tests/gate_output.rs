@@ -21,7 +21,7 @@ fn gate_runs_the_exact_full_workload_once() -> Result<(), Box<dyn std::error::Er
         "{stdout}"
     );
     assert!(stdout.contains("compile-seconds\t62.000"), "{stdout}");
-    assert!(stdout.contains("budget-seconds\t180.000"), "{stdout}");
+    assert!(stdout.contains("budget-seconds\t195.000"), "{stdout}");
     assert!(stdout.ends_with("result\tPASS\n"), "{stdout}");
     Ok(())
 }

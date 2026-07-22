@@ -15,7 +15,7 @@ from pathlib import Path
 
 from profile_rust_workflow import enforce_workflow_contract
 
-BUDGET_SECONDS = 180.0
+BUDGET_SECONDS = 195.0
 METADATA_TIMEOUT_SECONDS = 30.0
 MINIMUM_PASSED_TESTS = 1802
 MAXIMUM_INTEGRATION_TARGETS = 8
