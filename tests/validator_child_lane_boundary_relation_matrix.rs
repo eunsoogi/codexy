@@ -79,6 +79,33 @@ fn validator_uses_one_setup_action_vocabulary_for_collection_and_attribution() -
 }
 
 #[test]
+fn validator_distinguishes_completed_setup_events_from_plans_and_nouns() -> TestResult {
+    let unclassified_child =
+        "Ownership metadata source: parent-supplied\nLane ownership: child-owned";
+    for (setup, expected) in [
+        (
+            "The child will create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "Branch creation requirements for codexy/463 follow classification.",
+            true,
+        ),
+        (
+            "The child did create branch codexy/463 before classification.",
+            false,
+        ),
+    ] {
+        assert_result(
+            "only an affirmative completed setup event requires prior classification",
+            &format!("{unclassified_child}\n{setup}"),
+            expected,
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_table_and_adjacent_lane_boundaries() -> TestResult {
     assert_result(
         "classification table text is not a lane boundary",

@@ -128,7 +128,9 @@ fn actor_word(word: &str) -> Option<SetupActor> {
 
 fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {
     match words[index] {
-        "create" | "creates" | "created" | "creation" => Some(SetupAction::Create),
+        "create" if has_completed_auxiliary(words, index) => Some(SetupAction::Create),
+        "creates" | "created" => Some(SetupAction::Create),
+        "creation" if words.get(index + 1) == Some(&"occurred") => Some(SetupAction::Create),
         "switch" | "switches" | "switched" => Some(SetupAction::Switch),
         "checkout" | "checkouts" => Some(SetupAction::Checkout),
         "checked" if words.get(index + 1) == Some(&"out") => Some(SetupAction::Checkout),
@@ -137,6 +139,12 @@ fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {
         "add" if index > 0 && words[index - 1] == "worktree" => Some(SetupAction::WorktreeAdd),
         _ => None,
     }
+}
+
+fn has_completed_auxiliary(words: &[&str], action: usize) -> bool {
+    words.get(action.wrapping_sub(1)) == Some(&"did")
+        || (words.get(action.wrapping_sub(1)) == Some(&"not")
+            && words.get(action.wrapping_sub(2)) == Some(&"did"))
 }
 
 fn action_is_negated(words: &[&str], start: usize, action: usize) -> bool {
