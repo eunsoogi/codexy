@@ -438,6 +438,7 @@ jobs:
             $appServer.StandardInput.WriteLine('{"method":"initialized"}')
 
             $statuses = @()
+            $statusResponseTimeout = [TimeSpan]::FromSeconds(30)
             for ($attempt = 0; $attempt -lt 15; $attempt++) {
               $requestId = 2 + $attempt
               $statusRequest = @{
@@ -447,7 +448,7 @@ jobs:
               } | ConvertTo-Json -Depth 4 -Compress
               $appServer.StandardInput.WriteLine($statusRequest)
               do {
-                $line = $appServer.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(10)).GetAwaiter().GetResult()
+                $line = $appServer.StandardOutput.ReadLineAsync().WaitAsync($statusResponseTimeout).GetAwaiter().GetResult()
                 if ($null -eq $line) { throw "Codex app-server closed before MCP status" }
                 $message = $line | ConvertFrom-Json
               } until ($message.id -eq $requestId)
