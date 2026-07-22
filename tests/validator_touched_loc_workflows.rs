@@ -45,22 +45,38 @@ fn touched_loc_accepts_cohesive_workflow_script_extraction() -> TestResult {
 }
 
 #[test]
-fn touched_loc_parses_only_safe_static_script_commands() -> TestResult {
+fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
     for command in [
         "scripts/reconcile-release --check",
         "scripts/reconcile-release --mode=check release",
+        "scripts/reconcile-release --check --tag \"$RELEASE_TAG\"",
+        "scripts/reconcile-release --tag $RELEASE_TAG",
+        "scripts/reconcile-release --tag ${RELEASE_TAG}",
+        "scripts/reconcile-release --tag \"${RELEASE_TAG}\"",
     ] {
         assert_workflow_extraction(command, true)?;
     }
     for command in [
         "command scripts/reconcile-release --check",
+        "MODE=check scripts/reconcile-release",
         "scripts/reconcile-release > result.txt",
         "scripts/reconcile-release $(echo --check)",
         "scripts/reconcile-release `echo --check`",
-        "scripts/reconcile-release ${MODE}",
+        "scripts/reconcile-release $",
+        "scripts/reconcile-release ${}",
+        "scripts/reconcile-release ${RELEASE-TAG}",
+        "scripts/reconcile-release $9",
+        "scripts/reconcile-release \"$RELEASE_TAG",
+        "scripts/reconcile-release prefix$RELEASE_TAG",
+        "scripts/reconcile-release $RELEASE_TAG/suffix",
+        "scripts/reconcile-release ${RELEASE_TAG:-latest}",
+        "scripts/reconcile-release *.tgz",
         "scripts/reconcile-release | tee result.txt",
+        "scripts/reconcile-release|tee result.txt",
         "scripts/reconcile-release && echo done",
+        "scripts/reconcile-release&&echo done",
         "scripts/reconcile-release; echo done",
+        "scripts/reconcile-release;echo done",
         "/scripts/reconcile-release --check",
         "scripts/../reconcile-release --check",
         "cargo run --bin reconcile-release",
