@@ -32,7 +32,10 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                 .iter()
                 .enumerate()
                 .rposition(|(offset, word)| {
-                    matches!(*word, "then" | "but" | "however")
+                    matches!(*word, "but" | "however")
+                        || (*word == "then"
+                            && words.get((predicate_start + offset).saturating_sub(1))
+                                != Some(&"and"))
                         || (*word == "and"
                             && !and_coordinates_setup_subjects(
                                 &words,
@@ -59,6 +62,7 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                     negated: action_is_negated(&words, start, *action, end),
                     before_classification: window.iter().enumerate().any(|(index, word)| {
                         matches!(*word, "before" | "prior")
+                            && window.get(index.wrapping_sub(1)) != Some(&"not")
                             && window[index + 1..]
                                 .iter()
                                 .take(4)
@@ -158,12 +162,7 @@ fn actor_word(word: &str) -> Option<SetupActor> {
 fn action_is_passive(words: &[&str], start: usize, action: usize) -> bool {
     words[action.saturating_sub(3).max(start)..action]
         .iter()
-        .any(|word| {
-            matches!(
-                *word,
-                "is" | "are" | "was" | "were" | "been" | "being" | "get" | "got"
-            )
-        })
+        .any(|word| ["is", "are", "was", "were", "been", "being", "get", "got"].contains(word))
 }
 
 fn setup_action_at(words: &[&str], index: usize) -> Option<()> {

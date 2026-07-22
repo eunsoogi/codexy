@@ -34,6 +34,38 @@ fn validator_scopes_negation_and_timing_to_each_setup_action() -> TestResult {
 }
 
 #[test]
+fn validator_retains_a_negated_clause_subject_across_and_then() -> TestResult {
+    assert_with_classification(
+        "and then retains the child subject for the later switch",
+        parent_owned_classification(),
+        "The child did not create a worktree after classification and then switched to branch codexy/463 before classification.",
+        false,
+    )?;
+    assert_with_classification(
+        "and then control preserves after-classification timing",
+        child_owned_classification(),
+        "The child did not create a worktree after classification and then switched to branch codexy/463 after classification.",
+        true,
+    )
+}
+
+#[test]
+fn validator_keeps_negated_before_timing_out_of_the_setup_relation() -> TestResult {
+    assert_with_classification(
+        "not before classification is not pre-classification setup",
+        child_owned_classification(),
+        "The child created branch codexy/463 not before classification but after classification.",
+        true,
+    )?;
+    assert_with_classification(
+        "affirmative before classification remains pre-classification setup",
+        child_owned_classification(),
+        "The child created branch codexy/463 before classification but after classification.",
+        false,
+    )
+}
+
+#[test]
 fn validator_tracks_structural_setup_relations_without_treating_plans_or_negations_as_events(
 ) -> TestResult {
     for (setup, classification, expected) in [
