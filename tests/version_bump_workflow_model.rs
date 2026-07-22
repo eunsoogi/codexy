@@ -118,16 +118,34 @@ fn validate_transaction(shell: &ShellStep<'_>) -> Result<(), String> {
             publishes.len()
         ));
     }
+    let observed_identity = command_position(&commands, |command| {
+        command.starts_with("gh pr view \"$pr_number\" ")
+            && command.contains("$state_dir/observed-pr.json")
+    })?;
+    let observed_identity_argument = command_position(&commands, |command| {
+        command
+            == "observed_pr_args=(--observed-pr-json \"$state_dir/observed-pr.json\")"
+    })?;
+    let identity_authorization = command_position(&commands, |command| {
+        command.starts_with("action=$(scripts/plan-version-pr-reconciliation ")
+            && command.contains("--issue-json \"$state_dir/issue.json\"")
+            && command.contains("${observed_pr_args[@]}")
+    })?;
+    let provisional_render = command_position(&commands, |command| {
+        command == "render_version_pr_metadata \"$publication_phase\""
+    })?;
+    let final_snapshot = refreshes[1];
     let positions = [
         ("provisional planner", command_position(&commands, |command| {
             command.starts_with("publication_phase=$(scripts/plan-version-pr-reconciliation ")
                 && command.contains("--merge-message-checked false)")
         })?),
         ("first snapshot", refreshes[0]),
-        ("provisional render", command_position(&commands, |command| {
-            command == "render_version_pr_metadata \"$publication_phase\""
-        })?),
-        ("final snapshot", refreshes[1]),
+        ("observed identity", observed_identity),
+        ("observed identity argument", observed_identity_argument),
+        ("identity authorization", identity_authorization),
+        ("provisional render", provisional_render),
+        ("final snapshot", final_snapshot),
         ("provisional publication", publishes[0]),
         ("rebuilt PR state", command_position(&commands, |command| {
             command.starts_with("scripts/build-version-pr-state ")
@@ -151,8 +169,6 @@ fn validate_transaction(shell: &ShellStep<'_>) -> Result<(), String> {
     if commands.iter().any(|command| is_label_mutation(command)) {
         return Err("label mutation is disconnected from publisher".into());
     }
-    let provisional_render = positions[2].1;
-    let final_snapshot = positions[3].1;
     if commands
         .iter()
         .enumerate()

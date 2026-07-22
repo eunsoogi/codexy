@@ -5,12 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import tempfile
 from pathlib import Path
 
-VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+sys.dont_write_bytecode = True
+
+from version_pr_identity import CanonicalIssueIdentity, VERSION_PATTERN
 STATUS_PREFIX = "status/"
 REVIEW_LABEL = "status/review"
 
@@ -53,13 +54,7 @@ def validate_issue(issue: object, repository_labels: object) -> tuple[int, str, 
     url = issue.get("url")
     if not isinstance(url, str):
         fail(f"governing issue #{number} requires a canonical issue URL")
-    canonical_url = re.compile(
-        rf"https://github\.com/(?=[A-Za-z0-9-]{{1,39}}/)"
-        rf"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*/"
-        rf"[A-Za-z0-9][A-Za-z0-9._-]{{0,99}}/issues/{number}"
-    )
-    if canonical_url.fullmatch(url) is None:
-        fail(f"governing issue #{number} requires a canonical issue URL")
+    CanonicalIssueIdentity.parse(url, number, f"governing issue #{number}")
     milestone = issue.get("milestone")
     if (
         not isinstance(milestone, dict)

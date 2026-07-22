@@ -13,6 +13,10 @@ fn publication_topology_equivalence_matrix() {
     let extra_disconnected = format!(
         "{connected}gh api --method PUT \\\n  \"repos/$GITHUB_REPOSITORY/issues/$pr_number/labels\"\n"
     );
+    let post_mutation_identity = connected.replace(
+        "observed_pr_args=(--observed-pr-json \"$state_dir/observed-pr.json\")",
+        "observed_pr_args=(--observed-pr-json \"$state_dir/pr-state.base.json\")",
+    );
     let cases = [
         ("valid connected topology", fixture("open-version-pr", "Open version bump pull request", &connected, false), true),
         ("distinct valid function syntax", fixture("open-version-pr", "Open version bump pull request", &distinct_valid, false), true),
@@ -20,6 +24,7 @@ fn publication_topology_equivalence_matrix() {
         ("empty publisher", fixture("open-version-pr", "Open version bump pull request", &empty_publisher, false), false),
         ("disconnected mutation", fixture("open-version-pr", "Open version bump pull request", &disconnected_mutation, false), false),
         ("extra disconnected mutation", fixture("open-version-pr", "Open version bump pull request", &extra_disconnected, false), false),
+        ("post-mutation state cannot authorize identity", fixture("open-version-pr", "Open version bump pull request", &post_mutation_identity, false), false),
         ("wrong job", fixture("publish-version-pr", "Open version bump pull request", &connected, false), false),
         ("wrong step", fixture("open-version-pr", "Publish something else", &connected, false), false),
         ("wrong transaction order", fixture("open-version-pr", "Open version bump pull request", &wrong_order, false), false),
@@ -70,6 +75,13 @@ fn valid_transaction() -> &'static str {
     r#"publication_phase=$(scripts/plan-version-pr-reconciliation \
   --merge-message-checked false)
 refresh_version_pr_snapshot
+gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
+  --json body,headRefName,labels,closingIssuesReferences \
+  > "$state_dir/observed-pr.json"
+observed_pr_args=(--observed-pr-json "$state_dir/observed-pr.json")
+action=$(scripts/plan-version-pr-reconciliation \
+  --has-changes true \
+  --issue-json "$state_dir/issue.json" "${observed_pr_args[@]}")
 render_version_pr_metadata "$publication_phase"
 refresh_version_pr_snapshot
 publish_version_pr_metadata "$publication_phase"

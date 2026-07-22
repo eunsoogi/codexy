@@ -88,7 +88,15 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
     ));
     assert!(has_trimmed_line(
         reconcile,
-        r#"--pr-matches-origin "$pr_matches_origin")"#,
+        r#"--pr-matches-origin "$pr_matches_origin" \"#,
+    ));
+    assert!(has_trimmed_line(
+        reconcile,
+        r#"--version "$VERSION" --repository "$GITHUB_REPOSITORY" \"#,
+    ));
+    assert!(has_trimmed_line(
+        reconcile,
+        r#"--issue-json "$state_dir/issue.json" "${observed_pr_args[@]}")"#,
     ));
     assert!(has_trimmed_line(
         reconcile,

@@ -131,10 +131,6 @@ jobs:
             --publication-phase --release-candidate-passed true \
             --labels-checked false --completion-handoff-checked false \
             --merge-message-checked false)
-          refresh_version_pr_snapshot
-          render_version_pr_metadata "$publication_phase"
-          title=$(sed -n '1p' "$state_dir/metadata/title.txt")
-          plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$title"
 
           gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
             -f state=open -f head="$owner:$branch" \
@@ -159,9 +155,38 @@ jobs:
               pr_matches_origin=true
             fi
           fi
+          pr_number=""
+          if [ "$pr_count" -eq 1 ]; then
+            pr_number=$(jq -r '.[0].number' "$state_dir/existing-prs.json")
+          fi
+          refresh_version_pr_snapshot
+          observed_pr_args=()
+          if [ -n "$pr_number" ]; then
+            gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
+              --json number,body,headRefName,headRefOid,labels,closingIssuesReferences \
+              > "$state_dir/observed-pr.json"
+            observed_pr_args=(--observed-pr-json "$state_dir/observed-pr.json")
+          fi
           action=$(scripts/plan-version-pr-reconciliation \
             --has-changes true --pr-count "$pr_count" --remote-exists "$remote_exists" \
-            --pr-matches-origin "$pr_matches_origin")
+            --pr-matches-origin "$pr_matches_origin" \
+            --version "$VERSION" --repository "$GITHUB_REPOSITORY" \
+            --issue-json "$state_dir/issue.json" "${observed_pr_args[@]}")
+
+          expected_head_oid=""
+          if [ "$action" != first-run ]; then
+            expected_head_oid=$remote_oid
+            git diff --binary --no-ext-diff > "$state_dir/expected.patch"
+            git diff --binary --no-ext-diff origin/main..."origin/$branch" \
+              > "$state_dir/remote.patch"
+            if ! cmp -s "$state_dir/expected.patch" "$state_dir/remote.patch"; then
+              echo "Existing ${branch} does not match the requested version changes." >&2
+              exit 1
+            fi
+          fi
+          render_version_pr_metadata "$publication_phase"
+          title=$(sed -n '1p' "$state_dir/metadata/title.txt")
+          plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$title"
 
           if [ "$action" = first-run ]; then
             git switch -c "$branch"
@@ -178,14 +203,6 @@ jobs:
             pr_number=$(gh pr view "$pr_url" --repo "$GITHUB_REPOSITORY" \
               --json number --jq .number)
           else
-            expected_head_oid=$remote_oid
-            git diff --binary --no-ext-diff > "$state_dir/expected.patch"
-            git diff --binary --no-ext-diff origin/main..."origin/$branch" \
-              > "$state_dir/remote.patch"
-            if ! cmp -s "$state_dir/expected.patch" "$state_dir/remote.patch"; then
-              echo "Existing ${branch} does not match the requested version changes." >&2
-              exit 1
-            fi
             if [ "$action" = pushed-no-pr ]; then
               pr_url=$(gh pr create \
                 --title "$title" \
@@ -195,7 +212,6 @@ jobs:
               pr_number=$(gh pr view "$pr_url" --repo "$GITHUB_REPOSITORY" \
                 --json number --jq .number)
             else
-              pr_number=$(jq -r '.[0].number' "$state_dir/existing-prs.json")
               gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
                 --title "$title" \
                 --body-file "$state_dir/metadata/body.md" \

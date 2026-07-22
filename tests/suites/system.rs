@@ -52,6 +52,9 @@ mod version_bump_pr_metadata_failures;
 #[path = "../version_bump_reconciliation_state_machine.rs"]
 mod version_bump_reconciliation_state_machine;
 
+#[path = "../version_bump_governing_identity.rs"]
+mod version_bump_governing_identity;
+
 #[path = "../version_bump_pr_state.rs"]
 mod version_bump_pr_state;
 
