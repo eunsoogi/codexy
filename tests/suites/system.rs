@@ -40,6 +40,12 @@ mod release_tag_parity;
 #[path = "../release_workflow_parity.rs"]
 mod release_workflow_parity;
 
+#[path = "../version_bump_pr_readiness.rs"]
+mod version_bump_pr_readiness;
+
+#[path = "../version_bump_pr_metadata_failures.rs"]
+mod version_bump_pr_metadata_failures;
+
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
 
