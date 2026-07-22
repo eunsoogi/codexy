@@ -118,5 +118,5 @@ fn exit_status(success: bool) -> std::process::ExitStatus {
     #[cfg(unix)]
     return std::process::ExitStatus::from_raw(if success { 0 } else { 1 << 8 });
     #[cfg(windows)]
-    std::process::ExitStatus::from_raw(i32::from(!success))
+    std::process::ExitStatus::from_raw(u32::from(!success))
 }
