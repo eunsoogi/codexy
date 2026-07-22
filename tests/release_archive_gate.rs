@@ -38,14 +38,33 @@ fn archive_gate_allows_documentation_path_examples() {
 }
 
 #[test]
+fn archive_gate_requires_runtime_release_contract() {
+    let root = tempdir().expect("tempdir");
+    let plugin_root =
+        complete_plugin_fixture_with_stubbed_runtime(root.path()).expect("plugin fixture");
+    std::fs::remove_file(plugin_root.join("runtime-release.json")).expect("remove contract");
+    let archive = root.path().join("missing-release-contract.tar.gz");
+    create_archive(root.path(), &archive).expect("archive fixture");
+    assert_gate_error(
+        &archive,
+        &plugin_root,
+        "packaged runtime-release.json missing",
+    );
+}
+
+#[test]
 fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     let workflow = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join(".github/workflows/plugin-runtime-binaries.yml"),
     )
     .expect("runtime workflow");
+    let inspector = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
+    )
+    .expect("archive inspector");
     assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
-    assert_runtime_workflow_contract(&workflow);
+    assert_runtime_workflow_contract(&workflow, &inspector);
 }
 fn complete_archive_fixture(
     name: &str,
@@ -217,18 +236,5 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
     assert!(!run_gate(&extra_archive, &extra_plugin).status.success());
 }
 
-#[cfg(unix)]
-#[test]
-fn archive_gate_rejects_symlink_entries() {
-    use std::os::unix::fs::symlink;
-
-    let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
-    std::fs::create_dir_all(&plugin_root).expect("plugin directory");
-    symlink("/etc/passwd", plugin_root.join("bad-link")).expect("symlink fixture");
-    let archive = root.path().join("symlink.tar.gz");
-    create_archive(root.path(), &archive).expect("archive fixture");
-
-    let output = run_gate(&archive, &plugin_root);
-    assert!(!output.status.success());
-}
+#[path = "release_archive_gate/safety.rs"]
+mod safety;
