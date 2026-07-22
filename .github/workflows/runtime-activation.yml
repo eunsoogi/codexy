@@ -87,6 +87,7 @@ jobs:
       - name: Prepare activation branch
         env:
           CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-${CANDIDATE_TAG}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then

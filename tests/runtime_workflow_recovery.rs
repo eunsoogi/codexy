@@ -102,8 +102,16 @@ fn activation_pr_creation_reuses_an_existing_verified_branch()
     support::assert_structured_literals(
         branch,
         "resumable activation pull request",
-        &["git ls-remote --exit-code --heads origin \"$branch\"", "scripts/verify-runtime-activation-branch \"$branch\""],
+        &[
+            "git ls-remote --exit-code --heads origin \"$branch\"",
+            "scripts/verify-runtime-activation-branch \"$branch\"",
+        ],
     );
+    let steps = activation["jobs"]["open-activation-pr"]["steps"]
+        .as_sequence()
+        .ok_or("activation steps")?;
+    let (_, prepare) = named_step(steps, "Prepare activation branch")?;
+    assert_eq!(prepare["env"]["GH_TOKEN"], "${{ github.token }}");
     let creation = run(&activation, "open-activation-pr", "Create activation pull request")?;
     support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "activation branch differs from verified contract"]);
     Ok(())
