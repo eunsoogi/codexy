@@ -3,7 +3,8 @@ use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup_attribution::{
-    clause_has_explicit_child_scope, matched_child_branch_or_worktree_setup_clauses,
+    child_setup_claims_before_classification, clause_has_explicit_child_scope,
+    matched_child_branch_or_worktree_setup_clauses,
 };
 use super::child_lane_classification_setup_context::child_setup_context_applies;
 use super::child_lane_colon_classification_block::ColonClassificationBlock;
@@ -31,7 +32,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     }
     if setup_clauses.iter().any(|(setup_index, setup_clause)| {
         formal_child_classification_complete_index_before(&lines, *setup_index).is_none()
-            || line_claims_setup_before_classification(setup_clause)
+            || child_setup_claims_before_classification(setup_clause)
     }) {
         return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed".to_owned()];
     }

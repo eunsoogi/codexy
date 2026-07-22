@@ -1,12 +1,7 @@
 use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup::line_claims_setup_before_classification;
+use super::child_lane_classification_setup_relations::{SetupActor, setup_relations};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum SetupActor {
-    Child,
-    NonChild,
-}
 
 pub(super) fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     let line = trimmed_value(line);
@@ -34,6 +29,21 @@ pub(super) fn clause_has_explicit_child_scope(line: &str) -> bool {
         || has_child_setup_subject(line)
 }
 
+pub(super) fn child_setup_claims_before_classification(line: &str) -> bool {
+    let relations = setup_relations(line);
+    let child_relations = relations
+        .iter()
+        .filter(|relation| relation.actor == Some(SetupActor::Child) && !relation.negated)
+        .collect::<Vec<_>>();
+    if child_relations.is_empty() {
+        line_claims_setup_before_classification(line)
+    } else {
+        child_relations
+            .iter()
+            .any(|relation| relation.before_classification)
+    }
+}
+
 fn setup_clauses(line: &str) -> Vec<&str> {
     let mut clauses = line
         .split(&[',', ';', '.'][..])
@@ -49,6 +59,7 @@ fn setup_clauses(line: &str) -> Vec<&str> {
 }
 
 fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
+    let actor = setup_actor(line);
     (clause_has_explicit_child_scope(line)
         || has_codexy_branch_setup_subject(line)
         || has_unqualified_branch_or_worktree_setup(line))
@@ -56,82 +67,24 @@ fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
         && (line.contains("branch")
             || line.contains("worktree")
             || has_codexy_branch_setup_subject(line))
-        && setup_actor(line) != Some(SetupActor::NonChild)
-        && !has_parent_setup_subject(line)
+        && actor != Some(SetupActor::NonChild)
+        && (actor == Some(SetupActor::Child) || !has_parent_setup_subject(line))
         && !has_absent_child_setup(line)
 }
 
 fn setup_actor(line: &str) -> Option<SetupActor> {
-    let words = line
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
-    let action = words.iter().position(|word| is_setup_action_word(word))?;
-    explicit_setup_subject(&words, action).or_else(|| setup_agents_fail_closed(&words))
-}
-
-fn explicit_setup_subject(words: &[&str], action: usize) -> Option<SetupActor> {
-    words[..action]
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(index, word)| {
-            (!actor_is_introduced_by(words, index))
-                .then(|| actor_word(word))
-                .flatten()
-        })
-}
-
-fn setup_agents_fail_closed(words: &[&str]) -> Option<SetupActor> {
     let mut saw_non_child = false;
-    for (index, word) in words.iter().enumerate() {
-        if !actor_is_introduced_by(words, index) {
+    for relation in setup_relations(line) {
+        if relation.negated {
             continue;
         }
-        match actor_word(word) {
+        match relation.actor {
             Some(SetupActor::Child) => return Some(SetupActor::Child),
             Some(SetupActor::NonChild) => saw_non_child = true,
             None => {}
         }
     }
     saw_non_child.then_some(SetupActor::NonChild)
-}
-
-fn actor_is_introduced_by(words: &[&str], actor: usize) -> bool {
-    words[..actor]
-        .iter()
-        .rposition(|word| *word == "by")
-        .is_some_and(|by| {
-            words[by + 1..actor].iter().all(|word| {
-                matches!(
-                    *word,
-                    "a" | "an" | "the" | "this" | "that" | "its" | "our" | "owning"
-                )
-            })
-        })
-}
-
-fn actor_word(word: &str) -> Option<SetupActor> {
-    match word {
-        "child" => Some(SetupActor::Child),
-        "parent" | "orchestrator" => Some(SetupActor::NonChild),
-        _ => None,
-    }
-}
-
-fn is_setup_action_word(word: &str) -> bool {
-    matches!(
-        word,
-        "create"
-            | "created"
-            | "creation"
-            | "switch"
-            | "switched"
-            | "checkout"
-            | "checked"
-            | "setup"
-            | "set"
-    )
 }
 
 fn has_unqualified_branch_or_worktree_setup(line: &str) -> bool {
@@ -174,26 +127,14 @@ fn has_setup_action(line: &str) -> bool {
 
 fn has_absent_child_setup(line: &str) -> bool {
     let line = trimmed_value(line);
-    (setup_actor(line) == Some(SetupActor::Child)
-        && (setup_action_is_negated(line) || has_negated_setup_action(line)))
+    (setup_relations(line).iter().any(|relation| {
+        relation.actor == Some(SetupActor::Child) && relation.negated
+    }) && setup_actor(line) != Some(SetupActor::Child))
         || (has_child_setup_subject(line)
             && (starts_with_absent_child_setup(line) || has_negated_setup_action(line)))
         || "no child created|no child-created|not child created|not child-created|without child created|without child-created"
             .split('|')
             .any(|marker| line.contains(marker))
-}
-
-fn setup_action_is_negated(line: &str) -> bool {
-    let words = line
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
-    words.iter().enumerate().any(|(index, word)| {
-        is_setup_action_word(word)
-            && words[index.saturating_sub(3)..index]
-                .iter()
-                .any(|word| matches!(*word, "no" | "not" | "never" | "without" | "neither"))
-    })
 }
 
 fn starts_with_absent_child_setup(line: &str) -> bool {
