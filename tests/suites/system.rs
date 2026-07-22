@@ -46,6 +46,12 @@ mod version_bump_pr_readiness;
 #[path = "../version_bump_pr_metadata_failures.rs"]
 mod version_bump_pr_metadata_failures;
 
+#[path = "../version_bump_pr_test_support.rs"]
+mod version_bump_pr_test_support;
+
+#[path = "../version_bump_workflow_structure.rs"]
+mod version_bump_workflow_structure;
+
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
 
