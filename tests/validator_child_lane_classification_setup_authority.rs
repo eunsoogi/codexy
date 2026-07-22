@@ -177,12 +177,48 @@ fn validator_allows_documented_current_thread_owner_rationale() -> TestResult {
 }
 
 #[test]
+fn validator_allows_contrastive_current_thread_owner_rationale() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    let classification = complete_gfm_classification().replacen(
+        "current-thread-owned child implementation lane",
+        "current-thread-owned because parent-owned is reserved for orchestration",
+        1,
+    );
+    std::fs::write(&path, format!("{classification}\nPlan tool call: update_plan\n"))?;
+
+    assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_allows_escaped_pipes_in_required_tools_evidence() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    let escaped = complete_gfm_classification().replacen(
+        "| Required tools/evidence | goal, plan |",
+        "| Required tools/evidence | goal \\| plan |",
+        1,
+    );
+    std::fs::write(&path, format!("{escaped}\nPlan tool call: update_plan\n"))?;
+
+    assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+
+    let unescaped = escaped.replacen("goal \\| plan", "goal | plan", 1);
+    std::fs::write(&path, format!("{unescaped}\nPlan tool call: update_plan\n"))?;
+    assert!(!crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_invalid_current_thread_owner_rationales() -> TestResult {
     for owner in [
         "not current-thread-owned because the active thread owns issue-sized work",
         "parent-owned because the active thread owns issue-sized work",
         "unknown ownership because the active thread owns issue-sized work",
+        "ambiguous ownership because the active thread owns issue-sized work",
         "current-thread-owned or parent-owned because the active thread owns issue-sized work",
+        "current-thread-owned because the active thread is not current-thread-owned",
         "current-thread-owned",
     ] {
         let temp = tempfile::tempdir()?;

@@ -1,9 +1,29 @@
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 
 pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
-    let row = line.strip_prefix('|')?.strip_suffix('|')?;
-    let (key, value) = row.split_once('|')?;
-    (!value.contains('|')).then_some((key.trim(), value.trim()))
+    let line = line.strip_prefix('|')?;
+    let closing_pipe = line.len().checked_sub(1)?;
+    (!is_escaped_pipe(line, closing_pipe)).then_some(())?;
+    let row = line.strip_suffix('|')?;
+    let separator = row
+        .match_indices('|')
+        .find_map(|(index, _)| (!is_escaped_pipe(row, index)).then_some(index))?;
+    let (key, value) = row.split_at(separator);
+    let value = &value[1..];
+    (!value
+        .match_indices('|')
+        .any(|(index, _)| !is_escaped_pipe(value, index)))
+    .then_some((key.trim(), value.trim()))
+}
+
+fn is_escaped_pipe(row: &str, pipe_index: usize) -> bool {
+    row[..pipe_index]
+        .bytes()
+        .rev()
+        .take_while(|byte| *byte == b'\\')
+        .count()
+        % 2
+        == 1
 }
 
 pub(super) fn is_table_separator(line: &str) -> bool {
@@ -92,10 +112,9 @@ fn is_current_thread_owner(value: &str) -> bool {
     let rationale = rationale.trim();
     !rationale.is_empty()
         && !value.contains("not current-thread-owned")
-        && !rationale.starts_with("or ")
-        && !["parent-owned", "unknown", "ambiguous"]
+        && !["or ", "and ", ",", "/"]
             .iter()
-            .any(|marker| rationale.contains(marker))
+            .any(|marker| rationale.starts_with(marker))
 }
 
 fn is_child_completion_owner(value: &str) -> bool {
