@@ -52,6 +52,7 @@ pub(super) fn formal_child_classification_complete_index_before(
             continue;
         };
         if classification_table_row(line) == Some(("field", "value")) {
+            *fields = ClassificationFields::default();
             fields.table_header = true;
             continue;
         }
