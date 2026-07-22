@@ -207,6 +207,8 @@ The Sentinel MUST review only this issue's acceptance criteria, authorized behav
 Every BLOCK finding MUST map to an in-scope acceptance criterion.
 Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
 Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
+Before review-response edits, MUST create one root-cause cluster for each actionable defect class.
+Each cluster MUST name its stable defect class, violated invariant, structural boundary, related current threads, and representative positive and negative matrix.
 
 ## Codegraph And LSP
 
@@ -230,8 +232,6 @@ presenting a quiet fallback as normal.
 
 MUST follow `references/parent-stop-preflight.md` before implementation edits.
 MUST run `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>` when that reference requires ownership evidence.
-
-## Completion Guard
 
 ## Event-driven token and quota containment
 

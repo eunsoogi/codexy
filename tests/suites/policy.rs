@@ -16,6 +16,9 @@ mod validator_instruction_policy_verbs;
 #[path = "../validator_instruction_policy_wrapped.rs"]
 mod validator_instruction_policy_wrapped;
 
+#[path = "../validator_review_response_clusters.rs"]
+mod validator_review_response_clusters;
+
 #[path = "../validator_runtime_heartbeat_clause_boundaries.rs"]
 mod validator_runtime_heartbeat_clause_boundaries;
 

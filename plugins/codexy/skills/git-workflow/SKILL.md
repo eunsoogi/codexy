@@ -178,6 +178,10 @@ worker for that lane.
 
 - The child thread owns implementation edits, local verification, and
   review-response fixes for its assigned issue-sized lane.
+- Review-response handoffs MUST include a typed `ReviewClusterReceipt` for every actionable defect class before implementation edits begin.
+- The receipt state MUST be `planned`, `repaired`, or `reopened`; each cluster MUST carry class, invariant, boundary, current thread identifiers, and positive and negative matrix arrays.
+- Each repaired cluster MUST record one structural repair and the removed case-specific behavior; quoted-input, phrase, or test-case exceptions are insufficient evidence.
+- A reopened cluster MUST carry either a different invariant or evidence that the prior structural repair was incomplete.
 - For any lane that needs its own branch, worktree, PR, or durable child
   context, the parent MUST create, fork, or assign the child thread before
   implementation patches begin. The parent MUST NOT make draft implementation

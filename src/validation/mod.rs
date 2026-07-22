@@ -80,6 +80,7 @@ mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod readiness_context;
 mod release_publish_contract;
+mod review_response_cluster;
 mod review_thread_evidence;
 mod review_thread_readiness;
 mod review_thread_resolution;
@@ -171,6 +172,11 @@ pub fn instruction_policy_diagnostics(path: &Path) -> Result<Vec<String>> {
     let mut errors = Vec::new();
     instruction_policy::check_surface(path, &text, &mut errors);
     Ok(errors)
+}
+
+/// Returns typed root-cause review-cluster diagnostics for behavioral harnesses.
+pub fn review_response_cluster_diagnostics(receipt: &str) -> Vec<String> {
+    review_response_cluster::diagnostics(receipt)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {
