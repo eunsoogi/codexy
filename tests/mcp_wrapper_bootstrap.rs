@@ -20,12 +20,10 @@ fn install_fake_uvx(
 #[test]
 fn wrappers_dispatch_pinned_uvx_with_plugin_root_and_stdio()
 -> Result<(), Box<dyn std::error::Error>> {
-    let manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/.codex-plugin/plugin.json"),
-    )?)?;
-    let version = manifest["version"].as_str().ok_or("manifest version")?;
-    let package = format!("getcodexy=={version}");
+    let package = format!(
+        "getcodexy=={}",
+        support::published_bootstrap_version(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))?
+    );
     for server in ["lsp", "codegraph"] {
         let temp = tempfile::tempdir()?;
         let home = temp.path().join("home with spaces 유니코드");

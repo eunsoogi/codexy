@@ -14,7 +14,11 @@ fn mcp_wrappers_try_bundled_runtime_before_pinned_uvx_bootstrap()
             .join(format!("codexy-mcp-{server}"));
         let wrapper = std::fs::read_to_string(&wrapper_path)?;
 
-        assert_bundled_runtime_precedes_uvx(&wrapper, &wrapper_path)?;
+        assert_bundled_runtime_precedes_uvx(
+            &wrapper,
+            &wrapper_path,
+            &support::published_bootstrap_version(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))?,
+        )?;
     }
     Ok(())
 }
@@ -95,6 +99,7 @@ fn matching_pids(marker: &str) -> Result<Vec<u32>, Box<dyn std::error::Error>> {
 fn assert_bundled_runtime_precedes_uvx(
     wrapper: &str,
     wrapper_path: &std::path::Path,
+    bootstrap_version: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let bundled_runtime_check = find_required(
         wrapper,
@@ -108,14 +113,9 @@ fn assert_bundled_runtime_precedes_uvx(
         wrapper_path,
         "uvx availability check",
     )?;
-    let manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy/.codex-plugin/plugin.json"),
-    )?)?;
-    let version = manifest["version"].as_str().ok_or("manifest version")?;
     let uvx_bootstrap = find_required(
         wrapper,
-        &format!("exec uvx --from getcodexy=={version} codexy-mcp-runtime"),
+        &format!("exec uvx --from getcodexy=={bootstrap_version} codexy-mcp-runtime"),
         wrapper_path,
         "pinned uvx bootstrap",
     )?;

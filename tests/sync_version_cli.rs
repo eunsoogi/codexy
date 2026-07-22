@@ -4,6 +4,8 @@ use std::{
     process::Command,
 };
 
+use crate::support;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> TestResult {
@@ -85,11 +87,11 @@ fn sync_version_script_check_rejects_stale_cargo_lock_and_stale_python_metadata(
     fs::write(&python_path, python_text)?;
     let contract_path = repo.join(".agents/plugins/release-publish-contract.json");
     let contract_text = fs::read_to_string(&contract_path)?;
-    let stale_contract = contract_text.replacen(
-        "\"bootstrapVersion\": \"1.2.2\"",
-        "\"bootstrapVersion\": \"9.9.9\"",
-        1,
-    );
+    let bootstrap = support::published_bootstrap_version(&repo)?;
+    let mut stale_contract: serde_json::Value = serde_json::from_str(&contract_text)?;
+    stale_contract["bootstrapVersion"] =
+        serde_json::Value::String(support::next_bootstrap_version(&bootstrap)?);
+    let stale_contract = format!("{}\n", serde_json::to_string_pretty(&stale_contract)?);
     assert_ne!(contract_text, stale_contract, "bootstrap fixture did not change");
     fs::write(&contract_path, &stale_contract)?;
     let wrapper_path = repo.join("plugins/codexy/mcp/codexy-mcp-lsp");
@@ -144,7 +146,10 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root() -> TestResult {
         }
     }
     let contract: serde_json::Value = serde_json::from_str(&fs::read_to_string(diagnostic_root.join(".agents/plugins/release-publish-contract.json"))?)?;
-    assert_eq!(contract["bootstrapVersion"], "1.2.2");
+    assert_eq!(
+        contract["bootstrapVersion"],
+        support::published_bootstrap_version(&build_root)?
+    );
     assert!(Command::new(build_target.join("debug/codexy-sync-version")).args(["--check", "--tag", "v9.9.9"]).env("CODEXY_REPO_ROOT", &diagnostic_root).status()?.success());
     Ok(())
 }
@@ -196,25 +201,17 @@ fn version_surface_contents(root: &Path) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<
         "plugins/codexy/mcp/codexy-mcp-codegraph",
     ]
     .into_iter()
-    .map(|relative| {
-        let path = root.join(relative);
-        Ok((path.clone(), fs::read(path)?))
-    })
+    .map(|relative| { let path = root.join(relative); Ok((path.clone(), fs::read(path)?)) })
     .collect()
 }
 
 fn plugin_version(root: &Path) -> Result<String, Box<dyn std::error::Error>> {
-    let manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(
-        root.join("plugins/codexy/.codex-plugin/plugin.json"),
-    )?)?;
+    let manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(root.join("plugins/codexy/.codex-plugin/plugin.json"))?)?;
     manifest["version"].as_str().map(ToOwned::to_owned).ok_or_else(|| "manifest version".into())
 }
 
 fn sync_check(root: &Path) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    Ok(Command::new(root.join("scripts/sync-plugin-version"))
-        .arg("--check")
-        .current_dir(root)
-        .output()?)
+    Ok(Command::new(root.join("scripts/sync-plugin-version")).arg("--check").current_dir(root).output()?)
 }
 
 fn installed_check(args: &[&str]) -> Result<std::process::Output, Box<dyn std::error::Error>> {

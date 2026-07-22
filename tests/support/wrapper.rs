@@ -72,3 +72,26 @@ pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
     let _ = path;
     Ok(())
 }
+
+pub(crate) fn published_bootstrap_version(
+    root: &std::path::Path,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        root.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    contract["bootstrapVersion"]
+        .as_str()
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| "release bootstrapVersion".into())
+}
+
+pub(crate) fn next_bootstrap_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let (major, minor, patch) = version
+        .split_once('.')
+        .and_then(|(major, rest)| {
+            rest.split_once('.')
+                .map(|(minor, patch)| (major, minor, patch))
+        })
+        .ok_or("bootstrapVersion semver")?;
+    Ok(format!("{major}.{minor}.{}", patch.parse::<u64>()? + 1))
+}

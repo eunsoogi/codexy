@@ -23,7 +23,7 @@ pub(crate) use child_thread_ledger_skill::{
 };
 pub(crate) use release_archive::assert_structured_literals;
 pub(crate) use wrapper::{
-    WrapperFixture, make_executable, run_wrapper_command, run_wrapper_command_with_timeout,
-    wait_for_wrapper_output,
+    WrapperFixture, make_executable, next_bootstrap_version, published_bootstrap_version,
+    run_wrapper_command, run_wrapper_command_with_timeout, wait_for_wrapper_output,
 };
 pub(crate) use wrapper_copy::copy_dir;
