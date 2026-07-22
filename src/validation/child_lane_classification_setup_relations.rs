@@ -21,8 +21,9 @@ enum SetupAction {
 }
 
 pub(super) fn has_setup_action(line: &str) -> bool {
-    let words = words(line);
-    setup_action_indices(&words).next().is_some()
+    setup_relations(line)
+        .iter()
+        .any(|relation| !relation.negated)
 }
 
 pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
@@ -230,5 +231,14 @@ fn action_is_negated(words: &[&str], start: usize, action: usize, end: usize) ->
 
 fn has_negated_setup_object(words: &[&str], action: usize, end: usize) -> bool {
     let object = action + usize::from(matches!(words.get(action + 1), Some(&"up" | &"out"))) + 1;
-    object + 1 < end && words[object] == "no" && matches!(words[object + 1], "branch" | "worktree")
+    let negates_object = |before: &[&str]| before.iter().rev().take(4).any(|word| *word == "no");
+    words[object..end]
+        .iter()
+        .position(|word| matches!(*word, "branch" | "worktree"))
+        .is_some_and(|offset| negates_object(&words[object..object + offset]))
+        || action_is_passive(words, 0, action)
+            && words[..action]
+                .iter()
+                .rposition(|word| matches!(*word, "branch" | "worktree"))
+                .is_some_and(|object| negates_object(&words[..object]))
 }

@@ -54,6 +54,20 @@ fn validator_tracks_structural_setup_relations_without_treating_plans_or_negatio
     Ok(())
 }
 
+#[test]
+fn validator_scopes_no_to_bounded_setup_noun_phrases() -> TestResult {
+    for (setup, expected) in [
+        ("created no new branch before classification", true),
+        ("created no local branch or worktree before classification", true),
+        ("created absolutely no branch before classification", true),
+        ("No new branch was created by the child before classification", true),
+        ("No branch was created before classification", true),
+        ("created a new branch before classification", false),
+        ("created branch with no branch protection before classification", false),
+    ] { assert_with_classification("bounded setup noun-phrase negation", unclassified_child(), setup, expected)?; }
+    Ok(())
+}
+
 fn assert_with_classification(label: &str, classification: &str, setup: &str, expected: bool) -> TestResult {
     let temp = tempfile::tempdir()?;
     let path = temp.path().join("handoff.md");
