@@ -59,6 +59,8 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if expanded is None:
             return Invocation(None, [], context, opaque=True)
         tokens = expanded
+        if not tokens:
+            return Invocation(None, [], context)
         executable = name(tokens[0])
         args = tokens[1:]
         if executable in SHELL_INTERPRETERS | OPAQUE_INTERPRETERS and args == ["--version"]:

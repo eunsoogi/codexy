@@ -63,6 +63,30 @@ fn shell_policy_models_composed_execution_context() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn command_position_expansion_is_classified() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", &["git@github.com:eunsoogi/codexy.git"])?;
+    assert_deny(&bash(&root, &owned, "X='git push --force origin topic'; $X")?)?;
+    assert_eq!(bash(&root, &owned, "X='printf safe'; $X")?, b"");
+    Ok(())
+}
+
+#[test]
+fn typed_graphql_query_file_is_classified() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", &["git@github.com:eunsoogi/codexy.git"])?;
+    let mutation = workspace.path().join("merge.graphql");
+    std::fs::write(&mutation, "mutation { mergePullRequest(input: { pullRequestId: \"PR\", mergeMethod: MERGE }) { pullRequest { id } } }")?;
+    let viewer = workspace.path().join("viewer.graphql");
+    std::fs::write(&viewer, "query { viewer { login } }")?;
+    assert_deny(&bash(&root, &owned, &format!("gh api graphql -F query=@{}", mutation.display()))?)?;
+    assert_eq!(bash(&root, &owned, &format!("gh api graphql -F query=@{}", viewer.display()))?, b"");
+    Ok(())
+}
+
 fn github(root: &std::path::Path, body: &str) -> TestResult<Vec<u8>> {
     let input = json!({"hook_event_name":"PreToolUse","tool_name":"mcp__codex_apps__github_create_issue","tool_input":{"repository_full_name":"eunsoogi/codexy","title":"Improve hooks","body":body}});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));

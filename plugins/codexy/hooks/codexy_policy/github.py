@@ -96,7 +96,7 @@ def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: 
     operation = filtered[:2]
     if filtered[:1] == ["api"]:
         api_owned = default_owned if repository is None else github_identity(repository) == OWNED
-        return api_forbidden(filtered[1:], api_owned)
+        return api_forbidden(filtered[1:], api_owned, cwd)
     if operation == ["pr", "merge"]:
         mutation = _merge(filtered[2:])
     elif operation == ["pr", "create"]:

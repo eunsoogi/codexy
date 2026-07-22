@@ -108,7 +108,12 @@ def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | N
     if context.opaque_environment:
         return None
     expanded = [expand(token, context) for token in tokens]
-    return None if any(token is None for token in expanded) else [token for token in expanded if token is not None]
+    if any(token is None for token in expanded):
+        return None
+    resolved = [token for token in expanded if token is not None]
+    if tokens and VARIABLE_REFERENCE.fullmatch(tokens[0]):
+        return resolved[0].split() + resolved[1:]
+    return resolved
 
 
 def expand(value: str, context: ExecutionContext) -> str | None:
