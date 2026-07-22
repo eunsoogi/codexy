@@ -3,6 +3,7 @@ use super::child_lane_owner_decision::{
     is_affirmative_child_owned_value, is_affirmative_child_owner_decision,
     is_affirmative_owner_decision_for, is_child_delegation_owner_decision, is_parent_owned_value,
 };
+use super::child_lane_ownership_phrases::metadata_key;
 
 pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
     let line = line.strip_prefix('|')?;
@@ -41,10 +42,8 @@ fn is_gfm_delimiter_cell(cell: &str) -> bool {
     cell.len() >= 3 && cell.chars().all(|character| character == '-')
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct ClassificationFields {
-    pub(super) table_header: bool,
-    pub(super) table_separator: bool,
     lane_type: bool,
     secondary_surfaces: bool,
     atomic_scope: bool,
@@ -54,6 +53,106 @@ pub(super) struct ClassificationFields {
     stop_blocker: bool,
     child_display_owner_decision: bool,
     child_owner_decision: bool,
+}
+
+#[derive(Default)]
+pub(super) struct GfmClassificationTable {
+    state: GfmClassificationTableState,
+}
+
+#[derive(Default)]
+enum GfmClassificationTableState {
+    #[default]
+    Neutral,
+    Header,
+    Candidate {
+        has_nonclassification_row: bool,
+    },
+    Classification,
+}
+
+pub(super) enum GfmClassificationTableEvent<'a> {
+    Ignore,
+    Record(&'a str, &'a str),
+    ReplaceAndRecord(&'a str, &'a str),
+    Invalidate,
+    NotGfm,
+}
+
+impl GfmClassificationTable {
+    pub(super) fn consume<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
+        if classification_table_row(line) == Some(("field", "value")) {
+            self.state = GfmClassificationTableState::Header;
+            return GfmClassificationTableEvent::Ignore;
+        }
+        match &mut self.state {
+            GfmClassificationTableState::Neutral => GfmClassificationTableEvent::NotGfm,
+            GfmClassificationTableState::Header => {
+                if is_table_separator(line) {
+                    self.state = GfmClassificationTableState::Candidate {
+                        has_nonclassification_row: false,
+                    };
+                    GfmClassificationTableEvent::Ignore
+                } else {
+                    self.state = GfmClassificationTableState::Neutral;
+                    malformed_classification_row(line)
+                        .then_some(GfmClassificationTableEvent::Invalidate)
+                        .unwrap_or(GfmClassificationTableEvent::NotGfm)
+                }
+            }
+            GfmClassificationTableState::Candidate {
+                has_nonclassification_row,
+            } => match classification_table_row(line) {
+                Some((key, value)) if Self::is_classification_key(key) => {
+                    if *has_nonclassification_row {
+                        self.state = GfmClassificationTableState::Neutral;
+                        GfmClassificationTableEvent::Invalidate
+                    } else {
+                        self.state = GfmClassificationTableState::Classification;
+                        GfmClassificationTableEvent::ReplaceAndRecord(key, value)
+                    }
+                }
+                Some(_) => {
+                    *has_nonclassification_row = true;
+                    GfmClassificationTableEvent::Ignore
+                }
+                None if malformed_classification_row(line) => {
+                    self.state = GfmClassificationTableState::Neutral;
+                    GfmClassificationTableEvent::Invalidate
+                }
+                None => GfmClassificationTableEvent::NotGfm,
+            },
+            GfmClassificationTableState::Classification => match classification_table_row(line) {
+                Some((key, value)) if Self::is_classification_key(key) => {
+                    GfmClassificationTableEvent::Record(key, value)
+                }
+                Some(_) => {
+                    self.state = GfmClassificationTableState::Neutral;
+                    GfmClassificationTableEvent::Invalidate
+                }
+                None if line.starts_with('|') => {
+                    self.state = GfmClassificationTableState::Neutral;
+                    GfmClassificationTableEvent::Invalidate
+                }
+                None => {
+                    self.state = GfmClassificationTableState::Neutral;
+                    GfmClassificationTableEvent::NotGfm
+                }
+            },
+        }
+    }
+
+    fn is_classification_key(key: &str) -> bool {
+        ClassificationFields::records_key(metadata_key(key))
+    }
+}
+
+fn malformed_classification_row(line: &str) -> bool {
+    line.starts_with('|')
+        && line
+            .strip_prefix('|')
+            .and_then(|line| line.split_once('|'))
+            .is_some_and(|(key, _)| ClassificationFields::records_key(metadata_key(key)))
 }
 
 impl ClassificationFields {

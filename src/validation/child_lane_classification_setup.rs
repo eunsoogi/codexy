@@ -1,8 +1,8 @@
-use super::child_lane_classification_authority::lane_authority_before;
+use super::child_lane_classification_authority::lane_authority_context_before;
 use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_fields::{
-    ClassificationFields, classification_table_row, is_table_separator,
+    ClassificationFields, GfmClassificationTable, GfmClassificationTableEvent,
 };
 use super::child_lane_classification_setup_context::child_lane_context_applies;
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
@@ -34,15 +34,64 @@ pub(super) fn formal_child_classification_complete_index_before(
     lines: &[&str],
     setup_index: usize,
 ) -> Option<usize> {
+    let snapshot = latest_classification_before(lines, setup_index)?;
+    (snapshot
+        .authority
+        .is_some_and(|authority| authority.authorizes_child_setup())
+        && snapshot.fields.is_complete())
+    .then_some(snapshot.start)
+}
+
+pub(super) struct ClassificationSnapshot {
+    start: usize,
+    authority: Option<super::child_lane_classification_authority::LaneAuthority>,
+    fields: ClassificationFields,
+}
+
+impl ClassificationSnapshot {
+    pub(super) fn has_complete_child_display(&self) -> bool {
+        self.fields.has_complete_child_display()
+    }
+}
+
+pub(super) fn has_complete_gfm_display_before(lines: &[&str], end: usize) -> bool {
+    let (mut fields, mut table) = (
+        ClassificationFields::default(),
+        GfmClassificationTable::default(),
+    );
+    for line in lines.iter().take(end).map(|line| line.trim()) {
+        match table.consume(line) {
+            GfmClassificationTableEvent::Ignore => {}
+            GfmClassificationTableEvent::Invalidate => fields = ClassificationFields::default(),
+            GfmClassificationTableEvent::ReplaceAndRecord(key, value) => {
+                fields = ClassificationFields::default();
+                fields.record(metadata_key(key), trimmed_value(value), None, true);
+            }
+            GfmClassificationTableEvent::Record(key, value) => {
+                fields.record(metadata_key(key), trimmed_value(value), None, true);
+            }
+            GfmClassificationTableEvent::NotGfm => {}
+        }
+    }
+    fields.has_complete_child_display()
+}
+
+pub(super) fn latest_classification_before(
+    lines: &[&str],
+    setup_index: usize,
+) -> Option<ClassificationSnapshot> {
     let (mut seen, mut authority, mut classification_start) = (None, None, None);
+    let mut table = GfmClassificationTable::default();
     let raw_lines = lines;
     let (lines, prefixed_lane_start) = normalized_metadata_lines(lines, setup_index);
     let lane_start = current_lane_start(&lines, setup_index).max(prefixed_lane_start);
     for (index, line) in lines.iter().enumerate().take(setup_index).skip(lane_start) {
         if *line == "task classification:" {
             seen = Some(ClassificationFields::default());
-            authority = lane_authority_before(raw_lines, index);
+            let context = lane_authority_context_before(raw_lines, index);
+            authority = context.authority();
             classification_start = Some(index);
+            table = GfmClassificationTable::default();
             continue;
         }
         if line.is_empty() {
@@ -51,35 +100,34 @@ pub(super) fn formal_child_classification_complete_index_before(
         let Some(fields) = seen.as_mut() else {
             continue;
         };
-        if classification_table_row(line) == Some(("field", "value")) {
-            *fields = ClassificationFields::default();
-            fields.table_header = true;
-            continue;
+        match table.consume(line) {
+            GfmClassificationTableEvent::Ignore => continue,
+            GfmClassificationTableEvent::Invalidate => {
+                *fields = ClassificationFields::default();
+                continue;
+            }
+            GfmClassificationTableEvent::ReplaceAndRecord(key, value) => {
+                *fields = ClassificationFields::default();
+                fields.record(metadata_key(key), trimmed_value(value), authority, true);
+                continue;
+            }
+            GfmClassificationTableEvent::Record(key, value) => {
+                fields.record(metadata_key(key), trimmed_value(value), authority, true);
+                continue;
+            }
+            GfmClassificationTableEvent::NotGfm => {}
         }
-        if fields.table_header && !fields.table_separator && is_table_separator(line) {
-            fields.table_separator = true;
-            continue;
+        if let Some((key, value)) = line.split_once(':') {
+            fields.record(metadata_key(key), trimmed_value(value), authority, false);
         }
-        let row = classification_table_row(line);
-        let gfm_display_row = row.is_some();
-        let Some((key, value)) = (if row.is_some() {
-            fields.table_separator.then_some(row).flatten()
-        } else {
-            line.split_once(':')
-        }) else {
-            continue;
-        };
-        fields.record(
-            metadata_key(key),
-            trimmed_value(value),
-            authority,
-            gfm_display_row,
-        );
     }
-    classification_start.filter(|_| {
-        authority.is_some_and(|authority| authority.authorizes_child_setup())
-            && seen.is_some_and(|fields| fields.is_complete())
-    })
+    classification_start
+        .zip(seen)
+        .map(|(start, fields)| ClassificationSnapshot {
+            start,
+            authority,
+            fields,
+        })
 }
 
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
