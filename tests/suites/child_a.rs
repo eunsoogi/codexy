@@ -144,6 +144,8 @@ mod validator_child_lane_classification_setup_authority;
 mod validator_child_lane_authority_record_state;
 #[path = "../validator_child_lane_authority_compatibility.rs"]
 mod validator_child_lane_authority_compatibility;
+#[path = "../validator_child_lane_setup_actor_grammar.rs"]
+mod validator_child_lane_setup_actor_grammar;
 
 #[path = "../validator_child_lane_gfm_delimiter_state.rs"]
 mod validator_child_lane_gfm_delimiter_state;
