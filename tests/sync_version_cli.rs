@@ -1,8 +1,13 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
 };
+
+#[path = "sync_version_cli/support.rs"]
+mod support;
+
+use support::{archive_repository, stale_codexy_runtime_lock_version, version_surface_contents};
 
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {
@@ -111,6 +116,36 @@ fn sync_version_script_check_rejects_stale_cargo_lock_and_stale_python_metadata(
 }
 
 #[test]
+fn sync_version_script_check_rejects_commented_current_installer_pin()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let repo = archive_repository(&temp, "repo")?;
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/sync-plugin-version"),
+        repo.join("scripts/sync-plugin-version"),
+    )?;
+
+    let install_path = repo.join("install");
+    let original = fs::read_to_string(&install_path)?;
+    let stale = original.replacen("getcodexy==1.2.2", "getcodexy==9.9.9", 1);
+    let decoy = format!(
+        "# getcodexy==1.2.2 codexy-update --pre-session\n{stale}"
+    );
+    fs::write(&install_path, &decoy)?;
+
+    let output = Command::new(repo.join("scripts/sync-plugin-version"))
+        .arg("--check")
+        .current_dir(&repo)
+        .output()?;
+    assert!(
+        !output.status.success(),
+        "sync-version --check accepted a commented current pin with a stale executable command"
+    );
+    assert_eq!(fs::read_to_string(&install_path)?, decoy);
+    Ok(())
+}
+
+#[test]
 fn sync_version_cli_updates_only_the_supplied_isolated_root()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -154,6 +189,14 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
     );
     for (path, contents) in version_surface_contents(&diagnostic_root)? {
         let text = String::from_utf8_lossy(&contents);
+        if path.ends_with("install") {
+            assert!(
+                text.find("getcodexy==9.9.9 codexy-update --pre-session")
+                    .is_some(),
+                "supplied diagnostic root did not update the installer pin"
+            );
+            continue;
+        }
         assert!(
             text.lines().map(str::trim).any(|line| matches!(
                 line,
@@ -164,87 +207,4 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
         );
     }
     Ok(())
-}
-
-fn archive_repository(
-    temp: &tempfile::TempDir,
-    name: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let archive = temp.path().join(format!("{name}.tar"));
-    let repo = temp.path().join(name);
-    let archive_status = Command::new("git")
-        .args(["archive", "--format=tar", "HEAD"])
-        .arg("-o")
-        .arg(&archive)
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .status()?;
-    assert!(archive_status.success(), "git archive failed");
-    fs::create_dir(&repo)?;
-    let tar_status = Command::new("tar")
-        .arg("-xf")
-        .arg(&archive)
-        .arg("-C")
-        .arg(&repo)
-        .status()?;
-    assert!(tar_status.success(), "tar extract failed");
-    for relative in [
-        "packages/getcodexy/pyproject.toml",
-        "src/version.rs",
-        "src/version/python.rs",
-    ] {
-        let destination = repo.join(relative);
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join(relative), destination)?;
-    }
-    Ok(repo)
-}
-
-fn version_surface_contents(
-    root: &Path,
-) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {
-    [
-        ".agents/plugins/marketplace.json",
-        ".agents/plugins/release-publish-contract.json",
-        "Cargo.lock",
-        "Cargo.toml",
-        "packages/getcodexy/pyproject.toml",
-        "plugins/codexy/.codex-plugin/plugin.json",
-    ]
-    .into_iter()
-    .map(|relative| {
-        let path = root.join(relative);
-        Ok((path.clone(), fs::read(path)?))
-    })
-    .collect()
-}
-
-fn stale_codexy_runtime_lock_version(
-    lock_text: &str,
-    stale_version: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let mut in_codexy_runtime = false;
-    let mut replaced = false;
-    let mut lines = Vec::new();
-    for line in lock_text.lines() {
-        let trimmed = line.trim();
-        if trimmed == "[[package]]" {
-            in_codexy_runtime = false;
-        } else if trimmed == "name = \"codexy-runtime\"" {
-            in_codexy_runtime = true;
-        }
-
-        if in_codexy_runtime && trimmed.starts_with("version = ") {
-            lines.push(format!("version = \"{stale_version}\""));
-            replaced = true;
-            in_codexy_runtime = false;
-        } else {
-            lines.push(line.to_owned());
-        }
-    }
-    if !replaced {
-        return Err("codexy-runtime package version not found in Cargo.lock".into());
-    }
-    Ok(format!("{}\n", lines.join("\n")))
 }

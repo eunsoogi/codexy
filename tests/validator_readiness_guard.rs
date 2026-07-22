@@ -1,31 +1,25 @@
 use std::process::Command;
 
 #[test]
-fn readiness_guard_context_includes_expected_pr_flag() -> Result<(), Box<dyn std::error::Error>> {
+fn readiness_guard_rejects_lifecycle_event_invocation() -> Result<(), Box<dyn std::error::Error>> {
     let script = readiness_guard();
 
     let output = Command::new(&script).arg("UserPromptSubmit").output()?;
     assert!(
-        output.status.success(),
-        "guard context should emit successfully\nstdout:\n{}\nstderr:\n{}",
+        !output.status.success(),
+        "guard must not retain a UserPromptSubmit diagnostic mode\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let hook_json: serde_json::Value = serde_json::from_slice(&output.stdout)?;
-    let context = hook_json["hookSpecificOutput"]["additionalContext"]
-        .as_str()
-        .ok_or("guard context should include additionalContext")?;
     assert!(
-        context.contains("--check-merge-message --expected-pr PR_NUMBER"),
-        "merge guidance must include the required expected PR flag: {context}"
+        !String::from_utf8_lossy(&output.stdout).contains("hookSpecificOutput"),
+        "lifecycle invocation emitted model context"
     );
     assert!(
-        context.contains("--expected-issue ISSUE_NUMBER"),
-        "issue-backed merge guidance must include the conditional expected issue flag: {context}"
-    );
-    assert!(
-        context.contains("issue-backed"),
-        "merge guidance must tell agents when the expected issue flag applies: {context}"
+        std::fs::read_to_string(&script)?
+            .find("UserPromptSubmit")
+            .is_none(),
+        "static readiness guard retained lifecycle-specific diagnostics"
     );
     Ok(())
 }
@@ -84,7 +78,9 @@ fn readiness_guard_checks_squash_subject_suffix_spacing() -> Result<(), Box<dyn 
         "guard should reject unseparated PR suffixes"
     );
     assert!(
-        output_text(&bad).contains("merge commit subject must end with the expected PR suffix"),
+        output_text(&bad)
+            .find("merge commit subject must end with the expected PR suffix")
+            .is_some(),
         "unexpected output: {}",
         output_text(&bad)
     );
@@ -127,7 +123,9 @@ fn readiness_guard_delegates_merge_body_validation() -> Result<(), Box<dyn std::
         "guard should reject closing references when no issue is expected"
     );
     assert!(
-        output_text(&bad).contains("merge commit message must not contain closing references"),
+        output_text(&bad)
+            .find("merge commit message must not contain closing references")
+            .is_some(),
         "unexpected output: {}",
         output_text(&bad)
     );
@@ -199,7 +197,8 @@ fn readiness_guard_rejects_whitespace_only_summaries() -> Result<(), Box<dyn std
     );
     assert!(
         output_text(&bad_merge_message)
-            .contains("merge commit subject must use Conventional Commit style"),
+            .find("merge commit subject must use Conventional Commit style")
+            .is_some(),
         "unexpected output: {}",
         output_text(&bad_merge_message)
     );
@@ -219,7 +218,8 @@ fn readiness_guard_rejects_whitespace_only_summaries() -> Result<(), Box<dyn std
     );
     assert!(
         output_text(&empty_merge_message)
-            .contains("merge commit subject must use Conventional Commit style"),
+            .find("merge commit subject must use Conventional Commit style")
+            .is_some(),
         "unexpected output: {}",
         output_text(&empty_merge_message)
     );

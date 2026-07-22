@@ -53,7 +53,7 @@ jobs:
           fi
           branch="codexy/version-${VERSION}"
           git switch -c "${branch}"
-          git add Cargo.toml Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml
+          git add Cargo.toml Cargo.lock install .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml
           if [ -f package.json ]; then
             git add package.json
           fi
@@ -71,6 +71,7 @@ jobs:
           ## Changed Areas
           - .agents/plugins/marketplace.json
           - .agents/plugins/release-publish-contract.json
+          - install
           - plugins/codexy/.codex-plugin/plugin.json
           - packages/getcodexy/pyproject.toml
 

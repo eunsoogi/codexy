@@ -172,19 +172,13 @@ fn assert_rejected(skill: String) -> TestResult {
         )
         .expect("routing fixture must contain the forbidden recipient policy");
     let errors = validate(skill)?;
-    assert!(
-        !errors.is_empty(),
-        "routing bypass unexpectedly passed"
-    );
+    assert!(!errors.is_empty(), "routing bypass unexpectedly passed");
     Ok(())
 }
 
 fn assert_recipient_assignment_rejected(skill: String, expected: &str) -> TestResult {
     let errors = validate(skill)?;
-    assert!(
-        !errors.is_empty(),
-        "routing bypass unexpectedly passed"
-    );
+    assert!(!errors.is_empty(), "routing bypass unexpectedly passed");
     assert!(
         errors.iter().any(|error| error.contains(expected)),
         "routing rejection must name {expected}: {errors:#?}"

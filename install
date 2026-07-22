@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+exec uvx --from getcodexy==1.2.2 codexy-update --pre-session "$@"

@@ -5,184 +5,192 @@ use std::process::Command;
 #[allow(unused)]
 use crate::support;
 
+const QUIET_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit"];
+const HARD_CHECKS: &[&str] = &[
+    "codexy-issue-title-check.sh",
+    "codexy-pr-title-check.sh",
+    "codexy-pr-label-check.sh",
+    "codexy-merge-message-check.sh",
+];
+
 #[test]
-fn validator_cli_accepts_installed_readiness_hook_topology()
--> Result<(), Box<dyn std::error::Error>> {
+fn packaged_hooks_are_lifecycle_quiet() -> Result<(), Box<dyn std::error::Error>> {
+    let hooks = packaged_hooks()?;
+    let events = hooks["hooks"]
+        .as_object()
+        .ok_or("hooks must be an object")?;
+    for event in QUIET_EVENTS {
+        assert!(
+            !events.contains_key(*event),
+            "packaged hooks must not register the lifecycle event {event}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_accepts_an_unrelated_safe_lifecycle_hook() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
-
-    let hooks_path = plugin_root.join("hooks/hooks.json");
-    let hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    let readiness_command = hooks_config["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"]
-        .as_str()
-        .ok_or("UserPromptSubmit hook command must be a string")?;
-    assert!(
-        readiness_command.contains("${PLUGIN_ROOT}/hooks/codexy-readiness-context.sh"),
-        "readiness hook command must resolve through PLUGIN_ROOT for installed packages"
-    );
-    let readiness_script_path = plugin_root.join("hooks/codexy-readiness-context.sh");
-    assert!(
-        readiness_script_path.is_file(),
-        "readiness hook command target must exist inside the installed plugin"
-    );
-    #[cfg(unix)]
-    assert!(
-        readiness_script_path.metadata()?.permissions().mode() & 0o111 != 0,
-        "readiness hook command target must be executable inside the installed plugin"
-    );
-
-    let readiness_output = Command::new(&readiness_script_path)
-        .arg("UserPromptSubmit")
-        .output()?;
-    assert!(
-        readiness_output.status.success(),
-        "readiness hook script should emit context successfully\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&readiness_output.stdout),
-        String::from_utf8_lossy(&readiness_output.stderr)
-    );
-    let readiness_json: serde_json::Value = serde_json::from_slice(&readiness_output.stdout)?;
-    assert_eq!(
-        readiness_json["hookSpecificOutput"]["hookEventName"],
-        "UserPromptSubmit"
-    );
-    let readiness_context = readiness_json["hookSpecificOutput"]["additionalContext"]
-        .as_str()
-        .ok_or("readiness hook output should include additional context")?;
-    assert!(readiness_context.contains("codexy-issue-title-check.sh --issue-title"));
-    assert!(readiness_context.contains("--check-issue-title"));
-    assert!(readiness_context.contains("PR title and merge subject enforcement (#206)"));
-    assert!(readiness_context.contains("PR label readiness enforcement (#210)"));
-    assert!(readiness_context.contains("--check-completion-handoff"));
-    assert!(readiness_context.contains("repositoryLabels"));
-    assert!(readiness_context.contains("target base"));
-    assert!(readiness_context.contains("hook entrypoints"));
-    assert!(readiness_context.contains("available fallback"));
-    assert!(readiness_context.contains("separate dogfood defect"));
+    let plugin_root = lifecycle_quiet_fixture(temp.path())?;
 
     let output = validate_hooks(&plugin_root)?;
     assert!(
         output.status.success(),
-        "validator should accept installed split-purpose hook topology\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
+        "validator should accept safe non-diagnostic hooks\n{}",
+        output_text(&output)
     );
     Ok(())
 }
 
 #[test]
-fn validator_cli_accepts_purpose_specific_hooks_alongside_routing_context()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
+fn validator_rejects_diagnostic_lifecycle_hooks() -> Result<(), Box<dyn std::error::Error>> {
+    for event in QUIET_EVENTS {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = lifecycle_quiet_fixture(temp.path())?;
+        add_diagnostic_hook(&plugin_root, event)?;
 
-    let hooks_path = plugin_root.join("hooks/hooks.json");
-    let mut hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    hooks_config["hooks"]["SessionStart"][0]["hooks"]
-        .as_array_mut()
-        .ok_or("SessionStart hooks must be an array")?
-        .push(serde_json::json!({
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-readiness-context.sh\" SessionStart",
-            "timeout": 3,
-            "statusMessage": "Loading Codexy readiness context"
-        }));
-    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
-
-    let output = validate_hooks(&plugin_root)?;
-    assert!(
-        output.status.success(),
-        "validator should accept purpose-specific hooks alongside the routing context\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+        let output = validate_hooks(&plugin_root)?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            !output.status.success(),
+            "validator accepted {event}: {stderr}"
+        );
+        assert!(
+            stderr.contains("lifecycle-quiet") && stderr.contains(event),
+            "expected a clear lifecycle-quiet error for {event}, got: {stderr}"
+        );
+    }
     Ok(())
 }
 
 #[test]
-fn validator_cli_rejects_missing_readiness_hook_topology() -> Result<(), Box<dyn std::error::Error>>
-{
+fn hard_checks_remain_packaged_executable_and_independently_callable()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
+    let plugin_root = lifecycle_quiet_fixture(temp.path())?;
+    let hooks = packaged_hooks()?;
+    let hooks_text = serde_json::to_string(&hooks)?;
+    for script in HARD_CHECKS {
+        let path = plugin_root.join("hooks").join(script);
+        assert!(
+            path.is_file(),
+            "missing packaged hard-check script: {script}"
+        );
+        #[cfg(unix)]
+        assert!(
+            path.metadata()?.permissions().mode() & 0o111 != 0,
+            "packaged hard-check script must be executable: {script}"
+        );
+        assert!(
+            hooks_text.find(script).is_none(),
+            "hard-check script must remain callable without lifecycle registration: {script}"
+        );
+    }
 
+    assert_static_success(
+        &plugin_root.join("hooks/codexy-issue-title-check.sh"),
+        &["--issue-title", "Keep hard checks independently callable"],
+    )?;
+    assert_static_success(
+        &plugin_root.join("hooks/codexy-pr-title-check.sh"),
+        &[
+            "--pr-title",
+            "fix(hooks): keep checks independently callable",
+        ],
+    )?;
+    let pr_state = temp.path().join("labeled-pr.json");
+    std::fs::write(
+        &pr_state,
+        r#"{"number":219,"state":"OPEN","repository":"eunsoogi/codexy","labels":[{"name":"type/fix"}],"repositoryLabels":[{"name":"type/fix"}]}"#,
+    )?;
+    assert_static_success(
+        &plugin_root.join("hooks/codexy-pr-label-check.sh"),
+        &["--pr-state-file", pr_state.to_str().ok_or("pr state path")?],
+    )?;
+    assert_static_success(
+        &plugin_root.join("hooks/codexy-merge-message-check.sh"),
+        &[
+            "--expected-issue",
+            "219",
+            "--expected-pr",
+            "220",
+            "--merge-message",
+            "fix(hooks): keep checks independently callable (#220)\n\nFixes #219\n",
+        ],
+    )?;
+    Ok(())
+}
+
+fn lifecycle_quiet_fixture(
+    base: &std::path::Path,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let plugin_root = base.join("codexy");
+    copy_plugin(&plugin_root)?;
     let hooks_path = plugin_root.join("hooks/hooks.json");
-    let mut hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    hooks_config["hooks"]
+    let mut hooks = read_hooks(&hooks_path)?;
+    let events = hooks["hooks"]
+        .as_object_mut()
+        .ok_or("hooks must be an object")?;
+    for event in QUIET_EVENTS {
+        events.remove(*event);
+    }
+    events.insert("PostToolUse".to_string(), safe_post_tool_use_hook());
+    std::fs::write(hooks_path, serde_json::to_string_pretty(&hooks)?)?;
+    Ok(plugin_root)
+}
+
+fn add_diagnostic_hook(
+    plugin_root: &std::path::Path,
+    event: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let hooks_path = plugin_root.join("hooks/hooks.json");
+    let mut hooks = read_hooks(&hooks_path)?;
+    hooks["hooks"]
         .as_object_mut()
         .ok_or("hooks must be an object")?
-        .remove("UserPromptSubmit");
-    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
-
-    let output = validate_hooks(&plugin_root)?;
-    assert!(
-        !output.status.success(),
-        "validator should reject collapsed routing-only hook topology"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("UserPromptSubmit hook command must run hooks/codexy-readiness-context.sh"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        .insert(event.to_string(), serde_json::json!([{
+            "matcher": "*",
+            "hooks": [{
+                "type": "command",
+                "command": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
+                "timeout": 3
+            }]
+        }]));
+    std::fs::write(hooks_path, serde_json::to_string_pretty(&hooks)?)?;
     Ok(())
 }
 
-#[test]
-fn validator_cli_rejects_readiness_hook_collapsed_to_routing_script()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
-
-    let hooks_path = plugin_root.join("hooks/hooks.json");
-    let mut hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    hooks_config["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"] =
-        serde_json::json!("\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\" SessionStart");
-    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
-
-    let output = validate_hooks(&plugin_root)?;
-    assert!(
-        !output.status.success(),
-        "validator should reject readiness hooks collapsed to the routing script"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("UserPromptSubmit hook command must run hooks/codexy-readiness-context.sh"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+fn safe_post_tool_use_hook() -> serde_json::Value {
+    serde_json::json!([{
+        "matcher": "*",
+        "hooks": [{
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
+            "timeout": 3
+        }]
+    }])
 }
 
-#[test]
-fn validator_cli_rejects_unsafe_readiness_hook_command() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_plugin(&plugin_root)?;
+fn packaged_hooks() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    read_hooks(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/hooks/hooks.json"),
+    )
+}
 
-    let hooks_path = plugin_root.join("hooks/hooks.json");
-    let mut hooks_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&hooks_path)?)?;
-    hooks_config["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"] =
-        serde_json::json!("./hooks/codexy-readiness-context.sh UserPromptSubmit");
-    std::fs::write(&hooks_path, serde_json::to_string_pretty(&hooks_config)?)?;
+fn read_hooks(path: &std::path::Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
+}
 
-    let output = validate_hooks(&plugin_root)?;
+fn assert_static_success(
+    script: &std::path::Path,
+    args: &[&str],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = Command::new(script).args(args).output()?;
     assert!(
-        !output.status.success(),
-        "validator should reject readiness hook commands outside PLUGIN_ROOT"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("must start with a packaged ${PLUGIN_ROOT} entrypoint"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+        output.status.success(),
+        "{} static mode failed:\n{}",
+        script.display(),
+        output_text(&output)
     );
     Ok(())
 }
@@ -203,5 +211,13 @@ fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {
     support::copy_dir(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         plugin_root,
+    )
+}
+
+fn output_text(output: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
     )
 }

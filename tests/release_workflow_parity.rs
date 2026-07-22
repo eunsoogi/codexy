@@ -50,6 +50,16 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
             .any(|argument| argument == "packages/getcodexy/pyproject.toml"),
         "version-bump staging omits Python metadata"
     );
+    assert!(
+        staging
+            .split_ascii_whitespace()
+            .any(|argument| argument == "install"),
+        "version-bump staging omits the synchronized root installer"
+    );
+    assert!(
+        open_pr.lines().map(str::trim).any(|line| line == "- install"),
+        "version-bump PR template omits the root installer"
+    );
     Ok(())
 }
 
@@ -104,6 +114,19 @@ fn assert_python_package_workflow(text: &str) -> Result<(), Box<dyn std::error::
         .get(Value::String("jobs".into()))
         .and_then(Value::as_mapping)
         .ok_or("workflow jobs")?;
+    let test_steps = jobs
+        .get(Value::String("test".into()))
+        .and_then(|job| job.get("steps"))
+        .and_then(Value::as_sequence)
+        .ok_or("test steps")?;
+    let wheel_smoke = named_step_run(test_steps, "Verify installed wheel and console entrypoint")?;
+    if !wheel_smoke
+        .lines()
+        .map(str::trim)
+        .any(|line| line == ".package-venv/bin/codexy-update --help")
+    {
+        return Err("installed wheel proof must execute codexy-update --help".into());
+    }
     let publish = jobs
         .get(Value::String("publish".into()))
         .and_then(Value::as_mapping)
