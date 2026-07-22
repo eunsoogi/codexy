@@ -31,6 +31,14 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         .and_then(|job| job.get("steps"))
         .and_then(Value::as_sequence)
         .ok_or("version bump steps")?;
+    let checkout = steps
+        .iter()
+        .find(|step| step.get("name").and_then(Value::as_str) == Some("Check out repository"))
+        .ok_or("checkout step")?;
+    assert_eq!(
+        checkout.get("with").and_then(|with| with.get("fetch-depth")).and_then(Value::as_i64),
+        Some(0),
+    );
     let validate_issue = named_step_run(steps, "Validate governing release issue")?;
     let synchronize = named_step_run(steps, "Synchronize plugin version")?;
     let validate_release = named_step_run(steps, "Validate release candidate")?;
