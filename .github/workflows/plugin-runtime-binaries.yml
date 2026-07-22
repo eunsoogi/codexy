@@ -348,7 +348,7 @@ jobs:
               if ($entrypoint.Label -eq "configured extensionless command") {
                 $resolvedCommand = Get-Command -Name $entrypoint.Path -CommandType Application -ErrorAction Stop
                 $expectedPePath = Join-Path $installedPath "mcp/codexy-mcp-$server.exe"
-                if (-not $resolvedCommand.Path.Equals($expectedPePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                if (-not [string]::Equals($resolvedCommand.Path, $expectedPePath, [System.StringComparison]::OrdinalIgnoreCase)) {
                   throw "$server configured extensionless command resolved outside its installed PE"
                 }
                 $entrypointPath = $resolvedCommand.Path

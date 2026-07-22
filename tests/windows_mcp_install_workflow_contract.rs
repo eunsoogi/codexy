@@ -17,6 +17,7 @@ fn windows_install_proves_the_configured_command_and_retains_failure_evidence() 
             "Path = Join-Path $installedPath \"mcp/codexy-mcp-$server\"",
             "$env:PATHEXT = \".EXE\"",
             "Get-Command -Name $entrypoint.Path -CommandType Application",
+            "[string]::Equals($resolvedCommand.Path, $expectedPePath",
             "$entrypointPath = $resolvedCommand.Path",
             "%~dp0cmd-sentinel-ran",
             "$appServerFailure = $_.Exception.Message",
