@@ -9,7 +9,8 @@ from .repository import git_directory_owned, repository_owned
 from .shell_context import command_option, name, resolve_cwd
 
 MAX_WRAPPER_DEPTH = 8
-INTERPRETERS = {"sh", "bash", "zsh", "dash", "pwsh", "powershell", "cmd", "python", "python3", "node", "perl", "ruby"}
+SHELL_INTERPRETERS = {"sh", "bash", "zsh", "dash"}
+OPAQUE_INTERPRETERS = {"pwsh", "powershell", "cmd", "python", "python3", "node", "perl", "ruby"}
 
 
 @dataclass(frozen=True)
@@ -27,42 +28,41 @@ WRAPPER_GRAMMAR = {
 
 
 @dataclass(frozen=True)
-class Invocation:
-    executable: str | None
-    arguments: list[str]
+class ExecutionContext:
     cwd: str
     cwd_owned: bool | None
     git_dir: str | None
     gh_repo: str | None
+
+
+@dataclass(frozen=True)
+class Invocation:
+    executable: str | None
+    arguments: list[str]
+    context: ExecutionContext
     script: str | None = None
     opaque: bool = False
 
 
-def resolve(tokens: list[str], cwd: str, depth: int = 0) -> Invocation | None:
+def resolve(tokens: list[str], context: ExecutionContext, depth: int = 0) -> Invocation | None:
     """Resolve wrapper launchers and their context before policy classification."""
     if depth > MAX_WRAPPER_DEPTH:
         return None
-    git_dir, gh_repo = None, None
-    while tokens and _assignment(tokens[0]):
-        git_dir, gh_repo = _assign(tokens[0], git_dir, gh_repo)
-        tokens = tokens[1:]
-    owned = repository_owned(cwd)
-    return _unwrap(tokens, cwd, owned, git_dir, gh_repo, depth)
+    return _unwrap(tokens, context, depth)
 
 
-def _unwrap(tokens: list[str], cwd: str, owned: bool | None, git_dir: str | None, gh_repo: str | None, depth: int) -> Invocation | None:
+def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocation | None:
     for _ in range(MAX_WRAPPER_DEPTH):
+        tokens, context = _leading_assignments(tokens, context)
         if not tokens:
-            return Invocation(None, [], cwd, owned, git_dir, gh_repo)
+            return Invocation(None, [], context)
         executable = name(tokens[0])
         args = tokens[1:]
         if executable == "env":
-            result = _env(args, cwd, owned, git_dir, gh_repo)
+            result = _env(args, context)
             if result is None:
                 return None
-            tokens, cwd, owned, git_dir, gh_repo, script = result
-            if script is not None:
-                return Invocation(None, [], cwd, owned, git_dir, gh_repo, script=script)
+            tokens, context = result
             continue
         if executable in {"nice", "time", "sudo"}:
             result = _options(executable, args)
@@ -70,8 +70,7 @@ def _unwrap(tokens: list[str], cwd: str, owned: bool | None, git_dir: str | None
                 return None
             tokens, values = result
             if executable == "sudo" and (directory := values.get("-D") or values.get("--chdir")) is not None:
-                cwd = resolve_cwd(cwd, directory)
-                owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
+                context = _at(context, resolve_cwd(context.cwd, directory))
             continue
         if executable == "timeout":
             result = _options(executable, args)
@@ -98,14 +97,15 @@ def _unwrap(tokens: list[str], cwd: str, owned: bool | None, git_dir: str | None
             result = _xargs(args)
             if result is None:
                 return None
-            return _unwrap(result, cwd, owned, git_dir, gh_repo, depth + 1)
-        if executable in INTERPRETERS:
+            return _unwrap(result, context, depth + 1)
+        if executable in SHELL_INTERPRETERS:
             for index, argument in enumerate(args):
                 if command_option(argument):
-                    return Invocation(executable, args, cwd, owned, git_dir, gh_repo, script=args[index + 1] if index + 1 < len(args) else "")
-            return Invocation(executable, args, cwd, owned, git_dir, gh_repo, opaque=True)
-        owned = git_directory_owned(cwd, git_dir) if git_dir is not None else owned
-        return Invocation(executable, args, cwd, owned, git_dir, gh_repo)
+                    return Invocation(executable, args, context, script=args[index + 1] if index + 1 < len(args) else "")
+            return Invocation(executable, args, context, opaque=True)
+        if executable in OPAQUE_INTERPRETERS:
+            return Invocation(executable, args, context, opaque=True)
+        return Invocation(executable, args, context)
     return None
 
 
@@ -113,47 +113,71 @@ def _assignment(value: str) -> bool:
     return "=" in value and not value.startswith("-")
 
 
-def _assign(value: str, git_dir: str | None, gh_repo: str | None) -> tuple[str | None, str | None]:
+def _assign(value: str, context: ExecutionContext) -> ExecutionContext:
     key, assigned = value.split("=", 1)
-    return (assigned, gh_repo) if key == "GIT_DIR" else (git_dir, assigned) if key == "GH_REPO" else (git_dir, gh_repo)
+    git_dir = assigned if key == "GIT_DIR" else context.git_dir
+    gh_repo = assigned if key == "GH_REPO" else context.gh_repo
+    owned = git_directory_owned(context.cwd, git_dir) if git_dir is not None else context.cwd_owned
+    return ExecutionContext(context.cwd, owned, git_dir, gh_repo)
 
 
-def _env(args: list[str], cwd: str, owned: bool | None, git_dir: str | None, gh_repo: str | None) -> tuple[list[str], str, bool | None, str | None, str | None, str | None] | None:
+def _leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext]:
+    while tokens and _assignment(tokens[0]):
+        context = _assign(tokens[0], context)
+        tokens = tokens[1:]
+    return tokens, context
+
+
+def _at(context: ExecutionContext, cwd: str) -> ExecutionContext:
+    owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
+    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo)
+
+
+def _env(args: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext] | None:
     while args and (args[0].startswith("-") or _assignment(args[0])):
         option = args[0]
         if _assignment(option):
-            git_dir, gh_repo = _assign(option, git_dir, gh_repo)
+            context = _assign(option, context)
             args = args[1:]
         elif option == "--":
             args = args[1:]
             break
         elif option in {"-S", "--split-string"}:
-            return ([], cwd, owned, git_dir, gh_repo, args[1] if len(args) > 1 else "")
+            if len(args) < 2:
+                return None
+            try:
+                return shlex.split(args[1]) + args[2:], context
+            except ValueError:
+                return None
         elif option.startswith("--split-string="):
-            return ([], cwd, owned, git_dir, gh_repo, option.split("=", 1)[1])
+            try:
+                return shlex.split(option.split("=", 1)[1]) + args[1:], context
+            except ValueError:
+                return None
         elif option in {"-u", "--unset", "-C", "--chdir"} or (option.startswith(("-u", "-C")) and len(option) > 2):
             attached = option[:2] if len(option) > 2 and option[:2] in {"-u", "-C"} else option
             value = option[2:] if attached != option else args[1] if len(args) > 1 else None
             if value is None:
                 return None
             if attached in {"-u", "--unset"}:
-                git_dir = None if value == "GIT_DIR" else git_dir
-                gh_repo = None if value == "GH_REPO" else gh_repo
-                if value == "GIT_DIR":
-                    owned = repository_owned(cwd)
+                git_dir = None if value == "GIT_DIR" else context.git_dir
+                gh_repo = None if value == "GH_REPO" else context.gh_repo
+                owned = repository_owned(context.cwd) if git_dir is None else context.cwd_owned
+                context = ExecutionContext(context.cwd, owned, git_dir, gh_repo)
             else:
-                cwd = resolve_cwd(cwd, value)
-                owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
+                context = _at(context, resolve_cwd(context.cwd, value))
             args = args[1:] if attached != option else args[2:]
         elif option.startswith("--chdir="):
-            cwd = resolve_cwd(cwd, option.split("=", 1)[1])
-            owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
+            context = _at(context, resolve_cwd(context.cwd, option.split("=", 1)[1]))
             args = args[1:]
-        elif option in {"-0", "--null", "-i", "--ignore-environment", "-v", "--debug"}:
+        elif option in {"-i", "--ignore-environment"}:
+            context = ExecutionContext(context.cwd, repository_owned(context.cwd), None, None)
+            args = args[1:]
+        elif option in {"-0", "--null", "-v", "--debug"}:
             args = args[1:]
         else:
             return None
-    return (args, cwd, owned, git_dir, gh_repo, None)
+    return args, context
 
 
 def _options(wrapper: str, args: list[str]) -> tuple[list[str], dict[str, str]] | None:

@@ -7,8 +7,8 @@ import shlex
 
 from .git_command import normalize as normalize_git
 from .github import forbidden as gh_forbidden
-from .invocation import resolve
-from .repository import OWNED, github_identity, identity, repository_owned
+from .invocation import ExecutionContext, resolve
+from .repository import OWNED, git_directory_owned, github_identity, identity, repository_owned
 from .shell_context import changed_directory, flag
 
 OPS = {";", "&&", "||", "|", "&"}
@@ -17,11 +17,14 @@ SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 
 
 def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
-    cwd_owned = repository_owned(cwd)
+    return _forbidden(command, ExecutionContext(cwd, repository_owned(cwd), None, None), depth)
+
+
+def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
     if depth > 3:
         return True
     if OPAQUE.search(command):
-        if cwd_owned is not False:
+        if context.cwd_owned is not False:
             return True
         try:
             opaque_tokens = shlex.split(command)
@@ -29,7 +32,7 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
                 evaluated = opaque_tokens[1:]
                 if evaluated[:1] == ["--"]:
                     evaluated = evaluated[1:]
-                if forbidden(" ".join(evaluated), cwd, depth + 1):
+                if _forbidden(" ".join(evaluated), context, depth + 1):
                     return True
             elif _explicit_owned(opaque_tokens) is True:
                 return True
@@ -37,18 +40,18 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
             return True
         for match in SUBCOMMAND.finditer(command):
             nested = match.group(1) if match.group(1) is not None else match.group(2)
-            if forbidden(nested, cwd, depth + 1):
+            if _forbidden(nested, context, depth + 1):
                 return True
         if re.search(r"\$\{|<<<?|\b(?:if|for|while|until|case)\b", command):
             return True
     try:
-        lexer = shlex.shlex(command.replace("\n", ";"), posix=True, punctuation_chars=";&|(){}")
+        lexer = shlex.shlex(_separate_lines(command), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
         tokens = list(lexer)
     except ValueError:
-        return cwd_owned is not False
+        return context.cwd_owned is not False
     if any(token in {"(", ")", "{", "}"} for token in tokens):
-        return cwd_owned is not False
+        return context.cwd_owned is not False
     segments, current = [], []
     for token in tokens:
         if token in OPS:
@@ -59,46 +62,46 @@ def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
             current.append(token)
     if current:
         segments.append((current, ""))
-    active_cwd = cwd
+    active = context
     for index, (segment, following) in enumerate(segments):
-        if _segment(segment, active_cwd, depth):
+        if _segment(segment, active, depth):
             return True
-        changed_cwd = changed_directory(segment, active_cwd)
-        if following in {";", "&&"} or (following == "||" and (repository_owned(active_cwd) is False or repository_owned(changed_cwd) is not False)):
-            active_cwd = changed_cwd
+        changed_cwd = changed_directory(segment, active.cwd)
+        if following in {";", "&&"} or (following == "||" and (active.cwd_owned is False or _at(active, changed_cwd).cwd_owned is not False)):
+            active = _at(active, changed_cwd)
         if following == "|" and index + 1 < len(segments):
-            next_invocation = resolve(segments[index + 1][0], active_cwd, depth)
+            next_invocation = resolve(segments[index + 1][0], active, depth)
             if next_invocation is None or next_invocation.opaque:
-                return repository_owned(active_cwd) is not False
+                return active.cwd_owned is not False
     return False
 
 
-def _segment(tokens: list[str], cwd: str, depth: int) -> bool:
-    invocation = resolve(tokens, cwd, depth)
+def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> bool:
+    invocation = resolve(tokens, context, depth)
     if invocation is None:
         return True
     if invocation.script is not None:
-        return not invocation.script or forbidden(invocation.script, invocation.cwd, depth + 1)
+        return not invocation.script or _forbidden(invocation.script, invocation.context, depth + 1)
     if invocation.opaque:
-        return invocation.cwd_owned is not False
+        return True
     if invocation.executable is None:
         return False
     if invocation.executable == "git":
-        return _git(invocation.arguments, invocation.cwd, invocation.cwd_owned, invocation.git_dir)
+        return _git(invocation.arguments, invocation.context, depth)
     if invocation.executable == "gh":
-        gh_owned = github_identity(invocation.gh_repo) == OWNED if invocation.gh_repo is not None else None
-        return gh_forbidden(invocation.arguments, invocation.cwd_owned, gh_owned)
+        gh_owned = github_identity(invocation.context.gh_repo) == OWNED if invocation.context.gh_repo is not None else None
+        return gh_forbidden(invocation.arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned)
     if invocation.executable == "rm":
-        return invocation.cwd_owned is not False and _rm(invocation.arguments)
+        return invocation.context.cwd_owned is not False and _rm(invocation.arguments)
     return False
 
 
-def _git(args: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None) -> bool:
-    invocation = normalize_git(args, cwd, cwd_owned, git_dir, _config_owned)
+def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
+    invocation = normalize_git(args, context.cwd, context.cwd_owned, context.git_dir, _config_owned)
     if invocation is None:
         return True
     if invocation.alias_command is not None:
-        return not invocation.alias_command or forbidden(invocation.alias_command, cwd, 1)
+        return not invocation.alias_command or _forbidden(invocation.alias_command, context, depth + 1)
     if invocation.operation is None:
         return False
     target_owned = _explicit_owned(invocation.arguments)
@@ -107,6 +110,28 @@ def _git(args: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None)
         forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in invocation.arguments)
         return applies and forced
     return applies and ((invocation.operation == "reset" and "--hard" in invocation.arguments) or (invocation.operation == "clean" and flag(invocation.arguments, "f", "--force")))
+
+
+def _at(context: ExecutionContext, cwd: str) -> ExecutionContext:
+    owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
+    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo)
+
+
+def _separate_lines(command: str) -> str:
+    result, quote, escaped = [], None, False
+    for char in command:
+        if escaped:
+            result.append(char)
+            escaped = False
+        elif char == "\\" and quote != "'":
+            result.append(char)
+            escaped = True
+        elif char in {"'", '"'}:
+            quote = None if quote == char else char if quote is None else quote
+            result.append(char)
+        else:
+            result.append(";" if char == "\n" and quote is None else char)
+    return "".join(result)
 
 
 def _rm(args: list[str]) -> bool:

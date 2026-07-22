@@ -22,6 +22,9 @@ mod hook_policy_composition;
 #[path = "../hook_git_normalization_policy.rs"]
 mod hook_git_normalization_policy;
 
+#[path = "../hook_mutation_admission_matrix.rs"]
+mod hook_mutation_admission_matrix;
+
 #[path = "../hook_pr_admission_policy.rs"]
 mod hook_pr_admission_policy;
 

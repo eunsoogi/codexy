@@ -81,6 +81,11 @@ def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
     return aliases if all(key and "=" not in key and "\n" not in value and "\r" not in value for key, value in aliases.items()) else None
 
 
+def read_text(cwd: str, target: str) -> str | None:
+    path = Path(target)
+    return None if target == "-" else _text(path if path.is_absolute() else Path(cwd) / path)
+
+
 def _config_owned(config: str | None) -> bool | None:
     if config is None:
         return None

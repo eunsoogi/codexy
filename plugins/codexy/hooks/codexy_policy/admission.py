@@ -5,16 +5,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .body import has_sections
-from .merge import positive_int, valid as merge_valid
-from .pull_request import create as pr_create, update as pr_update
+from .github import connector_admitted
+from .merge import valid as merge_valid
 from .shell import forbidden as shell_forbidden
-from .titles import issue_title
 
 MAX_INPUT = 1024 * 1024
 OWNED = "eunsoogi/codexy"
 THREAD = "codex_app__send_message_to_thread"
-REQUIRED_ISSUE_SECTIONS = {"## Problem", "## Scope", "## Acceptance Criteria", "## Verification"}
 FIELDS = {
     "mcp__codex_apps__github_create_issue": {"assignees", "body", "labels", "milestone", "repository_full_name", "title"},
     "mcp__codex_apps__github_update_issue": {"assignees", "body", "issue_number", "labels", "milestone", "repository_full_name", "state", "state_reason", "title"},
@@ -75,22 +72,12 @@ def _github(event: str, tool: str, data: object) -> bytes:
     invalid = False
     if tool.endswith("enable_auto_merge"):
         invalid = True
-    elif tool.endswith("create_issue"):
-        invalid = not issue_title(data.get("title")) or not _issue_body(data.get("body"))
-    elif tool.endswith("update_issue"):
-        invalid = not positive_int(data.get("issue_number")) or ("title" in data and not issue_title(data["title"])) or ("body" in data and not _issue_body(data["body"]))
-    elif tool.endswith("create_pull_request"):
-        invalid = not pr_create(data)
-    elif tool.endswith("update_pull_request"):
-        invalid = not pr_update(data)
     elif tool.endswith("merge_pull_request"):
         invalid = not merge_valid(data)
+    else:
+        invalid = not connector_admitted(tool, data)
     return deny(event) if invalid else b""
 
 
 def _nonblank(data: dict[str, Any], field: str) -> bool:
     return isinstance(data.get(field), str) and bool(data[field].strip())
-
-
-def _issue_body(value: object) -> bool:
-    return has_sections(value, REQUIRED_ISSUE_SECTIONS)
