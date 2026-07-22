@@ -16,7 +16,21 @@ permissions:
   contents: read
 
 jobs:
+  verify-source-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify source commit is reachable from protected main
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
+
   build-runtime:
+    needs: verify-source-commit
     name: Build ${{ matrix.platform }} candidate
     runs-on: ${{ matrix.runner }}
     strategy:

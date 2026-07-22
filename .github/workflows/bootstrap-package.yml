@@ -27,6 +27,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify source commit is reachable from protected main
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
+      - uses: actions/checkout@v4
+        with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
           persist-credentials: false
