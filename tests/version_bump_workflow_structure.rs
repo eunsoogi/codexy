@@ -4,7 +4,7 @@ use std::{fs, path::Path};
 use super::version_bump_pr_test_support::{
     has_trimmed_line, has_trimmed_line_start, trimmed_line_position,
 };
-use super::version_bump_workflow_model::validate_version_pr_publication;
+use super::version_bump_workflow_contract::validate_version_pr_publication;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -43,7 +43,9 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
     let validate_issue = named_step_run(steps, "Validate governing release issue")?;
     let synchronize = named_step_run(steps, "Synchronize plugin version")?;
     let validate_release = named_step_run(steps, "Validate release candidate")?;
-    let reconcile = named_step_run(steps, "Open version bump pull request")?;
+    let reconcile_path = named_step_run(steps, "Open version bump pull request")?;
+    assert_eq!(reconcile_path, "scripts/reconcile-version-pr");
+    let reconcile = fs::read_to_string(root.join(reconcile_path))?;
     assert!(has_trimmed_line_start(validate_issue, "gh issue view "));
     assert!(has_trimmed_line_start(validate_issue, "scripts/render-version-pr-metadata "));
     assert_eq!(synchronize, "scripts/sync-plugin-version --version \"$VERSION\"");
@@ -65,45 +67,42 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         "plugins/codexy/hooks/codexy-pr-label-check.sh ",
         "scripts/validate-plugin-config --check-completion-handoff ",
     ] {
-        assert!(has_trimmed_line_start(reconcile, start), "missing reconciliation: {start}");
+        assert!(has_trimmed_line_start(&reconcile, start), "missing reconciliation: {start}");
     }
     assert!(!reconcile.split_ascii_whitespace().any(|token| token == "--force"));
     assert!(
-        trimmed_line_position(reconcile, "gh api --method GET \"repos/$GITHUB_REPOSITORY/pulls\" ")
-            < trimmed_line_position(reconcile, "git push ")
+        trimmed_line_position(&reconcile, "gh api --method GET \"repos/$GITHUB_REPOSITORY/pulls\" ")
+            < trimmed_line_position(&reconcile, "git push ")
     );
+    assert!(has_trimmed_line(&reconcile, r#"-f state=open -f head="$owner:$branch" \"#));
+    assert!(has_trimmed_line(&reconcile, "--arg oid \"$remote_oid\" \\"));
     assert!(has_trimmed_line(
-        reconcile,
-        r#"-f state=open -f head="$owner:$branch" \"#,
-    ));
-    assert!(has_trimmed_line(reconcile, "--arg oid \"$remote_oid\" \\"));
-    assert!(has_trimmed_line(
-        reconcile,
+        &reconcile,
         r#"'.[0] | .headRepository == $repository and .headLabel == $label and .headRefOid == $oid' \"#,
     ));
-    assert!(has_trimmed_line(reconcile, "--expected-head-oid \"$expected_head_oid\" \\"));
+    assert!(has_trimmed_line(&reconcile, "--expected-head-oid \"$expected_head_oid\" \\"));
     assert!(has_trimmed_line(
-        reconcile,
+        &reconcile,
         r#"--has-changes true --pr-count "$pr_count" --remote-exists "$remote_exists" \"#,
     ));
     assert!(has_trimmed_line(
-        reconcile,
+        &reconcile,
         r#"--pr-matches-origin "$pr_matches_origin" \"#,
     ));
     assert!(has_trimmed_line(
-        reconcile,
+        &reconcile,
         r#"--version "$VERSION" --repository "$GITHUB_REPOSITORY" \"#,
     ));
     assert!(has_trimmed_line(
-        reconcile,
+        &reconcile,
         r#"--issue-json "$state_dir/issue.json" "${observed_pr_args[@]}")"#,
     ));
     assert!(has_trimmed_line(
-        reconcile,
+        &reconcile,
         r#"git diff --binary --no-ext-diff origin/main..."origin/$branch" \"#,
     ));
-    assert!(has_trimmed_line(reconcile, "if [ \"$action\" = first-run ]; then"));
-    assert!(has_trimmed_line(reconcile, "if [ \"$action\" = pushed-no-pr ]; then"));
+    assert!(has_trimmed_line(&reconcile, "if [ \"$action\" = first-run ]; then"));
+    assert!(has_trimmed_line(&reconcile, "elif [ \"$action\" = pushed-no-pr ]; then"));
     Ok(())
 }
 
@@ -111,7 +110,29 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
 fn workflow_refreshes_snapshots_and_finalizes_only_after_readiness() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow = fs::read_to_string(root.join(".github/workflows/plugin-version-bump.yml"))?;
-    validate_version_pr_publication(&workflow).map_err(std::io::Error::other)?;
+    let adapter = fs::read_to_string(root.join("scripts/reconcile-version-pr"))?;
+    validate_version_pr_publication(&workflow, &adapter).map_err(std::io::Error::other)?;
+    Ok(())
+}
+
+#[test]
+fn workflow_delegates_reconciliation_below_the_loc_boundary() -> TestResult {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workflow = fs::read_to_string(root.join(".github/workflows/plugin-version-bump.yml"))?;
+    assert!(
+        workflow.lines().count() <= 250,
+        "workflow has {} lines",
+        workflow.lines().count()
+    );
+    let document: Value = serde_yaml::from_str(&workflow)?;
+    let steps = document["jobs"]["open-version-pr"]["steps"]
+        .as_sequence()
+        .ok_or("version bump steps")?;
+    assert_eq!(
+        named_step_run(steps, "Open version bump pull request")?,
+        "scripts/reconcile-version-pr"
+    );
+    assert!(root.join("scripts/reconcile-version-pr").is_file());
     Ok(())
 }
 

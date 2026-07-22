@@ -134,6 +134,14 @@ fn is_governed_path(path: &Path) -> bool {
     {
         return true;
     }
+    if path_text.starts_with(".github/workflows/")
+        && matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("yml" | "yaml")
+        )
+    {
+        return true;
+    }
     matches!(
         path.extension().and_then(|extension| extension.to_str()),
         Some("rs" | "sh" | "py" | "js" | "ts" | "tsx" | "jsx")

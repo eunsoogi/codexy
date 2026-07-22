@@ -1,26 +1,9 @@
-use serde_yaml::Value;
 use std::collections::BTreeMap;
 
-const JOB: &str = "open-version-pr";
-const STEP: &str = "Open version bump pull request";
 const PUBLISH: &str = "publish_version_pr_metadata";
 
-pub(super) fn validate_version_pr_publication(workflow: &str) -> Result<(), String> {
-    let document: Value = serde_yaml::from_str(workflow).map_err(|error| error.to_string())?;
-    let run = document
-        .get("jobs")
-        .and_then(|jobs| jobs.get(JOB))
-        .and_then(|job| job.get("steps"))
-        .and_then(Value::as_sequence)
-        .and_then(|steps| {
-            steps
-                .iter()
-                .find(|step| step.get("name").and_then(Value::as_str) == Some(STEP))
-        })
-        .and_then(|step| step.get("run"))
-        .and_then(Value::as_str)
-        .ok_or_else(|| format!("missing {JOB}/{STEP} run block"))?;
-    let shell = ShellStep::parse(run)?;
+pub(super) fn validate_version_pr_adapter(adapter: &str) -> Result<(), String> {
+    let shell = ShellStep::parse(adapter)?;
     validate_publisher(&shell)?;
     validate_transaction(&shell)
 }

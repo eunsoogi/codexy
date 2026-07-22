@@ -12,7 +12,12 @@ ISSUE_URL_PATTERN = re.compile(
     r"https://github\.com/(?P<owner>[A-Za-z0-9-]+)/"
     r"(?P<repository>[A-Za-z0-9._-]+)/issues/(?P<number>[1-9][0-9]*)"
 )
-CLOSING_PATTERN = re.compile(r"Fixes #(?P<number>[1-9][0-9]*)")
+CLOSING_KEYWORD = r"(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)"
+CLOSING_CANDIDATE_PATTERN = re.compile(
+    rf"(?i)\b(?P<keyword>{CLOSING_KEYWORD})\b"
+    rf"(?P<separator>\s*:?\s*)"
+    rf"(?P<reference>#[^\s,;]+|[^\s,;]+#[^\s,;]+)"
+)
 
 
 def require_object(value: object, context: str) -> dict[str, object]:
@@ -71,6 +76,41 @@ class CanonicalIssueIdentity:
             raise ValueError(f"{context} must belong to {repository}")
 
 
+def parse_body_closing_references(
+    body: str, repository: str
+) -> tuple[CanonicalIssueIdentity, ...]:
+    default_owner, default_repository = parse_repository(repository)
+    references: list[CanonicalIssueIdentity] = []
+    for match in CLOSING_CANDIDATE_PATTERN.finditer(body):
+        separator = match["separator"]
+        if re.fullmatch(r"(?:\s+|:\s+)", separator) is None:
+            raise ValueError("observed PR body contains a malformed closing reference")
+        token = match["reference"].rstrip(".,")
+        if token.startswith("#"):
+            owner, name, number_text = default_owner, default_repository, token[1:]
+        else:
+            owner_repository, marker, number_text = token.rpartition("#")
+            if not marker:
+                raise ValueError("observed PR body contains a malformed closing reference")
+            try:
+                owner, name = parse_repository(owner_repository)
+            except ValueError as error:
+                raise ValueError(
+                    "observed PR body contains a malformed closing reference"
+                ) from error
+        if (
+            not number_text
+            or not number_text.isascii()
+            or not number_text.isdigit()
+            or number_text.startswith("0")
+        ):
+            raise ValueError("observed PR body contains a malformed closing reference")
+        number = int(number_text)
+        url = f"https://github.com/{owner}/{name}/issues/{number}"
+        references.append(CanonicalIssueIdentity(owner, name, number, url))
+    return tuple(references)
+
+
 @dataclass(frozen=True)
 class ObservedVersionPrIdentity:
     branch: str
@@ -101,12 +141,14 @@ class ObservedVersionPrIdentity:
         body = pr.get("body")
         if not isinstance(body, str):
             raise ValueError("observed PR requires a body")
+        body_references = parse_body_closing_references(body, repository)
+        if body_references != (issue,):
+            raise ValueError(
+                "observed PR API and body must agree on exactly one governing issue"
+            )
         nonempty_lines = [line for line in body.splitlines() if line]
-        closing_lines = [
-            line for line in nonempty_lines if CLOSING_PATTERN.fullmatch(line) is not None
-        ]
         expected_line = f"Fixes #{number}"
-        if len(closing_lines) != 1 or not nonempty_lines or nonempty_lines[-1] != expected_line:
+        if not nonempty_lines or nonempty_lines[-1] != expected_line:
             raise ValueError(
                 "observed PR body must end with exactly one canonical closing issue reference"
             )

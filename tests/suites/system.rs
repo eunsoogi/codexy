@@ -64,11 +64,20 @@ mod version_bump_pr_test_support;
 #[path = "../version_bump_workflow_structure.rs"]
 mod version_bump_workflow_structure;
 
+#[path = "../version_bump_workflow_contract.rs"]
+mod version_bump_workflow_contract;
+
 #[path = "../version_bump_workflow_model.rs"]
 mod version_bump_workflow_model;
 
 #[path = "../version_bump_workflow_topology_matrix.rs"]
 mod version_bump_workflow_topology_matrix;
+
+#[path = "../support/version_pr_workflow_fixture.rs"]
+mod version_pr_workflow_fixture;
+
+#[path = "../version_bump_workflow_adapter.rs"]
+mod version_bump_workflow_adapter;
 
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
