@@ -1,4 +1,4 @@
-use super::child_lane_classification_boundaries::current_lane_record_start;
+use super::child_lane_classification_boundaries::{current_lane_record_start, lane_boundary};
 use super::child_lane_owner_decision::{
     LaneOwnershipMetadata, OwnerSelection, parse_lane_ownership_metadata,
 };
@@ -123,14 +123,15 @@ pub(super) fn lane_authority_record_state_before(
     end: usize,
 ) -> LaneAuthorityRecordState {
     let mut state = AuthorityRecordBuildState::Absent;
-    for line in lines
+    for (index, line) in lines
         .iter()
+        .enumerate()
         .take(end)
         .skip(current_lane_record_start(lines, end))
-        .map(|line| trimmed_value(line))
     {
+        let line = trimmed_value(line);
         let normalized = metadata_key(line);
-        if is_record_reset_boundary(normalized) {
+        if lane_boundary(lines, index).is_some_and(|boundary| boundary.resets_authority_record()) {
             state = AuthorityRecordBuildState::Absent;
         } else if normalized.starts_with("ownership metadata source:") {
             state = parse_authority_source(line).map_or(
@@ -209,10 +210,4 @@ fn parse_authority_source(line: &str) -> Option<AuthoritySource> {
         }
         _ => None,
     }
-}
-
-fn is_record_reset_boundary(line: &str) -> bool {
-    "pr:|pull request:|review response:|maintainer reassignment:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
 }

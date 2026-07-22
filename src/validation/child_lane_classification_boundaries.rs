@@ -1,9 +1,27 @@
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) enum LaneBoundary {
+    PullRequest,
+    ReviewResponse,
+    MaintainerReassignment,
+    Ownership,
+}
+
+impl LaneBoundary {
+    pub(super) fn resets_authority_record(self) -> bool {
+        !matches!(self, Self::Ownership)
+    }
+
+    pub(super) fn requires_fresh_classification(self) -> bool {
+        matches!(self, Self::ReviewResponse | Self::MaintainerReassignment)
+    }
+}
+
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
     (0..setup_index)
         .rev()
-        .find(|index| is_lane_boundary(lines, *index))
+        .find(|index| lane_boundary(lines, *index).is_some())
         .map_or(0, |index| index + 1)
 }
 
@@ -23,22 +41,21 @@ pub(super) fn current_lane_record_start(lines: &[&str], end: usize) -> usize {
     boundary
 }
 
-fn is_lane_boundary(lines: &[&str], index: usize) -> bool {
+pub(super) fn lane_boundary(lines: &[&str], index: usize) -> Option<LaneBoundary> {
     let raw_line = trimmed_value(lines[index]);
     if raw_line.starts_with('|') {
-        return false;
+        return None;
     }
     let line = metadata_key(raw_line);
-    if "pr:|pull request:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
-    {
-        return true;
+    if let Some(boundary) = fixed_lane_boundary(line) {
+        return Some(boundary);
     }
     if line.starts_with("lane ownership:") {
-        return !is_after_task_classification_block(lines, index);
+        return (!is_after_task_classification_block(lines, index))
+            .then_some(LaneBoundary::Ownership);
     }
-    is_owner_metadata(line) && !is_inside_task_classification(lines, index)
+    (is_owner_metadata(line) && !is_inside_task_classification(lines, index))
+        .then_some(LaneBoundary::Ownership)
 }
 
 fn is_owner_metadata(line: &str) -> bool {
@@ -60,7 +77,7 @@ pub(super) fn is_inside_task_classification(lines: &[&str], index: usize) -> boo
         if line == "task classification:" {
             return true;
         }
-        if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
+        if fixed_lane_boundary(line).is_some() || is_hard_ownership_boundary(line) {
             return false;
         }
         if !is_task_classification_field(line) {
@@ -70,10 +87,8 @@ pub(super) fn is_inside_task_classification(lines: &[&str], index: usize) -> boo
     false
 }
 
-fn is_hard_lane_boundary(line: &str) -> bool {
-    "pr:|pull request:|lane ownership:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
+fn is_hard_ownership_boundary(line: &str) -> bool {
+    line.starts_with("lane ownership:")
 }
 
 fn is_after_task_classification_block(lines: &[&str], index: usize) -> bool {
@@ -89,7 +104,7 @@ fn is_after_task_classification_block(lines: &[&str], index: usize) -> bool {
         if line == "task classification:" {
             return true;
         }
-        if is_lane_boundary_terminator(line) || is_hard_lane_boundary(line) {
+        if fixed_lane_boundary(line).is_some() || is_hard_ownership_boundary(line) {
             return false;
         }
         if !is_task_classification_field(line) {
@@ -99,10 +114,16 @@ fn is_after_task_classification_block(lines: &[&str], index: usize) -> bool {
     false
 }
 
-fn is_lane_boundary_terminator(line: &str) -> bool {
-    "review response:|maintainer reassignment:"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
+fn fixed_lane_boundary(line: &str) -> Option<LaneBoundary> {
+    if line.starts_with("pr:") || line.starts_with("pull request:") {
+        Some(LaneBoundary::PullRequest)
+    } else if line.starts_with("review response:") {
+        Some(LaneBoundary::ReviewResponse)
+    } else if line.starts_with("maintainer reassignment:") {
+        Some(LaneBoundary::MaintainerReassignment)
+    } else {
+        None
+    }
 }
 
 fn is_task_classification_field(line: &str) -> bool {

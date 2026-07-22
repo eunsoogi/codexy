@@ -1,6 +1,8 @@
 use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup::line_claims_setup_before_classification;
-use super::child_lane_classification_setup_relations::{SetupActor, setup_relations};
+use super::child_lane_classification_setup_relations::{
+    SetupActor, has_setup_action, setup_relations,
+};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
@@ -63,7 +65,7 @@ fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
     (clause_has_explicit_child_scope(line)
         || has_codexy_branch_setup_subject(line)
         || has_unqualified_branch_or_worktree_setup(line))
-        && (has_setup_action(line) || line.contains("setup"))
+        && has_setup_action(line)
         && (line.contains("branch")
             || line.contains("worktree")
             || has_codexy_branch_setup_subject(line))
@@ -117,12 +119,6 @@ fn has_codexy_branch_setup_subject(line: &str) -> bool {
             && has_setup_action(&line))
         || (line.contains("git worktree add") && line.contains(" codexy/"))
         || (line.contains(" codexy/") && has_setup_action(&line))
-}
-
-fn has_setup_action(line: &str) -> bool {
-    "created | created:| created.| created,| created;|-created | was created| got created|creation occurred|switched | switched:| switched.| switched,| switched;| was switched| checked out| checkout |git switch | setup| set up|worktree add"
-        .split('|')
-        .any(|marker| line.contains(marker))
 }
 
 fn has_absent_child_setup(line: &str) -> bool {

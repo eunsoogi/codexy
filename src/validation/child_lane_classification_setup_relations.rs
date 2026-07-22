@@ -11,18 +11,23 @@ pub(super) struct SetupRelation {
     pub(super) before_classification: bool,
 }
 
+#[derive(Clone, Copy)]
+enum SetupAction {
+    Create,
+    Switch,
+    Checkout,
+    Setup,
+    WorktreeAdd,
+}
+
+pub(super) fn has_setup_action(line: &str) -> bool {
+    let words = words(line);
+    setup_action_indices(&words).next().is_some()
+}
+
 pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
-    let words = line
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
-    let actions = words
-        .iter()
-        .enumerate()
-        .filter_map(|(index, word)| {
-            is_setup_action_word(word, words.get(index + 1)).then_some(index)
-        })
-        .collect::<Vec<_>>();
+    let words = words(line);
+    let actions = setup_action_indices(&words).collect::<Vec<_>>();
     actions
         .iter()
         .enumerate()
@@ -55,6 +60,19 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                 })
         })
         .collect()
+}
+
+fn words(line: &str) -> Vec<&str> {
+    line.split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect()
+}
+
+fn setup_action_indices<'a>(words: &'a [&'a str]) -> impl Iterator<Item = usize> + 'a {
+    words
+        .iter()
+        .enumerate()
+        .filter_map(|(index, _)| setup_action_at(words, index).map(|_| index))
 }
 
 fn explicit_subject(words: &[&str], start: usize, action: usize) -> Option<SetupActor> {
@@ -108,18 +126,17 @@ fn actor_word(word: &str) -> Option<SetupActor> {
     }
 }
 
-fn is_setup_action_word(word: &str, next: Option<&&str>) -> bool {
-    matches!(
-        word,
-        "create"
-            | "created"
-            | "creation"
-            | "switch"
-            | "switched"
-            | "checkout"
-            | "checked"
-            | "setup"
-    ) || (word == "set" && next == Some(&&"up"))
+fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {
+    match words[index] {
+        "create" | "creates" | "created" | "creation" => Some(SetupAction::Create),
+        "switch" | "switches" | "switched" => Some(SetupAction::Switch),
+        "checkout" | "checkouts" => Some(SetupAction::Checkout),
+        "checked" if words.get(index + 1) == Some(&"out") => Some(SetupAction::Checkout),
+        "setup" => Some(SetupAction::Setup),
+        "set" | "sets" if words.get(index + 1) == Some(&"up") => Some(SetupAction::Setup),
+        "add" if index > 0 && words[index - 1] == "worktree" => Some(SetupAction::WorktreeAdd),
+        _ => None,
+    }
 }
 
 fn action_is_negated(words: &[&str], start: usize, action: usize) -> bool {

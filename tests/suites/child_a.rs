@@ -148,6 +148,8 @@ mod validator_child_lane_authority_compatibility;
 mod validator_child_lane_setup_actor_grammar;
 #[path = "../validator_child_lane_setup_action_binding.rs"]
 mod validator_child_lane_setup_action_binding;
+#[path = "../validator_child_lane_boundary_relation_matrix.rs"]
+mod validator_child_lane_boundary_relation_matrix;
 
 #[path = "../validator_child_lane_gfm_delimiter_state.rs"]
 mod validator_child_lane_gfm_delimiter_state;
