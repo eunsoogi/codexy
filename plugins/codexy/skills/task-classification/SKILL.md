@@ -101,6 +101,12 @@ plugin repair until classification evidence exists in the thread.
   thread/worktree tooling is required but unavailable, record the exposure
   blocker instead of satisfying ownership with a subagent.
 
+## Authority Boundary
+
+The GFM table is presentation/audit evidence only. Explicit non-Markdown
+ownership metadata remains authoritative. Agents MUST NOT treat the GFM
+`Owner decision` cell as control authority.
+
 ## Required Output
 
 MUST render exactly one ordered two-column GFM table before taking the first
