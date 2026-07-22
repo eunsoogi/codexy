@@ -5,7 +5,6 @@ branch="${1:?branch is required}"
 base="${2:-origin/main}"
 bootstrap_version="${3:?bootstrap version is required}"
 receipt="${4:?candidate receipt is required}"
-activator="${CODEXY_ACTIVATE_RUNTIME:-scripts/activate-runtime-contract}"
 expected="$(printf '%s\n' \
   .agents/plugins/release-publish-contract.json \
   plugins/codexy/mcp/codexy-mcp-codegraph \
@@ -24,6 +23,19 @@ git diff --cached --quiet
 expected_root="$(mktemp -d)"
 trap 'rm -rf "$expected_root"' EXIT HUP INT TERM
 git archive "$base" | tar -x -C "$expected_root"
+if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME:-}"; then
+  test "${CODEXY_TEST_MODE:-}" = 1 || {
+    printf '%s\n' "test activator override requires CODEXY_TEST_MODE=1" >&2
+    exit 1
+  }
+  activator="$CODEXY_TEST_ACTIVATE_RUNTIME"
+else
+  activator="$expected_root/scripts/activate-runtime-contract"
+  test -f "$activator" && test ! -L "$activator" && test -x "$activator" || {
+    printf '%s\n' "verified base is missing its activation contract" >&2
+    exit 1
+  }
+fi
 "$activator" \
   --repo-root "$expected_root" \
   --bootstrap-version "$bootstrap_version" \

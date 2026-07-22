@@ -5,6 +5,9 @@ use std::{
     process::Command,
 };
 
+#[path = "runtime_activation_branch_recovery/real.rs"]
+mod real;
+
 const AUTHORIZED: [&str; 6] = [
     ".agents/plugins/release-publish-contract.json",
     "plugins/codexy/mcp/codexy-mcp-codegraph",
@@ -32,6 +35,12 @@ fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
     }
     assert!(!Fixture::new(Change::Exact)?.run("CLOSED")?.status.success());
     assert!(!Fixture::new(Change::Exact)?.run("OPEN\nOPEN")?.status.success());
+    assert!(
+        !Fixture::new(Change::Exact)?
+            .run_without_test_mode("OPEN")?
+            .status
+            .success()
+    );
     Ok(())
 }
 
@@ -95,11 +104,26 @@ impl Fixture {
     }
 
     fn run(&self, pr_state: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        Ok(Command::new(
+        self.run_with_test_mode(pr_state, true)
+    }
+
+    fn run_without_test_mode(
+        &self,
+        pr_state: &str,
+    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+        self.run_with_test_mode(pr_state, false)
+    }
+
+    fn run_with_test_mode(
+        &self,
+        pr_state: &str,
+        test_mode: bool,
+    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+        let mut command = Command::new(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("scripts/verify-runtime-activation-branch"),
-        )
-        .args([
+        );
+        command.args([
             "activation",
             "main",
             "1.3.0",
@@ -110,10 +134,13 @@ impl Fixture {
             "PATH",
             format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
         )
-        .env("CODEXY_ACTIVATE_RUNTIME", self.bin.join("activate"))
+        .env("CODEXY_TEST_ACTIVATE_RUNTIME", self.bin.join("activate"))
         .env("EXPECTED_ROOT", self._temp.path().join("expected"))
-        .env("FAKE_PR_STATE", pr_state)
-        .output()?)
+        .env("FAKE_PR_STATE", pr_state);
+        if test_mode {
+            command.env("CODEXY_TEST_MODE", "1");
+        }
+        Ok(command.output()?)
     }
 }
 
