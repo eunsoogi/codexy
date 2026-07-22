@@ -278,8 +278,14 @@ jobs:
           if (-not (Test-Path -LiteralPath $windowsTar -PathType Leaf)) {
             throw "native Windows tar.exe is unavailable: $windowsTar"
           }
-          & $windowsTar -xzf "dist/codexy-marketplace-plugin.tar.gz" -C $marketplaceRoot
-          if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
+          $archivePath = (Resolve-Path -LiteralPath "dist/codexy-marketplace-plugin.tar.gz").Path
+          Push-Location -LiteralPath $marketplaceRoot
+          try {
+            & $windowsTar -xzf $archivePath
+            if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
+          } finally {
+            Pop-Location
+          }
           $reparseOutputs = @(Get-ChildItem -LiteralPath $marketplaceRoot -Recurse -Force -Attributes ReparsePoint)
           if ($reparseOutputs.Count -ne 0) {
             throw "native Windows extraction produced reparse points"

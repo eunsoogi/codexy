@@ -49,6 +49,8 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str) {
             "Smoke test native POSIX MCP runtimes",
             "Smoke test native Windows MCP runtimes",
             "Verify clean native Windows plugin MCP install",
+            "$archivePath = (Resolve-Path -LiteralPath \"dist/codexy-marketplace-plugin.tar.gz\").Path",
+            "Push-Location -LiteralPath $marketplaceRoot",
             "mcpServerStatus/list",
             "needs: [package-plugin, windows-installed-mcp]",
         ],
