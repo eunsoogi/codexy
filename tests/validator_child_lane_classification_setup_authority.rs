@@ -89,6 +89,38 @@ fn validator_allows_complete_current_thread_owned_classification() -> TestResult
     Ok(())
 }
 
+#[test]
+fn validator_rejects_a_later_classification_without_authority() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    let table = complete_gfm_classification()
+        .split_once("Task classification:\n")
+        .expect("fixture has a classification marker")
+        .1;
+    std::fs::write(
+        &path,
+        format!("{}\nTask classification:\n{table}\nPlan tool call: update_plan\n", complete_gfm_classification()),
+    )?;
+
+    assert!(!crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_metadata_free_required_tool_aliases() -> TestResult {
+    for alias in ["Required tools", "Required evidence"] {
+        let temp = tempfile::tempdir()?;
+        let path = temp.path().join("handoff.md");
+        let classification = complete_gfm_classification()
+            .replacen("Ownership metadata source: parent-supplied\nLane ownership: child-owned\n", "", 1)
+            .replacen("Required tools/evidence", alias, 1);
+        std::fs::write(&path, format!("{classification}\nPlan tool call: update_plan\n"))?;
+
+        assert!(!crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    }
+    Ok(())
+}
+
 fn complete_gfm_classification() -> &'static str {
     "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }

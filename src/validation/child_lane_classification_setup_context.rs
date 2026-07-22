@@ -1,5 +1,7 @@
 use super::child_lane_classification_control::normalize_metadata_prefix;
-use super::child_lane_classification_fields::{classification_table_row, is_table_separator};
+use super::child_lane_classification_fields::{
+    ClassificationFields, classification_table_row, is_table_separator,
+};
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
@@ -91,27 +93,14 @@ fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool 
     {
         return false;
     }
-    let fields = lines[start + 2..end]
+    let mut fields = ClassificationFields::default();
+    for (key, value) in lines[start + 2..end]
         .iter()
         .filter_map(|line| classification_table_row(trimmed_value(line)))
-        .collect::<Vec<_>>();
-    [
-        "lane type",
-        "secondary surfaces",
-        "atomic scope",
-        "required skills",
-        "required tools/evidence",
-        "first allowed action",
-        "stop/blocker",
-    ]
-    .into_iter()
-    .all(|field| {
-        fields
-            .iter()
-            .any(|(key, value)| *key == field && !value.is_empty())
-    }) && fields
-        .iter()
-        .any(|(key, value)| *key == "owner decision" && is_child_delegation_owner_decision(value))
+    {
+        fields.record(metadata_key(key), trimmed_value(value));
+    }
+    fields.is_complete()
 }
 
 fn has_present_child_owner_metadata(line: &str) -> bool {

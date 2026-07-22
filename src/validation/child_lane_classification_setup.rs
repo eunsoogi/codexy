@@ -34,7 +34,7 @@ pub(super) fn formal_child_classification_complete_index_before(
     lines: &[&str],
     setup_index: usize,
 ) -> Option<usize> {
-    let (mut seen, mut authority) = (None, false);
+    let (mut seen, mut authority, mut classification_start) = (None, false, None);
     let raw_lines = lines;
     let (lines, prefixed_lane_start) = normalized_metadata_lines(lines, setup_index);
     let lane_start = current_lane_start(&lines, setup_index).max(prefixed_lane_start);
@@ -42,6 +42,7 @@ pub(super) fn formal_child_classification_complete_index_before(
         if *line == "task classification:" {
             seen = Some(ClassificationFields::default());
             authority = has_authoritative_ownership_metadata_before(raw_lines, index);
+            classification_start = Some(index);
             continue;
         }
         if line.is_empty() {
@@ -67,11 +68,8 @@ pub(super) fn formal_child_classification_complete_index_before(
             continue;
         };
         fields.record(metadata_key(key), trimmed_value(value));
-        if fields.is_complete() && authority {
-            return Some(index);
-        }
     }
-    None
+    classification_start.filter(|_| authority && seen.is_some_and(|fields| fields.is_complete()))
 }
 
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
