@@ -19,14 +19,17 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
             "{scenario:?}: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        let mutations = fixture.mutations()?;
-        match scenario {
-            Scenario::NewPr => assert!(mutations.contains("pr-create")),
-            Scenario::MatchingExisting => assert!(!mutations.contains("pr-create")),
+        let mutations = fixture.mutation_events()?;
+        let expected = match scenario {
+            Scenario::NewPr => {
+                ["pr-create", "label-put", "pr-edit", "label-put", "pr-edit"]
+            }
+            Scenario::MatchingExisting => {
+                ["pr-edit", "label-put", "pr-edit", "label-put", "pr-edit"]
+            }
             Scenario::MismatchedIssue => unreachable!(),
-        }
-        assert!(mutations.contains("pr-edit"));
-        assert!(mutations.contains("label-put"));
+        };
+        assert_eq!(mutations, expected, "{scenario:?} mutation order");
         for artifact in [
             "metadata/body.md",
             "metadata/title.txt",
@@ -45,7 +48,7 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("does not match requested issue")
     );
-    assert_eq!(fixture.mutations()?, "");
+    assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
     assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
     Ok(())
 }

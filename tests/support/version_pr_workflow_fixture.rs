@@ -90,12 +90,12 @@ impl WorkflowFixture {
         self.runner.join("version-pr").join(name)
     }
 
-    pub(super) fn mutations(&self) -> std::io::Result<String> {
-        fs::read_to_string(self.state.join("mutations.log")).or_else(|error| {
-            (error.kind() == std::io::ErrorKind::NotFound)
-                .then(String::new)
-                .ok_or(error)
-        })
+    pub(super) fn mutation_events(&self) -> std::io::Result<Vec<String>> {
+        match fs::read_to_string(self.state.join("mutations.log")) {
+            Ok(log) => Ok(log.lines().map(str::to_owned).collect()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+            Err(error) => Err(error),
+        }
     }
 
     pub(super) fn mutation_sentinel(&self) -> PathBuf {
