@@ -7,10 +7,14 @@ pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
 }
 
 pub(super) fn is_table_separator(line: &str) -> bool {
-    classification_table_row(line).is_some_and(|(key, value)| {
-        key.chars().all(|character| character == '-')
-            && value.chars().all(|character| character == '-')
-    })
+    classification_table_row(line)
+        .is_some_and(|(key, value)| is_gfm_delimiter_cell(key) && is_gfm_delimiter_cell(value))
+}
+
+fn is_gfm_delimiter_cell(cell: &str) -> bool {
+    let cell = cell.strip_prefix(':').unwrap_or(cell);
+    let cell = cell.strip_suffix(':').unwrap_or(cell);
+    cell.len() >= 3 && cell.chars().all(|character| character == '-')
 }
 
 #[derive(Default)]

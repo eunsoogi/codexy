@@ -11,6 +11,8 @@ fn validator_rejects_non_authoritative_classification_metadata_before_control() 
         valid.replacen("Ownership metadata source: parent-supplied", "- Ownership metadata source: parent-supplied", 1),
         valid.replacen("Lane ownership: child-owned", "Lane ownership: parent-owned", 1),
         valid.replacen("Lane ownership: child-owned", "Lane ownership: unknown", 1),
+        valid.replacen("| --- | --- |", "| | |", 1),
+        valid.replacen("| --- | --- |", "| - | - |", 1),
     ] {
         let temp = tempfile::tempdir()?;
         let path = temp.path().join("handoff.md");
@@ -35,6 +37,29 @@ fn validator_does_not_inherit_gfm_classification_across_lanes() -> TestResult {
         )?;
         assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
     }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_current_thread_classified_child_owned_authority() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    let classification = complete_gfm_classification()
+        .replacen("parent-supplied", "current-thread-classified", 1);
+    std::fs::write(&path, format!("{classification}\nPlan tool call: update_plan\n"))?;
+
+    assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_allows_aligned_gfm_classification_delimiter() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    let classification = complete_gfm_classification().replacen("| --- | --- |", "| :--- | ---: |", 1);
+    std::fs::write(&path, format!("{classification}\nPlan tool call: update_plan\n"))?;
+
+    assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
     Ok(())
 }
 

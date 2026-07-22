@@ -20,6 +20,9 @@ pub(super) fn has_authoritative_ownership_metadata_before(
             "lane ownership: child-owned"
         ) | (
             "ownership metadata source: current-thread-classified",
+            "lane ownership: child-owned"
+        ) | (
+            "ownership metadata source: current-thread-classified",
             "lane ownership: current-thread-owned"
         )
     )
