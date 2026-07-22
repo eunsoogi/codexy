@@ -2,12 +2,12 @@ use std::process::Output;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const COMPLETE_CHILD_CLASSIFICATION: &str = "Task classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
+const COMPLETE_CHILD_CLASSIFICATION: &str = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
 
 #[test]
 fn validator_requires_confirmed_parent_reports_for_delegated_goal_operations() -> TestResult {
     let passing = run_validator(&format!(
-        "Lane ownership: child-owned\n{COMPLETE_CHILD_CLASSIFICATION}Source thread id: 019f49da-d44c-7e41-afde-8b1f7c58efa0
+        "{COMPLETE_CHILD_CLASSIFICATION}Source thread id: 019f49da-d44c-7e41-afde-8b1f7c58efa0
 Goal control state: source_thread_id=019f49da-d44c-7e41-afde-8b1f7c58efa0
 Goal transition key: 375:create_goal:pending-objective
 Parent goal pre-delivery: operation=create_goal; parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=implement; branch=codexy/375-parent-goal-transition-reporting; worktree=/worktree; HEAD=abc123; clean/index=clean; evidence=classification; next action=create goal; transition key=375:create_goal:pending-objective

@@ -68,7 +68,7 @@ fn validate_guide(root: &Path, guide: &str) -> Result<(), String> {
         &rows(guide, "Packaged skills")?,
         &packaged_skills(root)?,
         "skill",
-        3,
+        4,
     )?;
     let documented_mcps = mcp_inventory::documented(guide)?;
     let expected_mcps = mcp_inventory::packaged(root)?;

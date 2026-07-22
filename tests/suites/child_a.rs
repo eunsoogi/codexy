@@ -138,12 +138,50 @@ mod validator_child_lane_classification_setup;
 
 #[path = "../validator_child_lane_classification_setup_child_owner.rs"]
 mod validator_child_lane_classification_setup_child_owner;
+#[path = "../validator_child_lane_classification_setup_authority.rs"]
+mod validator_child_lane_classification_setup_authority;
+#[path = "../validator_child_lane_authority_record_state.rs"]
+mod validator_child_lane_authority_record_state;
+#[path = "../validator_child_lane_authority_compatibility.rs"]
+mod validator_child_lane_authority_compatibility;
+#[path = "../validator_child_lane_setup_actor_grammar.rs"]
+mod validator_child_lane_setup_actor_grammar;
+#[path = "../validator_child_lane_setup_action_binding.rs"]
+mod validator_child_lane_setup_action_binding;
+#[path = "../validator_child_lane_boundary_relation_matrix.rs"]
+mod validator_child_lane_boundary_relation_matrix;
+
+#[path = "../validator_child_lane_gfm_delimiter_state.rs"]
+mod validator_child_lane_gfm_delimiter_state;
+
+#[path = "../validator_child_lane_gfm_utf8_rows.rs"]
+mod validator_child_lane_gfm_utf8_rows;
+
+#[path = "../validator_child_lane_classification_equivalence.rs"]
+mod validator_child_lane_classification_equivalence;
+
+#[path = "../validator_child_lane_owner_assertions.rs"]
+mod validator_child_lane_owner_assertions;
+
+#[path = "../validator_child_lane_authority_consistency.rs"]
+mod validator_child_lane_authority_consistency;
+#[path = "../validator_child_lane_typed_owner_decisions.rs"]
+mod validator_child_lane_typed_owner_decisions;
+#[path = "../validator_child_lane_owner_boundary.rs"]
+mod validator_child_lane_owner_boundary;
+#[path = "../validator_child_lane_table_schema.rs"]
+mod validator_child_lane_table_schema;
+
+#[path = "../validator_child_lane_colon_block.rs"]
+mod validator_child_lane_colon_block;
 
 #[path = "../validator_child_lane_classification_setup_codex_review.rs"]
 mod validator_child_lane_classification_setup_codex_review;
 
 #[path = "../validator_child_lane_classification_setup_owner_decision.rs"]
 mod validator_child_lane_classification_setup_owner_decision;
+#[path = "../validator_child_lane_classification_setup_owner_metadata.rs"]
+mod validator_child_lane_classification_setup_owner_metadata;
 
 #[path = "../validator_child_lane_ownership.rs"]
 mod validator_child_lane_ownership;

@@ -50,22 +50,22 @@ Maintainer reassignment: none
 
 #[test]
 fn validator_allows_absent_before_classification_clause_after_valid_setup() -> TestResult {
-    assert_allowed(
-        r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
-Child branch codexy/231-branch-classification-guard was created after classification; no child branch was created before task classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )
+    assert_allowed(&format!(
+        "{}\nChild branch codexy/231-branch-classification-guard was created after classification; no child branch was created before task classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_child_classification_table(),
+    ))
+}
+
+#[test]
+fn validator_retains_child_subject_after_negated_coordinated_setup_clause() -> TestResult {
+    assert_rejected(&format!(
+        "{}\nThe child did not create a worktree after classification and switched to branch codexy/463 before classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_parent_classification(),
+    ))?;
+    assert_allowed(&format!(
+        "{}\nThe child did not create a worktree after classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_parent_classification(),
+    ))
 }
 
 #[test]
@@ -117,22 +117,10 @@ fn validator_rejects_unqualified_setup_before_classification() -> TestResult {
 
 #[test]
 fn validator_allows_codexy_worktree_setup_after_classification() -> TestResult {
-    assert_allowed(
-        r#"Lane ownership: child-owned
-Task classification:
-Lane type: implementation
-Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
-Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
-Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
-First allowed action: create branch after classification
-Stop/blocker: None
-Worktree for codexy/231-branch-classification-guard was created after task classification.
-Review response: child-authored commit def456 fixed feedback
-Maintainer reassignment: none
-"#,
-    )
+    assert_allowed(&format!(
+        "{}\nWorktree for codexy/231-branch-classification-guard was created after task classification.\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+        complete_child_classification_table(),
+    ))
 }
 
 #[test]
@@ -152,13 +140,12 @@ fn validator_rejects_child_plan_before_task_classification() -> TestResult {
 
 #[test]
 fn validator_allows_each_new_lane_classification_before_goal_and_plan() -> TestResult {
-    for (boundary, classification) in [
-        ("Lane ownership: child-owned", complete_child_classification()),
-        ("1. Lane ownership: child-owned", complete_child_classification_table()),
+    for classification in [
+        complete_child_classification_table(),
+        complete_current_thread_classification_table(),
     ] {
-        let fields = classification.split_once('\n').unwrap().1;
         assert_allowed(&format!(
-            "{}\n{boundary}\n{fields}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+            "{}\n{classification}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
             complete_child_classification(), child_goal_call()
         ))?;
     }
@@ -227,15 +214,19 @@ fn validator_rejects_prefixed_child_ownership_and_control_before_classification(
 }
 
 fn complete_parent_classification() -> &'static str {
-    "Lane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: validators\nOwner decision: parent-owned orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate evidence\nStop/blocker: None"
+    "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\nLane type: validation\nSecondary surfaces: validators\nOwner decision: affirmative parent-owned because the parent owns orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate evidence\nStop/blocker: None"
 }
 
 fn complete_child_classification() -> &'static str {
-    "Lane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: implement after classification\nStop/blocker: None"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }
 
 fn complete_child_classification_table() -> &'static str {
-    "Lane ownership: child-owned\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+}
+
+fn complete_current_thread_classification_table() -> &'static str {
+    "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative current-thread-owned because the active thread owns issue-sized work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }
 
 fn child_goal_call() -> &'static str {
