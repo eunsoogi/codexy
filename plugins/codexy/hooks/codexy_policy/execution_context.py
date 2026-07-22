@@ -60,6 +60,37 @@ def unset(context: ExecutionContext, key: str) -> ExecutionContext:
     return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment)
 
 
+def export_variables(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
+    """Apply the supported stateful Bash export grammar, or reject ambiguity."""
+    if arguments[:1] == ["--"]:
+        arguments = arguments[1:]
+    if not arguments or arguments == ["-p"]:
+        return context
+    if any(argument.startswith("-") for argument in arguments):
+        return None
+    for argument in arguments:
+        if assignment(argument):
+            context = assign(argument, context)
+        elif VARIABLE_NAME.fullmatch(argument) is None:
+            return None
+        elif argument not in dict(context.environment):
+            context = assign(f"{argument}=", context)
+    return context
+
+
+def unset_variables(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
+    """Apply variable unsets while rejecting function and malformed forms."""
+    if arguments[:1] == ["--"]:
+        arguments = arguments[1:]
+    elif arguments[:1] == ["-v"]:
+        arguments = arguments[1:]
+    if not arguments or any(VARIABLE_NAME.fullmatch(argument) is None for argument in arguments):
+        return None
+    for argument in arguments:
+        context = unset(context, argument)
+    return context
+
+
 def clear(context: ExecutionContext) -> ExecutionContext:
     return ExecutionContext(context.cwd, repository_owned(context.cwd), None, None)
 

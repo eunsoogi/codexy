@@ -6,7 +6,7 @@ import shlex
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .repository import git_aliases, git_directory_owned, repository_owned
+from .repository import UrlRewrite, git_aliases, git_directory_owned, repository_owned, repository_owned_with_rewrites
 from .shell_context import resolve_cwd
 
 NO_ARGUMENT_OPTIONS = {
@@ -27,6 +27,7 @@ class GitInvocation:
     cwd_owned: bool | None
     git_dir: str | None
     alias_command: str | None = None
+    rewrites: tuple[UrlRewrite, ...] = ()
 
 
 def normalize(
@@ -42,14 +43,15 @@ def normalize(
                 return None
             alias_name, command = alias
             aliases[alias_name] = command
-        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, aliases, set(), 0)
+        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, aliases, [], set(), 0)
     except (OSError, TypeError, ValueError):
         return None
 
 
 def _normalize(
     arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None,
-    config_owned: Callable[[str], bool], inline_aliases: dict[str, str], seen: set[str], depth: int,
+    config_owned: Callable[[str], bool], inline_aliases: dict[str, str], rewrites: list[UrlRewrite],
+    seen: set[str], depth: int,
 ) -> GitInvocation | None:
     while arguments and arguments[0].startswith("-"):
         option = arguments.pop(0)
@@ -67,9 +69,14 @@ def _normalize(
             cwd_owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
         elif name == "-c":
             alias = _alias_option(value)
+            is_url_config, rewrite = _url_rewrite(value)
             if alias is not None:
                 key, command = alias
                 inline_aliases[key] = command
+            elif is_url_config:
+                if rewrite is None:
+                    return None
+                rewrites.append(rewrite)
             elif cwd_owned is not False or config_owned(value):
                 return None
         elif name == "--git-dir":
@@ -82,8 +89,10 @@ def _normalize(
     if git_dir is not None:
         cwd_owned = git_directory_owned(cwd, git_dir)
     if not arguments:
-        return GitInvocation(None, [], cwd, cwd_owned, git_dir)
+        return GitInvocation(None, [], cwd, cwd_owned, git_dir, rewrites=tuple(rewrites))
     operation, rest = arguments[0], arguments[1:]
+    if rewrites:
+        cwd_owned = repository_owned_with_rewrites(cwd, git_dir, rewrites, operation.casefold() == "push")
     alias_name = operation.casefold()
     aliases = git_aliases(cwd, git_dir)
     if aliases is None:
@@ -91,18 +100,18 @@ def _normalize(
     aliases.update(inline_aliases)
     command = aliases.get(alias_name)
     if command is None:
-        return GitInvocation(operation, rest, cwd, cwd_owned, git_dir)
+        return GitInvocation(operation, rest, cwd, cwd_owned, git_dir, rewrites=tuple(rewrites))
     if depth >= MAX_ALIAS_DEPTH or alias_name in seen:
         return None
     if command.lstrip().startswith("!"):
-        return GitInvocation(None, [], cwd, cwd_owned, git_dir, command.lstrip()[1:].strip())
+        return GitInvocation(None, [], cwd, cwd_owned, git_dir, command.lstrip()[1:].strip(), tuple(rewrites))
     try:
         expanded = shlex.split(command, posix=True)
     except ValueError:
         return None
     if not expanded:
         return None
-    return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, seen | {alias_name}, depth + 1)
+    return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, rewrites, seen | {alias_name}, depth + 1)
 
 
 def _alias_option(value: str) -> tuple[str, str] | None:
@@ -114,6 +123,24 @@ def _alias_option(value: str) -> tuple[str, str] | None:
         return None
     canonical = key.casefold()
     return (canonical, command) if canonical and all(part and part.replace("_", "").isalnum() for part in canonical.split(".")) else None
+
+
+def _url_rewrite(value: str) -> tuple[bool, UrlRewrite | None]:
+    variable, separator, prefix = value.partition("=")
+    canonical = variable.casefold()
+    if not canonical.startswith("url."):
+        return False, None
+    if not separator or not prefix or any(char in value for char in "\0\r\n"):
+        return True, None
+    if canonical.endswith(".pushinsteadof"):
+        replacement = variable[4 : -len(".pushinsteadof")]
+        push_only = True
+    elif canonical.endswith(".insteadof"):
+        replacement = variable[4 : -len(".insteadof")]
+        push_only = False
+    else:
+        return True, None
+    return True, UrlRewrite(prefix, replacement, push_only) if replacement else None
 
 
 def _option_value(option: str, arguments: list[str]) -> tuple[str, str | None]:

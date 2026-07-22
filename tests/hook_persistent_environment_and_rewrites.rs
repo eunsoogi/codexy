@@ -1,0 +1,100 @@
+use std::io::Write as _;
+use std::process::{Command, Stdio};
+
+use serde_json::{Value, json};
+
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn persistent_environment_state_tracks_shell_scope() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    let git_dir = format!("{}/.git", owned.display());
+
+    for command in [
+        format!("export GIT_DIR='{git_dir}'; git push --force origin topic"),
+        format!("GIT_DIR='{git_dir}'; export GIT_DIR; git push --force origin topic"),
+        format!("{{ export GIT_DIR='{git_dir}'; }}; git push --force origin topic"),
+        format!("export GIT_DIR=\"{git_dir}\" && git push --force origin topic"),
+    ] {
+        assert_case(&root, &foreign, &command, true)?;
+    }
+    for command in [
+        format!("export GIT_DIR='{git_dir}'; unset GIT_DIR; git push --force origin topic"),
+        format!("(export GIT_DIR='{git_dir}'); git push --force origin topic"),
+        format!("GIT_DIR='{git_dir}' git status; git push --force origin topic"),
+        "export SAFE=value; printf '%s' \"$SAFE\"".into(),
+        "unset SAFE; printf safe".into(),
+    ] {
+        assert_case(&root, &foreign, &command, false)?;
+    }
+    for command in [
+        "export GIT_DIR=$UNKNOWN; git status",
+        "export -Z GIT_DIR; git status",
+        "unset -Z GIT_DIR; git status",
+        "export 1INVALID=value; git status",
+    ] {
+        assert_case(&root, &foreign, command, true)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn command_scoped_url_rewrites_use_git_longest_match_semantics() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", "https://example.com/eunsoogi/codexy.git")?;
+    for command in [
+        "git -c 'url.git@github.com:.insteadOf=https://example.com/' push --force origin topic",
+        "git -c 'URL.git@github.com:.INSTEADOF=https://example.com/' push --force origin topic",
+        "git -c 'url.git@github.com:eunsoogi/.pushInsteadOf=https://example.com/eunsoogi/' push --force origin topic",
+        "git -c 'url.git@github.com:wrong/.insteadOf=https://example.com/' -c 'url.git@github.com:eunsoogi/.insteadOf=https://example.com/eunsoogi/' push --force origin topic",
+    ] {
+        assert_case(&root, &foreign, command, true)?;
+    }
+    for command in [
+        "git -c 'url.git@github.com:openai/.insteadOf=https://example.com/eunsoogi/' push --force origin topic",
+        "git -c 'url.git@github.com:eunsoogi/.insteadOf=https://unrelated.example/' push --force origin topic",
+        "git -c 'color.ui=always' push --force origin topic",
+        "git -c 'url.git@github.com:eunsoogi/.insteadOf=https://example.com/eunsoogi/' push origin topic",
+    ] {
+        assert_case(&root, &foreign, command, false)?;
+    }
+    for command in [
+        "git -c 'url..insteadOf=https://example.com/' push --force origin topic",
+        "git -c 'url.git@github.com:eunsoogi/.insteadOf' push --force origin topic",
+    ] {
+        assert_case(&root, &foreign, command, true)?;
+    }
+    Ok(())
+}
+
+fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
+    let input = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
+    let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
+    child.arg("PreToolUse").env_clear().env("PLUGIN_ROOT", root).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = child.spawn()?;
+    child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
+    let output = child.wait_with_output()?;
+    assert!(output.status.success(), "launcher failed: {}", String::from_utf8_lossy(&output.stderr));
+    if denied {
+        let value: Value = serde_json::from_slice(&output.stdout).map_err(|error| format!("expected deny for {command:?}: {error}"))?;
+        assert_eq!(value["hookSpecificOutput"]["permissionDecision"], "deny", "{command}");
+    } else {
+        assert_eq!(output.stdout, b"", "{command}");
+    }
+    Ok(())
+}
+
+fn repository(root: &std::path::Path, name: &str, remote: &str) -> TestResult<std::path::PathBuf> {
+    let path = root.join(name);
+    std::fs::create_dir_all(path.join(".git"))?;
+    std::fs::write(path.join(".git/config"), format!("[remote \"origin\"]\n\turl = {remote}\n"))?;
+    Ok(path)
+}
+
+fn plugin_root() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy")
+}

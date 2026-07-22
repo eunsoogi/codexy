@@ -5,7 +5,10 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 
-from .execution_context import ExecutionContext, assign, assignment, at, clear, expand_tokens, leading_assignments, unset
+from .execution_context import (
+    ExecutionContext, assign, assignment, at, clear, expand_tokens,
+    export_variables, leading_assignments, unset, unset_variables,
+)
 from .shell_context import command_option, name, resolve_cwd
 
 MAX_WRAPPER_DEPTH = 8
@@ -58,6 +61,12 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         tokens = expanded
         executable = name(tokens[0])
         args = tokens[1:]
+        if executable == "export":
+            exported = export_variables(args, context)
+            return None if exported is None else Invocation(None, [], exported)
+        if executable == "unset":
+            remaining = unset_variables(args, context)
+            return None if remaining is None else Invocation(None, [], remaining)
         if executable == "env":
             result = _env(args, context)
             if result is None:

@@ -10,7 +10,7 @@ from .git_options import normalize as normalize_git_options
 from .github import forbidden as gh_forbidden
 from .execution_context import ExecutionContext, at as context_at, git_config
 from .invocation import resolve
-from .repository import OWNED, github_identity, identity, repository_owned
+from .repository import OWNED, UrlRewrite, github_identity, identity, repository_owned, rewrite_url
 from .shell_context import changed_directory, flag
 from .shell_groups import Command, GroupSyntaxError, Sequence, parse
 
@@ -122,7 +122,9 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
         return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1)
     if invocation.operation is None:
         return False
-    target_owned = _explicit_owned(invocation.arguments)
+    target_owned = _explicit_owned(
+        invocation.arguments, list(invocation.rewrites), invocation.operation == "push"
+    )
     applies = target_owned is True or (target_owned is None and invocation.cwd_owned is not False)
     arguments = normalize_git_options(invocation.operation, invocation.arguments)
     if arguments is None:
@@ -156,8 +158,11 @@ def _rm(args: list[str]) -> bool:
     return flag(args, "r", "--recursive") and flag(args, "f", "--force") and any(target in broad or target.rstrip("/").endswith("/..") for target in targets)
 
 
-def _explicit_owned(args: list[str]) -> bool | None:
-    identities = [identity(arg) for arg in args if identity(arg) is not None]
+def _explicit_owned(
+    args: list[str], rewrites: list[UrlRewrite] | None = None, push: bool = False,
+) -> bool | None:
+    rewritten = [identity(rewrite_url(arg, rewrites or [], push)) for arg in args]
+    identities = [item for item in rewritten if item is not None]
     return None if not identities else OWNED in identities
 
 

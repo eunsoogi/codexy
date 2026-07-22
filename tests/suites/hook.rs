@@ -31,6 +31,9 @@ mod hook_effective_context_continuation;
 #[path = "../hook_grouped_execution_context.rs"]
 mod hook_grouped_execution_context;
 
+#[path = "../hook_persistent_environment_and_rewrites.rs"]
+mod hook_persistent_environment_and_rewrites;
+
 #[path = "../hook_pr_admission_policy.rs"]
 mod hook_pr_admission_policy;
 
