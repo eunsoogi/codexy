@@ -12,6 +12,7 @@ mod child_lane_active_threads;
 mod child_lane_classification_authority;
 mod child_lane_classification_boundaries;
 mod child_lane_classification_control;
+mod child_lane_classification_fields;
 mod child_lane_classification_setup;
 mod child_lane_classification_setup_context;
 mod child_lane_owner_decision;
