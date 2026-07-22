@@ -19,6 +19,7 @@ class ExecutionContext:
     gh_repo: str | None
     environment: tuple[tuple[str, str], ...] = ()
     opaque_environment: bool = False
+    remote_urls: tuple[tuple[str, str], ...] = ()
 
 
 def assignment(value: str) -> bool:
@@ -31,12 +32,12 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     environment = dict(context.environment)
     if expanded is None:
         environment[key] = assigned
-        return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, tuple(environment.items()), True)
+        return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, tuple(environment.items()), True, context.remote_urls)
     environment[key] = expanded
     git_dir = expanded if key == "GIT_DIR" else context.git_dir
     gh_repo = expanded if key == "GH_REPO" else context.gh_repo
     owned = git_directory_owned(context.cwd, git_dir) if git_dir is not None else context.cwd_owned
-    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment)
+    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment, context.remote_urls)
 
 
 def leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext]:
@@ -48,7 +49,14 @@ def leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[l
 
 def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
     owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
-    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment)
+    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment, context.remote_urls)
+
+
+def remote_url(context: ExecutionContext, remote: str, value: str) -> ExecutionContext:
+    """Record a supported remote URL change for later shell segments."""
+    remotes = dict(context.remote_urls)
+    remotes[remote.casefold()] = value
+    return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment, tuple(remotes.items()))
 
 
 def unset(context: ExecutionContext, key: str) -> ExecutionContext:
@@ -57,7 +65,7 @@ def unset(context: ExecutionContext, key: str) -> ExecutionContext:
     owned = repository_owned(context.cwd) if git_dir is None else context.cwd_owned
     environment = dict(context.environment)
     environment.pop(key, None)
-    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment)
+    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment, context.remote_urls)
 
 
 def export_variables(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
@@ -92,7 +100,7 @@ def unset_variables(arguments: list[str], context: ExecutionContext) -> Executio
 
 
 def clear(context: ExecutionContext) -> ExecutionContext:
-    return ExecutionContext(context.cwd, repository_owned(context.cwd), None, None)
+    return ExecutionContext(context.cwd, repository_owned(context.cwd), None, None, remote_urls=context.remote_urls)
 
 
 def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:

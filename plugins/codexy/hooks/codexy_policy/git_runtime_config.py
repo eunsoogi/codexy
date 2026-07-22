@@ -2,13 +2,42 @@
 
 from __future__ import annotations
 
+import configparser
+from io import StringIO
 import re
 import subprocess
 
 REMOTE_VALUE = re.compile(r"^remote\.(.+)\.(url|pushurl)$", re.IGNORECASE)
+REMOTE_SECTION = re.compile(r'^remote "([^"\r\n]+)"$', re.IGNORECASE)
 
 
-def remote_config(cwd: str, git_dir: str | None, push: bool) -> str | None:
+def apply_remote_urls(config: str | None, remote_urls: tuple[tuple[str, str], ...]) -> str | None:
+    """Apply tracked remote URL changes to a parsed local configuration."""
+    if config is None:
+        return None
+    if not remote_urls:
+        return config
+    try:
+        parser = configparser.ConfigParser(interpolation=None, strict=True)
+        parser.read_string(config)
+        sections = {
+            match.group(1).casefold(): section
+            for section in parser.sections()
+            if (match := REMOTE_SECTION.fullmatch(section)) is not None
+        }
+        for name, value in remote_urls:
+            section = sections.get(name)
+            if section is None:
+                return None
+            parser[section]["url"] = value
+        output = StringIO()
+        parser.write(output)
+        return output.getvalue()
+    except configparser.Error:
+        return None
+
+
+def remote_config(cwd: str, git_dir: str | None, push: bool, remote_urls: tuple[tuple[str, str], ...] = ()) -> str | None:
     """Return a synthetic config containing every effective target URL."""
     command = ["git", "-C", cwd]
     if git_dir is not None:
@@ -35,6 +64,11 @@ def remote_config(cwd: str, git_dir: str | None, push: bool) -> str | None:
             remote[match.group(2).casefold()].append(value)
     except UnicodeError:
         return None
+    for name, value in remote_urls:
+        remote = remotes.get(name)
+        if remote is None:
+            return None
+        remote["url"] = [value]
     targets: list[str] = []
     for remote in remotes.values():
         targets.extend((remote["pushurl"] or remote["url"]) if push else remote["url"] + remote["pushurl"])

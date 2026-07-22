@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .git_runtime_config import remote_config
+from .git_runtime_config import apply_remote_urls, remote_config
 
 OWNED = ("github.com", "eunsoogi", "codexy")
 REMOTE = re.compile(r'^remote "[^"\r\n]+"$')
@@ -65,12 +65,13 @@ def repository_owned(cwd: str) -> bool | None:
 
 def repository_owned_with_rewrites(
     cwd: str, git_dir: str | None, rewrites: list[UrlRewrite], push: bool,
+    remote_urls: tuple[tuple[str, str], ...] = (),
 ) -> bool | None:
     """Classify repository remotes after command-scoped Git URL rewriting."""
-    config = remote_config(cwd, git_dir, push)
-    if config == "":
-        config = _git_config(cwd, git_dir)
-    return _config_owned(config, rewrites, push)
+    config = remote_config(cwd, git_dir, push, remote_urls)
+    if config:
+        return _config_owned(config, rewrites, push)
+    return _config_owned(_git_config(cwd, git_dir), rewrites, push, remote_urls)
 
 
 def git_directory_owned(cwd: str, target: str) -> bool | None:
@@ -160,7 +161,9 @@ def read_text(cwd: str, target: str) -> str | None:
 
 def _config_owned(
     config: str | None, inline_rewrites: list[UrlRewrite] | None = None, push: bool = False,
+    remote_urls: tuple[tuple[str, str], ...] = (),
 ) -> bool | None:
+    config = apply_remote_urls(config, remote_urls)
     if config is None:
         return None
     try:

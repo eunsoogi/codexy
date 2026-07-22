@@ -42,6 +42,26 @@ fn persistent_environment_state_tracks_shell_scope() -> TestResult {
 }
 
 #[test]
+fn sequential_remote_url_mutations_update_push_admission() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    assert_case(
+        &root,
+        &foreign,
+        "git remote set-url origin git@github.com:eunsoogi/codexy.git && git push --force origin topic",
+        true,
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "git remote set-url origin https://github.com/openai/codex.git && git push --force origin topic",
+        false,
+    )
+}
+
+#[test]
 fn command_scoped_url_rewrites_use_git_longest_match_semantics() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;

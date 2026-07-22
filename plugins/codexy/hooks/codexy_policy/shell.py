@@ -9,7 +9,7 @@ from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
 from .github_alias import expand as expand_gh_alias
 from .github import forbidden as gh_forbidden
-from .execution_context import ExecutionContext, at as context_at, git_config
+from .execution_context import ExecutionContext, at as context_at, git_config, remote_url
 from .invocation import resolve
 from .repository import OWNED, UrlRewrite, github_identity, identity, repository_owned, rewrite_url
 from .shell_context import changed_directory, flag
@@ -100,7 +100,12 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
     if invocation.executable in {".", "source"}:
         return True, context
     if invocation.executable == "git":
-        return _git(invocation.arguments, invocation.context, depth), context
+        denied, remote = _git(invocation.arguments, invocation.context, depth)
+        if remote is None:
+            return denied, context
+        if invocation.context.cwd != context.cwd or invocation.context.git_dir != context.git_dir:
+            return True, context
+        return denied, remote_url(context, *remote)
     if invocation.executable == "gh":
         gh_owned = github_identity(invocation.context.gh_repo) == OWNED if invocation.context.gh_repo is not None else None
         arguments = expand_gh_alias(invocation.arguments)
@@ -110,13 +115,13 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
     return False, context
 
 
-def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
+def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str] | None]:
     environment_config = git_config(context)
     if environment_config is None:
-        return True
-    invocation = normalize_git(args, context.cwd, context.cwd_owned, context.git_dir, _config_owned, environment_config)
+        return True, None
+    invocation = normalize_git(args, context.cwd, context.cwd_owned, context.git_dir, _config_owned, environment_config, context.remote_urls)
     if invocation is None:
-        return True
+        return True, None
     if invocation.alias_command is not None:
         alias_context = ExecutionContext(
             invocation.cwd,
@@ -125,10 +130,15 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
             context.gh_repo,
             context.environment,
             context.opaque_environment,
+            context.remote_urls,
         )
-        return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1)
+        return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1), None
     if invocation.operation is None:
-        return False
+        return False, None
+    if invocation.operation == "remote" and invocation.arguments[:1] == ["set-url"]:
+        if len(invocation.arguments) != 3 or not invocation.arguments[1] or any(char in invocation.arguments[1] + invocation.arguments[2] for char in "\0\r\n"):
+            return True, None
+        return False, (invocation.arguments[1], invocation.arguments[2])
     push_like = invocation.operation in {"push", "send-pack"}
     target_owned = _explicit_owned(
         invocation.arguments, list(invocation.rewrites), push_like
@@ -136,11 +146,11 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
     applies = target_owned is True or (target_owned is None and invocation.cwd_owned is not False)
     arguments = normalize_git_options(invocation.operation, invocation.arguments)
     if arguments is None:
-        return applies
+        return applies, None
     if push_like:
         forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in arguments)
-        return applies and forced
-    return applies and ((invocation.operation == "reset" and "--hard" in arguments) or (invocation.operation == "clean" and flag(arguments, "f", "--force")))
+        return applies and forced, None
+    return applies and ((invocation.operation == "reset" and "--hard" in arguments) or (invocation.operation == "clean" and flag(arguments, "f", "--force"))), None
 
 
 def _separate_lines(command: str) -> str:

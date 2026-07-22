@@ -32,7 +32,7 @@ class GitInvocation:
 
 def normalize(
     arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None,
-    config_owned: Callable[[str], bool], environment_config: dict[str, str],
+    config_owned: Callable[[str], bool], environment_config: dict[str, str], remote_urls: tuple[tuple[str, str], ...] = (),
 ) -> GitInvocation | None:
     """Return a policy-ready effective Git invocation, or fail closed."""
     try:
@@ -43,7 +43,7 @@ def normalize(
                 return None
             alias_name, command = alias
             aliases[alias_name] = command
-        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, aliases, [], set(), 0)
+        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, aliases, [], set(), 0, remote_urls)
     except (OSError, TypeError, ValueError):
         return None
 
@@ -51,7 +51,7 @@ def normalize(
 def _normalize(
     arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None,
     config_owned: Callable[[str], bool], inline_aliases: dict[str, str], rewrites: list[UrlRewrite],
-    seen: set[str], depth: int,
+    seen: set[str], depth: int, remote_urls: tuple[tuple[str, str], ...],
 ) -> GitInvocation | None:
     while arguments and arguments[0].startswith("-"):
         option = arguments.pop(0)
@@ -97,7 +97,7 @@ def _normalize(
         if active_rewrites is None:
             return None
         rewrites = active_rewrites + rewrites
-        cwd_owned = repository_owned_with_rewrites(cwd, git_dir, rewrites, push_like)
+        cwd_owned = repository_owned_with_rewrites(cwd, git_dir, rewrites, push_like, remote_urls)
     alias_name = operation.casefold()
     aliases = git_aliases(cwd, git_dir)
     if aliases is None:
@@ -116,7 +116,7 @@ def _normalize(
         return None
     if not expanded:
         return None
-    return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, rewrites, seen | {alias_name}, depth + 1)
+    return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, rewrites, seen | {alias_name}, depth + 1, remote_urls)
 
 
 def _alias_option(value: str) -> tuple[str, str] | None:
