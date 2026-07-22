@@ -30,6 +30,10 @@ evidence for its reopened class. Only `reopened` clusters may include `reopen`
 evidence. Canonical identity uses Unicode
 normalization, full case folding, and Unicode punctuation/separator removal,
 while retaining materially different alphanumeric identifier content.
+Default-ignorable code points, controls, and format-only content MUST NOT
+contribute identity or satisfy required evidence. A normalized identity MUST
+contain visible material content; combining marks are valid after a material
+base character but MUST NOT satisfy that requirement alone.
 
 For `repaired` and `reopened` states, every cluster MUST have:
 

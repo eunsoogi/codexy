@@ -22,6 +22,9 @@ mod validator_review_response_clusters;
 #[path = "../validator_review_response_cluster_states.rs"]
 mod validator_review_response_cluster_states;
 
+#[path = "../validator_review_response_cluster_materiality.rs"]
+mod validator_review_response_cluster_materiality;
+
 #[path = "../validator_runtime_heartbeat_clause_boundaries.rs"]
 mod validator_runtime_heartbeat_clause_boundaries;
 
