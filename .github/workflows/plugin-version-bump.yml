@@ -86,6 +86,8 @@ jobs:
           fi
           state_dir="$RUNNER_TEMP/version-pr"
           branch="codexy/version-${VERSION}"
+          owner=${GITHUB_REPOSITORY%%/*}
+          name=${GITHUB_REPOSITORY#*/}
           git diff --name-only --diff-filter=ACMRTUXB > "$state_dir/changed-files.txt"
           git diff --name-only -z --diff-filter=ACMRTUXB > "$state_dir/changed-files.z"
           scripts/render-version-pr-metadata \
@@ -97,8 +99,10 @@ jobs:
           title=$(sed -n '1p' "$state_dir/metadata/title.txt")
           plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$title"
 
-          gh pr list --repo "$GITHUB_REPOSITORY" --state open --head "$branch" \
-            --json number > "$state_dir/existing-prs.json"
+          gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+            -f state=open -f head="$owner:$branch" \
+            --jq '[.[] | {number, headRefOid: .head.sha, headRepository: .head.repo.full_name, headLabel: .head.label}]' \
+            > "$state_dir/existing-prs.json"
           pr_count=$(jq 'length' "$state_dir/existing-prs.json")
           if [ "$pr_count" -gt 1 ]; then
             echo "More than one open PR exists for ${branch}." >&2
@@ -115,6 +119,7 @@ jobs:
             git add --pathspec-from-file="$state_dir/changed-files.z" --pathspec-file-nul
             git commit -m "chore(plugin): bump version to ${VERSION}"
             git push origin "$branch"
+            expected_head_oid=$(git rev-parse HEAD)
             pr_url=$(gh pr create \
               --title "$title" \
               --body-file "$state_dir/metadata/body.md" \
@@ -124,6 +129,17 @@ jobs:
               --json number --jq .number)
           elif [ "$remote_exists" = true ]; then
             git fetch origin "$branch:refs/remotes/origin/$branch"
+            remote_oid=$(git rev-parse "origin/$branch")
+            if [ "$pr_count" -eq 1 ] && ! jq -e \
+              --arg repository "$GITHUB_REPOSITORY" \
+              --arg label "$owner:$branch" \
+              --arg oid "$remote_oid" \
+              '.[0] | .headRepository == $repository and .headLabel == $label and .headRefOid == $oid' \
+              "$state_dir/existing-prs.json" >/dev/null; then
+              echo "Existing PR head does not match the verified origin branch." >&2
+              exit 1
+            fi
+            expected_head_oid=$remote_oid
             git diff --binary --no-ext-diff > "$state_dir/expected.patch"
             git diff --binary --no-ext-diff origin/main..."origin/$branch" \
               > "$state_dir/remote.patch"
@@ -155,10 +171,8 @@ jobs:
             "repos/$GITHUB_REPOSITORY/issues/$pr_number/labels" \
             --input "$state_dir/metadata/labels.json" > "$state_dir/applied-labels.json"
           gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
-            --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences \
+            --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,url,labels,closingIssuesReferences \
             > "$state_dir/pr-state.base.json"
-          owner=${GITHUB_REPOSITORY%%/*}
-          name=${GITHUB_REPOSITORY#*/}
           gh api graphql \
             -f owner="$owner" -f name="$name" -F number="$pr_number" -f query='query($owner:String!, $name:String!, $number:Int!) {
               repository(owner:$owner, name:$name) {
@@ -172,12 +186,15 @@ jobs:
             }' \
             --jq '.data.repository.pullRequest.reviewThreads' \
             > "$state_dir/review-threads.json"
-          jq \
-            --arg repository "$GITHUB_REPOSITORY" \
-            --slurpfile repositoryLabels "$state_dir/repository-labels.json" \
-            --slurpfile reviewThreads "$state_dir/review-threads.json" \
-            '. + {repository: $repository, repositoryLabels: $repositoryLabels[0], reviewThreads: $reviewThreads[0]}' \
-            "$state_dir/pr-state.base.json" > "$state_dir/pr-state.json"
+          scripts/build-version-pr-state \
+            --pr-json "$state_dir/pr-state.base.json" \
+            --issue-json "$state_dir/issue.json" \
+            --repository-labels-json "$state_dir/repository-labels.json" \
+            --review-threads-json "$state_dir/review-threads.json" \
+            --repository "$GITHUB_REPOSITORY" \
+            --expected-head-ref "$branch" \
+            --expected-head-oid "$expected_head_oid" \
+            --output "$state_dir/pr-state.json"
           plugins/codexy/hooks/codexy-pr-label-check.sh \
             --pr-state-file "$state_dir/pr-state.json"
           cat > "$state_dir/handoff.md" <<EOF

@@ -55,9 +55,10 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         assert!(has_trimmed_line(validate_release, command), "missing validation: {command}");
     }
     for start in [
-        "gh pr list ",
+        "gh api --method GET \"repos/$GITHUB_REPOSITORY/pulls\" ",
         "if git ls-remote ",
         "gh api --method PUT ",
+        "scripts/build-version-pr-state ",
         "plugins/codexy/hooks/codexy-pr-title-check.sh ",
         "plugins/codexy/hooks/codexy-pr-label-check.sh ",
         "scripts/validate-plugin-config --check-completion-handoff ",
@@ -65,7 +66,20 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         assert!(has_trimmed_line_start(reconcile, start), "missing reconciliation: {start}");
     }
     assert!(!reconcile.split_ascii_whitespace().any(|token| token == "--force"));
-    assert!(trimmed_line_position(reconcile, "gh pr list ") < trimmed_line_position(reconcile, "git push "));
+    assert!(
+        trimmed_line_position(reconcile, "gh api --method GET \"repos/$GITHUB_REPOSITORY/pulls\" ")
+            < trimmed_line_position(reconcile, "git push ")
+    );
+    assert!(has_trimmed_line(
+        reconcile,
+        r#"-f state=open -f head="$owner:$branch" \"#,
+    ));
+    assert!(has_trimmed_line(reconcile, "--arg oid \"$remote_oid\" \\"));
+    assert!(has_trimmed_line(
+        reconcile,
+        r#"'.[0] | .headRepository == $repository and .headLabel == $label and .headRefOid == $oid' \"#,
+    ));
+    assert!(has_trimmed_line(reconcile, "--expected-head-oid \"$expected_head_oid\" \\"));
     assert!(has_trimmed_line(reconcile, "if [ \"$pr_count\" -eq 0 ] && [ \"$remote_exists\" = false ]; then"));
     assert!(has_trimmed_line(reconcile, "elif [ \"$remote_exists\" = true ]; then"));
     assert!(has_trimmed_line(
