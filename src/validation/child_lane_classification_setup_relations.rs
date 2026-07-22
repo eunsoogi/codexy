@@ -131,12 +131,24 @@ fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {
         "create" if has_completed_auxiliary(words, index) => Some(SetupAction::Create),
         "creates" | "created" => Some(SetupAction::Create),
         "creation" if words.get(index + 1) == Some(&"occurred") => Some(SetupAction::Create),
-        "switch" | "switches" | "switched" => Some(SetupAction::Switch),
+        "switch"
+            if has_completed_auxiliary(words, index)
+                || words.get(index.wrapping_sub(1)) == Some(&"git") =>
+        {
+            Some(SetupAction::Switch)
+        }
+        "switches" | "switched" => Some(SetupAction::Switch),
         "checkout" | "checkouts" => Some(SetupAction::Checkout),
         "checked" if words.get(index + 1) == Some(&"out") => Some(SetupAction::Checkout),
         "setup" => Some(SetupAction::Setup),
         "set" | "sets" if words.get(index + 1) == Some(&"up") => Some(SetupAction::Setup),
-        "add" if index > 0 && words[index - 1] == "worktree" => Some(SetupAction::WorktreeAdd),
+        "add"
+            if has_completed_auxiliary(words, index)
+                || (index > 0 && words[index - 1] == "worktree") =>
+        {
+            Some(SetupAction::WorktreeAdd)
+        }
+        "adds" | "added" => Some(SetupAction::WorktreeAdd),
         _ => None,
     }
 }

@@ -95,6 +95,22 @@ fn validator_distinguishes_completed_setup_events_from_plans_and_nouns() -> Test
             "The child did create branch codexy/463 before classification.",
             false,
         ),
+        (
+            "The child added worktree for codexy/463 before classification.",
+            false,
+        ),
+        (
+            "The child did add worktree for codexy/463 before classification.",
+            false,
+        ),
+        (
+            "The child will switch to branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "The child switched to branch codexy/463 before classification.",
+            false,
+        ),
     ] {
         assert_result(
             "only an affirmative completed setup event requires prior classification",
