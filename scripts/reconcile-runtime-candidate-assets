@@ -3,6 +3,10 @@ set -eu
 
 dist_dir="${1:-dist}"
 : "${CANDIDATE_TAG:?CANDIDATE_TAG is required}"
+: "${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
+: "${GITHUB_RUN_ATTEMPT:?GITHUB_RUN_ATTEMPT is required}"
+: "${GITHUB_SERVER_URL:?GITHUB_SERVER_URL is required}"
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 
 archive="$dist_dir/codexy-marketplace-plugin.tar.gz"
 candidate="$dist_dir/candidate/plugins/codexy/runtime-candidate.json"
@@ -38,7 +42,33 @@ if has_asset runtime-candidate-receipt.json; then
   jq -cS .provenance "$published_receipt" | tr -d '\n' > "$provenance"
 fi
 
-for asset in "$archive" "$receipt" "$provenance"; do
+binding="$dist_dir/runtime-candidate-publication-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+archive_sha="$(sha256sum "$archive" | awk '{print $1}')"
+receipt_sha="$(sha256sum "$receipt" | awk '{print $1}')"
+source_commit="$(jq -r .source.commit "$candidate")"
+GITHUB_RUN_ID="$GITHUB_RUN_ID" GITHUB_RUN_ATTEMPT="$GITHUB_RUN_ATTEMPT" \
+GITHUB_SERVER_URL="$GITHUB_SERVER_URL" GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+CANDIDATE_TAG="$CANDIDATE_TAG" ARCHIVE_SHA="$archive_sha" RECEIPT_SHA="$receipt_sha" \
+SOURCE_COMMIT="$source_commit" BINDING="$binding" python3 - <<'PY'
+import json, os
+binding = {
+    "schema": "codexy-runtime-candidate-publication/v1",
+    "candidateTag": os.environ["CANDIDATE_TAG"],
+    "sourceCommit": os.environ["SOURCE_COMMIT"],
+    "archiveSha256": os.environ["ARCHIVE_SHA"],
+    "receiptSha256": os.environ["RECEIPT_SHA"],
+    "workflow": {
+        "repositoryId": 1269350143,
+        "path": ".github/workflows/runtime-candidate.yml",
+        "runId": int(os.environ["GITHUB_RUN_ID"]),
+        "runAttempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+        "runUrl": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+    },
+}
+open(os.environ["BINDING"], "wb").write(json.dumps(binding, sort_keys=True, separators=(",", ":")).encode())
+PY
+
+for asset in "$archive" "$receipt" "$provenance" "$binding"; do
   name="$(basename "$asset")"
   if has_asset "$name"; then
     public_asset="$recovery_dir/$name"

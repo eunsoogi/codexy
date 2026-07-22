@@ -4,17 +4,25 @@ use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
 #[test]
-fn existing_assets_stabilize_retry_bytes_without_upload() -> Result<(), Box<dyn std::error::Error>> {
+fn existing_assets_stabilize_retry_bytes_with_a_success_binding() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     fixture.publish_all()?;
     fixture.write_local_receipt(200, 3)?;
     let before = fixture.remote_bytes()?;
-    let output = fixture.run()?;
+    let output = fixture.run_with(200, 3)?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    assert_eq!(fixture.remote_bytes()?, before);
+    let after = fixture.remote_bytes()?;
+    assert!(before.iter().all(|entry| after.contains(entry)));
+    let binding: Value = serde_json::from_slice(&fs::read(
+        fixture.remote.join("runtime-candidate-publication-200-3.json"),
+    )?)?;
+    assert_eq!(binding["workflow"]["runId"], 200);
     let receipt = before.iter().find(|(name, _)| name == "runtime-candidate-receipt.json").ok_or("published receipt")?;
     assert_eq!(fs::read(fixture.dist.join("runtime-candidate-receipt.json"))?, receipt.1);
-    assert!(fixture.upload_log()?.is_empty());
+    assert_eq!(
+        fixture.upload_log()?,
+        "runtime-candidate-publication-200-3.json\n"
+    );
     Ok(())
 }
 
@@ -23,11 +31,16 @@ fn missing_provenance_is_uploaded_from_the_existing_receipt() -> Result<(), Box<
     let fixture = Fixture::new()?;
     fixture.publish_archive_and_receipt()?;
     fixture.write_local_receipt(200, 3)?;
-    let output = fixture.run()?;
+    let output = fixture.run_with(200, 3)?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    let published = fs::read_to_string(fixture.remote.join("runtime-candidate-provenance.json"))?;
-    assert!(published.contains("\"runId\":100"));
-    assert_eq!(fixture.upload_log()?, "runtime-candidate-provenance.json\n");
+    let published: Value = serde_json::from_str(&fs::read_to_string(
+        fixture.remote.join("runtime-candidate-provenance.json"),
+    )?)?;
+    assert_eq!(published["runId"], 100);
+    assert_eq!(
+        fixture.upload_log()?,
+        "runtime-candidate-provenance.json\nruntime-candidate-publication-200-3.json\n"
+    );
     Ok(())
 }
 
@@ -37,10 +50,31 @@ fn mismatched_existing_asset_fails_without_upload_or_clobber() -> Result<(), Box
     fixture.publish_all()?;
     fs::write(fixture.remote.join("codexy-marketplace-plugin.tar.gz"), b"mismatch")?;
     let before = fixture.remote_bytes()?;
-    let output = fixture.run()?;
+    let output = fixture.run_with(100, 1)?;
     assert!(!output.status.success());
     assert_eq!(fixture.remote_bytes()?, before);
     assert!(fixture.upload_log()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn failed_attempt_bindings_remain_append_only_for_a_later_successful_retry()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    fixture.publish_all()?;
+    let first = fixture.run_with(100, 1)?;
+    assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stderr));
+    let first_binding = fixture.remote.join("runtime-candidate-publication-100-1.json");
+    let first_bytes = fs::read(&first_binding)?;
+    fixture.write_local_receipt(200, 2)?;
+    let retry = fixture.run_with(200, 2)?;
+    assert!(retry.status.success(), "{}", String::from_utf8_lossy(&retry.stderr));
+    assert_eq!(fs::read(&first_binding)?, first_bytes);
+    let retry_binding: Value = serde_json::from_slice(&fs::read(
+        fixture.remote.join("runtime-candidate-publication-200-2.json"),
+    )?)?;
+    assert_eq!(retry_binding["workflow"]["runId"], 200);
+    assert_eq!(retry_binding["workflow"]["runAttempt"], 2);
     Ok(())
 }
 
@@ -102,12 +136,16 @@ impl Fixture {
         Ok(())
     }
 
-    fn run(&self) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    fn run_with(&self, run_id: u64, attempt: u64) -> Result<std::process::Output, Box<dyn std::error::Error>> {
         let path = format!("{}:{}", self.bin.display(), std::env::var("PATH")?);
         Ok(Command::new(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/reconcile-runtime-candidate-assets"))
             .arg(&self.dist)
             .env("PATH", path)
             .env("CANDIDATE_TAG", "runtime-candidate-test")
+            .env("GITHUB_RUN_ID", run_id.to_string())
+            .env("GITHUB_RUN_ATTEMPT", attempt.to_string())
+            .env("GITHUB_SERVER_URL", "https://github.com")
+            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("FAKE_RELEASE_DIR", &self.remote)
             .env("FAKE_UPLOAD_LOG", &self.log)
             .output()?)

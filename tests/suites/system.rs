@@ -46,6 +46,9 @@ mod runtime_publication_activation;
 #[path = "../runtime_candidate_asset_recovery.rs"]
 mod runtime_candidate_asset_recovery;
 
+#[path = "../runtime_activation_branch_recovery.rs"]
+mod runtime_activation_branch_recovery;
+
 #[path = "../runtime_workflow_recovery.rs"]
 mod runtime_workflow_recovery;
 

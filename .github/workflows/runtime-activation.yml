@@ -58,16 +58,46 @@ jobs:
           sha256sum embedded-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 candidate-receipt.json)"
           jq -cS .candidate candidate-receipt.json | tr -d '\n' > receipt-candidate.json
           cmp receipt-candidate.json embedded-candidate.json
-          run_id="$(jq -r .provenance.runId candidate-receipt.json)"
-          curl --fail --location "https://api.github.com/repos/eunsoogi/codexy/actions/runs/$run_id" -o run.json
-          test "$(jq -r .head_sha run.json)" = "$SOURCE_COMMIT"
-          test "$(jq -r .path run.json)" = ".github/workflows/runtime-candidate.yml"
-          test "$(jq -r .run_attempt run.json)" = "$(jq -r .provenance.runAttempt candidate-receipt.json)"
-          test "$(jq -r .repository.id run.json)" = "1269350143"
-          test "$(jq -r .html_url run.json)" = "$(jq -r .provenance.workflowRunUrl candidate-receipt.json)"
-          test "$(jq -r .status run.json)" = "completed"
-          test "$(jq -r .conclusion run.json)" = "success"
+          : > candidate-publication.json
+          jq -r '.assets[] | select(.name | test("^runtime-candidate-publication-[0-9]+-[0-9]+\\.json$")) | .browser_download_url' release.json > binding-urls.txt
+          while IFS= read -r binding_url; do
+            test -n "$binding_url" || continue
+            curl --fail --location "$binding_url" -o binding.json
+            test "$(jq -r .schema binding.json)" = "codexy-runtime-candidate-publication/v1" || continue
+            test "$(jq -r .candidateTag binding.json)" = "$CANDIDATE_TAG" || continue
+            test "$(jq -r .sourceCommit binding.json)" = "$SOURCE_COMMIT" || continue
+            test "$(jq -r .archiveSha256 binding.json)" = "$(sha256sum candidate.tar.gz | awk '{print $1}')" || continue
+            test "$(jq -r .receiptSha256 binding.json)" = "$(sha256sum candidate-receipt.json | awk '{print $1}')" || continue
+            test "$(jq -r .workflow.repositoryId binding.json)" = "1269350143" || continue
+            test "$(jq -r .workflow.path binding.json)" = ".github/workflows/runtime-candidate.yml" || continue
+            run_id="$(jq -r .workflow.runId binding.json)"
+            curl --fail --location "https://api.github.com/repos/eunsoogi/codexy/actions/runs/$run_id" -o run.json || continue
+            test "$(jq -r .head_sha run.json)" = "$SOURCE_COMMIT" || continue
+            test "$(jq -r .path run.json)" = ".github/workflows/runtime-candidate.yml" || continue
+            test "$(jq -r .run_attempt run.json)" = "$(jq -r .workflow.runAttempt binding.json)" || continue
+            test "$(jq -r .repository.id run.json)" = "1269350143" || continue
+            test "$(jq -r .html_url run.json)" = "$(jq -r .workflow.runUrl binding.json)" || continue
+            test "$(jq -r .status run.json)" = "completed" || continue
+            test "$(jq -r .conclusion run.json)" = "success" || continue
+            cp binding.json candidate-publication.json
+            break
+          done < binding-urls.txt
+          test -s candidate-publication.json
           gh attestation verify candidate.tar.gz --repo eunsoogi/codexy
+      - name: Prepare activation branch
+        env:
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+        run: |
+          branch="codexy/runtime-activation-${CANDIDATE_TAG}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            git fetch origin "$branch"
+            git switch --track -c "$branch" "origin/$branch"
+            scripts/verify-runtime-activation-branch "$branch"
+            printf '%s\n' existing > activation-branch-state
+          else
+            git switch -c "$branch"
+            printf '%s\n' new > activation-branch-state
+          fi
       - name: Apply verified activation contract
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
@@ -82,8 +112,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-${CANDIDATE_TAG}"
-          git switch -c "$branch"
-          git add plugins/codexy/runtime-release.json plugins/codexy/runtime-candidate.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
-          git commit -m "feat(runtime): activate ${CANDIDATE_TAG}"
-          git push origin "$branch"
-          gh pr create --base main --head "$branch" --title "feat(runtime): activate ${CANDIDATE_TAG}" --label type/feature --label type/ci --label status/review --label priority/high --label area/plugin --label area/release --label area/qa --body "## Proof\n- Public PyPI, release, source, run, archive, and receipt checks passed.\n\nCloses #477\n\nCloses #451"
+          git add src/version/bootstrap.rs plugins/codexy/runtime-release.json plugins/codexy/runtime-candidate.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
+          if test "$(cat activation-branch-state)" = existing; then
+            git diff --cached --quiet || { echo "activation branch differs from verified contract" >&2; exit 1; }
+          else
+            git commit -m "feat(runtime): activate ${CANDIDATE_TAG}"
+            git push origin "$branch"
+          fi
+          if gh pr list --head "$branch" --state open --json number --jq 'length' | grep -Fqx 1; then
+            exit 0
+          fi
+          gh pr create --base main --head "$branch" --title "feat(runtime): activate ${CANDIDATE_TAG}" --label type/feature --label type/ci --label status/review --label priority/high --label area/plugin --label area/release --label area/qa --body "## Proof\n- Public PyPI, release, source, run, archive, receipt, and successful publication-binding checks passed.\n\nCloses #477\n\nCloses #451"

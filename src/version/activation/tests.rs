@@ -14,7 +14,7 @@ const WRAPPERS: [&str; 2] = [
 #[test]
 fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 4);
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 5);
     let release: Value = serde_json::from_str(&fs::read_to_string(fixture.release())?)?;
     assert_eq!(release["state"], "candidate-proven");
     assert_eq!(release["source"]["commit"], "a".repeat(40));
@@ -25,6 +25,10 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
     for wrapper in fixture.wrappers() {
         assert!(fs::read_to_string(wrapper)?.contains("getcodexy==1.3.0"));
     }
+    assert_eq!(
+        fs::read_to_string(fixture.bootstrap())?,
+        "pub(super) const VERSION: &str = \"1.3.0\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n"
+    );
     let candidate_bytes = fs::read(fixture.candidate())?;
     assert_eq!(
         candidate_bytes,
@@ -77,7 +81,12 @@ impl Fixture {
         let temp = tempfile::tempdir()?;
         let root = temp.path().join("repo");
         let mcp = root.join("plugins/codexy/mcp");
+        fs::create_dir_all(root.join("src/version"))?;
         fs::create_dir_all(&mcp)?;
+        fs::write(
+            root.join("src/version/bootstrap.rs"),
+            "pub(super) const VERSION: &str = \"1.2.2\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
+        )?;
         fs::write(
             root.join("plugins/codexy/runtime-release.json"),
             "{\"old\":true}\n",
@@ -105,6 +114,9 @@ impl Fixture {
     fn candidate(&self) -> PathBuf {
         self.root.join("plugins/codexy/runtime-candidate.json")
     }
+    fn bootstrap(&self) -> PathBuf {
+        self.root.join("src/version/bootstrap.rs")
+    }
     fn wrappers(&self) -> impl Iterator<Item = PathBuf> + '_ {
         WRAPPERS.into_iter().map(|path| self.root.join(path))
     }
@@ -112,6 +124,7 @@ impl Fixture {
         self.wrappers()
             .chain(std::iter::once(self.release()))
             .chain(std::iter::once(self.candidate()))
+            .chain(std::iter::once(self.bootstrap()))
             .map(|path| Ok((path.clone(), fs::read(path).ok())))
             .collect()
     }

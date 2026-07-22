@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+branch="${1:?branch is required}"
+base="${2:-origin/main}"
+expected="$(printf '%s\n' \
+  plugins/codexy/mcp/codexy-mcp-codegraph \
+  plugins/codexy/mcp/codexy-mcp-lsp \
+  plugins/codexy/runtime-candidate.json \
+  plugins/codexy/runtime-release.json \
+  src/version/bootstrap.rs | LC_ALL=C sort)"
+actual="$(git diff --name-only "$base...HEAD" | LC_ALL=C sort)"
+test "$actual" = "$expected" || {
+  printf '%s\n' "activation branch differs from verified contract" >&2
+  exit 1
+}
+
+states="$(gh pr list --head "$branch" --state all --json state --jq '.[].state')"
+case "$states" in
+  ''|OPEN) ;;
+  *)
+    printf '%s\n' "activation branch has a closed or ambiguous pull request" >&2
+    exit 1
+    ;;
+esac

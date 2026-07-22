@@ -48,6 +48,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
         bail!("candidate manifest bytes do not match receipt payload SHA-256");
     }
     let mut updates = vec![
+        bootstrap_update(repo_root, bootstrap_version)?,
         Update {
             path: repo_root.join("plugins/codexy/runtime-release.json"),
             bytes: format!("{}\n", serde_json::to_string_pretty(&release)?).into_bytes(),
@@ -59,6 +60,24 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     ];
     updates.extend(wrapper_updates(repo_root, bootstrap_version)?);
     Ok(updates)
+}
+
+fn bootstrap_update(root: &Path, version: &str) -> Result<Update> {
+    let path = root.join("src/version/bootstrap.rs");
+    let source = fs::read_to_string(&path)
+        .with_context(|| format!("reading selected bootstrap metadata: {}", path.display()))?;
+    let previous = format!(
+        "pub(super) const VERSION: &str = \"{}\";",
+        super::bootstrap::VERSION
+    );
+    let replacement = format!("pub(super) const VERSION: &str = \"{version}\";");
+    if source.matches(&previous).count() != 1 {
+        bail!("selected bootstrap metadata must contain exactly one current VERSION");
+    }
+    Ok(Update {
+        path,
+        bytes: source.replacen(&previous, &replacement, 1).into_bytes(),
+    })
 }
 
 fn apply_with<F>(updates: &[Update], apply: F) -> Result<()>

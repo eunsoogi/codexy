@@ -139,7 +139,7 @@ jobs:
           candidate = {"schema":"codexy-runtime-candidate/v1","source":{"repository":"https://github.com/eunsoogi/codexy","commit":os.environ["SOURCE_COMMIT"]},"artifact":{"tag":os.environ["CANDIDATE_TAG"]},"compatibility":{"bootstrapApi":1,"pluginRuntimeApi":1,"transport":"stdio-newline-v1","mcpProtocol":"2024-11-05"},"platforms":platforms}
           open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode())
           PY
-          tar -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
           archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
           manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
           CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" python3 - <<'PY'

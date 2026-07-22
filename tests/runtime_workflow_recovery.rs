@@ -51,6 +51,65 @@ fn candidate_publication_recovers_without_overwriting_assets()
 }
 
 #[test]
+fn candidate_publication_records_a_reproducible_success_binding()
+-> Result<(), Box<dyn std::error::Error>> {
+    let candidate = workflow("runtime-candidate.yml")?;
+    let assembly = run(
+        &candidate,
+        "publish-candidate",
+        "Assemble canonical candidate archive and receipt",
+    )?;
+    support::assert_structured_literals(
+        assembly,
+        "reproducible candidate archive",
+        &["tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy"],
+    );
+    let publish = run(
+        &candidate,
+        "publish-candidate",
+        "Create candidate tag and release once",
+    )?;
+    support::assert_structured_literals(
+        publish,
+        "candidate success binding",
+        &["scripts/reconcile-runtime-candidate-assets"],
+    );
+    Ok(())
+}
+
+#[test]
+fn activation_requires_a_successful_candidate_publication_binding()
+-> Result<(), Box<dyn std::error::Error>> {
+    let activation = workflow("runtime-activation.yml")?;
+    let proof = run(
+        &activation,
+        "open-activation-pr",
+        "Prove public bootstrap, release, run, and candidate bytes",
+    )?;
+    support::assert_structured_literals(
+        proof,
+        "activation candidate success binding",
+        &["candidate-publication.json", "run.json", ".conclusion run.json)\" = \"success\""],
+    );
+    Ok(())
+}
+
+#[test]
+fn activation_pr_creation_reuses_an_existing_verified_branch()
+-> Result<(), Box<dyn std::error::Error>> {
+    let activation = workflow("runtime-activation.yml")?;
+    let branch = run(&activation, "open-activation-pr", "Prepare activation branch")?;
+    support::assert_structured_literals(
+        branch,
+        "resumable activation pull request",
+        &["git ls-remote --exit-code --heads origin \"$branch\"", "scripts/verify-runtime-activation-branch \"$branch\""],
+    );
+    let creation = run(&activation, "open-activation-pr", "Create activation pull request")?;
+    support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "activation branch differs from verified contract"]);
+    Ok(())
+}
+
+#[test]
 fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
 -> Result<(), Box<dyn std::error::Error>> {
     let candidate = workflow("runtime-candidate.yml")?;
