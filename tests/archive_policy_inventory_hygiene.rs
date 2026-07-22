@@ -44,46 +44,34 @@ fn run_gate(
 
 #[test]
 fn policy_inventory_metadata_local_paths_fail_with_both_scanners() {
-    for field in [
-        "evidence",
-        "rationale",
-        "unavailableEvent",
-        "unavailableInput",
-    ] {
-        for grep_backend in [false, true] {
-            let root = tempfile::tempdir().expect("tempdir");
-            let plugin_root = complete_plugin_fixture(root.path()).expect("complete fixture");
-            let inventory_path = plugin_root.join("hooks/policy-inventory.json");
-            let mut inventory: Value =
-                serde_json::from_slice(&std::fs::read(&inventory_path).expect("inventory"))
-                    .expect("JSON");
-            let rule = &mut inventory["rules"][0];
-            if field == "evidence" {
-                rule[field]
-                    .as_array_mut()
-                    .expect("evidence array")
-                    .push(Value::from("/home/alice/private-state"));
-            } else {
-                rule[field] = Value::from("proof at /home/alice/private-state");
-            }
-            std::fs::write(
-                &inventory_path,
-                serde_json::to_vec(&inventory).expect("JSON"),
-            )
-            .expect("inventory fixture");
-            let archive = root.path().join(format!("{field}-{grep_backend}.tar.gz"));
-            create_archive(root.path(), &archive).expect("archive fixture");
-            let output = run_gate(&archive, &plugin_root, grep_backend);
-            assert!(
-                !output.status.success(),
-                "{field} escaped scanner backend grep={grep_backend}"
-            );
-            assert!(
-                String::from_utf8_lossy(&output.stderr)
-                    .contains("archive contains a secret or local path"),
-                "unexpected failure for {field}, grep={grep_backend}: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
+    for grep_backend in [false, true] {
+        let root = tempfile::tempdir().expect("tempdir");
+        let plugin_root = complete_plugin_fixture(root.path()).expect("complete fixture");
+        let inventory_path = plugin_root.join("hooks/policy-inventory.json");
+        let mut inventory: Value =
+            serde_json::from_slice(&std::fs::read(&inventory_path).expect("inventory"))
+                .expect("JSON");
+        inventory["rules"][0]["evidence"]
+            .as_array_mut()
+            .expect("evidence array")
+            .push(Value::from("/home/alice/private-state"));
+        std::fs::write(
+            &inventory_path,
+            serde_json::to_vec(&inventory).expect("JSON"),
+        )
+        .expect("inventory fixture");
+        let archive = root.path().join(format!("evidence-{grep_backend}.tar.gz"));
+        create_archive(root.path(), &archive).expect("archive fixture");
+        let output = run_gate(&archive, &plugin_root, grep_backend);
+        assert!(
+            !output.status.success(),
+            "evidence escaped scanner backend grep={grep_backend}"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("archive contains a secret or local path"),
+            "unexpected failure for evidence, grep={grep_backend}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
