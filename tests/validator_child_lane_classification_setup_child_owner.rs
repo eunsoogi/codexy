@@ -151,12 +151,18 @@ fn validator_rejects_child_plan_before_task_classification() -> TestResult {
 }
 
 #[test]
-fn validator_allows_complete_child_classification_before_goal_and_plan() -> TestResult {
-    assert_allowed(&format!(
-        "{}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
-        complete_child_classification(),
-        child_goal_call()
-    ))
+fn validator_allows_each_new_lane_classification_before_goal_and_plan() -> TestResult {
+    for (boundary, classification) in [
+        ("Lane ownership: child-owned", complete_child_classification()),
+        ("1. Lane ownership: child-owned", complete_child_classification_table()),
+    ] {
+        let fields = classification.split_once('\n').unwrap().1;
+        assert_allowed(&format!(
+            "{}\n{boundary}\n{fields}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+            complete_child_classification(), child_goal_call()
+        ))?;
+    }
+    Ok(())
 }
 
 #[test]
@@ -171,21 +177,17 @@ fn validator_allows_parent_goal_and_plan_before_later_complete_child_lane() -> T
 
 #[test]
 fn validator_rejects_later_child_goal_and_plan_before_its_classification() -> TestResult {
-    assert_rejected(&format!(
-        "{}\nGoal tool call: create_goal\nPlan tool call: update_plan\nLane ownership: child-owned\n{}\nPlan tool call: update_plan\n{}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
-        complete_parent_classification(),
-        child_goal_call(),
-        complete_child_classification()
-    ))
-}
-
-#[test]
-fn validator_allows_canonical_classification_table_before_goal_and_plan() -> TestResult {
-    assert_allowed(&format!(
-        "{}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
-        complete_child_classification_table(),
-        child_goal_call()
-    ))
+    for (boundary, control) in [
+        ("1. Lane ownership: child-owned", "5. Plan tool call: update_plan"),
+        ("- Lane ownership: child-owned", "- Plan tool call: update_plan"),
+        ("- [ ] Lane ownership: child-owned", "- [ ] Plan tool call: update_plan"),
+    ] {
+        assert_rejected(&format!(
+            "{}\n{boundary}\n{control}\n{}\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+            complete_child_classification(), complete_child_classification()
+        ))?;
+    }
+    Ok(())
 }
 
 #[test]

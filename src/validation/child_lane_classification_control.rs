@@ -15,14 +15,39 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 
 fn is_control_call(line: &str) -> bool {
+    matches!(
+        normalize_metadata_prefix(line),
+        "goal tool call: create_goal" | "plan tool call: update_plan"
+    )
+}
+
+pub(super) fn normalize_metadata_prefix(line: &str) -> &str {
     let line = without_metadata_prefix(line);
     let line = line
         .strip_prefix("[ ] ")
         .or_else(|| line.strip_prefix("[x] "))
         .or_else(|| line.strip_prefix("[X] "))
         .unwrap_or(line);
-    matches!(
-        line,
-        "goal tool call: create_goal" | "plan tool call: update_plan"
+    line
+}
+
+pub(super) fn normalized_metadata_lines<'a>(
+    lines: &[&'a str],
+    end: usize,
+) -> (Vec<&'a str>, usize) {
+    let lane_start = lines
+        .iter()
+        .take(end)
+        .rposition(|line| {
+            let normalized = normalize_metadata_prefix(line);
+            normalized != line.trim_start() && normalized.starts_with("lane ownership:")
+        })
+        .map_or(0, |index| index + 1);
+    (
+        lines
+            .iter()
+            .map(|line| normalize_metadata_prefix(line))
+            .collect(),
+        lane_start,
     )
 }

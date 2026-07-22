@@ -1,8 +1,8 @@
+use super::child_lane_classification_control::normalize_metadata_prefix;
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
-use super::child_terminal_handoff::without_metadata_prefix;
 
 pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> bool {
     for (index, line) in lines
@@ -41,7 +41,7 @@ pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> 
             .map(|(candidate_index, line)| {
                 (
                     candidate_index,
-                    trimmed_value(without_metadata_prefix(line)),
+                    trimmed_value(normalize_metadata_prefix(line)),
                 )
             })
     {

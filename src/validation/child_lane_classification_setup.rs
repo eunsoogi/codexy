@@ -1,8 +1,8 @@
 use super::child_lane_classification_boundaries::current_lane_start;
+use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_setup_context::child_lane_context_applies;
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
-use super::child_terminal_handoff::without_metadata_prefix;
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
@@ -32,9 +32,9 @@ pub(super) fn formal_child_classification_complete_index_before(
     setup_index: usize,
 ) -> Option<usize> {
     let mut seen: Option<ClassificationFields> = None;
-    let lane_start = current_lane_start(lines, setup_index);
+    let (lines, prefixed_lane_start) = normalized_metadata_lines(lines, setup_index);
+    let lane_start = current_lane_start(&lines, setup_index).max(prefixed_lane_start);
     for (index, line) in lines.iter().enumerate().take(setup_index).skip(lane_start) {
-        let line = without_metadata_prefix(line);
         if metadata_key(trimmed_value(line)) == "task classification:" {
             seen = Some(ClassificationFields::default());
             continue;
