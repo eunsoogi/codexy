@@ -39,6 +39,10 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     }
     let receipt = read_json(receipt_path, "candidate receipt")?;
     let (release, candidate) = receipt::activation_from_receipt(&receipt)?;
+    let candidate_tag = candidate["artifact"]["tag"]
+        .as_str()
+        .context("validated receipt lost candidate tag")?
+        .to_owned();
     let candidate_bytes = serde_json::to_vec(&canonical(candidate))?;
     let expected_manifest_sha = release["artifact"]["payloadManifestSha256"]
         .as_str()
@@ -49,6 +53,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     }
     let mut updates = vec![
         bootstrap_update(repo_root, bootstrap_version)?,
+        publish_contract_update(repo_root, bootstrap_version, &candidate_tag)?,
         Update {
             path: repo_root.join("plugins/codexy/runtime-release.json"),
             bytes: format!("{}\n", serde_json::to_string_pretty(&release)?).into_bytes(),
@@ -60,6 +65,29 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     ];
     updates.extend(wrapper_updates(repo_root, bootstrap_version)?);
     Ok(updates)
+}
+
+fn publish_contract_update(root: &Path, version: &str, candidate_tag: &str) -> Result<Update> {
+    let path = root.join(".agents/plugins/release-publish-contract.json");
+    let mut contract = read_json(&path, "release publish contract")?;
+    let current_release = read_json(
+        &root.join("plugins/codexy/runtime-release.json"),
+        "selected runtime release",
+    )?;
+    let current_tag = current_release["artifact"]["tag"]
+        .as_str()
+        .context("selected runtime release lost artifact tag")?;
+    if contract["bootstrap"]["selectedVersion"] != super::bootstrap::VERSION
+        || contract["runtime"]["selectedTag"] != current_tag
+    {
+        bail!("release publish contract does not match the selected runtime identity");
+    }
+    contract["bootstrap"]["selectedVersion"] = Value::String(version.to_owned());
+    contract["runtime"]["selectedTag"] = Value::String(candidate_tag.to_owned());
+    Ok(Update {
+        path,
+        bytes: format!("{}\n", serde_json::to_string_pretty(&contract)?).into_bytes(),
+    })
 }
 
 fn bootstrap_update(root: &Path, version: &str) -> Result<Update> {

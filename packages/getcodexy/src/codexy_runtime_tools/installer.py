@@ -24,6 +24,7 @@ class InstallConfig(Protocol):
     package_sha256: str
     git_repository: str
     git_ref: str
+    source_identity: object
 
 
 def executable(path: Path) -> bool:
@@ -61,8 +62,11 @@ def install_package(config: InstallConfig, install_root: Path, installed: Path) 
             expected_sha256=config.package_sha256,
             work=work,
         )
+        source_identity = getattr(config, "source_identity", None)
         release_contract = getattr(config, "release_contract", None)
-        if release_contract is not None:
+        if source_identity is not None:
+            source_identity.verify_archive(archive, platform=config.platform)
+        elif release_contract is not None:
             release_contract.verify_archive(archive, platform=config.platform)
         packaged_runtime, package_manifest = unpack_runtime(
             archive=archive, work=work, runtime_name=config.runtime_name

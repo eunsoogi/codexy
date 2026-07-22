@@ -113,7 +113,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-${CANDIDATE_TAG}"
-          git add src/version/bootstrap.rs plugins/codexy/runtime-release.json plugins/codexy/runtime-candidate.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
+          git add .agents/plugins/release-publish-contract.json src/version/bootstrap.rs plugins/codexy/runtime-release.json plugins/codexy/runtime-candidate.json plugins/codexy/mcp/codexy-mcp-lsp plugins/codexy/mcp/codexy-mcp-codegraph
           if test "$(cat activation-branch-state)" = existing; then
             git diff --cached --quiet || { echo "activation branch differs from verified contract" >&2; exit 1; }
           else

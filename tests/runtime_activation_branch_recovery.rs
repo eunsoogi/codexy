@@ -1,6 +1,6 @@
 use std::{fs, os::unix::fs::PermissionsExt as _, path::{Path, PathBuf}, process::Command};
 
-const AUTHORIZED: &str = "plugins/codexy/mcp/codexy-mcp-codegraph\nplugins/codexy/mcp/codexy-mcp-lsp\nplugins/codexy/runtime-candidate.json\nplugins/codexy/runtime-release.json\nsrc/version/bootstrap.rs\n";
+const AUTHORIZED: &str = ".agents/plugins/release-publish-contract.json\nplugins/codexy/mcp/codexy-mcp-codegraph\nplugins/codexy/mcp/codexy-mcp-lsp\nplugins/codexy/runtime-candidate.json\nplugins/codexy/runtime-release.json\nsrc/version/bootstrap.rs\n";
 
 #[test]
 fn existing_activation_branch_rejects_unrelated_changes_and_closed_pull_requests()

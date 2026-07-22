@@ -14,7 +14,7 @@ const WRAPPERS: [&str; 2] = [
 #[test]
 fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 5);
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 6);
     let release: Value = serde_json::from_str(&fs::read_to_string(fixture.release())?)?;
     assert_eq!(release["state"], "candidate-proven");
     assert_eq!(release["source"]["commit"], "a".repeat(40));
@@ -40,6 +40,16 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
 }
 
 #[test]
+fn activation_updates_the_complete_selected_identity_transaction() -> Result<()> {
+    let fixture = Fixture::new()?;
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 6);
+    let publish: Value = serde_json::from_str(&fs::read_to_string(fixture.publish())?)?;
+    assert_eq!(publish["bootstrap"]["selectedVersion"], "1.3.0");
+    assert_eq!(publish["runtime"]["selectedTag"], "runtime-candidate-1.3.0");
+    Ok(())
+}
+
+#[test]
 fn selected_bootstrap_cannot_activate_a_candidate() -> Result<()> {
     let fixture = Fixture::new()?;
     let before = fixture.tracked()?;
@@ -55,6 +65,19 @@ fn mismatched_candidate_digest_leaves_targets_byte_identical() -> Result<()> {
     let mut receipt = receipt_value();
     receipt["artifact"]["payloadManifestSha256"] = json!("0".repeat(64));
     fs::write(&fixture.receipt, serde_json::to_vec(&receipt)?)?;
+    assert!(activate(&fixture.root, "1.3.0", &fixture.receipt).is_err());
+    assert_eq!(fixture.tracked()?, before);
+    Ok(())
+}
+
+#[test]
+fn mismatched_selected_publish_identity_leaves_targets_byte_identical() -> Result<()> {
+    let fixture = Fixture::new()?;
+    fs::write(
+        fixture.publish(),
+        r#"{"bootstrap":{"selectedVersion":"1.2.1"},"runtime":{"selectedTag":"v1.2.2"}}"#,
+    )?;
+    let before = fixture.tracked()?;
     assert!(activate(&fixture.root, "1.3.0", &fixture.receipt).is_err());
     assert_eq!(fixture.tracked()?, before);
     Ok(())
@@ -82,6 +105,7 @@ impl Fixture {
         let root = temp.path().join("repo");
         let mcp = root.join("plugins/codexy/mcp");
         fs::create_dir_all(root.join("src/version"))?;
+        fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::create_dir_all(&mcp)?;
         fs::write(
             root.join("src/version/bootstrap.rs"),
@@ -89,7 +113,11 @@ impl Fixture {
         )?;
         fs::write(
             root.join("plugins/codexy/runtime-release.json"),
-            "{\"old\":true}\n",
+            r#"{"artifact":{"tag":"v1.2.2"}}"#,
+        )?;
+        fs::write(
+            root.join(".agents/plugins/release-publish-contract.json"),
+            r#"{"bootstrap":{"selectedVersion":"1.2.2"},"runtime":{"selectedTag":"v1.2.2"}}"#,
         )?;
         for (path, server) in WRAPPERS.into_iter().zip(["lsp", "codegraph"]) {
             fs::write(
@@ -111,6 +139,10 @@ impl Fixture {
     fn release(&self) -> PathBuf {
         self.root.join("plugins/codexy/runtime-release.json")
     }
+    fn publish(&self) -> PathBuf {
+        self.root
+            .join(".agents/plugins/release-publish-contract.json")
+    }
     fn candidate(&self) -> PathBuf {
         self.root.join("plugins/codexy/runtime-candidate.json")
     }
@@ -123,6 +155,7 @@ impl Fixture {
     fn tracked(&self) -> Result<BTreeMap<PathBuf, Option<Vec<u8>>>> {
         self.wrappers()
             .chain(std::iter::once(self.release()))
+            .chain(std::iter::once(self.publish()))
             .chain(std::iter::once(self.candidate()))
             .chain(std::iter::once(self.bootstrap()))
             .map(|path| Ok((path.clone(), fs::read(path).ok())))

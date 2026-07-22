@@ -4,6 +4,7 @@ set -eu
 branch="${1:?branch is required}"
 base="${2:-origin/main}"
 expected="$(printf '%s\n' \
+  .agents/plugins/release-publish-contract.json \
   plugins/codexy/mcp/codexy-mcp-codegraph \
   plugins/codexy/mcp/codexy-mcp-lsp \
   plugins/codexy/runtime-candidate.json \
