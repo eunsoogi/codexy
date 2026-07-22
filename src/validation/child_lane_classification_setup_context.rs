@@ -92,13 +92,10 @@ fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool 
     {
         return false;
     }
-    let Some(classification_start) = lines[..start]
+    let classification_start = lines[..start]
         .iter()
-        .rposition(|line| trimmed_value(line) == "task classification:")
-    else {
-        return false;
-    };
-    let authority = lane_authority_before(lines, classification_start);
+        .rposition(|line| trimmed_value(line) == "task classification:");
+    let authority = classification_start.and_then(|start| lane_authority_before(lines, start));
     let mut fields = ClassificationFields::default();
     for (key, value) in lines[start + 2..end]
         .iter()
