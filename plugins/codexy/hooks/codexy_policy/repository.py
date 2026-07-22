@@ -49,8 +49,11 @@ def identity(url: str) -> tuple[str, str, str] | None:
         if parsed.scheme not in {"http", "https", "ssh", "git"} or not parsed.hostname or parsed.password or parsed.query or parsed.fragment:
             return None
         host, path = parsed.hostname, parsed.path.lstrip("/")
+    host = host.lower()
+    if host != "github.com":
+        return (host, "", "")
     parts = path.removesuffix(".git").split("/")
-    return (host.lower(), parts[0].lower(), parts[1].lower()) if len(parts) == 2 and all(parts) else None
+    return (host, parts[0].lower(), parts[1].lower()) if len(parts) == 2 and all(parts) else None
 
 
 def github_identity(value: str) -> tuple[str, str, str] | None:

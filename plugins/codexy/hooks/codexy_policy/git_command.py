@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import glob
 import shlex
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -98,7 +99,10 @@ def _normalize(
         cwd_owned = git_directory_owned(cwd, git_dir)
     if not arguments:
         return GitInvocation(None, [], cwd, cwd_owned, git_dir, rewrites=tuple(rewrites))
-    operation, rest = arguments[0], arguments[1:]
+    operation = _operation(arguments[0], cwd)
+    if operation is None:
+        return None
+    rest = arguments[1:]
     if operation.casefold() == "clone":
         return GitInvocation(operation, rest, cwd, cwd_owned, git_dir, rewrites=tuple(rewrites))
     push_like = operation.casefold() in {"push", "send-pack"}
@@ -127,6 +131,17 @@ def _normalize(
     if not expanded:
         return None
     return _normalize(expanded + rest, cwd, cwd_owned, git_dir, config_owned, inline_aliases, rewrites, seen | {alias_name}, depth + 1, remote_urls)
+
+
+def _operation(value: str, cwd: str) -> str | None:
+    """Expand one Git command-word glob, failing closed on ambiguous matches."""
+    if not glob.has_magic(value):
+        return value
+    matches = glob.iglob(value, root_dir=cwd)
+    first = next(matches, None)
+    if first is None:
+        return value
+    return first if next(matches, None) is None else None
 
 
 def _alias_option(value: str) -> tuple[str, str] | None:

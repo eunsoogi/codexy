@@ -6,6 +6,29 @@ use serde_json::json;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn git_subcommand_globs_follow_shell_pathname_expansion() -> TestResult {
+    let root = root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    std::fs::write(owned.join("push"), "")?;
+
+    assert_deny(&bash(&root, &owned, "git p* --force origin topic")?)?;
+    assert_deny(&bash(&root, &owned, "git push --force origin topic")?)
+}
+
+#[test]
+fn non_github_nested_remote_is_foreign() -> TestResult {
+    let root = root();
+    let workspace = tempfile::tempdir()?;
+    let gitlab = repository(workspace.path(), "gitlab", "https://gitlab.com/group/subgroup/repo.git")?;
+    let github = repository(workspace.path(), "github", "https://github.com/openai/codex.git")?;
+
+    assert_eq!(bash(&root, &gitlab, "git reset --hard")?, b"");
+    assert_eq!(bash(&root, &github, "git reset --hard")?, b"");
+    Ok(())
+}
+
+#[test]
 fn git_global_options_are_normalized_before_policy_evaluation() -> TestResult {
     let root = root();
     let workspace = tempfile::tempdir()?;
