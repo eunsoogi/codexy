@@ -40,6 +40,41 @@ fn instruction_policy_requires_review_cluster_contract_on_every_surface() -> Tes
 }
 
 #[test]
+fn instruction_policy_requires_must_grammar_for_every_review_procedure_step() -> TestResult {
+    let procedure = "## Required Procedure\n\n1. Before edits, MUST create a typed receipt.\n2. Before implementation, MUST validate the receipt file.\n3. During repair, MUST NOT accept a case exception.\n\n## Typed Receipt\n";
+    for (required_step, bare_step) in [
+        (
+            "1. Before edits, MUST create a typed receipt.",
+            "1. Before edits, create a typed receipt.",
+        ),
+        (
+            "2. Before implementation, MUST validate the receipt file.",
+            "2. Before implementation, validate the receipt file.",
+        ),
+        (
+            "3. During repair, MUST NOT accept a case exception.",
+            "3. During repair, NOT accept a case exception.",
+        ),
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let path = plugin_root.join("skills/git-workflow/references/review-response-clusters.md");
+        std::fs::write(&path, procedure.replacen(required_step, bare_step, 1))?;
+
+        let output = support::validator_instruction_policy(&plugin_root)?;
+        assert!(
+            !output.status.success(),
+            "bare procedure step unexpectedly passed: {bare_step}"
+        );
+        assert!(
+            stderr(&output).contains("review procedure step"),
+            "unexpected procedure diagnostic: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn review_cluster_harness_rejects_case_specific_classification_reply() {
     let errors = review_response_cluster_diagnostics(
         r#"{

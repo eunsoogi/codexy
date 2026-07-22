@@ -1,11 +1,18 @@
 # Review-Response Cluster Receipts
 
-Before editing actionable review feedback, create one JSON file and validate it:
+## Required Procedure
+
+1. Before editing actionable review feedback, MUST create one typed JSON receipt.
+2. Before implementation, MUST validate that exact receipt file:
 
 ```sh
 scripts/validate-plugin-config --check-review-response-cluster \
   --review-response-cluster-file receipt.json
 ```
+
+3. During repair, MUST NOT accept a case-specific exception as structural evidence.
+
+## Typed Receipt
 
 The file MUST be a typed `ReviewClusterReceipt` with a `state` of `planned`,
 `repaired`, or `reopened`, plus a nonempty `clusters` array. Each cluster MUST
@@ -21,8 +28,8 @@ subobject is parsed, normalized, and validated before state rules are applied.
 include a structural repair and every `reopened` receipt MUST include `reopen`
 evidence for its reopened class. Only `reopened` clusters may include `reopen`
 evidence. Canonical identity uses Unicode
-normalization, case folding, whitespace, and insignificant separators, while
-retaining materially different identifier content.
+normalization, full case folding, and Unicode punctuation/separator removal,
+while retaining materially different alphanumeric identifier content.
 
 For `repaired` and `reopened` states, every cluster MUST have:
 

@@ -1,10 +1,13 @@
 use std::path::Path;
 
 use serde::Deserialize;
-use unicode_normalization::UnicodeNormalization;
 
 use crate::paths::display_relative;
 
+mod identity;
+mod procedure;
+
+use identity::{canonical, empty, nonempty_list};
 const ORCHESTRATION_CLAUSES: &[&str] = &[
     "Before review-response edits, MUST create one root-cause cluster for each actionable defect class.",
     "Each cluster MUST name its stable defect class, violated invariant, structural boundary, related current threads, and representative positive and negative matrix.",
@@ -23,6 +26,7 @@ const SENTINEL_CLAUSES: &[&str] = &[
 ];
 
 pub(super) fn check_instruction_policy(path: &Path, text: &str, errors: &mut Vec<String>) {
+    procedure::check(path, text, errors);
     let clauses = if path.ends_with("skills/codex-orchestration/SKILL.md") {
         Some(ORCHESTRATION_CLAUSES)
     } else if path.ends_with("skills/git-workflow/SKILL.md") {
@@ -150,30 +154,6 @@ fn contains_clause(text: &str, clause: &str) -> bool {
 
 fn normalize(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn empty(value: &str) -> bool {
-    canonical(value).is_empty()
-}
-
-fn canonical(value: &str) -> String {
-    value
-        .nfkc()
-        .flat_map(char::to_lowercase)
-        .filter(|character| !is_insignificant_separator(*character))
-        .collect()
-}
-
-fn is_insignificant_separator(character: char) -> bool {
-    character.is_whitespace()
-        || matches!(
-            character,
-            '-' | '_' | '.' | ',' | ':' | ';' | '/' | '\\' | '‐' | '‑' | '‒' | '–' | '—' | '−'
-        )
-}
-
-fn nonempty_list(values: &[String]) -> bool {
-    !values.is_empty() && values.iter().all(|value| !empty(value))
 }
 
 #[derive(Deserialize)]

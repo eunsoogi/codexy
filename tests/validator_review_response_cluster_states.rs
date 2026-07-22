@@ -119,10 +119,44 @@ fn receipt_validation_uses_one_semantic_key_for_classes_and_invariants() {
     );
 
     let mut empty = receipt("repaired", Some(structural_repair()), None);
-    empty["clusters"][0]["defect_class"] = json!(" — / \t ");
+    empty["clusters"][0]["defect_class"] = json!("“(?! )”");
     assert!(
         !review_response_cluster_diagnostics(&empty.to_string()).is_empty(),
         "empty-after-normalization class unexpectedly passed: {empty}"
+    );
+}
+
+#[test]
+fn receipt_validation_handles_full_casefold_and_unicode_cosmetic_categories() {
+    for (first, second) in [
+        ("Straße", "STRASSE"),
+        ("classification-boundary", "“classification (boundary)!?。”"),
+        ("classification boundary", "classification\u{00a0}boundary"),
+    ] {
+        let mut duplicate = receipt("repaired", Some(structural_repair()), None);
+        duplicate["clusters"].as_array_mut().expect("clusters").push(cluster(
+            second,
+            "different invariant",
+            Some(structural_repair()),
+            None,
+        ));
+        duplicate["clusters"][0]["defect_class"] = json!(first);
+        assert!(
+            !review_response_cluster_diagnostics(&duplicate.to_string()).is_empty(),
+            "semantic equivalent classes unexpectedly passed: {duplicate}"
+        );
+    }
+
+    let mut distinct = receipt("repaired", Some(structural_repair()), None);
+    distinct["clusters"].as_array_mut().expect("clusters").push(cluster(
+        "classification2boundary",
+        "different invariant",
+        Some(structural_repair()),
+        None,
+    ));
+    assert!(
+        review_response_cluster_diagnostics(&distinct.to_string()).is_empty(),
+        "materially distinct alphanumeric content unexpectedly failed: {distinct}"
     );
 }
 
