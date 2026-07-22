@@ -136,7 +136,9 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     for required in [
         "verify-selected-package:",
         "Download and verify selected immutable bytes",
-        "sha256sum dist/selected.tar.gz",
+        "command -v sha256sum",
+        "shasum -a 256",
+        "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
         "Assemble state-aware marketplace package without rebuilding",
         "candidate-proven",
         "runtime-candidate.json",

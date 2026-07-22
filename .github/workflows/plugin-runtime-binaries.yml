@@ -38,13 +38,27 @@ jobs:
           persist-credentials: false
       - name: Download and verify selected immutable bytes
         run: |
+          digest_file() {
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$1" | awk '{print $1}'
+            else
+              shasum -a 256 "$1" | awk '{print $1}'
+            fi
+          }
           url="$(jq -r .artifact.url plugins/codexy/runtime-release.json)"
           digest="$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)"
           mkdir -p dist
           curl --fail --location "$url" -o dist/selected.tar.gz
-          sha256sum dist/selected.tar.gz | grep "$digest"
+          test "$(digest_file dist/selected.tar.gz)" = "$digest"
       - name: Assemble state-aware marketplace package without rebuilding
         run: |
+          digest_file() {
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$1" | awk '{print $1}'
+            else
+              shasum -a 256 "$1" | awk '{print $1}'
+            fi
+          }
           state="$(jq -r .state plugins/codexy/runtime-release.json)"
           case "$state" in
             legacy-public)
@@ -61,7 +75,7 @@ jobs:
                 for server in lsp codegraph; do
                   path="runtime/codexy-mcp-${server}-${platform}.bin"
                   digest="$(jq -r ".platforms[\"$platform\"][\"$server\"].sha256" plugins/codexy/runtime-release.json)"
-                  test "$(sha256sum "dist/legacy/plugins/codexy/$path" | awk '{print $1}')" = "$digest"
+                  test "$(digest_file "dist/legacy/plugins/codexy/$path")" = "$digest"
                   cp "dist/legacy/plugins/codexy/$path" "$staged/$path"
                   cmp "dist/legacy/plugins/codexy/$path" "$staged/$path"
                 done
@@ -81,7 +95,7 @@ jobs:
               candidate=dist/candidate/plugins/codexy
               staged=dist/final/plugins/codexy
               test ! -e "$candidate/runtime-release.json"
-              test "$(sha256sum "$candidate/runtime-candidate.json" | awk '{print $1}')" = "$(jq -r .artifact.payloadManifestSha256 plugins/codexy/runtime-release.json)"
+              test "$(digest_file "$candidate/runtime-candidate.json")" = "$(jq -r .artifact.payloadManifestSha256 plugins/codexy/runtime-release.json)"
               rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
               mkdir -p "$staged/runtime"
               cp "$candidate/runtime-candidate.json" "$staged/runtime-candidate.json"
@@ -90,7 +104,7 @@ jobs:
                   path="$(jq -r ".platforms[\"$platform\"][\"$server\"].path" plugins/codexy/runtime-release.json)"
                   digest="$(jq -r ".platforms[\"$platform\"][\"$server\"].sha256" plugins/codexy/runtime-release.json)"
                   test "$path" = "runtime/codexy-mcp-${server}-${platform}.bin"
-                  test "$(sha256sum "$candidate/$path" | awk '{print $1}')" = "$digest"
+                  test "$(digest_file "$candidate/$path")" = "$digest"
                   cp "$candidate/$path" "$staged/$path"
                   cmp "$candidate/$path" "$staged/$path"
                 done

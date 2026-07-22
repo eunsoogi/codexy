@@ -9,7 +9,13 @@ fn runtime_check_workflow_assembles_state_aware_immutable_packages() -> Result<(
     assert_eq!(job["strategy"]["matrix"]["include"].as_sequence().ok_or("matrix")?.len(), 2);
     let download = run(job, "Download and verify selected immutable bytes")?;
     assert!(lines(download).any(|line| line == "curl --fail --location \"$url\" -o dist/selected.tar.gz"));
-    assert!(lines(download).any(|line| line == "sha256sum dist/selected.tar.gz | grep \"$digest\""));
+    for portable_digest_line in [
+        "if command -v sha256sum >/dev/null 2>&1; then",
+        "shasum -a 256 \"$1\" | awk '{print $1}'",
+        "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
+    ] {
+        assert!(lines(download).any(|line| line == portable_digest_line));
+    }
     let assemble = run(job, "Assemble state-aware marketplace package without rebuilding")?;
     for state in ["legacy-public)", "candidate-proven)"] { assert!(lines(assemble).any(|line| line == state)); }
     assert!(lines(assemble).any(|line| line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\""));
