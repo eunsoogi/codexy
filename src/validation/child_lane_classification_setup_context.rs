@@ -69,9 +69,7 @@ fn is_child_owned_lane_evidence(line: &str) -> bool {
     matches!(line, "child-owned" | "child-owned lane")
         || has_present_child_owner_metadata(line)
         || field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision)
-        || "lane ownership: child-owned|lane ownership: current-thread-owned|owner: child-owned|owner: current-thread-owned|lane owner: child-owned|lane owner: current-thread-owned|owner decision: child-owned|owner decision: current-thread-owned child implementation|owner decision: current-thread-owned implementation lane"
-            .split('|')
-            .any(|marker| line.starts_with(marker))
+        || has_child_lane_owner_metadata(line)
 }
 
 fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool {
@@ -118,9 +116,25 @@ fn is_parent_owned_lane_evidence(line: &str) -> bool {
     }) {
         return true;
     }
-    "lane ownership: parent-owned|owner: parent-owned|lane owner: parent-owned"
-        .split('|')
-        .any(|marker| line.starts_with(marker))
+    has_parent_lane_owner_metadata(line)
+}
+
+fn has_child_lane_owner_metadata(line: &str) -> bool {
+    ["lane ownership", "owner", "lane owner"]
+        .into_iter()
+        .any(|field| {
+            field_value(line, field).is_some_and(|value| {
+                matches!(trimmed_value(value), "child-owned" | "current-thread-owned")
+            })
+        })
+}
+
+fn has_parent_lane_owner_metadata(line: &str) -> bool {
+    ["lane ownership", "owner", "lane owner"]
+        .into_iter()
+        .any(|field| {
+            field_value(line, field).is_some_and(|value| trimmed_value(value) == "parent-owned")
+        })
 }
 
 fn is_later_lane_boundary(lines: &[&str], index: usize, line: &str) -> bool {

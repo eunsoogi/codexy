@@ -60,8 +60,7 @@ impl ClassificationFields {
             "lane type" => self.lane_type = true,
             "secondary surfaces" => self.secondary_surfaces = true,
             "owner decision" => {
-                self.child_owner_decision =
-                    is_child_completion_owner(value) || is_current_thread_owner(value);
+                self.child_owner_decision = is_child_completion_owner(value);
             }
             "atomic scope" => self.atomic_scope = true,
             "required skills" => self.required_skills = true,
@@ -103,18 +102,6 @@ impl ClassificationFields {
     fn is_stop_blocker_key(key: &str) -> bool {
         matches!(key, "stop/blocker" | "stop blocker" | "blocker")
     }
-}
-
-fn is_current_thread_owner(value: &str) -> bool {
-    let Some(rationale) = value.strip_prefix("current-thread-owned") else {
-        return false;
-    };
-    let rationale = rationale.trim();
-    !rationale.is_empty()
-        && !value.contains("not current-thread-owned")
-        && !["or ", "and ", ",", "/"]
-            .iter()
-            .any(|marker| rationale.starts_with(marker))
 }
 
 fn is_child_completion_owner(value: &str) -> bool {

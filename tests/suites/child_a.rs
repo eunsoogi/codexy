@@ -141,6 +141,9 @@ mod validator_child_lane_classification_setup_child_owner;
 #[path = "../validator_child_lane_classification_setup_authority.rs"]
 mod validator_child_lane_classification_setup_authority;
 
+#[path = "../validator_child_lane_classification_equivalence.rs"]
+mod validator_child_lane_classification_equivalence;
+
 #[path = "../validator_child_lane_classification_setup_codex_review.rs"]
 mod validator_child_lane_classification_setup_codex_review;
 
