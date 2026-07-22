@@ -8,6 +8,8 @@ use std::{
 use serde_json::Value as Json;
 use serde_yaml::Value as Yaml;
 
+use crate::support;
+
 const RECEIPT_SCHEMA: &str = "codexy.runtime-candidate-receipt.v1";
 
 #[test]
@@ -27,18 +29,22 @@ fn publication_workflows_are_independent_and_immutable() -> Result<(), Box<dyn s
         has_dispatch(&candidate.2),
         "candidate publication needs workflow_dispatch"
     );
-    assert!(
-        candidate.1.contains("git rev-parse")
-            && candidate.1.contains("SOURCE_COMMIT")
-            && candidate.1.contains("sha256")
-            && candidate.1.contains("provenance")
-            && candidate.1.contains("curl --fail")
-            && candidate.1.contains("runtime-candidate.json"),
-        "candidate publication lacks immutable public proof"
+    support::assert_structured_literals(
+        &candidate.1,
+        "immutable runtime candidate publication",
+        &[
+            "git rev-parse",
+            "SOURCE_COMMIT",
+            "sha256",
+            "provenance",
+            "curl --fail",
+            "runtime-candidate.json",
+        ],
     );
-    assert!(
-        !candidate.1.contains("--clobber") && !candidate.1.contains("gh release edit"),
-        "candidate publication must never clobber immutable assets"
+    assert_eq!(
+        candidate.1.matches("--clobber").count() + candidate.1.matches("gh release edit").count(),
+        0,
+        "candidate publication must never clobber immutable assets",
     );
     Ok(())
 }
