@@ -50,6 +50,23 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
             .any(|argument| argument == "packages/getcodexy/pyproject.toml"),
         "version-bump staging omits Python metadata"
     );
+    for wrapper in [
+        "plugins/codexy/mcp/codexy-mcp-lsp",
+        "plugins/codexy/mcp/codexy-mcp-codegraph",
+    ] {
+        assert!(
+            staging.split_ascii_whitespace().any(|argument| argument == wrapper),
+            "version-bump staging omits {wrapper}"
+        );
+        let changed_areas = open_pr
+            .split("cat >\"${body_file}\" <<EOF\n")
+            .nth(1)
+            .ok_or("missing generated pull-request body")?;
+        assert!(
+            changed_areas.lines().any(|line| line.trim() == format!("- {wrapper}")),
+            "version-bump body omits {wrapper}"
+        );
+    }
     Ok(())
 }
 

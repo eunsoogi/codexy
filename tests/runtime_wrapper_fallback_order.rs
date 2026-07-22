@@ -108,9 +108,14 @@ fn assert_bundled_runtime_precedes_uvx(
         wrapper_path,
         "uvx availability check",
     )?;
+    let manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/.codex-plugin/plugin.json"),
+    )?)?;
+    let version = manifest["version"].as_str().ok_or("manifest version")?;
     let uvx_bootstrap = find_required(
         wrapper,
-        "exec uvx --from getcodexy==1.2.2 codexy-mcp-runtime",
+        &format!("exec uvx --from getcodexy=={version} codexy-mcp-runtime"),
         wrapper_path,
         "pinned uvx bootstrap",
     )?;

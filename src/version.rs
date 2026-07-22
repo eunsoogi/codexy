@@ -7,6 +7,7 @@ use crate::paths::{display_relative, repo_root};
 
 mod cargo;
 mod python;
+mod wrappers;
 
 const PLUGIN_NAME: &str = "codexy";
 const PLUGIN_MANIFEST: &str = "plugins/codexy/.codex-plugin/plugin.json";
@@ -19,11 +20,7 @@ fn repo_path(relative: &str) -> Result<PathBuf> {
 
 fn package_manifests() -> Result<Vec<PathBuf>> {
     let path = repo_path("package.json")?;
-    Ok(if path.exists() {
-        vec![path]
-    } else {
-        Vec::new()
-    })
+    Ok(path.exists().then_some(path).into_iter().collect())
 }
 
 fn load_json(path: &PathBuf) -> Result<Value> {
@@ -208,6 +205,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
     }
     python::check_version(manifest_version)?;
     cargo::check_version(manifest_version)?;
+    wrappers::check_version(manifest_version)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
         if tag != expected_tag {
@@ -244,5 +242,6 @@ pub fn set_version(version: &str) -> Result<String> {
         write_json(&path, &package)?;
     }
     python::set_version(version)?;
+    wrappers::set_version(version)?;
     Ok(format!("plugin version synchronized to {version}"))
 }
