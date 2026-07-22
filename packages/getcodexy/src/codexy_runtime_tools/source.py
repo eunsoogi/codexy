@@ -9,13 +9,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from .contract import RuntimeRelease
+from .contract import REPOSITORY, RuntimeRelease
 
 
 class RuntimeSourceMode(str, Enum):
     SELECTED_RELEASE = "selected-release"
     EXPLICIT_OVERRIDE = "explicit-override"
     LEGACY_DEFAULT = "legacy-default"
+    GIT_FALLBACK = "git-fallback"
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ class ExplicitRuntimeSource:
 @dataclass(frozen=True)
 class RuntimeSourceIdentity:
     mode: RuntimeSourceMode
-    package_sha256: str
+    package_sha256: str | None
     descriptor: dict[str, str]
     release: RuntimeRelease | None = None
 
@@ -61,6 +62,15 @@ class RuntimeSourceIdentity:
                        {"tag": release.artifact.tag, "url": release.artifact.url}, release)
         return cls(RuntimeSourceMode.LEGACY_DEFAULT, package_sha256,
                    {"kind": "public-plugin-release", "value": package_url})
+
+    @classmethod
+    def git_fallback(cls, *, repository: str, commit: str) -> "RuntimeSourceIdentity":
+        if repository != REPOSITORY or len(commit) != 40 or any(
+            character not in "0123456789abcdef" for character in commit
+        ):
+            raise ValueError("Git fallback requires the canonical repository and lowercase 40-hex commit")
+        return cls(RuntimeSourceMode.GIT_FALLBACK, None,
+                   {"repository": repository, "commit": commit})
 
     def verify_archive(self, archive: Path, *, platform: str) -> None:
         if self.mode is RuntimeSourceMode.SELECTED_RELEASE:
@@ -82,6 +92,10 @@ class RuntimeSourceIdentity:
                                        binary_sha256=binary_sha256)
         if self.mode is RuntimeSourceMode.LEGACY_DEFAULT:
             return None
+        if self.mode is RuntimeSourceMode.GIT_FALLBACK:
+            return {"schema": "codexy-runtime-git-marker/v1",
+                    "identity": self._identity(platform, server),
+                    "installedBinarySha256": binary_sha256}
         return {"schema": "codexy-runtime-override-marker/v1",
                 "identity": self._identity(platform, server),
                 "installedBinarySha256": binary_sha256}
@@ -92,8 +106,11 @@ class RuntimeSourceIdentity:
         return expected is not None and marker == expected
 
     def _identity(self, platform: str, server: str) -> dict[str, Any]:
-        return {"mode": self.mode.value, "packageSha256": self.package_sha256,
-                "source": self.descriptor, "platform": platform, "server": server}
+        identity = {"mode": self.mode.value, "source": self.descriptor,
+                    "platform": platform, "server": server}
+        if self.package_sha256 is not None:
+            identity["packageSha256"] = self.package_sha256
+        return identity
 
     def _encoded_identity(self, platform: str, server: str) -> bytes:
         return json.dumps(self._identity(platform, server), sort_keys=True,

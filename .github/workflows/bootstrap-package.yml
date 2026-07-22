@@ -30,25 +30,25 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify source commit is reachable from protected main
-        env:
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
-        run: git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.source_commit }}
-          fetch-depth: 0
-          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Verify immutable bootstrap identity
+      - name: Admit current protected-main bootstrap source
         env:
-          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
+          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
         run: |
+          test "${#SOURCE_COMMIT}" = 40
+          case "$SOURCE_COMMIT" in
+            *[!0-9a-f]*) exit 1 ;;
+          esac
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          main_at_admission="$(git rev-parse origin/main)"
+          test "$SOURCE_COMMIT" = "$main_at_admission"
+          git cat-file -e "$SOURCE_COMMIT^{commit}"
+          git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          version="$(python -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
           test "$version" = "$BOOTSTRAP_VERSION"
       - name: Build and publish bootstrap package
         run: |

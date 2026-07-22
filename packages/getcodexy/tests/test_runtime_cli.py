@@ -1,5 +1,6 @@
 import hashlib
 import io
+import os
 import json
 import sys
 import tarfile
@@ -75,18 +76,23 @@ class RuntimeCliTests(unittest.TestCase):
             manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
             config = SimpleNamespace(server="lsp", manifest=manifest, git_repository="https://github.com/eunsoogi/codexy", git_ref="a" * 40)
 
-            def cargo_install(*_: object, **__: object) -> SimpleNamespace:
-                installed.parent.mkdir(parents=True)
-                installed.write_text("#!/bin/sh\n", encoding="utf-8")
-                installed.chmod(0o755)
+            def cargo_install(command: list[str], **_: object) -> SimpleNamespace:
+                staged_root = Path(command[command.index("--root") + 1])
+                staged = staged_root / "bin" / "codexy-mcp-lsp"
+                staged.parent.mkdir(parents=True)
+                staged.write_text("#!/bin/sh\n", encoding="utf-8")
+                staged.chmod(0o755)
                 return SimpleNamespace(returncode=0)
 
             with (
                 mock.patch("codexy_runtime_tools.installer.shutil.which", return_value="/cargo"),
                 mock.patch("codexy_runtime_tools.installer.subprocess.run", side_effect=cargo_install) as cargo,
+                mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}, clear=True),
             ):
                 install_git(config, install_root, installed)
             self.assertIn("--force", cargo.call_args.args[0])
+            self.assertNotIn("GH_TOKEN", cargo.call_args.kwargs["env"])
+            self.assertNotIn("GITHUB_TOKEN", cargo.call_args.kwargs["env"])
             self.assertEqual((install_root / "plugin.json").read_text(encoding="utf-8"), manifest.read_text(encoding="utf-8"))
         with (
             mock.patch.dict("os.environ", {"PRESERVED": "yes"}, clear=True),

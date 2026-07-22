@@ -118,37 +118,6 @@ fn activation_pr_creation_reuses_an_existing_verified_branch()
 }
 
 #[test]
-fn privileged_publication_requires_a_source_commit_reachable_from_main()
--> Result<(), Box<dyn std::error::Error>> {
-    let candidate = workflow("runtime-candidate.yml")?;
-    let candidate_guard = candidate["jobs"]["verify-source-commit"]["steps"]
-        .as_sequence()
-        .ok_or("candidate source guard steps")?;
-    assert_eq!(candidate_guard[0]["with"]["ref"], "main");
-    let guard = candidate_guard[1]["run"].as_str().ok_or("candidate source guard")?;
-    support::assert_structured_literals(
-        guard,
-        "candidate protected-main source guard",
-        &["git merge-base --is-ancestor \"$SOURCE_COMMIT\" origin/main"],
-    );
-    assert_eq!(candidate["jobs"]["build-runtime"]["needs"], "verify-source-commit");
-
-    let bootstrap = workflow("bootstrap-package.yml")?;
-    let bootstrap_steps = bootstrap["jobs"]["publish-bootstrap"]["steps"]
-        .as_sequence()
-        .ok_or("bootstrap steps")?;
-    assert_eq!(bootstrap_steps[0]["with"]["ref"], "main");
-    let bootstrap_guard = bootstrap_steps[1]["run"].as_str().ok_or("bootstrap source guard")?;
-    support::assert_structured_literals(
-        bootstrap_guard,
-        "bootstrap protected-main source guard",
-        &["git merge-base --is-ancestor \"$SOURCE_COMMIT\" origin/main"],
-    );
-    assert_eq!(bootstrap_steps[2]["with"]["ref"], "${{ inputs.source_commit }}");
-    Ok(())
-}
-
-#[test]
 fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
 -> Result<(), Box<dyn std::error::Error>> {
     let candidate = workflow("runtime-candidate.yml")?;

@@ -92,22 +92,32 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
         raise RuntimeError("cargo is unavailable for the configured Git runtime source")
     if config.git_repository != "https://github.com/eunsoogi/codexy" or not re.fullmatch(r"[0-9a-f]{40}", config.git_ref):
         raise RuntimeError("Git fallback requires the canonical repository and lowercase 40-hex commit")
-    command = [
-        cargo,
-        "install",
-        "--force",
-        "--locked",
-        "--git",
-        config.git_repository,
-        "--rev",
-        config.git_ref,
-        "--root",
-        str(install_root),
-        "--bin",
-        f"codexy-mcp-{config.server}",
-    ]
-    environment = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "GITHUB_TOKEN"}}
-    completed = subprocess.run(command, check=False, env=environment)
-    if completed.returncode or not executable(installed):
-        raise RuntimeError(f"cargo install exited with status {completed.returncode}")
-    shutil.copyfile(config.manifest, install_root / "plugin.json")
+    install_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="git-", dir=install_root) as temporary:
+        staged_root = Path(temporary) / "root"
+        staged_runtime = staged_root / "bin" / f"codexy-mcp-{config.server}"
+        command = [
+            cargo,
+            "install",
+            "--force",
+            "--locked",
+            "--git",
+            config.git_repository,
+            "--rev",
+            config.git_ref,
+            "--root",
+            str(staged_root),
+            "--bin",
+            f"codexy-mcp-{config.server}",
+        ]
+        environment = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "GITHUB_TOKEN"}}
+        completed = subprocess.run(command, check=False, env=environment)
+        if completed.returncode or not executable(staged_runtime):
+            raise RuntimeError(f"cargo install exited with status {completed.returncode}")
+        installed.parent.mkdir(parents=True, exist_ok=True)
+        temporary_runtime = installed.with_name(f".{installed.name}.{os.getpid()}.tmp")
+        temporary_manifest = install_root / f".plugin.json.{os.getpid()}.tmp"
+        shutil.copyfile(staged_runtime, temporary_runtime)
+        shutil.copyfile(config.manifest, temporary_manifest)
+        os.replace(temporary_runtime, installed)
+        os.replace(temporary_manifest, install_root / "plugin.json")

@@ -52,6 +52,9 @@ mod runtime_activation_branch_recovery;
 #[path = "../runtime_workflow_recovery.rs"]
 mod runtime_workflow_recovery;
 
+#[path = "../bootstrap_package_admission.rs"]
+mod bootstrap_package_admission;
+
 #[path = "../version_bump_pr_readiness.rs"]
 mod version_bump_pr_readiness;
 

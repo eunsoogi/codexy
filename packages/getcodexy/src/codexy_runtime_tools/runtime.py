@@ -185,25 +185,53 @@ def run(config: Configuration) -> NoReturn:
                 _execute(config, installed)
         elif source_identity.cache_key(platform=config.platform, server=config.server) is None and releases_match(config.manifest, install_root / "plugin.json")[0]:
             _execute(config, installed)
+    if not config.offline:
+        try:
+            _notice(f"acquiring exact release package v{config.release} for {config.server}")
+            install_package(config, install_root, installed)
+            source_marker = source_identity.marker(platform=config.platform, server=config.server,
+                binary_sha256=hashlib.sha256(installed.read_bytes()).hexdigest())
+            if source_marker:
+                marker.write_text(json.dumps(source_marker, sort_keys=True), encoding="utf-8")
+            _execute(config, installed)
+        except (OSError, RuntimeError, ValueError) as package_error:
+            if config.package_override:
+                _fail(f"codexy-mcp-{config.server} explicit package source failed: {package_error}")
+            if not config.git_fallback:
+                _fail(f"codexy-mcp-{config.server} exact release package failed: {package_error}")
+            _notice(f"release package failed ({package_error}); explicit Git fallback uses {config.git_ref}")
+    elif config.package_override or not config.git_fallback:
+        _fail(f"codexy-mcp-{config.server} offline mode has no cached or bundled runtime for {config.platform}")
+    try:
+        git_identity = RuntimeSourceIdentity.git_fallback(
+            repository=config.git_repository, commit=config.git_ref
+        )
+    except ValueError as error:
+        _fail(f"codexy-mcp-{config.server} pinned Git runtime failed: {error}")
+    git_key = git_identity.cache_key(platform=config.platform, server=config.server)
+    assert git_key is not None
+    git_root = _cache_root(config.server) / git_key
+    git_installed = git_root / "bin" / f"codexy-mcp-{config.server}"
+    git_marker = git_root / "runtime-marker.json"
+    if executable(git_installed) and git_marker.is_file():
+        try:
+            valid = git_identity.valid_marker(
+                json.loads(git_marker.read_text()), platform=config.platform,
+                server=config.server, binary=git_installed.read_bytes()
+            )
+        except (OSError, ValueError, json.JSONDecodeError):
+            valid = False
+        if valid:
+            _execute(config, git_installed)
     if config.offline:
         _fail(f"codexy-mcp-{config.server} offline mode has no cached or bundled runtime for {config.platform}")
     try:
-        _notice(f"acquiring exact release package v{config.release} for {config.server}")
-        install_package(config, install_root, installed)
-        source_marker = source_identity.marker(platform=config.platform, server=config.server,
-            binary_sha256=hashlib.sha256(installed.read_bytes()).hexdigest())
-        if source_marker:
-            marker.write_text(json.dumps(source_marker, sort_keys=True), encoding="utf-8")
-        _execute(config, installed)
-    except (OSError, RuntimeError, ValueError) as package_error:
-        if config.package_override:
-            _fail(f"codexy-mcp-{config.server} explicit package source failed: {package_error}")
-        if not config.git_fallback:
-            _fail(f"codexy-mcp-{config.server} exact release package failed: {package_error}")
-        _notice(f"release package failed ({package_error}); explicit Git fallback uses {config.git_ref}")
-    try:
-        install_git(config, install_root, installed)
-        _execute(config, installed)
+        install_git(config, git_root, git_installed)
+        git_marker.write_text(json.dumps(git_identity.marker(
+            platform=config.platform, server=config.server,
+            binary_sha256=hashlib.sha256(git_installed.read_bytes()).hexdigest(),
+        ), sort_keys=True), encoding="utf-8")
+        _execute(config, git_installed)
     except (OSError, RuntimeError) as git_error:
         _fail(f"codexy-mcp-{config.server} pinned Git runtime failed: {git_error}")
 
