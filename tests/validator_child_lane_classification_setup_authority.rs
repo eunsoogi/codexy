@@ -161,6 +161,44 @@ fn validator_allows_actions_after_a_repeated_complete_gfm_table() -> TestResult 
     Ok(())
 }
 
+#[test]
+fn validator_allows_documented_current_thread_owner_rationale() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("handoff.md");
+    let classification = complete_gfm_classification().replacen(
+        "current-thread-owned child implementation lane",
+        "current-thread-owned because the active thread owns issue-sized work",
+        1,
+    );
+    std::fs::write(&path, format!("{classification}\nPlan tool call: update_plan\n"))?;
+
+    assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_invalid_current_thread_owner_rationales() -> TestResult {
+    for owner in [
+        "not current-thread-owned because the active thread owns issue-sized work",
+        "parent-owned because the active thread owns issue-sized work",
+        "unknown ownership because the active thread owns issue-sized work",
+        "current-thread-owned or parent-owned because the active thread owns issue-sized work",
+        "current-thread-owned",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let path = temp.path().join("handoff.md");
+        let classification = complete_gfm_classification().replacen(
+            "current-thread-owned child implementation lane",
+            owner,
+            1,
+        );
+        std::fs::write(&path, format!("{classification}\nPlan tool call: update_plan\n"))?;
+
+        assert!(!crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    }
+    Ok(())
+}
+
 fn complete_gfm_classification() -> &'static str {
     "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }

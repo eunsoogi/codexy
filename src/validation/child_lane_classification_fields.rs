@@ -86,9 +86,16 @@ impl ClassificationFields {
 }
 
 fn is_current_thread_owner(value: &str) -> bool {
-    value.starts_with("current-thread-owned")
-        && (value.contains("implementation lane") || value.contains("child implementation"))
+    let Some(rationale) = value.strip_prefix("current-thread-owned") else {
+        return false;
+    };
+    let rationale = rationale.trim();
+    !rationale.is_empty()
         && !value.contains("not current-thread-owned")
+        && !rationale.starts_with("or ")
+        && !["parent-owned", "unknown", "ambiguous"]
+            .iter()
+            .any(|marker| rationale.contains(marker))
 }
 
 fn is_child_completion_owner(value: &str) -> bool {
