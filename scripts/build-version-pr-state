@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""Build validated version-bump PR state for Codexy readiness gates."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import tempfile
+from pathlib import Path
+from typing import NoReturn
+
+OID_PATTERN = re.compile(r"[0-9a-f]{40}")
+
+
+def fail(message: str) -> NoReturn:
+    raise ValueError(message)
+
+
+def read_json(path: Path, context: str) -> object:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        fail(f"cannot read {context} from {path}: {error}")
+
+
+def require_object(value: object, context: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        fail(f"{context} must be an object")
+    return value
+
+
+def require_named_items(value: object, context: str) -> list[dict[str, object]]:
+    if not isinstance(value, list) or not value:
+        fail(f"{context} must be a non-empty array")
+    result: list[dict[str, object]] = []
+    names: list[str] = []
+    for item in value:
+        entry = require_object(item, f"{context} entry")
+        name = entry.get("name")
+        if not isinstance(name, str) or not name.strip():
+            fail(f"{context} entries require non-empty name")
+        names.append(name)
+        result.append(entry)
+    if len(names) != len(set(names)):
+        fail(f"{context} contains duplicate names")
+    return result
+
+
+def build_state(args: argparse.Namespace) -> dict[str, object]:
+    repository_parts = args.repository.split("/")
+    if len(repository_parts) != 2 or not all(repository_parts):
+        fail("repository must use OWNER/NAME form")
+    owner, name = repository_parts
+    if OID_PATTERN.fullmatch(args.expected_head_oid) is None:
+        fail("expected head OID must be a lowercase 40-character Git OID")
+    if not args.expected_head_ref or args.expected_head_ref != args.expected_head_ref.strip():
+        fail("expected head ref must be non-empty and trimmed")
+
+    pr = require_object(read_json(args.pr_json, "PR JSON"), "PR JSON")
+    issue = require_object(read_json(args.issue_json, "issue JSON"), "issue JSON")
+    repository_labels = require_named_items(
+        read_json(args.repository_labels_json, "repository labels"), "repository labels"
+    )
+    review_threads = require_object(
+        read_json(args.review_threads_json, "review threads"), "review threads"
+    )
+    issue_labels = require_named_items(issue.get("labels"), "governing issue labels")
+
+    if pr.get("isCrossRepository") is not False:
+        fail("version pull request must not be cross-repository")
+    head_repository = require_object(pr.get("headRepository"), "head repository")
+    head_owner = require_object(pr.get("headRepositoryOwner"), "head repository owner")
+    if head_repository.get("name") != name or head_owner.get("login") != owner:
+        fail(f"version pull request head must belong to {args.repository}")
+    if pr.get("headRefName") != args.expected_head_ref:
+        fail("version pull request head ref does not match the release branch")
+    if pr.get("headRefOid") != args.expected_head_oid:
+        fail("version pull request head OID does not match the verified origin branch")
+
+    issue_number = issue.get("number")
+    if not isinstance(issue_number, int) or isinstance(issue_number, bool) or issue_number < 1:
+        fail("governing issue number must be a positive integer")
+    references = pr.get("closingIssuesReferences")
+    if not isinstance(references, list) or len(references) != 1:
+        fail("version pull request must have exactly one closing issue reference")
+    reference = require_object(references[0], "closing issue reference")
+    if reference.get("number") != issue_number:
+        fail("closing issue reference does not match the governing issue")
+    enriched_reference = dict(reference)
+    enriched_reference["labels"] = issue_labels
+
+    state = dict(pr)
+    state.update(
+        {
+            "repository": args.repository,
+            "repositoryLabels": repository_labels,
+            "reviewThreads": review_threads,
+            "closingIssuesReferences": [enriched_reference],
+        }
+    )
+    return state
+
+
+def write_json(path: Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(value, handle, separators=(",", ":"), ensure_ascii=False)
+            handle.write("\n")
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pr-json", required=True, type=Path)
+    parser.add_argument("--issue-json", required=True, type=Path)
+    parser.add_argument("--repository-labels-json", required=True, type=Path)
+    parser.add_argument("--review-threads-json", required=True, type=Path)
+    parser.add_argument("--repository", required=True)
+    parser.add_argument("--expected-head-ref", required=True)
+    parser.add_argument("--expected-head-oid", required=True)
+    parser.add_argument("--output", required=True, type=Path)
+    return parser.parse_args()
+
+
+def main() -> int:
+    try:
+        args = parse_args()
+        state = build_state(args)
+        write_json(args.output, state)
+        return 0
+    except ValueError as error:
+        print(f"build-version-pr-state: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

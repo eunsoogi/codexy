@@ -39,7 +39,9 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
     let sync = named_step_run(steps, "Synchronize plugin version")?;
     assert_eq!(sync, "scripts/sync-plugin-version --version \"$VERSION\"");
     let open_pr = named_step_run(steps, "Open version bump pull request")?;
-    let staging = open_pr
+    assert_eq!(open_pr, "scripts/reconcile-version-pr");
+    let adapter = std::fs::read_to_string(root.join(open_pr))?;
+    let staging = adapter
         .lines()
         .map(str::trim)
         .find(|line| line.starts_with("git add "))
