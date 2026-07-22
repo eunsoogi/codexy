@@ -370,10 +370,16 @@ jobs:
               codegraph = @{ Server = "codexy-codegraph"; Tool = "codegraph_index" }
             }
             foreach ($server in @("lsp", "codegraph")) {
-              $status = $message.result.data | Where-Object name -eq $server
-              if ($status.serverInfo.name -ne $expected[$server].Server) {
-                throw "$server did not start through the installed Codex MCP surface"
-              }
+            $status = $message.result.data | Where-Object name -eq $server
+            if ($status.serverInfo.name -ne $expected[$server].Server) {
+              $evidence = [ordered]@{
+                name = $status.name
+                status = $status.status
+                error = $status.error
+                serverInfo = $status.serverInfo
+              } | ConvertTo-Json -Depth 8 -Compress
+              throw "$server did not start through the installed Codex MCP surface; MCP status evidence: $evidence"
+            }
               if ($expected[$server].Tool -notin @($status.tools.PSObject.Properties.Name)) {
                 throw "$server did not expose its expected tool through Codex"
               }
