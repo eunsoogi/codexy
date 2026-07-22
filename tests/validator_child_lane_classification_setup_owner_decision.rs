@@ -136,15 +136,6 @@ Maintainer reassignment: none
 }
 
 #[test]
-fn validator_rejects_classification_before_child_lane_metadata() -> TestResult {
-    assert_rejected(&format!(
-        "{}\nLane ownership: child-owned\nChild branch codexy/231-branch-classification-guard was created after classification.\n{}",
-        complete_child_classification().replacen("Lane ownership: child-owned\n", "", 1),
-        ownership_footer()
-    ))
-}
-
-#[test]
 fn validator_allows_setup_before_next_owner_decision_boundary() -> TestResult {
     assert_allowed(
         r#"Branch codexy/neutral-lane was created after classification.

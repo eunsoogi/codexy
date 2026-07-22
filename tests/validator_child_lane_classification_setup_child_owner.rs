@@ -167,56 +167,6 @@ fn validator_allows_each_new_lane_classification_before_goal_and_plan() -> TestR
 }
 
 #[test]
-fn validator_rejects_non_authoritative_classification_metadata_before_control() -> TestResult {
-    for classification in [
-        complete_child_classification().replacen(
-            "Ownership metadata source: parent-supplied\n",
-            "",
-            1,
-        ),
-        complete_child_classification_table().replacen(
-            "Ownership metadata source: parent-supplied\n",
-            "",
-            1,
-        ),
-        complete_child_classification_table().replacen(
-            "Ownership metadata source: parent-supplied",
-            "Ownership metadata source: parent supplied",
-            1,
-        ),
-        complete_child_classification_table().replacen(
-            "Task classification:\n| Field | Value |\n| --- | --- |\n",
-            "| Field | Value |\n| --- | --- |\n",
-            1,
-        ),
-        complete_child_classification_table().replacen(
-            "Ownership metadata source: parent-supplied",
-            "- Ownership metadata source: parent-supplied",
-            1,
-        ),
-        complete_child_classification_table().replacen(
-            "Lane ownership: child-owned",
-            "Lane ownership: parent-owned",
-            1,
-        ),
-        complete_child_classification_table().replacen(
-            "Lane ownership: child-owned",
-            "Lane ownership: unknown",
-            1,
-        ),
-    ] {
-        let evidence = format!(
-            "{classification}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n"
-        );
-        assert!(
-            !run_ownership_validator(&evidence)?.status.success(),
-            "unexpectedly accepted non-authoritative classification:\n{evidence}"
-        );
-    }
-    Ok(())
-}
-
-#[test]
 fn validator_allows_parent_goal_and_plan_before_later_complete_child_lane() -> TestResult {
     assert_allowed(&format!(
         "{}\nGoal tool call: create_goal\nPlan tool call: update_plan\n{}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",

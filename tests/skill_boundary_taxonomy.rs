@@ -144,7 +144,7 @@ fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestR
     );
 
     let classified_child = run_ownership_validator(&format!(
-        "Ownership metadata source: parent-supplied\nLane ownership: child-owned\n{complete_table}Plan tool call: update_plan\n"
+        "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n{complete_table}Plan tool call: update_plan\n"
     ))?;
     assert!(classified_child.status.success());
     Ok(())

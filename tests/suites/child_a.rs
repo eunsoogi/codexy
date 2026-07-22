@@ -138,12 +138,16 @@ mod validator_child_lane_classification_setup;
 
 #[path = "../validator_child_lane_classification_setup_child_owner.rs"]
 mod validator_child_lane_classification_setup_child_owner;
+#[path = "../validator_child_lane_classification_setup_authority.rs"]
+mod validator_child_lane_classification_setup_authority;
 
 #[path = "../validator_child_lane_classification_setup_codex_review.rs"]
 mod validator_child_lane_classification_setup_codex_review;
 
 #[path = "../validator_child_lane_classification_setup_owner_decision.rs"]
 mod validator_child_lane_classification_setup_owner_decision;
+#[path = "../validator_child_lane_classification_setup_owner_metadata.rs"]
+mod validator_child_lane_classification_setup_owner_metadata;
 
 #[path = "../validator_child_lane_ownership.rs"]
 mod validator_child_lane_ownership;
