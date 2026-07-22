@@ -93,6 +93,7 @@ jobs:
     needs: build-runtime
     runs-on: ubuntu-latest
     permissions:
+      attestations: write
       contents: write
       id-token: write
     steps:
@@ -174,18 +175,7 @@ jobs:
           if ! gh release view "$CANDIDATE_TAG" >/dev/null 2>&1; then
             gh release create "$CANDIDATE_TAG" --target "$SOURCE_COMMIT" --title "$CANDIDATE_TAG" --notes "Immutable runtime candidate."
           fi
-          recovery_dir="$(mktemp -d)"
-          trap 'rm -rf "$recovery_dir"' EXIT
-          for asset in dist/codexy-marketplace-plugin.tar.gz dist/runtime-candidate-receipt.json dist/runtime-candidate-provenance.json; do
-            name="$(basename "$asset")"
-            if gh release view "$CANDIDATE_TAG" --json assets --jq '.assets[].name' | grep -Fqx "$name"; then
-              public_asset="$recovery_dir/$name"
-              gh release download "$CANDIDATE_TAG" --pattern "$name" --output "$public_asset"
-              cmp "$asset" "$public_asset"
-            else
-              gh release upload "$CANDIDATE_TAG" "$asset"
-            fi
-          done
+          scripts/reconcile-runtime-candidate-assets dist
       - name: Re-download and verify anonymous public bytes
         env:
           CANDIDATE_TAG: ${{ inputs.candidate_tag }}
@@ -193,7 +183,11 @@ jobs:
           base="https://github.com/eunsoogi/codexy/releases/download/$CANDIDATE_TAG"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
           curl --fail --location "$base/runtime-candidate-receipt.json" -o public-receipt.json
+          curl --fail --location "$base/runtime-candidate-provenance.json" -o public-provenance.json
           cmp dist/runtime-candidate-receipt.json public-receipt.json
+          cmp dist/runtime-candidate-provenance.json public-provenance.json
+          jq -cS .provenance public-receipt.json | tr -d '\n' > receipt-provenance.json
+          cmp receipt-provenance.json public-provenance.json
           sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
           tar -xOf public.tar.gz plugins/codexy/runtime-candidate.json > public-candidate.json
           cmp dist/candidate/plugins/codexy/runtime-candidate.json public-candidate.json

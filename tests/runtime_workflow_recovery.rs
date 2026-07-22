@@ -43,9 +43,7 @@ fn candidate_publication_recovers_without_overwriting_assets()
             "refs/tags/$CANDIDATE_TAG^{}",
             "test \"$remote_commit\" = \"$SOURCE_COMMIT\"",
             "gh release view \"$CANDIDATE_TAG\"",
-            "gh release download \"$CANDIDATE_TAG\"",
-            "cmp \"$asset\" \"$public_asset\"",
-            "gh release upload \"$CANDIDATE_TAG\" \"$asset\"",
+            "scripts/reconcile-runtime-candidate-assets",
         ],
     );
     assert_eq!(publish.matches("--clobber").count(), 0, "immutable assets must not be overwritten");

@@ -19,6 +19,7 @@ fn candidate_and_activation_write_only_at_explicit_boundaries() -> Result<(), Bo
     let permissions = mapping(&candidate["jobs"]["publish-candidate"]["permissions"])?;
     assert_eq!(permissions[Value::String("contents".into())], "write");
     assert_eq!(permissions[Value::String("id-token".into())], "write");
+    assert_eq!(permissions[Value::String("attestations".into())], "write");
     let publish = run(&candidate, "publish-candidate", "Create candidate tag and release once")?;
     assert!(command(publish, &["gh", "release", "create"]));
     assert!(!command(publish, &["gh", "release", "edit"]));

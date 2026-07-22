@@ -1,0 +1,50 @@
+#!/bin/sh
+set -eu
+
+dist_dir="${1:-dist}"
+: "${CANDIDATE_TAG:?CANDIDATE_TAG is required}"
+
+archive="$dist_dir/codexy-marketplace-plugin.tar.gz"
+candidate="$dist_dir/candidate/plugins/codexy/runtime-candidate.json"
+receipt="$dist_dir/runtime-candidate-receipt.json"
+provenance="$dist_dir/runtime-candidate-provenance.json"
+for path in "$archive" "$candidate" "$receipt" "$provenance"; do
+  test -f "$path"
+done
+
+recovery_dir="$(mktemp -d)"
+trap 'rm -rf "$recovery_dir"' EXIT
+assets="$(gh release view "$CANDIDATE_TAG" --json assets --jq '.assets[].name')"
+has_asset() {
+  printf '%s\n' "$assets" | grep -Fqx "$1"
+}
+
+if has_asset runtime-candidate-receipt.json; then
+  published_receipt="$recovery_dir/runtime-candidate-receipt.json"
+  gh release download "$CANDIDATE_TAG" --pattern runtime-candidate-receipt.json --output "$published_receipt"
+  jq -cS .candidate "$published_receipt" > "$recovery_dir/published-candidate.json"
+  jq -cS . "$candidate" > "$recovery_dir/local-candidate.json"
+  cmp "$recovery_dir/local-candidate.json" "$recovery_dir/published-candidate.json"
+  archive_sha="$(sha256sum "$archive" | awk '{print $1}')"
+  manifest_sha="$(sha256sum "$candidate" | awk '{print $1}')"
+  artifact_url="https://github.com/eunsoogi/codexy/releases/download/$CANDIDATE_TAG/codexy-marketplace-plugin.tar.gz"
+  jq -e \
+    --arg archive_sha "$archive_sha" \
+    --arg manifest_sha "$manifest_sha" \
+    --arg artifact_url "$artifact_url" \
+    '.schema == "codexy-runtime-candidate-receipt/v1" and .artifact.sha256 == $archive_sha and .artifact.payloadManifestSha256 == $manifest_sha and .artifact.url == $artifact_url' \
+    "$published_receipt" >/dev/null
+  cp "$published_receipt" "$receipt"
+  jq -cS .provenance "$published_receipt" | tr -d '\n' > "$provenance"
+fi
+
+for asset in "$archive" "$receipt" "$provenance"; do
+  name="$(basename "$asset")"
+  if has_asset "$name"; then
+    public_asset="$recovery_dir/$name"
+    gh release download "$CANDIDATE_TAG" --pattern "$name" --output "$public_asset"
+    cmp "$asset" "$public_asset"
+  else
+    gh release upload "$CANDIDATE_TAG" "$asset"
+  fi
+done

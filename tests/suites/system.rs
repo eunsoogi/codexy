@@ -43,6 +43,9 @@ mod release_workflow_parity;
 #[path = "../runtime_publication_activation.rs"]
 mod runtime_publication_activation;
 
+#[path = "../runtime_candidate_asset_recovery.rs"]
+mod runtime_candidate_asset_recovery;
+
 #[path = "../runtime_workflow_recovery.rs"]
 mod runtime_workflow_recovery;
 
