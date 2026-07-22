@@ -142,6 +142,27 @@ fn cd_option_grammar_propagates_only_effective_directory_changes() -> TestResult
     )
 }
 
+#[test]
+fn bash_comments_do_not_change_cd_state() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    assert_case(
+        &root,
+        &foreign,
+        &format!("cd '{}' # owned directory\ngit push --force origin topic", owned.display()),
+        true,
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        &format!("cd '{}'\ngit push --force origin topic", owned.display()),
+        true,
+    )
+}
+
 fn assert_case(root: &std::path::Path, cwd: &std::path::Path, command: &str, denied: bool) -> TestResult {
     let input = json!({
         "hook_event_name": "PreToolUse",

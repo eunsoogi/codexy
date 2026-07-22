@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 from .repository import OWNED, github_identity, read_text
 
 TYPED_FIELD_OPTIONS = {"-F", "--field"}
 FIELD_OPTIONS = {"-f", "--raw-field"} | TYPED_FIELD_OPTIONS
-VALUE_OPTIONS = {"--cache", "--hostname", "--input", "--preview"}
+VALUE_OPTIONS = {"--cache", "--hostname", "--preview"}
 HEADER_OPTIONS = {"-H", "--header"}
 FLAG_OPTIONS = {"--include", "-i", "--paginate", "--slurp", "--silent", "--verbose"}
 MUTATION = re.compile(r"(?:^|[\s,{])mutation(?:[\s({]|$)", re.IGNORECASE)
@@ -26,8 +27,11 @@ def forbidden(args: list[str], default_owned: bool, cwd: str) -> bool:
         return True
     if parsed is None:
         return default_owned
-    endpoint, method, fields = parsed
+    endpoint, method, fields, input_file = parsed
     if endpoint.casefold().strip("/") == "graphql":
+        if input_file is not None:
+            query = _input_query(cwd, input_file)
+            return query is None or MUTATION.search(query) is not None
         query = fields.get("query")
         if query is not None and MUTATION.search(query) is None:
             return False
@@ -42,8 +46,8 @@ def forbidden(args: list[str], default_owned: bool, cwd: str) -> bool:
     return github_identity(f"{match.group(1)}/{match.group(2)}") == OWNED
 
 
-def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str]] | None:
-    method, fields, positionals, index = None, {}, [], 0
+def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str], str | None] | None:
+    method, fields, input_file, positionals, index = None, {}, None, [], 0
     while index < len(args):
         token = args[index]
         if token in {"-X", "--method"}:
@@ -67,6 +71,14 @@ def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str]] | None:
             if not _field(fields, token.split("=", 1)[1], cwd if typed else None):
                 return None
             index += 1
+        elif token == "--input":
+            if input_file is not None or index + 1 >= len(args):
+                return None
+            input_file, index = args[index + 1], index + 2
+        elif token.startswith("--input="):
+            if input_file is not None:
+                return None
+            input_file, index = token.split("=", 1)[1], index + 1
         elif token in VALUE_OPTIONS:
             if index + 1 >= len(args):
                 return None
@@ -90,7 +102,7 @@ def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str]] | None:
             index += 1
     if len(positionals) != 1 or not positionals[0]:
         return None
-    return positionals[0], method or ("POST" if fields else "GET"), fields
+    return positionals[0], method or ("POST" if fields or input_file is not None else "GET"), fields, input_file
 
 
 def _field(fields: dict[str, str], value: str, typed_cwd: str | None) -> bool:
@@ -104,6 +116,18 @@ def _field(fields: dict[str, str], value: str, typed_cwd: str | None) -> bool:
         content = loaded
     fields[name] = content
     return True
+
+
+def _input_query(cwd: str, target: str) -> str | None:
+    content = read_text(cwd, target)
+    if content is None:
+        return None
+    try:
+        body = json.loads(content)
+    except json.JSONDecodeError:
+        return None
+    query = body.get("query") if isinstance(body, dict) else None
+    return query if isinstance(query, str) else None
 
 
 def _graphql_owned(query: str | None, fields: dict[str, str], default_owned: bool) -> bool:

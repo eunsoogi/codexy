@@ -87,6 +87,24 @@ fn typed_graphql_query_file_is_classified() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn typed_graphql_input_file_is_classified() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", &["https://github.com/openai/codex.git"])?;
+    let mutation = workspace.path().join("merge.json");
+    std::fs::write(
+        &mutation,
+        r#"{"query":"mutation { mergePullRequest(input: { pullRequestId: \"PR\", mergeMethod: MERGE }) { pullRequest { id } } }"}"#,
+    )?;
+    let viewer = workspace.path().join("viewer.json");
+    std::fs::write(&viewer, r#"{"query":"query { viewer { login } }"}"#)?;
+
+    assert_deny(&bash(&root, &foreign, &format!("gh api graphql --input {}", mutation.display()))?)?;
+    assert_eq!(bash(&root, &foreign, &format!("gh api graphql --input {}", viewer.display()))?, b"");
+    Ok(())
+}
+
 fn github(root: &std::path::Path, body: &str) -> TestResult<Vec<u8>> {
     let input = json!({"hook_event_name":"PreToolUse","tool_name":"mcp__codex_apps__github_create_issue","tool_input":{"repository_full_name":"eunsoogi/codexy","title":"Improve hooks","body":body}});
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));

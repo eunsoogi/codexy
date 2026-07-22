@@ -98,6 +98,13 @@ def export_variables(arguments: list[str], context: ExecutionContext) -> Executi
     return context
 
 
+def printf_assignment(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
+    """Apply the bounded ``printf -v NAME %s VALUE`` assignment grammar."""
+    if len(arguments) != 4 or arguments[0] != "-v" or arguments[2] != "%s" or VARIABLE_NAME.fullmatch(arguments[1]) is None:
+        return None
+    return assign(f"{arguments[1]}={arguments[3]}", context)
+
+
 def unset_variables(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
     """Apply variable unsets while rejecting function and malformed forms."""
     if arguments[:1] == ["--"]:

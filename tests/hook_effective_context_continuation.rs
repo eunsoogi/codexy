@@ -157,6 +157,18 @@ fn readonly_assignment_updates_selector_state_without_blocking_benign_state() ->
         &foreign,
         "readonly NOTE=safe; export NOTE; printf safe",
         false,
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "printf -v GH_REPO %s eunsoogi/codexy; export GH_REPO; gh pr merge 453 --merge",
+        true,
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "printf -v NOTE %s safe; export NOTE; printf safe",
+        false,
     )
 }
 

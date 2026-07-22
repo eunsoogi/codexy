@@ -187,6 +187,10 @@ def _separate_lines(command: str) -> str:
         elif char in {"'", '"'}:
             quote = None if quote == char else char if quote is None else quote
             result.append(char)
+        elif quote is None and char == "#" and (not result or result[-1].isspace() or result[-1] in ";&|(){}"):
+            while index < len(command) and command[index] != "\n":
+                index += 1
+            continue
         else:
             result.append(";" if char == "\n" and quote is None else char)
         index += 1

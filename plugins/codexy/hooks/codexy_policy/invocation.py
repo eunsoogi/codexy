@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from .execution_context import (
     ExecutionContext, assign, assigned_variables, assignment, at, clear, expand_tokens,
-    export_variables, leading_assignments, unset, unset_variables,
+    export_variables, leading_assignments, printf_assignment, unset, unset_variables,
 )
 from .shell_context import command_option, name, resolve_cwd
 
@@ -67,9 +67,9 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
             return Invocation(executable, args, context)
         if executable == "builtin":
             return None
-        if executable == "export":
-            exported = export_variables(args, context)
-            return None if exported is None else Invocation(None, [], exported)
+        if executable == "export" or executable == "printf" and args[:1] == ["-v"]:
+            state = export_variables(args, context) if executable == "export" else printf_assignment(args, context)
+            return None if state is None else Invocation(None, [], state)
         if executable in {"declare", "typeset"}:
             args = args[1:] if args[:1] == ["-x"] and len(args) == 2 else []
         if executable in {"declare", "typeset", "readonly"}:
