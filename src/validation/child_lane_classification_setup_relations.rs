@@ -21,9 +21,13 @@ enum SetupAction {
 }
 
 pub(super) fn has_setup_action(line: &str) -> bool {
-    setup_relations(line)
-        .iter()
-        .any(|relation| !relation.negated)
+    let words = words(line);
+    let relations = setup_relations(line);
+    if relations.is_empty() {
+        setup_action_indices(&words).next().is_some()
+    } else {
+        relations.iter().any(|relation| !relation.negated)
+    }
 }
 
 pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
