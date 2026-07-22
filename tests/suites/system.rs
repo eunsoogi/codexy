@@ -43,6 +43,9 @@ mod release_workflow_parity;
 #[path = "../version_bump_pr_readiness.rs"]
 mod version_bump_pr_readiness;
 
+#[path = "../version_bump_pr_snapshot_refresh.rs"]
+mod version_bump_pr_snapshot_refresh;
+
 #[path = "../version_bump_pr_metadata_failures.rs"]
 mod version_bump_pr_metadata_failures;
 

@@ -60,6 +60,7 @@ jobs:
             --version "$VERSION" \
             --issue-json "$state_dir/issue.json" \
             --repository-labels-json "$state_dir/repository-labels.json" \
+            --publication-phase provisional \
             --validate-only
 
       - name: Synchronize plugin version
@@ -93,12 +94,34 @@ jobs:
           name=${GITHUB_REPOSITORY#*/}
           git diff --name-only --diff-filter=ACMRTUXB > "$state_dir/changed-files.txt"
           git diff --name-only -z --diff-filter=ACMRTUXB > "$state_dir/changed-files.z"
-          scripts/render-version-pr-metadata \
-            --version "$VERSION" \
-            --issue-json "$state_dir/issue.json" \
-            --repository-labels-json "$state_dir/repository-labels.json" \
-            --changed-files-file "$state_dir/changed-files.txt" \
-            --output-dir "$state_dir/metadata"
+          refresh_version_pr_snapshot() {
+            gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" \
+              --json number,state,url,labels,milestone,assignees > "$state_dir/issue.json"
+            gh label list --repo "$GITHUB_REPOSITORY" --limit 100 \
+              --json name > "$state_dir/repository-labels.json"
+            scripts/render-version-pr-metadata \
+              --version "$VERSION" \
+              --issue-json "$state_dir/issue.json" \
+              --repository-labels-json "$state_dir/repository-labels.json" \
+              --publication-phase provisional \
+              --validate-only
+          }
+          render_version_pr_metadata() {
+            phase=$1
+            refresh_version_pr_snapshot
+            scripts/render-version-pr-metadata \
+              --version "$VERSION" \
+              --issue-json "$state_dir/issue.json" \
+              --repository-labels-json "$state_dir/repository-labels.json" \
+              --changed-files-file "$state_dir/changed-files.txt" \
+              --output-dir "$state_dir/metadata" \
+              --publication-phase "$phase"
+          }
+          publication_phase=$(scripts/plan-version-pr-reconciliation \
+            --publication-phase --release-candidate-passed true \
+            --labels-checked false --completion-handoff-checked false \
+            --merge-message-checked false)
+          render_version_pr_metadata "$publication_phase"
           title=$(sed -n '1p' "$state_dir/metadata/title.txt")
           plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$title"
 
@@ -213,4 +236,12 @@ jobs:
             --expected-pr "$pr_number" \
             --expected-issue "$ISSUE" \
             --merge-message-file "$state_dir/merge-message.txt"
+          publication_phase=$(scripts/plan-version-pr-reconciliation \
+            --publication-phase --release-candidate-passed true \
+            --labels-checked true --completion-handoff-checked true \
+            --merge-message-checked true)
+          render_version_pr_metadata "$publication_phase"
+          gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body-file "$state_dir/metadata/body.md"
           cat "$state_dir/handoff.md" >> "$GITHUB_STEP_SUMMARY"

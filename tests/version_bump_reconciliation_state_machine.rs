@@ -42,6 +42,39 @@ fn reconciliation_mismatch_fails_before_mutation() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn publication_phase_advances_only_after_every_readiness_gate() -> TestResult {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for (name, labels, handoff, merge_message, expected) in [
+        ("provisional", false, false, false, Some("provisional")),
+        ("label-only", true, false, false, None),
+        ("handoff-without-merge", true, true, false, None),
+        ("proven", true, true, true, Some("proven")),
+    ] {
+        let output = Command::new(root.join("scripts/plan-version-pr-reconciliation"))
+            .args([
+                "--publication-phase",
+                "--release-candidate-passed",
+                "true",
+                "--labels-checked",
+                if labels { "true" } else { "false" },
+                "--completion-handoff-checked",
+                if handoff { "true" } else { "false" },
+                "--merge-message-checked",
+                if merge_message { "true" } else { "false" },
+            ])
+            .output()?;
+        match expected {
+            Some(phase) => {
+                assert!(output.status.success(), "{name}: {}", String::from_utf8_lossy(&output.stderr));
+                assert_eq!(String::from_utf8(output.stdout)?.trim(), phase, "{name}");
+            }
+            None => assert!(!output.status.success(), "{name} advanced prematurely"),
+        }
+    }
+    Ok(())
+}
+
 fn plan(
     root: &Path,
     has_changes: bool,

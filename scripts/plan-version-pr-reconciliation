@@ -33,17 +33,52 @@ def plan(
     raise ValueError("existing PR head does not match the verified origin branch")
 
 
+def publication_phase(
+    release_candidate_passed: bool,
+    labels_checked: bool,
+    completion_handoff_checked: bool,
+    merge_message_checked: bool,
+) -> str:
+    if not release_candidate_passed:
+        raise ValueError("release-candidate validation must pass before publication")
+    gates = (labels_checked, completion_handoff_checked, merge_message_checked)
+    if not any(gates):
+        return "provisional"
+    if all(gates):
+        return "proven"
+    raise ValueError("readiness gates must all pass before proven publication")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--has-changes", required=True, type=boolean)
-    parser.add_argument("--pr-count", required=True, type=int)
-    parser.add_argument("--remote-exists", required=True, type=boolean)
-    parser.add_argument("--pr-matches-origin", required=True, type=boolean)
+    parser.add_argument("--has-changes", type=boolean)
+    parser.add_argument("--pr-count", type=int)
+    parser.add_argument("--remote-exists", type=boolean)
+    parser.add_argument("--pr-matches-origin", type=boolean)
+    parser.add_argument("--publication-phase", action="store_true")
+    parser.add_argument("--release-candidate-passed", type=boolean)
+    parser.add_argument("--labels-checked", type=boolean)
+    parser.add_argument("--completion-handoff-checked", type=boolean)
+    parser.add_argument("--merge-message-checked", type=boolean)
     args = parser.parse_args()
-    if args.pr_count < 0:
-        parser.error("--pr-count must not be negative")
     try:
-        print(plan(**vars(args)))
+        if args.publication_phase:
+            values = (
+                args.release_candidate_passed,
+                args.labels_checked,
+                args.completion_handoff_checked,
+                args.merge_message_checked,
+            )
+            if any(value is None for value in values):
+                parser.error("publication phase requires every readiness result")
+            print(publication_phase(*values))
+            return 0
+        values = (args.has_changes, args.pr_count, args.remote_exists, args.pr_matches_origin)
+        if any(value is None for value in values):
+            parser.error("reconciliation requires every branch-state input")
+        if args.pr_count < 0:
+            parser.error("--pr-count must not be negative")
+        print(plan(*values))
         return 0
     except ValueError as error:
         print(f"plan-version-pr-reconciliation: {error}", file=sys.stderr)

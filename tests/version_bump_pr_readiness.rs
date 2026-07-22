@@ -60,6 +60,8 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             path_text(&changes_path)?,
             "--output-dir",
             path_text(&output_dir)?,
+            "--publication-phase",
+            "proven",
         ])
         .output()?;
     assert!(
@@ -113,6 +115,14 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
     );
     assert!(body.ends_with("Fixes #301\n"));
     assert_eq!(
+        markdown_section_lines(&body, "## Evidence"),
+        [
+            "- Governing release issue: https://github.com/openai-codex/codexy.release_1/issues/301",
+            "- Full release-candidate validation ran before branch or pull-request mutation.",
+            "- Post-creation readiness gates passed before final body publication.",
+        ]
+    );
+    assert_eq!(
         labels,
         json!({"labels": [
             "area/release", "area/workflow", "priority/medium", "status/review", "type/ci"
@@ -132,12 +142,42 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             "--repository-labels-json", path_text(&labels_path)?,
             "--changed-files-file", path_text(&changes_path)?,
             "--output-dir", path_text(&output_dir)?,
+            "--publication-phase", "proven",
         ])
         .output()?;
     assert!(rerender.status.success());
     assert_eq!(first_render.0, fs::read_to_string(output_dir.join("title.txt"))?);
     assert_eq!(first_render.1, fs::read_to_string(output_dir.join("body.md"))?);
     assert_eq!(first_render.2, fs::read(output_dir.join("labels.json"))?);
+
+    let provisional = Command::new(root.join("scripts/render-version-pr-metadata"))
+        .args([
+            "--version", "1.3.1", "--issue-json", path_text(&issue_path)?,
+            "--repository-labels-json", path_text(&labels_path)?,
+            "--changed-files-file", path_text(&changes_path)?,
+            "--output-dir", path_text(&output_dir)?,
+            "--publication-phase", "provisional",
+        ])
+        .output()?;
+    assert!(provisional.status.success());
+    let provisional_body = fs::read_to_string(output_dir.join("body.md"))?;
+    assert_eq!(
+        markdown_section_lines(&provisional_body, "## Evidence"),
+        [
+            "- Governing release issue: https://github.com/openai-codex/codexy.release_1/issues/301",
+            "- Full release-candidate validation ran before branch or pull-request mutation.",
+            "- Post-creation readiness gates are pending.",
+        ]
+    );
+    assert_eq!(
+        markdown_section_lines(&provisional_body, "## Verification"),
+        [
+            "- `scripts/sync-plugin-version --check`",
+            "- `scripts/validate-plugin-config --check`",
+            "- `cargo test --locked`",
+            "- `git diff --check`",
+        ]
+    );
 
     let pr_state = temp.path().join("pr-state.json");
     let pr_labels = labels["labels"].as_array().ok_or("rendered labels")?;
@@ -173,6 +213,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             .args(["--expected-pr", "999", "--expected-issue", "301", "--merge-message-file", path_text(&merge_message)?]),
         "merge-message hook",
     )?;
+
     Ok(())
 }
 

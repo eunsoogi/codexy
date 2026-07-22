@@ -98,6 +98,39 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn workflow_refreshes_snapshots_and_finalizes_only_after_readiness() -> TestResult {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workflow = fs::read_to_string(root.join(".github/workflows/plugin-version-bump.yml"))?;
+    let provisional = workflow
+        .find("--merge-message-checked false)")
+        .ok_or("provisional planner")?;
+    let provisional_render = workflow
+        .find("render_version_pr_metadata \"$publication_phase\"")
+        .ok_or("provisional render")?;
+    let label_gate = workflow.find("codexy-pr-label-check.sh").ok_or("label gate")?;
+    let handoff_gate = workflow.find("--check-completion-handoff").ok_or("handoff gate")?;
+    let merge_gate = workflow.find("codexy-merge-message-check.sh").ok_or("merge gate")?;
+    let proven = workflow
+        .rfind("--merge-message-checked true)")
+        .ok_or("proven planner")?;
+    let final_render = workflow
+        .rfind("render_version_pr_metadata \"$publication_phase\"")
+        .ok_or("final render")?;
+    let final_edit = workflow.rfind("--body-file \"$state_dir/metadata/body.md\"").ok_or("final body edit")?;
+
+    assert!(workflow.matches("refresh_version_pr_snapshot").count() >= 2);
+    assert_eq!(workflow.matches("render_version_pr_metadata \"$publication_phase\"").count(), 2);
+    assert!(provisional < provisional_render);
+    assert!(provisional_render < label_gate);
+    assert!(label_gate < handoff_gate);
+    assert!(handoff_gate < merge_gate);
+    assert!(merge_gate < proven);
+    assert!(proven < final_render);
+    assert!(final_render < final_edit);
+    Ok(())
+}
+
 fn named_step_run<'a>(steps: &'a [Value], name: &str) -> Result<&'a str, &'static str> {
     steps
         .iter()

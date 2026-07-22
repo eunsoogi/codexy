@@ -35,6 +35,7 @@ fn invalid_issue_fails_without_mutating_existing_output() -> TestResult {
             "--version", "1.3.1", "--issue-json", text(&issue)?,
             "--repository-labels-json", text(&taxonomy)?,
             "--changed-files-file", text(&changes)?, "--output-dir", text(&output_dir)?,
+            "--publication-phase", "provisional",
         ])
         .output()?;
     assert!(!result.status.success());
@@ -95,6 +96,7 @@ fn pull_request_url_cannot_impersonate_governing_issue_without_mutation() -> Tes
                 "--version", "1.3.1", "--issue-json", text(&issue)?,
                 "--repository-labels-json", text(&taxonomy)?,
                 "--changed-files-file", text(&changes)?, "--output-dir", text(&output_dir)?,
+                "--publication-phase", "provisional",
             ])
             .output()?;
         assert!(!result.status.success(), "{url}");
