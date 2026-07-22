@@ -143,6 +143,14 @@ fn validator_preserves_table_and_adjacent_lane_boundaries() -> TestResult {
         true,
     )?;
     assert_result(
+        "a pull request boundary requires fresh classification for explicit child setup",
+        &format!(
+            "{}\nPR: #482\nThe child created branch codexy/463 before classification.",
+            complete_colon_classification()
+        ),
+        false,
+    )?;
+    assert_result(
         "adjacent review boundaries still require a fresh classification",
         &format!(
             "{}\nReview response: prior lane complete\nMaintainer reassignment: child owns repair\nPlan tool call: update_plan",

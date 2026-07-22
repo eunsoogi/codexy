@@ -24,7 +24,12 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
                 .map(move |clause| (index, clause))
         })
         .filter(|(index, clause)| {
-            child_setup_context_applies(&lines, *index, clause_has_explicit_child_scope(clause))
+            child_setup_context_applies(
+                &lines,
+                *index,
+                clause_has_explicit_child_scope(clause),
+                child_setup_claims_before_classification(clause),
+            )
         })
         .collect::<Vec<_>>();
     if setup_clauses.is_empty() {

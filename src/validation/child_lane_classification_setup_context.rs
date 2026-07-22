@@ -18,6 +18,7 @@ pub(super) fn child_setup_context_applies(
     lines: &[&str],
     setup_index: usize,
     explicit_child_scope: bool,
+    setup_before_classification: bool,
 ) -> bool {
     let classification_complete = latest_classification_before(lines, setup_index)
         .is_some_and(|snapshot| snapshot.has_complete_authority_record());
@@ -40,8 +41,10 @@ pub(super) fn child_setup_context_applies(
     {
         if index != setup_index && is_lane_context_boundary(lines, index, line) {
             return (explicit_child_scope
-                && lane_boundary(lines, index)
-                    .is_some_and(|boundary| boundary.requires_fresh_classification()))
+                && lane_boundary(lines, index).is_some_and(|boundary| {
+                    boundary.requires_fresh_classification()
+                        || (setup_before_classification && boundary.resets_authority_record())
+                }))
                 || requires_child_setup_validation(line)
                 || (explicit_child_scope && has_authoritative_non_child_owner(line))
                 || has_complete_child_classification_before(lines, setup_index);

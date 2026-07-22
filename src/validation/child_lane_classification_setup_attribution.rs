@@ -51,6 +51,7 @@ fn setup_clauses(line: &str) -> Vec<&str> {
         .split(&[',', ';', '.'][..])
         .flat_map(|clause| clause.split(" but "))
         .flat_map(|clause| clause.split(" however "))
+        .flat_map(|clause| clause.split(" and "))
         .map(str::trim)
         .collect::<Vec<_>>();
     if !clauses.iter().any(|clause| has_absent_child_setup(clause)) {
