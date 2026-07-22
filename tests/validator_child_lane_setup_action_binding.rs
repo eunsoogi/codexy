@@ -33,6 +33,27 @@ fn validator_scopes_negation_and_timing_to_each_setup_action() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_tracks_structural_setup_relations_without_treating_plans_or_negations_as_events(
+) -> TestResult {
+    for (setup, classification, expected) in [
+        ("The child created branch codexy/463 before classification.", child_owned_classification(), false),
+        ("The child created branch codexy/463 prior to classification.", child_owned_classification(), false),
+        ("The child implementation thread and the parent created branch codexy/463 before classification.", child_owned_classification(), false),
+        ("The child hasn't created branch codexy/463 before classification.", unclassified_child(), true),
+        ("Branch codexy/463 will be created by the child after classification.", unclassified_child(), true),
+        ("The child created no branch before classification.", unclassified_child(), true),
+    ] {
+        assert_with_classification(
+            "structural setup relation must preserve timing, coordination, polarity, and tense",
+            classification,
+            setup,
+            expected,
+        )?;
+    }
+    Ok(())
+}
+
 fn assert_with_classification(label: &str, classification: &str, setup: &str, expected: bool) -> TestResult {
     let temp = tempfile::tempdir()?;
     let path = temp.path().join("handoff.md");
@@ -48,4 +69,8 @@ fn parent_owned_classification() -> &'static str {
 
 fn child_owned_classification() -> &'static str {
     "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: create branch after classification\nStop/blocker: None\nSource thread id: parent-463\nGoal control state: source_thread_id=parent-463\nGoal transition key: 463:create_goal:actor-grammar\nParent goal pre-delivery: operation=create_goal; parent task=parent-463; delivery=confirmed; task surface=codex task/thread; issue=#463; plan step=implement; branch=codexy/463; worktree=/worktree; head=abc; clean/index=clean; evidence=classification; next action=create goal; transition key=463:create_goal:actor-grammar\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-463; delivery=confirmed; task surface=codex task/thread; transition key=463:create_goal:actor-grammar\nPlan tool call: update_plan"
+}
+
+fn unclassified_child() -> &'static str {
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned"
 }

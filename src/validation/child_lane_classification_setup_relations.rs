@@ -64,9 +64,9 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                         explicit_subject(&words, start, *action)
                             .or_else(|| agents_fail_closed(&words, start, end))
                     },
-                    negated: action_is_negated(&words, start, *action),
+                    negated: action_is_negated(&words, start, *action, end),
                     before_classification: window.iter().enumerate().any(|(index, word)| {
-                        *word == "before"
+                        matches!(*word, "before" | "prior")
                             && window[index + 1..]
                                 .iter()
                                 .take(4)
@@ -117,17 +117,7 @@ fn and_coordinates_setup_subjects(
             words[range.clone()]
                 .iter()
                 .any(|word| actor_word(word).is_some())
-                && words[range.clone()]
-                    .iter()
-                    .all(|word| actor_word(word).is_some() || is_actor_modifier(word))
         })
-}
-
-fn is_actor_modifier(word: &str) -> bool {
-    matches!(
-        word,
-        "a" | "an" | "the" | "this" | "that" | "owning" | "thread" | "lane" | "owner" | "agent"
-    )
 }
 
 fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
@@ -177,7 +167,7 @@ fn action_is_passive(words: &[&str], start: usize, action: usize) -> bool {
 fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {
     match words[index] {
         "create" if has_completed_auxiliary(words, index) => Some(SetupAction::Create),
-        "creates" | "created" => Some(SetupAction::Create),
+        "creates" | "created" if !is_future_plan(words, index) => Some(SetupAction::Create),
         "creation" if words.get(index + 1) == Some(&"occurred") => Some(SetupAction::Create),
         "switch"
             if has_completed_auxiliary(words, index)
@@ -212,15 +202,28 @@ fn has_completed_auxiliary(words: &[&str], action: usize) -> bool {
             && words.get(action.wrapping_sub(2)) == Some(&"did"))
 }
 
-fn action_is_negated(words: &[&str], start: usize, action: usize) -> bool {
+fn is_future_plan(words: &[&str], action: usize) -> bool {
+    words[action.saturating_sub(3)..action]
+        .iter()
+        .any(|word| matches!(*word, "will" | "shall"))
+}
+
+fn action_is_negated(words: &[&str], start: usize, action: usize, end: usize) -> bool {
     words[action.saturating_sub(3).max(start)..action]
         .iter()
         .any(|word| matches!(*word, "no" | "not" | "never" | "without" | "neither"))
+        || words[action + 1..end].iter().any(|word| *word == "no")
         || action.checked_sub(2).is_some_and(|index| {
             index >= start
                 && matches!(
                     (words[index], words[index + 1]),
-                    ("isn", "t") | ("aren", "t") | ("wasn", "t") | ("weren", "t")
+                    ("isn", "t")
+                        | ("aren", "t")
+                        | ("wasn", "t")
+                        | ("weren", "t")
+                        | ("hasn", "t")
+                        | ("haven", "t")
+                        | ("hadn", "t")
                 )
         })
 }
