@@ -41,23 +41,23 @@ fn instruction_policy_requires_review_cluster_contract_on_every_surface() -> Tes
 
 #[test]
 fn instruction_policy_requires_must_grammar_for_every_review_procedure_step() -> TestResult {
-    let procedure = "## Required Procedure\n\n1. [receipt-create] Before edits, MUST create a typed receipt.\n2. [receipt-validate] Before implementation, MUST validate the receipt file.\n3. [case-exception-prohibition] During repair, MUST NOT accept a case exception.\n4. [reopen-evidence-restriction] Non-reopened states MUST NOT include reopen evidence.\n\n## Typed Receipt\n";
+    let procedure = "## Required Procedure\n\n1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.\n2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.\n3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.\n4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.\n\n## Typed Receipt\n";
     for (required_step, bare_step) in [
         (
-            "1. [receipt-create] Before edits, MUST create a typed receipt.",
-            "1. [receipt-create] Before edits, create a typed receipt.",
+            "1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.",
+            "1. [receipt-create] Before editing actionable review feedback, create one typed JSON receipt.",
         ),
         (
-            "2. [receipt-validate] Before implementation, MUST validate the receipt file.",
-            "2. [receipt-validate] Before implementation, validate the receipt file.",
+            "2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.",
+            "2. [receipt-validate] Before implementation, validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.",
         ),
         (
-            "3. [case-exception-prohibition] During repair, MUST NOT accept a case exception.",
-            "3. [case-exception-prohibition] During repair, NOT accept a case exception.",
+            "3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.",
+            "3. [case-exception-prohibition] During repair, NOT accept a case-specific exception as structural evidence.",
         ),
         (
-            "4. [reopen-evidence-restriction] Non-reopened states MUST NOT include reopen evidence.",
-            "4. [reopen-evidence-restriction] Non-reopened states include reopen evidence.",
+            "4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.",
+            "4. [reopen-evidence-restriction] Non-reopened receipt states include reopen evidence.",
         ),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::paths::display_relative;
+use unicode_normalization::UnicodeNormalization;
 
 const REFERENCE_PATH: &str = "skills/git-workflow/references/review-response-clusters.md";
 const HEADING: &str = "## Required Procedure";
@@ -45,6 +46,23 @@ impl Obligation {
             self,
             Self::CaseExceptionProhibition | Self::ReopenEvidenceRestriction
         )
+    }
+
+    fn clause(self) -> &'static str {
+        match self {
+            Self::ReceiptCreate => {
+                "before editing actionable review feedback must create one typed json receipt"
+            }
+            Self::ReceiptValidate => {
+                "before implementation must validate that exact receipt file with scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json"
+            }
+            Self::CaseExceptionProhibition => {
+                "during repair must not accept a case-specific exception as structural evidence"
+            }
+            Self::ReopenEvidenceRestriction => {
+                "non-reopened receipt states must not include reopen evidence"
+            }
+        }
     }
 }
 
@@ -108,6 +126,16 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 obligation.id()
             ));
         }
+        let normalized_clause = normalize_clause(obligation_text);
+        if normalized_clause != obligation.clause() {
+            errors.push(format!(
+                "{} review procedure obligation [{}] must retain its required action semantics (expected {}, got {})",
+                display_relative(path),
+                obligation.id(),
+                obligation.clause(),
+                normalized_clause
+            ));
+        }
     }
     for obligation in Obligation::ALL {
         if !seen.contains(&obligation) {
@@ -156,4 +184,17 @@ fn has_must_not(text: &str) -> bool {
 fn words(text: &str) -> impl Iterator<Item = &str> {
     text.split(|character: char| !character.is_ascii_alphabetic())
         .filter(|word| !word.is_empty())
+}
+
+fn normalize_clause(text: &str) -> String {
+    let normalized = text
+        .nfkc()
+        .filter(|character| !matches!(character, '`' | ','))
+        .collect::<String>();
+    normalized
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim_end_matches(['.', ':'])
+        .to_lowercase()
 }

@@ -3,12 +3,7 @@
 ## Required Procedure
 
 1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.
-2. [receipt-validate] Before implementation, MUST validate that exact receipt file:
-
-```sh
-scripts/validate-plugin-config --check-review-response-cluster \
-  --review-response-cluster-file receipt.json
-```
+2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.
 
 3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.
 4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include `reopen` evidence.
