@@ -62,9 +62,9 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
             display_relative(&path)
         )
     })?;
-    if inventory.version != 3 || inventory.generated_from != "skills/**/*.md" {
+    if inventory.version != 4 || inventory.generated_from != "skills/**/*.md" {
         bail!(
-            "{} must identify digest-keyed inventory version 3",
+            "{} must identify semantic-block inventory version 4",
             display_relative(&path)
         );
     }

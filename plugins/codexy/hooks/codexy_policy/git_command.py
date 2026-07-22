@@ -28,11 +28,19 @@ class GitInvocation:
 
 
 def normalize(
-    arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None, config_owned: Callable[[str], bool]
+    arguments: list[str], cwd: str, cwd_owned: bool | None, git_dir: str | None,
+    config_owned: Callable[[str], bool], environment_config: dict[str, str],
 ) -> GitInvocation | None:
     """Return a policy-ready effective Git invocation, or fail closed."""
     try:
-        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, {}, set(), 0)
+        aliases: dict[str, str] = {}
+        for key, value in environment_config.items():
+            alias = _alias_option(f"{key}={value}")
+            if alias is None:
+                return None
+            alias_name, command = alias
+            aliases[alias_name] = command
+        return _normalize(list(arguments), cwd, cwd_owned, git_dir, config_owned, aliases, set(), 0)
     except (OSError, TypeError, ValueError):
         return None
 

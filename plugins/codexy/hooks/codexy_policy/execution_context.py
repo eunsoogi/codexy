@@ -1,0 +1,108 @@
+"""Typed shell environment state for effective mutation admission."""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+from .repository import git_directory_owned, repository_owned
+
+VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+VARIABLE_REFERENCE = re.compile(r"\$(?:\{(?P<braced>[A-Za-z_][A-Za-z0-9_]*)\}|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))")
+
+
+@dataclass(frozen=True)
+class ExecutionContext:
+    cwd: str
+    cwd_owned: bool | None
+    git_dir: str | None
+    gh_repo: str | None
+    environment: tuple[tuple[str, str], ...] = ()
+    opaque_environment: bool = False
+
+
+def assignment(value: str) -> bool:
+    return "=" in value and not value.startswith("-") and VARIABLE_NAME.fullmatch(value.split("=", 1)[0]) is not None
+
+
+def assign(value: str, context: ExecutionContext) -> ExecutionContext:
+    key, assigned = value.split("=", 1)
+    expanded = expand(assigned, context)
+    environment = dict(context.environment)
+    if expanded is None:
+        environment[key] = assigned
+        return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, tuple(environment.items()), True)
+    environment[key] = expanded
+    git_dir = expanded if key == "GIT_DIR" else context.git_dir
+    gh_repo = expanded if key == "GH_REPO" else context.gh_repo
+    owned = git_directory_owned(context.cwd, git_dir) if git_dir is not None else context.cwd_owned
+    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment)
+
+
+def leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext]:
+    while tokens and assignment(tokens[0]):
+        context = assign(tokens[0], context)
+        tokens = tokens[1:]
+    return tokens, context
+
+
+def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
+    owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
+    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment)
+
+
+def unset(context: ExecutionContext, key: str) -> ExecutionContext:
+    git_dir = None if key == "GIT_DIR" else context.git_dir
+    gh_repo = None if key == "GH_REPO" else context.gh_repo
+    owned = repository_owned(context.cwd) if git_dir is None else context.cwd_owned
+    environment = dict(context.environment)
+    environment.pop(key, None)
+    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment)
+
+
+def clear(context: ExecutionContext) -> ExecutionContext:
+    return ExecutionContext(context.cwd, repository_owned(context.cwd), None, None)
+
+
+def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:
+    if context.opaque_environment:
+        return None
+    expanded = [expand(token, context) for token in tokens]
+    return None if any(token is None for token in expanded) else [token for token in expanded if token is not None]
+
+
+def expand(value: str, context: ExecutionContext) -> str | None:
+    environment = dict(context.environment)
+    missing = False
+
+    def replace(match: re.Match[str]) -> str:
+        nonlocal missing
+        key = match.group("braced") or match.group("plain")
+        if key not in environment:
+            missing = True
+            return ""
+        return environment[key]
+
+    expanded = VARIABLE_REFERENCE.sub(replace, value)
+    return None if missing or "$" in expanded else expanded
+
+
+def git_config(context: ExecutionContext) -> dict[str, str] | None:
+    """Return one complete indexed Git configuration environment, or reject ambiguity."""
+    relevant = {key: value for key, value in context.environment if key.startswith("GIT_CONFIG_")}
+    if not relevant:
+        return {}
+    count_text = relevant.pop("GIT_CONFIG_COUNT", None)
+    if count_text is None or not count_text.isascii() or not count_text.isdigit():
+        return None
+    count = int(count_text)
+    if count > 64:
+        return None
+    entries: dict[str, str] = {}
+    for index in range(count):
+        key = relevant.pop(f"GIT_CONFIG_KEY_{index}", None)
+        value = relevant.pop(f"GIT_CONFIG_VALUE_{index}", None)
+        if key is None or value is None or not key or any(char in key + value for char in "\0\r\n") or key in entries:
+            return None
+        entries[key] = value
+    return None if relevant else entries

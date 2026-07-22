@@ -7,12 +7,13 @@ import shlex
 
 from .git_command import normalize as normalize_git
 from .github import forbidden as gh_forbidden
-from .invocation import ExecutionContext, resolve
+from .execution_context import ExecutionContext, git_config
+from .invocation import resolve
 from .repository import OWNED, git_directory_owned, github_identity, identity, repository_owned
 from .shell_context import changed_directory, flag
 
 OPS = {";", "&&", "||", "|", "&"}
-OPAQUE = re.compile(r"\$\(|`|\$\{|<<<?|\b(?:eval|if|for|while|until|case)\b")
+OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 
 
@@ -42,7 +43,7 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
             nested = match.group(1) if match.group(1) is not None else match.group(2)
             if _forbidden(nested, context, depth + 1):
                 return True
-        if re.search(r"\$\{|<<<?|\b(?:if|for|while|until|case)\b", command):
+        if re.search(r"<<<?|\b(?:if|for|while|until|case)\b", command):
             return True
     try:
         lexer = shlex.shlex(_separate_lines(command), posix=True, punctuation_chars=";&|(){}")
@@ -64,11 +65,12 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
         segments.append((current, ""))
     active = context
     for index, (segment, following) in enumerate(segments):
-        if _segment(segment, active, depth):
+        denied, resulting_context = _segment(segment, active, depth)
+        if denied:
             return True
         changed_cwd = changed_directory(segment, active.cwd)
         if following in {";", "&&"} or (following == "||" and (active.cwd_owned is False or _at(active, changed_cwd).cwd_owned is not False)):
-            active = _at(active, changed_cwd)
+            active = _at(resulting_context, changed_cwd)
         if following == "|" and index + 1 < len(segments):
             next_invocation = resolve(segments[index + 1][0], active, depth)
             if next_invocation is None or next_invocation.opaque:
@@ -76,28 +78,31 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
     return False
 
 
-def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> bool:
+def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[bool, ExecutionContext]:
     invocation = resolve(tokens, context, depth)
     if invocation is None:
-        return True
+        return True, context
     if invocation.script is not None:
-        return not invocation.script or _forbidden(invocation.script, invocation.context, depth + 1)
+        return (not invocation.script or _forbidden(invocation.script, invocation.context, depth + 1)), context
     if invocation.opaque:
-        return True
+        return True, context
     if invocation.executable is None:
-        return False
+        return False, invocation.context
     if invocation.executable == "git":
-        return _git(invocation.arguments, invocation.context, depth)
+        return _git(invocation.arguments, invocation.context, depth), context
     if invocation.executable == "gh":
         gh_owned = github_identity(invocation.context.gh_repo) == OWNED if invocation.context.gh_repo is not None else None
-        return gh_forbidden(invocation.arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned)
+        return gh_forbidden(invocation.arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
     if invocation.executable == "rm":
-        return invocation.context.cwd_owned is not False and _rm(invocation.arguments)
-    return False
+        return invocation.context.cwd_owned is not False and _rm(invocation.arguments), context
+    return False, context
 
 
 def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
-    invocation = normalize_git(args, context.cwd, context.cwd_owned, context.git_dir, _config_owned)
+    environment_config = git_config(context)
+    if environment_config is None:
+        return True
+    invocation = normalize_git(args, context.cwd, context.cwd_owned, context.git_dir, _config_owned, environment_config)
     if invocation is None:
         return True
     if invocation.alias_command is not None:
@@ -114,7 +119,7 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> bool:
 
 def _at(context: ExecutionContext, cwd: str) -> ExecutionContext:
     owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
-    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo)
+    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment)
 
 
 def _separate_lines(command: str) -> str:

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "plugins" / "codexy"
 OUTPUT = ROOT / "hooks" / "policy-inventory.json"
 PATTERN = re.compile(r"\bMUST(?: NOT)?\b")
+LIST = re.compile(r"^(\s*)(?:[-+*]|[0-9]+[.)])\s+")
 
 
 def digest(value: str) -> str:
@@ -19,21 +20,80 @@ def digest(value: str) -> str:
     return f"{result:016x}"
 
 
-def discovered() -> list[dict[str, str]]:
+def semantic_blocks(markdown: str) -> list[dict[str, object]]:
+    blocks: list[dict[str, object]] = []
+    current: dict[str, object] | None = None
+    fence: tuple[str, int] | None = None
+    frontmatter = markdown.splitlines()[:1] == ["---"]
+
+    def flush() -> None:
+        nonlocal current
+        if current is not None:
+            current["text"] = " ".join(" ".join(current["lines"]).split())
+            blocks.append(current)
+            current = None
+
+    for line_number, line in enumerate(markdown.splitlines(), 1):
+        stripped = line.strip()
+        marker = line.lstrip()
+        if frontmatter:
+            if line_number == 1:
+                continue
+            if stripped == "---":
+                frontmatter = False
+            elif stripped:
+                blocks.append({"line": line_number, "text": " ".join(stripped.split())})
+            continue
+        if fence is not None:
+            character, length = fence
+            closing = len(marker) - len(marker.lstrip(character))
+            if closing >= length and not marker[closing:].strip():
+                fence = None
+            continue
+        character = marker[:1]
+        length = len(marker) - len(marker.lstrip(character)) if character in {"`", "~"} else 0
+        if length >= 3:
+            flush()
+            fence = (character, length)
+            continue
+        if not stripped:
+            flush()
+            continue
+        if marker.startswith("#") and marker.lstrip("#").startswith(" "):
+            flush()
+            blocks.append({"line": line_number, "text": " ".join(marker.split())})
+            continue
+        match = LIST.match(line)
+        if match:
+            flush()
+            current = {"line": line_number, "kind": "list", "lines": [marker]}
+            continue
+        if current is not None and current.get("kind") == "list":
+            current["lines"].append(stripped)
+        elif current is not None and current.get("kind") == "paragraph":
+            current["lines"].append(stripped)
+        else:
+            flush()
+            current = {"line": line_number, "kind": "paragraph", "lines": [stripped]}
+    flush()
+    return blocks
+
+
+def discovered() -> list[dict[str, object]]:
     rules = []
     for path in sorted((ROOT / "skills").rglob("*.md")):
         relative = path.relative_to(ROOT).as_posix()
         seen: defaultdict[str, int] = defaultdict(int)
         ordinal = 0
-        for line_number, line in enumerate(path.read_text().splitlines(), 1):
-            text = " ".join(line.split())
-            for line_occurrence, _ in enumerate(PATTERN.finditer(line), 1):
+        for block in semantic_blocks(path.read_text()):
+            text = block["text"]
+            for _ in PATTERN.finditer(text):
                 ordinal += 1
                 seen[text] += 1
                 rule_digest = digest(f"{relative}\0{text}\0{seen[text]}")
                 rules.append({"id": f"norm-{rule_digest}", "digest": rule_digest,
-                              "source": f"{relative}:{line_number}:{ordinal}",
-                              "text": text, "lineOccurrence": str(line_occurrence)})
+                              "source": f"{relative}:{block['line']}:{ordinal}",
+                              "text": text})
     return rules
 
 
@@ -58,7 +118,7 @@ def main() -> int:
                    "postcompact": "tests/validator_hook_postcompact_capability.rs",
                    "thread-routing": "tests/hook_admission_policy.rs",
                    "topology": "tests/validator_hook_event_topology.rs"}
-    payload = {"version": 3, "generatedFrom": "skills/**/*.md", "testSuites": test_suites,
+    payload = {"version": 4, "generatedFrom": "skills/**/*.md", "testSuites": test_suites,
                "rules": rules, "summary": {"total": len(rules), "enforced": enforced,
                "reviewedExceptions": reviewed, "uncovered": uncovered}}
     OUTPUT.write_text(json.dumps(payload, separators=(",", ":")) + "\n")

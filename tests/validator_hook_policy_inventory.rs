@@ -73,11 +73,59 @@ fn new_normative_rule_is_uncovered_until_explicitly_reviewed() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn material_continuation_change_invalidates_reviewed_inventory() -> TestResult {
+    let fixture = tempfile::tempdir()?.keep();
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &fixture,
+    )?;
+    let skill = fixture.join("skills/agents-md-authoring/SKILL.md");
+    let text = fs::read_to_string(&skill)?.replace(
+        "filesystem root down through each ancestor directory to the target.",
+        "repository root down through each ancestor directory to the target.",
+    );
+    fs::write(&skill, text)?;
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--plugin-root", fixture.to_str().ok_or("fixture")?, "--check-hooks"])
+        .output()?;
+    assert!(!output.status.success(), "material continuation changes must invalidate the inventory");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("normative rule"));
+    Ok(())
+}
+
 fn normative_count(root: &Path) -> TestResult<usize> {
     let mut files = Vec::new();
     collect_markdown(root, &mut files)?;
     let pattern = Regex::new(r"\bMUST(?: NOT)?\b")?;
-    Ok(files.into_iter().map(|path| pattern.find_iter(&fs::read_to_string(path).unwrap()).count()).sum())
+    Ok(files
+        .into_iter()
+        .map(|path| {
+            let mut fence: Option<(char, usize)> = None;
+            fs::read_to_string(path)
+                .unwrap()
+                .lines()
+                .map(|line| {
+                    let marker = line.trim_start();
+                    if let Some((character, length)) = fence {
+                        let closing = marker.chars().take_while(|item| *item == character).count();
+                        if closing >= length && marker[closing..].trim().is_empty() {
+                            fence = None;
+                        }
+                        return 0;
+                    }
+                    let character = marker.chars().next();
+                    let length = character.map_or(0, |item| marker.chars().take_while(|next| *next == item).count());
+                    if length >= 3 && character.is_some_and(|item| matches!(item, '`' | '~')) {
+                        fence = character.map(|item| (item, length));
+                        0
+                    } else {
+                        pattern.find_iter(line).count()
+                    }
+                })
+                .sum::<usize>()
+        })
+        .sum())
 }
 
 fn collect_markdown(root: &Path, files: &mut Vec<std::path::PathBuf>) -> std::io::Result<()> {

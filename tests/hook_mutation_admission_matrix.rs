@@ -54,6 +54,57 @@ fn inherited_git_dir_survives_shell_interpreters() -> TestResult {
 }
 
 #[test]
+fn effective_execution_context_preserves_supported_shell_state() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    for command in [
+        "! git push --force origin topic",
+        "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.ship GIT_CONFIG_VALUE_0='!git push --force git@github.com:eunsoogi/codexy.git topic' git ship",
+        "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.ship GIT_CONFIG_VALUE_0='!git push --force git@github.com:eunsoogi/codexy.git topic' bash -c 'git ship'",
+    ] {
+        let cwd = if command.starts_with('!') { &owned } else { &foreign };
+        assert_case(&root, cwd, command, true)?;
+    }
+    for command in [
+        "REMOTE=git@github.com:eunsoogi/codexy.git; git push --force \"$REMOTE\" topic",
+        "REPOSITORY=eunsoogi/codexy; GH_REPO=$REPOSITORY gh pr create --title 'Plain title'",
+        "git push --force \"$UNKNOWN_REMOTE\" topic",
+        "GH_REPO=$UNKNOWN_REPOSITORY gh pr create --title 'Plain title'",
+        "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.inspect git status",
+        "GIT_CONFIG_COUNT=invalid git status",
+        "GIT_CONFIG_KEY_0=alias.inspect GIT_CONFIG_VALUE_0=status git status",
+        "GIT_CONFIG_COUNT=0 GIT_CONFIG_KEY_0=alias.inspect GIT_CONFIG_VALUE_0=status git status",
+    ] {
+        assert_case(&root, &foreign, command, true)?;
+    }
+
+    for command in [
+        "! printf safe",
+        "! git status",
+        "GIT_CONFIG_COUNT=0 git status",
+        "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.inspect GIT_CONFIG_VALUE_0=status git inspect",
+        "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.inspect GIT_CONFIG_VALUE_0=status bash -c 'git inspect'",
+        "REMOTE=git@github.com:eunsoogi/codexy.git; printf '%s' \"$REMOTE\"",
+        "REMOTE=git@github.com:eunsoogi/codexy.git; git push \"$REMOTE\" topic",
+    ] {
+        assert_case(&root, &foreign, command, false)?;
+    }
+    assert_case(
+        &root,
+        &foreign,
+        &format!(
+            "GIT_DIR='{}/.git' env -i git push --force origin topic",
+            owned.display()
+        ),
+        false,
+    )?;
+    Ok(())
+}
+
+#[test]
 fn merge_admission_requires_canonical_squash() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;

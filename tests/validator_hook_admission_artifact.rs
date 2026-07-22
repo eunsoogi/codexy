@@ -5,7 +5,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn hook_validation_derives_and_pins_the_runtime_import_closure() -> TestResult {
-    for module in ["admission.py", "body.py", "git_command.py"] {
+    for module in ["admission.py", "body.py", "execution_context.py", "git_command.py"] {
         let temp = tempfile::tempdir()?;
         let plugin = temp.path().join("codexy");
         copy_tree(&Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"), &plugin)?;

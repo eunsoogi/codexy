@@ -5,7 +5,7 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 
-from .repository import git_directory_owned, repository_owned
+from .execution_context import ExecutionContext, assign, assignment, at, clear, expand_tokens, leading_assignments, unset
 from .shell_context import command_option, name, resolve_cwd
 
 MAX_WRAPPER_DEPTH = 8
@@ -28,14 +28,6 @@ WRAPPER_GRAMMAR = {
 
 
 @dataclass(frozen=True)
-class ExecutionContext:
-    cwd: str
-    cwd_owned: bool | None
-    git_dir: str | None
-    gh_repo: str | None
-
-
-@dataclass(frozen=True)
 class Invocation:
     executable: str | None
     arguments: list[str]
@@ -53,9 +45,17 @@ def resolve(tokens: list[str], context: ExecutionContext, depth: int = 0) -> Inv
 
 def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocation | None:
     for _ in range(MAX_WRAPPER_DEPTH):
-        tokens, context = _leading_assignments(tokens, context)
+        tokens, context = leading_assignments(tokens, context)
         if not tokens:
-            return Invocation(None, [], context)
+            return Invocation(None, [], context, opaque=context.opaque_environment)
+        while tokens[:1] == ["!"]:
+            tokens = tokens[1:]
+        if not tokens:
+            return None
+        expanded = expand_tokens(tokens, context)
+        if expanded is None:
+            return Invocation(None, [], context, opaque=True)
+        tokens = expanded
         executable = name(tokens[0])
         args = tokens[1:]
         if executable == "env":
@@ -70,7 +70,7 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
                 return None
             tokens, values = result
             if executable == "sudo" and (directory := values.get("-D") or values.get("--chdir")) is not None:
-                context = _at(context, resolve_cwd(context.cwd, directory))
+                context = at(context, resolve_cwd(context.cwd, directory))
             continue
         if executable == "timeout":
             result = _options(executable, args)
@@ -109,35 +109,11 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
     return None
 
 
-def _assignment(value: str) -> bool:
-    return "=" in value and not value.startswith("-")
-
-
-def _assign(value: str, context: ExecutionContext) -> ExecutionContext:
-    key, assigned = value.split("=", 1)
-    git_dir = assigned if key == "GIT_DIR" else context.git_dir
-    gh_repo = assigned if key == "GH_REPO" else context.gh_repo
-    owned = git_directory_owned(context.cwd, git_dir) if git_dir is not None else context.cwd_owned
-    return ExecutionContext(context.cwd, owned, git_dir, gh_repo)
-
-
-def _leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext]:
-    while tokens and _assignment(tokens[0]):
-        context = _assign(tokens[0], context)
-        tokens = tokens[1:]
-    return tokens, context
-
-
-def _at(context: ExecutionContext, cwd: str) -> ExecutionContext:
-    owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
-    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo)
-
-
 def _env(args: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext] | None:
-    while args and (args[0].startswith("-") or _assignment(args[0])):
+    while args and (args[0].startswith("-") or assignment(args[0])):
         option = args[0]
-        if _assignment(option):
-            context = _assign(option, context)
+        if assignment(option):
+            context = assign(option, context)
             args = args[1:]
         elif option == "--":
             args = args[1:]
@@ -160,18 +136,15 @@ def _env(args: list[str], context: ExecutionContext) -> tuple[list[str], Executi
             if value is None:
                 return None
             if attached in {"-u", "--unset"}:
-                git_dir = None if value == "GIT_DIR" else context.git_dir
-                gh_repo = None if value == "GH_REPO" else context.gh_repo
-                owned = repository_owned(context.cwd) if git_dir is None else context.cwd_owned
-                context = ExecutionContext(context.cwd, owned, git_dir, gh_repo)
+                context = unset(context, value)
             else:
-                context = _at(context, resolve_cwd(context.cwd, value))
+                context = at(context, resolve_cwd(context.cwd, value))
             args = args[1:] if attached != option else args[2:]
         elif option.startswith("--chdir="):
-            context = _at(context, resolve_cwd(context.cwd, option.split("=", 1)[1]))
+            context = at(context, resolve_cwd(context.cwd, option.split("=", 1)[1]))
             args = args[1:]
         elif option in {"-i", "--ignore-environment"}:
-            context = ExecutionContext(context.cwd, repository_owned(context.cwd), None, None)
+            context = clear(context)
             args = args[1:]
         elif option in {"-0", "--null", "-v", "--debug"}:
             args = args[1:]
