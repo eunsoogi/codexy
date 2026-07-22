@@ -5,6 +5,7 @@ use serde::Deserialize;
 use crate::paths::display_relative;
 
 mod identity;
+mod matrix;
 mod procedure;
 
 use identity::{canonical, empty, nonempty_list};
@@ -92,11 +93,13 @@ fn check_content(cluster: &DefectCluster, errors: &mut Vec<String>) {
         || empty(&cluster.violated_invariant)
         || empty(&cluster.structural_boundary)
         || !nonempty_list(&cluster.threads)
-        || !nonempty_list(&cluster.matrix.positive)
-        || !nonempty_list(&cluster.matrix.negative)
     {
-        errors.push("root-cause cluster is missing typed class, invariant, boundary, thread, or matrix evidence".into());
+        errors.push(
+            "root-cause cluster is missing typed class, invariant, boundary, or thread evidence"
+                .into(),
+        );
     }
+    matrix::check(&cluster.matrix.positive, &cluster.matrix.negative, errors);
 }
 
 fn check_supplied_repair(cluster: &DefectCluster, errors: &mut Vec<String>) {

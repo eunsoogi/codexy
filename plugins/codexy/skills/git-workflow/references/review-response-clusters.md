@@ -34,6 +34,11 @@ Default-ignorable code points, controls, and format-only content MUST NOT
 contribute identity or satisfy required evidence. A normalized identity MUST
 contain visible material content; combining marks are valid after a material
 base character but MUST NOT satisfy that requirement alone.
+The positive and negative matrix arrays MUST each be nonempty, canonically
+unique, and canonically disjoint. Their source strings remain representative
+display evidence; validation compares their semantic identities instead.
+Canonical identity re-normalizes the filtered material stream, so it is a
+fixed point even when removed content had separated a base and combining mark.
 
 For `repaired` and `reopened` states, every cluster MUST have:
 

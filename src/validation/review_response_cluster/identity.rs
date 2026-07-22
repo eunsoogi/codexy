@@ -14,7 +14,7 @@ pub(super) fn empty(value: &str) -> bool {
 pub(super) fn canonical(value: &str) -> String {
     let normalized = value.nfkc().collect::<String>();
     let mut has_base = false;
-    UniCase::unicode(normalized)
+    let material = UniCase::unicode(normalized)
         .to_folded_case()
         .chars()
         .filter_map(|character| {
@@ -27,7 +27,8 @@ pub(super) fn canonical(value: &str) -> String {
             has_base = true;
             Some(character)
         })
-        .collect()
+        .collect::<String>();
+    material.nfc().collect()
 }
 
 pub(super) fn nonempty_list(values: &[String]) -> bool {
@@ -51,4 +52,22 @@ fn is_default_ignorable(character: char) -> bool {
         .get_or_init(|| Regex::new(r"\p{Default_Ignorable_Code_Point}"))
         .as_ref()
         .is_ok_and(|pattern| pattern.is_match(character.encode_utf8(&mut utf8)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::canonical;
+
+    #[test]
+    fn canonical_identity_is_fixed_after_cosmetic_filtering() {
+        for (separated, precomposed) in [
+            ("n!\u{0303}", "ñ"),
+            ("s?\u{030c}", "š"),
+            ("a\u{200b}\u{0308}", "ä"),
+        ] {
+            let canonicalized = canonical(separated);
+            assert_eq!(canonicalized, canonical(precomposed));
+            assert_eq!(canonical(&canonicalized), canonicalized);
+        }
+    }
 }
