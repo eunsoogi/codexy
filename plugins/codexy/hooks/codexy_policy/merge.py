@@ -21,12 +21,13 @@ def valid(tool_input: dict[str, object]) -> bool:
         return False
     if not isinstance(title, str) or not title.endswith(f" (#{number})") or not pr_title(title[: -len(f" (#{number})")]):
         return False
-    return isinstance(message, str) and _unique_final_reference(message, number)
+    return isinstance(message, str) and _unique_final_reference(message)
 
 
-def _unique_final_reference(message: str, issue: int) -> bool:
+def _unique_final_reference(message: str) -> bool:
     lines = [line for line in message.splitlines() if line.strip()]
-    if not lines or lines[-1] != f"Fixes #{issue}":
+    final = [] if not lines else lines[-1].split()
+    if len(final) != 2 or final[0] != "Fixes" or not final[1].startswith("#") or not _issue_ref(final[1]):
         return False
     return sum(_closing_count(line) for line in lines) == 1
 
@@ -48,11 +49,15 @@ def _closing_count(line: str) -> int:
 def _issue_ref(value: str) -> bool:
     value = value.strip(",.")
     if value.startswith("#"):
-        return bool(value[1:]) and value[1:].isascii() and value[1:].isdigit()
+        return _positive_digits(value[1:])
     if "#" not in value:
         return False
     owner_repo, issue = value.rsplit("#", 1)
     parts = owner_repo.split("/", 1)
-    return len(parts) == 2 and all(parts) and issue.isascii() and issue.isdigit() and all(
+    return len(parts) == 2 and all(parts) and _positive_digits(issue) and all(
         char.isascii() and (char.isalnum() or char in "-_ .".replace(" ", "")) for part in parts for char in part
     )
+
+
+def _positive_digits(value: str) -> bool:
+    return value.isascii() and value.isdigit() and int(value) > 0

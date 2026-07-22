@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shlex
 from pathlib import Path
 
-from .repository import OWNED, identity
+from .repository import OWNED, identity, repository_owned
 
 OPS = {";", "&&", "||", "|", "&"}
 WRAPPERS = {"env", "command", "sudo", "exec"}
 OPAQUE = re.compile(r"\$\(|`|\$\{|<<<?|\b(?:eval|if|for|while|until|case)\b")
 
 
-def forbidden(command: str, cwd_owned: bool | None, depth: int = 0) -> bool:
+def forbidden(command: str, cwd: str, depth: int = 0) -> bool:
+    cwd_owned = repository_owned(cwd)
     if depth > 3:
         return True
     if cwd_owned is not False and (OPAQUE.search(command) or any(c in command for c in "(){}")):
@@ -35,14 +37,14 @@ def forbidden(command: str, cwd_owned: bool | None, depth: int = 0) -> bool:
     if current:
         segments.append((current, ""))
     for index, (segment, following) in enumerate(segments):
-        if _segment(segment, cwd_owned, depth):
+        if _segment(segment, cwd, cwd_owned, depth):
             return True
         if following == "|" and index + 1 < len(segments) and _name(segments[index + 1][0][0]) in {"sh", "bash", "zsh", "dash", "pwsh", "powershell"}:
             return cwd_owned is not False
     return False
 
 
-def _segment(tokens: list[str], cwd_owned: bool | None, depth: int) -> bool:
+def _segment(tokens: list[str], cwd: str, cwd_owned: bool | None, depth: int) -> bool:
     while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
         tokens = tokens[1:]
     for _ in range(8):
@@ -63,10 +65,10 @@ def _segment(tokens: list[str], cwd_owned: bool | None, depth: int) -> bool:
     if name in {"sh", "bash", "zsh", "dash", "pwsh", "powershell", "cmd"}:
         for index, arg in enumerate(args):
             if arg.lower() in {"-c", "-command", "/c"}:
-                return index + 1 >= len(args) or forbidden(args[index + 1], cwd_owned, depth + 1)
+                return index + 1 >= len(args) or forbidden(args[index + 1], cwd, depth + 1)
         return cwd_owned is not False
     if name == "git":
-        return _git(args, cwd_owned)
+        return _git(args, cwd, cwd_owned)
     if name == "gh":
         return _gh(args, cwd_owned)
     if name == "rm":
@@ -74,7 +76,7 @@ def _segment(tokens: list[str], cwd_owned: bool | None, depth: int) -> bool:
     return False
 
 
-def _git(args: list[str], cwd_owned: bool | None) -> bool:
+def _git(args: list[str], cwd: str, cwd_owned: bool | None) -> bool:
     while args and args[0].startswith("-"):
         option = args[0]
         if option in {"-c", "--config-env", "--git-dir", "--work-tree"} or option.startswith(("-c=", "--config-env=", "--git-dir=", "--work-tree=")):
@@ -82,6 +84,8 @@ def _git(args: list[str], cwd_owned: bool | None) -> bool:
         if option == "-C":
             if len(args) < 2:
                 return True
+            cwd = os.path.abspath(os.path.join(cwd, args[1]))
+            cwd_owned = repository_owned(cwd)
             args = args[2:]
         elif option in {"--no-pager", "--paginate", "--bare"}:
             args = args[1:]

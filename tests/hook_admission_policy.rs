@@ -56,8 +56,8 @@ fn github_owned_mutations_follow_canonical_contracts() -> TestResult {
 #[test]
 fn squash_merge_requires_head_subject_and_one_final_closing_reference() -> TestResult {
     let root = root();
-    let valid = json!({"pr_number":453,"merge_method":"squash","expected_head_sha":"a".repeat(40),
-        "commit_title":"fix(hooks): enforce policy (#453)","commit_message":"Summary\n\nFixes #453"});
+    let valid = json!({"pr_number":479,"merge_method":"squash","expected_head_sha":"a".repeat(40),
+        "commit_title":"fix(hooks): enforce policy (#479)","commit_message":"Summary\n\nFixes #453"});
     assert_eq!(github(&root, "github_merge_pull_request", valid.clone())?, b"");
     for invalid in [
         json!({"pr_number":true,"merge_method":"squash","expected_head_sha":"a".repeat(40),"commit_title":"fix: x (#453)","commit_message":"Fixes #453"}),
@@ -82,6 +82,8 @@ fn shell_policy_blocks_structural_bypasses_without_substring_false_positives() -
     assert_eq!(bash(&root, owned.path(), "printf '%s' 'git push --force is documented'")?, b"");
     assert_eq!(bash(&root, other.path(), "git push --force origin topic")?, b"");
     assert_deny(&bash(&root, other.path(), "git push --force git@github.com:eunsoogi/codexy.git main")?, "PreToolUse")?;
+    let changed_directory = format!("git -C {} push --force origin main", owned.path().display());
+    assert_deny(&bash(&root, other.path(), &changed_directory)?, "PreToolUse")?;
     Ok(())
 }
 

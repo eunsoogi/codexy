@@ -21,6 +21,11 @@ fn package_uses_one_native_dispatcher_per_preventive_event() -> TestResult {
         assert!(handlers[0]["command"].as_str().is_some_and(|value| value.ends_with(event)));
         assert!(handlers[0]["commandWindows"].as_str().is_some_and(|value| value.ends_with(event)));
     }
+    let dispatcher = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy/hooks/codexy-admission.py"),
+    )?;
+    assert!(!dispatcher.lines().any(|line| line == "import signal"));
     Ok(())
 }
 
