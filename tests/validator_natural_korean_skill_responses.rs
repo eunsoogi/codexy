@@ -199,7 +199,11 @@ fn korean_response_prompt(prompt: &str) -> Result<&str, &'static str> {
     let mut scoped = prompt
         .split('.')
         .map(str::trim)
-        .filter_map(|sentence| sentence.strip_prefix("When responding in Korean, "));
+        .filter_map(|sentence| {
+            sentence
+                .strip_prefix("When responding in Korean, ")
+                .or_else(|| sentence.strip_prefix("For Korean replies, "))
+        });
     let body = scoped.next().ok_or("missing Korean response scope")?;
     if scoped.next().is_some() {
         return Err("duplicate Korean response scope");
