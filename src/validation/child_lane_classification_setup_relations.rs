@@ -47,8 +47,13 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                 .iter()
                 .any(|word| matches!(*word, "branch" | "worktree"))
                 .then(|| SetupRelation {
-                    actor: explicit_subject(&words, start, *action)
-                        .or_else(|| agents_fail_closed(&words, start, end)),
+                    actor: if action_is_passive(&words, start, *action) {
+                        agents_fail_closed(&words, start, end)
+                            .or_else(|| explicit_subject(&words, start, *action))
+                    } else {
+                        explicit_subject(&words, start, *action)
+                            .or_else(|| agents_fail_closed(&words, start, end))
+                    },
                     negated: action_is_negated(&words, start, *action),
                     before_classification: window.iter().enumerate().any(|(index, word)| {
                         *word == "before"
@@ -124,6 +129,12 @@ fn actor_word(word: &str) -> Option<SetupActor> {
         "parent" | "orchestrator" => Some(SetupActor::NonChild),
         _ => None,
     }
+}
+
+fn action_is_passive(words: &[&str], start: usize, action: usize) -> bool {
+    words[action.saturating_sub(3).max(start)..action]
+        .iter()
+        .any(|word| matches!(*word, "is" | "are" | "was" | "were" | "been" | "being"))
 }
 
 fn setup_action_at(words: &[&str], index: usize) -> Option<SetupAction> {

@@ -103,6 +103,16 @@ fn validator_resolves_setup_subject_and_agent_conflicts_by_grammatical_role() ->
             true,
         ),
         (
+            "passive child agent governs parent recipient",
+            "The branch for the parent was created by the child before classification.",
+            false,
+        ),
+        (
+            "passive parent agent governs child recipient",
+            "The branch for the child was created by the parent before classification.",
+            true,
+        ),
+        (
             "passive pre-action child agent",
             "By the child, branch `codexy/463` was created after classification.",
             false,
