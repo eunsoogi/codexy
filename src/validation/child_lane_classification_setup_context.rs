@@ -1,4 +1,5 @@
 use super::child_lane_classification_control::normalize_metadata_prefix;
+use super::child_lane_classification_fields::{classification_table_row, is_table_separator};
 use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
 use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
@@ -78,13 +79,21 @@ fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool 
     else {
         return false;
     };
-    let fields = lines[start + 1..end]
+    if !lines
+        .get(start + 1)
+        .is_some_and(|line| is_table_separator(trimmed_value(line)))
+        || lines[start + 2..end]
+            .iter()
+            .enumerate()
+            .any(|(offset, line)| {
+                is_lane_context_boundary(lines, start + offset + 2, trimmed_value(line))
+            })
+    {
+        return false;
+    }
+    let fields = lines[start + 2..end]
         .iter()
-        .filter_map(|line| {
-            let row = line.strip_prefix('|')?.strip_suffix('|')?;
-            let (field, value) = row.split_once('|')?;
-            Some((field.trim(), value.trim()))
-        })
+        .filter_map(|line| classification_table_row(trimmed_value(line)))
         .collect::<Vec<_>>();
     [
         "lane type",

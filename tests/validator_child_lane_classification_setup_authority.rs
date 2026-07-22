@@ -19,3 +19,25 @@ fn validator_rejects_non_authoritative_classification_metadata_before_control() 
     }
     Ok(())
 }
+
+#[test]
+fn validator_does_not_inherit_gfm_classification_across_lanes() -> TestResult {
+    let complete = complete_gfm_classification().to_owned();
+    let missing_separator = complete.replacen("| --- | --- |\n", "", 1);
+    for table in [&complete, &missing_separator] {
+        let temp = tempfile::tempdir()?;
+        let path = temp.path().join("handoff.md");
+        std::fs::write(
+            &path,
+            format!(
+                "PR: #1\n{table}\nReview response: child-authored commit abc123\nPR: #2\nPlan tool call: update_plan\n"
+            ),
+        )?;
+        assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
+    }
+    Ok(())
+}
+
+fn complete_gfm_classification() -> &'static str {
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+}
