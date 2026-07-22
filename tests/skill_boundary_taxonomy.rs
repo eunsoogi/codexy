@@ -99,33 +99,38 @@ fn overlap_boundaries_and_non_markdown_authority_are_explicit() -> TestResult {
 
 #[test]
 fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestResult {
-    let table = r#"| Field | Value |
+    let partial_table = r#"| Field | Value |
 | --- | --- |
 | Lane type | implementation |
 | Secondary surfaces | validators |
 | Owner decision | current-thread-owned child implementation lane |
-| Atomic scope | issue-sized |
+"#;
+    let complete_table = format!(
+        "{partial_table}{}",
+        r#"| Atomic scope | issue-sized |
 | Required skills | task-classification |
 | Required tools/evidence | goal, plan |
 | First allowed action | implement after classification |
 | Stop/blocker | None |
-"#;
-    let table_only = run_ownership_validator(&format!("{table}Plan tool call: update_plan\n"))?;
+"#
+    );
+    let table_only =
+        run_ownership_validator(&format!("{partial_table}Plan tool call: update_plan\n"))?;
     assert!(
         table_only.status.success(),
-        "GFM presentation must not establish child control authority: {}",
+        "a partial GFM owner row must not establish child control authority: {}",
         String::from_utf8_lossy(&table_only.stderr)
     );
 
+    let authoritative_child = run_ownership_validator(&format!(
+        "Lane ownership: child-owned\n{partial_table}Plan tool call: update_plan\n"
+    ))?;
+    assert!(!authoritative_child.status.success());
+
     let classified_child = run_ownership_validator(&format!(
-        "Lane ownership: child-owned\n{table}Plan tool call: update_plan\n"
+        "Lane ownership: child-owned\n{complete_table}Plan tool call: update_plan\n"
     ))?;
     assert!(classified_child.status.success());
-
-    let unclassified_child = run_ownership_validator(&format!(
-        "Lane ownership: child-owned\nPlan tool call: update_plan\n{table}"
-    ))?;
-    assert!(!unclassified_child.status.success());
     Ok(())
 }
 
