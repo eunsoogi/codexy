@@ -127,8 +127,24 @@ fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestR
     ))?;
     assert!(!authoritative_child.status.success());
 
+    let missing_metadata = run_ownership_validator(&format!(
+        "{complete_table}Plan tool call: update_plan\n"
+    ))?;
+    assert!(
+        !missing_metadata.status.success(),
+        "a complete display table must not establish authority without metadata"
+    );
+
+    let malformed_metadata = run_ownership_validator(&format!(
+        "Ownership metadata source: parent-supplied\nLane ownership: unknown\n{complete_table}Plan tool call: update_plan\n"
+    ))?;
+    assert!(
+        !malformed_metadata.status.success(),
+        "malformed authoritative ownership metadata must be rejected"
+    );
+
     let classified_child = run_ownership_validator(&format!(
-        "Lane ownership: child-owned\n{complete_table}Plan tool call: update_plan\n"
+        "Ownership metadata source: parent-supplied\nLane ownership: child-owned\n{complete_table}Plan tool call: update_plan\n"
     ))?;
     assert!(classified_child.status.success());
     Ok(())

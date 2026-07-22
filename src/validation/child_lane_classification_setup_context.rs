@@ -13,7 +13,8 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
         .map(|(index, line)| (index, trimmed_value(line)))
     {
         if index != setup_index && is_lane_context_boundary(lines, index, line) {
-            return is_child_owned_lane_evidence(line);
+            return is_child_owned_lane_evidence(line)
+                || has_complete_child_classification_before(lines, setup_index);
         }
         if is_parent_owned_lane_evidence(line) {
             return false;
@@ -29,6 +30,7 @@ pub(super) fn child_lane_context_applies(lines: &[&str], setup_index: usize) -> 
         .map(|(index, line)| (index, trimmed_value(line)))
         .take_while(|(index, line)| !is_later_lane_boundary(lines, *index, line))
         .any(|(_, line)| is_child_owned_lane_evidence(line))
+        || has_complete_child_classification_before(lines, setup_index)
 }
 
 pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> bool {
@@ -46,7 +48,8 @@ pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> 
             })
     {
         if candidate_index != index && is_lane_context_boundary(lines, candidate_index, line) {
-            return is_child_owned_lane_evidence(line);
+            return is_child_owned_lane_evidence(line)
+                || has_complete_child_classification_before(lines, index);
         }
         if is_parent_owned_lane_evidence(line) {
             return false;
@@ -55,7 +58,7 @@ pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> 
             return true;
         }
     }
-    false
+    has_complete_child_classification_before(lines, index)
 }
 
 fn is_child_owned_lane_evidence(line: &str) -> bool {
@@ -66,6 +69,40 @@ fn is_child_owned_lane_evidence(line: &str) -> bool {
         || "lane ownership: child-owned|owner: child-owned|lane owner: child-owned|owner decision: child-owned|owner decision: current-thread-owned child implementation|owner decision: current-thread-owned implementation lane"
             .split('|')
             .any(|marker| line.starts_with(marker))
+}
+
+fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool {
+    let Some(start) = lines[..end]
+        .iter()
+        .rposition(|line| trimmed_value(line) == "| field | value |")
+    else {
+        return false;
+    };
+    let fields = lines[start + 1..end]
+        .iter()
+        .filter_map(|line| {
+            let row = line.strip_prefix('|')?.strip_suffix('|')?;
+            let (field, value) = row.split_once('|')?;
+            Some((field.trim(), value.trim()))
+        })
+        .collect::<Vec<_>>();
+    [
+        "lane type",
+        "secondary surfaces",
+        "atomic scope",
+        "required skills",
+        "required tools/evidence",
+        "first allowed action",
+        "stop/blocker",
+    ]
+    .into_iter()
+    .all(|field| {
+        fields
+            .iter()
+            .any(|(key, value)| *key == field && !value.is_empty())
+    }) && fields
+        .iter()
+        .any(|(key, value)| *key == "owner decision" && is_child_delegation_owner_decision(value))
 }
 
 fn has_present_child_owner_metadata(line: &str) -> bool {

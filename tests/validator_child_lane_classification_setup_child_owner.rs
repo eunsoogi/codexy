@@ -152,13 +152,12 @@ fn validator_rejects_child_plan_before_task_classification() -> TestResult {
 
 #[test]
 fn validator_allows_each_new_lane_classification_before_goal_and_plan() -> TestResult {
-    for (boundary, classification) in [
-        ("Lane ownership: child-owned", complete_child_classification()),
-        ("1. Lane ownership: child-owned", complete_child_classification_table()),
+    for classification in [
+        complete_child_classification(),
+        complete_child_classification_table(),
     ] {
-        let fields = classification.split_once('\n').unwrap().1;
         assert_allowed(&format!(
-            "{}\n{boundary}\n{fields}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
+            "{}\n{classification}\n{}\nPlan tool call: update_plan\nReview response: child-authored commit def456 fixed feedback\nMaintainer reassignment: none\n",
             complete_child_classification(), child_goal_call()
         ))?;
     }
@@ -235,7 +234,7 @@ fn complete_child_classification() -> &'static str {
 }
 
 fn complete_child_classification_table() -> &'static str {
-    "Lane ownership: child-owned\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }
 
 fn child_goal_call() -> &'static str {

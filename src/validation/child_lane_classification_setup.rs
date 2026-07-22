@@ -1,3 +1,4 @@
+use super::child_lane_classification_authority::has_parent_supplied_child_metadata_before;
 use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_setup_context::child_lane_context_applies;
@@ -31,16 +32,16 @@ pub(super) fn formal_child_classification_complete_index_before(
     lines: &[&str],
     setup_index: usize,
 ) -> Option<usize> {
-    let mut seen: Option<ClassificationFields> = None;
+    let (mut seen, mut authority) = (None, false);
     let (lines, prefixed_lane_start) = normalized_metadata_lines(lines, setup_index);
     let lane_start = current_lane_start(&lines, setup_index).max(prefixed_lane_start);
     for (index, line) in lines.iter().enumerate().take(setup_index).skip(lane_start) {
-        if metadata_key(trimmed_value(line)) == "task classification:" {
+        if metadata_key(trimmed_value(line)) == "task classification:"
+            || classification_table_row(line) == Some(("field", "value"))
+        {
             seen = Some(ClassificationFields::default());
-            continue;
-        }
-        if classification_table_row(line) == Some(("field", "value")) {
-            seen = Some(ClassificationFields::default());
+            authority = classification_table_row(line) != Some(("field", "value"))
+                || has_parent_supplied_child_metadata_before(&lines, index);
             continue;
         }
         if line.is_empty() {
@@ -54,7 +55,7 @@ pub(super) fn formal_child_classification_complete_index_before(
             continue;
         };
         fields.record(metadata_key(key), trimmed_value(value));
-        if fields.is_complete() {
+        if fields.is_complete() && authority {
             return Some(index);
         }
     }

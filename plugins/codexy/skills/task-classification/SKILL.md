@@ -103,14 +103,25 @@ plugin repair until classification evidence exists in the thread.
 
 ## Authority Boundary
 
-The GFM table is presentation/audit evidence only. Explicit non-Markdown
-ownership metadata remains authoritative. Agents MUST NOT treat the GFM
-`Owner decision` cell as control authority.
+The GFM table is presentation/audit evidence only. The authoritative ownership record MUST be the two non-Markdown lines immediately before `Task classification:`:
+
+```text
+Ownership metadata source: parent-supplied
+Lane ownership: child-owned
+Task classification:
+```
+
+For an undelegated lane, agents MUST replace `parent-supplied` with
+`current-thread-classified` and MUST use exactly one owner value:
+`parent-owned`, `child-owned`, `current-thread-owned`, or
+`external/human-owned`. A delegated child lane MUST use the parent-supplied
+form. The GFM `Owner decision` cell explains the decision but MUST NOT be used
+as control authority.
 
 ## Required Output
 
-MUST render exactly one ordered two-column GFM table before taking the first
-workflow action:
+MUST emit the authoritative ownership record, then render exactly one ordered
+two-column GFM table before taking the first workflow action:
 
 | Field | Value |
 | --- | --- |
