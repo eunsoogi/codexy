@@ -30,6 +30,7 @@ fn windows_install_proves_direct_pe_and_codex_configured_launch() {
             "mcpServerStatus/list",
             "$statusResponseTimeout = [TimeSpan]::FromSeconds(30)",
             "ReadLineAsync().WaitAsync($statusResponseTimeout)",
+            "detail = \"toolsAndAuthOnly\"",
             "$appServerFailure = $_.Exception.Message",
             "Codex app-server stderr: $appServerStderr",
             "installed MCP process cleanup failed",

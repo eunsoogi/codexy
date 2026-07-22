@@ -444,7 +444,7 @@ jobs:
               $statusRequest = @{
                 method = "mcpServerStatus/list"
                 id = $requestId
-                params = @{ cursor = $null; limit = 100; detail = "full"; threadId = $null }
+                params = @{ cursor = $null; limit = 100; detail = "toolsAndAuthOnly"; threadId = $null }
               } | ConvertTo-Json -Depth 4 -Compress
               $appServer.StandardInput.WriteLine($statusRequest)
               do {
