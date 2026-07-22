@@ -1,4 +1,4 @@
-use super::child_lane_classification_authority::has_authoritative_ownership_metadata_before;
+use super::child_lane_classification_authority::lane_authority_before;
 use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_fields::{
@@ -34,14 +34,14 @@ pub(super) fn formal_child_classification_complete_index_before(
     lines: &[&str],
     setup_index: usize,
 ) -> Option<usize> {
-    let (mut seen, mut authority, mut classification_start) = (None, false, None);
+    let (mut seen, mut authority, mut classification_start) = (None, None, None);
     let raw_lines = lines;
     let (lines, prefixed_lane_start) = normalized_metadata_lines(lines, setup_index);
     let lane_start = current_lane_start(&lines, setup_index).max(prefixed_lane_start);
     for (index, line) in lines.iter().enumerate().take(setup_index).skip(lane_start) {
         if *line == "task classification:" {
             seen = Some(ClassificationFields::default());
-            authority = has_authoritative_ownership_metadata_before(raw_lines, index);
+            authority = lane_authority_before(raw_lines, index);
             classification_start = Some(index);
             continue;
         }
@@ -61,6 +61,7 @@ pub(super) fn formal_child_classification_complete_index_before(
             continue;
         }
         let row = classification_table_row(line);
+        let gfm_display_row = row.is_some();
         let Some((key, value)) = (if row.is_some() {
             fields.table_separator.then_some(row).flatten()
         } else {
@@ -68,9 +69,17 @@ pub(super) fn formal_child_classification_complete_index_before(
         }) else {
             continue;
         };
-        fields.record(metadata_key(key), trimmed_value(value));
+        fields.record(
+            metadata_key(key),
+            trimmed_value(value),
+            authority,
+            gfm_display_row,
+        );
     }
-    classification_start.filter(|_| authority && seen.is_some_and(|fields| fields.is_complete()))
+    classification_start.filter(|_| {
+        authority.is_some_and(|authority| authority.authorizes_child_setup())
+            && seen.is_some_and(|fields| fields.is_complete())
+    })
 }
 
 fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {

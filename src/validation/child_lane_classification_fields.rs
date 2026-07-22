@@ -1,4 +1,8 @@
-use super::child_lane_owner_decision::{is_child_delegation_owner_decision, is_parent_owned_value};
+use super::child_lane_classification_authority::LaneAuthority;
+use super::child_lane_owner_decision::{
+    is_affirmative_child_owned_value, is_affirmative_child_owner_decision,
+    is_affirmative_owner_decision_for, is_child_delegation_owner_decision, is_parent_owned_value,
+};
 
 pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
     let line = line.strip_prefix('|')?;
@@ -48,11 +52,18 @@ pub(super) struct ClassificationFields {
     required_tools: bool,
     first_allowed_action: bool,
     stop_blocker: bool,
+    child_display_owner_decision: bool,
     child_owner_decision: bool,
 }
 
 impl ClassificationFields {
-    pub(super) fn record(&mut self, key: &str, value: &str) {
+    pub(super) fn record(
+        &mut self,
+        key: &str,
+        value: &str,
+        authority: Option<LaneAuthority>,
+        gfm_display_row: bool,
+    ) {
         if value.is_empty() {
             return;
         }
@@ -60,7 +71,17 @@ impl ClassificationFields {
             "lane type" => self.lane_type = true,
             "secondary surfaces" => self.secondary_surfaces = true,
             "owner decision" => {
-                self.child_owner_decision = is_child_completion_owner(value);
+                self.child_display_owner_decision = is_affirmative_child_owner_decision(value);
+                self.child_owner_decision = authority.is_some_and(|authority| {
+                    authority.authorizes_child_setup()
+                        && if gfm_display_row {
+                            is_affirmative_owner_decision_for(value, authority.owner())
+                        } else {
+                            !is_parent_owned_value(value)
+                                && (is_affirmative_child_owned_value(value)
+                                    || is_child_delegation_owner_decision(value))
+                        }
+                });
             }
             "atomic scope" => self.atomic_scope = true,
             "required skills" => self.required_skills = true,
@@ -89,6 +110,14 @@ impl ClassificationFields {
     }
 
     pub(super) fn is_complete(&self) -> bool {
+        self.has_required_fields() && self.child_owner_decision
+    }
+
+    pub(super) fn has_complete_child_display(&self) -> bool {
+        self.has_required_fields() && self.child_display_owner_decision
+    }
+
+    fn has_required_fields(&self) -> bool {
         self.lane_type
             && self.secondary_surfaces
             && self.atomic_scope
@@ -96,14 +125,9 @@ impl ClassificationFields {
             && self.required_tools
             && self.first_allowed_action
             && self.stop_blocker
-            && self.child_owner_decision
     }
 
     fn is_stop_blocker_key(key: &str) -> bool {
         matches!(key, "stop/blocker" | "stop blocker" | "blocker")
     }
-}
-
-fn is_child_completion_owner(value: &str) -> bool {
-    !is_parent_owned_value(value) && is_child_delegation_owner_decision(value)
 }

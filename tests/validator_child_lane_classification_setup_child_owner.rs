@@ -56,7 +56,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -124,7 +124,7 @@ Lane ownership: child-owned
 Task classification:
 Lane type: implementation
 Secondary surfaces: workflow, validators
-Owner decision: current-thread-owned child implementation lane
+Owner decision: child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
 Required skills: task-classification, codex-orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
@@ -232,11 +232,11 @@ fn complete_parent_classification() -> &'static str {
 }
 
 fn complete_child_classification() -> &'static str {
-    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: implement after classification\nStop/blocker: None"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: implement after classification\nStop/blocker: None"
 }
 
 fn complete_child_classification_table() -> &'static str {
-    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }
 
 fn complete_current_thread_classification_table() -> &'static str {

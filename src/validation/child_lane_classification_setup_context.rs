@@ -1,3 +1,4 @@
+use super::child_lane_classification_authority::lane_authority_before;
 use super::child_lane_classification_control::normalize_metadata_prefix;
 use super::child_lane_classification_fields::{
     ClassificationFields, classification_table_row, is_table_separator,
@@ -91,14 +92,21 @@ fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool 
     {
         return false;
     }
+    let Some(classification_start) = lines[..start]
+        .iter()
+        .rposition(|line| trimmed_value(line) == "task classification:")
+    else {
+        return false;
+    };
+    let authority = lane_authority_before(lines, classification_start);
     let mut fields = ClassificationFields::default();
     for (key, value) in lines[start + 2..end]
         .iter()
         .filter_map(|line| classification_table_row(trimmed_value(line)))
     {
-        fields.record(metadata_key(key), trimmed_value(value));
+        fields.record(metadata_key(key), trimmed_value(value), authority, true);
     }
-    fields.is_complete()
+    fields.has_complete_child_display()
 }
 
 fn has_present_child_owner_metadata(line: &str) -> bool {

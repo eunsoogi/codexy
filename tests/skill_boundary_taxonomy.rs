@@ -103,7 +103,7 @@ fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestR
 | --- | --- |
 | Lane type | implementation |
 | Secondary surfaces | validators |
-| Owner decision | current-thread-owned child implementation lane |
+| Owner decision | child-owned because the delegated child owns implementation |
 "#;
     let complete_table = format!(
         "{partial_table}{}",

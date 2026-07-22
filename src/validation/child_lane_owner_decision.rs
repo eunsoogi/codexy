@@ -2,24 +2,22 @@ use super::child_lane_ownership_phrases::{has_absent_field_value, trimmed_value}
 
 pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
     let value = trimmed_value(value);
-    is_affirmative_child_owned_value(value)
-        || is_affirmative_current_thread_owner_decision(value)
+    is_affirmative_child_owner_decision(value)
         || (!has_negated_child_routing_requirement(value)
             && has_child_delegation(value)
             && has_routing_only_parent_context(value))
 }
 
-pub(super) fn is_affirmative_current_thread_owner_decision(value: &str) -> bool {
-    let value = trimmed_value(value);
-    matches!(
-        parse_owner_assertion(value),
-        Some((OwnerSelection::CurrentThreadOwned, _))
-    )
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum OwnerSelection {
+    ParentOwned,
+    ChildOwned,
+    CurrentThreadOwned,
+    ExternalHumanOwned,
 }
 
-#[derive(PartialEq)]
-enum OwnerSelection {
-    CurrentThreadOwned,
+struct OwnerDecision {
+    selection: OwnerSelection,
 }
 
 enum OwnerAssertion {
@@ -27,23 +25,52 @@ enum OwnerAssertion {
     ImplementationLane,
 }
 
-fn parse_owner_assertion(value: &str) -> Option<(OwnerSelection, OwnerAssertion)> {
-    let (owner, assertion) = value.split_once(char::is_whitespace)?;
+pub(super) fn is_affirmative_owner_decision_for(value: &str, authority: OwnerSelection) -> bool {
+    parse_owner_selection(value) == Some(authority)
+        && parse_affirmative_owner_decision(value).is_some()
+}
+
+pub(super) fn is_affirmative_child_owner_decision(value: &str) -> bool {
+    matches!(
+        parse_affirmative_owner_decision(value),
+        Some(OwnerDecision {
+            selection: OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
+        })
+    )
+}
+
+pub(super) fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
+    let owner = trimmed_value(value)
+        .split_once(char::is_whitespace)
+        .map_or(trimmed_value(value), |(owner, _)| owner);
+    match owner {
+        "parent-owned" => Some(OwnerSelection::ParentOwned),
+        "child-owned" => Some(OwnerSelection::ChildOwned),
+        "current-thread-owned" => Some(OwnerSelection::CurrentThreadOwned),
+        "external/human-owned" => Some(OwnerSelection::ExternalHumanOwned),
+        _ => None,
+    }
+}
+
+fn parse_affirmative_owner_decision(value: &str) -> Option<OwnerDecision> {
+    let (owner, assertion) = trimmed_value(value).split_once(char::is_whitespace)?;
     let selection = parse_owner_selection(owner)?;
-    parse_current_thread_assertion(assertion).map(|assertion| (selection, assertion))
+    parse_owner_assertion(selection, assertion).map(|_| OwnerDecision { selection })
 }
 
-fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
-    (value == "current-thread-owned").then_some(OwnerSelection::CurrentThreadOwned)
-}
-
-fn parse_current_thread_assertion(assertion: &str) -> Option<OwnerAssertion> {
+fn parse_owner_assertion(selection: OwnerSelection, assertion: &str) -> Option<OwnerAssertion> {
     let assertion = trimmed_value(assertion);
     if assertion
         .strip_prefix("because ")
         .is_some_and(|rationale| !rationale.trim().is_empty())
     {
         return Some(OwnerAssertion::Because);
+    }
+    if !matches!(
+        selection,
+        OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
+    ) {
+        return None;
     }
     matches!(
         assertion,
@@ -60,15 +87,15 @@ fn parse_current_thread_assertion(assertion: &str) -> Option<OwnerAssertion> {
 
 pub(super) fn is_affirmative_child_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
-    value.contains("child-owned")
+    parse_owner_selection(value) == Some(OwnerSelection::ChildOwned)
         && !value.contains("not child-owned")
-        && !value.starts_with("parent-owned")
         && !has_absent_field_value(value, "child-owned")
 }
 
 pub(super) fn is_parent_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
-    value.starts_with("parent-owned") && !value.contains("not parent-owned")
+    parse_owner_selection(value) == Some(OwnerSelection::ParentOwned)
+        && !value.contains("not parent-owned")
 }
 
 fn has_child_delegation(value: &str) -> bool {

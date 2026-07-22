@@ -2,7 +2,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_non_authoritative_classification_metadata_before_control() -> TestResult {
-    let valid = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |";
+    let valid = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |";
     for classification in [
         valid.replacen("Ownership metadata source: parent-supplied\n", "", 1),
         valid.replacen("Ownership metadata source: parent-supplied", "Ownership metadata source: parent supplied", 1),
@@ -82,7 +82,12 @@ fn validator_allows_complete_current_thread_owned_classification() -> TestResult
     let path = temp.path().join("handoff.md");
     let classification = complete_gfm_classification()
         .replacen("parent-supplied", "current-thread-classified", 1)
-        .replacen("child-owned", "current-thread-owned", 1);
+        .replacen("Lane ownership: child-owned", "Lane ownership: current-thread-owned", 1)
+        .replacen(
+            "child-owned because the delegated child owns implementation",
+            "current-thread-owned child implementation lane",
+            1,
+        );
     std::fs::write(&path, format!("{classification}\nGoal tool call: create_goal\nPlan tool call: update_plan\nChild branch codexy/463 was created after classification.\n"))?;
 
     assert!(crate::support::validator_child_lane_ownership_file(&path)?.status.success());
@@ -144,5 +149,5 @@ fn validator_rejects_actions_after_a_repeated_incomplete_gfm_table() -> TestResu
 }
 
 fn complete_gfm_classification() -> &'static str {
-    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | current-thread-owned child implementation lane |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+    "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | child-owned because the delegated child owns implementation |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
 }
