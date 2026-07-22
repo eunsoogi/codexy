@@ -68,7 +68,7 @@ class RuntimeCliTests(unittest.TestCase):
             self.assertIsNone(request.get_header("Authorization"))
             self.assertEqual(destination.read_bytes(), b"package")
 
-    def test_git_repair_forces_install_and_preserves_plugin_root(self) -> None:
+    def test_git_repair_is_atomic_tokenless_and_does_not_stamp_a_release_marker(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             install_root, installed = root / "cache", root / "cache/bin/codexy-mcp-lsp"
@@ -93,7 +93,7 @@ class RuntimeCliTests(unittest.TestCase):
             self.assertIn("--force", cargo.call_args.args[0])
             self.assertNotIn("GH_TOKEN", cargo.call_args.kwargs["env"])
             self.assertNotIn("GITHUB_TOKEN", cargo.call_args.kwargs["env"])
-            self.assertEqual((install_root / "plugin.json").read_text(encoding="utf-8"), manifest.read_text(encoding="utf-8"))
+            self.assertFalse((install_root / "plugin.json").exists())
         with (
             mock.patch.dict("os.environ", {"PRESERVED": "yes"}, clear=True),
             mock.patch("codexy_runtime_tools.installer.os.execvpe") as execvpe,
@@ -101,6 +101,34 @@ class RuntimeCliTests(unittest.TestCase):
         ):
             execute("/runtime", ["--stdio"], {"CODEXY_PLUGIN_ROOT": "/installed/plugin"})
         execvpe.assert_called_once_with("/runtime", ["/runtime", "--stdio"], {"PRESERVED": "yes", "CODEXY_PLUGIN_ROOT": "/installed/plugin"})
+
+    def test_failed_git_install_never_publishes_its_staged_binary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            install_root = root / "cache"
+            installed = install_root / "bin/codexy-mcp-lsp"
+            manifest = root / "plugin.json"
+            manifest.write_text('{"version":"1.2.2"}', encoding="utf-8")
+            config = SimpleNamespace(
+                server="lsp", manifest=manifest,
+                git_repository=runtime.REPOSITORY, git_ref="a" * 40,
+            )
+
+            def partial_install(command: list[str], **_: object) -> SimpleNamespace:
+                staged_root = Path(command[command.index("--root") + 1])
+                staged = staged_root / "bin/codexy-mcp-lsp"
+                staged.parent.mkdir(parents=True)
+                staged.write_text("partial", encoding="utf-8")
+                staged.chmod(0o755)
+                return SimpleNamespace(returncode=1)
+
+            with mock.patch(
+                "codexy_runtime_tools.installer.shutil.which", return_value="/cargo"
+            ), mock.patch(
+                "codexy_runtime_tools.installer.subprocess.run", side_effect=partial_install
+            ), self.assertRaisesRegex(RuntimeError, "status 1"):
+                install_git(config, install_root, installed)
+            self.assertFalse(installed.exists())
 
     def test_package_install_copies_verified_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

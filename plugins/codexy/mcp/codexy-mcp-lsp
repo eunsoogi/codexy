@@ -3,17 +3,11 @@ set -eu
 
 self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
+. "$self_dir/runtime-platform.sh"
 export CODEXY_PLUGIN_ROOT="$plugin_root"
 bundled_platforms="darwin-arm64 linux-x86_64"
 
-platform=${CODEXY_RUNTIME_PLATFORM:-}
-if [ -z "$platform" ]; then
-  os=$(uname -s 2>/dev/null || echo unknown)
-  arch=$(uname -m 2>/dev/null || echo unknown)
-  case "$os" in Darwin) os=darwin ;; Linux) os=linux ;; *) os=unknown ;; esac
-  case "$arch" in arm64|aarch64) arch=arm64 ;; x86_64|amd64) arch=x86_64 ;; *) arch=unknown ;; esac
-  platform="$os-$arch"
-fi
+platform=$(codexy_runtime_platform)
 
 runtime_name="codexy-mcp-lsp-$platform.bin"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then

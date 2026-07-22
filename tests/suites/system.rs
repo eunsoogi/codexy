@@ -97,6 +97,9 @@ mod version_bump_workflow_adapter;
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
 
+#[path = "../runtime_platform_detection.rs"]
+mod runtime_platform_detection;
+
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;
 

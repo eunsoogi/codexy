@@ -116,8 +116,5 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
             raise RuntimeError(f"cargo install exited with status {completed.returncode}")
         installed.parent.mkdir(parents=True, exist_ok=True)
         temporary_runtime = installed.with_name(f".{installed.name}.{os.getpid()}.tmp")
-        temporary_manifest = install_root / f".plugin.json.{os.getpid()}.tmp"
         shutil.copyfile(staged_runtime, temporary_runtime)
-        shutil.copyfile(config.manifest, temporary_manifest)
         os.replace(temporary_runtime, installed)
-        os.replace(temporary_manifest, install_root / "plugin.json")
