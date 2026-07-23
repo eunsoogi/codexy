@@ -49,6 +49,21 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn negated_markdown_clause_cannot_satisfy_review_cluster_contract() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let text = std::fs::read_to_string(&path)?;
+    let negated = text.replacen(
+        ORCHESTRATION_CLAUSE,
+        &format!("It is false that {ORCHESTRATION_CLAUSE}"),
+        1,
+    );
+    std::fs::write(path, negated)?;
+
+    assert_contract_rejected(&plugin_root)
+}
+
 fn assert_contract_rejected(plugin_root: &std::path::Path) -> TestResult {
     let output = crate::support::validator_instruction_policy(plugin_root)?;
     assert!(!output.status.success(), "inactive contract unexpectedly passed");

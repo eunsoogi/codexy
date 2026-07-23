@@ -165,7 +165,20 @@ fn check_reopen(cluster: &DefectCluster, reopen: &Reopen, errors: &mut Vec<Strin
 }
 
 fn contains_clause(text: &str, clause: &str) -> bool {
-    normalize(text).contains(&normalize(clause))
+    let clause = normalize(clause);
+    text.lines().any(|line| {
+        let line = normalize(line);
+        line.match_indices(&clause)
+            .any(|(index, _)| is_statement_prefix(&line[..index]))
+    })
+}
+
+fn is_statement_prefix(prefix: &str) -> bool {
+    let prefix = prefix
+        .rsplit_once(". ")
+        .map_or(prefix, |(_, statement)| statement)
+        .trim();
+    matches!(prefix, "" | "-" | "*")
 }
 
 fn normalize(value: &str) -> String {

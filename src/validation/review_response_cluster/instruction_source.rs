@@ -17,7 +17,7 @@ fn toml_contract_text(text: &str) -> Result<String, &'static str> {
         .ok_or("TOML instruction source must contain developer_instructions")
 }
 
-fn normative_markdown(text: &str) -> String {
+pub(super) fn normative_markdown(text: &str) -> String {
     let mut output = String::new();
     let mut fence = None;
     let mut in_comment = false;

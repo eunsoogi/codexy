@@ -72,6 +72,7 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
     );
     assert_valid(&reordered)?;
     assert_rejected(&format!("```markdown\n{COMPLETE}```\n"))?;
+    assert_rejected(&format!("<!--\n{COMPLETE}-->\n"))?;
     assert_rejected("## Required Procedure\n\n1. [receipt-create] Before editing, MUST create one typed JSON receipt.\n")?;
     Ok(())
 }
