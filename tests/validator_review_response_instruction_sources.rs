@@ -40,6 +40,8 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
         format!("<pre>\n</prefix>\n{ORCHESTRATION_CLAUSE}\n</pre>"),
         format!("<pre\n class=\"example\">\n{ORCHESTRATION_CLAUSE}\n</pre>"),
         format!("<template>\n{ORCHESTRATION_CLAUSE}\n</template>"),
+        format!("<title\n data-example=\"true\">\n{ORCHESTRATION_CLAUSE}\n</title>"),
+        format!("<head>\n{ORCHESTRATION_CLAUSE}\n</head>"),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join(ORCHESTRATION_PATH);

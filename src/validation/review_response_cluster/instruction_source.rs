@@ -1,6 +1,8 @@
 use std::path::Path;
 
-const INACTIVE_HTML_TAGS: &[&str] = &["pre", "code", "script", "style", "textarea", "template"];
+const NON_NORMATIVE_HTML_CONTAINERS: &[&str] = &[
+    "pre", "code", "script", "style", "textarea", "template", "head", "title",
+];
 
 pub(super) fn contract_text(path: &Path, text: &str) -> Result<String, &'static str> {
     if path.extension().and_then(|extension| extension.to_str()) == Some("toml") {
@@ -184,7 +186,7 @@ fn without_html_code_blocks(line: &str, state: &mut Option<&'static str>) -> Str
 
 fn opening_html_code_tag(line: &str) -> Option<(usize, &'static str)> {
     let lower = line.to_ascii_lowercase();
-    INACTIVE_HTML_TAGS
+    NON_NORMATIVE_HTML_CONTAINERS
         .iter()
         .copied()
         .filter_map(|tag| {
