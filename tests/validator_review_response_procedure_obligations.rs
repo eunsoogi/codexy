@@ -9,7 +9,9 @@ const CASE_EXCEPTION: &str =
     "3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.";
 const REOPEN_EVIDENCE: &str =
     "4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.";
-const COMPLETE: &str = "## Required Procedure\n\n1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.\n2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.\n3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.\n4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.\n\n## Typed Receipt\n";
+const FINAL_RECEIPT_VALIDATE: &str =
+    "5. [final-receipt-validate] After addressing feedback and before push or handoff, MUST set the receipt state to repaired or reopened and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.";
+const COMPLETE: &str = "## Required Procedure\n\n1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.\n2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.\n3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.\n4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.\n5. [final-receipt-validate] After addressing feedback and before push or handoff, MUST set the receipt state to repaired or reopened and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.\n\n## Typed Receipt\n";
 
 #[test]
 fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
@@ -20,6 +22,7 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
         RECEIPT_VALIDATE,
         CASE_EXCEPTION,
         REOPEN_EVIDENCE,
+        FINAL_RECEIPT_VALIDATE,
     ] {
         assert_rejected(&COMPLETE.replacen(&format!("{obligation}\n"), "", 1))?;
     }
@@ -50,6 +53,10 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
             "Non-reopened receipt states",
             "Reopened receipt states",
         ),
+        (
+            "before push or handoff",
+            "after push or handoff",
+        ),
     ] {
         assert_rejected(&COMPLETE.replacen(required, substituted, 1))?;
     }
@@ -61,7 +68,7 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
     assert_valid(&COMPLETE.replacen(" receipt.\n", " receipt:\n", 1))?;
 
     let reordered = format!(
-        "## Required Procedure\n\n{REOPEN_EVIDENCE}\n{CASE_EXCEPTION}\n{RECEIPT_VALIDATE}\n{RECEIPT_CREATE}\n\nAdditional context is explanatory only.\n\n## Typed Receipt\n"
+        "## Required Procedure\n\n{FINAL_RECEIPT_VALIDATE}\n{REOPEN_EVIDENCE}\n{CASE_EXCEPTION}\n{RECEIPT_VALIDATE}\n{RECEIPT_CREATE}\n\nAdditional context is explanatory only.\n\n## Typed Receipt\n"
     );
     assert_valid(&reordered)?;
     assert_rejected("## Required Procedure\n\n1. [receipt-create] Before editing, MUST create one typed JSON receipt.\n")?;

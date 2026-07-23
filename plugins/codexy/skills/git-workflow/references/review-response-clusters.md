@@ -7,6 +7,7 @@
 
 3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.
 4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include `reopen` evidence.
+5. [final-receipt-validate] After addressing feedback and before push or handoff, MUST set the receipt state to `repaired` or `reopened` and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.
 
 ## Typed Receipt
 

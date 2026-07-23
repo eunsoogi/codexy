@@ -12,14 +12,16 @@ enum Obligation {
     ReceiptValidate,
     CaseExceptionProhibition,
     ReopenEvidenceRestriction,
+    FinalReceiptValidate,
 }
 
 impl Obligation {
-    const ALL: [Self; 4] = [
+    const ALL: [Self; 5] = [
         Self::ReceiptCreate,
         Self::ReceiptValidate,
         Self::CaseExceptionProhibition,
         Self::ReopenEvidenceRestriction,
+        Self::FinalReceiptValidate,
     ];
 
     fn parse(id: &str) -> Option<Self> {
@@ -28,6 +30,7 @@ impl Obligation {
             "receipt-validate" => Some(Self::ReceiptValidate),
             "case-exception-prohibition" => Some(Self::CaseExceptionProhibition),
             "reopen-evidence-restriction" => Some(Self::ReopenEvidenceRestriction),
+            "final-receipt-validate" => Some(Self::FinalReceiptValidate),
             _ => None,
         }
     }
@@ -38,6 +41,7 @@ impl Obligation {
             Self::ReceiptValidate => "receipt-validate",
             Self::CaseExceptionProhibition => "case-exception-prohibition",
             Self::ReopenEvidenceRestriction => "reopen-evidence-restriction",
+            Self::FinalReceiptValidate => "final-receipt-validate",
         }
     }
 
@@ -61,6 +65,9 @@ impl Obligation {
             }
             Self::ReopenEvidenceRestriction => {
                 "non-reopened receipt states must not include reopen evidence"
+            }
+            Self::FinalReceiptValidate => {
+                "after addressing feedback and before push or handoff must set the receipt state to repaired or reopened and validate that exact final-state file with scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json"
             }
         }
     }

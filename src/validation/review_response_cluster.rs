@@ -16,6 +16,7 @@ const ORCHESTRATION_CLAUSES: &[&str] = &[
 const GIT_WORKFLOW_CLAUSES: &[&str] = &[
     "Review-response handoffs MUST include a typed `ReviewClusterReceipt` for every actionable defect class before implementation edits begin.",
     "Each repaired cluster MUST record one structural repair and the removed case-specific behavior; quoted-input, phrase, or test-case exceptions are insufficient evidence.",
+    "After addressing feedback and before push or handoff, MUST set the receipt state to `repaired` or `reopened` and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.",
 ];
 const PROOF_CLAUSES: &[&str] = &[
     "Review-response proof MUST exercise a bounded positive and negative matrix for every repaired root-cause cluster.",
