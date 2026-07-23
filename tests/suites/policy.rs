@@ -22,6 +22,9 @@ mod validator_review_response_clusters;
 #[path = "../validator_review_response_procedure_obligations.rs"]
 mod validator_review_response_procedure_obligations;
 
+#[path = "../validator_review_response_instruction_sources.rs"]
+mod validator_review_response_instruction_sources;
+
 #[path = "../validator_review_response_cluster_states.rs"]
 mod validator_review_response_cluster_states;
 

@@ -1,0 +1,61 @@
+use crate::support::{copy_plugin_fixture, stderr, TestResult};
+
+const SENTINEL_PATH: &str = "agents/codexy-sentinel.toml";
+const SENTINEL_CLAUSE: &str =
+    "Sentinel MUST consolidate examples from the same defect class into one blocker with one structural repair strategy.";
+const ORCHESTRATION_PATH: &str = "skills/codex-orchestration/SKILL.md";
+const ORCHESTRATION_CLAUSE: &str =
+    "Before review-response edits, MUST create one root-cause cluster for each actionable defect class.";
+
+#[test]
+fn active_review_cluster_contract_sources_pass() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let output = crate::support::validator_instruction_policy(&plugin_root)?;
+    assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn toml_comments_cannot_satisfy_review_cluster_contracts() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let path = plugin_root.join(SENTINEL_PATH);
+    let text = std::fs::read_to_string(&path)?;
+    let replaced = text.replacen(SENTINEL_CLAUSE, "Removed active Sentinel contract.", 1);
+    let commented = format!("{replaced}\n# {SENTINEL_CLAUSE}\n");
+    toml::from_str::<toml::Value>(&commented)?;
+    std::fs::write(path, commented)?;
+
+    assert_contract_rejected(&plugin_root)
+}
+
+#[test]
+fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
+    for inactive in [
+        format!("<!-- {ORCHESTRATION_CLAUSE} -->"),
+        format!("```text\n{ORCHESTRATION_CLAUSE}\n```"),
+    ] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let path = plugin_root.join(ORCHESTRATION_PATH);
+        let text = std::fs::read_to_string(&path)?;
+        let replaced = text.replacen(
+            ORCHESTRATION_CLAUSE,
+            "Removed active orchestration contract.",
+            1,
+        );
+        std::fs::write(path, format!("{replaced}\n{inactive}\n"))?;
+
+        assert_contract_rejected(&plugin_root)?;
+    }
+    Ok(())
+}
+
+fn assert_contract_rejected(plugin_root: &std::path::Path) -> TestResult {
+    let output = crate::support::validator_instruction_policy(plugin_root)?;
+    assert!(!output.status.success(), "inactive contract unexpectedly passed");
+    assert!(
+        stderr(&output).contains("root-cause review cluster"),
+        "unexpected diagnostic: {}",
+        stderr(&output)
+    );
+    Ok(())
+}

@@ -5,6 +5,7 @@ use serde::Deserialize;
 use crate::paths::display_relative;
 
 mod identity;
+mod instruction_source;
 mod matrix;
 mod procedure;
 
@@ -43,8 +44,18 @@ pub(super) fn check_instruction_policy(path: &Path, text: &str, errors: &mut Vec
     let Some(clauses) = clauses else {
         return;
     };
+    let contract_text = match instruction_source::contract_text(path, text) {
+        Ok(contract_text) => contract_text,
+        Err(error) => {
+            errors.push(format!(
+                "{} root-cause review cluster contract failed: {error}",
+                display_relative(path)
+            ));
+            return;
+        }
+    };
     for clause in clauses {
-        if !contains_clause(text, clause) {
+        if !contains_clause(&contract_text, clause) {
             errors.push(format!(
                 "{} root-cause review cluster contract failed: missing required clause",
                 display_relative(path)
