@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from pathlib import Path
 
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 VARIABLE_REFERENCE = re.compile(r"\$(?:\{(?P<braced>[A-Za-z_][A-Za-z0-9_]*)\}|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))")
 DYNAMIC_VALUE = "__codexy_command_substitution__"
+SINGLE_QUOTED_DOLLAR = "\ue000"
 POLICY_SELECTORS = {"GH_REPO", "GIT_DIR"}
 
 
@@ -22,6 +24,7 @@ class ExecutionContext:
     environment: tuple[tuple[str, str], ...] = ()
     opaque_environment: bool = False
     remote_urls: tuple[tuple[str, str, str], ...] = ()
+    opaque_repository_state: bool = False
 
 
 def assignment(value: str) -> bool:
@@ -34,12 +37,19 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     environment = dict(context.environment)
     if expanded is None or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded):
         environment[key] = assigned
-        return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, tuple(environment.items()), True, context.remote_urls)
+        return ExecutionContext(
+            context.cwd, context.cwd_owned, context.git_dir, context.gh_repo,
+            tuple(environment.items()), True, context.remote_urls,
+            context.opaque_repository_state,
+        )
     environment[key] = expanded
     git_dir = expanded if key == "GIT_DIR" else context.git_dir
     gh_repo = expanded if key == "GH_REPO" else context.gh_repo
     owned = git_directory_owned(context.cwd, git_dir) if git_dir is not None else context.cwd_owned
-    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment, context.remote_urls)
+    return ExecutionContext(
+        context.cwd, owned, git_dir, gh_repo, tuple(environment.items()),
+        context.opaque_environment, context.remote_urls, context.opaque_repository_state,
+    )
 
 
 def leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext]:
@@ -60,7 +70,10 @@ def assigned_variables(arguments: list[str], context: ExecutionContext) -> Execu
 
 def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
     owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
-    return ExecutionContext(cwd, owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment, context.remote_urls)
+    return ExecutionContext(
+        cwd, owned, context.git_dir, context.gh_repo, context.environment,
+        context.opaque_environment, context.remote_urls, context.opaque_repository_state,
+    )
 
 
 def remote_url(context: ExecutionContext, remote: str, kind: str, value: str) -> ExecutionContext:
@@ -68,7 +81,11 @@ def remote_url(context: ExecutionContext, remote: str, kind: str, value: str) ->
     remotes = {(name, key): current for name, key, current in context.remote_urls}
     remotes[(remote.casefold(), kind)] = value
     values = tuple((name, key, current) for (name, key), current in remotes.items())
-    return ExecutionContext(context.cwd, context.cwd_owned, context.git_dir, context.gh_repo, context.environment, context.opaque_environment, values)
+    return ExecutionContext(
+        context.cwd, context.cwd_owned, context.git_dir, context.gh_repo,
+        context.environment, context.opaque_environment, values,
+        context.opaque_repository_state,
+    )
 
 
 def unset(context: ExecutionContext, key: str) -> ExecutionContext:
@@ -77,7 +94,10 @@ def unset(context: ExecutionContext, key: str) -> ExecutionContext:
     owned = repository_owned(context.cwd) if git_dir is None else context.cwd_owned
     environment = dict(context.environment)
     environment.pop(key, None)
-    return ExecutionContext(context.cwd, owned, git_dir, gh_repo, tuple(environment.items()), context.opaque_environment, context.remote_urls)
+    return ExecutionContext(
+        context.cwd, owned, git_dir, gh_repo, tuple(environment.items()),
+        context.opaque_environment, context.remote_urls, context.opaque_repository_state,
+    )
 
 
 def export_variables(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
@@ -119,7 +139,39 @@ def unset_variables(arguments: list[str], context: ExecutionContext) -> Executio
 
 
 def clear(context: ExecutionContext) -> ExecutionContext:
-    return ExecutionContext(context.cwd, repository_owned(context.cwd), None, None, remote_urls=context.remote_urls)
+    return ExecutionContext(
+        context.cwd,
+        repository_owned(context.cwd),
+        None,
+        None,
+        remote_urls=context.remote_urls,
+        opaque_repository_state=context.opaque_repository_state,
+    )
+
+
+def after_external_command(
+    executable: str, arguments: list[str], context: ExecutionContext,
+) -> ExecutionContext:
+    """Make Git state opaque after a supported external in-place config write."""
+    if executable != "sed" or not any(
+        argument == "-i"
+        or argument.startswith("-i") and len(argument) > 2
+        or argument == "--in-place"
+        or argument.startswith("--in-place=")
+        for argument in arguments
+    ):
+        return context
+    git_dir = Path(context.git_dir) if context.git_dir is not None else Path(".git")
+    config = git_dir / "config"
+    if not config.is_absolute():
+        config = Path(context.cwd) / config
+    target = config.resolve(strict=False)
+    writes_config = any(
+        not argument.startswith("-")
+        and (Path(argument) if Path(argument).is_absolute() else Path(context.cwd) / argument).resolve(strict=False) == target
+        for argument in arguments
+    )
+    return replace(context, opaque_repository_state=True) if writes_config else context
 
 
 def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:
@@ -147,7 +199,7 @@ def expand(value: str, context: ExecutionContext) -> str | None:
         return environment[key]
 
     expanded = VARIABLE_REFERENCE.sub(replace, value)
-    return None if missing or "$" in expanded else expanded
+    return None if missing or "$" in expanded else expanded.replace(SINGLE_QUOTED_DOLLAR, "$")
 
 
 def git_config(context: ExecutionContext) -> dict[str, str] | None:

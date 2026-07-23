@@ -74,6 +74,25 @@ fn command_position_expansion_is_classified() -> TestResult {
 }
 
 #[test]
+fn single_quoted_graphql_variables_remain_literal() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", &["git@github.com:eunsoogi/codexy.git"])?;
+    let query = "query($owner:String!, $name:String!, $number:Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { reviewThreads(first: 100) { nodes { id isResolved } } } } }";
+
+    assert_eq!(
+        bash(&root, &owned, &format!("gh api graphql -f query='{query}'"))?,
+        b""
+    );
+    assert_deny(&bash(
+        &root,
+        &owned,
+        &format!("gh api graphql -f query=\"{query}\""),
+    )?)?;
+    Ok(())
+}
+
+#[test]
 fn typed_graphql_query_file_is_classified() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;

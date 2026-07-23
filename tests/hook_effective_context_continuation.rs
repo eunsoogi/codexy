@@ -106,6 +106,7 @@ fn sequential_shell_state_tracks_exact_supported_mutations() -> TestResult {
     for command in [
         format!("command cd '{}' && git push --force origin topic", owned.display()),
         "git config remote.origin.url git@github.com:eunsoogi/codexy.git && git push --force origin topic".into(),
+        "sed -i 's#openai/codex#eunsoogi/codexy#' .git/config && git push --force origin topic".into(),
         "declare -x GH_REPO=eunsoogi/codexy; gh pr merge 453 --merge".into(),
     ] {
         assert_case(&root, &foreign, &command, true)?;
@@ -113,6 +114,7 @@ fn sequential_shell_state_tracks_exact_supported_mutations() -> TestResult {
     for command in [
         format!("command cd '{}' && git push --force origin topic", foreign.display()),
         "git config remote.origin.url https://github.com/openai/codex.git && git push --force origin topic".into(),
+        "sed -i 's#before#after#' README.md && git push --force origin topic".into(),
         "declare -x GH_REPO=openai/codex; gh pr merge 453 --merge".into(),
     ] {
         assert_case(&root, &foreign, &command, false)?;

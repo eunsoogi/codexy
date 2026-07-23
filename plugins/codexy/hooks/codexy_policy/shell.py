@@ -9,7 +9,10 @@ from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
 from .github_alias import expand as expand_gh_alias
 from .github import forbidden as gh_forbidden
-from .execution_context import DYNAMIC_VALUE, ExecutionContext, assignment, at as context_at, git_config, remote_url
+from .execution_context import (
+    DYNAMIC_VALUE, SINGLE_QUOTED_DOLLAR, ExecutionContext, after_external_command,
+    assignment, at as context_at, git_config, remote_url,
+)
 from .invocation import resolve
 from .repository import OWNED, UrlRewrite, git_directory_owned, github_identity, identity, repository_owned, rewrite_url
 from .shell_context import changed_directory, flag
@@ -34,7 +37,7 @@ def forbidden(
 
 
 def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
-    if depth > 3:
+    if depth > 3 or SINGLE_QUOTED_DOLLAR in command:
         return True
     lexical_command = command
     if OPAQUE.search(command):
@@ -122,7 +125,9 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         return arguments is None or gh_forbidden(arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
     if invocation.executable == "rm":
         return invocation.context.cwd_owned is not False and _rm(invocation.arguments), context
-    return False, context
+    return False, after_external_command(
+        invocation.executable, invocation.arguments, context,
+    )
 
 
 def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str, str] | None]:
@@ -141,6 +146,7 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, 
             context.environment,
             context.opaque_environment,
             context.remote_urls,
+            context.opaque_repository_state,
         )
         return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1), None
     if invocation.operation is None:
@@ -161,7 +167,10 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, 
     target_owned = _explicit_owned(
         invocation.arguments, list(invocation.rewrites), push_like
     )
-    applies = target_owned is True or (target_owned is None and invocation.cwd_owned is not False)
+    applies = target_owned is True or (
+        target_owned is None
+        and (context.opaque_repository_state or invocation.cwd_owned is not False)
+    )
     arguments = normalize_git_options(invocation.operation, invocation.arguments)
     if arguments is None:
         return applies, None
@@ -187,6 +196,8 @@ def _separate_lines(command: str) -> str:
         elif char in {"'", '"'}:
             quote = None if quote == char else char if quote is None else quote
             result.append(char)
+        elif quote == "'" and char == "$":
+            result.append(SINGLE_QUOTED_DOLLAR)
         elif quote is None and char == "#" and (not result or result[-1].isspace() or result[-1] in ";&|(){}"):
             while index < len(command) and command[index] != "\n":
                 index += 1
