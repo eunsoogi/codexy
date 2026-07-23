@@ -39,6 +39,7 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
         format!("<SCRIPT type=\"text/plain\">{ORCHESTRATION_CLAUSE}</SCRIPT>"),
         format!("<pre>\n</prefix>\n{ORCHESTRATION_CLAUSE}\n</pre>"),
         format!("<pre\n class=\"example\">\n{ORCHESTRATION_CLAUSE}\n</pre>"),
+        format!("<template>\n{ORCHESTRATION_CLAUSE}\n</template>"),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join(ORCHESTRATION_PATH);
@@ -52,6 +53,25 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
 
         assert_contract_rejected(&plugin_root)?;
     }
+    Ok(())
+}
+
+#[test]
+fn inline_code_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let text = std::fs::read_to_string(&path)?;
+    std::fs::write(
+        path,
+        text.replacen(
+            ORCHESTRATION_CLAUSE,
+            &format!("Inline example: `<pre>`.\n{ORCHESTRATION_CLAUSE}"),
+            1,
+        ),
+    )?;
+
+    let output = crate::support::validator_instruction_policy(&plugin_root)?;
+    assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
     Ok(())
 }
 

@@ -1,5 +1,7 @@
 use std::path::Path;
 
+const INACTIVE_HTML_TAGS: &[&str] = &["pre", "code", "script", "style", "textarea", "template"];
+
 pub(super) fn contract_text(path: &Path, text: &str) -> Result<String, &'static str> {
     if path.extension().and_then(|extension| extension.to_str()) == Some("toml") {
         return toml_contract_text(text);
@@ -37,7 +39,8 @@ pub(super) fn normative_markdown(text: &str) -> String {
         let visible = if html_code.is_some() {
             without_html_code_blocks(raw_line, &mut html_code)
         } else {
-            let uncommented = without_html_comments(raw_line, &mut in_comment);
+            let unquoted = without_inline_code(raw_line);
+            let uncommented = without_html_comments(&unquoted, &mut in_comment);
             without_html_code_blocks(&uncommented, &mut html_code)
         };
         let visible = without_html_comments(&visible, &mut in_comment);
@@ -80,6 +83,53 @@ fn normalize(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn without_inline_code(line: &str) -> String {
+    let mut output = String::new();
+    let mut remainder = line;
+    while let Some(open) = remainder.find('`') {
+        let width = remainder[open..]
+            .bytes()
+            .take_while(|byte| *byte == b'`')
+            .count();
+        let content = &remainder[open + width..];
+        let Some(close) = matching_backtick_run(content, width) else {
+            output.push_str(remainder);
+            return output;
+        };
+        output.push_str(&remainder[..open + width]);
+        for character in content[..close].chars() {
+            output.push(if matches!(character, '<' | '>') {
+                ' '
+            } else {
+                character
+            });
+        }
+        output.push_str(&content[close..close + width]);
+        remainder = &content[close + width..];
+    }
+    output.push_str(remainder);
+    output
+}
+
+fn matching_backtick_run(text: &str, expected: usize) -> Option<usize> {
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] != b'`' {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        while index < bytes.len() && bytes[index] == b'`' {
+            index += 1;
+        }
+        if index - start == expected {
+            return Some(start);
+        }
+    }
+    None
+}
+
 fn without_html_code_blocks(line: &str, state: &mut Option<&'static str>) -> String {
     let mut output = String::new();
     let mut remainder = line;
@@ -115,8 +165,9 @@ fn without_html_code_blocks(line: &str, state: &mut Option<&'static str>) -> Str
 
 fn opening_html_code_tag(line: &str) -> Option<(usize, &'static str)> {
     let lower = line.to_ascii_lowercase();
-    ["pre", "code", "script", "style", "textarea"]
-        .into_iter()
+    INACTIVE_HTML_TAGS
+        .iter()
+        .copied()
         .filter_map(|tag| {
             lower
                 .match_indices(&format!("<{tag}"))
