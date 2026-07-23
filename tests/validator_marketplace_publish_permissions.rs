@@ -7,7 +7,7 @@ fn validation_workflows_are_read_only_and_disable_checkout_credentials() -> Resu
         assert_exact(mapping(&document["permissions"])? , "contents", "read")?;
         for job in document["jobs"].as_mapping().ok_or("jobs")?.values() {
             if let Some(permissions) = job.get("permissions") { assert_exact(mapping(permissions)?, "contents", "read")?; }
-            for step in job["steps"].as_sequence().ok_or("steps")? { if step["uses"].as_str() == Some("actions/checkout@v4") { assert_eq!(step["with"]["persist-credentials"], Value::Bool(false)); } }
+            for step in job["steps"].as_sequence().ok_or("steps")? { if step["uses"].as_str() == Some("actions/checkout@v7") { assert_eq!(step["with"]["persist-credentials"], Value::Bool(false)); } }
         }
     }
     Ok(())
