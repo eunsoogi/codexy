@@ -78,9 +78,20 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         return;
     }
     let mut in_procedure = false;
+    let mut fence = None;
     let mut seen = std::collections::BTreeSet::new();
     for line in text.lines() {
         let line = line.trim();
+        if let Some((marker, length)) = fence {
+            if closes_fence(line, marker, length) {
+                fence = None;
+            }
+            continue;
+        }
+        if let Some(opening) = opening_fence(line) {
+            fence = Some(opening);
+            continue;
+        }
         if line == HEADING {
             in_procedure = true;
             continue;
@@ -159,6 +170,26 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
+}
+
+fn opening_fence(line: &str) -> Option<(char, usize)> {
+    let marker = line.chars().next()?;
+    if !matches!(marker, '`' | '~') {
+        return None;
+    }
+    let length = line
+        .chars()
+        .take_while(|character| *character == marker)
+        .count();
+    (length >= 3).then_some((marker, length))
+}
+
+fn closes_fence(line: &str, marker: char, opening_length: usize) -> bool {
+    let length = line
+        .chars()
+        .take_while(|character| *character == marker)
+        .count();
+    length >= opening_length && line[length..].trim().is_empty()
 }
 
 fn numbered_step_content(line: &str) -> Option<&str> {
