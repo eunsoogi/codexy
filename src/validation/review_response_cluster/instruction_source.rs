@@ -21,6 +21,7 @@ pub(super) fn normative_markdown(text: &str) -> String {
     let mut output = String::new();
     let mut fence = None;
     let mut in_comment = false;
+    let mut html_code = None;
     for raw_line in text.lines() {
         let trimmed = raw_line.trim();
         if let Some((marker, length)) = fence {
@@ -29,11 +30,17 @@ pub(super) fn normative_markdown(text: &str) -> String {
             }
             continue;
         }
-        if !in_comment && is_indented_code(raw_line) {
+        if !in_comment && html_code.is_none() && is_indented_code(raw_line) {
             continue;
         }
 
-        let visible = without_html_comments(raw_line, &mut in_comment);
+        let visible = if html_code.is_some() {
+            without_html_code_blocks(raw_line, &mut html_code)
+        } else {
+            let uncommented = without_html_comments(raw_line, &mut in_comment);
+            without_html_code_blocks(&uncommented, &mut html_code)
+        };
+        let visible = without_html_comments(&visible, &mut in_comment);
         let visible_trimmed = visible.trim();
         if let Some(opening) = opening_fence(visible_trimmed) {
             fence = Some(opening);
@@ -71,6 +78,54 @@ fn is_statement_prefix(prefix: &str) -> bool {
 
 fn normalize(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn without_html_code_blocks(line: &str, state: &mut Option<&'static str>) -> String {
+    let mut output = String::new();
+    let mut remainder = line;
+    loop {
+        if let Some(tag) = state {
+            let closing = format!("</{tag}");
+            let Some(start) = remainder.to_ascii_lowercase().find(&closing) else {
+                break;
+            };
+            let Some(end) = remainder[start..].find('>') else {
+                break;
+            };
+            remainder = &remainder[start + end + 1..];
+            *state = None;
+            continue;
+        }
+        let Some((start, tag)) = opening_html_code_tag(remainder) else {
+            output.push_str(remainder);
+            break;
+        };
+        output.push_str(&remainder[..start]);
+        let Some(end) = remainder[start..].find('>') else {
+            break;
+        };
+        remainder = &remainder[start + end + 1..];
+        *state = Some(tag);
+    }
+    output
+}
+
+fn opening_html_code_tag(line: &str) -> Option<(usize, &'static str)> {
+    let lower = line.to_ascii_lowercase();
+    ["pre", "code", "script", "style", "textarea"]
+        .into_iter()
+        .filter_map(|tag| {
+            lower
+                .match_indices(&format!("<{tag}"))
+                .find_map(|(index, matched)| {
+                    lower[index + matched.len()..]
+                        .chars()
+                        .next()
+                        .filter(|next| next.is_ascii_whitespace() || *next == '>')
+                        .map(|_| (index, tag))
+                })
+        })
+        .min_by_key(|(index, _)| *index)
 }
 
 fn without_html_comments(line: &str, in_comment: &mut bool) -> String {
