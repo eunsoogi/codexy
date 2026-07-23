@@ -8,6 +8,7 @@ use super::child_lane_ownership_setup::line_has_parent_implementation_setup;
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_ascii_lowercase();
     let mut errors = super::child_lane_thread_tools::check(&normalized, evidence);
+    errors.extend(super::child_lane_classification_control::check(&normalized));
     errors.extend(super::child_lane_classification_setup::check(&normalized));
     if has_unreported_worktree_mismatch_before_goal(&normalized) {
         errors.push("worktree mismatch must be reported before goal continuation".to_owned());

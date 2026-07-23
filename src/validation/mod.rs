@@ -10,6 +10,7 @@ mod child_handoff_readiness_text;
 #[path = "child_lane_active_threads_module.rs"]
 mod child_lane_active_threads;
 mod child_lane_classification_boundaries;
+mod child_lane_classification_control;
 mod child_lane_classification_setup;
 mod child_lane_classification_setup_context;
 mod child_lane_owner_decision;
@@ -88,6 +89,9 @@ mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
 mod runtime;
+mod runtime_candidate_manifest;
+mod runtime_release_contract;
+mod runtime_release_schema;
 mod sentinel_handoff;
 mod sentinel_handoff_evidence;
 mod sentinel_handoff_reviewer;

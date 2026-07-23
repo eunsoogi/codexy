@@ -11,6 +11,10 @@ readme = "README.md"
 keywords = ["codex", "plugin", "mcp", "lsp", "automation"]
 categories = ["development-tools"]
 
+[features]
+default = ["runtime-activation"]
+runtime-activation = ["dep:sha2"]
+
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
@@ -19,11 +23,10 @@ libc = "0.2"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = { version = "0.10", optional = true }
+serde_yaml = "0.9"
 tempfile = "3"
 toml = "0.9"
-
-[dev-dependencies]
-serde_yaml = "0.9"
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

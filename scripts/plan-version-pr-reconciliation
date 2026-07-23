@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""Select the mutation-safe reconciliation action for a version-bump PR."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+
+from version_pr_identity import authorize_governing_identity
+
+
+def boolean(value: str) -> bool:
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    raise argparse.ArgumentTypeError("must be true or false")
+
+
+def plan(
+    has_changes: bool, pr_count: int, remote_exists: bool, pr_matches_origin: bool
+) -> str:
+    if not has_changes:
+        return "no-op"
+    if pr_count > 1:
+        raise ValueError("more than one open PR exists for the release branch")
+    if not remote_exists:
+        if pr_count == 0:
+            return "first-run"
+        raise ValueError("branch and pull-request state disagree")
+    if pr_count == 0:
+        return "pushed-no-pr"
+    if pr_matches_origin:
+        return "existing-pr-update"
+    raise ValueError("existing PR head does not match the verified origin branch")
+
+
+def publication_phase(
+    release_candidate_passed: bool,
+    labels_checked: bool,
+    completion_handoff_checked: bool,
+    merge_message_checked: bool,
+) -> str:
+    if not release_candidate_passed:
+        raise ValueError("release-candidate validation must pass before publication")
+    gates = (labels_checked, completion_handoff_checked, merge_message_checked)
+    if not any(gates):
+        return "provisional"
+    if all(gates):
+        return "proven"
+    raise ValueError("readiness gates must all pass before proven publication")
+
+
+def read_json(path: Path, context: str) -> object:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"cannot read {context} from {path}: {error}") from error
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--has-changes", type=boolean)
+    parser.add_argument("--pr-count", type=int)
+    parser.add_argument("--remote-exists", type=boolean)
+    parser.add_argument("--pr-matches-origin", type=boolean)
+    parser.add_argument("--publication-phase", action="store_true")
+    parser.add_argument("--release-candidate-passed", type=boolean)
+    parser.add_argument("--labels-checked", type=boolean)
+    parser.add_argument("--completion-handoff-checked", type=boolean)
+    parser.add_argument("--merge-message-checked", type=boolean)
+    parser.add_argument("--version")
+    parser.add_argument("--repository")
+    parser.add_argument("--issue-json", type=Path)
+    parser.add_argument("--observed-pr-json", type=Path)
+    args = parser.parse_args()
+    try:
+        if args.publication_phase:
+            values = (
+                args.release_candidate_passed,
+                args.labels_checked,
+                args.completion_handoff_checked,
+                args.merge_message_checked,
+            )
+            if any(value is None for value in values):
+                parser.error("publication phase requires every readiness result")
+            print(publication_phase(*values))
+            return 0
+        values = (args.has_changes, args.pr_count, args.remote_exists, args.pr_matches_origin)
+        if any(value is None for value in values):
+            parser.error("reconciliation requires every branch-state input")
+        if args.pr_count < 0:
+            parser.error("--pr-count must not be negative")
+        action = plan(*values)
+        if action != "no-op":
+            identity_values = (args.version, args.repository, args.issue_json)
+            if any(value is None for value in identity_values):
+                parser.error("mutation reconciliation requires version, repository, and issue JSON")
+            requested_issue = read_json(args.issue_json, "requested issue JSON")
+            observed_pr = (
+                read_json(args.observed_pr_json, "observed PR JSON")
+                if args.observed_pr_json is not None
+                else None
+            )
+            authorize_governing_identity(
+                action, args.version, args.repository, requested_issue, observed_pr
+            )
+        print(action)
+        return 0
+    except ValueError as error:
+        print(f"plan-version-pr-reconciliation: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
