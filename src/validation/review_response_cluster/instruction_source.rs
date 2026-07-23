@@ -76,7 +76,7 @@ fn is_statement_prefix(prefix: &str) -> bool {
         .rsplit_once(". ")
         .map_or(prefix, |(_, statement)| statement)
         .trim();
-    matches!(prefix, "" | "-" | "*")
+    matches!(prefix, "" | "-" | "+" | "*")
 }
 
 fn normalize(value: &str) -> String {

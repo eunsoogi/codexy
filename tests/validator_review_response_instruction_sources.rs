@@ -95,6 +95,31 @@ fn escaped_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
 }
 
 #[test]
+fn standard_unordered_bullets_keep_active_contracts() -> TestResult {
+    for marker in ["-", "+", "*"] {
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let path = plugin_root.join(ORCHESTRATION_PATH);
+        let text = std::fs::read_to_string(&path)?;
+        std::fs::write(
+            path,
+            text.replacen(
+                ORCHESTRATION_CLAUSE,
+                &format!("{marker} {ORCHESTRATION_CLAUSE}"),
+                1,
+            ),
+        )?;
+
+        let output = crate::support::validator_instruction_policy(&plugin_root)?;
+        assert!(
+            output.status.success(),
+            "{marker} bullet failed: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn fenced_toml_prompt_examples_cannot_satisfy_review_cluster_contract() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = plugin_root.join(SENTINEL_PATH);
