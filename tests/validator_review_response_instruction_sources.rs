@@ -42,6 +42,7 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
         format!("<template>\n{ORCHESTRATION_CLAUSE}\n</template>"),
         format!("<title\n data-example=\"true\">\n{ORCHESTRATION_CLAUSE}\n</title>"),
         format!("<head>\n{ORCHESTRATION_CLAUSE}\n</head>"),
+        format!("<pre>\n<!-- </pre> -->\n{ORCHESTRATION_CLAUSE}\n</pre>"),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join(ORCHESTRATION_PATH);
@@ -118,6 +119,25 @@ fn standard_unordered_bullets_keep_active_contracts() -> TestResult {
             stderr(&output)
         );
     }
+    Ok(())
+}
+
+#[test]
+fn real_html_close_after_commented_close_restores_active_contracts() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let text = std::fs::read_to_string(&path)?;
+    std::fs::write(
+        path,
+        text.replacen(
+            ORCHESTRATION_CLAUSE,
+            &format!("<pre>\n<!-- </pre> -->\nexample\n</pre>\n{ORCHESTRATION_CLAUSE}"),
+            1,
+        ),
+    )?;
+
+    let output = crate::support::validator_instruction_policy(&plugin_root)?;
+    assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
     Ok(())
 }
 

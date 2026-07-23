@@ -3,7 +3,6 @@ use std::path::Path;
 const NON_NORMATIVE_HTML_CONTAINERS: &[&str] = &[
     "pre", "code", "script", "style", "textarea", "template", "head", "title",
 ];
-
 pub(super) fn contract_text(path: &Path, text: &str) -> Result<String, &'static str> {
     if path.extension().and_then(|extension| extension.to_str()) == Some("toml") {
         return toml_contract_text(text);
@@ -39,7 +38,8 @@ pub(super) fn normative_markdown(text: &str) -> String {
         }
 
         let visible = if html_code.is_some() {
-            without_html_code_blocks(raw_line, &mut html_code)
+            let uncommented = without_html_comments(raw_line, &mut in_comment);
+            without_html_code_blocks(&uncommented, &mut html_code)
         } else {
             let unquoted = without_markdown_literals(raw_line);
             let uncommented = without_html_comments(&unquoted, &mut in_comment);
