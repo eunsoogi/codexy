@@ -86,7 +86,10 @@ fn without_html_code_blocks(line: &str, state: &mut Option<&'static str>) -> Str
     loop {
         if let Some(tag) = state {
             let closing = format!("</{tag}");
-            let Some(start) = remainder.to_ascii_lowercase().find(&closing) else {
+            let lower = remainder.to_ascii_lowercase();
+            let Some(start) = lower.match_indices(&closing).find_map(|(index, matched)| {
+                is_html_tag_boundary(&lower[index + matched.len()..]).then_some(index)
+            }) else {
                 break;
             };
             let Some(end) = remainder[start..].find('>') else {
@@ -101,11 +104,11 @@ fn without_html_code_blocks(line: &str, state: &mut Option<&'static str>) -> Str
             break;
         };
         output.push_str(&remainder[..start]);
+        *state = Some(tag);
         let Some(end) = remainder[start..].find('>') else {
             break;
         };
         remainder = &remainder[start + end + 1..];
-        *state = Some(tag);
     }
     output
 }
@@ -118,14 +121,17 @@ fn opening_html_code_tag(line: &str) -> Option<(usize, &'static str)> {
             lower
                 .match_indices(&format!("<{tag}"))
                 .find_map(|(index, matched)| {
-                    lower[index + matched.len()..]
-                        .chars()
-                        .next()
-                        .filter(|next| next.is_ascii_whitespace() || *next == '>')
-                        .map(|_| (index, tag))
+                    is_html_tag_boundary(&lower[index + matched.len()..]).then_some((index, tag))
                 })
         })
         .min_by_key(|(index, _)| *index)
+}
+
+fn is_html_tag_boundary(remainder: &str) -> bool {
+    remainder
+        .chars()
+        .next()
+        .is_none_or(|next| next.is_ascii_whitespace() || next == '>')
 }
 
 fn without_html_comments(line: &str, in_comment: &mut bool) -> String {

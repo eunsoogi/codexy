@@ -74,6 +74,8 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
     assert_rejected(&format!("```markdown\n{COMPLETE}```\n"))?;
     assert_rejected(&format!("<!--\n{COMPLETE}-->\n"))?;
     assert_rejected(&format!("<pre class=\"example\">\n{COMPLETE}</pre>\n"))?;
+    assert_rejected(&format!("<pre>\n</prefix>\n{COMPLETE}</pre>\n"))?;
+    assert_rejected(&format!("<pre\n class=\"example\">\n{COMPLETE}</pre>\n"))?;
     let indented = COMPLETE
         .lines()
         .map(|line| format!("    {line}\n"))
