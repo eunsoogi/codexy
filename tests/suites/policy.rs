@@ -16,6 +16,24 @@ mod validator_instruction_policy_verbs;
 #[path = "../validator_instruction_policy_wrapped.rs"]
 mod validator_instruction_policy_wrapped;
 
+#[path = "../validator_review_response_clusters.rs"]
+mod validator_review_response_clusters;
+
+#[path = "../validator_review_response_procedure_obligations.rs"]
+mod validator_review_response_procedure_obligations;
+
+#[path = "../validator_review_response_instruction_sources.rs"]
+mod validator_review_response_instruction_sources;
+
+#[path = "../validator_review_response_cluster_states.rs"]
+mod validator_review_response_cluster_states;
+
+#[path = "../validator_review_response_cluster_materiality.rs"]
+mod validator_review_response_cluster_materiality;
+
+#[path = "../validator_review_response_cluster_matrix.rs"]
+mod validator_review_response_cluster_matrix;
+
 #[path = "../validator_runtime_heartbeat_clause_boundaries.rs"]
 mod validator_runtime_heartbeat_clause_boundaries;
 

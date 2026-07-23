@@ -5,7 +5,7 @@ use anyhow::{Result, bail};
 use super::{
     Mode, child_goal_reporting, child_lane_ownership, completion_handoff, conventional_commit,
     github_labels, hooks, instruction_policy, issue_intake, lsp, manifest, mcp, merge_message,
-    orchestration_routing, roles, runtime, touched_loc,
+    orchestration_routing, review_response_cluster, roles, runtime, touched_loc,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -44,6 +44,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
             errors
         }
+        Mode::ReviewResponseCluster(receipt) => review_response_cluster::diagnostics(&receipt),
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => {
