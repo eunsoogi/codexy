@@ -1,5 +1,8 @@
 .DS_Store
 
+# Python bytecode caches
+__pycache__/
+
 # Rust build artifacts
 /target/
 **/*.rs.bk
