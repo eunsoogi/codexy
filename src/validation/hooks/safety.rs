@@ -19,8 +19,13 @@ const FORBIDDEN_COMMAND_FRAGMENTS: &[&str] = &[
     "PLUGIN_DATA",
     "CLAUDE_PLUGIN_DATA",
     "python",
+    "pip",
+    "uv",
+    "brew",
     "npm",
     "curl",
+    "wget",
+    "PATH=",
     "codex plugin",
     "codex mcp",
     ">",
@@ -43,32 +48,20 @@ const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
     "PLUGIN_DATA",
     "CLAUDE_PLUGIN_DATA",
     "python",
+    "pip",
+    "uv",
+    "brew",
     "npm",
     "curl",
+    "wget",
+    "PATH=",
     "codex plugin",
     "codex mcp",
     ">",
 ];
-const FORBIDDEN_SOURCED_HELPER_FRAGMENTS: &[&str] = &[
-    "~/",
-    "$HOME",
-    "${HOME}",
-    "/Users/",
-    "/home/",
-    ".codex/",
-    ".git/",
-    "auth.json",
-    "history.jsonl",
-    "PLUGIN_DATA",
-    "CLAUDE_PLUGIN_DATA",
-    "python",
-    "npm",
-    "curl",
-    "codex plugin",
-    "codex mcp",
-];
 const FORBIDDEN_SCRIPT_COMMANDS: &[&str] = &[
-    "gh", "git", "mkdir", "touch", "rm", "mv", "cp", "chmod", "chown", "node", "nodejs",
+    "gh", "git", "mkdir", "touch", "rm", "mv", "cp", "chmod", "chown", "node", "nodejs", "python",
+    "python3", "pip", "pip3", "uv", "brew", "curl", "wget", "env",
 ];
 const FORBIDDEN_COMMAND_TOKENS: &[&str] = &["node", "nodejs"];
 
@@ -87,17 +80,10 @@ pub(super) fn check_command_text(path: &Path, event: &str, command: &str) -> Res
 }
 
 pub(super) fn check_script(path: &Path, event: &str, script_path: &Path) -> Result<()> {
-    check_script_inner(path, event, script_path, FORBIDDEN_SCRIPT_FRAGMENTS, false)
-}
-
-pub(super) fn check_sourced_helper(path: &Path, event: &str, script_path: &Path) -> Result<()> {
-    check_script_inner(
-        path,
-        event,
-        script_path,
-        FORBIDDEN_SOURCED_HELPER_FRAGMENTS,
-        true,
-    )
+    if super::admission_artifact::is_launcher(script_path) {
+        return Ok(());
+    }
+    check_script_inner(path, event, script_path, FORBIDDEN_SCRIPT_FRAGMENTS)
 }
 
 fn check_script_inner(
@@ -105,7 +91,6 @@ fn check_script_inner(
     event: &str,
     script_path: &Path,
     forbidden_fragments: &[&str],
-    check_unquoted_redirection: bool,
 ) -> Result<()> {
     let text = std::fs::read_to_string(script_path)
         .with_context(|| format!("reading {}", display_relative(script_path)))?;
@@ -118,13 +103,6 @@ fn check_script_inner(
                 display_relative(script_path)
             );
         }
-    }
-    if check_unquoted_redirection && contains_sourced_helper_redirection(&text) {
-        bail!(
-            "{} {event} hook script must not contain shell redirection: {}",
-            display_relative(path),
-            display_relative(script_path)
-        );
     }
     for line in text.lines().map(str::trim_start) {
         if line.is_empty() || line.starts_with('#') {
@@ -157,51 +135,4 @@ fn contains_shell_token(text: &str, token: &str) -> bool {
 
 fn is_shell_token_boundary(character: char) -> bool {
     !(character.is_ascii_alphanumeric() || character == '_' || character == '-')
-}
-
-fn contains_sourced_helper_redirection(text: &str) -> bool {
-    let mut in_awk_program = false;
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if in_awk_program {
-            if let Some(remainder) = trimmed.strip_prefix('\'') {
-                in_awk_program = false;
-                if contains_unquoted_line_redirection(remainder) {
-                    return true;
-                }
-            }
-            continue;
-        }
-        if trimmed.ends_with("awk '") || trimmed.contains(" awk '") {
-            in_awk_program = true;
-            continue;
-        }
-        if contains_unquoted_line_redirection(line) {
-            return true;
-        }
-    }
-    false
-}
-
-fn contains_unquoted_line_redirection(line: &str) -> bool {
-    let mut in_single_quote = false;
-    let mut in_double_quote = false;
-    let mut escaped = false;
-    for character in line.chars() {
-        if escaped {
-            escaped = false;
-            continue;
-        }
-        if in_double_quote && character == '\\' {
-            escaped = true;
-            continue;
-        }
-        match character {
-            '\'' if !in_double_quote => in_single_quote = !in_single_quote,
-            '"' if !in_single_quote => in_double_quote = !in_double_quote,
-            '>' if !in_single_quote && !in_double_quote => return true,
-            _ => {}
-        }
-    }
-    false
 }

@@ -1,0 +1,47 @@
+{
+  "supportedCodexBuild": "0.144.4",
+  "upstreamTag": "rust-v0.144.4",
+  "upstreamCommit": "8c68d4c87dc54d38861f5114e920c3de2efa5876",
+  "selection": {
+    "semanticDefault": "PostCompact",
+    "selectedContextEvent": "none",
+    "reason": "Neither official compaction event can inject model-visible developer context on the pinned build; no lifecycle fallback is permitted."
+  },
+  "preCompact": {
+    "modelVisibleDeveloperContext": false,
+    "contextSurvivesCompactionExactlyOnce": false,
+    "manualTriggerSupported": true,
+    "automaticTriggerSupported": true,
+    "liveModelContextDeliveryProven": false,
+    "systemMessageCountsAsModelContext": false,
+    "status": "blocked-upstream",
+    "blocker": "PreCompact accepts only universal stop/UI-warning output before compaction; it has no model-context output and cannot survive compaction exactly once.",
+    "upstreamTracker": "https://github.com/eunsoogi/codexy/issues/455",
+    "evidence": [
+      "codex-rs/hooks/schema/generated/pre-compact.command.output.schema.json",
+      "codex-rs/hooks/src/schema.rs:166-170",
+      "codex-rs/hooks/src/events/compact.rs:230-280",
+      "codex-rs/core/src/compact.rs:169-192",
+      "codex-rs/core/src/hook_runtime.rs:368-392"
+    ]
+  },
+  "postCompact": {
+    "modelVisibleDeveloperContext": false,
+    "contextSurvivesCompactionExactlyOnce": false,
+    "manualTriggerSupported": true,
+    "automaticTriggerSupported": true,
+    "liveModelContextDeliveryProven": false,
+    "systemMessageCountsAsModelContext": false,
+    "status": "blocked-upstream",
+    "blocker": "PostCompact output is stateless and core records only continue-or-stop; no additional context reaches model history.",
+    "upstreamTracker": "https://github.com/eunsoogi/codexy/issues/455",
+    "evidence": [
+      "codex-rs/hooks/schema/generated/post-compact.command.output.schema.json",
+      "codex-rs/hooks/src/schema.rs:172-179",
+      "codex-rs/hooks/src/engine/output_parser.rs:241-257",
+      "codex-rs/hooks/src/events/compact.rs:315-416",
+      "codex-rs/core/src/hook_runtime.rs:405-429",
+      "codex-rs/core/src/compact.rs:196-204"
+    ]
+  }
+}

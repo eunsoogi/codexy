@@ -1,0 +1,242 @@
+"""Conservative structural checks for sensitive shell operations."""
+
+from __future__ import annotations
+
+import re
+import shlex
+
+from .git_command import normalize as normalize_git
+from .git_options import normalize as normalize_git_options
+from .github_alias import expand as expand_gh_alias
+from .github import forbidden as gh_forbidden
+from .execution_context import (
+    DYNAMIC_VALUE, SINGLE_QUOTED_DOLLAR, ExecutionContext, after_external_command,
+    assignment, at as context_at, git_config, remote_url,
+)
+from .invocation import resolve
+from .repository import OWNED, UrlRewrite, git_directory_owned, github_identity, identity, repository_owned, rewrite_url
+from .shell_context import changed_directory, flag
+from .shell_groups import Command, GroupSyntaxError, Sequence, parse
+
+OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
+SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
+POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GH_REPO)\s*=")
+DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
+CONTROL_COMMAND_START = {"if", "then", "elif", "else", "while", "until", "do"}
+REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.(url|pushurl)", re.IGNORECASE)
+
+
+def forbidden(
+    command: str, cwd: str, gh_repo: str | None = None, git_dir: str | None = None,
+    git_config_environment: tuple[tuple[str, str], ...] = (), depth: int = 0,
+) -> bool:
+    environment = tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir)) if value is not None) + git_config_environment
+    owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
+    return _forbidden(command, ExecutionContext(cwd, owned, git_dir, gh_repo, environment), depth)
+
+
+def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
+    if depth > 3 or SINGLE_QUOTED_DOLLAR in command:
+        return True
+    lexical_command = command
+    if OPAQUE.search(command):
+        if context.cwd_owned is not False:
+            return True
+        try:
+            opaque_tokens = shlex.split(command)
+            if opaque_tokens and opaque_tokens[0].rsplit("/", 1)[-1].lower() == "eval":
+                evaluated = opaque_tokens[1:]
+                if evaluated[:1] == ["--"]:
+                    evaluated = evaluated[1:]
+                if _forbidden(" ".join(evaluated), context, depth + 1):
+                    return True
+            elif _explicit_owned(opaque_tokens) is True:
+                return True
+        except ValueError:
+            return True
+        for match in SUBCOMMAND.finditer(command):
+            nested = match.group(1) if match.group(1) is not None else match.group(2)
+            if _forbidden(nested, context, depth + 1):
+                return True
+        lexical_command = SUBCOMMAND.sub(DYNAMIC_VALUE, command)
+        if CONTROL.search(command):
+            return POLICY_STATE.search(command) is not None or _dynamic_control_executable(command)
+    try:
+        lexer = shlex.shlex(_separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}")
+        lexer.whitespace_split, lexer.commenters = True, ""
+        tokens = list(lexer)
+    except ValueError:
+        return context.cwd_owned is not False
+    try:
+        sequence = parse(tokens)
+    except GroupSyntaxError:
+        return True
+    return _sequence(sequence, context, depth)[0]
+
+
+def _sequence(sequence: Sequence, context: ExecutionContext, depth: int) -> tuple[bool, ExecutionContext]:
+    active = context
+    for step in sequence.steps:
+        if isinstance(step.node, Command):
+            tokens = list(step.node.tokens)
+            denied, resulting_context = _segment(tokens, active, depth)
+        else:
+            denied, nested_context = _sequence(step.node.body, active, depth + 1)
+            resulting_context = active if step.node.kind == "subshell" else nested_context
+        if denied:
+            return True, active
+        if step.following in {"", ";", "&&"} or (
+            step.following == "||" and (active.cwd_owned is False or resulting_context.cwd_owned is not False)
+        ):
+            active = resulting_context
+    return False, active
+
+
+def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[bool, ExecutionContext]:
+    invocation = resolve(tokens, context, depth)
+    if invocation is None:
+        return True, context
+    if invocation.script is not None:
+        return (not invocation.script or _forbidden(invocation.script, invocation.context, depth + 1)), context
+    if invocation.opaque:
+        return True, context
+    if invocation.executable is None:
+        return False, invocation.context
+    if invocation.executable in {"cd", "pushd", "popd"}:
+        directory = changed_directory(
+            [invocation.executable, *invocation.arguments], invocation.context.cwd
+        )
+        return (True, context) if directory.opaque else (
+            False, context_at(invocation.context, directory.cwd)
+        )
+    if invocation.executable in {".", "source"}:
+        return True, context
+    if invocation.executable == "git":
+        denied, remote = _git(invocation.arguments, invocation.context, depth)
+        if remote is None:
+            return denied, context
+        if invocation.context.cwd != context.cwd or invocation.context.git_dir != context.git_dir:
+            return True, context
+        return denied, remote_url(context, *remote)
+    if invocation.executable == "gh":
+        gh_owned = github_identity(invocation.context.gh_repo) == OWNED if invocation.context.gh_repo is not None else None
+        arguments = expand_gh_alias(invocation.arguments)
+        return arguments is None or gh_forbidden(arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
+    if invocation.executable == "rm":
+        return invocation.context.cwd_owned is not False and _rm(invocation.arguments), context
+    return False, after_external_command(
+        invocation.executable, invocation.arguments, context,
+    )
+
+
+def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str, str] | None]:
+    environment_config = git_config(context)
+    if environment_config is None:
+        return True, None
+    invocation = normalize_git(args, context.cwd, context.cwd_owned, context.git_dir, _config_owned, environment_config, context.remote_urls)
+    if invocation is None:
+        return True, None
+    if invocation.alias_command is not None:
+        alias_context = ExecutionContext(
+            invocation.cwd,
+            invocation.cwd_owned,
+            invocation.git_dir,
+            context.gh_repo,
+            context.environment,
+            context.opaque_environment,
+            context.remote_urls,
+            context.opaque_repository_state,
+        )
+        return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1), None
+    if invocation.operation is None:
+        return False, None
+    if invocation.operation == "config":
+        remote = REMOTE_URL_CONFIG.fullmatch(invocation.arguments[0]) if invocation.arguments else None
+        if remote is not None and len(invocation.arguments) == 2 and invocation.arguments[1] and not any(
+            char in invocation.arguments[1] for char in "\0\r\n"
+        ):
+            return False, (remote.group(1), remote.group(2).casefold(), invocation.arguments[1])
+        if any(REMOTE_URL_CONFIG.fullmatch(argument) for argument in invocation.arguments):
+            return True, None
+    if invocation.operation == "remote" and invocation.arguments[:1] in (["add"], ["set-url"]):
+        if len(invocation.arguments) != 3 or not invocation.arguments[1] or any(char in invocation.arguments[1] + invocation.arguments[2] for char in "\0\r\n"):
+            return True, None
+        return False, (invocation.arguments[1], "url", invocation.arguments[2])
+    push_like = invocation.operation in {"push", "send-pack"}
+    target_owned = _explicit_owned(
+        invocation.arguments, list(invocation.rewrites), push_like
+    )
+    applies = target_owned is True or (
+        target_owned is None
+        and (context.opaque_repository_state or invocation.cwd_owned is not False)
+    )
+    arguments = normalize_git_options(invocation.operation, invocation.arguments)
+    if arguments is None:
+        return applies, None
+    if push_like:
+        forced = any(arg in {"--force", "--force-with-lease", "--mirror"} or arg.startswith(("--force=", "--force-with-lease=", "--mirror=")) or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]) or arg.startswith("+") for arg in arguments)
+        return applies and forced, None
+    return applies and ((invocation.operation == "reset" and "--hard" in arguments) or (invocation.operation == "clean" and flag(arguments, "f", "--force"))), None
+
+
+def _separate_lines(command: str) -> str:
+    result, quote, escaped, index = [], None, False, 0
+    while index < len(command):
+        char = command[index]
+        if char == "\\" and quote != "'" and command[index + 1 : index + 2] == "\n":
+            index += 2
+            continue
+        if escaped:
+            result.append(char)
+            escaped = False
+        elif char == "\\" and quote != "'":
+            result.append(char)
+            escaped = True
+        elif char in {"'", '"'}:
+            quote = None if quote == char else char if quote is None else quote
+            result.append(char)
+        elif quote == "'" and char == "$":
+            result.append(SINGLE_QUOTED_DOLLAR)
+        elif quote is None and char == "#" and (not result or result[-1].isspace() or result[-1] in ";&|(){}"):
+            while index < len(command) and command[index] != "\n":
+                index += 1
+            continue
+        else:
+            result.append(";" if char == "\n" and quote is None else char)
+        index += 1
+    return "".join(result)
+
+
+def _dynamic_control_executable(command: str) -> bool:
+    lexer = shlex.shlex(_separate_lines(command), posix=True, punctuation_chars=";&|(){}")
+    lexer.whitespace_split, lexer.commenters = True, ""
+    command_start = True
+    for token in lexer:
+        if token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"} or token.casefold() in CONTROL_COMMAND_START:
+            command_start = True
+        elif command_start and (token == "!" or assignment(token)):
+            continue
+        else:
+            if command_start and DYNAMIC_NAME.fullmatch(token):
+                return True
+            command_start = False
+    return False
+
+
+def _rm(args: list[str]) -> bool:
+    targets = [arg for arg in args if not arg.startswith("-")]
+    broad = {"/", "/*", "~", "$HOME", "${HOME}"}
+    return flag(args, "r", "--recursive") and flag(args, "f", "--force") and any(target in broad or target.rstrip("/").endswith("/..") for target in targets)
+
+
+def _explicit_owned(
+    args: list[str], rewrites: list[UrlRewrite] | None = None, push: bool = False,
+) -> bool | None:
+    rewritten = [identity(rewrite_url(arg, rewrites or [], push)) for arg in args]
+    identities = [item for item in rewritten if item is not None]
+    return None if not identities else OWNED in identities
+
+
+def _config_owned(config: str) -> bool:
+    return "=" in config and identity(config.split("=", 1)[1]) == OWNED

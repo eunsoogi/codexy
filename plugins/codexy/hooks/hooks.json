@@ -1,71 +1,27 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume|clear|compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-routing-context.sh\" SessionStart",
-            "timeout": 3,
-            "statusMessage": "Loading Codexy routing context"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
+    "PermissionRequest": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-readiness-context.sh\" UserPromptSubmit",
-            "timeout": 3,
-            "statusMessage": "Loading Codexy readiness context"
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-admission.sh\" PermissionRequest",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-admission.cmd\" PermissionRequest",
+            "timeout": 5
           }
         ]
-      },
+      }
+    ],
+    "PreToolUse": [
       {
-        "matcher": "issue|GitHub issue|create issue|creating issue",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" UserPromptSubmit",
-            "timeout": 3,
-            "statusMessage": "Checking Codexy issue title readiness"
-          }
-        ]
-      },
-      {
-        "matcher": "PR readiness|pr readiness|merge readiness|ready for parent handoff|ready to merge",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-pr-title-check.sh\" UserPromptSubmit",
-            "timeout": 3,
-            "statusMessage": "Checking Codexy PR title readiness"
-          }
-        ]
-      },
-      {
-        "matcher": "PR readiness|pr readiness|merge readiness|ready for parent handoff|ready to merge",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-pr-label-check.sh\" UserPromptSubmit",
-            "timeout": 3,
-            "statusMessage": "Checking Codexy PR label readiness"
-          }
-        ]
-      },
-      {
-        "matcher": "merge readiness|ready to merge",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-merge-message-check.sh\" UserPromptSubmit",
-            "timeout": 3,
-            "statusMessage": "Checking Codexy merge-message readiness"
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-admission.sh\" PreToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-admission.cmd\" PreToolUse",
+            "timeout": 5
           }
         ]
       }

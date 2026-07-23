@@ -1,37 +1,38 @@
+mod admission_artifact;
 mod agent_update_safety;
 mod command;
+#[allow(dead_code)]
 mod context;
-mod lifecycle;
-mod lifecycle_probe;
+mod model;
+mod policy_inventory;
+mod policy_inventory_discovery;
+mod policy_inventory_frontmatter;
+mod post_compact;
 mod safety;
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::paths::display_relative;
 use crate::validation::load_json;
 
 const HOOKS_PATH: &str = "hooks/hooks.json";
-const REQUIRED_EVENT: &str = "SessionStart";
-const READINESS_EVENT: &str = "UserPromptSubmit";
-const SESSION_START_SCRIPT: &str = "hooks/codexy-routing-context.sh";
-const READINESS_SCRIPT: &str = "hooks/codexy-readiness-context.sh";
-const PURPOSE_ROUTING_CONTEXT: u8 = 1;
-const PURPOSE_READINESS_CONTEXT: u8 = 1 << 1;
-const ALLOWED_EVENTS: &[&str] = &[
-    "PermissionRequest",
-    "PostCompact",
-    "PostToolUse",
-    "PreCompact",
-    "PreToolUse",
-    "SessionStart",
-    "Stop",
-    "SubagentStart",
-    "SubagentStop",
-    "UserPromptSubmit",
+const ADMISSION_SCRIPT: &str = "hooks/codexy-admission.sh";
+const ADMISSION_WINDOWS_SCRIPT: &str = "hooks/codexy-admission.cmd";
+const REQUIRED_BINDINGS: [model::HookBinding; 2] = [
+    model::HookBinding {
+        event: model::HookEvent::PreToolUse,
+        purpose: model::HookPurpose::Admission,
+    },
+    model::HookBinding {
+        event: model::HookEvent::PermissionRequest,
+        purpose: model::HookPurpose::Admission,
+    },
 ];
+
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     match check_inner(plugin_root) {
         Ok(()) => Vec::new(),
@@ -39,209 +40,203 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     }
 }
 
+pub fn policy_inventory_discovery_json(plugin_root: &Path) -> Result<String> {
+    Ok(serde_json::to_string(
+        &policy_inventory_discovery::discover(plugin_root)?,
+    )?)
+}
+
 fn check_inner(plugin_root: &Path) -> Result<()> {
+    admission_artifact::check(plugin_root)?;
+    policy_inventory::check(plugin_root)?;
+    let selected_context_event = post_compact::check(plugin_root)?;
     let path = plugin_root.join(HOOKS_PATH);
     let data = load_json(&path)?;
     let events = data
         .get("hooks")
         .and_then(Value::as_object)
         .with_context(|| format!("{} hooks must be an object", display_relative(&path)))?;
-    if !events.contains_key(REQUIRED_EVENT) {
-        bail!(
-            "{} must define a {REQUIRED_EVENT} hook",
-            display_relative(&path)
-        );
-    }
-    let mut hook_purposes = 0;
-    for (event, groups) in events {
-        if !ALLOWED_EVENTS.contains(&event.as_str()) {
-            bail!(
-                "{} unsupported hook event: {event}",
-                display_relative(&path)
-            );
-        }
-        let groups = groups
-            .as_array()
-            .filter(|items| !items.is_empty())
-            .with_context(|| {
-                format!(
-                    "{} {event} must be a non-empty matcher group array",
-                    display_relative(&path)
-                )
-            })?;
-        for group in groups {
-            hook_purposes |= check_group(&path, plugin_root, event, group)?;
-        }
-    }
-    if hook_purposes & PURPOSE_ROUTING_CONTEXT == 0 {
-        bail!(
-            "{} {REQUIRED_EVENT} hook command must run {SESSION_START_SCRIPT}",
-            display_relative(&path)
-        );
-    }
-    if hook_purposes & PURPOSE_READINESS_CONTEXT == 0 {
-        bail!(
-            "{} {READINESS_EVENT} hook command must run {READINESS_SCRIPT}",
-            display_relative(&path)
-        );
-    }
-    for purpose in [
-        lifecycle::PURPOSE_ISSUE_TITLE_CHECK,
-        lifecycle::PURPOSE_PR_TITLE_CHECK,
-        lifecycle::PURPOSE_PR_LABEL_CHECK,
-        lifecycle::PURPOSE_MERGE_MESSAGE_CHECK,
-    ] {
-        if hook_purposes & purpose == 0 {
-            bail!(
-                "{} {}",
-                display_relative(&path),
-                lifecycle::missing_hard_hook_message(purpose).unwrap_or("missing hard hook")
-            );
+    post_compact::check_topology(&path, events, selected_context_event)?;
+    check_event_set(&path, events, selected_context_event)?;
+    for binding in REQUIRED_BINDINGS {
+        match binding.purpose {
+            model::HookPurpose::Admission => {
+                check_admission_event(&path, plugin_root, events, binding.event)?;
+            }
         }
     }
     Ok(())
 }
 
-fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> Result<u8> {
-    let object = group
-        .as_object()
-        .with_context(|| format!("{} {event} group must be an object", display_relative(path)))?;
-    match object.get("matcher") {
-        Some(value) => {
-            let matcher = value.as_str();
-            let Some(matcher) = matcher else {
-                bail!(
-                    "{} {event}.matcher must be a non-empty string when present",
-                    display_relative(path)
-                );
-            };
-            if event == REQUIRED_EVENT
-                && !context::session_start_covers_resume_and_compact(path, Some(matcher))?
-            {
-                bail!(
-                    "{} {REQUIRED_EVENT}.matcher must include resume and compact",
-                    display_relative(path)
-                );
-            } else if event != REQUIRED_EVENT && matcher.trim().is_empty() {
-                bail!(
-                    "{} {event}.matcher must be a non-empty string when present",
-                    display_relative(path)
-                );
-            }
-        }
-        None => {}
+fn check_event_set(
+    path: &Path,
+    events: &Map<String, Value>,
+    selected_context_event: post_compact::ContextEvent,
+) -> Result<()> {
+    let actual = events
+        .keys()
+        .map(|event| model::HookEvent::parse(event))
+        .collect::<Result<BTreeSet<_>>>()?;
+    let mut expected = REQUIRED_BINDINGS
+        .iter()
+        .map(|binding| binding.event)
+        .collect::<BTreeSet<_>>();
+    if selected_context_event != post_compact::ContextEvent::None {
+        expected.insert(model::HookEvent::parse(selected_context_event.as_str())?);
     }
-    let handlers = object
-        .get("hooks")
+    if actual != expected {
+        bail!(
+            "{} must define only event-native PreToolUse and PermissionRequest enforcement{}",
+            display_relative(path),
+            if selected_context_event != post_compact::ContextEvent::None {
+                " plus one proven model-context delivery"
+            } else {
+                ""
+            }
+        );
+    }
+    Ok(())
+}
+
+fn check_admission_event(
+    path: &Path,
+    plugin_root: &Path,
+    events: &Map<String, Value>,
+    event: model::HookEvent,
+) -> Result<()> {
+    let name = event.as_str();
+    let groups = events
+        .get(name)
         .and_then(Value::as_array)
-        .filter(|items| !items.is_empty())
+        .filter(|groups| groups.len() == 1)
         .with_context(|| {
             format!(
-                "{} {event}.hooks must be a non-empty array",
+                "{} {name} must have exactly one matcher group",
                 display_relative(path)
             )
         })?;
-    let mut hook_purposes = 0;
-    for handler in handlers {
-        hook_purposes |= check_handler(path, plugin_root, event, handler)?;
-    }
-    Ok(hook_purposes)
+    let group = groups[0]
+        .as_object()
+        .with_context(|| format!("{} {name} group must be an object", display_relative(path)))?;
+    check_matcher(path, name, group)?;
+    let handlers = group
+        .get("hooks")
+        .and_then(Value::as_array)
+        .filter(|handlers| handlers.len() == 1)
+        .with_context(|| {
+            format!(
+                "{} {name} must have exactly one handler",
+                display_relative(path)
+            )
+        })?;
+    check_admission_handler(path, plugin_root, name, &handlers[0])
 }
 
-fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) -> Result<u8> {
+fn check_matcher(path: &Path, event: &str, group: &Map<String, Value>) -> Result<()> {
+    let matcher = group
+        .get("matcher")
+        .and_then(Value::as_str)
+        .filter(|matcher| !matcher.trim().is_empty())
+        .with_context(|| {
+            format!(
+                "{} {event}.matcher must be a non-empty string",
+                display_relative(path)
+            )
+        })?;
+    if matcher != "*" {
+        bail!(
+            "{} {event}.matcher must be \"*\" so the policy runtime decides no-op versus deny",
+            display_relative(path)
+        );
+    }
+    Ok(())
+}
+
+fn check_admission_handler(
+    path: &Path,
+    plugin_root: &Path,
+    event: &str,
+    handler: &Value,
+) -> Result<()> {
     let object = handler.as_object().with_context(|| {
         format!(
-            "{} {event} hook handler must be an object",
+            "{} {event} handler must be an object",
             display_relative(path)
         )
     })?;
     if object.get("type").and_then(Value::as_str) != Some("command") {
         bail!(
-            "{} {event} hook handlers must use type \"command\"",
+            "{} {event} handler must use type \"command\"",
             display_relative(path)
         );
     }
-    if let Some(async_value) = object.get("async") {
-        match async_value.as_bool() {
-            Some(false) => {}
-            Some(true) => bail!(
-                "{} {event} hook handlers must not set async=true",
-                display_relative(path)
-            ),
-            None => bail!(
-                "{} {event} hook async must be a boolean when present",
-                display_relative(path)
-            ),
-        }
+    if object
+        .get("async")
+        .is_some_and(|value| value != &Value::Bool(false))
+    {
+        bail!(
+            "{} {event} handler MUST NOT run asynchronously",
+            display_relative(path)
+        );
     }
-    let command = object
+    let command_text = object
         .get("command")
         .and_then(Value::as_str)
-        .filter(|value| !value.trim().is_empty())
         .with_context(|| {
             format!(
-                "{} {event} hook command must be a non-empty string",
+                "{} {event} command must be a string",
                 display_relative(path)
             )
         })?;
-    command::check_command(path, plugin_root, event, command)?;
-    let timeout = check_timeout(path, event, object)?;
-    let mut hook_purpose = 0;
-    if event == REQUIRED_EVENT && command_uses_script(command, SESSION_START_SCRIPT) {
-        context::check_session_start_context(
-            path,
-            plugin_root,
-            command,
-            timeout,
-            REQUIRED_EVENT,
-            SESSION_START_SCRIPT,
-        )?;
-        hook_purpose |= PURPOSE_ROUTING_CONTEXT;
-    }
-    if event == READINESS_EVENT && command_uses_script(command, READINESS_SCRIPT) {
-        context::check_readiness_context(path, plugin_root, command, timeout, READINESS_EVENT)?;
-        hook_purpose |= PURPOSE_READINESS_CONTEXT;
-    }
-    hook_purpose |= lifecycle::check_hard_hook(path, plugin_root, event, command, timeout)?;
-    if let Some(status) = object.get("statusMessage") {
-        if !status
-            .as_str()
-            .is_some_and(|value| !value.trim().is_empty())
-        {
-            bail!(
-                "{} {event} hook statusMessage must be a non-empty string when present",
-                display_relative(path)
-            );
-        }
-    }
-    Ok(hook_purpose)
-}
-
-fn command_uses_script(command: &str, script: &str) -> bool {
-    let Some((hook_path, _)) = command::plugin_root_entrypoint_path(command) else {
-        return false;
-    };
-    hook_path == Path::new(script)
-}
-
-fn check_timeout(path: &Path, event: &str, object: &serde_json::Map<String, Value>) -> Result<u64> {
-    let timeout = object.get("timeout").with_context(|| {
-        format!(
-            "{} {event} hook timeout is required",
-            display_relative(path)
-        )
-    })?;
-    let timeout = timeout.as_u64().with_context(|| {
-        format!(
-            "{} {event} hook timeout must be a positive integer",
-            display_relative(path)
-        )
-    })?;
-    if timeout == 0 || timeout > 10 {
+    command::check_command(path, plugin_root, event, command_text)?;
+    let expected = format!("\"${{PLUGIN_ROOT}}/{ADMISSION_SCRIPT}\" {event}");
+    if command_text != expected {
         bail!(
-            "{} {event} hook timeout must be between 1 and 10 seconds",
+            "{} {event} must invoke the single admission dispatcher exactly",
             display_relative(path)
         );
     }
-    Ok(timeout)
+    let windows_command = object
+        .get("commandWindows")
+        .and_then(Value::as_str)
+        .with_context(|| {
+            format!(
+                "{} {event} commandWindows must be a string",
+                display_relative(path)
+            )
+        })?;
+    command::check_command(path, plugin_root, event, windows_command)?;
+    let expected_windows = format!("\"${{PLUGIN_ROOT}}/{ADMISSION_WINDOWS_SCRIPT}\" {event}");
+    if windows_command != expected_windows {
+        bail!(
+            "{} {event} commandWindows must invoke the single CMD admission dispatcher exactly",
+            display_relative(path)
+        );
+    }
+    check_timeout(path, event, object)?;
+    if object.get("statusMessage").is_some_and(|value| {
+        !value
+            .as_str()
+            .is_some_and(|message| !message.trim().is_empty())
+    }) {
+        bail!(
+            "{} {event} statusMessage must be a non-empty string",
+            display_relative(path)
+        );
+    }
+    Ok(())
+}
+
+fn check_timeout(path: &Path, event: &str, object: &Map<String, Value>) -> Result<()> {
+    object
+        .get("timeout")
+        .and_then(Value::as_u64)
+        .filter(|timeout| *timeout == 5)
+        .with_context(|| {
+            format!(
+                "{} {event} timeout must be exactly 5 seconds",
+                display_relative(path)
+            )
+        })?;
+    Ok(())
 }

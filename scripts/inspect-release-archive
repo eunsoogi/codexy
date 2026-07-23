@@ -136,6 +136,43 @@ fi
 hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
 local_path_pattern='/(Users|home|tmp|private/var)/'
 scan_output="$tmp_dir/archive-scan-output"
+inventory="$extract_root/plugins/codexy/hooks/policy-inventory.json"
+set +e
+INVENTORY="$inventory" LOCAL_PATH_PATTERN="$local_path_pattern" python3 - <<'PY'
+import json, os, re
+
+try:
+    inventory = json.load(open(os.environ["INVENTORY"], encoding="utf-8"))
+    rules = inventory["rules"]
+    if not isinstance(rules, list):
+        raise ValueError("rules must be a list")
+    pattern = re.compile(os.environ["LOCAL_PATH_PATTERN"])
+    def contains_local_path(value):
+        if isinstance(value, str):
+            return pattern.search(value) is not None
+        if isinstance(value, list):
+            return any(contains_local_path(item) for item in value)
+        if isinstance(value, dict):
+            return any(contains_local_path(item) for item in value.values())
+        return False
+    semantic_inventory = dict(inventory)
+    semantic_inventory["rules"] = [
+        {key: value for key, value in rule.items() if key not in {"source", "text"}}
+        if isinstance(rule, dict) else rule
+        for rule in rules
+    ]
+    unsafe = contains_local_path(semantic_inventory)
+except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+    raise SystemExit(2)
+raise SystemExit(1 if unsafe else 0)
+PY
+inventory_path_status=$?
+set -e
+case "$inventory_path_status" in
+  0) ;;
+  1) echo "archive contains a secret or local path" >&2; exit 1 ;;
+  *) echo "archive policy inventory hygiene scan failed: status $inventory_path_status" >&2; exit 1 ;;
+esac
 scan_archive_content() {
   "$@" >"$scan_output" 2>&1
 }
@@ -149,7 +186,7 @@ if command -v rg >/dev/null 2>&1; then
   set +e
   scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!**/hooks/policy-inventory.json' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
   local_path_status=$?
   set -e
 else
@@ -157,7 +194,7 @@ else
   set +e
   scan_archive_content scan_grep_content "$hygiene_pattern"
   hygiene_status=$?
-  scan_archive_content scan_grep_content "$local_path_pattern" ! -name '*.md' ! -name '*.txt'
+  scan_archive_content scan_grep_content "$local_path_pattern" ! -path "$extract_root/plugins/codexy/hooks/policy-inventory.json" ! -name '*.md' ! -name '*.txt'
   local_path_status=$?
   set -e
 fi

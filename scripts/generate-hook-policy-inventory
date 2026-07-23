@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Regenerate inventory while preserving explicit digest-keyed review decisions."""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1] / "plugins" / "codexy"
+REPOSITORY = ROOT.parents[1]
+OUTPUT = ROOT / "hooks" / "policy-inventory.json"
+
+
+def discovered() -> list[dict[str, object]]:
+    output = subprocess.run(
+        ["cargo", "run", "--quiet", "--manifest-path", str(REPOSITORY / "Cargo.toml"),
+         "--bin", "codexy-validate", "--", "--plugin-root", str(ROOT),
+         "--print-hook-policy-discovery"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(output.stdout)
+
+
+def main() -> int:
+    old = json.loads(OUTPUT.read_text()) if OUTPUT.exists() else {"rules": []}
+    by_digest = {item.get("digest"): item for item in old["rules"] if item.get("digest")}
+    rules, uncovered = [], 0
+    for found in discovered():
+        prior = by_digest.get(found["digest"])
+        if prior is None or prior.get("text") != found["text"]:
+            prior = {"event": "unavailable", "input": "unavailable", "decision": "uncovered",
+                     "tests": [], "evidence": [], "positiveTests": [], "negativeTests": []}
+            uncovered += 1
+        item = {key: found[key] for key in ("id", "digest", "source", "text")}
+        item.update({key: value for key, value in prior.items()
+                     if key not in {"id", "digest", "source", "text"}})
+        rules.append(item)
+    enforced = sum(item["decision"] == "enforced" for item in rules)
+    reviewed = sum(item["decision"] == "reviewed-exception" for item in rules)
+    test_suites = {"admission": "tests/hook_admission_policy.rs",
+                   "inventory": "tests/validator_hook_policy_inventory.rs",
+                   "postcompact": "tests/validator_hook_postcompact_capability.rs",
+                   "thread-routing": "tests/hook_admission_policy.rs",
+                   "topology": "tests/validator_hook_event_topology.rs"}
+    payload = {"version": 5, "generatedFrom": "skills/**/*.md", "testSuites": test_suites,
+               "rules": rules, "summary": {"total": len(rules), "enforced": enforced,
+               "reviewedExceptions": reviewed, "uncovered": uncovered}}
+    OUTPUT.write_text(json.dumps(payload, separators=(",", ":")) + "\n")
+    return 1 if uncovered else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
