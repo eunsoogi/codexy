@@ -88,7 +88,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             in_procedure = true;
             continue;
         }
-        if in_procedure && line.starts_with("## ") {
+        if in_procedure && (line.starts_with("# ") || line.starts_with("## ")) {
             break;
         }
         if !in_procedure {

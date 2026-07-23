@@ -33,6 +33,7 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
     for inactive in [
         format!("<!-- {ORCHESTRATION_CLAUSE} -->"),
         format!("```text\n{ORCHESTRATION_CLAUSE}\n```"),
+        format!("    {ORCHESTRATION_CLAUSE}"),
     ] {
         let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join(ORCHESTRATION_PATH);
@@ -50,6 +51,22 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
 }
 
 #[test]
+fn fenced_toml_prompt_examples_cannot_satisfy_review_cluster_contract() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let path = plugin_root.join(SENTINEL_PATH);
+    let text = std::fs::read_to_string(&path)?;
+    let fenced = text.replacen(
+        SENTINEL_CLAUSE,
+        &format!("Removed active Sentinel contract.\n```text\n{SENTINEL_CLAUSE}\n```"),
+        1,
+    );
+    toml::from_str::<toml::Value>(&fenced)?;
+    std::fs::write(path, fenced)?;
+
+    assert_contract_rejected(&plugin_root)
+}
+
+#[test]
 fn negated_markdown_clause_cannot_satisfy_review_cluster_contract() -> TestResult {
     let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = plugin_root.join(ORCHESTRATION_PATH);
@@ -60,6 +77,23 @@ fn negated_markdown_clause_cannot_satisfy_review_cluster_contract() -> TestResul
         1,
     );
     std::fs::write(path, negated)?;
+
+    assert_contract_rejected(&plugin_root)
+}
+
+#[test]
+fn trailing_disclaimer_cannot_satisfy_review_cluster_contract() -> TestResult {
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let text = std::fs::read_to_string(&path)?;
+    let disclaimed = text.replacen(
+        ORCHESTRATION_CLAUSE,
+        &format!(
+            "{ORCHESTRATION_CLAUSE} This requirement is optional and need not be followed."
+        ),
+        1,
+    );
+    std::fs::write(path, disclaimed)?;
 
     assert_contract_rejected(&plugin_root)
 }

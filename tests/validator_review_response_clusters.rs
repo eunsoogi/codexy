@@ -83,7 +83,7 @@ fn instruction_policy_requires_must_grammar_for_every_review_procedure_step() ->
 }
 
 #[test]
-fn review_cluster_harness_rejects_case_specific_classification_reply() {
+fn pr481_replay_rejects_a_case_specific_repeated_table_reply() {
     let errors = review_response_cluster_diagnostics(
         r#"{
           "state":"repaired",
@@ -91,9 +91,9 @@ fn review_cluster_harness_rejects_case_specific_classification_reply() {
             "defect_class":"classification-boundary",
             "violated_invariant":"owners are classified from authoritative metadata",
             "structural_boundary":"metadata parser",
-            "threads":["PRRT_classification_one","PRRT_classification_two"],
-            "matrix":{"positive":["canonical metadata"],"negative":["GFM owner table"]},
-            "repair":{"kind":"case_exception","quoted_input":"quoted owner table"}
+            "threads":["PRRT_kwDOS6i-_86S2TzY","PRRT_kwDOS6i-_86S2k88","PRRT_kwDOS6i-_86S1YPA"],
+            "matrix":{"positive":["one complete canonical Field/Value classification table"],"negative":["a complete table followed by an incomplete repeated Field/Value table","current-thread-owned because the active thread owns issue-sized work","aligned GFM delimiter | :--- | ---: |"]},
+            "repair":{"kind":"case_exception","quoted_input":"reset fields only for the reported repeated table"}
           }]
         }"#,
     );
@@ -105,7 +105,7 @@ fn review_cluster_harness_rejects_case_specific_classification_reply() {
 }
 
 #[test]
-fn review_cluster_harness_accepts_structural_clusters_and_distinct_reopen() {
+fn pr481_and_pr479_replay_accepts_one_structural_cluster_per_defect_class() {
     let errors = review_response_cluster_diagnostics(
         r#"{
           "state":"reopened",
@@ -114,16 +114,16 @@ fn review_cluster_harness_accepts_structural_clusters_and_distinct_reopen() {
               "defect_class":"classification-boundary",
               "violated_invariant":"owners are classified from authoritative metadata",
               "structural_boundary":"metadata parser",
-              "threads":["PRRT_classification_one","PRRT_classification_two"],
-              "matrix":{"positive":["canonical metadata"],"negative":["GFM owner table"]},
+              "threads":["PRRT_kwDOS6i-_86S2TzY","PRRT_kwDOS6i-_86S2k88","PRRT_kwDOS6i-_86S1YPA"],
+              "matrix":{"positive":["one complete canonical Field/Value classification table"],"negative":["a complete table followed by an incomplete repeated Field/Value table","current-thread-owned because the active thread owns issue-sized work","aligned GFM delimiter | :--- | ---: |"]},
               "repair":{"kind":"structural","boundary":"metadata parser","strategy":"authoritative metadata classifier","removed_case_specific_behavior":true}
             },
             {
               "defect_class":"command-normalization",
               "violated_invariant":"repository identity survives wrapper composition",
               "structural_boundary":"command normalization",
-              "threads":["PRRT_command_one"],
-              "matrix":{"positive":["relative GIT_DIR"],"negative":["foreign repository"]},
+              "threads":["PRRT_kwDOS6i-_86S0SRf","PRRT_kwDOS6i-_86Sz29g","PRRT_kwDOS6i-_86S2NKr","PRRT_kwDOS6i-_86S2NKt"],
+              "matrix":{"positive":["plain git status in a foreign checkout"],"negative":["command -p git push --force origin topic","GIT_DIR=/workspace/codexy/.git git push --force origin topic","cd -P /workspace/codexy; git push --force origin topic","sudo -D /workspace/codexy git push --force origin topic"]},
               "repair":{"kind":"structural","boundary":"command normalization","strategy":"canonical repository resolver","removed_case_specific_behavior":true},
               "reopen":{"kind":"distinct_invariant","invariant":"environment ownership is preserved"}
             }

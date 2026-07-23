@@ -10,11 +10,11 @@ pub(super) fn contract_text(path: &Path, text: &str) -> Result<String, &'static 
 fn toml_contract_text(text: &str) -> Result<String, &'static str> {
     let document = toml::from_str::<toml::Value>(text)
         .map_err(|_| "TOML instruction source must parse before contract validation")?;
-    document
+    let prompt = document
         .get("developer_instructions")
         .and_then(toml::Value::as_str)
-        .map(str::to_owned)
-        .ok_or("TOML instruction source must contain developer_instructions")
+        .ok_or("TOML instruction source must contain developer_instructions")?;
+    Ok(normative_markdown(prompt))
 }
 
 pub(super) fn normative_markdown(text: &str) -> String {
@@ -27,6 +27,9 @@ pub(super) fn normative_markdown(text: &str) -> String {
             if closes_fence(trimmed, marker, length) {
                 fence = None;
             }
+            continue;
+        }
+        if !in_comment && is_indented_code(raw_line) {
             continue;
         }
 
@@ -42,6 +45,32 @@ pub(super) fn normative_markdown(text: &str) -> String {
         }
     }
     output
+}
+
+pub(super) fn contains_clause(text: &str, clause: &str) -> bool {
+    let clause = normalize(clause);
+    text.lines().any(|line| {
+        let line = normalize(line);
+        line.match_indices(&clause).any(|(index, matched)| {
+            is_statement_prefix(&line[..index]) && line[index + matched.len()..].trim().is_empty()
+        })
+    })
+}
+
+fn is_indented_code(line: &str) -> bool {
+    line.starts_with("    ") || line.starts_with('\t')
+}
+
+fn is_statement_prefix(prefix: &str) -> bool {
+    let prefix = prefix
+        .rsplit_once(". ")
+        .map_or(prefix, |(_, statement)| statement)
+        .trim();
+    matches!(prefix, "" | "-" | "*")
+}
+
+fn normalize(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn without_html_comments(line: &str, in_comment: &mut bool) -> String {

@@ -73,6 +73,16 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
     assert_valid(&reordered)?;
     assert_rejected(&format!("```markdown\n{COMPLETE}```\n"))?;
     assert_rejected(&format!("<!--\n{COMPLETE}-->\n"))?;
+    let indented = COMPLETE
+        .lines()
+        .map(|line| format!("    {line}\n"))
+        .collect::<String>();
+    assert_rejected(&indented)?;
+    assert_rejected(&COMPLETE.replacen(
+        "## Required Procedure\n\n",
+        "## Required Procedure\n\n# New top-level section\n\n",
+        1,
+    ))?;
     assert_rejected("## Required Procedure\n\n1. [receipt-create] Before editing, MUST create one typed JSON receipt.\n")?;
     Ok(())
 }
