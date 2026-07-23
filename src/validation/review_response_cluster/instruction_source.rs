@@ -39,7 +39,7 @@ pub(super) fn normative_markdown(text: &str) -> String {
         let visible = if html_code.is_some() {
             without_html_code_blocks(raw_line, &mut html_code)
         } else {
-            let unquoted = without_inline_code(raw_line);
+            let unquoted = without_markdown_literals(raw_line);
             let uncommented = without_html_comments(&unquoted, &mut in_comment);
             without_html_code_blocks(&uncommented, &mut html_code)
         };
@@ -81,6 +81,25 @@ fn is_statement_prefix(prefix: &str) -> bool {
 
 fn normalize(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn without_markdown_literals(line: &str) -> String {
+    without_inline_code(&without_backslash_escapes(line))
+}
+
+fn without_backslash_escapes(line: &str) -> String {
+    let mut output = String::new();
+    let mut characters = line.chars().peekable();
+    while let Some(character) = characters.next() {
+        if character == '\\' && characters.peek().is_some_and(char::is_ascii_punctuation) {
+            output.push(' ');
+            output.push(' ');
+            characters.next();
+        } else {
+            output.push(character);
+        }
+    }
+    output
 }
 
 fn without_inline_code(line: &str) -> String {
