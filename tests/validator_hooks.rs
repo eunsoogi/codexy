@@ -3,37 +3,16 @@ use std::process::Command;
 #[allow(unused)]
 use crate::support;
 
-#[test]
-fn packaged_admission_hooks_are_reachable_and_inventory_drift_is_rejected()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let root = copy(temp.path())?;
-    let hooks = read(&root.join("hooks/hooks.json"))?;
-    for event in ["PreToolUse", "PermissionRequest"] {
-        let handler = &hooks["hooks"][event][0]["hooks"][0];
-        assert_eq!(handler["type"], "command", "{event}");
-        assert_eq!(handler["timeout"], 5, "{event}");
-        assert!(
-            handler["command"]
-                .as_str()
-                .is_some_and(|command| command.ends_with(&format!("codexy-admission.sh\" {event}"))),
-            "{event} must invoke the packaged admission launcher"
-        );
-    }
-
-    let inventory_path = root.join("hooks/policy-inventory.json");
-    let mut inventory = read(&inventory_path)?;
-    inventory["summary"]["uncovered"] = serde_json::json!(1);
-    std::fs::write(inventory_path, serde_json::to_string_pretty(&inventory)?)?;
-    let output = validate_all(&root)?;
-    assert!(!output.status.success(), "{}", text(&output));
-    assert!(
-        text(&output).contains("summary must prove uncovered=0"),
-        "{}",
-        text(&output)
-    );
-    Ok(())
-}
+#[path = "validator_hooks/admission_artifact.rs"]
+mod admission_artifact;
+#[path = "validator_hooks/admission_runtime.rs"]
+mod admission_runtime;
+#[path = "validator_hooks/archive_inventory.rs"]
+mod archive_inventory;
+#[path = "validator_hooks/graphql_admission.rs"]
+mod graphql_admission;
+#[path = "validator_hooks/policy_inventory.rs"]
+mod policy_inventory;
 
 #[test]
 fn validator_rejects_missing_hooks_configuration() -> Result<(), Box<dyn std::error::Error>> {
@@ -77,7 +56,7 @@ fn validator_rejects_non_boolean_generic_hook_async() -> Result<(), Box<dyn std:
     Ok(())
 }
 
-fn copy(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+pub(super) fn copy(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let root = base.join("codexy");
     support::copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
@@ -89,7 +68,7 @@ fn copy(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::error
     )?;
     Ok(root)
 }
-fn set_command(root: &std::path::Path, command: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn set_command(root: &std::path::Path, command: &str) -> Result<(), Box<dyn std::error::Error>> {
     let path = root.join("hooks/hooks.json");
     let mut hooks = read(&path)?;
     hooks["hooks"]["PostToolUse"] =
@@ -97,10 +76,10 @@ fn set_command(root: &std::path::Path, command: &str) -> Result<(), Box<dyn std:
     std::fs::write(path, serde_json::to_string_pretty(&hooks)?)?;
     Ok(())
 }
-fn read(path: &std::path::Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+pub(super) fn read(path: &std::path::Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
 }
-fn validate(root: &std::path::Path) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+pub(super) fn validate(root: &std::path::Path) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",
@@ -109,7 +88,7 @@ fn validate(root: &std::path::Path) -> Result<std::process::Output, Box<dyn std:
         ])
         .output()?)
 }
-fn validate_all(
+pub(super) fn validate_all(
     root: &std::path::Path,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -120,7 +99,7 @@ fn validate_all(
         ])
         .output()?)
 }
-fn text(output: &std::process::Output) -> String {
+pub(super) fn text(output: &std::process::Output) -> String {
     format!(
         "{}{}",
         String::from_utf8_lossy(&output.stdout),

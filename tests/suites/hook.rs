@@ -13,12 +13,6 @@ mod validator_github_labels_stacked_handoff;
 #[path = "../validator_hook_loc_contract.rs"]
 mod validator_hook_loc_contract;
 
-#[path = "../hook_fail_closed_command_admission.rs"]
-mod hook_fail_closed_command_admission;
-
-#[path = "../hook_graphql_delimiter_admission.rs"]
-mod hook_graphql_delimiter_admission;
-
 #[path = "../validator_hook_purpose_topology.rs"]
 mod validator_hook_purpose_topology;
 

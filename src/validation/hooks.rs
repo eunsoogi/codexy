@@ -34,8 +34,6 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 }
 
 fn check_inner(plugin_root: &Path) -> Result<()> {
-    admission_artifact::check(plugin_root)?;
-    policy_inventory::check(plugin_root)?;
     let path = plugin_root.join(HOOKS_PATH);
     let data = load_json(&path)?;
     let events = data
@@ -68,6 +66,8 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             check_group(&path, plugin_root, event, group)?;
         }
     }
+    admission_artifact::check(plugin_root)?;
+    policy_inventory::check(plugin_root)?;
     Ok(())
 }
 
