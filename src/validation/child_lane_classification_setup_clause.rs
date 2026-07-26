@@ -37,13 +37,22 @@ fn predicate_start(words: &[&str], start: usize, action: usize) -> usize {
         return start;
     };
     let mut predicate = auxiliary;
-    while predicate > start && is_auxiliary_chain_modifier(words[predicate - 1]) {
+    while predicate > start && is_auxiliary_chain_token(words, predicate - 1) {
         predicate -= 1;
     }
     predicate
 }
 
-fn is_auxiliary_chain_modifier(word: &str) -> bool {
+fn is_auxiliary_chain_token(words: &[&str], index: usize) -> bool {
+    is_auxiliary_chain_word(words[index])
+        || (words[index] == "and"
+            && index > 0
+            && index + 1 < words.len()
+            && is_adverbial_modifier(words[index - 1])
+            && is_adverbial_modifier(words[index + 1]))
+}
+
+fn is_auxiliary_chain_word(word: &str) -> bool {
     matches!(
         word,
         "not"
@@ -75,7 +84,28 @@ fn is_auxiliary_chain_modifier(word: &str) -> bool {
             | "should"
             | "must"
             | "shall"
-    ) || word.ends_with("ly")
+    ) || is_adverbial_modifier(word)
+}
+
+pub(super) fn is_adverbial_modifier(word: &str) -> bool {
+    word.ends_with("ly")
+        || matches!(
+            word,
+            "perhaps"
+                | "maybe"
+                | "still"
+                | "already"
+                | "yet"
+                | "almost"
+                | "quite"
+                | "rather"
+                | "just"
+                | "even"
+                | "also"
+                | "ever"
+                | "never"
+                | "not"
+        )
 }
 
 fn clause_start(words: &[&str], start: usize, action: usize) -> usize {
@@ -93,7 +123,7 @@ fn clause_start(words: &[&str], start: usize, action: usize) -> usize {
 fn modifier_coordination(words: &[&str], conjunction: usize) -> bool {
     words
         .get(conjunction.wrapping_sub(1))
-        .is_some_and(|word| word.ends_with("ly"))
+        .is_some_and(|word| is_adverbial_modifier(word))
 }
 
 fn clause_end(words: &[&str], action: usize, end: usize) -> usize {

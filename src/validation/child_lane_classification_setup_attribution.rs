@@ -1,5 +1,6 @@
 use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup::line_claims_setup_before_classification;
+use super::child_lane_classification_setup_clause::is_adverbial_modifier;
 use super::child_lane_classification_setup_relations::{
     SetupActor, has_setup_action, setup_relations,
 };
@@ -51,13 +52,25 @@ fn setup_clauses(line: &str) -> Vec<&str> {
         .split(&[',', ';', '.'][..])
         .flat_map(|clause| clause.split(" but "))
         .flat_map(|clause| clause.split(" however "))
-        .flat_map(|clause| clause.split(" and "))
+        .flat_map(split_and_clauses)
         .map(str::trim)
         .collect::<Vec<_>>();
     if !has_absent_child_setup(line) {
         clauses.push(line);
     }
     clauses
+}
+
+fn split_and_clauses(clause: &str) -> Vec<&str> {
+    let parts = clause.split(" and ").collect::<Vec<_>>();
+    parts
+        .windows(2)
+        .any(|pair| {
+            is_adverbial_modifier(pair[0].split_whitespace().last().unwrap_or(""))
+                && is_adverbial_modifier(pair[1].split_whitespace().next().unwrap_or(""))
+        })
+        .then_some(vec![clause])
+        .unwrap_or(parts)
 }
 
 fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
