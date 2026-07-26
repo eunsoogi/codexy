@@ -1,6 +1,13 @@
 pub(super) struct Token {
     pub(super) text: String,
     starts_uppercase: bool,
+    kind: TokenKind,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum TokenKind {
+    Word,
+    Comma,
 }
 
 pub(super) fn tokens(input: &str) -> Vec<Token> {
@@ -19,6 +26,7 @@ pub(super) fn tokens(input: &str) -> Vec<Token> {
                 tokens.push(Token {
                     text: "comma".into(),
                     starts_uppercase: false,
+                    kind: TokenKind::Comma,
                 });
             }
         }
@@ -32,6 +40,7 @@ fn finish(tokens: &mut Vec<Token>, word: &mut String, starts_uppercase: &mut boo
         tokens.push(Token {
             text: std::mem::take(word),
             starts_uppercase: *starts_uppercase,
+            kind: TokenKind::Word,
         });
         *starts_uppercase = false;
     }
@@ -40,7 +49,7 @@ fn finish(tokens: &mut Vec<Token>, word: &mut String, starts_uppercase: &mut boo
 pub(super) fn clause_boundary(tokens: &[Token]) -> Option<usize> {
     tokens
         .iter()
-        .position(|token| token.text == "comma")
+        .position(|token| token.kind == TokenKind::Comma)
         .or_else(|| {
             tokens.iter().enumerate().find_map(|(index, token)| {
                 (matches!(token.text.as_str(), "and" | "or" | "but" | "then")
