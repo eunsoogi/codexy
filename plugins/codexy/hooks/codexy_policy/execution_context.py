@@ -163,9 +163,11 @@ def after_external_command(
 ) -> ExecutionContext | None:
     """Apply bounded external filesystem and Git-config state transitions."""
     transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases)
-    if executable in {"ln", "cp"} and transition is None:
+    if executable in {"ln", "cp"} and (
+        transition is None or not transition.known or transition.applies is None
+    ):
         return None
-    if transition is not None and transition.known:
+    if transition is not None and transition.applies:
         aliases = dict(context.executable_aliases)
         if transition.identity is None:
             aliases.pop(transition.destination, None)

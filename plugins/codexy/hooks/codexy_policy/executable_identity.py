@@ -21,6 +21,16 @@ class AliasTransition:
     destination: str
     identity: str | None
     known: bool
+    applies: bool | None
+
+
+@dataclass(frozen=True)
+class AliasOperands:
+    source: str
+    destination: str
+    symbolic: bool
+    force: bool
+    executable: str
 
 
 def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str], ...] = ()) -> str:
@@ -48,12 +58,14 @@ def alias_transition(
     operands = _alias_operands(executable, arguments)
     if operands is None:
         return None
-    source, destination = operands
-    identity, known = _filesystem_identity(source, cwd, aliases)
-    return AliasTransition(_filesystem_location(destination, cwd), identity, known)
+    identity, known = _filesystem_identity(operands.source, cwd, aliases)
+    destination = _final_destination(operands.destination, operands.source, cwd)
+    if destination is None:
+        return None
+    return AliasTransition(destination, identity, known, _effect(operands, destination, aliases))
 
 
-def _alias_operands(executable: str, arguments: list[str]) -> tuple[str, str] | None:
+def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | None:
     grammar = {
         "ln": (frozenset("sfnv"), frozenset({"--symbolic", "--force", "--no-dereference", "--verbose"})),
         "cp": (frozenset("pfv"), frozenset({"--preserve", "--force", "--verbose"})),
@@ -61,6 +73,7 @@ def _alias_operands(executable: str, arguments: list[str]) -> tuple[str, str] | 
     if grammar is None:
         return None
     short, long = grammar
+    selected = set()
     while arguments and arguments[0].startswith("-") and arguments[0] != "-":
         option = arguments[0]
         if option == "--":
@@ -69,10 +82,18 @@ def _alias_operands(executable: str, arguments: list[str]) -> tuple[str, str] | 
         if option.startswith("--"):
             if option not in long:
                 return None
+            selected.add(option)
         elif not option[1:] or not set(option[1:]) <= short:
             return None
+        else:
+            selected.update(option[1:])
         arguments = arguments[1:]
-    return (arguments[0], arguments[1]) if len(arguments) == 2 and all(arguments) else None
+    if len(arguments) != 2 or not all(arguments):
+        return None
+    return AliasOperands(
+        arguments[0], arguments[1], "s" in selected or "--symbolic" in selected,
+        "f" in selected or "--force" in selected, executable,
+    )
 
 
 def _command_location(command: str, cwd: str) -> str | None:
@@ -84,6 +105,23 @@ def _command_location(command: str, cwd: str) -> str | None:
 def _filesystem_location(value: str, cwd: str) -> str:
     path = Path(value)
     return str((path if path.is_absolute() else Path(cwd) / path).resolve(strict=False))
+
+
+def _final_destination(destination: str, source: str, cwd: str) -> str | None:
+    result = _filesystem_location(destination, cwd)
+    if not Path(result).is_dir():
+        return result
+    basename = Path(source).name
+    return str(Path(result) / basename) if basename not in {"", ".", ".."} else None
+
+
+def _effect(operands: AliasOperands, destination: str, aliases: tuple[tuple[str, str], ...]) -> bool | None:
+    exists = destination in dict(aliases) or Path(destination).exists()
+    if operands.executable == "cp":
+        return None if Path(destination).is_dir() else True
+    if operands.symbolic:
+        return operands.force or not exists
+    return False if exists else None
 
 
 def _filesystem_identity(
