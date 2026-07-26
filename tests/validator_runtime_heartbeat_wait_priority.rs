@@ -26,6 +26,7 @@ const AFFIRMATIVE_NEAR_NEGATORS: &[&str] = &[
     "The owner MUST register, without delay, a heartbeat instead of repeated model continuations or ending without a wakeup path.",
     "The owner MUST register not only a heartbeat instead of repeated model continuations or ending without a wakeup path.",
 ];
+const AFFIRMATIVE_HYPHENATED_TARGET: &str = "The owner MUST register a heartbeat-only wake route instead of repeated model continuations or ending without a wakeup path.";
 
 #[test]
 fn validator_accepts_ordered_wait_and_host_recovery_routes() -> TestResult {
@@ -64,6 +65,12 @@ fn validator_rejects_affirmative_heartbeat_targets_near_unrelated_negators() -> 
 }
 
 #[test]
+fn validator_rejects_affirmative_hyphenated_heartbeat_targets() -> TestResult {
+    assert_rejected_addition(AFFIRMATIVE_HYPHENATED_TARGET)?;
+    assert_rejected_addition(&format!("\"{AFFIRMATIVE_HYPHENATED_TARGET}\""))
+}
+
+#[test]
 fn validator_does_not_treat_target_bound_never_as_an_affirmative_heartbeat_rule() -> TestResult {
     let fixture = support::plugin_fixture()?;
     let path = fixture.root().join(REFERENCE);
@@ -89,6 +96,8 @@ fn validator_ignores_inactive_unconditional_child_state_history() -> TestResult 
         format!("```markdown\n{LEGACY_THREAD_TARGETED_REGISTRATION}\n```"),
         format!("## Historical Example\n{}", AFFIRMATIVE_NEAR_NEGATORS[0]),
         format!("```markdown\n{}\n```", AFFIRMATIVE_NEAR_NEGATORS[1]),
+        format!("## Historical Example\n{AFFIRMATIVE_HYPHENATED_TARGET}"),
+        format!("```markdown\n{AFFIRMATIVE_HYPHENATED_TARGET}\n```"),
     ] {
         let fixture = support::plugin_fixture()?;
         let path = fixture.root().join(REFERENCE);

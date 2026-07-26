@@ -12,10 +12,24 @@ pub(super) const RESTRICTED_HEARTBEAT_CONTEXT: &str =
 pub(super) fn has_affirmative_heartbeat_target(sentence: &str) -> bool {
     let tokens = sentence_tokens(sentence);
     tokens.iter().enumerate().any(|(index, token)| {
-        token.text == "heartbeat"
+        has_heartbeat_target(token.text)
+            && !is_negated_hyphenated_heartbeat_target(token.text)
             && !is_negated_heartbeat_target(&tokens, index)
             && !is_negated_heartbeat_registration(&tokens)
     })
+}
+
+fn has_heartbeat_target(token: &str) -> bool {
+    token.split('-').any(|part| part == "heartbeat")
+}
+
+fn is_negated_hyphenated_heartbeat_target(token: &str) -> bool {
+    let parts = token.split('-').collect::<Vec<_>>();
+    parts
+        .iter()
+        .position(|part| *part == "heartbeat")
+        .and_then(|index| index.checked_sub(1).map(|index| parts[index]))
+        .is_some_and(|modifier| NEGATED_HEARTBEAT_TARGET_MODIFIERS.contains(&modifier))
 }
 
 struct SentenceToken<'a> {
