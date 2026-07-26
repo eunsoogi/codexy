@@ -45,11 +45,39 @@ fn predicate_start(words: &[&str], start: usize, action: usize) -> usize {
 
 fn is_auxiliary_chain_token(words: &[&str], index: usize) -> bool {
     is_auxiliary_chain_word(words[index])
+        || is_clause_local_adjunct_token(words, index)
         || (words[index] == "and"
             && index > 0
             && index + 1 < words.len()
             && is_adverbial_modifier(words[index - 1])
             && is_adverbial_modifier(words[index + 1]))
+}
+
+fn is_clause_local_adjunct_token(words: &[&str], index: usize) -> bool {
+    words[..=index]
+        .iter()
+        .rposition(|word| is_adjunct_preposition(word))
+        .is_some_and(|preposition| {
+            preposition > 0
+                && is_modal(words[preposition - 1])
+                && words[preposition..=index]
+                    .iter()
+                    .all(|word| !is_auxiliary_chain_word(word))
+        })
+}
+
+fn is_adjunct_preposition(word: &&str) -> bool {
+    matches!(
+        *word,
+        "at" | "by" | "for" | "from" | "in" | "on" | "under" | "with" | "without"
+    )
+}
+
+fn is_modal(word: &str) -> bool {
+    matches!(
+        word,
+        "may" | "might" | "will" | "would" | "could" | "should" | "must" | "shall"
+    )
 }
 
 fn is_auxiliary_chain_word(word: &str) -> bool {
@@ -152,7 +180,16 @@ fn is_clause_boundary(word: &&str) -> bool {
 fn has_clause_negator(words: &[&str], start: usize, action: usize) -> bool {
     words[start..action]
         .iter()
-        .any(|word| matches!(*word, "no" | "not" | "never" | "without" | "neither"))
+        .any(|word| matches!(*word, "not" | "never" | "neither"))
+        || words[start..action]
+            .iter()
+            .enumerate()
+            .any(|(offset, word)| {
+                *word == "without"
+                    && words[start + offset + 1..action]
+                        .iter()
+                        .all(|word| is_adverbial_modifier(word))
+            })
         || words[start..action].windows(2).any(is_contracted_negator)
 }
 
