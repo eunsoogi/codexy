@@ -4,11 +4,34 @@ use std::process::Command;
 use crate::support;
 
 #[test]
-fn validator_accepts_empty_packaged_hooks() -> Result<(), Box<dyn std::error::Error>> {
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .arg("--check-hooks")
-        .output()?;
-    assert!(output.status.success(), "{}", text(&output));
+fn packaged_admission_hooks_are_reachable_and_inventory_drift_is_rejected()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = copy(temp.path())?;
+    let hooks = read(&root.join("hooks/hooks.json"))?;
+    for event in ["PreToolUse", "PermissionRequest"] {
+        let handler = &hooks["hooks"][event][0]["hooks"][0];
+        assert_eq!(handler["type"], "command", "{event}");
+        assert_eq!(handler["timeout"], 5, "{event}");
+        assert!(
+            handler["command"]
+                .as_str()
+                .is_some_and(|command| command.ends_with(&format!("codexy-admission.sh\" {event}"))),
+            "{event} must invoke the packaged admission launcher"
+        );
+    }
+
+    let inventory_path = root.join("hooks/policy-inventory.json");
+    let mut inventory = read(&inventory_path)?;
+    inventory["summary"]["uncovered"] = serde_json::json!(1);
+    std::fs::write(inventory_path, serde_json::to_string_pretty(&inventory)?)?;
+    let output = validate_all(&root)?;
+    assert!(!output.status.success(), "{}", text(&output));
+    assert!(
+        text(&output).contains("summary must prove uncovered=0"),
+        "{}",
+        text(&output)
+    );
     Ok(())
 }
 
@@ -83,6 +106,17 @@ fn validate(root: &std::path::Path) -> Result<std::process::Output, Box<dyn std:
             "--plugin-root",
             root.to_str().ok_or("root")?,
             "--check-hooks",
+        ])
+        .output()?)
+}
+fn validate_all(
+    root: &std::path::Path,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            root.to_str().ok_or("root")?,
+            "--check",
         ])
         .output()?)
 }

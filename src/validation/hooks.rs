@@ -1,4 +1,8 @@
+mod admission_artifact;
 mod command;
+mod policy_inventory;
+mod policy_inventory_discovery;
+mod policy_inventory_frontmatter;
 mod safety;
 
 use std::path::Path;
@@ -30,6 +34,8 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 }
 
 fn check_inner(plugin_root: &Path) -> Result<()> {
+    admission_artifact::check(plugin_root)?;
+    policy_inventory::check(plugin_root)?;
     let path = plugin_root.join(HOOKS_PATH);
     let data = load_json(&path)?;
     let events = data
