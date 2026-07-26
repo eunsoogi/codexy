@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::paths::display_relative;
 
 mod identity;
-mod instruction_source;
+pub(crate) mod instruction_source;
 mod matrix;
 mod procedure;
 
