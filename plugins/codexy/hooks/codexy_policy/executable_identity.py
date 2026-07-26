@@ -117,10 +117,11 @@ def _command_locations(command: str, cwd: str, path: str | None, aliases: tuple[
 
 
 def _final_destination(operands: AliasOperands, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> str | None:
-    result = resolved_location(operands.destination, cwd, aliases, follow_final=not operands.no_dereference)
+    no_dereference = operands.executable == "ln" and operands.no_dereference
+    result = resolved_location(operands.destination, cwd, aliases, follow_final=not no_dereference)
     if result is None:
         return None
-    if operands.no_dereference or path_state(result, aliases).kind != "directory":
+    if no_dereference or path_state(result, aliases).kind != "directory":
         return result
     basename = Path(operands.source).name
     return str(Path(result) / basename) if basename not in {"", ".", ".."} else None

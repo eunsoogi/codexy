@@ -27,6 +27,7 @@ DIRECTORY = PathState("directory")
 SUCCESS = "success"
 FAILURE = "failure"
 AMBIGUOUS = "ambiguous"
+MAX_MODELED_LINK_HOPS = 32
 
 
 def location(value: str, cwd: str) -> str:
@@ -129,12 +130,21 @@ def _symlink_ambiguous(path: str, paths: dict[str, PathState]) -> bool:
     return path not in paths and Path(path).is_symlink()
 
 
-def _follow_modeled_symlink(path: str, paths: dict[str, PathState]) -> str | None:
-    """Resolve known in-command links; unknown or cyclic targets stay opaque."""
-    visited = set()
-    while (current := paths.get(path)) is not None and current.symlink:
-        if current.target is None or path in visited:
+def _follow_modeled_symlink(
+    path: str,
+    paths: dict[str, PathState],
+    visited: frozenset[str] = frozenset(),
+    hops: int = 0,
+) -> str | None:
+    """Resolve modeled links at every path component, bounded against cycles."""
+    candidate = Path(path)
+    for link in (candidate, *candidate.parents):
+        current = paths.get(str(link))
+        if current is None or not current.symlink:
+            continue
+        if current.target is None or str(link) in visited or hops >= MAX_MODELED_LINK_HOPS:
             return None
-        visited.add(path)
-        path = current.target
+        suffix = candidate.relative_to(link)
+        target = str(Path(current.target) / suffix)
+        return _follow_modeled_symlink(target, paths, visited | {str(link)}, hops + 1)
     return path

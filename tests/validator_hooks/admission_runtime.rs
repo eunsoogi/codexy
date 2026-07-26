@@ -122,6 +122,20 @@ fn path_search_skips_non_executable_entries() -> TestResult {
     assert_case(&root, &owned, &format!("{path}; ln -sf /usr/bin/git {}/README.md && README.md push --force origin topic", fallback.display()), true, &[])
 }
 
+#[test]
+fn sudo_chdir_forms_preserve_owned_admission_and_reject_bad_options() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    assert_case(&root, &foreign, &format!("sudo -D {} git push --force origin topic", owned.display()), true, &[])?;
+    assert_case(&root, &foreign, &format!("sudo --chdir={} git push --force origin topic", owned.display()), true, &[])?;
+    for command in ["sudo -D", "sudo --chdir", "sudo --unknown git status"] {
+        assert_case(&root, &foreign, command, true, &[])?;
+    }
+    assert_case(&root, &foreign, &format!("sudo -D {} git status --short", foreign.display()), false, &[])
+}
+
 pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
     assert_event_case(root, "PreToolUse", cwd, command, denied, environment)
 }

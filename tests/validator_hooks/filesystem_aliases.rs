@@ -74,6 +74,7 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("ln -s {0}/target {1} && mkdir -p {1}/../x/../y && ln -sf {2} {1}/../x/safe && {0}/x/safe pr merge 453 --merge", external.display(), modeled_link.display(), gh.display()),
         &format!("ln -s {0}/target {1} && mkdir -p {1}/x && ln -sf {2} {1}/x/safe && {0}/target/x/safe pr merge 453 --merge", external.display(), modeled_link.display(), gh.display()),
         &format!("ln -s ../external/target {0} && mkdir -p {0}/x && ln -sf {1} {0}/x/safe && {2}/target/x/safe pr merge 453 --merge", relative_link.display(), gh.display(), external.display()),
+        &format!("ln -s {0} parent && ln -s parent/target child && mkdir -p child/x && ln -sf {1} child/x/safe && {0}/target/x/safe pr merge 453 --merge", external.display(), gh.display()),
     ] {
         assert_case(&root, &owned, command, true, &[])?;
     }
@@ -107,7 +108,7 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
     for event in ["PreToolUse", "PermissionRequest"] {
         for command in [
             "ln -s /usr/bin/git left && ln -s /usr/bin/git right && ln -sfn /usr/bin/printf left && ./right push --force origin topic",
-            "ln -s /usr/bin/git left && ln -s /usr/bin/git right && cp -fP /usr/bin/printf left && ./right push --force origin topic",
+            "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/git link && ./target push --force origin topic",
             "ln -s /usr/bin/git left && ln -s left right && ln -sfn right left && ./left push --force origin topic",
             "ln -s \"$UNKNOWN_RUNTIME_VALUE\" safe && ./safe push --force origin topic",
         ] {
@@ -116,6 +117,8 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
         for command in [
             "ln -s /usr/bin/printf left && ln -s /usr/bin/git right && ln -sfn /usr/bin/printf left && ./left '%s\\n' benign",
             "ln -s /usr/bin/printf safe && ./safe '%s\\n' benign",
+            "ln -s /usr/bin/git left && ln -s /usr/bin/git right && cp -fP /usr/bin/printf left && ./right push --force origin topic",
+            "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/printf link && ./target '%s\\n' benign",
         ] {
             assert_event_case(&root, event, &owned, command, false, &[])?;
         }

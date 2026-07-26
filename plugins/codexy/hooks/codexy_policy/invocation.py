@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .execution_context import (
-    ExecutionContext, assigned_variables, assignment, expand_tokens, export_variables,
+    ExecutionContext, assigned_variables, assignment, at, expand_tokens, export_variables,
     leading_assignments, printf_assignment, unset_variables,
 )
 from .executable_identity import resolve as executable_identity
 from .invocation_wrappers import environment as wrapper_environment, options as wrapper_options
-from .shell_context import command_option, name
+from .shell_context import command_option, name, resolve_cwd
 
 MAX_WRAPPER_DEPTH = 8
 SHELL_INTERPRETERS = {"sh", "bash", "zsh", "dash"}
