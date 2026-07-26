@@ -2,9 +2,11 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
-use super::review_response_cluster::instruction_source;
+mod active_scope;
 
 const REFERENCE_PATH: &str = "skills/git-workflow/references/codex-connector-review.md";
+const SKILL_PATH: &str = "skills/git-workflow/SKILL.md";
+const AGENTS_PATH: &str = "AGENTS.md";
 const HEADING: &str = "## Required Procedure";
 const OBLIGATIONS: [(&str, &str); 7] = [
     (
@@ -38,11 +40,62 @@ const OBLIGATIONS: [(&str, &str); 7] = [
 ];
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
-    if !path.ends_with(REFERENCE_PATH) {
+    let active = active_scope::lines(text);
+    if path.ends_with(AGENTS_PATH) {
+        require(
+            path,
+            &active,
+            &["codex connector automatic review", "must", "disabled"],
+            errors,
+        );
+        require(
+            path,
+            &active,
+            &["must", "request", "explicit", "@codex", "review"],
+            errors,
+        );
+    } else if path.ends_with(SKILL_PATH) {
+        require(
+            path,
+            &active,
+            &["references/codex-connector-review.md"],
+            errors,
+        );
+        require(
+            path,
+            &active,
+            &["before merge", "parent/orchestrator", "must", "follow"],
+            errors,
+        );
+    } else if path.ends_with(REFERENCE_PATH) {
+        reference_contract(path, &active, errors);
+    } else {
         return;
     }
-    let normative = instruction_source::normative_markdown(text);
-    let obligations = procedure_obligations(&normative, path, errors);
+    if active.iter().any(|line| active_request_variant(line)) {
+        errors.push(format!(
+            "{} Codex connector review policy reintroduces an automatic or repeated review",
+            display_relative(path)
+        ));
+    }
+}
+
+fn require(path: &Path, active: &[String], terms: &[&str], errors: &mut Vec<String>) {
+    if !active.iter().any(|line| {
+        terms.iter().all(|term| {
+            line.to_ascii_lowercase()
+                .contains(&term.to_ascii_lowercase())
+        })
+    }) {
+        errors.push(format!(
+            "{} Codex connector review policy is missing an active governed-surface obligation",
+            display_relative(path)
+        ));
+    }
+}
+
+fn reference_contract(path: &Path, active: &[String], errors: &mut Vec<String>) {
+    let obligations = procedure_obligations(active, path, errors);
     for (id, expected) in OBLIGATIONS {
         if obligations.get(id).map(String::as_str) != Some(expected) {
             errors.push(format!(
@@ -51,25 +104,16 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             ));
         }
     }
-    for sentence in normative.split(['.', '\n']) {
-        if active_request_variant(sentence) {
-            errors.push(format!(
-                "{} Codex connector review policy reintroduces an automatic or repeated review",
-                display_relative(path)
-            ));
-            break;
-        }
-    }
 }
 
 fn procedure_obligations(
-    normative: &str,
+    active: &[String],
     path: &Path,
     errors: &mut Vec<String>,
 ) -> std::collections::BTreeMap<String, String> {
     let mut in_procedure = false;
     let mut obligations = std::collections::BTreeMap::new();
-    for line in normative.lines().map(str::trim) {
+    for line in active.iter().map(String::as_str) {
         if line == HEADING {
             in_procedure = true;
             continue;
@@ -80,9 +124,17 @@ fn procedure_obligations(
         if !in_procedure {
             continue;
         }
-        let Some((id, clause)) = obligation(line) else {
+        let Some((number, id, clause)) = obligation(line) else {
             continue;
         };
+        let expected = OBLIGATIONS.iter().position(|(expected, _)| *expected == id);
+        if expected.is_none_or(|index| number != index + 1) {
+            errors.push(format!(
+                "{} Codex connector review policy has an invalid obligation number or ID",
+                display_relative(path)
+            ));
+            continue;
+        }
         if obligations
             .insert(id.to_owned(), normalize(clause))
             .is_some()
@@ -96,22 +148,26 @@ fn procedure_obligations(
     obligations
 }
 
-fn obligation(line: &str) -> Option<(&str, &str)> {
-    let (_, content) = line.split_once(". ")?;
+fn obligation(line: &str) -> Option<(usize, &str, &str)> {
+    let (number, content) = line.split_once(". ")?;
+    let number = number.parse::<usize>().ok()?;
     let content = content.strip_prefix('[')?;
     let (id, clause) = content.split_once("] ")?;
-    (!id.is_empty() && !clause.is_empty()).then_some((id, clause))
+    (!id.is_empty() && !clause.is_empty()).then_some((number, id, clause))
 }
 
 fn active_request_variant(sentence: &str) -> bool {
     let sentence = normalize(sentence);
-    let positive_must = sentence.contains(" must ")
-        && !sentence.contains(" must not ")
+    let words = sentence.split_whitespace().collect::<Vec<_>>();
+    let positive_must = words.contains(&"must")
+        && !words.windows(2).any(|pair| pair == ["must", "not"])
         && !sentence.contains("without request");
     let request = sentence.contains("request") && sentence.contains("review");
     let automatic_enable = sentence.contains("automatic")
         && sentence.contains("review")
-        && (sentence.contains("enable") || sentence.contains("enabled"));
+        && ["enable", "enabled", "configure", "configured"]
+            .iter()
+            .any(|verb| sentence.contains(verb));
     let repeated = [
         "every push",
         "each push",
