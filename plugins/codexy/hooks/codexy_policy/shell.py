@@ -15,13 +15,14 @@ from .execution_context import (
 )
 from .invocation import resolve
 from .repository import OWNED, UrlRewrite, git_directory_owned, github_identity, identity, repository_owned, rewrite_url
+from .shell_builtins import hash_path_alias, rm_forbidden
 from .shell_context import changed_directory, flag
 from .shell_groups import Command, GroupSyntaxError, Sequence, parse
 
 OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
-POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GH_REPO)\s*=")
+POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GIT_COMMON_DIR|GH_REPO)\s*=")
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
 CONTROL_COMMAND_START = {"if", "then", "elif", "else", "while", "until", "do"}
 REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.(url|pushurl)", re.IGNORECASE)
@@ -29,11 +30,16 @@ REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.(url|pushurl)", re.I
 
 def forbidden(
     command: str, cwd: str, gh_repo: str | None = None, git_dir: str | None = None,
+    git_common_dir: str | None = None,
     git_config_environment: tuple[tuple[str, str], ...] = (), depth: int = 0,
 ) -> bool:
-    environment = tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir)) if value is not None) + git_config_environment
+    environment = tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir), ("GIT_COMMON_DIR", git_common_dir)) if value is not None) + git_config_environment
     owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
-    return _forbidden(command, ExecutionContext(cwd, owned, git_dir, gh_repo, environment), depth)
+    context = ExecutionContext(
+        cwd, owned, git_dir, gh_repo, environment,
+        opaque_repository_state=git_common_dir is not None,
+    )
+    return _forbidden(command, context, depth)
 
 
 def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
@@ -112,6 +118,8 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         )
     if invocation.executable in {".", "source"}:
         return True, context
+    if invocation.executable == "hash" and hash_path_alias(invocation.arguments):
+        return True, context
     if invocation.executable == "git":
         denied, remote = _git(invocation.arguments, invocation.context, depth)
         if remote is None:
@@ -124,7 +132,7 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         arguments = expand_gh_alias(invocation.arguments)
         return arguments is None or gh_forbidden(arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
     if invocation.executable == "rm":
-        return invocation.context.cwd_owned is not False and _rm(invocation.arguments), context
+        return invocation.context.cwd_owned is not False and rm_forbidden(invocation.arguments), context
     return False, after_external_command(
         invocation.executable, invocation.arguments, context,
     )
@@ -222,12 +230,6 @@ def _dynamic_control_executable(command: str) -> bool:
                 return True
             command_start = False
     return False
-
-
-def _rm(args: list[str]) -> bool:
-    targets = [arg for arg in args if not arg.startswith("-")]
-    broad = {"/", "/*", "~", "$HOME", "${HOME}"}
-    return flag(args, "r", "--recursive") and flag(args, "f", "--force") and any(target in broad or target.rstrip("/").endswith("/..") for target in targets)
 
 
 def _explicit_owned(

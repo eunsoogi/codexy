@@ -12,7 +12,7 @@ VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 VARIABLE_REFERENCE = re.compile(r"\$(?:\{(?P<braced>[A-Za-z_][A-Za-z0-9_]*)\}|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))")
 DYNAMIC_VALUE = "__codexy_command_substitution__"
 SINGLE_QUOTED_DOLLAR = "\ue000"
-POLICY_SELECTORS = {"GH_REPO", "GIT_DIR"}
+POLICY_SELECTORS = {"GH_REPO", "GIT_DIR", "GIT_COMMON_DIR"}
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
         return ExecutionContext(
             context.cwd, context.cwd_owned, context.git_dir, context.gh_repo,
             tuple(environment.items()), True, context.remote_urls,
-            context.opaque_repository_state,
+            context.opaque_repository_state or key == "GIT_COMMON_DIR",
         )
     environment[key] = expanded
     git_dir = expanded if key == "GIT_DIR" else context.git_dir
@@ -48,7 +48,8 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     owned = git_directory_owned(context.cwd, git_dir) if git_dir is not None else context.cwd_owned
     return ExecutionContext(
         context.cwd, owned, git_dir, gh_repo, tuple(environment.items()),
-        context.opaque_environment, context.remote_urls, context.opaque_repository_state,
+        context.opaque_environment, context.remote_urls,
+        context.opaque_repository_state or key == "GIT_COMMON_DIR",
     )
 
 

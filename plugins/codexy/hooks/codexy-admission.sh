@@ -19,6 +19,7 @@ runtime_home=${HOME-}
 set -- env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home"
 [ -z "${GH_REPO-}" ] || set -- "$@" "GH_REPO=$GH_REPO"
 [ -z "${GIT_DIR-}" ] || set -- "$@" "GIT_DIR=$GIT_DIR"
+[ -z "${GIT_COMMON_DIR-}" ] || set -- "$@" "GIT_COMMON_DIR=$GIT_COMMON_DIR"
 if [ "${GIT_CONFIG_COUNT+x}" = x ]; then
   set -- "$@" "GIT_CONFIG_COUNT=$GIT_CONFIG_COUNT"
   case "$GIT_CONFIG_COUNT" in

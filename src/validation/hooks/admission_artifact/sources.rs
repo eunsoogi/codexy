@@ -44,6 +44,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/pull_request.py"),
     source!("codexy_policy/repository.py"),
     source!("codexy_policy/shell.py"),
+    source!("codexy_policy/shell_builtins.py"),
     source!("codexy_policy/shell_context.py"),
     source!("codexy_policy/shell_groups.py"),
     source!("codexy_policy/titles.py"),

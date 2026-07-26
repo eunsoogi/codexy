@@ -37,6 +37,9 @@ mod hook_grouped_execution_context;
 #[path = "../hook_persistent_environment_and_rewrites.rs"]
 mod hook_persistent_environment_and_rewrites;
 
+#[path = "../hook_fail_closed_command_admission.rs"]
+mod hook_fail_closed_command_admission;
+
 #[path = "../hook_pr_admission_policy.rs"]
 mod hook_pr_admission_policy;
 

@@ -35,7 +35,7 @@ def forbidden(args: list[str], default_owned: bool, cwd: str) -> bool:
         query = fields.get("query")
         if query is not None and MUTATION.search(query) is None:
             return False
-        return _graphql_owned(query, fields, default_owned)
+        return _graphql_owned(query, fields)
     if method in {"GET", "HEAD"}:
         return False
     match = REPOSITORY.match(endpoint)
@@ -130,10 +130,10 @@ def _input_query(cwd: str, target: str) -> str | None:
     return query if isinstance(query, str) else None
 
 
-def _graphql_owned(query: str | None, fields: dict[str, str], default_owned: bool) -> bool:
+def _graphql_owned(query: str | None, fields: dict[str, str]) -> bool:
     owner, name = fields.get("owner"), fields.get("name")
     if owner is not None and name is not None:
         return github_identity(f"{owner}/{name}") == OWNED
     if query is not None and re.search(r"eunsoogi\s*[/,]\s*codexy", query, re.IGNORECASE):
         return True
-    return default_owned
+    return True
