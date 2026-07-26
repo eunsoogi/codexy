@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 
 use serde_json::{Value, json};
 
-type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn opaque_graphql_mutations_fail_closed_without_blocking_queries() -> TestResult {
@@ -106,28 +106,6 @@ fn malformed_graphql_escapes_fail_closed() -> TestResult {
 }
 
 #[test]
-fn graphql_delimiters_fail_closed_without_blocking_nested_controls() -> TestResult {
-    let root = plugin_root();
-    let workspace = tempfile::tempdir()?;
-    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
-
-    assert_case(
-        &root,
-        &foreign,
-        "gh api graphql -f query='query { viewer(] { login } }'",
-        true,
-        &[],
-    )?;
-    assert_case(
-        &root,
-        &foreign,
-        "gh api graphql -f query='query @cache { viewer { repositories(first: 1, orderBy: {field: NAME, direction: ASC}, labels: [ONE, TWO]) { nodes { name } } } }'",
-        false,
-        &[],
-    )
-}
-
-#[test]
 fn hash_path_aliases_cannot_disguise_git_mutations() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
@@ -184,7 +162,7 @@ fn inherited_git_common_dir_fails_closed_for_mutations_only() -> TestResult {
     )
 }
 
-fn assert_case(
+pub(super) fn assert_case(
     root: &Path,
     cwd: &Path,
     command: &str,
@@ -232,7 +210,7 @@ fn assert_case(
     Ok(())
 }
 
-fn repository(root: &Path, name: &str, remote: &str) -> TestResult<PathBuf> {
+pub(super) fn repository(root: &Path, name: &str, remote: &str) -> TestResult<PathBuf> {
     let path = root.join(name);
     std::fs::create_dir_all(path.join(".git"))?;
     std::fs::write(
@@ -242,6 +220,6 @@ fn repository(root: &Path, name: &str, remote: &str) -> TestResult<PathBuf> {
     Ok(path)
 }
 
-fn plugin_root() -> PathBuf {
+pub(super) fn plugin_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy")
 }

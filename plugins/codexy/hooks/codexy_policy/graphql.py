@@ -107,47 +107,35 @@ def _block_string(query: str, index: int) -> int | None:
 
 def _definition(tokens: list[str], index: int) -> int | None:
     index += 1
-    parens, brackets = 0, 0
+    stack: list[str] = []
     while index < len(tokens):
         token = tokens[index]
-        if token == "(":
-            parens += 1
-        elif token == ")":
-            if parens == 0:
-                return None
-            parens -= 1
-        elif token == "[":
-            brackets += 1
-        elif token == "]":
-            if brackets == 0:
-                return None
-            brackets -= 1
-        elif token == "{":
-            if parens == 0 and brackets == 0:
-                return _selection(tokens, index)
-            index = _selection(tokens, index)
-            if index is None:
-                return None
-            continue
-        elif token == "}" or (token == "..." and parens == 0 and brackets == 0):
+        if token == "{" and not stack:
+            return _selection(tokens, index)
+        if not _nest(stack, token) or (token == "..." and not stack):
             return None
         index += 1
     return None
 
 
 def _selection(tokens: list[str], index: int) -> int | None:
-    openers = {"{", "(", "["}
-    pairs = {"}": "{", ")": "(", "]": "["}
     stack: list[str] = []
     while index < len(tokens):
         token = tokens[index]
-        if token in openers:
-            stack.append(token)
-        elif token in pairs:
-            if not stack or stack[-1] != pairs[token]:
-                return None
-            stack.pop()
-            if not stack:
-                return index + 1
+        if not _nest(stack, token):
+            return None
+        if not stack:
+            return index + 1
         index += 1
     return None
+
+
+def _nest(stack: list[str], token: str) -> bool:
+    pairs = {"}": "{", ")": "(", "]": "["}
+    if token in {"{", "(", "["}:
+        stack.append(token)
+    elif token in pairs:
+        if not stack or stack[-1] != pairs[token]:
+            return False
+        stack.pop()
+    return True

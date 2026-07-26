@@ -40,6 +40,9 @@ mod hook_persistent_environment_and_rewrites;
 #[path = "../hook_fail_closed_command_admission.rs"]
 mod hook_fail_closed_command_admission;
 
+#[path = "../hook_graphql_delimiter_admission.rs"]
+mod hook_graphql_delimiter_admission;
+
 #[path = "../hook_pr_admission_policy.rs"]
 mod hook_pr_admission_policy;
 
