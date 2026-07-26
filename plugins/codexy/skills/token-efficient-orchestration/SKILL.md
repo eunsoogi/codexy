@@ -47,6 +47,8 @@ MUST use this flow after compaction and before handoff:
 2. **Accept qualifying events only**: root/orchestrator MUST NOT autonomously poll.
    The owner MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. The owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable.
    After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.
+   While a desktop-origin root turn has a callable `wait_threads` handler, the owner MUST keep ordinary child waits in a cursor-based `wait_threads` loop without finalizing that root turn between unchanged waits; mobile input that interrupts the active local wait MUST be consumed in that same local turn before the cursor-based wait continues.
+   If a slingshot-host turn still returns `No handler registered` after the one fresh discovery and one host-aware retry, the owner MUST emit exactly one unavailable evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery.
    Children MUST send a compact delta only for terminal child state, Sentinel
    verdict, PR creation, new HEAD, GitHub check-state change, actionable
    review-feedback change, or review-thread resolution.

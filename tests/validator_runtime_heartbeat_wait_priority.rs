@@ -5,27 +5,16 @@ use crate::support;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const REFERENCE: &str = "skills/codex-orchestration/references/runtime-heartbeats.md";
-const WAIT_DEFAULT: &str = "The owner MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits.";
-const HEARTBEAT_RESERVATION: &str = "The owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable.";
-const ELIGIBILITY: &str = "When genuinely scheduled monitoring or an unavailable `wait_threads` route will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.";
-const REGISTRATION: &str = "For such genuinely scheduled monitoring or unavailable-wait fallback, the owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.";
+const TOKEN_SKILL: &str = "skills/token-efficient-orchestration/SKILL.md";
 const HOST_FALLBACK: &str = "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.";
 const LEGACY_ELIGIBILITY: &str = "When GitHub CI, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.";
 const LEGACY_REGISTRATION: &str = "The owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.";
+const DESKTOP_CONTINUITY: &str = "While a desktop-origin root turn has a callable `wait_threads` handler, the owner MUST keep ordinary child waits in a cursor-based `wait_threads` loop without finalizing that root turn between unchanged waits; mobile input that interrupts the active local wait MUST be consumed in that same local turn before the cursor-based wait continues.";
+const SLINGSHOT_RECOVERY: &str = "If a slingshot-host turn still returns `No handler registered` after the one fresh discovery and one host-aware retry, the owner MUST emit exactly one unavailable evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery.";
 
 #[test]
-fn validator_accepts_ordered_wait_and_heartbeat_routes() -> TestResult {
+fn validator_accepts_ordered_wait_and_host_recovery_routes() -> TestResult {
     let fixture = support::plugin_fixture()?;
-    let policy = fs::read_to_string(fixture.root().join(REFERENCE))?;
-    for clause in [
-        WAIT_DEFAULT,
-        HEARTBEAT_RESERVATION,
-        ELIGIBILITY,
-        REGISTRATION,
-        HOST_FALLBACK,
-    ] {
-        assert!(policy.contains(clause), "missing route clause {clause:?}");
-    }
     let output = support::validator_instruction_policy(fixture.root())?;
     assert!(
         output.status.success(),
@@ -74,9 +63,34 @@ fn validator_rejects_weakened_host_transition_fallbacks() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_rejects_weakened_desktop_and_slingshot_recovery_routes() -> TestResult {
+    for relative in [REFERENCE, TOKEN_SKILL] {
+        assert_rejected_policy_mutation(
+            relative,
+            DESKTOP_CONTINUITY,
+            "The owner MAY finalize a desktop-origin root turn between ordinary child waits.",
+        )?;
+        assert_rejected_policy_mutation(
+            relative,
+            SLINGSHOT_RECOVERY,
+            "The owner MAY repeat a slingshot-host wait call or schedule a heartbeat relay.",
+        )?;
+    }
+    Ok(())
+}
+
 fn assert_rejected_mutation(original_clause: &str, replacement: &str) -> TestResult {
+    assert_rejected_policy_mutation(REFERENCE, original_clause, replacement)
+}
+
+fn assert_rejected_policy_mutation(
+    relative: &str,
+    original_clause: &str,
+    replacement: &str,
+) -> TestResult {
     let fixture = support::plugin_fixture()?;
-    let path = fixture.root().join(REFERENCE);
+    let path = fixture.root().join(relative);
     let original = fs::read_to_string(&path)?;
     let mutated = original.replace(original_clause, replacement);
     assert_ne!(
