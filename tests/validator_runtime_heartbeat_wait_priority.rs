@@ -17,6 +17,14 @@ const NEGATED_HEARTBEAT_REGISTRATIONS: &[&str] = &[
     "The owner MUST register a non-heartbeat wake route instead of repeated model continuations or ending without a wakeup path.",
     "The owner MUST register a non heartbeat wake route instead of repeated model continuations or ending without a wakeup path.",
     "The owner MUST register a not a heartbeat wake route instead of repeated model continuations or ending without a wakeup path.",
+    "The owner MUST NOT register a heartbeat instead of repeated model continuations or ending without a wakeup path.",
+    "The owner MUST register without a heartbeat instead of repeated model continuations or ending without a wakeup path.",
+    "The owner MUST register no heartbeat instead of repeated model continuations or ending without a wakeup path.",
+];
+const TARGET_BOUND_NEVER_HEARTBEAT: &str = "The owner MUST register never a heartbeat instead of repeated model continuations or ending without a wakeup path.";
+const AFFIRMATIVE_NEAR_NEGATORS: &[&str] = &[
+    "The owner MUST register, without delay, a heartbeat instead of repeated model continuations or ending without a wakeup path.",
+    "The owner MUST register not only a heartbeat instead of repeated model continuations or ending without a wakeup path.",
 ];
 
 #[test]
@@ -47,12 +55,40 @@ fn validator_accepts_negated_heartbeat_registration_targets() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_affirmative_heartbeat_targets_near_unrelated_negators() -> TestResult {
+    for addition in AFFIRMATIVE_NEAR_NEGATORS {
+        assert_rejected_addition(addition)?;
+        assert_rejected_addition(&format!("\"{addition}\""))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_does_not_treat_target_bound_never_as_an_affirmative_heartbeat_rule() -> TestResult {
+    let fixture = support::plugin_fixture()?;
+    let path = fixture.root().join(REFERENCE);
+    fs::write(
+        &path,
+        format!("{}\n{TARGET_BOUND_NEVER_HEARTBEAT}", fs::read_to_string(&path)?),
+    )?;
+    let output = support::validator_instruction_policy(fixture.root())?;
+    assert!(
+        !support::stderr(&output).contains("unconditional heartbeat"),
+        "target-bound `never` must not become an affirmative heartbeat rule: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_inactive_unconditional_child_state_history() -> TestResult {
     for addition in [
         format!("## Historical Example\n{LEGACY_ELIGIBILITY}\n{LEGACY_REGISTRATION}"),
         format!("```markdown\n{LEGACY_ELIGIBILITY}\n{LEGACY_REGISTRATION}\n```"),
         format!("## Historical Example\n{LEGACY_THREAD_TARGETED_REGISTRATION}"),
         format!("```markdown\n{LEGACY_THREAD_TARGETED_REGISTRATION}\n```"),
+        format!("## Historical Example\n{}", AFFIRMATIVE_NEAR_NEGATORS[0]),
+        format!("```markdown\n{}\n```", AFFIRMATIVE_NEAR_NEGATORS[1]),
     ] {
         let fixture = support::plugin_fixture()?;
         let path = fixture.root().join(REFERENCE);

@@ -7,9 +7,8 @@ mod weakening;
 use crate::paths::display_relative;
 use clauses::{
     CONDITIONAL_MARKERS, EXTERNAL_GATE, LEGACY_CHILD_STATE_ELIGIBILITY,
-    LEGACY_HEARTBEAT_REGISTRATION_PREFIX, LEGACY_HEARTBEAT_REGISTRATION_TERMS,
-    NEGATED_HEARTBEAT_TARGET_MODIFIERS, ORCHESTRATION, RESTRICTED_HEARTBEAT_CONTEXT, TEMPLATE,
-    TOKEN, TRANSITION,
+    LEGACY_HEARTBEAT_REGISTRATION_PREFIX, LEGACY_HEARTBEAT_REGISTRATION_TERMS, ORCHESTRATION,
+    RESTRICTED_HEARTBEAT_CONTEXT, TEMPLATE, TOKEN, TRANSITION, has_affirmative_heartbeat_target,
 };
 use markdown::{last_modal_is_soft, normalized_policy_text};
 use weakening::has_weakening_suffix;
@@ -104,21 +103,6 @@ fn is_legacy_heartbeat_registration(sentence: &str) -> bool {
         && LEGACY_HEARTBEAT_REGISTRATION_TERMS
             .iter()
             .all(|term| sentence.contains(term))
-}
-
-fn has_affirmative_heartbeat_target(sentence: &str) -> bool {
-    let tokens: Vec<_> = sentence
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
-        .filter(|token| !token.is_empty())
-        .collect();
-    tokens.iter().enumerate().any(|(index, token)| {
-        *token == "heartbeat"
-            && !tokens[..index]
-                .iter()
-                .rev()
-                .take(3)
-                .any(|token| NEGATED_HEARTBEAT_TARGET_MODIFIERS.contains(token))
-    })
 }
 
 fn is_unweakened_clause(before: &str, after: &str, clause: &str) -> bool {

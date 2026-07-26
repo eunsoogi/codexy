@@ -4,9 +4,81 @@ pub(super) const LEGACY_HEARTBEAT_REGISTRATION_TERMS: &[&str] = &[
     "instead of repeated model continuations",
     "ending without a wakeup path",
 ];
-pub(super) const NEGATED_HEARTBEAT_TARGET_MODIFIERS: &[&str] = &["no", "non", "not", "without"];
+pub(super) const NEGATED_HEARTBEAT_TARGET_MODIFIERS: &[&str] =
+    &["no", "non", "not", "never", "without"];
 pub(super) const RESTRICTED_HEARTBEAT_CONTEXT: &str =
     "for such genuinely scheduled monitoring or unavailable-wait fallback";
+
+pub(super) fn has_affirmative_heartbeat_target(sentence: &str) -> bool {
+    let tokens = sentence_tokens(sentence);
+    tokens.iter().enumerate().any(|(index, token)| {
+        token.text == "heartbeat"
+            && !is_negated_heartbeat_target(&tokens, index)
+            && !is_negated_heartbeat_registration(&tokens)
+    })
+}
+
+struct SentenceToken<'a> {
+    text: &'a str,
+    preceded_by_punctuation: bool,
+}
+
+fn sentence_tokens(sentence: &str) -> Vec<SentenceToken<'_>> {
+    let mut tokens = Vec::new();
+    let mut token_start = None;
+    let mut token_preceded_by_punctuation = false;
+    let mut separator_has_punctuation = false;
+
+    for (index, character) in sentence.char_indices() {
+        if is_sentence_token_character(character) {
+            if token_start.is_none() {
+                token_start = Some(index);
+                token_preceded_by_punctuation = separator_has_punctuation;
+                separator_has_punctuation = false;
+            }
+        } else {
+            if let Some(start) = token_start.take() {
+                tokens.push(SentenceToken {
+                    text: &sentence[start..index],
+                    preceded_by_punctuation: token_preceded_by_punctuation,
+                });
+            }
+            separator_has_punctuation |= !character.is_whitespace();
+        }
+    }
+    if let Some(start) = token_start {
+        tokens.push(SentenceToken {
+            text: &sentence[start..],
+            preceded_by_punctuation: token_preceded_by_punctuation,
+        });
+    }
+    tokens
+}
+
+fn is_sentence_token_character(character: char) -> bool {
+    character.is_ascii_alphanumeric() || character == '-'
+}
+
+fn is_negated_heartbeat_target(tokens: &[SentenceToken<'_>], heartbeat_index: usize) -> bool {
+    let target_start = heartbeat_index
+        .checked_sub(1)
+        .filter(|index| matches!(tokens[*index].text, "a" | "an" | "the"))
+        .unwrap_or(heartbeat_index);
+    let Some(modifier_index) = target_start.checked_sub(1) else {
+        return false;
+    };
+    !tokens[target_start].preceded_by_punctuation
+        && NEGATED_HEARTBEAT_TARGET_MODIFIERS.contains(&tokens[modifier_index].text)
+}
+
+fn is_negated_heartbeat_registration(tokens: &[SentenceToken<'_>]) -> bool {
+    tokens.iter().enumerate().any(|(index, token)| {
+        token.text == "register"
+            && index > 0
+            && !token.preceded_by_punctuation
+            && NEGATED_HEARTBEAT_TARGET_MODIFIERS.contains(&tokens[index - 1].text)
+    })
+}
 
 pub(super) const ORCHESTRATION: &[&str] = &[
     "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
