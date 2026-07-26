@@ -136,15 +136,18 @@ def _definition(tokens: list[str], index: int) -> int | None:
 
 
 def _selection(tokens: list[str], index: int) -> int | None:
-    depth = 0
+    openers = {"{", "(", "["}
+    pairs = {"}": "{", ")": "(", "]": "["}
+    stack: list[str] = []
     while index < len(tokens):
-        if tokens[index] == "{":
-            depth += 1
-        elif tokens[index] == "}":
-            depth -= 1
-            if depth == 0:
-                return index + 1
-            if depth < 0:
+        token = tokens[index]
+        if token in openers:
+            stack.append(token)
+        elif token in pairs:
+            if not stack or stack[-1] != pairs[token]:
                 return None
+            stack.pop()
+            if not stack:
+                return index + 1
         index += 1
     return None

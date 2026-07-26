@@ -106,6 +106,28 @@ fn malformed_graphql_escapes_fail_closed() -> TestResult {
 }
 
 #[test]
+fn graphql_delimiters_fail_closed_without_blocking_nested_controls() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+
+    assert_case(
+        &root,
+        &foreign,
+        "gh api graphql -f query='query { viewer(] { login } }'",
+        true,
+        &[],
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "gh api graphql -f query='query @cache { viewer { repositories(first: 1, orderBy: {field: NAME, direction: ASC}, labels: [ONE, TWO]) { nodes { name } } } }'",
+        false,
+        &[],
+    )
+}
+
+#[test]
 fn hash_path_aliases_cannot_disguise_git_mutations() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
