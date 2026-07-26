@@ -165,3 +165,6 @@ mod validator_completion_handoff_waiting;
 
 #[path = "../validator_connector_review_policy.rs"]
 mod validator_connector_review_policy;
+
+#[path = "../validator_connector_review_policy_markdown_boundaries.rs"]
+mod validator_connector_review_policy_markdown_boundaries;

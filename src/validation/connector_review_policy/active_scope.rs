@@ -1,14 +1,26 @@
 pub(super) fn lines(text: &str) -> Vec<String> {
     let mut active = Vec::new();
-    let mut fence = false;
+    let mut fence = None;
     let mut inactive_at = None;
     for raw in text.lines() {
         let trimmed = raw.trim();
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            fence = !fence;
+        if let Some((marker, count, rest)) = fence_delimiter(trimmed) {
+            fence = match fence {
+                Some((opened_marker, minimum))
+                    if marker == opened_marker && count >= minimum && rest.trim().is_empty() =>
+                {
+                    None
+                }
+                Some(opened) => Some(opened),
+                None => Some((marker, count)),
+            };
             continue;
         }
-        if fence || raw.starts_with("    ") || raw.starts_with('\t') || trimmed.starts_with('>') {
+        if fence.is_some()
+            || raw.starts_with("    ")
+            || raw.starts_with('\t')
+            || trimmed.starts_with('>')
+        {
             continue;
         }
         if let Some((level, title)) = heading(trimmed) {
@@ -23,11 +35,40 @@ pub(super) fn lines(text: &str) -> Vec<String> {
             }
             continue;
         }
-        if inactive_at.is_none() && !quoted_or_example(trimmed) && !trimmed.is_empty() {
+        if inactive_at.is_none()
+            && !quoted_or_example(without_list_prefix(trimmed))
+            && !trimmed.is_empty()
+        {
             active.push(trimmed.to_owned());
         }
     }
     active
+}
+
+fn fence_delimiter(line: &str) -> Option<(char, usize, &str)> {
+    let marker = line.chars().next()?;
+    if !matches!(marker, '`' | '~') {
+        return None;
+    }
+    let count = line
+        .chars()
+        .take_while(|candidate| *candidate == marker)
+        .count();
+    (count >= 3).then(|| (marker, count, &line[count..]))
+}
+
+fn without_list_prefix(line: &str) -> &str {
+    if let Some(rest) = line.strip_prefix(['-', '*', '+']) {
+        return rest.trim_start();
+    }
+    let digits = line
+        .bytes()
+        .take_while(|byte| byte.is_ascii_digit())
+        .count();
+    if digits > 0 && matches!(line.as_bytes().get(digits), Some(b'.' | b')')) {
+        return line[digits + 1..].trim_start();
+    }
+    line
 }
 
 fn heading(line: &str) -> Option<(usize, &str)> {

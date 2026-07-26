@@ -113,6 +113,7 @@ fn procedure_obligations(
 ) -> std::collections::BTreeMap<String, String> {
     let mut in_procedure = false;
     let mut obligations = std::collections::BTreeMap::new();
+    let mut next_number = 1;
     for line in active.iter().map(String::as_str) {
         if line == HEADING {
             in_procedure = true;
@@ -128,13 +129,14 @@ fn procedure_obligations(
             continue;
         };
         let expected = OBLIGATIONS.iter().position(|(expected, _)| *expected == id);
-        if expected.is_none_or(|index| number != index + 1) {
+        if number != next_number || expected.is_none_or(|index| number != index + 1) {
             errors.push(format!(
                 "{} Codex connector review policy has an invalid obligation number or ID",
                 display_relative(path)
             ));
             continue;
         }
+        next_number += 1;
         if obligations
             .insert(id.to_owned(), normalize(clause))
             .is_some()
@@ -159,29 +161,43 @@ fn obligation(line: &str) -> Option<(usize, &str, &str)> {
 fn active_request_variant(sentence: &str) -> bool {
     let sentence = normalize(sentence);
     let words = sentence.split_whitespace().collect::<Vec<_>>();
-    let positive_must = words.contains(&"must")
-        && !words.windows(2).any(|pair| pair == ["must", "not"])
-        && !sentence.contains("without request");
-    let request = sentence.contains("request") && sentence.contains("review");
-    let automatic_enable = sentence.contains("automatic")
-        && sentence.contains("review")
-        && ["enable", "enabled", "configure", "configured"]
+    words.iter().enumerate().any(|(start, word)| {
+        if *word != "must" {
+            return false;
+        }
+        let end = words[start + 1..]
             .iter()
-            .any(|verb| sentence.contains(verb));
-    let repeated = [
-        "every push",
-        "each push",
-        "per push",
-        "on push",
-        "duplicate",
-        "another",
-        "second",
-        "piecemeal",
-        "after every repair",
-    ]
-    .iter()
-    .any(|marker| sentence.contains(marker));
-    positive_must && ((request && (sentence.contains("automatic") || repeated)) || automatic_enable)
+            .position(|candidate| *candidate == "must")
+            .map_or(words.len(), |offset| start + 1 + offset);
+        let clause = &words[start..end];
+        let positive_must = clause.get(1) != Some(&"not")
+            && !clause
+                .windows(2)
+                .any(|pair| pair[0] == "without" && pair[1].starts_with("request"));
+        let request = clause.iter().any(|word| word.starts_with("request"))
+            && clause.iter().any(|word| word.starts_with("review"));
+        let automatic_enable = clause.contains(&"automatic")
+            && clause.iter().any(|word| word.starts_with("review"))
+            && ["enable", "enabled", "configure", "configured"]
+                .iter()
+                .any(|verb| clause.contains(verb));
+        let repeated = [
+            "every push",
+            "each push",
+            "per push",
+            "on push",
+            "duplicate",
+            "another",
+            "second",
+            "repeated",
+            "piecemeal",
+            "after every repair",
+        ]
+        .iter()
+        .any(|marker| clause.join(" ").contains(marker));
+        positive_must
+            && ((request && (clause.contains(&"automatic") || repeated)) || automatic_enable)
+    })
 }
 
 fn normalize(text: &str) -> String {
