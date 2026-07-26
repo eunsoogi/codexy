@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 
+from .graphql import mutation
 from .repository import OWNED, github_identity, read_text
 
 TYPED_FIELD_OPTIONS = {"-F", "--field"}
@@ -12,7 +13,6 @@ FIELD_OPTIONS = {"-f", "--raw-field"} | TYPED_FIELD_OPTIONS
 VALUE_OPTIONS = {"--cache", "--hostname", "--preview"}
 HEADER_OPTIONS = {"-H", "--header"}
 FLAG_OPTIONS = {"--include", "-i", "--paginate", "--slurp", "--silent", "--verbose"}
-MUTATION = re.compile(r"(?<![_0-9A-Za-z])mutation(?![_0-9A-Za-z])", re.IGNORECASE)
 REPOSITORY = re.compile(r"^/?repos/([^/]+)/([^/]+)(?:/|$)", re.IGNORECASE)
 
 
@@ -31,9 +31,9 @@ def forbidden(args: list[str], default_owned: bool, cwd: str) -> bool:
     if endpoint.casefold().strip("/") == "graphql":
         if input_file is not None:
             query = _input_query(cwd, input_file)
-            return query is None or _mutation(query) is not False
+            return query is None or mutation(query) is not False
         query = fields.get("query")
-        return query is None or _mutation(query) is not False
+        return query is None or mutation(query) is not False
     if method in {"GET", "HEAD"}:
         return False
     match = REPOSITORY.match(endpoint)
@@ -126,47 +126,3 @@ def _input_query(cwd: str, target: str) -> str | None:
         return None
     query = body.get("query") if isinstance(body, dict) else None
     return query if isinstance(query, str) else None
-
-
-def _mutation(query: str) -> bool | None:
-    """Classify operation text while ignoring GraphQL comments and string values."""
-    visible, index = [], 0
-    while index < len(query):
-        if query[index] == "#":
-            index = query.find("\n", index)
-            if index < 0:
-                break
-            visible.append("\n")
-            index += 1
-        elif query.startswith('"""', index):
-            index += 3
-            while index < len(query):
-                if query.startswith(r'\"""', index):
-                    index += 4
-                elif query.startswith('"""', index):
-                    index += 3
-                    break
-                else:
-                    index += 1
-            else:
-                return None
-            visible.append(" ")
-        elif query[index] == '"':
-            index += 1
-            while index < len(query):
-                if query[index] == "\\":
-                    index += 2
-                elif query[index] == '"':
-                    index += 1
-                    break
-                elif query[index] in "\r\n":
-                    return None
-                else:
-                    index += 1
-            else:
-                return None
-            visible.append(" ")
-        else:
-            visible.append(query[index])
-            index += 1
-    return MUTATION.search("".join(visible)) is not None

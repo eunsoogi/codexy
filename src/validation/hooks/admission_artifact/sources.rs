@@ -35,6 +35,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/git_command.py"),
     source!("codexy_policy/git_options.py"),
     source!("codexy_policy/git_runtime_config.py"),
+    source!("codexy_policy/graphql.py"),
     source!("codexy_policy/github.py"),
     source!("codexy_policy/github_alias.py"),
     source!("codexy_policy/github_api.py"),

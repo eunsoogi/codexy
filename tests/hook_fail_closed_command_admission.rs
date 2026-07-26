@@ -62,6 +62,46 @@ fn graphql_comments_and_strings_remain_read_only_controls() -> TestResult {
         "gh api graphql -f query='query { search(query:\"mutation { mergePullRequest }\",type:ISSUE,first:1) { issueCount } }'",
         false,
         &[],
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "gh api graphql -f query='query mutation { viewer { login } }'",
+        false,
+        &[],
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "gh api graphql -f query='{ mutation: viewer { login } }'",
+        false,
+        &[],
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "gh api graphql -f query='query { ...mutation } fragment mutation on Query { viewer { login } }'",
+        false,
+        &[],
+    )
+}
+
+#[test]
+fn malformed_graphql_escapes_fail_closed() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(
+        workspace.path(),
+        "foreign",
+        "https://github.com/openai/codex.git",
+    )?;
+
+    assert_case(
+        &root,
+        &foreign,
+        r#"gh api graphql -f query='query { search(query:\"bad\q\",type:ISSUE,first:1) { issueCount } }'"#,
+        true,
+        &[],
     )
 }
 
