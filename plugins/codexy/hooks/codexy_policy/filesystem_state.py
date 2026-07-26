@@ -13,6 +13,7 @@ class PathState:
     kind: str
     identity: str | None = None
     symlink: bool = False
+    target: str | None = None
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,24 @@ AMBIGUOUS = "ambiguous"
 def location(value: str, cwd: str) -> str:
     """Return a canonical lookup key; mkdir effects retain lexical segments."""
     return os.path.abspath(os.path.normpath(os.path.join(cwd, value)))
+
+
+def resolved_location(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...]) -> str | None:
+    """Resolve only modeled symlink traversal for later command-state effects."""
+    source = value if os.path.isabs(value) else os.path.join(cwd, value)
+    cursor = os.path.sep
+    indexed = dict(paths)
+    for segment in (part for part in source.split(os.path.sep) if part not in {"", "."}):
+        cursor = _follow_modeled_symlink(cursor, indexed)
+        if cursor is None:
+            return None
+        if segment == "..":
+            if _symlink_ambiguous(cursor, indexed):
+                return None
+            cursor = str(Path(cursor).parent)
+        else:
+            cursor = os.path.join(cursor, segment)
+    return _follow_modeled_symlink(cursor, indexed)
 
 
 def state(value: str, paths: tuple[tuple[str, PathState], ...]) -> PathState:
@@ -74,10 +93,12 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
     indexed = dict(paths)
     cursor = os.path.sep
     created = []
-    traversed_modeled_symlink = False
     for index, segment in enumerate(segments):
+        cursor = _follow_modeled_symlink(cursor, indexed)
+        if cursor is None:
+            return MkdirOutcome(AMBIGUOUS)
         if segment == "..":
-            if traversed_modeled_symlink or _symlink_ambiguous(cursor, indexed):
+            if _symlink_ambiguous(cursor, indexed):
                 return MkdirOutcome(AMBIGUOUS)
             if state(cursor, tuple(indexed.items())).kind != "directory":
                 return MkdirOutcome(FAILURE)
@@ -85,9 +106,6 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
             continue
         cursor = os.path.join(cursor, segment)
         current = state(cursor, tuple(indexed.items()))
-        traversed_modeled_symlink = traversed_modeled_symlink or (
-            cursor in indexed and current.symlink
-        )
         if current.kind == "absent":
             if not parents and index != len(segments) - 1:
                 return MkdirOutcome(FAILURE)
@@ -95,7 +113,9 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
             created.append(cursor)
         elif current.kind != "directory":
             return MkdirOutcome(FAILURE)
-    destination = location(value, cwd)
+    destination = _follow_modeled_symlink(cursor, indexed)
+    if destination is None:
+        return MkdirOutcome(AMBIGUOUS)
     if state(destination, tuple(indexed.items())).kind != "directory":
         return MkdirOutcome(FAILURE)
     if not parents and created != [destination]:
@@ -105,3 +125,14 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
 
 def _symlink_ambiguous(path: str, paths: dict[str, PathState]) -> bool:
     return path not in paths and Path(path).is_symlink()
+
+
+def _follow_modeled_symlink(path: str, paths: dict[str, PathState]) -> str | None:
+    """Resolve known in-command links; unknown or cyclic targets stay opaque."""
+    visited = set()
+    while (current := paths.get(path)) is not None and current.symlink:
+        if current.target is None or path in visited:
+            return None
+        visited.add(path)
+        path = current.target
+    return path

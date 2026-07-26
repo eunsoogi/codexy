@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from .filesystem_state import PathState, location as filesystem_location, state as path_state
+from .filesystem_state import PathState, resolved_location, state as path_state
 from .shell_context import name
 
 MAX_EXECUTABLE_BYTES = 64 * 1024 * 1024
@@ -41,7 +41,7 @@ def resolve(command: str, cwd: str, aliases: tuple[tuple[str, PathState], ...] =
     if lexical in SENSITIVE_EXECUTABLES:
         return lexical
     indexed = dict(aliases)
-    for location in _command_locations(command, cwd, path):
+    for location in _command_locations(command, cwd, path, aliases):
         if (modeled := indexed.get(location)) is not None:
             if modeled.kind == "executable":
                 return modeled.identity or lexical
@@ -66,7 +66,8 @@ def alias_transition(
     destination = _final_destination(operands, cwd, aliases)
     if destination is None:
         return None
-    result = PathState(source.kind, source.identity, operands.symbolic)
+    target = resolved_location(operands.source, str(Path(destination).parent), aliases) if operands.symbolic else None
+    result = PathState(source.kind, source.identity, operands.symbolic, target)
     return AliasTransition(destination, result, known, _effect(operands, destination, aliases))
 
 
@@ -102,20 +103,19 @@ def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | No
     )
 
 
-def _command_locations(command: str, cwd: str, path: str | None) -> tuple[str, ...]:
+def _command_locations(command: str, cwd: str, path: str | None, aliases: tuple[tuple[str, PathState], ...]) -> tuple[str, ...]:
     if "/" in command:
-        return (_filesystem_location(command, cwd),)
+        location = resolved_location(command, cwd, aliases)
+        return () if location is None else (location,)
     if path is None:
         return ()
-    return tuple(_filesystem_location(os.path.join(directory or ".", command), cwd) for directory in path.split(os.pathsep))
-
-
-def _filesystem_location(value: str, cwd: str) -> str:
-    return filesystem_location(value, cwd)
+    return tuple(location for directory in path.split(os.pathsep) if (location := resolved_location(os.path.join(directory or ".", command), cwd, aliases)) is not None)
 
 
 def _final_destination(operands: AliasOperands, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> str | None:
-    result = _filesystem_location(operands.destination, cwd)
+    result = resolved_location(operands.destination, cwd, aliases)
+    if result is None:
+        return None
     if operands.no_dereference or path_state(result, aliases).kind != "directory":
         return result
     basename = Path(operands.source).name
@@ -136,7 +136,9 @@ def _effect(
 
 
 def _filesystem_state(value: str, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> tuple[PathState, bool]:
-    location = _filesystem_location(value, cwd)
+    location = resolved_location(value, cwd, aliases)
+    if location is None:
+        return PathState("absent"), False
     indexed = dict(aliases)
     if location in indexed:
         return indexed[location], True

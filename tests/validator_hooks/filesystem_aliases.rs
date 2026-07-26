@@ -1,0 +1,100 @@
+use std::os::unix::fs::symlink;
+
+use super::admission_runtime::{
+    TestResult, assert_case, executable, plugin_root, repository,
+};
+
+#[test]
+fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(
+        workspace.path(),
+        "owned",
+        "git@github.com:eunsoogi/codexy.git",
+    )?;
+    let directory = owned.join("directory");
+    let directory_link = owned.join("directory-link");
+    let fallback = workspace.path().join("fallback");
+    let missing_parent = workspace.path().join("missing-parent");
+    let created_parent = workspace.path().join("created-parent");
+    let nested_parent = workspace.path().join("nested").join("child");
+    let regular = owned.join("README.md");
+    let traversal = owned.join("traversal");
+    let external = workspace.path().join("external");
+    let modeled_link = owned.join("modeled-link");
+    let relative_link = owned.join("relative-link");
+    let gh = executable("gh")?;
+    let path = format!(
+        "PATH={}:{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        owned.display(),
+        fallback.display(),
+    );
+    std::fs::create_dir(&directory)?;
+    std::fs::create_dir(&fallback)?;
+    std::fs::create_dir(&external)?;
+    std::fs::create_dir(external.join("target"))?;
+    std::fs::write(&regular, "not executable")?;
+    symlink(&directory, &directory_link)?;
+    for command in [
+        "ln -sf /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "cp /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -sf /usr/bin/git safe && ./safe push --force origin topic",
+        "cp /usr/bin/git safe && ./safe push --force origin topic",
+        "ln -sf /usr/bin/git /tmp/codexy-directory-source && ln -sf /tmp/codexy-directory-source /var/tmp && /var/tmp/codexy-directory-source push --force origin topic",
+        "cp /usr/bin/git /tmp/codexy-directory-source && cp -p /tmp/codexy-directory-source /var/tmp && /var/tmp/codexy-directory-source push --force origin topic",
+        &format!(
+            "ln -sfn /usr/bin/git {} && {} push --force origin topic",
+            directory_link.display(),
+            directory_link.display(),
+        ),
+        "ln -sf /usr/bin/git safe; ln /usr/bin/printf safe; ./safe push --force origin topic",
+        "ln -sf /usr/bin/git safe; cp -p /usr/bin/printf safe; ./safe push --force origin topic",
+        &format!("{path}; ln -sf /usr/bin/git safe && safe push --force origin topic"),
+        &format!("{path}; ln -sf /usr/bin/git safe; cp -p /usr/bin/printf safe; safe push --force origin topic"),
+        "cp -p /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -sfn /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -sf '/usr/bin/git' '/tmp/safe' && '/tmp/safe' push --force origin topic",
+        "ln -sf \"$UNKNOWN_RUNTIME_VALUE\" /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -T /usr/bin/git safe && ./safe push --force origin topic",
+        "cp -r /usr/bin/git safe && ./safe push --force origin topic",
+        &format!("test -e {} || git push --force origin topic", missing_parent.display()),
+        &format!("ln -sf /usr/bin/printf {}/safe || git push --force origin topic", missing_parent.display()),
+        &format!("mkdir {0} && ln -sf /usr/bin/git {0}/safe && {0}/safe push --force origin topic", created_parent.display()),
+        &format!("mkdir {0} && cp /usr/bin/git {0}/safe && {0}/safe push --force origin topic", created_parent.display()),
+        &format!("mkdir {} || git push --force origin topic", regular.display()),
+        &format!("mkdir -p {0} && ln -sf /usr/bin/git {0}/../safe && {0}/../safe push --force origin topic", nested_parent.display()),
+        &format!("mkdir -p {0} && cp /usr/bin/git {0}/../safe && {0}/../safe push --force origin topic", nested_parent.display()),
+        &format!("{path}; ln -sf README.md safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
+        &format!("mkdir -p {0}/x/../y && ln -sf {1} {0}/x/safe && {0}/x/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("mkdir -pv {0}/x/../y && ln -sf {1} {0}/x/safe && {0}/x/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("mkdir -p {0}/../x/../y && ln -sf {1} {0}/../x/safe && {0}/../x/safe pr merge 453 --merge", directory_link.display(), gh.display()),
+        &format!("mkdir -T {0}/unknown && ln -sf {1} {0}/unknown/safe && {0}/unknown/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("mkdir -p {0}/nested//./child/../sibling && cp {1} {0}/nested/child/safe && {0}/nested/child/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("ln -s {0}/target {1} && mkdir -p {1}/../x/../y && ln -sf {2} {1}/../x/safe && {0}/x/safe pr merge 453 --merge", external.display(), modeled_link.display(), gh.display()),
+        &format!("ln -s {0}/target {1} && mkdir -p {1}/x && ln -sf {2} {1}/x/safe && {0}/target/x/safe pr merge 453 --merge", external.display(), modeled_link.display(), gh.display()),
+        &format!("ln -s ../external/target {0} && mkdir -p {0}/x && ln -sf {1} {0}/x/safe && {2}/target/x/safe pr merge 453 --merge", relative_link.display(), gh.display(), external.display()),
+    ] {
+        assert_case(&root, &owned, command, true, &[])?;
+    }
+    for command in [
+        "ln -sf /usr/bin/printf /tmp/safe && /tmp/safe '%s\\n' benign",
+        "cp /usr/bin/printf /tmp/safe && /tmp/safe '%s\\n' benign",
+        "ln -sf /usr/bin/printf safe && ./safe push --force origin topic",
+        "ln -sf /usr/bin/git safe && ln -sf /usr/bin/printf safe && ./safe push --force origin topic",
+        "ln -sf /usr/bin/git safe && cp -p /usr/bin/printf safe && ./safe push --force origin topic",
+        "ln -sf /usr/bin/git safe && cp -fp /usr/bin/printf safe && ./safe push --force origin topic",
+        "printf safe | cat",
+        "false || printf safe",
+        "true || git push --force origin topic",
+        "printf safe &",
+        &format!("{path}; ln -sf /usr/bin/printf safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
+        &format!("mkdir {} && printf safe", created_parent.display()),
+        &format!("mkdir {} && git push --force origin topic", regular.display()),
+        &format!("mkdir -p {}/benign//./nested/../final && printf safe", traversal.display()),
+        &format!("ln -s {0}/target {1} && printf safe", external.display(), modeled_link.display()),
+    ] {
+        assert_case(&root, &owned, command, false, &[])?;
+    }
+    Ok(())
+}
