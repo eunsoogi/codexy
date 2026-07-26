@@ -26,7 +26,40 @@ fn opaque_graphql_mutations_fail_closed_without_blocking_queries() -> TestResult
     assert_case(
         &root,
         &foreign,
+        "gh api graphql -f owner=openai -f name=codex -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_owned_node\",mergeMethod:MERGE}) { pullRequest { id } } }'",
+        true,
+        &[],
+    )
+}
+
+#[test]
+fn graphql_comments_and_strings_remain_read_only_controls() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(
+        workspace.path(),
+        "foreign",
+        "https://github.com/openai/codex.git",
+    )?;
+
+    assert_case(
+        &root,
+        &foreign,
         "gh api graphql -f query='query { viewer { login } }'",
+        false,
+        &[],
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "gh api graphql -f query='query { viewer { login } }\n# mutation { mergePullRequest }'",
+        false,
+        &[],
+    )?;
+    assert_case(
+        &root,
+        &foreign,
+        "gh api graphql -f query='query { search(query:\"mutation { mergePullRequest }\",type:ISSUE,first:1) { issueCount } }'",
         false,
         &[],
     )
