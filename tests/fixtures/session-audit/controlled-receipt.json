@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "metadataOnly": true,
+  "lane": {
+    "issue": "486",
+    "pr": "not-created",
+    "branch": "sanitized-controlled-comparison",
+    "head": "dirty-sanitized-fixture",
+    "base": "origin-main",
+    "ownerThreadId": "owner-486",
+    "childCreatedAt": "2026-07-26T00:00:00Z"
+  },
+  "installed": {
+    "pluginId": "codexy@codexy",
+    "version": "1.2.2",
+    "cacheRootRelative": "codexy/1.2.2",
+    "manifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+    "changedFiles": [
+      {
+        "path": "skills/codex-orchestration/references/execution-budget.md",
+        "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+      },
+      {
+        "path": "skills/token-efficient-orchestration/SKILL.md",
+        "sha256": "db70e7ebaba485f84d8eb28ec29e5f0e0a6da39827b3c9bf90c30d8b713f3d25"
+      },
+      {
+        "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+      }
+    ],
+    "contentEquivalent": true,
+    "contentProof": {
+      "sourceManifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+      "installedManifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+      "sourceChangedFiles": [
+        {
+          "path": "skills/codex-orchestration/references/execution-budget.md",
+          "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+        },
+        {
+          "path": "skills/token-efficient-orchestration/SKILL.md",
+          "sha256": "db70e7ebaba485f84d8eb28ec29e5f0e0a6da39827b3c9bf90c30d8b713f3d25"
+        },
+        {
+          "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+          "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+        }
+      ],
+      "installedChangedFiles": [
+        {
+          "path": "skills/codex-orchestration/references/execution-budget.md",
+          "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+        },
+        {
+          "path": "skills/token-efficient-orchestration/SKILL.md",
+          "sha256": "db70e7ebaba485f84d8eb28ec29e5f0e0a6da39827b3c9bf90c30d8b713f3d25"
+        },
+        {
+          "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+          "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+        }
+      ]
+    }
+  },
+  "audit": {
+    "inputSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "observationalOnly": true,
+    "comparison": {
+      "ownerBoundary": {
+        "kind": "same-owner-tree",
+        "ownerThreadId": "owner-486"
+      },
+      "windowPolicy": {
+        "kind": "equal-record-count",
+        "beforeRecords": 2,
+        "afterRecords": 2,
+        "comparable": true
+      },
+      "before": {
+        "sessionId": "controlled-before",
+        "inputSha256": "cefd8f19beca3fa2ea408c48a589c94a9ed6bb0c80d62492ec49c224d40dcbf0",
+        "window": {
+          "recordsObserved": 2,
+          "turnEvents": 2
+        },
+        "latestCumulativeTokens": 200
+      },
+      "after": {
+        "sessionId": "controlled-after",
+        "inputSha256": "ded5374eac31242961665b1ee335820f313108d93d8acaefc0d93eaf64785ce8",
+        "window": {
+          "recordsObserved": 2,
+          "turnEvents": 2
+        },
+        "latestCumulativeTokens": 150
+      }
+    },
+    "ownerTreeSessions": [
+      {
+        "sessionId": "controlled-before",
+        "ownerRootThreadId": "owner-486",
+        "inputSha256": "cefd8f19beca3fa2ea408c48a589c94a9ed6bb0c80d62492ec49c224d40dcbf0",
+        "recordsObserved": 2,
+        "turnEvents": 2,
+        "cumulativeTokens": 200,
+        "toolInputBytes": 29,
+        "toolOutputBytes": 115,
+        "execFamily": {
+          "calls": 2,
+          "inputBytes": 22,
+          "outputBytes": 70
+        },
+        "waitFamily": {
+          "calls": 2,
+          "inputBytes": 7,
+          "outputBytes": 45
+        }
+      },
+      {
+        "sessionId": "controlled-after",
+        "ownerRootThreadId": "owner-486",
+        "inputSha256": "ded5374eac31242961665b1ee335820f313108d93d8acaefc0d93eaf64785ce8",
+        "recordsObserved": 2,
+        "turnEvents": 2,
+        "cumulativeTokens": 150,
+        "toolInputBytes": 19,
+        "toolOutputBytes": 70,
+        "execFamily": {
+          "calls": 2,
+          "inputBytes": 15,
+          "outputBytes": 45
+        },
+        "waitFamily": {
+          "calls": 2,
+          "inputBytes": 4,
+          "outputBytes": 25
+        }
+      }
+    ],
+    "ownerTreeTotals": {
+      "sessionCount": 2,
+      "recordsObserved": 4,
+      "turnEvents": 4,
+      "cumulativeTokens": 350,
+      "toolInputBytes": 48,
+      "toolOutputBytes": 185,
+      "execFamily": {
+        "calls": 4,
+        "inputBytes": 37,
+        "outputBytes": 115
+      },
+      "waitFamily": {
+        "calls": 4,
+        "inputBytes": 11,
+        "outputBytes": 70
+      }
+    },
+    "duplicateEventsSkipped": 0
+  },
+  "metrics": {
+    "reviewFeedback": 0,
+    "childAgeSeconds": 0,
+    "retriesByKind": {
+      "parentMessage": 0,
+      "ci": 0,
+      "sentinel": 0
+    },
+    "eventIds": [
+      "controlled|486|before",
+      "controlled|486|after"
+    ]
+  },
+  "goalPlanReceipts": [
+    "goal-create|486|bounded-parent-orchestration-tokens"
+  ],
+  "helpers": [],
+  "commandReceipts": [
+    {
+      "commandId": "controlled-session-audit",
+      "argumentsRedacted": true,
+      "exitCode": 0
+    }
+  ]
+}
