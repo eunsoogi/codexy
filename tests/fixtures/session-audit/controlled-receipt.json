@@ -26,7 +26,7 @@
       },
       {
         "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
       }
     ],
     "contentEquivalent": true,
@@ -44,7 +44,7 @@
         },
         {
           "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
-          "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+          "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
         }
       ],
       "installedChangedFiles": [
@@ -58,7 +58,7 @@
         },
         {
           "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
-          "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+          "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
         }
       ]
     }
@@ -78,6 +78,7 @@
         "comparable": true
       },
       "before": {
+        "sessionId": "controlled-before",
         "inputSha256": "cefd8f19beca3fa2ea408c48a589c94a9ed6bb0c80d62492ec49c224d40dcbf0",
         "window": {
           "recordsObserved": 2,
@@ -86,6 +87,7 @@
         "latestCumulativeTokens": 200
       },
       "after": {
+        "sessionId": "controlled-after",
         "inputSha256": "ded5374eac31242961665b1ee335820f313108d93d8acaefc0d93eaf64785ce8",
         "window": {
           "recordsObserved": 2,
@@ -98,6 +100,7 @@
       {
         "sessionId": "controlled-before",
         "ownerRootThreadId": "owner-486",
+        "inputSha256": "cefd8f19beca3fa2ea408c48a589c94a9ed6bb0c80d62492ec49c224d40dcbf0",
         "recordsObserved": 2,
         "turnEvents": 2,
         "cumulativeTokens": 200,
@@ -117,6 +120,7 @@
       {
         "sessionId": "controlled-after",
         "ownerRootThreadId": "owner-486",
+        "inputSha256": "ded5374eac31242961665b1ee335820f313108d93d8acaefc0d93eaf64785ce8",
         "recordsObserved": 2,
         "turnEvents": 2,
         "cumulativeTokens": 150,

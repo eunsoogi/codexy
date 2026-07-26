@@ -14,7 +14,7 @@
       },
       {
         "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
       }
     ],
     "installedChangedFiles": [
@@ -28,7 +28,7 @@
       },
       {
         "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
       }
     ]
   }

@@ -17,7 +17,7 @@ mod report;
 
 use report::{Report, SessionReport};
 
-const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
+pub(crate) const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Debug, Parser)]
 #[command(about = "Report bounded, metadata-only Codex session aggregates.")]

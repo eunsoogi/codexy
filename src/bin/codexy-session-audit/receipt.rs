@@ -1,17 +1,18 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    fs,
+    collections::BTreeMap,
     path::{Component, Path},
 };
 
 use anyhow::{Context as _, Result, bail};
 use serde::Serialize;
 
-use super::audit_math::checked_add;
-
 #[path = "receipt/schema.rs"]
 mod schema;
 use schema::*;
+#[path = "receipt/input.rs"]
+mod input;
+#[path = "receipt/owner_tree.rs"]
+mod owner_tree;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +24,7 @@ pub(super) struct Validation {
 }
 
 pub(super) fn validate_file(path: &Path) -> Result<Validation> {
-    let bytes = fs::read(path).with_context(|| format!("reading receipt {}", path.display()))?;
+    let bytes = input::read(path)?;
     let receipt: Receipt = serde_json::from_slice(&bytes)
         .with_context(|| format!("decoding receipt {}", path.display()))?;
     validate(receipt)
@@ -58,6 +59,10 @@ fn validate(receipt: Receipt) -> Result<Validation> {
     if totals != receipt.audit.owner_tree_totals {
         bail!("owner-tree totals do not match session aggregates");
     }
+    validate_observations(
+        &receipt.audit.comparison,
+        &receipt.audit.owner_tree_sessions,
+    )?;
     Ok(Validation {
         valid: true,
         owner_thread_id: receipt.lane.owner_thread_id,
@@ -67,13 +72,7 @@ fn validate(receipt: Receipt) -> Result<Validation> {
 }
 
 fn validate_private_metadata(installed: &Installed, commands: &[CommandReceipt]) -> Result<()> {
-    let cache_root = Path::new(&installed.cache_root_relative);
-    if installed.cache_root_relative.is_empty()
-        || cache_root.is_absolute()
-        || cache_root
-            .components()
-            .any(|part| matches!(part, Component::ParentDir | Component::RootDir))
-    {
+    if !safe_relative_path(&installed.cache_root_relative) {
         bail!("installed cache root must be a relative cache root without parent traversal");
     }
     for command in commands {
@@ -86,6 +85,25 @@ fn validate_private_metadata(installed: &Installed, commands: &[CommandReceipt])
                 .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
         {
             bail!("command receipt must use a safe commandId and redacted arguments");
+        }
+    }
+    Ok(())
+}
+
+fn validate_observations(comparison: &Comparison, sessions: &[OwnerSession]) -> Result<()> {
+    for observation in [&comparison.before, &comparison.after] {
+        let session = sessions
+            .iter()
+            .find(|session| session.session_id == observation.session_id)
+            .ok_or_else(|| {
+                anyhow::anyhow!("comparison observation must name an owner-tree session")
+            })?;
+        if session.input_sha256 != observation.input_sha256
+            || session.records_observed != observation.window.records_observed
+            || session.turn_events != observation.window.turn_events
+            || session.cumulative_tokens != observation.latest_cumulative_tokens
+        {
+            bail!("comparison observation must match its owner-tree session");
         }
     }
     Ok(())
@@ -147,6 +165,15 @@ fn safe_packaged_path(path: &str) -> Result<&str> {
     Ok(path)
 }
 
+fn safe_relative_path(path: &str) -> bool {
+    !path.is_empty()
+        && !path.contains('\\')
+        && !path.contains(':')
+        && Path::new(path)
+            .components()
+            .all(|part| matches!(part, Component::Normal(_)))
+}
+
 fn validate_digest(value: &str) -> Result<()> {
     if value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         bail!("receipt digest must be a 64-character SHA-256 value");
@@ -193,58 +220,4 @@ fn validate_window(comparison: &Comparison) -> Result<&'static str> {
     }
 }
 
-fn aggregate_sessions(sessions: &[OwnerSession], owner: &str) -> Result<Totals> {
-    if sessions.is_empty() {
-        bail!("owner tree must contain at least one session");
-    }
-    let mut ids = BTreeSet::new();
-    let mut totals = Totals::default();
-    for session in sessions {
-        if session.owner_root_thread_id != owner {
-            bail!("owner-tree session does not match owner boundary");
-        }
-        if !ids.insert(&session.session_id) {
-            bail!("owner tree contains a duplicate session");
-        }
-        totals.session_count = checked_add(totals.session_count, 1, "owner-tree session count")?;
-        add(
-            &mut totals.records_observed,
-            session.records_observed,
-            "records",
-        )?;
-        add(&mut totals.turn_events, session.turn_events, "turns")?;
-        add(
-            &mut totals.cumulative_tokens,
-            session.cumulative_tokens,
-            "tokens",
-        )?;
-        add(
-            &mut totals.tool_input_bytes,
-            session.tool_input_bytes,
-            "tool input",
-        )?;
-        add(
-            &mut totals.tool_output_bytes,
-            session.tool_output_bytes,
-            "tool output",
-        )?;
-        add_family(&mut totals.exec_family, &session.exec_family)?;
-        add_family(&mut totals.wait_family, &session.wait_family)?;
-    }
-    Ok(totals)
-}
-
-fn add(target: &mut u64, value: u64, label: &str) -> Result<()> {
-    *target = checked_add(*target, value, &format!("owner-tree {label}"))?;
-    Ok(())
-}
-
-fn add_family(target: &mut Family, value: &Family) -> Result<()> {
-    add(&mut target.calls, value.calls, "family calls")?;
-    add(&mut target.input_bytes, value.input_bytes, "family input")?;
-    add(
-        &mut target.output_bytes,
-        value.output_bytes,
-        "family output",
-    )
-}
+use owner_tree::aggregate_sessions;

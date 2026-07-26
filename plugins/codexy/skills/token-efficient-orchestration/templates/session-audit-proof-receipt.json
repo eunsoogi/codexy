@@ -39,6 +39,7 @@
         "comparable": null
       },
       "before": {
+        "sessionId": "<sanitized-before-session-id>",
         "inputSha256": "<sha256-of-sanitized-before-input>",
         "window": {
           "recordsObserved": 0,
@@ -47,6 +48,7 @@
         "latestCumulativeTokens": 0
       },
       "after": {
+        "sessionId": "<sanitized-after-session-id>",
         "inputSha256": "<sha256-of-sanitized-after-input>",
         "window": {
           "recordsObserved": 0,
@@ -59,6 +61,7 @@
       {
         "sessionId": "<sanitized-session-id>",
         "ownerRootThreadId": "<owner-thread-id>",
+        "inputSha256": "<sha256-of-sanitized-session-input>",
         "recordsObserved": 0,
         "turnEvents": 0,
         "cumulativeTokens": 0,

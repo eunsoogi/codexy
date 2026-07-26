@@ -112,6 +112,9 @@ mod session_audit_receipt;
 #[path = "../session_audit_receipt_contract.rs"]
 mod session_audit_receipt_contract;
 
+#[path = "../session_audit_receipt_review_feedback.rs"]
+mod session_audit_receipt_review_feedback;
+
 #[path = "../structured_contract.rs"]
 mod structured_contract;
 

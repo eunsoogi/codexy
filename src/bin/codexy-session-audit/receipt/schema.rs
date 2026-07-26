@@ -109,6 +109,7 @@ pub(super) enum WindowPolicy {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct Observation {
+    pub(super) session_id: String,
     pub(super) input_sha256: String,
     pub(super) window: Window,
     pub(super) latest_cumulative_tokens: u64,
@@ -128,6 +129,7 @@ pub(super) struct Window {
 pub(super) struct OwnerSession {
     pub(super) session_id: String,
     pub(super) owner_root_thread_id: String,
+    pub(super) input_sha256: String,
     pub(super) records_observed: u64,
     pub(super) turn_events: u64,
     pub(super) cumulative_tokens: u64,
