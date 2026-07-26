@@ -61,10 +61,7 @@ fn without_list_prefix(line: &str) -> &str {
     if let Some(rest) = line.strip_prefix(['-', '*', '+']) {
         return rest.trim_start();
     }
-    let digits = line
-        .bytes()
-        .take_while(|byte| byte.is_ascii_digit())
-        .count();
+    let digits = line.bytes().take_while(u8::is_ascii_digit).count();
     if digits > 0 && matches!(line.as_bytes().get(digits), Some(b'.' | b')')) {
         return line[digits + 1..].trim_start();
     }

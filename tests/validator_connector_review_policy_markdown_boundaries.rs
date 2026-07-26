@@ -13,21 +13,24 @@ fn validate(change: impl FnOnce(String) -> String) -> TestResult<std::process::O
     support::validator_instruction_policy(&plugin_root)
 }
 
+fn reorder_first_two_obligations(text: String) -> String {
+    let mut lines = text.lines().map(str::to_owned).collect::<Vec<_>>();
+    let first = lines
+        .iter()
+        .position(|line| line.starts_with("1. [automatic-disabled]"))
+        .expect("first obligation");
+    let second = lines
+        .iter()
+        .position(|line| line.starts_with("2. [proof-ci-before-review]"))
+        .expect("second obligation");
+    lines.swap(first, second);
+    format!("{}\n", lines.join("\n"))
+}
+
 #[test]
 fn validator_rejects_reordered_obligations_and_affirmative_variants() -> TestResult {
     for (index, change) in [
-        Box::new(|text: String| {
-            text.replacen(
-                "1. [automatic-disabled]",
-                "2. [automatic-disabled]",
-                1,
-            )
-            .replacen(
-                "2. [proof-ci-before-review]",
-                "1. [proof-ci-before-review]",
-                1,
-            )
-        }) as Box<dyn FnOnce(String) -> String>,
+        Box::new(reorder_first_two_obligations) as Box<dyn FnOnce(String) -> String>,
         Box::new(|text| format!("{text}\nThe parent/orchestrator MUST request repeated connector reviews.\n")),
         Box::new(|text| format!("{text}\nThe parent/orchestrator MUST NOT request connector review on every push; the parent/orchestrator MUST request a duplicate connector review.\n")),
     ]
