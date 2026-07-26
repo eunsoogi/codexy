@@ -20,7 +20,7 @@ fn runtime_check_workflow_assembles_state_aware_immutable_packages() -> Result<(
     for state in ["legacy-public)", "candidate-proven)"] { assert!(lines(assemble).any(|line| line == state)); }
     assert!(lines(assemble).any(|line| line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\""));
     assert!(!lines(assemble).any(|line| line.split_ascii_whitespace().take(2).eq(["cargo", "build"])));
-    let upload = job["steps"].as_sequence().ok_or("steps")?.iter().find(|step| step["uses"] == "actions/upload-artifact@v4").ok_or("upload")?;
+    let upload = job["steps"].as_sequence().ok_or("steps")?.iter().find(|step| step["uses"] == "actions/upload-artifact@v7").ok_or("upload")?;
     assert_eq!(upload["with"]["name"], "codexy-marketplace-plugin-${{ matrix.platform }}");
     Ok(())
 }
