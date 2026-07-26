@@ -4,7 +4,7 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
-use super::safety;
+use super::{admission_artifact, safety};
 
 pub(super) fn check_command(
     path: &Path,
@@ -45,6 +45,16 @@ pub(super) fn check_command(
         )
     })?;
     let resolved = plugin_root.join(&hook_path);
+    if std::fs::symlink_metadata(&resolved)
+        .with_context(|| format!("reading {}", display_relative(&resolved)))?
+        .file_type()
+        .is_symlink()
+    {
+        bail!(
+            "{} {event} hook command target must be a regular packaged file, not a symlink",
+            display_relative(path)
+        );
+    }
     if !resolved.is_file() {
         bail!(
             "{} {event} hook command target does not exist: {}",
@@ -65,7 +75,9 @@ pub(super) fn check_command(
             display_relative(path)
         );
     }
-    check_script_safety(path, event, &resolved)?;
+    if !admission_artifact::is_launcher(&hook_path) {
+        check_script_safety(path, event, &resolved)?;
+    }
     Ok(())
 }
 

@@ -25,14 +25,14 @@ fn gate_propagates_a_single_full_workload_failure() -> Result<(), Box<dyn std::e
 
 #[cfg(unix)]
 #[test]
-fn gate_fails_an_exact_workload_over_180_seconds_without_sleeping()
+fn gate_fails_an_exact_workload_over_the_budget_without_sleeping()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
     let clock = fixture.temp.path().join("clock");
     std::fs::create_dir(&clock)?;
     std::fs::write(
         clock.join("sitecustomize.py"),
-        "import time\n_values = iter((0.0, 181.0))\ntime.perf_counter = lambda: next(_values)\n",
+        "import time\n_values = iter((0.0, 196.0))\ntime.perf_counter = lambda: next(_values)\n",
     )?;
     let output = fixture.run(&[("PYTHONPATH", clock.as_os_str())])?;
 
