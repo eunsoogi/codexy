@@ -150,6 +150,8 @@ mod validator_child_lane_setup_actor_grammar;
 mod validator_child_lane_setup_action_binding;
 #[path = "../validator_child_lane_boundary_relation_matrix.rs"]
 mod validator_child_lane_boundary_relation_matrix;
+#[path = "../validator_child_lane_progressive_setup_predicates.rs"]
+mod validator_child_lane_progressive_setup_predicates;
 
 #[path = "../validator_child_lane_gfm_delimiter_state.rs"]
 mod validator_child_lane_gfm_delimiter_state;

@@ -47,12 +47,24 @@ pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
 }
 
 fn is_governing_progressive_setup(words: &[&str], action: usize) -> bool {
-    let predicate = &words[action.saturating_sub(3)..action];
-    action_is_passive(words, 0, action)
-        && !predicate
-            .iter()
-            .enumerate()
-            .any(|(index, word)| word.ends_with("ing") && !predicate[index + 1..].contains(&"and"))
+    let clause = &words[..action];
+    let Some(auxiliary) = clause
+        .iter()
+        .rposition(|word| is_progressive_auxiliary(word))
+    else {
+        return false;
+    };
+    let predicate = &clause[auxiliary + 1..];
+    !predicate.iter().enumerate().any(|(index, word)| {
+        word.ends_with("ing") && !predicate[index + 1..].iter().any(|word| *word == "and")
+    })
+}
+
+fn is_progressive_auxiliary(word: &&str) -> bool {
+    matches!(
+        *word,
+        "is" | "are" | "was" | "were" | "been" | "being" | "get" | "got"
+    )
 }
 
 fn has_completed_auxiliary(words: &[&str], action: usize) -> bool {
