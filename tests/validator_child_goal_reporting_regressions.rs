@@ -2,6 +2,8 @@ use std::process::Output;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+const COMPLETE_CHILD_CLASSIFICATION: &str = "Task classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: current-thread-owned child implementation lane\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
+
 #[test]
 fn validator_requires_pre_delivery_for_status_form_terminal_goals() -> TestResult {
     for (status, expected) in [
@@ -38,9 +40,9 @@ fn validator_checks_numbered_child_goal_metadata() -> TestResult {
 
 #[test]
 fn validator_accepts_opaque_transition_keys_and_negated_local_agent_policy() -> TestResult {
-    let output = run_validator(
-        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: opaque:receipt:key\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=create goal; transition key=opaque:receipt:key\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=opaque:receipt:key\nCompliance: MUST NOT use agents.send_message('/root') for parent delivery.\n",
-    )?;
+    let output = run_validator(&format!(
+        "Lane ownership: child-owned\n{COMPLETE_CHILD_CLASSIFICATION}Source thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: opaque:receipt:key\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=create goal; transition key=opaque:receipt:key\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=opaque:receipt:key\nCompliance: MUST NOT use agents.send_message('/root') for parent delivery.\n"
+    ))?;
 
     assert!(
         output.status.success(),
@@ -74,9 +76,9 @@ fn validator_rejects_receipt_values_that_look_like_owner_headers() -> TestResult
 
 #[test]
 fn validator_keeps_bullet_parent_owner_headers_outside_child_lanes() -> TestResult {
-    let output = run_validator(
-        "Lane ownership: child-owned\nSource thread id: child-375\nGoal control state: source_thread_id=child-375\nGoal transition key: opaque:receipt:key\nParent goal pre-delivery: operation=create_goal; parent task=child-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=create goal; transition key=opaque:receipt:key\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=child-375; delivery=confirmed; task surface=codex task/thread; transition key=opaque:receipt:key\n- Owner decision: parent-owned orchestration lane\nGoal tool call: update_goal(blocked)\n",
-    )?;
+    let output = run_validator(&format!(
+        "Lane ownership: child-owned\n{COMPLETE_CHILD_CLASSIFICATION}Source thread id: child-375\nGoal control state: source_thread_id=child-375\nGoal transition key: opaque:receipt:key\nParent goal pre-delivery: operation=create_goal; parent task=child-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=create goal; transition key=opaque:receipt:key\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=child-375; delivery=confirmed; task surface=codex task/thread; transition key=opaque:receipt:key\n- Owner decision: parent-owned orchestration lane\nGoal tool call: update_goal(blocked)\n"
+    ))?;
 
     assert!(
         output.status.success(),
@@ -99,9 +101,9 @@ fn validator_rejects_local_agent_routes_after_negated_policy_text() -> TestResul
 
 #[test]
 fn validator_accepts_multiple_routes_named_by_one_negated_policy() -> TestResult {
-    let output = run_validator(
-        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: opaque:receipt:key\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=create goal; transition key=opaque:receipt:key\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=opaque:receipt:key\nCompliance: MUST NOT use agents.send_message('/root') or agents.send_message('parent-task').\n",
-    )?;
+    let output = run_validator(&format!(
+        "Lane ownership: child-owned\n{COMPLETE_CHILD_CLASSIFICATION}Source thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: opaque:receipt:key\nParent goal pre-delivery: operation=create_goal; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=create goal; transition key=opaque:receipt:key\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=opaque:receipt:key\nCompliance: MUST NOT use agents.send_message('/root') or agents.send_message('parent-task').\n"
+    ))?;
 
     assert!(
         output.status.success(),

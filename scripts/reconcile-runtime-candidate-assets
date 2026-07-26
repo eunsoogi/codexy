@@ -1,0 +1,80 @@
+#!/bin/sh
+set -eu
+
+dist_dir="${1:-dist}"
+: "${CANDIDATE_TAG:?CANDIDATE_TAG is required}"
+: "${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
+: "${GITHUB_RUN_ATTEMPT:?GITHUB_RUN_ATTEMPT is required}"
+: "${GITHUB_SERVER_URL:?GITHUB_SERVER_URL is required}"
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+
+archive="$dist_dir/codexy-marketplace-plugin.tar.gz"
+candidate="$dist_dir/candidate/plugins/codexy/runtime-candidate.json"
+receipt="$dist_dir/runtime-candidate-receipt.json"
+provenance="$dist_dir/runtime-candidate-provenance.json"
+for path in "$archive" "$candidate" "$receipt" "$provenance"; do
+  test -f "$path"
+done
+
+recovery_dir="$(mktemp -d)"
+trap 'rm -rf "$recovery_dir"' EXIT
+assets="$(gh release view "$CANDIDATE_TAG" --json assets --jq '.assets[].name')"
+has_asset() {
+  printf '%s\n' "$assets" | grep -Fqx "$1"
+}
+
+if has_asset runtime-candidate-receipt.json; then
+  published_receipt="$recovery_dir/runtime-candidate-receipt.json"
+  gh release download "$CANDIDATE_TAG" --pattern runtime-candidate-receipt.json --output "$published_receipt"
+  jq -cS .candidate "$published_receipt" > "$recovery_dir/published-candidate.json"
+  jq -cS . "$candidate" > "$recovery_dir/local-candidate.json"
+  cmp "$recovery_dir/local-candidate.json" "$recovery_dir/published-candidate.json"
+  archive_sha="$(sha256sum "$archive" | awk '{print $1}')"
+  manifest_sha="$(sha256sum "$candidate" | awk '{print $1}')"
+  artifact_url="https://github.com/eunsoogi/codexy/releases/download/$CANDIDATE_TAG/codexy-marketplace-plugin.tar.gz"
+  jq -e \
+    --arg archive_sha "$archive_sha" \
+    --arg manifest_sha "$manifest_sha" \
+    --arg artifact_url "$artifact_url" \
+    '.schema == "codexy-runtime-candidate-receipt/v1" and .artifact.sha256 == $archive_sha and .artifact.payloadManifestSha256 == $manifest_sha and .artifact.url == $artifact_url' \
+    "$published_receipt" >/dev/null
+  cp "$published_receipt" "$receipt"
+  jq -cS .provenance "$published_receipt" | tr -d '\n' > "$provenance"
+fi
+
+binding="$dist_dir/runtime-candidate-publication-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+archive_sha="$(sha256sum "$archive" | awk '{print $1}')"
+receipt_sha="$(sha256sum "$receipt" | awk '{print $1}')"
+source_commit="$(jq -r .source.commit "$candidate")"
+GITHUB_RUN_ID="$GITHUB_RUN_ID" GITHUB_RUN_ATTEMPT="$GITHUB_RUN_ATTEMPT" \
+GITHUB_SERVER_URL="$GITHUB_SERVER_URL" GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+CANDIDATE_TAG="$CANDIDATE_TAG" ARCHIVE_SHA="$archive_sha" RECEIPT_SHA="$receipt_sha" \
+SOURCE_COMMIT="$source_commit" BINDING="$binding" python3 - <<'PY'
+import json, os
+binding = {
+    "schema": "codexy-runtime-candidate-publication/v1",
+    "candidateTag": os.environ["CANDIDATE_TAG"],
+    "sourceCommit": os.environ["SOURCE_COMMIT"],
+    "archiveSha256": os.environ["ARCHIVE_SHA"],
+    "receiptSha256": os.environ["RECEIPT_SHA"],
+    "workflow": {
+        "repositoryId": 1269350143,
+        "path": ".github/workflows/runtime-candidate.yml",
+        "runId": int(os.environ["GITHUB_RUN_ID"]),
+        "runAttempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+        "runUrl": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+    },
+}
+open(os.environ["BINDING"], "wb").write(json.dumps(binding, sort_keys=True, separators=(",", ":")).encode())
+PY
+
+for asset in "$archive" "$receipt" "$provenance" "$binding"; do
+  name="$(basename "$asset")"
+  if has_asset "$name"; then
+    public_asset="$recovery_dir/$name"
+    gh release download "$CANDIDATE_TAG" --pattern "$name" --output "$public_asset"
+    cmp "$asset" "$public_asset"
+  else
+    gh release upload "$CANDIDATE_TAG" "$asset"
+  fi
+done

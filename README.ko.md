@@ -38,17 +38,6 @@ Codexy에는 다음이 포함됩니다.
 전체 에이전트, 스킬, MCP 구성과 실제 작업 흐름은
 [구성과 작업 흐름 안내서](docs/architecture.md)에서 확인할 수 있습니다.
 
-## Codexy 설치
-
-설치기를 내려받아 실행합니다.
-
-```sh
-curl -fsSLO https://raw.githubusercontent.com/eunsoogi/codexy/main/install
-chmod +x install && ./install
-```
-
-설치기는 Codexy를 새로 고치고 specialist agent를 준비합니다. 완료 후 Codex를 시작하세요.
-
 ## Codexy로 작업하는 흐름
 
 1. **작업을 분류합니다.** 편집 전에 작업 단위, 담당자, 범위, 검증 근거, 중단 조건을

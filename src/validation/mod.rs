@@ -10,6 +10,7 @@ mod child_handoff_readiness_text;
 #[path = "child_lane_active_threads_module.rs"]
 mod child_lane_active_threads;
 mod child_lane_classification_boundaries;
+mod child_lane_classification_control;
 mod child_lane_classification_setup;
 mod child_lane_classification_setup_context;
 mod child_lane_owner_decision;
@@ -79,6 +80,7 @@ mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod readiness_context;
 mod release_publish_contract;
+mod review_response_cluster;
 mod review_thread_evidence;
 mod review_thread_readiness;
 mod review_thread_resolution;
@@ -88,6 +90,9 @@ mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
 mod runtime;
+mod runtime_candidate_manifest;
+mod runtime_release_contract;
+mod runtime_release_schema;
 mod sentinel_handoff;
 mod sentinel_handoff_evidence;
 mod sentinel_handoff_reviewer;
@@ -101,6 +106,7 @@ use anyhow::Result;
 
 pub use mode_dispatch::{errors, run};
 pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
+pub use review_response_cluster::diagnostics as review_response_cluster_diagnostics;
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -127,6 +133,7 @@ pub enum Mode {
         handoff: String,
         pr_state: String,
     },
+    ReviewResponseCluster(String),
     Mcp,
     Hooks,
     Roles,

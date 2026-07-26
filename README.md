@@ -40,17 +40,6 @@ Codexy bundles:
 See the [plugin architecture guide](docs/architecture.md) for the complete
 agent, skill, and MCP inventory and the implemented orchestration flows.
 
-## Install Codexy
-
-Download and run the installer:
-
-```sh
-curl -fsSLO https://raw.githubusercontent.com/eunsoogi/codexy/main/install
-chmod +x install && ./install
-```
-
-The installer refreshes Codexy and prepares its specialist agents; start Codex after it completes.
-
 ## A Codexy workflow
 
 1. **Classify the task.** Identify the lane, owner, scope, proof, and stop

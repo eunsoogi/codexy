@@ -68,16 +68,17 @@ def _extract_tar(archive: Path, destination: Path) -> None:
             raise ValueError("runtime package contains too many members")
         if sum(member.size for member in members) > MAX_UNPACKED_BYTES:
             raise ValueError("runtime package exceeds the unpacked size limit")
-        destinations: set[Path] = set()
+        destinations: set[str] = set()
         for member in members:
             if not (member.isdir() or member.isfile()):
                 raise ValueError(f"runtime package contains unsafe link or device: {member.name}")
             member_path = (destination / member.name).resolve()
             if destination_resolved not in member_path.parents and member_path != destination_resolved:
                 raise ValueError(f"runtime package contains unsafe path: {member.name}")
-            if member_path in destinations:
+            identity = str(member_path).casefold()
+            if identity in destinations:
                 raise ValueError(f"runtime package contains duplicate path: {member.name}")
-            destinations.add(member_path)
+            destinations.add(identity)
         package.extractall(destination)
 
 
@@ -96,7 +97,7 @@ def _extract_zip(archive: Path, destination: Path) -> None:
             raise ValueError("artifact archive contains too many members")
         if sum(member.file_size for member in members) > MAX_UNPACKED_BYTES:
             raise ValueError("artifact archive exceeds the unpacked size limit")
-        destinations: set[Path] = set()
+        destinations: set[str] = set()
         for member in members:
             member_path = (destination / member.filename).resolve()
             unix_mode = member.external_attr >> 16
@@ -104,9 +105,10 @@ def _extract_zip(archive: Path, destination: Path) -> None:
                 raise ValueError(f"artifact archive contains unsafe link: {member.filename}")
             if destination_resolved not in member_path.parents and member_path != destination_resolved:
                 raise ValueError(f"artifact archive contains unsafe path: {member.filename}")
-            if member_path in destinations:
+            identity = str(member_path).casefold()
+            if identity in destinations:
                 raise ValueError(f"artifact archive contains duplicate path: {member.filename}")
-            destinations.add(member_path)
+            destinations.add(identity)
         zipped.extractall(destination)
 
 

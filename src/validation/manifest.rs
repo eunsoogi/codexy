@@ -7,6 +7,8 @@ use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json, manifest_path, require_string};
 
 const REQUIRED_SUPPORTED_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64"];
+const DEFAULT_PROMPT_MAX_CHARS: usize = 128;
+const DEFAULT_PROMPT_MAX_ENTRIES: usize = 3;
 
 pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
     let path = manifest_path(plugin_root);
@@ -36,6 +38,13 @@ pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
                 display_relative(&path)
             )
         })?;
+    if default_prompt.len() > DEFAULT_PROMPT_MAX_ENTRIES {
+        bail!(
+            "{} interface.defaultPrompt must contain at most {DEFAULT_PROMPT_MAX_ENTRIES} entries (found {})",
+            display_relative(&path),
+            default_prompt.len()
+        );
+    }
     if !default_prompt
         .iter()
         .all(|item| item.as_str().is_some_and(|text| !text.trim().is_empty()))
@@ -44,6 +53,15 @@ pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
             "{} interface.defaultPrompt must contain only non-empty strings",
             display_relative(&path)
         );
+    }
+    for (index, item) in default_prompt.iter().enumerate() {
+        let prompt_length = item.as_str().map_or(0, |text| text.chars().count());
+        if prompt_length > DEFAULT_PROMPT_MAX_CHARS {
+            bail!(
+                "{} interface.defaultPrompt[{index}] must be at most {DEFAULT_PROMPT_MAX_CHARS} characters (found {prompt_length})",
+                display_relative(&path)
+            );
+        }
     }
     if !default_prompt.iter().any(|item| {
         item.as_str()

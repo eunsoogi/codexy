@@ -2,6 +2,21 @@
   "schema": "codexy.internal.release-publish-contract.v1",
   "name": "codexy",
   "version": "1.2.2",
+  "bootstrap": {
+    "selectedVersion": "1.2.2",
+    "candidateVersion": "1.3.0",
+    "publicationWorkflow": ".github/workflows/bootstrap-package.yml"
+  },
+  "runtime": {
+    "selectedTag": "v1.2.2",
+    "candidateTagPrefix": "runtime-candidate-",
+    "candidateWorkflow": ".github/workflows/runtime-candidate.yml",
+    "activationWorkflow": ".github/workflows/runtime-activation.yml",
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64"
+    ]
+  },
   "currentMarketplace": {
     "repository": "https://github.com/eunsoogi/codexy",
     "ref": "main",

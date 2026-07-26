@@ -40,8 +40,65 @@ mod release_tag_parity;
 #[path = "../release_workflow_parity.rs"]
 mod release_workflow_parity;
 
+#[path = "../runtime_publication_activation.rs"]
+mod runtime_publication_activation;
+
+#[path = "../runtime_candidate_asset_recovery.rs"]
+mod runtime_candidate_asset_recovery;
+
+#[path = "../runtime_activation_branch_recovery.rs"]
+mod runtime_activation_branch_recovery;
+
+#[path = "../runtime_workflow_recovery.rs"]
+mod runtime_workflow_recovery;
+
+#[path = "../bootstrap_package_admission.rs"]
+mod bootstrap_package_admission;
+
+#[path = "../version_bump_pr_readiness.rs"]
+mod version_bump_pr_readiness;
+
+#[path = "../version_bump_pr_snapshot_refresh.rs"]
+mod version_bump_pr_snapshot_refresh;
+
+#[path = "../version_bump_pr_metadata_failures.rs"]
+mod version_bump_pr_metadata_failures;
+
+#[path = "../version_bump_reconciliation_state_machine.rs"]
+mod version_bump_reconciliation_state_machine;
+
+#[path = "../version_bump_governing_identity.rs"]
+mod version_bump_governing_identity;
+
+#[path = "../version_bump_pr_state.rs"]
+mod version_bump_pr_state;
+
+#[path = "../version_bump_pr_test_support.rs"]
+mod version_bump_pr_test_support;
+
+#[path = "../version_bump_workflow_structure.rs"]
+mod version_bump_workflow_structure;
+
+#[path = "../version_bump_workflow_contract.rs"]
+mod version_bump_workflow_contract;
+
+#[path = "../version_bump_workflow_model.rs"]
+mod version_bump_workflow_model;
+
+#[path = "../version_bump_workflow_topology_matrix.rs"]
+mod version_bump_workflow_topology_matrix;
+
+#[path = "../support/version_pr_workflow_fixture.rs"]
+mod version_pr_workflow_fixture;
+
+#[path = "../version_bump_workflow_adapter.rs"]
+mod version_bump_workflow_adapter;
+
 #[path = "../runtime_wrapper_fallback_order.rs"]
 mod runtime_wrapper_fallback_order;
+
+#[path = "../runtime_platform_detection.rs"]
+mod runtime_platform_detection;
 
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;

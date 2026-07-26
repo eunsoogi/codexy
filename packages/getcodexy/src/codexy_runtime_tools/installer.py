@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -23,6 +24,7 @@ class InstallConfig(Protocol):
     package_sha256: str
     git_repository: str
     git_ref: str
+    source_identity: object
 
 
 def executable(path: Path) -> bool:
@@ -37,6 +39,28 @@ def executable(path: Path) -> bool:
         and not bool(getattr(metadata, "st_file_attributes", 0) & reparse)
         and os.access(path, os.X_OK)
     )
+
+
+def _publish_executable(
+    source: Path, destination: Path, *, require_staged_executable: bool = True
+) -> None:
+    if require_staged_executable and not executable(source):
+        raise RuntimeError(f"staged runtime is not executable: {source}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
+    try:
+        shutil.copyfile(source, temporary)
+        mode = (
+            stat.S_IMODE(source.stat().st_mode) & 0o777
+            if require_staged_executable
+            else 0o755
+        )
+        temporary.chmod(mode)
+        if not executable(temporary):
+            raise RuntimeError(f"copied runtime is not executable: {temporary}")
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def execute(
@@ -60,20 +84,22 @@ def install_package(config: InstallConfig, install_root: Path, installed: Path) 
             expected_sha256=config.package_sha256,
             work=work,
         )
+        source_identity = getattr(config, "source_identity", None)
+        release_contract = getattr(config, "release_contract", None)
+        if source_identity is not None:
+            source_identity.verify_archive(archive, platform=config.platform)
+        elif release_contract is not None:
+            release_contract.verify_archive(archive, platform=config.platform)
         packaged_runtime, package_manifest = unpack_runtime(
             archive=archive, work=work, runtime_name=config.runtime_name
         )
-        if not config.package_override:
+        if not config.package_override and release_contract is None:
             matches, message = releases_match(config.manifest, package_manifest)
             if not matches:
                 raise RuntimeError(message)
-        installed.parent.mkdir(parents=True, exist_ok=True)
-        temporary_runtime = installed.with_name(f".{installed.name}.{os.getpid()}.tmp")
-        shutil.copyfile(packaged_runtime, temporary_runtime)
-        temporary_runtime.chmod(
-            temporary_runtime.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        _publish_executable(
+            packaged_runtime, installed, require_staged_executable=False
         )
-        os.replace(temporary_runtime, installed)
         if not config.package_override:
             shutil.copyfile(package_manifest, install_root / "plugin.json")
 
@@ -82,26 +108,33 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
     cargo = shutil.which("cargo")
     if not cargo:
         raise RuntimeError("cargo is unavailable for the configured Git runtime source")
-    revision = len(config.git_ref) == 40 and all(
-        character in "0123456789abcdefABCDEF" for character in config.git_ref
-    )
-    if not revision:
-        raise RuntimeError("CODEXY_RUNTIME_GIT_REF must be an exact 40-hex commit")
-    command = [
-        cargo,
-        "install",
-        "--force",
-        "--locked",
-        "--git",
-        config.git_repository,
-        "--rev",
-        config.git_ref,
-        "--root",
-        str(install_root),
-        "--bin",
-        f"codexy-mcp-{config.server}",
-    ]
-    completed = subprocess.run(command, check=False)
-    if completed.returncode or not executable(installed):
-        raise RuntimeError(f"cargo install exited with status {completed.returncode}")
-    shutil.copyfile(config.manifest, install_root / "plugin.json")
+    if config.git_repository != "https://github.com/eunsoogi/codexy" or not re.fullmatch(r"[0-9a-f]{40}", config.git_ref):
+        raise RuntimeError("Git fallback requires the canonical repository and lowercase 40-hex commit")
+    install_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="git-", dir=install_root) as temporary:
+        staged_root = Path(temporary) / "root"
+        staged_runtime = staged_root / "bin" / f"codexy-mcp-{config.server}"
+        command = [
+            cargo,
+            "install",
+            "--force",
+            "--locked",
+            "--git",
+            config.git_repository,
+            "--rev",
+            config.git_ref,
+            "--root",
+            str(staged_root),
+            "--bin",
+            f"codexy-mcp-{config.server}",
+        ]
+        environment = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "GITHUB_TOKEN"}}
+        completed = subprocess.run(command, check=False, env=environment)
+        if completed.returncode:
+            raise RuntimeError(f"cargo install exited with status {completed.returncode}")
+        try:
+            _publish_executable(staged_runtime, installed)
+        except RuntimeError as error:
+            raise RuntimeError(
+                f"cargo install exited with status {completed.returncode}: {error}"
+            ) from error

@@ -1,11 +1,11 @@
 # Agent Registration And Invocation
 
-## Explicit Pre-Session Update
+## Source-Only Pre-Session Update
 
-Before starting Codex, the repository-root installer MUST run the versioned
-`codexy-update --pre-session` command. That command MUST refresh the official
-marketplace, resolve exactly one enabled official Codexy install, and synchronize
-marker-owned role projections. No-change execution MUST remain silent. The
+The repository source includes a pre-session updater implementation for future
+activation work. It MUST NOT be presented as an installed or public command until
+the matching package release has published its console entry point. No-change
+execution remains a source-level behavior covered by its dedicated tests. The
 packaged `check-codexy-agents` entrypoint remains an explicit read-only validator
 and MUST report `UPDATE_REQUIRED` when installed projections differ from the
 current package; lifecycle hooks MUST NOT invoke it.

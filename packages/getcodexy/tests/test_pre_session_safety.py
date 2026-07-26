@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import json
-import stat
 import subprocess
 import tempfile
 import unittest
@@ -208,23 +207,18 @@ class PreSessionSafetyTests(unittest.TestCase):
 
             self.assertEqual(calls, commands()[:3])
 
-    def test_root_installer_is_pinned_and_readmes_publish_installer_only(self) -> None:
+    def test_source_only_updater_has_no_public_activation_surface(self) -> None:
         repository = Path(__file__).resolve().parents[3]
-        installer = repository / "install"
         command = "uvx --from getcodexy==1.2.2 codexy-update --pre-session"
 
-        self.assertTrue(installer.is_file())
-        self.assertTrue(installer.stat().st_mode & stat.S_IXUSR)
-        self.assertIn(command, installer.read_text(encoding="utf-8"))
+        self.assertFalse((repository / "install").exists())
         for readme in (repository / "README.md", repository / "README.ko.md"):
             text = readme.read_text(encoding="utf-8")
-            self.assertIn("/install", text)
-            self.assertIn("chmod +x install && ./install", text)
-            self.assertNotIn("uvx --from", text)
-            self.assertNotIn("python3 -c", text)
-            self.assertNotIn("bootstrap-codexy-agents", text)
-            self.assertNotIn("SessionStart", text)
-            self.assertNotIn("codex plugin marketplace add", text)
-            self.assertNotIn("codex plugin add", text)
-            self.assertNotIn("codex plugin list", text)
-            self.assertNotIn("codex mcp list", text)
+            self.assertNotIn(command, text)
+            self.assertNotIn("chmod +x install && ./install", text)
+
+        for path in (
+            repository / ".github/workflows/python-package.yml",
+            repository / "plugins/codexy/skills/codex-orchestration/references/agent-registration.md",
+        ):
+            self.assertNotIn(command, path.read_text(encoding="utf-8"))

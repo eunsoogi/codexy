@@ -1,249 +1,44 @@
 use serde_yaml::{Mapping, Value};
 
 #[test]
-fn runtime_workflow_rejects_every_untrusted_write_permission()
--> Result<(), Box<dyn std::error::Error>> {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let workflow =
-        std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml"))?;
-
-    assert_release_write_permissions_are_trusted(&workflow)?;
-
-    for mutation in [
-        workflow.replacen(
-            "      contents: write",
-            "      contents: write\n      pull-requests: write",
-            1,
-        ),
-        workflow.replacen(
-            "      contents: write",
-            "      contents: write\n      pull-requests: \"write\"",
-            1,
-        ),
-        workflow.replacen(
-            "      contents: write",
-            "      contents: write\n      pull-requests: write-all",
-            1,
-        ),
-        workflow.replacen(
-            "permissions:\n  contents: read\n\njobs:",
-            "permissions: { contents: read, pull-requests: write }\n\njobs:",
-            1,
-        ),
-    ] {
-        assert!(
-            assert_release_write_permissions_are_trusted(&mutation).is_err(),
-            "the workflow contract must reject every untrusted write permission"
-        );
+fn validation_workflows_are_read_only_and_disable_checkout_credentials() -> Result<(), Box<dyn std::error::Error>> {
+    for name in ["python-package.yml", "plugin-runtime-binaries.yml"] {
+        let document = document(name)?;
+        assert_exact(mapping(&document["permissions"])? , "contents", "read")?;
+        for job in document["jobs"].as_mapping().ok_or("jobs")?.values() {
+            if let Some(permissions) = job.get("permissions") { assert_exact(mapping(permissions)?, "contents", "read")?; }
+            for step in job["steps"].as_sequence().ok_or("steps")? { if step["uses"].as_str() == Some("actions/checkout@v4") { assert_eq!(step["with"]["persist-credentials"], Value::Bool(false)); } }
+        }
     }
     Ok(())
 }
 
 #[test]
-fn runtime_workflow_rejects_semantic_write_bypasses_and_checks_each_checkout()
--> Result<(), Box<dyn std::error::Error>> {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let workflow =
-        std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml"))?;
-
-    for mutation in [
-        workflow.replacen(
-            "    steps:\n",
-            "    permissions:\n      issues: \"\\x77rite\"\n    steps:\n",
-            1,
-        ),
-        workflow.replacen(
-            "    steps:\n",
-            "    permissions:\n      issues: WrItE\n    steps:\n",
-            1,
-        ),
-        workflow.replacen(
-            "    steps:\n",
-            "    permissions:\n      issues: \"write\"\n    steps:\n",
-            1,
-        ),
-        workflow.replacen(
-            "    steps:\n",
-            "    permissions: { issues: \"\\x77rite\" }\n    steps:\n",
-            1,
-        ),
-        workflow.replacen(
-            "persist-credentials: false",
-            "persist-credentials: true\n          # persist-credentials: false",
-            1,
-        ),
-        workflow.replacen(
-            "persist-credentials: false",
-            "persist-credentials: \"true\"",
-            1,
-        ),
-        workflow.replacen(
-            "persist-credentials: false",
-            "persist-credentials: false\n          PERSIST-CREDENTIALS: true",
-            1,
-        ),
-        workflow.replacen(
-            "        with:\n          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}\n          fetch-depth: 0\n          persist-credentials: false",
-            "        with: { persist-credentials: true }",
-            1,
-        ),
-    ] {
-        assert!(
-            serde_yaml::from_str::<Value>(&mutation).is_ok(),
-            "each bypass mutation must remain valid YAML"
-        );
-        assert!(
-            assert_release_write_permissions_are_trusted(&mutation).is_err(),
-            "the workflow contract must reject semantic permission and checkout bypasses"
-        );
-    }
-
-    for control in [
-        workflow.replacen(
-            "      - name: Build MCP runtime binaries",
-            "      # write permissions are forbidden here\n      - name: Build MCP runtime binaries",
-            1,
-        ),
-        workflow.replacen(
-            "      - name: Build MCP runtime binaries",
-            "      - name: \"write a runtime build log\"\n      - name: Build MCP runtime binaries",
-            1,
-        ),
-        workflow.replacen(
-            "cargo build --release",
-            "echo 'contents: write; persist-credentials: false'\n          cargo build --release",
-            1,
-        ),
-    ] {
-        assert!(
-            assert_release_write_permissions_are_trusted(&control).is_ok(),
-            "comments and ordinary strings must not be treated as permissions"
-        );
-    }
+fn candidate_and_activation_write_only_at_explicit_boundaries() -> Result<(), Box<dyn std::error::Error>> {
+    let candidate = document("runtime-candidate.yml")?;
+    let permissions = mapping(&candidate["jobs"]["publish-candidate"]["permissions"])?;
+    assert_eq!(permissions[Value::String("contents".into())], "write");
+    assert_eq!(permissions[Value::String("id-token".into())], "write");
+    assert_eq!(permissions[Value::String("attestations".into())], "write");
+    let publish = run(&candidate, "publish-candidate", "Create candidate tag and release once")?;
+    assert!(command(publish, &["gh", "release", "create"]));
+    assert!(!command(publish, &["gh", "release", "edit"]));
+    assert!(!checkout_persists(&candidate, "build-runtime")?);
+    assert!(checkout_persists(&candidate, "publish-candidate")?);
+    assert_bot_identity(&candidate, "publish-candidate")?;
+    let activation = document("runtime-activation.yml")?;
+    let permissions = mapping(&activation["permissions"])?;
+    assert_eq!(permissions[Value::String("contents".into())], "write");
+    assert_eq!(permissions[Value::String("pull-requests".into())], "write");
+    assert!(checkout_persists(&activation, "open-activation-pr")?);
+    assert_bot_identity(&activation, "open-activation-pr")?;
     Ok(())
 }
 
-fn assert_release_write_permissions_are_trusted(workflow: &str) -> Result<(), String> {
-    let document = serde_yaml::from_str::<Value>(workflow)
-        .map_err(|error| format!("workflow must be valid YAML: {error}"))?;
-    let root = mapping(&document, "workflow")?;
-    let top_permissions = mapping_field(root, "permissions", "workflow")?;
-    require_exact_permission(top_permissions, "contents", "read", "top-level")?;
-
-    let jobs = mapping_field(root, "jobs", "workflow")?;
-    let mut checkout_count = 0;
-    for (name, job) in jobs {
-        let job_name = name
-            .as_str()
-            .ok_or_else(|| "workflow job names must be strings".to_owned())?;
-        let job = mapping(job, job_name)?;
-        let permissions = field(job, "permissions");
-        if job_name == "publish-release" {
-            let permissions =
-                permissions.ok_or_else(|| "publish-release must declare permissions".to_owned())?;
-            let permissions = mapping(permissions, "publish-release permissions")?;
-            require_exact_permission(permissions, "contents", "write", "publish-release")?;
-            require_trusted_release_condition(job)?;
-        } else if let Some(permissions) = permissions {
-            reject_write_permissions(permissions, job_name)?;
-        }
-
-        let Some(steps) = field(job, "steps") else {
-            continue;
-        };
-        let steps = steps
-            .as_sequence()
-            .ok_or_else(|| format!("{job_name} steps must be a sequence"))?;
-        for step in steps {
-            let step = mapping(step, "workflow step")?;
-            if field(step, "uses").and_then(Value::as_str) != Some("actions/checkout@v4") {
-                continue;
-            }
-            checkout_count += 1;
-            let inputs = mapping_field(step, "with", "checkout step")?;
-            let credential_value =
-                canonical_field(inputs, "persist-credentials").ok_or_else(|| {
-                    format!(
-                        "checkout {checkout_count} must set exactly one persist-credentials: false"
-                    )
-                })?;
-            if credential_value != &Value::Bool(false) {
-                return Err(format!(
-                    "checkout {checkout_count} must set persist-credentials: false"
-                ));
-            }
-        }
-    }
-    if checkout_count == 0 {
-        return Err("workflow must contain at least one checkout".to_owned());
-    }
-    Ok(())
-}
-
-fn mapping<'a>(value: &'a Value, context: &str) -> Result<&'a Mapping, String> {
-    value
-        .as_mapping()
-        .ok_or_else(|| format!("{context} must be a mapping"))
-}
-
-fn field<'a>(mapping: &'a Mapping, name: &str) -> Option<&'a Value> {
-    mapping.get(Value::String(name.to_owned()))
-}
-
-fn canonical_field<'a>(mapping: &'a Mapping, name: &str) -> Option<&'a Value> {
-    let mut matches = mapping.iter().filter(|(key, _)| {
-        key.as_str()
-            .is_some_and(|key| key.eq_ignore_ascii_case(name))
-    });
-    let (key, value) = matches.next()?;
-    (matches.next().is_none() && key.as_str() == Some(name)).then_some(value)
-}
-
-fn mapping_field<'a>(
-    parent: &'a Mapping,
-    name: &str,
-    context: &str,
-) -> Result<&'a Mapping, String> {
-    let value = field(parent, name).ok_or_else(|| format!("{context} must define {name}"))?;
-    mapping(value, name)
-}
-
-fn require_exact_permission(
-    permissions: &Mapping,
-    permission: &str,
-    level: &str,
-    context: &str,
-) -> Result<(), String> {
-    if permissions.len() != 1
-        || field(permissions, permission).and_then(Value::as_str) != Some(level)
-    {
-        return Err(format!(
-            "{context} permissions must be exactly {permission}: {level}"
-        ));
-    }
-    Ok(())
-}
-
-fn reject_write_permissions(permissions: &Value, job_name: &str) -> Result<(), String> {
-    let permissions = mapping(permissions, job_name)?;
-    for (permission, level) in permissions {
-        if level.as_str().is_some_and(|level| {
-            level.eq_ignore_ascii_case("write") || level.eq_ignore_ascii_case("write-all")
-        }) {
-            return Err(format!(
-                "only publish-release may receive write permissions; {job_name} grants {permission:?}"
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn require_trusted_release_condition(job: &Mapping) -> Result<(), String> {
-    let condition = field(job, "if")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "publish-release must retain its trusted release condition".to_owned())?;
-    (condition
-        == "github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'")
-        .then_some(())
-        .ok_or_else(|| "publish-release must retain its trusted release condition".to_owned())
-}
+fn document(name: &str) -> Result<Value, Box<dyn std::error::Error>> { Ok(serde_yaml::from_str(&std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows").join(name))?)?) }
+fn mapping(value: &Value) -> Result<&Mapping, Box<dyn std::error::Error>> { value.as_mapping().ok_or_else(|| "mapping".into()) }
+fn assert_exact(mapping: &Mapping, name: &str, value: &str) -> Result<(), Box<dyn std::error::Error>> { assert_eq!(mapping.len(), 1); assert_eq!(mapping[Value::String(name.into())], value); Ok(()) }
+fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == name)).and_then(|step| step["run"].as_str()).ok_or_else(|| "run".into()) }
+fn command(run: &str, words: &[&str]) -> bool { run.lines().map(str::trim).any(|line| line.split_ascii_whitespace().collect::<Vec<_>>().windows(words.len()).any(|actual| actual == words)) }
+fn checkout_persists(value: &Value, job: &str) -> Result<bool, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["uses"] == "actions/checkout@v4")).and_then(|step| step["with"]["persist-credentials"].as_bool()).ok_or_else(|| "checkout credentials".into()) }
+fn assert_bot_identity(value: &Value, job: &str) -> Result<(), Box<dyn std::error::Error>> { let run = run(value, job, "Configure Git identity")?; assert!(run.lines().map(str::trim).any(|line| line == "git config user.name \"github-actions[bot]\"")); assert!(run.lines().map(str::trim).any(|line| line == "git config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"")); Ok(()) }
