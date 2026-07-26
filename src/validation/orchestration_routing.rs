@@ -16,7 +16,7 @@ use required_bullets::missing_required_bullets;
 
 const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
 const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
-const DELIVERY_POLICY: &str = "Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.";
+const DELIVERY_POLICY: &str = "Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.";
 const ACTIVE_TIER_STARTS: &[&str] = &[
     "Root/orchestrator",
     "Generic implementation",
@@ -85,9 +85,9 @@ const RECIPIENT_ROUTING_BULLETS: &[(&str, &[&str], &str)] = &[
         "Parent-to-generic-child delivery MUST pass",
         &[
             "`model: \"gpt-5.6-terra\"` and `thinking: \"high\"`",
-            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.",
         ],
-        "parent-to-generic-child messages must use recipient gpt-5.6-terra/high; child-to-root messages must use recipient gpt-5.6-sol/high",
+        "parent-to-generic-child messages must use recipient gpt-5.6-terra/high; child-to-root messages must use recipient gpt-5.6-sol/medium",
     ),
 ];
 
@@ -148,16 +148,18 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
         RECIPIENT_ROUTING_BULLETS,
     ));
     let delivery_assignments = assignments::delivery(&recipient_bullets, &recipient_starts);
-    for (direction, model, error) in [
+    for (direction, model, effort, error) in [
         (
             "parent-to-generic-child delivery must pass",
             "gpt-5.6-terra",
+            "high",
             "parent-to-generic-child messages must use recipient gpt-5.6-terra/high",
         ),
         (
             "child-to-root delivery must pass",
             "gpt-5.6-sol",
-            "child-to-root messages must use recipient gpt-5.6-sol/high",
+            "medium",
+            "child-to-root messages must use recipient gpt-5.6-sol/medium",
         ),
     ] {
         if delivery_assignments.iter().any(|(found, assignment)| {
@@ -166,8 +168,8 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
             *found == direction
                 && (!models.contains(&model)
                     || models.iter().any(|value| *value != model)
-                    || !efforts.contains(&"high")
-                    || efforts.iter().any(|value| *value != "high"))
+                    || !efforts.contains(&effort)
+                    || efforts.iter().any(|value| *value != effort))
         }) {
             errors.push(format!("{} {error}", display_relative(&path)));
         }
@@ -214,7 +216,7 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
             errors.push(format!("{} {message}", display_relative(&path)));
         }
     }
-    for (marker, recipient, sender, thread, direction) in evidence::ROUTES {
+    for (marker, recipient, sender, thread, effort, direction) in evidence::ROUTES {
         if evidence::invalid(
             &recipient_bullets,
             &recipient_starts,
@@ -222,9 +224,10 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
             recipient,
             sender,
             thread,
+            effort,
         ) {
             errors.push(format!(
-                "{} {direction} evidence must pass recipient {recipient}/high",
+                "{} {direction} evidence must pass recipient {recipient}/{effort}",
                 display_relative(&path)
             ));
         }

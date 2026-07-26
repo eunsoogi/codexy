@@ -1,0 +1,2 @@
+{"event":"turn.completed","session_id":"parent-486","turn_id":"turn-1","cumulative_tokens":100,"tool_calls":[{"tool":"functions.exec","input_bytes":12,"output_bytes":30},{"tool":"functions.wait","input_bytes":4,"output_bytes":20}]}
+{"event":"turn.completed","session_id":"parent-486","turn_id":"turn-2","cumulative_tokens":200,"tool_calls":[{"tool":"functions.exec","input_bytes":10,"output_bytes":40},{"tool":"functions.wait_agent","input_bytes":3,"output_bytes":25}]}
