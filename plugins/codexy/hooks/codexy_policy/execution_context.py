@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .executable_identity import alias_transition
+from .executable_identity import alias_transition, directory_exists, directory_location
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -27,6 +27,7 @@ class ExecutionContext:
     remote_urls: tuple[tuple[str, str, str], ...] = ()
     opaque_repository_state: bool = False
     executable_aliases: tuple[tuple[str, str | None], ...] = ()
+    directories: tuple[str, ...] = ()
 @dataclass(frozen=True)
 class CommandEffect:
     success: ExecutionContext | None
@@ -42,22 +43,15 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     environment = dict(context.environment)
     if expanded is None or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded):
         environment[key] = assigned
-        return ExecutionContext(
-            context.cwd, context.cwd_owned, context.git_dir, context.gh_repo,
-            tuple(environment.items()), True, context.remote_urls,
-            context.opaque_repository_state or key == "GIT_COMMON_DIR",
-            context.executable_aliases,
-        )
+        return replace(context, environment=tuple(environment.items()), opaque_environment=True,
+                       opaque_repository_state=context.opaque_repository_state or key == "GIT_COMMON_DIR")
     environment[key] = expanded
     git_dir = expanded if key == "GIT_DIR" else context.git_dir
     gh_repo = expanded if key == "GH_REPO" else context.gh_repo
     owned = git_directory_owned(context.cwd, git_dir) if git_dir is not None else context.cwd_owned
-    return ExecutionContext(
-        context.cwd, owned, git_dir, gh_repo, tuple(environment.items()),
-        context.opaque_environment, context.remote_urls,
-        context.opaque_repository_state or key == "GIT_COMMON_DIR",
-        context.executable_aliases,
-    )
+    return replace(context, cwd_owned=owned, git_dir=git_dir, gh_repo=gh_repo,
+                   environment=tuple(environment.items()),
+                   opaque_repository_state=context.opaque_repository_state or key == "GIT_COMMON_DIR")
 
 
 def leading_assignments(tokens: list[str], context: ExecutionContext) -> tuple[list[str], ExecutionContext]:
@@ -78,11 +72,7 @@ def assigned_variables(arguments: list[str], context: ExecutionContext) -> Execu
 
 def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
     owned = git_directory_owned(cwd, context.git_dir) if context.git_dir is not None else repository_owned(cwd)
-    return ExecutionContext(
-        cwd, owned, context.git_dir, context.gh_repo, context.environment,
-        context.opaque_environment, context.remote_urls, context.opaque_repository_state,
-        context.executable_aliases,
-    )
+    return replace(context, cwd=cwd, cwd_owned=owned)
 
 
 def remote_url(context: ExecutionContext, remote: str, kind: str, value: str) -> ExecutionContext:
@@ -90,12 +80,7 @@ def remote_url(context: ExecutionContext, remote: str, kind: str, value: str) ->
     remotes = {(name, key): current for name, key, current in context.remote_urls}
     remotes[(remote.casefold(), kind)] = value
     values = tuple((name, key, current) for (name, key), current in remotes.items())
-    return ExecutionContext(
-        context.cwd, context.cwd_owned, context.git_dir, context.gh_repo,
-        context.environment, context.opaque_environment, values,
-        context.opaque_repository_state,
-        context.executable_aliases,
-    )
+    return replace(context, remote_urls=values)
 
 
 def unset(context: ExecutionContext, key: str) -> ExecutionContext:
@@ -104,11 +89,8 @@ def unset(context: ExecutionContext, key: str) -> ExecutionContext:
     owned = repository_owned(context.cwd) if git_dir is None else context.cwd_owned
     environment = dict(context.environment)
     environment.pop(key, None)
-    return ExecutionContext(
-        context.cwd, owned, git_dir, gh_repo, tuple(environment.items()),
-        context.opaque_environment, context.remote_urls, context.opaque_repository_state,
-        context.executable_aliases,
-    )
+    return replace(context, cwd_owned=owned, git_dir=git_dir, gh_repo=gh_repo,
+                   environment=tuple(environment.items()))
 
 
 def export_variables(arguments: list[str], context: ExecutionContext) -> ExecutionContext | None:
@@ -150,20 +132,15 @@ def unset_variables(arguments: list[str], context: ExecutionContext) -> Executio
 
 
 def clear(context: ExecutionContext) -> ExecutionContext:
-    return ExecutionContext(
-        context.cwd,
-        repository_owned(context.cwd),
-        None,
-        None,
-        remote_urls=context.remote_urls,
-        opaque_repository_state=context.opaque_repository_state,
-        executable_aliases=context.executable_aliases,
-    )
+    return replace(context, cwd_owned=repository_owned(context.cwd), git_dir=None, gh_repo=None,
+                   environment=(), opaque_environment=False)
 
 
 def after_external_command(executable: str, arguments: list[str], context: ExecutionContext) -> CommandEffect | None:
     """Apply bounded external filesystem and Git-config state transitions."""
-    transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases)
+    if executable == "mkdir":
+        return _mkdir_effect(arguments, context)
+    transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases, context.directories)
     if executable in {"ln", "cp"} and (transition is None or not transition.known):
         return None
     if transition is not None:
@@ -196,6 +173,26 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
     )
     success = replace(context, opaque_repository_state=True) if writes_config else context
     return CommandEffect(success, context)
+
+
+def _mkdir_effect(arguments: list[str], context: ExecutionContext) -> CommandEffect | None:
+    parents = False
+    while arguments[:1] and arguments[0].startswith("-"):
+        option = arguments.pop(0)
+        if option == "--":
+            break
+        if option not in {"-p", "--parents"}:
+            return None
+        parents = True
+    if len(arguments) != 1 or not arguments[0]:
+        return None
+    destination = directory_location(arguments[0], context.cwd)
+    existing = directory_exists(destination, context.directories)
+    parent = str(Path(destination).parent)
+    if not parents and (existing or not directory_exists(parent, context.directories)):
+        return CommandEffect(None, context)
+    success = replace(context, directories=tuple(dict.fromkeys((*context.directories, destination))))
+    return CommandEffect(success, context) if parents else CommandEffect(success)
 
 
 def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:

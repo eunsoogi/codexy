@@ -111,6 +111,19 @@ fn filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
 
 #[cfg(unix)]
 #[test]
+fn path_search_skips_non_executable_entries() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let fallback = workspace.path().join("fallback");
+    std::fs::write(owned.join("README.md"), "not executable")?;
+    std::fs::create_dir(&fallback)?;
+    let path = format!("PATH={}:{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", owned.display(), fallback.display());
+    assert_case(&root, &owned, &format!("{path}; ln -sf /usr/bin/git {}/README.md && README.md push --force origin topic", fallback.display()), true, &[])
+}
+
+#[cfg(unix)]
+#[test]
 fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
     use std::os::unix::fs::symlink;
 
@@ -121,6 +134,7 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
     let directory_link = owned.join("directory-link");
     let fallback = workspace.path().join("fallback");
     let missing_parent = workspace.path().join("missing-parent");
+    let created_parent = workspace.path().join("created-parent");
     let path = format!("PATH={}:{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", owned.display(), fallback.display());
     std::fs::create_dir(&directory)?;
     std::fs::create_dir(&fallback)?;
@@ -145,6 +159,8 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         "cp -r /usr/bin/git safe && ./safe push --force origin topic",
         &format!("test -e {} || git push --force origin topic", missing_parent.display()),
         &format!("ln -sf /usr/bin/printf {}/safe || git push --force origin topic", missing_parent.display()),
+        &format!("mkdir {0} && ln -sf /usr/bin/git {0}/safe && {0}/safe push --force origin topic", created_parent.display()),
+        &format!("mkdir {0} && cp /usr/bin/git {0}/safe && {0}/safe push --force origin topic", created_parent.display()),
     ] {
         assert_case(&root, &owned, command, true, &[])?;
     }
@@ -160,6 +176,7 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         "true || git push --force origin topic",
         "printf safe &",
         &format!("{path}; ln -sf /usr/bin/printf safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
+        &format!("mkdir {} && printf safe", created_parent.display()),
     ] {
         assert_case(&root, &owned, command, false, &[])?;
     }
