@@ -14,17 +14,67 @@ pub(super) fn analyze_setup_clause(
 ) -> SetupClauseAnalysis {
     let start = clause_start(words, start, action);
     let end = clause_end(words, action, end);
+    let predicate_start = predicate_start(words, start, action);
     SetupClauseAnalysis {
         start,
-        prospective: words[start..action].iter().any(|word| {
+        prospective: words[predicate_start..action].iter().any(|word| {
             matches!(
                 *word,
                 "will" | "shall" | "may" | "might" | "can" | "could" | "would" | "should" | "must"
             )
         }),
-        negated: has_clause_negator(words, start, action)
+        negated: has_clause_negator(words, predicate_start, action)
             || has_negated_setup_object(words, start, action, end),
     }
+}
+
+fn predicate_start(words: &[&str], start: usize, action: usize) -> usize {
+    let Some(auxiliary) = words[start..action]
+        .iter()
+        .rposition(|word| ["is", "are", "was", "were", "been", "being"].contains(word))
+        .map(|offset| start + offset)
+    else {
+        return start;
+    };
+    let mut predicate = auxiliary;
+    while predicate > start && is_auxiliary_chain_word(words[predicate - 1]) {
+        predicate -= 1;
+    }
+    predicate
+}
+
+fn is_auxiliary_chain_word(word: &str) -> bool {
+    matches!(
+        word,
+        "not"
+            | "n"
+            | "t"
+            | "isn"
+            | "aren"
+            | "wasn"
+            | "weren"
+            | "hasn"
+            | "haven"
+            | "hadn"
+            | "is"
+            | "are"
+            | "was"
+            | "were"
+            | "be"
+            | "been"
+            | "being"
+            | "has"
+            | "have"
+            | "had"
+            | "may"
+            | "might"
+            | "will"
+            | "would"
+            | "could"
+            | "should"
+            | "must"
+            | "shall"
+    )
 }
 
 fn clause_start(words: &[&str], start: usize, action: usize) -> usize {

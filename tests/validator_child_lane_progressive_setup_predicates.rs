@@ -6,6 +6,8 @@ fn validator_distinguishes_governing_progressive_setup_predicates() -> TestResul
     for (setup, expected) in [
         ("The child was setting up worktree codexy/463 before classification.", false),
         ("The child was continuously and actively setting up worktree codexy/463 before classification.", false),
+        ("The child who will document it was deliberately actively setting up worktree codexy/463 before classification.", false),
+        ("The child not the parent was deliberately actively setting up worktree codexy/463 before classification.", false),
         ("The child was discussing and actively setting up worktree codexy/463 before classification.", false),
         ("The child will have been deliberately and actively setting up worktree codexy/463 before classification.", true),
         ("The child was not under any circumstances actively setting up worktree codexy/463 before classification.", true),
