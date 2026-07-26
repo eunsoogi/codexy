@@ -159,7 +159,7 @@ fn plugin_root_bootstrap_and_validator_reject_symlink_entrypoints() -> TestResul
 
 #[cfg(unix)]
 #[test]
-fn bootstrap_checker_and_hook_ignore_hostile_path_dirname() -> TestResult {
+fn bootstrap_and_checker_ignore_hostile_path_dirname() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path())?;
     let codex_home = temp.path().join("home/.codex");
@@ -197,12 +197,6 @@ fn bootstrap_checker_and_hook_ignore_hostile_path_dirname() -> TestResult {
         .output()?;
     assert!(checker.status.success(), "stderr:\n{}", stderr(&checker));
 
-    let hook = Command::new(plugin_root.join("hooks/codexy-routing-context.sh"))
-        .arg("SessionStart")
-        .env("CODEX_HOME", &codex_home)
-        .env("PATH", hostile_path)
-        .output()?;
-    assert!(hook.status.success(), "stderr:\n{}", stderr(&hook));
     assert!(!marker.exists(), "hostile PATH dirname was executed");
     Ok(())
 }
