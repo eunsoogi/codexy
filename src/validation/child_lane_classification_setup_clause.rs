@@ -24,6 +24,7 @@ pub(super) fn analyze_setup_clause(
             )
         }),
         negated: has_clause_negator(words, predicate_start, action)
+            || has_negative_condition_adjunct(&words[start..predicate_start])
             || has_negated_setup_object(words, start, action, end),
     }
 }
@@ -214,9 +215,17 @@ fn is_negated_finite_auxiliary(word: &str) -> bool {
 }
 
 fn has_negative_condition_adjunct(words: &[&str]) -> bool {
-    words
-        .windows(3)
-        .any(|adjunct| matches!(adjunct, ["under", "no", "circumstances"]))
+    words.iter().enumerate().any(|(under, word)| {
+        *word == "under"
+            && words[under + 1..]
+                .iter()
+                .position(|word| *word == "circumstances")
+                .is_some_and(|circumstances| {
+                    words[under + 1..under + 1 + circumstances]
+                        .iter()
+                        .any(|word| *word == "no")
+                })
+    })
 }
 
 fn has_negated_setup_object(words: &[&str], start: usize, action: usize, end: usize) -> bool {
