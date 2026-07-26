@@ -163,7 +163,7 @@ jobs:
           open("dist/runtime-candidate-receipt.json", "wb").write(json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode())
           open("dist/runtime-candidate-provenance.json", "w", encoding="utf-8").write(json.dumps(receipt["provenance"], sort_keys=True, separators=(",", ":")))
           PY
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/codexy-marketplace-plugin.tar.gz
       - name: Configure Git identity
