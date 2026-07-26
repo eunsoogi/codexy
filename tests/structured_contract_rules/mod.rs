@@ -103,6 +103,51 @@ pub(crate) const TOKEN_PROMPT: &[Rule] = &[Rule::new(
     &["$token-efficient-orchestration", "event-driven handoffs"],
 )];
 
+pub(crate) const PARENT_EXECUTION_BUDGET: &[Rule] = &[
+    Rule::new(
+        "parent-budget.declared-before-work",
+        "parent-owned orchestration stage",
+        Modality::Required,
+        &["declare"],
+        &["finite implementation", "repair", "fanout", "reviewer-cycle limits"],
+    ),
+    Rule::new(
+        "parent-budget.specialist-cap",
+        "parent-owned stage",
+        Modality::Prohibited,
+        &["use"],
+        &["more than three non-sentinel specialists"],
+    ),
+    Rule::new(
+        "parent-budget.repeated-cycle-progress",
+        "parent helper or reviewer cycle",
+        Modality::Required,
+        &["record"],
+        &["acceptance criterion newly satisfied", "existing blocker removed"],
+    ),
+    Rule::new(
+        "parent-budget.wait-replay-consumes-budget",
+        "unchanged wait output and full-state replay",
+        Modality::Required,
+        &["consume"],
+        &["parent-stage budget"],
+    ),
+    Rule::new(
+        "parent-budget.fallback-bounded",
+        "bounded thread-read fallback that returns oversized preview or history output",
+        Modality::Required,
+        &["consume"],
+        &["parent-stage budget", "bounded size", "token metadata"],
+    ),
+    Rule::new(
+        "parent-budget.heartbeat-and-sentinel",
+        "parent-stage budget enforcement",
+        Modality::Required,
+        &["preserve"],
+        &["external-wait heartbeat", "packaged sentinel review gate"],
+    ),
+];
+
 pub(crate) const TRANSITION: &[Rule] = &[
     Rule::new(
         "transition.runtime-monitor.outside-goal",
