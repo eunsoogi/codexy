@@ -14,8 +14,17 @@ class PathState:
     identity: str | None = None
 
 
+@dataclass(frozen=True)
+class MkdirOutcome:
+    kind: str
+    paths: tuple[tuple[str, PathState], ...] = ()
+
+
 ABSENT = PathState("absent")
 DIRECTORY = PathState("directory")
+SUCCESS = "success"
+FAILURE = "failure"
+AMBIGUOUS = "ambiguous"
 
 
 def location(value: str, cwd: str) -> str:
@@ -36,50 +45,57 @@ def state(value: str, paths: tuple[tuple[str, PathState], ...]) -> PathState:
     return PathState("executable" if stat.S_ISREG(metadata.st_mode) and metadata.st_mode & 0o111 else "regular")
 
 
-def mkdir(arguments: list[str], cwd: str, paths: tuple[tuple[str, PathState], ...]) -> tuple[tuple[str, PathState], ...] | None:
+def mkdir(arguments: list[str], cwd: str, paths: tuple[tuple[str, PathState], ...]) -> MkdirOutcome:
     parents = False
     while arguments[:1] and arguments[0].startswith("-"):
         option = arguments.pop(0)
         if option == "--":
             break
-        if option not in {"-p", "--parents"}:
-            return None
-        parents = True
+        if option.startswith("--"):
+            if option not in {"--parents", "--verbose"}:
+                return MkdirOutcome(AMBIGUOUS)
+            parents = parents or option == "--parents"
+        elif not option[1:] or not set(option[1:]) <= {"p", "v"}:
+            return MkdirOutcome(AMBIGUOUS)
+        else:
+            parents = parents or "p" in option
     if len(arguments) != 1 or not arguments[0]:
-        return None
+        return MkdirOutcome(AMBIGUOUS)
     return _mkdir_trace(arguments[0], cwd, paths, parents)
 
 
-def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...], parents: bool) -> tuple[tuple[str, PathState], ...] | None:
+def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...], parents: bool) -> MkdirOutcome:
     """Trace mkdir operands lexically: ``x/../y`` creates x before visiting y."""
     source = value if os.path.isabs(value) else os.path.join(cwd, value)
     segments = [segment for segment in source.split(os.path.sep) if segment not in {"", "."}]
     if not segments:
-        return paths if parents and state(location(value, cwd), paths).kind == "directory" else None
+        return MkdirOutcome(SUCCESS, paths) if parents and state(location(value, cwd), paths).kind == "directory" else MkdirOutcome(FAILURE)
     indexed = dict(paths)
     cursor = os.path.sep
     created = []
     for index, segment in enumerate(segments):
         if segment == "..":
-            if _symlink_ambiguous(cursor, indexed) or state(cursor, tuple(indexed.items())).kind != "directory":
-                return None
+            if _symlink_ambiguous(cursor, indexed):
+                return MkdirOutcome(AMBIGUOUS)
+            if state(cursor, tuple(indexed.items())).kind != "directory":
+                return MkdirOutcome(FAILURE)
             cursor = str(Path(cursor).parent)
             continue
         cursor = os.path.join(cursor, segment)
         current = state(cursor, tuple(indexed.items()))
         if current.kind == "absent":
             if not parents and index != len(segments) - 1:
-                return None
+                return MkdirOutcome(FAILURE)
             indexed[cursor] = DIRECTORY
             created.append(cursor)
         elif current.kind != "directory":
-            return None
+            return MkdirOutcome(FAILURE)
     destination = location(value, cwd)
     if state(destination, tuple(indexed.items())).kind != "directory":
-        return None
+        return MkdirOutcome(FAILURE)
     if not parents and created != [destination]:
-        return None
-    return tuple(indexed.items())
+        return MkdirOutcome(FAILURE)
+    return MkdirOutcome(SUCCESS, tuple(indexed.items()))
 
 
 def _symlink_ambiguous(path: str, paths: dict[str, PathState]) -> bool:

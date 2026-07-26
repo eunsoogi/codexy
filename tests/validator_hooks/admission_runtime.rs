@@ -171,6 +171,9 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("mkdir -p {0} && cp /usr/bin/git {0}/../safe && {0}/../safe push --force origin topic", nested_parent.display()),
         &format!("{path}; ln -sf README.md safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
         &format!("mkdir -p {0}/x/../y && ln -sf {1} {0}/x/safe && {0}/x/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("mkdir -pv {0}/x/../y && ln -sf {1} {0}/x/safe && {0}/x/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("mkdir -p {0}/../x/../y && ln -sf {1} {0}/../x/safe && {0}/../x/safe pr merge 453 --merge", directory_link.display(), gh.display()),
+        &format!("mkdir -T {0}/unknown && ln -sf {1} {0}/unknown/safe && {0}/unknown/safe pr merge 453 --merge", traversal.display(), gh.display()),
         &format!("mkdir -p {0}/nested//./child/../sibling && cp {1} {0}/nested/child/safe && {0}/nested/child/safe pr merge 453 --merge", traversal.display(), gh.display()),
     ] {
         assert_case(&root, &owned, command, true, &[])?;

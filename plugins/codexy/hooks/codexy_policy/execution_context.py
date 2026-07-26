@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .executable_identity import alias_transition
-from .filesystem_state import PathState, mkdir
+from .filesystem_state import FAILURE, PathState, mkdir
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -28,6 +28,7 @@ class ExecutionContext:
     remote_urls: tuple[tuple[str, str, str], ...] = ()
     opaque_repository_state: bool = False
     executable_aliases: tuple[tuple[str, PathState], ...] = ()
+    opaque_filesystem_state: bool = False
 @dataclass(frozen=True)
 class CommandEffect:
     success: ExecutionContext | None
@@ -140,6 +141,8 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
     """Apply bounded external filesystem and Git-config state transitions."""
     if executable == "mkdir":
         return _mkdir_effect(arguments, context)
+    if context.opaque_filesystem_state and executable in {"ln", "cp"}:
+        return None
     transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases)
     if executable in {"ln", "cp"} and (transition is None or not transition.known):
         return None
@@ -176,8 +179,12 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
 
 
 def _mkdir_effect(arguments: list[str], context: ExecutionContext) -> CommandEffect | None:
-    paths = mkdir(arguments, context.cwd, context.executable_aliases)
-    return CommandEffect(None, context) if paths is None else CommandEffect(replace(context, executable_aliases=paths))
+    outcome = mkdir(arguments, context.cwd, context.executable_aliases)
+    if outcome.kind == "success":
+        return CommandEffect(replace(context, executable_aliases=outcome.paths))
+    if outcome.kind == FAILURE:
+        return CommandEffect(None, context)
+    return CommandEffect(replace(context, opaque_filesystem_state=True), context)
 
 
 def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:
