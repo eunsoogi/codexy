@@ -231,7 +231,7 @@ fn clause_boundary(words: &[&str]) -> Option<usize> {
     words.iter().position(|word| *word == "comma").or_else(|| {
         words
             .iter()
-            .rposition(|word| matches!(*word, "and" | "or" | "but" | "then"))
+            .position(|word| matches!(*word, "and" | "or" | "but" | "then"))
     })
 }
 
