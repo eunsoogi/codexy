@@ -6,6 +6,12 @@ const REQUIRED_CLAUSES: &[&str] = &[
     "Every non-trivial child lane MUST declare a finite execution budget before edits begin.",
     "The budget MUST name finite implementation, repair, and reviewer cycle limits.",
     "Continuation MUST consume budget and record either an explicit acceptance criterion newly satisfied or an existing blocker removed.",
+    "Every non-trivial parent-owned orchestration stage MUST declare finite implementation, repair, fanout, and reviewer-cycle limits before work begins.",
+    "A parent-owned stage MUST NOT use more than three non-Sentinel specialists in total; the packaged Sentinel remains separate.",
+    "A repeated parent helper or reviewer cycle MUST record either an explicit acceptance criterion newly satisfied or an existing blocker removed.",
+    "Unchanged wait output and full-state replay MUST consume the parent-stage budget and MUST NOT renew implementation, repair, fanout, or reviewer-cycle limits.",
+    "A bounded thread-read fallback that returns oversized preview or history output MUST consume the current parent-stage budget, MUST record only bounded size and token metadata, and MUST NOT renew the stage.",
+    "Parent-stage budget enforcement MUST preserve external-wait heartbeat semantics and the packaged Sentinel review gate.",
     "File, diff, test, or fingerprint churn without reducing remaining acceptance work MUST NOT renew or reset the budget.",
     "A renewal MUST be an explicit parent-owned new finite budget with recorded acceptance progress or blocker removal.",
     "After all acceptance criteria and required proof are complete, the lane MUST terminate implementation; adjacent findings become non-blocking follow-up candidates.",
@@ -47,7 +53,8 @@ fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
         !is_negated(&words)
             && (permits_budget_renewal(&words)
                 || permits_blocked_goal(&words)
-                || permits_wait_progress(&words))
+                || permits_wait_progress(&words)
+                || permits_parent_cycle_without_progress(&words))
     })
 }
 
@@ -138,6 +145,20 @@ fn permits_wait_progress(words: &[String]) -> bool {
             .iter()
             .any(|word| matches!(word.as_str(), "qualify" | "qualifies"))
         && contains(words, "progress")
+        && permits(words)
+}
+
+fn permits_parent_cycle_without_progress(words: &[String]) -> bool {
+    contains(words, "parent")
+        && (contains(words, "helper") || contains(words, "reviewer"))
+        && contains(words, "cycle")
+        && words
+            .iter()
+            .any(|word| matches!(word.as_str(), "repeat" | "repeated"))
+        && contains(words, "without")
+        && (contains(words, "progress")
+            || (contains(words, "acceptance") && contains(words, "criterion"))
+            || contains(words, "blocker"))
         && permits(words)
 }
 
