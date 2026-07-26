@@ -172,12 +172,9 @@ fn is_clause_boundary(word: &&str) -> bool {
 }
 
 fn has_clause_negator(words: &[&str], start: usize, action: usize) -> bool {
-    words[start..action]
-        .iter()
-        .any(|word| matches!(*word, "not" | "never" | "neither"))
-        || words[start..action]
-            .windows(2)
-            .any(|pair| matches!(pair, ["under", "no"]))
+    words[start..action].iter().any(|word| {
+        matches!(*word, "not" | "never" | "neither") || is_negated_finite_auxiliary(word)
+    }) || has_negative_condition_adjunct(&words[start..action])
         || words[start..action]
             .iter()
             .enumerate()
@@ -191,14 +188,15 @@ fn has_clause_negator(words: &[&str], start: usize, action: usize) -> bool {
 }
 
 fn is_contracted_negator(pair: &[&str]) -> bool {
-    matches!(pair, [auxiliary, "t"] if is_negated_finite_auxiliary(auxiliary))
+    matches!(pair, ["can", "t"])
+        || matches!(pair, [auxiliary, "t"] if is_negated_finite_auxiliary(auxiliary))
 }
 
 fn is_negated_finite_auxiliary(word: &str) -> bool {
     matches!(
         word,
         "aren"
-            | "can"
+            | "cannot"
             | "couldn"
             | "didn"
             | "hadn"
@@ -213,6 +211,12 @@ fn is_negated_finite_auxiliary(word: &str) -> bool {
             | "won"
             | "wouldn"
     )
+}
+
+fn has_negative_condition_adjunct(words: &[&str]) -> bool {
+    words
+        .windows(3)
+        .any(|adjunct| matches!(adjunct, ["under", "no", "circumstances"]))
 }
 
 fn has_negated_setup_object(words: &[&str], start: usize, action: usize, end: usize) -> bool {
