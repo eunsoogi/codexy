@@ -207,18 +207,44 @@ class PreSessionSafetyTests(unittest.TestCase):
 
             self.assertEqual(calls, commands()[:3])
 
-    def test_source_only_updater_has_no_public_activation_surface(self) -> None:
+    def test_source_only_updater_has_no_public_activation_contract(self) -> None:
         repository = Path(__file__).resolve().parents[3]
-        command = "uvx --from getcodexy==1.2.2 codexy-update --pre-session"
+        package_metadata = (repository / "packages/getcodexy/pyproject.toml").read_text(
+            encoding="utf-8"
+        )
+        scripts = package_metadata.split("[project.scripts]", 1)[1]
+        public_activation = (
+            "codexy-update",
+            "uvx --from getcodexy codexy-update --pre-session",
+            "uvx --from getcodexy==1.2.2 codexy-update --pre-session",
+        )
+        governed_pr_copy = "## Summary\n\n- Keep the updater source-only and retain quiet pre-session lifecycle coverage.\n- This change adds no end-user update command.\n\nTracks #452\n"
 
         self.assertFalse((repository / "install").exists())
+        self.assertNotIn("codexy-update", scripts)
+        self.assertIn('codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"', scripts)
         for readme in (repository / "README.md", repository / "README.ko.md"):
             text = readme.read_text(encoding="utf-8")
-            self.assertNotIn(command, text)
             self.assertNotIn("chmod +x install && ./install", text)
+            for command in public_activation:
+                self.assertNotIn(command, text)
 
         for path in (
             repository / ".github/workflows/python-package.yml",
+            repository / "packages/getcodexy/src/codexy_runtime_tools/runtime.py",
+            repository / "plugins/codexy/check-codexy-agents",
             repository / "plugins/codexy/skills/codex-orchestration/references/agent-registration.md",
         ):
-            self.assertNotIn(command, path.read_text(encoding="utf-8"))
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("run the root installer", text)
+            for command in public_activation:
+                self.assertNotIn(command, text)
+
+        self.assertTrue(governed_pr_copy.endswith("Tracks #452\n"))
+        for command in public_activation:
+            self.assertNotIn(command, governed_pr_copy)
+
+        from codexy_runtime_tools import updater
+
+        self.assertTrue(callable(updater.main))
+        self.assertTrue(callable(run_pre_session))
