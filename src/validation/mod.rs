@@ -15,6 +15,7 @@ mod child_lane_classification_control;
 mod child_lane_classification_fields;
 mod child_lane_classification_schema;
 mod child_lane_classification_setup;
+mod child_lane_classification_setup_actions;
 mod child_lane_classification_setup_attribution;
 mod child_lane_classification_setup_context;
 mod child_lane_classification_setup_relations;

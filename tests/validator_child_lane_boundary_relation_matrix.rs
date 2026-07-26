@@ -88,6 +88,18 @@ fn validator_distinguishes_completed_setup_events_from_plans_and_nouns() -> Test
             false,
         ),
         (
+            "The child was setting up worktree codexy/463 before classification.",
+            false,
+        ),
+        (
+            "The child wasn't setting up worktree codexy/463 before classification.",
+            true,
+        ),
+        (
+            "The child will be setting up worktree codexy/463 after classification.",
+            true,
+        ),
+        (
             "The child will create branch codexy/463 after classification.",
             true,
         ),
