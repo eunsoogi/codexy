@@ -76,15 +76,19 @@ def replace_path_state(
     indexed = dict(paths)
     indexed[destination] = replacement
     pending = [destination]
+    traversed: set[tuple[str, str]] = set()
     while pending:
         ancestor = pending.pop()
         for path, cached in tuple(indexed.items()):
             if path == ancestor or not (_descends_from(path, ancestor) or _descends_from(cached.target, ancestor)):
                 continue
+            dependency = (ancestor, path)
+            if dependency in traversed:
+                continue
+            traversed.add(dependency)
             updated = _dependent_state(path, cached, ancestor, indexed)
-            if indexed[path] != updated:
-                indexed[path] = updated
-                pending.append(path)
+            indexed[path] = updated
+            pending.append(path)
     return tuple(indexed.items())
 
 

@@ -105,6 +105,15 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let old_target = workspace.path().join("old-target");
+    let new_target = workspace.path().join("new-target");
+    std::fs::create_dir_all(old_target.join("tool"))?;
+    std::fs::create_dir_all(&new_target)?;
+    std::fs::write(new_target.join("tool"), "regular")?;
+    let same_kind_retarget = format!(
+        "ln -s {0} parent && ln -s parent child && ln -s child/tool launcher && ln -sfn {1} parent && mkdir -p launcher/final || git push --force origin topic",
+        old_target.display(), new_target.display(),
+    );
     let deep_chain = (0..=32)
         .map(|index| format!("ln -s {} link{index}", if index == 32 { "/usr/bin/git".to_owned() } else { format!("link{}", index + 1) }))
         .chain(std::iter::once("link0 push --force origin topic".to_owned()))
@@ -119,6 +128,7 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
             "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final || git push --force origin topic",
             "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -sfn /usr/bin/printf parent && mkdir -p grandchild/final || git push --force origin topic",
             "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && ln -sfn /usr/bin/printf parent && mkdir -p greatgrandchild/final || git push --force origin topic",
+            &same_kind_retarget,
             "ln -s cycle-b cycle-a && ln -s cycle-c cycle-b && ln -s cycle-a cycle-c && mkdir -p cycle-a/final || git push --force origin topic",
             &deep_chain,
         ] {
@@ -131,6 +141,10 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
             "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final && printf benign",
             "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && mkdir -p grandchild/final && printf benign",
             "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && mkdir -p greatgrandchild/final && printf benign",
+            &format!(
+                "ln -s {0} parent && ln -s parent child && ln -s child/tool launcher && mkdir -p launcher/final && printf benign",
+                old_target.display(),
+            ),
             "ln -s /usr/bin/git left && ln -s /usr/bin/git right && cp -fP /usr/bin/printf left && ./right push --force origin topic",
             "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/printf link && ./target '%s\\n' benign",
         ] {
