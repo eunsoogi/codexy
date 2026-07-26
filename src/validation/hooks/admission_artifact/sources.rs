@@ -50,6 +50,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/shell_builtins.py"),
     source!("codexy_policy/shell_context.py"),
     source!("codexy_policy/shell_groups.py"),
+    source!("codexy_policy/shell_sequence.py"),
     source!("codexy_policy/titles.py"),
     source!("codexy_policy/wrappers.py"),
 ];

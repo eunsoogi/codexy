@@ -27,7 +27,10 @@ class ExecutionContext:
     remote_urls: tuple[tuple[str, str, str], ...] = ()
     opaque_repository_state: bool = False
     executable_aliases: tuple[tuple[str, str], ...] = ()
-
+@dataclass(frozen=True)
+class CommandEffect:
+    success: ExecutionContext | None
+    failure: ExecutionContext | None = None
 
 def assignment(value: str) -> bool:
     return "=" in value and not value.startswith("-") and VARIABLE_NAME.fullmatch(value.split("=", 1)[0]) is not None
@@ -158,22 +161,24 @@ def clear(context: ExecutionContext) -> ExecutionContext:
     )
 
 
-def after_external_command(
-    executable: str, arguments: list[str], context: ExecutionContext,
-) -> ExecutionContext | None:
+def after_external_command(executable: str, arguments: list[str], context: ExecutionContext) -> CommandEffect | None:
     """Apply bounded external filesystem and Git-config state transitions."""
     transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases)
-    if executable in {"ln", "cp"} and (
-        transition is None or not transition.known or transition.applies is None
-    ):
+    if executable in {"ln", "cp"} and (transition is None or not transition.known):
         return None
-    if transition is not None and transition.applies:
+    if transition is not None:
+        success = context
         aliases = dict(context.executable_aliases)
         if transition.identity is None:
             aliases.pop(transition.destination, None)
         else:
             aliases[transition.destination] = transition.identity
-        context = replace(context, executable_aliases=tuple(aliases.items()))
+        success = replace(context, executable_aliases=tuple(aliases.items()))
+        if transition.applies is True:
+            return CommandEffect(success)
+        if transition.applies is False:
+            return CommandEffect(None, context)
+        return CommandEffect(success, context)
     if executable != "sed" or not any(
         argument == "-i"
         or argument.startswith("-i") and len(argument) > 2
@@ -181,7 +186,7 @@ def after_external_command(
         or argument.startswith("--in-place=")
         for argument in arguments
     ):
-        return context
+        return CommandEffect(context)
     git_dir = Path(context.git_dir) if context.git_dir is not None else Path(".git")
     config = git_dir / "config"
     if not config.is_absolute():
@@ -192,7 +197,7 @@ def after_external_command(
         and (Path(argument) if Path(argument).is_absolute() else Path(context.cwd) / argument).resolve(strict=False) == target
         for argument in arguments
     )
-    return replace(context, opaque_repository_state=True) if writes_config else context
+    return CommandEffect(replace(context, opaque_repository_state=True) if writes_config else context)
 
 
 def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:

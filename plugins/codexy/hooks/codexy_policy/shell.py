@@ -10,14 +10,15 @@ from .git_options import normalize as normalize_git_options
 from .github_alias import expand as expand_gh_alias
 from .github import forbidden as gh_forbidden
 from .execution_context import (
-    DYNAMIC_VALUE, SINGLE_QUOTED_DOLLAR, ExecutionContext, after_external_command,
+    DYNAMIC_VALUE, SINGLE_QUOTED_DOLLAR, CommandEffect, ExecutionContext, after_external_command,
     assignment, at as context_at, git_config, remote_url,
 )
 from .invocation import resolve
 from .repository import OWNED, UrlRewrite, git_directory_owned, github_identity, identity, repository_owned, rewrite_url
 from .shell_builtins import hash_path_alias, rm_forbidden
 from .shell_context import changed_directory, flag
-from .shell_groups import Command, GroupSyntaxError, Sequence, parse
+from .shell_groups import GroupSyntaxError, parse
+from .shell_sequence import evaluate as evaluate_sequence
 
 OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
 SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
@@ -79,65 +80,47 @@ def _forbidden(command: str, context: ExecutionContext, depth: int) -> bool:
         sequence = parse(tokens)
     except GroupSyntaxError:
         return True
-    return _sequence(sequence, context, depth)[0]
+    return evaluate_sequence(sequence, context, depth, _segment)[0]
 
 
-def _sequence(sequence: Sequence, context: ExecutionContext, depth: int) -> tuple[bool, ExecutionContext]:
-    active = context
-    for step in sequence.steps:
-        if isinstance(step.node, Command):
-            tokens = list(step.node.tokens)
-            denied, resulting_context = _segment(tokens, active, depth)
-        else:
-            denied, nested_context = _sequence(step.node.body, active, depth + 1)
-            resulting_context = active if step.node.kind == "subshell" else nested_context
-        if denied:
-            return True, active
-        if step.following in {"", ";", "&&"} or (
-            step.following == "||" and (active.cwd_owned is False or resulting_context.cwd_owned is not False)
-        ):
-            active = resulting_context
-    return False, active
-
-
-def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[bool, ExecutionContext]:
+def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[bool, CommandEffect]:
     invocation = resolve(tokens, context, depth)
     if invocation is None:
-        return True, context
+        return True, CommandEffect(None)
     if invocation.script is not None:
-        return (not invocation.script or _forbidden(invocation.script, invocation.context, depth + 1)), context
+        return not invocation.script or _forbidden(invocation.script, invocation.context, depth + 1), CommandEffect(context)
     if invocation.opaque:
-        return True, context
+        return True, CommandEffect(None)
     if invocation.executable is None:
-        return False, invocation.context
+        return False, CommandEffect(invocation.context)
     if invocation.executable in {"cd", "pushd", "popd"}:
         directory = changed_directory(
             [invocation.executable, *invocation.arguments], invocation.context.cwd
         )
-        return (True, context) if directory.opaque else (
-            False, context_at(invocation.context, directory.cwd)
+        return (True, CommandEffect(None)) if directory.opaque else (
+            False, CommandEffect(context_at(invocation.context, directory.cwd))
         )
     if invocation.executable in {".", "source"}:
-        return True, context
+        return True, CommandEffect(None)
     if invocation.executable == "hash" and hash_path_alias(invocation.arguments):
-        return True, context
+        return True, CommandEffect(None)
     if invocation.executable == "git":
         denied, remote = _git(invocation.arguments, invocation.context, depth)
         if remote is None:
-            return denied, context
+            return denied, CommandEffect(context)
         if invocation.context.cwd != context.cwd or invocation.context.git_dir != context.git_dir:
-            return True, context
-        return denied, remote_url(context, *remote)
+            return True, CommandEffect(None)
+        return denied, CommandEffect(remote_url(context, *remote))
     if invocation.executable == "gh":
         gh_owned = github_identity(invocation.context.gh_repo) == OWNED if invocation.context.gh_repo is not None else None
         arguments = expand_gh_alias(invocation.arguments)
-        return arguments is None or gh_forbidden(arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
+        return arguments is None or gh_forbidden(arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), CommandEffect(context)
     if invocation.executable == "rm":
-        return invocation.context.cwd_owned is not False and rm_forbidden(invocation.arguments), context
-    next_context = after_external_command(
+        return invocation.context.cwd_owned is not False and rm_forbidden(invocation.arguments), CommandEffect(context)
+    effect = after_external_command(
         invocation.executable, invocation.arguments, context,
     )
-    return (True, context) if next_context is None else (False, next_context)
+    return (True, CommandEffect(None)) if effect is None else (False, effect)
 
 
 def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str, str] | None]:

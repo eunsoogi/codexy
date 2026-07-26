@@ -30,6 +30,7 @@ class AliasOperands:
     destination: str
     symbolic: bool
     force: bool
+    no_dereference: bool
     executable: str
 
 
@@ -59,7 +60,7 @@ def alias_transition(
     if operands is None:
         return None
     identity, known = _filesystem_identity(operands.source, cwd, aliases)
-    destination = _final_destination(operands.destination, operands.source, cwd)
+    destination = _final_destination(operands, cwd)
     if destination is None:
         return None
     return AliasTransition(destination, identity, known, _effect(operands, destination, aliases))
@@ -92,7 +93,8 @@ def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | No
         return None
     return AliasOperands(
         arguments[0], arguments[1], "s" in selected or "--symbolic" in selected,
-        "f" in selected or "--force" in selected, executable,
+        "f" in selected or "--force" in selected,
+        "n" in selected or "--no-dereference" in selected, executable,
     )
 
 
@@ -103,22 +105,21 @@ def _command_location(command: str, cwd: str) -> str | None:
 
 
 def _filesystem_location(value: str, cwd: str) -> str:
-    path = Path(value)
-    return str((path if path.is_absolute() else Path(cwd) / path).resolve(strict=False))
+    return os.path.abspath(os.path.normpath(os.path.join(cwd, value)))
 
 
-def _final_destination(destination: str, source: str, cwd: str) -> str | None:
-    result = _filesystem_location(destination, cwd)
-    if not Path(result).is_dir():
+def _final_destination(operands: AliasOperands, cwd: str) -> str | None:
+    result = _filesystem_location(operands.destination, cwd)
+    if operands.no_dereference or not Path(result).is_dir():
         return result
-    basename = Path(source).name
+    basename = Path(operands.source).name
     return str(Path(result) / basename) if basename not in {"", ".", ".."} else None
 
 
 def _effect(operands: AliasOperands, destination: str, aliases: tuple[tuple[str, str], ...]) -> bool | None:
     exists = destination in dict(aliases) or Path(destination).exists()
     if operands.executable == "cp":
-        return None if Path(destination).is_dir() else True
+        return True if operands.force or not exists else None
     if operands.symbolic:
         return operands.force or not exists
     return False if exists else None

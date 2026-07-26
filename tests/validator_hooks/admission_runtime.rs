@@ -112,9 +112,15 @@ fn filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
 #[cfg(unix)]
 #[test]
 fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
+    use std::os::unix::fs::symlink;
+
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let directory = owned.join("directory");
+    let directory_link = owned.join("directory-link");
+    std::fs::create_dir(&directory)?;
+    symlink(&directory, &directory_link)?;
     for command in [
         "ln -sf /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
         "cp /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
@@ -122,7 +128,9 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         "cp /usr/bin/git safe && ./safe push --force origin topic",
         "ln -sf /usr/bin/git /tmp/codexy-directory-source && ln -sf /tmp/codexy-directory-source /var/tmp && /var/tmp/codexy-directory-source push --force origin topic",
         "cp /usr/bin/git /tmp/codexy-directory-source && cp -p /tmp/codexy-directory-source /var/tmp && /var/tmp/codexy-directory-source push --force origin topic",
+        &format!("ln -sfn /usr/bin/git {} && {} push --force origin topic", directory_link.display(), directory_link.display()),
         "ln -sf /usr/bin/git safe; ln /usr/bin/printf safe; ./safe push --force origin topic",
+        "ln -sf /usr/bin/git safe; cp -p /usr/bin/printf safe; ./safe push --force origin topic",
         "cp -p /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
         "ln -sfn /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
         "ln -sf '/usr/bin/git' '/tmp/safe' && '/tmp/safe' push --force origin topic",
