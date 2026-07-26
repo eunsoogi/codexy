@@ -13,6 +13,11 @@ const DESKTOP_CONTINUITY: &str = "While a desktop-origin root turn has a callabl
 const SLINGSHOT_RECOVERY: &str = "If a slingshot-host turn still returns `No handler registered` after the one fresh discovery and one host-aware retry, the owner MUST emit exactly one unavailable evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery.";
 const SLINGSHOT_HEARTBEAT_EXEMPTION: &str = "The slingshot recovery route is not an unavailable-wait fallback eligible for heartbeat registration; it ends in desktop-origin root re-entry.";
 const LEGACY_THREAD_TARGETED_REGISTRATION: &str = "The owner MUST register a thread-targeted `kind=heartbeat` instead of repeated model continuations or ending without a wakeup path.";
+const NEGATED_HEARTBEAT_REGISTRATIONS: &[&str] = &[
+    "The owner MUST register a non-heartbeat wake route instead of repeated model continuations or ending without a wakeup path.",
+    "The owner MUST register a non heartbeat wake route instead of repeated model continuations or ending without a wakeup path.",
+    "The owner MUST register a not a heartbeat wake route instead of repeated model continuations or ending without a wakeup path.",
+];
 
 #[test]
 fn validator_accepts_ordered_wait_and_host_recovery_routes() -> TestResult {
@@ -31,6 +36,14 @@ fn validator_rejects_additive_unconditional_child_state_heartbeat_conflict() -> 
     assert_rejected_addition(LEGACY_ELIGIBILITY)?;
     assert_rejected_addition(LEGACY_REGISTRATION)?;
     assert_rejected_addition(LEGACY_THREAD_TARGETED_REGISTRATION)
+}
+
+#[test]
+fn validator_accepts_negated_heartbeat_registration_targets() -> TestResult {
+    for addition in NEGATED_HEARTBEAT_REGISTRATIONS {
+        assert_accepted_addition(addition)?;
+    }
+    Ok(())
 }
 
 #[test]
@@ -131,5 +144,18 @@ fn assert_rejected_addition(addition: &str) -> TestResult {
         "validator accepted additive unconditional heartbeat policy"
     );
     assert!(support::stderr(&output).contains("unconditional heartbeat"));
+    Ok(())
+}
+
+fn assert_accepted_addition(addition: &str) -> TestResult {
+    let fixture = support::plugin_fixture()?;
+    let path = fixture.root().join(REFERENCE);
+    fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
+    let output = support::validator_instruction_policy(fixture.root())?;
+    assert!(
+        output.status.success(),
+        "validator rejected non-heartbeat registration target: {}",
+        support::stderr(&output)
+    );
     Ok(())
 }

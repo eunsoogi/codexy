@@ -1,11 +1,10 @@
 pub(super) const LEGACY_CHILD_STATE_ELIGIBILITY: &str = "when github ci, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child must search the callable tool surface for automation_update before declaring persistent monitoring unavailable";
-pub(super) const LEGACY_HEARTBEAT_REGISTRATION: &str = "the owner must register a heartbeat instead of repeated model continuations or ending without a wakeup path";
 pub(super) const LEGACY_HEARTBEAT_REGISTRATION_PREFIX: &str = "the owner must register";
 pub(super) const LEGACY_HEARTBEAT_REGISTRATION_TERMS: &[&str] = &[
-    "heartbeat",
     "instead of repeated model continuations",
     "ending without a wakeup path",
 ];
+pub(super) const NEGATED_HEARTBEAT_TARGET_MODIFIERS: &[&str] = &["no", "non", "not", "without"];
 pub(super) const RESTRICTED_HEARTBEAT_CONTEXT: &str =
     "for such genuinely scheduled monitoring or unavailable-wait fallback";
 
