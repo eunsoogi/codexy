@@ -1,79 +1,34 @@
 use std::{path::Path, process::Command};
 
+#[path = "structured_contract.rs"]
+mod structured_contract;
+
 use crate::support;
+use structured_contract::{Contract, Modality, Rule};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-#[test]
-fn validator_cli_rejects_reintroduced_connector_review_gate() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
-    let mut skill = std::fs::read_to_string(&skill_path)?;
-    skill.push_str("\n- MUST require Codex review before pull request readiness.\n");
-    std::fs::write(&skill_path, skill)?;
+const REFERENCE: &str = "skills/git-workflow/references/codex-connector-review.md";
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check",
-        ])
-        .output()?;
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("Codex connector review policy is not allowed")
-    );
+#[test]
+fn repository_records_the_manual_connector_review_policy() -> TestResult {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = std::fs::read_to_string(root.join("AGENTS.md"))?;
+    Contract::markdown(&agents)
+        .assert_rule(Rule::new(
+            "agents.connector-review.automatic-disabled",
+            "Codex connector automatic review",
+            Modality::Required,
+            &["remain"],
+            &["disabled"],
+        ))
+        .expect("root policy must retain disabled automatic connector review");
     Ok(())
 }
 
 #[test]
-fn validator_cli_rejects_line_wrapped_connector_review_gate() -> TestResult {
-    let (temp, plugin_root) = plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
-    let mut skill = std::fs::read_to_string(&skill_path)?;
-    skill.push_str("\n- MUST require Codex\n  review before pull request readiness.\n");
-    std::fs::write(&skill_path, skill)?;
-
-    let output = validate(&plugin_root)?;
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("Codex connector review policy is not allowed")
-    );
-    drop(temp);
-    Ok(())
-}
-
-#[test]
-fn validator_cli_rejects_connector_specific_policy_forms() -> TestResult {
-    for policy in [
-        "MUST wait for Codex connector review before readiness.",
-        "MUST capture Codex connector output before readiness.",
-    ] {
-        let (_temp, plugin_root) = plugin_fixture()?;
-        let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
-        let mut skill = std::fs::read_to_string(&skill_path)?;
-        skill.push_str(&format!("\n- {policy}\n"));
-        std::fs::write(&skill_path, skill)?;
-        let output = validate(&plugin_root)?;
-        assert!(!output.status.success(), "policy escaped guard: {policy}");
-    }
-    Ok(())
-}
-
-#[test]
-fn validator_cli_allows_packaged_codexy_reviewer_instruction() -> TestResult {
+fn validator_accepts_the_required_manual_connector_review_contract() -> TestResult {
     let (_temp, plugin_root) = plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
-    let mut skill = std::fs::read_to_string(&skill_path)?;
-    skill.push_str("\n- MUST run the packaged Codexy reviewer agent.\n");
-    std::fs::write(&skill_path, skill)?;
     let output = validate(&plugin_root)?;
     assert!(
         output.status.success(),
@@ -83,9 +38,177 @@ fn validator_cli_allows_packaged_codexy_reviewer_instruction() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_rejects_missing_historical_or_fenced_connector_review_policy() -> TestResult {
+    let (_temp, plugin_root) = plugin_fixture()?;
+    let reference_path = plugin_root.join(REFERENCE);
+    let reference = std::fs::read_to_string(&reference_path)?;
+
+    for (index, policy) in [
+        reference.replacen("[proof-ci-before-review] ", "", 1),
+        reference.replacen(
+            "[automatic-disabled] Codex connector automatic review MUST remain disabled.",
+            "[automatic-disabled] Historical example: Codex connector automatic review MUST remain disabled.",
+            1,
+        ),
+        reference.replacen(
+            "[automatic-disabled] Codex connector automatic review MUST remain disabled.",
+            "[automatic-disabled] ```text\nCodex connector automatic review MUST remain disabled.\n```",
+            1,
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        std::fs::write(&reference_path, policy)?;
+        let output = validate(&plugin_root)?;
+        assert!(
+            !output.status.success(),
+            "connector policy regression escaped at case {index}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        std::fs::write(&reference_path, &reference)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_active_automatic_or_repeated_request_variants() -> TestResult {
+    for variant in [
+        "The parent/orchestrator MUST request connector review on every push.",
+        "The parent/orchestrator MUST request connector review per-push.",
+        "The parent/orchestrator MUST request an automatic connector review.",
+        "The parent/orchestrator MUST request a duplicate connector review.",
+        "The parent/orchestrator MUST request another connector review after repair.",
+        "The parent/orchestrator MUST request a second connector review after repair.",
+        "The parent/orchestrator MUST request piecemeal connector reviews.",
+    ] {
+        let (_temp, plugin_root) = plugin_fixture()?;
+        let reference_path = plugin_root.join(REFERENCE);
+        let reference = std::fs::read_to_string(&reference_path)?;
+        std::fs::write(&reference_path, format!("{reference}\n{variant}\n"))?;
+        let output = validate(&plugin_root)?;
+        assert!(
+            !output.status.success(),
+            "connector request variant escaped: {variant:?}\\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_allows_active_prohibitions_and_quoted_counterexamples() -> TestResult {
+    for control in [
+        "The parent/orchestrator MUST NOT request connector review on every push.",
+        "The statement \"Automatic Codex connector review is enabled for every push.\" MUST NOT be permitted.",
+        "A duplicate, second, or piecemeal connector review MUST NOT be requested.",
+    ] {
+        let (_temp, plugin_root) = plugin_fixture()?;
+        let reference_path = plugin_root.join(REFERENCE);
+        let reference = std::fs::read_to_string(&reference_path)?;
+        std::fs::write(&reference_path, format!("{reference}\n{control}\n"))?;
+        let output = validate(&plugin_root)?;
+        assert!(
+            output.status.success(),
+            "valid prohibition was rejected: {control:?}\\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_active_variants_on_every_governed_policy_surface() -> TestResult {
+    for relative in [
+        "AGENTS.md",
+        "plugins/codexy/skills/git-workflow/SKILL.md",
+        "plugins/codexy/skills/git-workflow/references/codex-connector-review.md",
+    ] {
+        for directive in [
+            "MUST request connector review on every push.",
+            "MUST enable automatic Codex connector review.",
+            "The parent/orchestrator MUST configure automatic Codex connector review.",
+        ] {
+            let (_temp, plugin_root) = repo_fixture()?;
+            let path = plugin_root
+                .parent()
+                .and_then(Path::parent)
+                .ok_or("repository fixture root")?
+                .join(relative);
+            let original = std::fs::read_to_string(&path)?;
+            std::fs::write(&path, format!("{original}\n{directive}\n"))?;
+            let output = validate(&plugin_root)?;
+            assert!(
+                !output.status.success(),
+                "active directive escaped on {relative}: {directive:?}\\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_ignores_excluded_policy_contexts_and_rejects_excluded_catalogs() -> TestResult {
+    for excluded in [
+        "> MUST request connector review on every push.",
+        "```text\nMUST enable automatic Codex connector review.\n```",
+        "### Historical example\nMUST request connector review on every push.",
+        "### Inactive policy\nMUST configure automatic Codex connector review.",
+        "Example: \"MUST request connector review on every push.\"",
+    ] {
+        let (_temp, plugin_root) = repo_fixture()?;
+        let path = plugin_root.join(REFERENCE);
+        let original = std::fs::read_to_string(&path)?;
+        std::fs::write(&path, format!("{original}\n{excluded}\n"))?;
+        let output = validate(&plugin_root)?;
+        assert!(
+            output.status.success(),
+            "excluded context was treated as active: {excluded:?}\\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    for prefix in ["> ", "### Historical example\n"] {
+        let (_temp, plugin_root) = repo_fixture()?;
+        let path = plugin_root.join(REFERENCE);
+        let original = std::fs::read_to_string(&path)?;
+        let catalog = original
+            .lines()
+            .filter(|line| line.chars().next().is_some_and(|character| character.is_ascii_digit()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        std::fs::write(&path, format!("# Manual Codex Connector Review\n\n## Required Procedure\n\n{prefix}{catalog}\n"))?;
+        let output = validate(&plugin_root)?;
+        assert!(
+            !output.status.success(),
+            "excluded catalog satisfied active obligations: {prefix:?}\\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn plugin_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
+    support::copy_dir(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &plugin_root,
+    )?;
+    Ok((temp, plugin_root))
+}
+
+fn repo_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let repo_root = temp.path().join("repo");
+    let plugin_root = repo_root.join("plugins/codexy");
+    std::fs::create_dir_all(repo_root.join("plugins"))?;
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md"),
+        repo_root.join("AGENTS.md"),
+    )?;
     support::copy_dir(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         &plugin_root,

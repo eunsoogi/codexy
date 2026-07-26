@@ -61,6 +61,7 @@ pub(super) fn check_surface(path: &Path, text: &str, errors: &mut Vec<String>) {
     loc_policy::check(path, text, errors);
     super::connector_review_policy::check(path, text, errors);
     sentinel_scope_policy::check(path, text, errors);
+    super::review_response_cluster::check_instruction_policy(path, text, errors);
 }
 
 fn check_structured_prompts(path: &Path, text: &str, errors: &mut Vec<String>) {

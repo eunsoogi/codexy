@@ -1,5 +1,7 @@
 #[path = "structured_contract_guard/mod.rs"]
 mod structured_contract_guard;
+#[path = "structured_contract_guard/repository_tests.rs"]
+mod repository_tests;
 
 use structured_contract_guard::{comparison_counts, repository_violations, scan_source};
 

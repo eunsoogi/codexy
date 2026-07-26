@@ -25,7 +25,7 @@ fn validator_rejects_parent_assignment_with_model_only_under_later_heading() -> 
 fn validator_rejects_numbered_child_assignment_with_negated_sol_model() -> TestResult {
     assert_rejected(
         "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; MUST NOT pass `model: \"gpt-5.6-sol\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
@@ -43,7 +43,7 @@ fn validator_rejects_conflicting_child_models_in_every_active_form() -> TestResu
         "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`, `model: \"gpt-5.6-sol\"`, and `thinking: \"high\"`.",
         "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`, `model: \"gpt-5.6-sol\"`, and `thinking: \"high\"`.",
     ] {
-        assert_rejected(policy, "gpt-5.6-sol/high")?;
+        assert_rejected(policy, "gpt-5.6-sol/medium")?;
     }
     Ok(())
 }
@@ -52,14 +52,14 @@ fn validator_rejects_conflicting_child_models_in_every_active_form() -> TestResu
 fn validator_validates_parenthesized_ordered_assignments() -> TestResult {
     assert_rejected(
         "1) child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )?;
     assert_rejected(
         "1) child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )?;
     assert_accepted(duplicate_recipient_section(
-        "1) child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "1) child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.",
     )?)
 }
 
@@ -75,14 +75,14 @@ fn validator_rejects_conflicting_parent_model_and_effort() -> TestResult {
 fn validator_rejects_conflicting_child_effort() -> TestResult {
     assert_rejected(
         "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`, `thinking: \"low\"`, and `thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
 #[test]
 fn validator_accepts_correct_fields_after_unrelated_prohibition() -> TestResult {
     assert_accepted(duplicate_recipient_section(
-        "child-to-root delivery MUST pass the recipient route; MUST NOT derive it from the sender; explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "child-to-root delivery MUST pass the recipient route; MUST NOT derive it from the sender; explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.",
     )?)
 }
 
@@ -93,7 +93,7 @@ fn validator_rejects_prefixed_field_decoys_in_every_active_child_form() -> TestR
         "1. child-to-root delivery MUST pass `recipient_model: \"gpt-5.6-sol\"` and `configured_thinking: \"high\"`.",
         "child-to-root delivery MUST pass `recipient_model: \"gpt-5.6-sol\"` and `configured_thinking: \"high\"`.",
     ] {
-        assert_rejected(policy, "gpt-5.6-sol/high")?;
+        assert_rejected(policy, "gpt-5.6-sol/medium")?;
     }
     Ok(())
 }
@@ -106,7 +106,7 @@ fn validator_rejects_each_required_field_replaced_by_a_prefixed_decoy() -> TestR
     )?;
     assert_rejected(
         "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `configured_thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
@@ -116,7 +116,7 @@ fn validator_rejects_hyphenated_and_dotted_field_decoys() -> TestResult {
         "child-to-root delivery MUST pass `recipient-model: \"gpt-5.6-sol\"` and `configured-thinking: \"high\"`.",
         "child-to-root delivery MUST pass `recipient.model: \"gpt-5.6-sol\"` and `configured.thinking: \"high\"`.",
     ] {
-        assert_rejected(policy, "gpt-5.6-sol/high")?;
+        assert_rejected(policy, "gpt-5.6-sol/medium")?;
     }
     Ok(())
 }
@@ -125,14 +125,14 @@ fn validator_rejects_hyphenated_and_dotted_field_decoys() -> TestResult {
 fn validator_rejects_standalone_negated_delivery_assignment() -> TestResult {
     assert_rejected(
         "child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
 #[test]
 fn validator_accepts_correct_fields_after_period_separated_prohibition() -> TestResult {
     assert_accepted(duplicate_recipient_section(
-        "child-to-root delivery MUST pass the recipient route. MUST NOT derive it from the sender. Explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "child-to-root delivery MUST pass the recipient route. MUST NOT derive it from the sender. Explicitly pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.",
     )?)
 }
 
@@ -140,7 +140,7 @@ fn validator_accepts_correct_fields_after_period_separated_prohibition() -> Test
 fn validator_rejects_prohibited_child_fields_after_dotted_tokens() -> TestResult {
     assert_rejected(
         "child-to-root delivery MUST pass the recipient route. MUST NOT pass `sender.model` or `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
@@ -158,7 +158,7 @@ fn validator_rejects_prohibited_fields_after_abbreviations() -> TestResult {
         "child-to-root delivery MUST pass the recipient route. MUST NOT pass sender fields, e.g. `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
         "child-to-root delivery MUST pass the recipient route. MUST NOT pass sender fields, e.g. Model route `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
     ] {
-        assert_rejected(policy, "gpt-5.6-sol/high")?;
+        assert_rejected(policy, "gpt-5.6-sol/medium")?;
     }
     assert_rejected(
         "Parent-to-generic-child delivery MUST pass <!-- `model: \"gpt-5.6-terra\"` and\n`thinking: \"high\"` -->.",
@@ -209,7 +209,7 @@ fn validator_preserves_wrapped_instructions_and_chained_comments() -> TestResult
         "\u{2003}1. Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST explicitly pass the recipient's configured UI `model`.",
     )?)?;
     assert_accepted(duplicate_recipient_section(
-        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.\n \u{2003}child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.\n \u{2003}child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
     )?)
 }
 
@@ -233,7 +233,7 @@ fn validator_limits_directional_rules_to_ascii_indentation() -> TestResult {
             &format!(
                 "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n{prefix}\u{2003}and `thinking: \"high\"`."
             ),
-            "gpt-5.6-sol/high",
+            "gpt-5.6-sol/medium",
         )?;
     }
     assert_rejected(
@@ -242,6 +242,6 @@ fn validator_limits_directional_rules_to_ascii_indentation() -> TestResult {
     )?;
     assert_rejected(
         "   child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }

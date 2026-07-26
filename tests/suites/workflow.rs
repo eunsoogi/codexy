@@ -58,6 +58,9 @@ mod validator_msrv_syntax;
 #[path = "../validator_natural_korean_skill_responses.rs"]
 mod validator_natural_korean_skill_responses;
 
+#[path = "../validator_plain_language_user_replies.rs"]
+mod validator_plain_language_user_replies;
+
 #[path = "../validator_readiness_guard.rs"]
 mod validator_readiness_guard;
 

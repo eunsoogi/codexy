@@ -19,20 +19,11 @@ mod validator_agent_registration_hardening;
 #[path = "../validator_agent_registration_lifecycle.rs"]
 mod validator_agent_registration_lifecycle;
 
-#[path = "../validator_agent_registration_readme_bootstrap.rs"]
-mod validator_agent_registration_readme_bootstrap;
-
-#[path = "../validator_agent_registration_root_bootstrap.rs"]
-mod validator_agent_registration_root_bootstrap;
-
 #[path = "../validator_agent_registration_security.rs"]
 mod validator_agent_registration_security;
 
 #[path = "../validator_agent_registration_transactions.rs"]
 mod validator_agent_registration_transactions;
-
-#[path = "../validator_agent_registration_update_hook.rs"]
-mod validator_agent_registration_update_hook;
 
 #[path = "../validator_gpt_5_6_routing.rs"]
 mod validator_gpt_5_6_routing;
