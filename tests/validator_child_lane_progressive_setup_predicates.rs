@@ -28,6 +28,8 @@ fn validator_distinguishes_governing_progressive_setup_predicates() -> TestResul
         ("Under absolutely no circumstances was the child actively setting up worktree codexy/463 before classification.", true),
         ("Under no conceivable circumstances was the child actively setting up worktree codexy/463 before classification.", true),
         ("Under no supervision was the child actively setting up worktree codexy/463 before classification.", false),
+        ("Under no supervision in the circumstances was the child actively setting up worktree codexy/463 before classification.", false),
+        ("Under no pressure given the circumstances was the child actively setting up worktree codexy/463 before classification.", false),
         ("The child will probably have been actively setting up worktree codexy/463 before classification.", true),
         ("The child might certainly have been actively setting up worktree codexy/463 before classification.", true),
         ("The child has never been actively setting up worktree codexy/463 before classification.", true),

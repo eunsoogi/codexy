@@ -1,3 +1,5 @@
+use super::child_lane_classification_setup_condition::has_negative_condition_adjunct;
+
 pub(super) const SENTENCE_BOUNDARY: &str = "__codexy_sentence_boundary__";
 
 pub(super) struct SetupClauseAnalysis {
@@ -212,20 +214,6 @@ fn is_negated_finite_auxiliary(word: &str) -> bool {
             | "won"
             | "wouldn"
     )
-}
-
-fn has_negative_condition_adjunct(words: &[&str]) -> bool {
-    words.iter().enumerate().any(|(under, word)| {
-        *word == "under"
-            && words[under + 1..]
-                .iter()
-                .position(|word| *word == "circumstances")
-                .is_some_and(|circumstances| {
-                    words[under + 1..under + 1 + circumstances]
-                        .iter()
-                        .any(|word| *word == "no")
-                })
-    })
 }
 
 fn has_negated_setup_object(words: &[&str], start: usize, action: usize, end: usize) -> bool {
