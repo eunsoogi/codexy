@@ -171,32 +171,47 @@ fn permits_repeat(words: &[String], repeat: usize) -> bool {
 }
 
 fn denies_all_progress(tail: &[String]) -> bool {
-    let names_progress = contains(tail, "progress");
-    let names_criterion = contains(tail, "acceptance") && contains(tail, "criterion");
-    let names_blocker = contains(tail, "blocker");
-    let denies_without =
-        contains(tail, "without") && (names_progress || names_criterion) && names_blocker;
-    let denies_even_if = contains(tail, "even")
-        && contains(tail, "if")
-        && contains(tail, "no")
-        && (names_progress || names_criterion)
-        && names_blocker;
-    (denies_without || denies_even_if) && !has_alternate_progress(tail)
+    let criterion = [state(tail, "criterion"), state(tail, "progress")]
+        .into_iter()
+        .max()
+        .unwrap_or(Progress::Absent);
+    criterion == Progress::Denied && state(tail, "blocker") == Progress::Denied
 }
 
-fn has_alternate_progress(tail: &[String]) -> bool {
-    let conditional_progress = tail
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+enum Progress {
+    Absent,
+    Denied,
+    Established,
+}
+
+fn state(tail: &[String], subject: &str) -> Progress {
+    let Some(index) = tail.iter().position(|word| word == subject) else {
+        return Progress::Absent;
+    };
+    let boundary = tail
         .iter()
         .position(|word| matches!(word.as_str(), "when" | "if" | "with"))
-        .is_some_and(|start| {
-            let condition = &tail[start + 1..];
-            (contains(condition, "acceptance") && contains(condition, "criterion"))
-                || (contains(condition, "blocker")
-                    && condition
-                        .iter()
-                        .any(|word| matches!(word.as_str(), "removed" | "removal")))
-        });
-    conditional_progress && !contains(tail, "no")
+        .unwrap_or(tail.len());
+    let locally_denied = tail[..index]
+        .iter()
+        .rev()
+        .take(4)
+        .any(|word| matches!(word.as_str(), "no" | "without"));
+    if locally_denied || (tail.first().is_some_and(|word| word == "without") && index < boundary) {
+        return Progress::Denied;
+    }
+    let positive = match subject {
+        "blocker" => ["removed", "removal"],
+        "criterion" => ["satisfied", "newly"],
+        _ => ["progress", "progress"],
+    };
+    tail[index..]
+        .iter()
+        .take(4)
+        .any(|word| word == positive[0] || word == positive[1])
+        .then_some(Progress::Established)
+        .unwrap_or(Progress::Absent)
 }
 
 fn permits(words: &[String]) -> bool {

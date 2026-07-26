@@ -117,16 +117,34 @@ fn validate_installation(installed: &Installed) -> Result<()> {
 fn changed_file_map(files: &[ChangedFile]) -> Result<BTreeMap<&str, &str>> {
     let mut mapped = BTreeMap::new();
     for changed in files {
-        if changed.path.is_empty()
-            || !mapped
-                .insert(changed.path.as_str(), changed.sha256.as_str())
-                .is_none()
-        {
-            bail!("receipt changed-file paths must be non-empty and unique");
+        let path = safe_packaged_path(&changed.path)?;
+        if !mapped.insert(path, changed.sha256.as_str()).is_none() {
+            bail!("receipt changed-file paths must be unique");
         }
         validate_digest(&changed.sha256)?;
     }
     Ok(mapped)
+}
+
+fn safe_packaged_path(path: &str) -> Result<&str> {
+    let candidate = Path::new(path);
+    let mut normalized = String::new();
+    for component in candidate.components() {
+        let Component::Normal(part) = component else {
+            bail!("receipt changed-file paths must be safe repository-relative paths");
+        };
+        let part = part
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("receipt changed-file paths must be UTF-8"))?;
+        if !normalized.is_empty() {
+            normalized.push('/');
+        }
+        normalized.push_str(part);
+    }
+    if normalized.is_empty() || normalized != path || path.contains('\\') {
+        bail!("receipt changed-file paths must be safe repository-relative paths");
+    }
+    Ok(path)
 }
 
 fn validate_digest(value: &str) -> Result<()> {

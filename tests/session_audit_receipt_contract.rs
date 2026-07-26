@@ -4,6 +4,12 @@ use serde_json::Value;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+const PACKAGED_PROOF_PATHS: &[&str] = &[
+    "skills/codex-orchestration/references/execution-budget.md",
+    "skills/token-efficient-orchestration/SKILL.md",
+    "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+];
+
 #[test]
 fn complete_template_receipt_requires_every_promised_evidence_field() -> TestResult {
     let receipt: Value = serde_json::from_str(include_str!(
@@ -45,12 +51,18 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
         proof["contentProof"]["sourceManifestSha256"],
         sha256(root.join("plugins/codexy/.codex-plugin/plugin.json"))?
     );
-    assert_eq!(
-        proof["contentProof"]["sourceChangedFiles"][0]["sha256"],
-        sha256(root.join(
-            "plugins/codexy/skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json"
-        ))?
-    );
+    for list in [
+        &receipt["installed"]["changedFiles"],
+        &proof["contentProof"]["sourceChangedFiles"],
+        &proof["contentProof"]["installedChangedFiles"],
+    ] {
+        assert_eq!(proof_paths(list)?, PACKAGED_PROOF_PATHS);
+    }
+    for path in PACKAGED_PROOF_PATHS {
+        let digest = sha256(root.join("plugins/codexy").join(path))?;
+        assert_eq!(proof_digest(&proof["contentProof"]["sourceChangedFiles"], path)?, digest);
+        assert_eq!(proof_digest(&proof["contentProof"]["installedChangedFiles"], path)?, digest);
+    }
     receipt["installed"]["contentProof"] = proof["contentProof"].clone();
     let output = validate(&receipt)?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
@@ -60,6 +72,33 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
     let output = validate(&receipt)?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("content equivalence"));
+    Ok(())
+}
+
+#[test]
+fn installed_content_proof_rejects_unsafe_path_identities() -> TestResult {
+    for path in [
+        "/private/template",
+        "../template",
+        "skills/token-efficient-orchestration/../template",
+    ] {
+        let mut receipt: Value = serde_json::from_str(include_str!(
+            "fixtures/session-audit/controlled-receipt.json"
+        ))?;
+        for pointer in [
+            "/installed/changedFiles",
+            "/installed/contentProof/sourceChangedFiles",
+            "/installed/contentProof/installedChangedFiles",
+        ] {
+            receipt
+                .pointer_mut(pointer)
+                .and_then(Value::as_array_mut)
+                .ok_or("proof list must be an array")?[0]["path"] = Value::String(path.to_owned());
+        }
+        let output = validate(&receipt)?;
+        assert!(!output.status.success(), "accepted unsafe path {path:?}");
+        assert!(stderr(&output).contains("safe repository-relative"));
+    }
     Ok(())
 }
 
@@ -131,4 +170,23 @@ fn sha256(path: std::path::PathBuf) -> TestResult<String> {
         .next()
         .map(str::to_owned)
         .ok_or_else(|| "SHA-256 output must include a digest".into())
+}
+
+fn proof_paths(value: &Value) -> TestResult<Vec<&str>> {
+    value
+        .as_array()
+        .ok_or("proof list must be an array")?
+        .iter()
+        .map(|entry| entry["path"].as_str().ok_or_else(|| "path must be a string".into()))
+        .collect()
+}
+
+fn proof_digest<'a>(value: &'a Value, path: &str) -> TestResult<&'a str> {
+    value
+        .as_array()
+        .ok_or("proof list must be an array")?
+        .iter()
+        .find(|entry| entry["path"] == path)
+        .and_then(|entry| entry["sha256"].as_str())
+        .ok_or_else(|| "proof path must include a digest".into())
 }
