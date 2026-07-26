@@ -137,6 +137,8 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
     let created_parent = workspace.path().join("created-parent");
     let nested_parent = workspace.path().join("nested").join("child");
     let regular = owned.join("README.md");
+    let traversal = owned.join("traversal");
+    let gh = executable("gh")?;
     let path = format!("PATH={}:{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", owned.display(), fallback.display());
     std::fs::create_dir(&directory)?;
     std::fs::create_dir(&fallback)?;
@@ -168,6 +170,8 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("mkdir -p {0} && ln -sf /usr/bin/git {0}/../safe && {0}/../safe push --force origin topic", nested_parent.display()),
         &format!("mkdir -p {0} && cp /usr/bin/git {0}/../safe && {0}/../safe push --force origin topic", nested_parent.display()),
         &format!("{path}; ln -sf README.md safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
+        &format!("mkdir -p {0}/x/../y && ln -sf {1} {0}/x/safe && {0}/x/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("mkdir -p {0}/nested//./child/../sibling && cp {1} {0}/nested/child/safe && {0}/nested/child/safe pr merge 453 --merge", traversal.display(), gh.display()),
     ] {
         assert_case(&root, &owned, command, true, &[])?;
     }
@@ -185,6 +189,7 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("{path}; ln -sf /usr/bin/printf safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
         &format!("mkdir {} && printf safe", created_parent.display()),
         &format!("mkdir {} && git push --force origin topic", regular.display()),
+        &format!("mkdir -p {}/benign//./nested/../final && printf safe", traversal.display()),
     ] {
         assert_case(&root, &owned, command, false, &[])?;
     }
