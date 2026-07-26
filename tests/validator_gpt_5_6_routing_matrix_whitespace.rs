@@ -34,7 +34,7 @@ fn validator_rejects_mixed_unicode_structural_markers() -> TestResult {
                 &format!(
                     "{prefix}\u{2003}{marker}\nchild-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.{closing}"
                 ),
-                "gpt-5.6-sol/high",
+                "gpt-5.6-sol/medium",
             )?;
         }
     }
@@ -45,10 +45,10 @@ fn validator_rejects_mixed_unicode_structural_markers() -> TestResult {
 fn validator_rejects_combined_negated_delivery_assignment() -> TestResult {
     assert_rejected(
         "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST NOT pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )?;
     assert_accepted(duplicate_recipient_section(
-        "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.",
     )?)
 }
 
