@@ -1,8 +1,10 @@
 use std::path::Path;
 
 use crate::paths::display_relative;
+use modal_span::clause_boundary;
 
 mod active_scope;
+mod modal_span;
 
 const REFERENCE_PATH: &str = "skills/git-workflow/references/codex-connector-review.md";
 const SKILL_PATH: &str = "skills/git-workflow/SKILL.md";
@@ -162,7 +164,9 @@ fn obligation(line: &str) -> Option<(usize, &str, &str)> {
 }
 
 fn active_request_variant_in_fragment(fragment: &str) -> bool {
-    let fragment = normalize(&fragment.replace(',', " comma "));
+    let raw_fragment = fragment.replace(',', " comma ");
+    let raw_words = raw_fragment.split_whitespace().collect::<Vec<_>>();
+    let fragment = normalize(&raw_fragment);
     let words = fragment.split_whitespace().collect::<Vec<_>>();
     let modal_positions = words
         .iter()
@@ -177,7 +181,7 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
         if position > 0 {
             let previous = modal_positions[position - 1];
             let between = &words[previous + 1..start];
-            if let Some(boundary) = clause_boundary(between) {
+            if let Some(boundary) = clause_boundary(between, &raw_words[previous + 1..start]) {
                 let candidate = &between[boundary + 1..];
                 if !candidate.is_empty() {
                     subject = candidate;
@@ -188,7 +192,10 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
             .get(position + 1)
             .map_or(words.len(), |next| {
                 let between = &words[start + 1..*next];
-                start + 1 + clause_boundary(between).unwrap_or(between.len())
+                start
+                    + 1
+                    + clause_boundary(between, &raw_words[start + 1..*next])
+                        .unwrap_or(between.len())
             });
         let clause = &words[start..end];
         let positive_must = clause.get(1) != Some(&"not")
@@ -225,14 +232,6 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
         }
     }
     false
-}
-
-fn clause_boundary(words: &[&str]) -> Option<usize> {
-    words.iter().position(|word| *word == "comma").or_else(|| {
-        words
-            .iter()
-            .position(|word| matches!(*word, "and" | "or" | "but" | "then"))
-    })
 }
 
 fn normalize(text: &str) -> String {
