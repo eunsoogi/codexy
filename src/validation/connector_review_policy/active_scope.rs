@@ -4,7 +4,7 @@ pub(super) fn lines(text: &str) -> Vec<String> {
     let mut inactive_at = None;
     for raw in text.lines() {
         let trimmed = raw.trim();
-        if let Some((marker, count, rest)) = fence_delimiter(trimmed) {
+        if let Some((marker, count, rest)) = fence_delimiter(raw) {
             fence = match fence {
                 Some((opened_marker, minimum))
                     if marker == opened_marker && count >= minimum && rest.trim().is_empty() =>
@@ -45,7 +45,12 @@ pub(super) fn lines(text: &str) -> Vec<String> {
     active
 }
 
-fn fence_delimiter(line: &str) -> Option<(char, usize, &str)> {
+fn fence_delimiter(raw: &str) -> Option<(char, usize, &str)> {
+    let indentation = raw.bytes().take_while(|byte| *byte == b' ').count();
+    if indentation > 3 {
+        return None;
+    }
+    let line = &raw[indentation..];
     let marker = line.chars().next()?;
     if !matches!(marker, '`' | '~') {
         return None;

@@ -109,3 +109,37 @@ fn validator_keeps_mismatched_fences_and_list_examples_inactive() -> TestResult 
     }
     Ok(())
 }
+
+#[test]
+fn validator_respects_indented_fence_boundaries() -> TestResult {
+    let valid_three_space_fence = validate(|text| {
+        format!(
+            "{text}\n   ```text\nMUST enable automatic Codex connector review.\n   ```\n"
+        )
+    })?;
+    assert!(
+        valid_three_space_fence.status.success(),
+        "valid three-space fence: {}",
+        support::stderr(&valid_three_space_fence)
+    );
+
+    let results = ["    ```text", "\t```text"]
+        .into_iter()
+        .map(|marker| {
+            validate(|text| {
+                format!("{text}\n{marker}\nMUST enable automatic Codex connector review.\n")
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    assert!(
+        results.iter().all(|output| !output.status.success()),
+        "indented non-fence cases: {}",
+        results
+            .iter()
+            .enumerate()
+            .map(|(index, output)| format!("{index}: {}", support::stderr(output)))
+            .collect::<Vec<_>>()
+            .join("; ")
+    );
+    Ok(())
+}
