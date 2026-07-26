@@ -40,6 +40,25 @@ Codexy bundles:
 See the [plugin architecture guide](docs/architecture.md) for the complete
 agent, skill, and MCP inventory and the implemented orchestration flows.
 
+## Install Codexy
+
+Register this repository as a Codex plugin marketplace, then install Codexy:
+
+```sh
+codex plugin marketplace add eunsoogi/codexy --ref main
+codex plugin add codexy@codexy
+```
+
+Verify that Codex can see the installed plugin and its MCP servers:
+
+```sh
+codex plugin list
+codex mcp list
+```
+
+Open a fresh Codex session if the newly installed plugin, skills, or MCP
+surfaces do not appear in the current session.
+
 ## A Codexy workflow
 
 1. **Classify the task.** Identify the lane, owner, scope, proof, and stop

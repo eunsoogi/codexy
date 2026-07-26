@@ -38,6 +38,24 @@ Codexy에는 다음이 포함됩니다.
 전체 에이전트, 스킬, MCP 구성과 실제 작업 흐름은
 [구성과 작업 흐름 안내서](docs/architecture.md)에서 확인할 수 있습니다.
 
+## Codexy 설치
+
+이 저장소를 Codex 플러그인 마켓플레이스로 등록한 뒤 Codexy를 설치합니다.
+
+```sh
+codex plugin marketplace add eunsoogi/codexy --ref main
+codex plugin add codexy@codexy
+```
+
+Codex에서 설치된 플러그인과 MCP 서버를 확인합니다.
+
+```sh
+codex plugin list
+codex mcp list
+```
+
+새 플러그인, 스킬 또는 MCP가 현재 세션에 나타나지 않으면 새 Codex 세션을 여세요.
+
 ## Codexy로 작업하는 흐름
 
 1. **작업을 분류합니다.** 편집 전에 작업 단위, 담당자, 범위, 검증 근거, 중단 조건을
