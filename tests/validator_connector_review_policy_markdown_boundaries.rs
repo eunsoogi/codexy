@@ -52,6 +52,9 @@ fn validator_keeps_modal_subjects_when_separating_must_clauses() -> TestResult {
     for (index, addition) in [
         "Automatic Codex connector review MUST be enabled.",
         "Automatic Codex connector review MUST NOT be enabled; Automatic Codex connector review MUST be enabled.",
+        "Manual review MUST NOT be enabled and Automatic Codex connector review MUST be enabled.",
+        "Manual review MUST NOT be enabled, Automatic Codex connector review MUST be enabled.",
+        "Automatic Codex connector review MUST NOT be enabled and MUST be enabled.",
     ]
     .into_iter()
     .enumerate()
@@ -64,14 +67,23 @@ fn validator_keeps_modal_subjects_when_separating_must_clauses() -> TestResult {
         );
     }
 
-    let output = validate(|text| {
-        format!("{text}\nAutomatic Codex connector review MUST NOT be enabled.\n")
-    })?;
-    assert!(
-        output.status.success(),
-        "negative control: {}",
-        support::stderr(&output)
-    );
+    for (index, addition) in [
+        "Automatic Codex connector review MUST NOT be enabled.",
+        "Automatic Codex connector review MUST NOT be enabled and MUST remain disabled.",
+        "Automatic Codex connector review MUST NOT be enabled, MUST remain disabled.",
+        "Automatic Codex connector review MUST NOT be enabled and Manual review MUST be configured.",
+        "Automatic Codex connector review MUST NOT be enabled, Manual review MUST be configured.",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let output = validate(|text| format!("{text}\n{addition}\n"))?;
+        assert!(
+            output.status.success(),
+            "negative control {index}: {}",
+            support::stderr(&output)
+        );
+    }
     Ok(())
 }
 

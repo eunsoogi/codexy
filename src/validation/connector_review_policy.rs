@@ -165,21 +165,35 @@ fn active_request_variant(sentence: &str) -> bool {
 }
 
 fn active_request_variant_in_fragment(fragment: &str) -> bool {
-    let fragment = normalize(fragment);
+    let fragment = normalize(&fragment.replace(',', " comma "));
     let words = fragment.split_whitespace().collect::<Vec<_>>();
-    let subject_end = words
+    let modal_positions = words
         .iter()
-        .position(|word| *word == "must")
-        .unwrap_or(words.len());
-    let subject = &words[..subject_end];
-    words.iter().enumerate().any(|(start, word)| {
-        if *word != "must" {
-            return false;
+        .enumerate()
+        .filter_map(|(index, word)| (*word == "must").then_some(index))
+        .collect::<Vec<_>>();
+    let Some(&first_modal) = modal_positions.first() else {
+        return false;
+    };
+    let mut subject = &words[..first_modal];
+    for (position, start) in modal_positions.iter().copied().enumerate() {
+        if position > 0 {
+            let previous = modal_positions[position - 1];
+            let between = &words[previous + 1..start];
+            if let Some(boundary) = between
+                .iter()
+                .rposition(|word| matches!(*word, "and" | "or" | "but" | "then" | "comma"))
+            {
+                let candidate = &between[boundary + 1..];
+                if !candidate.is_empty() {
+                    subject = candidate;
+                }
+            }
         }
-        let end = words[start + 1..]
-            .iter()
-            .position(|candidate| *candidate == "must")
-            .map_or(words.len(), |offset| start + 1 + offset);
+        let end = modal_positions
+            .get(position + 1)
+            .copied()
+            .unwrap_or(words.len());
         let clause = &words[start..end];
         let positive_must = clause.get(1) != Some(&"not")
             && !clause
@@ -207,9 +221,14 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
         ]
         .iter()
         .any(|marker| clause.join(" ").contains(marker));
-        positive_must
-            && ((request && (clause.contains(&"automatic") || repeated)) || automatic_enable)
-    })
+        if positive_must
+            && ((request && (scoped().any(|word| word == "automatic") || repeated))
+                || automatic_enable)
+        {
+            return true;
+        }
+    }
+    false
 }
 
 fn normalize(text: &str) -> String {
