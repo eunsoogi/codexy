@@ -148,14 +148,6 @@ check_pr_labels() {
   guard_dir=${0%/*}
   "$guard_dir/codexy-readiness-guard-pr-labels.sh" "$pr_state_file"
 }
-event="${1:-}"
-case "$event" in
-  UserPromptSubmit)
-    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy readiness guard: before creating a GitHub issue, run hooks/codexy-readiness-guard.sh --check-issue-title --issue-title \"ISSUE_TITLE\" with the exact issue title. Before PR readiness, run hooks/codexy-readiness-guard.sh --check-pr-title with the exact PR title and hooks/codexy-readiness-guard.sh --check-pr-labels --pr-state-file pr-state.json with captured repositoryLabels. Before merge readiness, run hooks/codexy-readiness-guard.sh --check-merge-message --expected-pr PR_NUMBER with the explicit squash merge message; for issue-backed PRs whose merge body must end in Fixes #ISSUE_NUMBER, add --expected-issue ISSUE_NUMBER."}}'
-    exit 0
-    ;;
-esac
-
 mode=""
 pr_title=""
 issue_title=""
