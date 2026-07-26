@@ -2,28 +2,17 @@
 
 from __future__ import annotations
 
+from .graphql_parser import document
+
+STRING, NUMBER = "<string>", "<number>"
+
+
 def mutation(query: str) -> bool | None:
     """Return whether a syntactically complete document defines a mutation."""
     tokens = _tokens(query)
-    if tokens is None:
+    if not tokens:
         return None
-    index = 0
-    while index < len(tokens):
-        token = tokens[index]
-        if token == "{":
-            index = _selection(tokens, index)
-        elif token in {"query", "mutation", "subscription", "fragment"}:
-            definition = _definition(tokens, index)
-            if definition is None:
-                return None
-            index = definition
-            if token == "mutation":
-                return True
-        else:
-            return None
-        if index is None:
-            return None
-    return False
+    return document(tokens)
 
 
 def _tokens(query: str) -> list[str] | None:
@@ -39,17 +28,19 @@ def _tokens(query: str) -> list[str] | None:
             end = _block_string(query, index + 3)
             if end is None:
                 return None
-            tokens.append("string")
+            tokens.append(STRING)
             index = end
         elif char == '"':
             end = _string(query, index + 1)
             if end is None:
                 return None
-            tokens.append("string")
+            tokens.append(STRING)
             index = end
-        elif char == "_" or char.isalpha():
+        elif char == "_" or char.isascii() and char.isalpha():
             end = index + 1
-            while end < len(query) and (query[end] == "_" or query[end].isalnum()):
+            while end < len(query) and (
+                query[end] == "_" or query[end].isascii() and query[end].isalnum()
+            ):
                 end += 1
             tokens.append(query[index:end])
             index = end
@@ -60,10 +51,10 @@ def _tokens(query: str) -> list[str] | None:
             tokens.append(char)
             index += 1
         elif char.isdigit() or char == "-":
-            end = index + 1
-            while end < len(query) and (query[end].isalnum() or query[end] in ".+-"):
-                end += 1
-            tokens.append("number")
+            end = _number(query, index)
+            if end is None:
+                return None
+            tokens.append(NUMBER)
             index = end
         else:
             return None
@@ -105,42 +96,31 @@ def _block_string(query: str, index: int) -> int | None:
     return None
 
 
-def _definition(tokens: list[str], index: int) -> int | None:
-    index += 1
-    stack: list[str] = []
-    while index < len(tokens):
-        token = tokens[index]
-        if token == "{" and not stack:
-            return _selection(tokens, index)
-        if not _nest(stack, token) or (token == "..." and not stack):
-            return None
+def _number(query: str, index: int) -> int | None:
+    if query[index] == "-":
         index += 1
-    return None
-
-
-def _selection(tokens: list[str], index: int) -> int | None:
-    stack: list[str] = []
-    content = False
-    while index < len(tokens):
-        token = tokens[index]
-        if len(stack) == 1 and token == "}" and not content:
-            return None
-        if len(stack) == 1 and token not in "{}()[]:$&!=@|":
-            content = True
-        if not _nest(stack, token):
-            return None
-        if not stack:
-            return index + 1
+    start = index
+    if index < len(query) and query[index] == "0":
         index += 1
-    return None
-
-
-def _nest(stack: list[str], token: str) -> bool:
-    pairs = {"}": "{", ")": "(", "]": "["}
-    if token in {"{", "(", "["}:
-        stack.append(token)
-    elif token in pairs:
-        if not stack or stack[-1] != pairs[token]:
-            return False
-        stack.pop()
-    return True
+    else:
+        while index < len(query) and query[index].isdigit():
+            index += 1
+    if index == start:
+        return None
+    if index < len(query) and query[index] == ".":
+        index += 1
+        fraction = index
+        while index < len(query) and query[index].isdigit():
+            index += 1
+        if index == fraction:
+            return None
+    if index < len(query) and query[index] in "eE":
+        index += 1
+        if index < len(query) and query[index] in "+-":
+            index += 1
+        exponent = index
+        while index < len(query) and query[index].isdigit():
+            index += 1
+        if index == exponent:
+            return None
+    return index if index == len(query) or not (query[index].isalnum() or query[index] == "_") else None
