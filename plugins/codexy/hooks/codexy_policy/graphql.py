@@ -120,8 +120,13 @@ def _definition(tokens: list[str], index: int) -> int | None:
 
 def _selection(tokens: list[str], index: int) -> int | None:
     stack: list[str] = []
+    content = False
     while index < len(tokens):
         token = tokens[index]
+        if len(stack) == 1 and token == "}" and not content:
+            return None
+        if len(stack) == 1 and token not in "{}()[]:$&!=@|":
+            content = True
         if not _nest(stack, token):
             return None
         if not stack:

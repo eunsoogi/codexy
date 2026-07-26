@@ -11,6 +11,8 @@ fn graphql_delimiters_fail_closed_without_blocking_nested_controls() -> TestResu
     for query in [
         "query { viewer(] { login } }",
         "query($x: [Int)] { viewer { login } }",
+        "query {}",
+        "query { # comment\n}",
     ] {
         assert_case(
             &root,
@@ -23,7 +25,7 @@ fn graphql_delimiters_fail_closed_without_blocking_nested_controls() -> TestResu
     assert_case(
         &root,
         &foreign,
-        "gh api graphql -f query='query Query($x: [Int!] = [1, 2]) @cache { viewer { repositories(first: 1, orderBy: {field: NAME, direction: ASC}, labels: [ONE, TWO]) { nodes { ...RepoFields } } } } fragment RepoFields on Repository { name }'",
+        "gh api graphql -f query='query Query($x: [Int!] = [1, 2]) @cache { __typename viewer { repositories(first: 1, orderBy: {field: NAME, direction: ASC}, labels: [ONE, TWO], empty: []) { nodes { ...RepoFields } } } } fragment RepoFields on Repository { name }'",
         false,
         &[],
     )
