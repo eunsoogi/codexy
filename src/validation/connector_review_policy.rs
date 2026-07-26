@@ -72,7 +72,10 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     } else {
         return;
     }
-    if active.iter().any(|line| active_request_variant(line)) {
+    if active.iter().any(|line| {
+        line.split(['.', ';', ':'])
+            .any(active_request_variant_in_fragment)
+    }) {
         errors.push(format!(
             "{} Codex connector review policy reintroduces an automatic or repeated review",
             display_relative(path)
@@ -158,12 +161,6 @@ fn obligation(line: &str) -> Option<(usize, &str, &str)> {
     (!id.is_empty() && !clause.is_empty()).then_some((number, id, clause))
 }
 
-fn active_request_variant(sentence: &str) -> bool {
-    sentence
-        .split(['.', ';', ':'])
-        .any(active_request_variant_in_fragment)
-}
-
 fn active_request_variant_in_fragment(fragment: &str) -> bool {
     let fragment = normalize(&fragment.replace(',', " comma "));
     let words = fragment.split_whitespace().collect::<Vec<_>>();
@@ -180,10 +177,15 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
         if position > 0 {
             let previous = modal_positions[position - 1];
             let between = &words[previous + 1..start];
-            if let Some(boundary) = between
+            let boundary = between
                 .iter()
-                .rposition(|word| matches!(*word, "and" | "or" | "but" | "then" | "comma"))
-            {
+                .position(|word| *word == "comma")
+                .or_else(|| {
+                    between
+                        .iter()
+                        .rposition(|word| matches!(*word, "and" | "or" | "but" | "then"))
+                });
+            if let Some(boundary) = boundary {
                 let candidate = &between[boundary + 1..];
                 if !candidate.is_empty() {
                     subject = candidate;

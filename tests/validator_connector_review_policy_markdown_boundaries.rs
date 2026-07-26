@@ -54,6 +54,7 @@ fn validator_keeps_modal_subjects_when_separating_must_clauses() -> TestResult {
         "Automatic Codex connector review MUST NOT be enabled; Automatic Codex connector review MUST be enabled.",
         "Manual review MUST NOT be enabled and Automatic Codex connector review MUST be enabled.",
         "Manual review MUST NOT be enabled, Automatic Codex connector review MUST be enabled.",
+        "Manual review MUST NOT be enabled, Automatic Codex connector review and manual review MUST be enabled.",
         "Automatic Codex connector review MUST NOT be enabled and MUST be enabled.",
     ]
     .into_iter()
@@ -73,6 +74,7 @@ fn validator_keeps_modal_subjects_when_separating_must_clauses() -> TestResult {
         "Automatic Codex connector review MUST NOT be enabled, MUST remain disabled.",
         "Automatic Codex connector review MUST NOT be enabled and Manual review MUST be configured.",
         "Automatic Codex connector review MUST NOT be enabled, Manual review MUST be configured.",
+        "Manual review MUST NOT be enabled, Automatic Codex connector review and manual review MUST NOT be enabled.",
     ]
     .into_iter()
     .enumerate()
