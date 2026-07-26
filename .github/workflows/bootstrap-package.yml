@@ -25,12 +25,12 @@ jobs:
       name: pypi
       url: https://pypi.org/p/getcodexy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Admit current protected-main bootstrap source
