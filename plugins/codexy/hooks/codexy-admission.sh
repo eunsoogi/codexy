@@ -16,7 +16,8 @@ fi
 # The fixed PATH admits supported macOS tools; only selectors needed for
 # effective policy cross the isolated launcher boundary.
 runtime_home=${HOME-}
-set -- env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home"
+runtime_user=${USER-}
+set -- env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" USER="$runtime_user"
 [ -z "${GH_REPO-}" ] || set -- "$@" "GH_REPO=$GH_REPO"
 [ -z "${GIT_DIR-}" ] || set -- "$@" "GIT_DIR=$GIT_DIR"
 [ -z "${GIT_COMMON_DIR-}" ] || set -- "$@" "GIT_COMMON_DIR=$GIT_COMMON_DIR"
@@ -42,7 +43,7 @@ if [ "${GIT_CONFIG_COUNT+x}" = x ]; then
       ;;
   esac
 fi
-if env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" python3 -I -B -c \
+if env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" USER="$runtime_user" python3 -I -B -c \
   'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' && \
   "$@" python3 -I -B "${plugin_root}/hooks/codexy-admission.py" \
   --event "$event"; then

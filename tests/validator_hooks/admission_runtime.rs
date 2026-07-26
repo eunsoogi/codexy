@@ -60,16 +60,88 @@ fn inherited_git_common_dir_fails_closed_for_mutations_only() -> TestResult {
     assert_case(&root, &foreign, "git status --short", false, &environment)
 }
 
+#[test]
+fn thread_delivery_requires_nonempty_model_and_thinking() -> TestResult {
+    let root = plugin_root();
+    assert_tool_case(
+        &root,
+        "codex_app__send_message_to_thread",
+        json!({"threadId":"parent","model":"gpt-5.6-sol","thinking":"medium"}),
+        false,
+    )?;
+    for input in [
+        json!({"threadId":"parent","thinking":"medium"}),
+        json!({"threadId":"parent","model":null,"thinking":"medium"}),
+        json!({"threadId":"parent","model":"","thinking":"medium"}),
+        json!({"threadId":"parent","model":"gpt-5.6-sol"}),
+        json!({"threadId":"parent","model":"gpt-5.6-sol","thinking":null}),
+        json!({"threadId":"parent","model":"gpt-5.6-sol","thinking":""}),
+    ] {
+        assert_tool_case(&root, "codex_app__send_message_to_thread", input, true)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn ordinary_launcher_variables_do_not_make_unrelated_commands_opaque() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    assert_case(&root, &foreign, "printf '%s\\n' \"$HOME:$PATH:$USER\"", false, &[])?;
+    assert_case(&root, &foreign, "printf '%s\\n' \"$UNKNOWN_RUNTIME_VALUE\"", true, &[])
+}
+
+#[cfg(unix)]
+#[test]
+fn filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
+    use std::os::unix::fs::symlink;
+
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let git = executable("git")?;
+    let linked = owned.join("git-linked");
+    let copied = owned.join("git-copied");
+    symlink(&git, &linked)?;
+    std::fs::copy(&git, &copied)?;
+    assert_case(&root, &owned, "./git-linked push --force origin topic", true, &[])?;
+    assert_case(&root, &owned, "./git-copied push --force origin topic", true, &[])?;
+    assert_case(&root, &owned, "printf '%s\\n' benign", false, &[])
+}
+
 pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
     let input = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
+    assert_input(root, input, denied, environment)
+}
+
+fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, denied: bool) -> TestResult {
+    assert_input(
+        root,
+        json!({"hook_event_name":"PreToolUse","tool_name":tool_name,"tool_input":tool_input}),
+        denied,
+        &[],
+    )
+}
+
+fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
+    let description = input.to_string();
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
     child.arg("PreToolUse").env_clear().env("PLUGIN_ROOT", root).envs(environment.iter().copied()).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
     let output = child.wait_with_output()?;
     assert!(output.status.success(), "launcher failed: {}", String::from_utf8_lossy(&output.stderr));
-    if denied { let value: Value = serde_json::from_slice(&output.stdout).map_err(|error| format!("expected deny for {command:?}: {error}"))?; assert_eq!(value["hookSpecificOutput"]["permissionDecision"], "deny", "{command}"); } else { assert_eq!(output.stdout, b"", "{command}"); }
+    if denied { let value: Value = serde_json::from_slice(&output.stdout).map_err(|error| format!("expected deny for {description}: {error}"))?; assert_eq!(value["hookSpecificOutput"]["permissionDecision"], "deny", "{description}"); } else { assert_eq!(output.stdout, b"", "{description}"); }
     Ok(())
+}
+
+#[cfg(unix)]
+fn executable(name: &str) -> TestResult<PathBuf> {
+    std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)
+        .map(|directory| directory.join(name))
+        .find(|path| path.is_file())
+        .ok_or_else(|| format!("{name} executable"))
+        .map_err(Into::into)
 }
 
 pub(super) fn repository(root: &Path, name: &str, remote: &str) -> TestResult<PathBuf> {

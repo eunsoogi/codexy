@@ -21,6 +21,7 @@ FIELDS = {
     "mcp__codex_apps__github_merge_pull_request": {"commit_message", "commit_title", "expected_head_sha", "merge_method", "pr_number", "repository_full_name"},
     "mcp__codex_apps__github_enable_auto_merge": {"pr_number", "repository_full_name"},
 }
+THREAD_FIELDS = ("model", "thinking")
 
 
 def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -52,8 +53,7 @@ def evaluate(event: str, payload: bytes) -> bytes:
         return deny(event)
     tool, tool_input = data["tool_name"], data.get("tool_input")
     if tool == THREAD:
-        # The hook payload does not carry the recipient's authoritative UI route.
-        return deny(event)
+        return _thread(event, tool_input)
     if tool in FIELDS:
         return _github(event, tool, tool_input)
     if tool != "Bash":
@@ -66,7 +66,27 @@ def evaluate(event: str, payload: bytes) -> bytes:
     inherited_git_config = tuple(
         (key, value) for key, value in os.environ.items() if key.startswith("GIT_CONFIG_")
     )
-    return deny(event) if shell_forbidden(tool_input["command"], data["cwd"], inherited_repository, inherited_git_dir, inherited_git_common_dir, inherited_git_config) else b""
+    runtime_environment = tuple(
+        (key, os.environ.get(key, "")) for key in ("HOME", "PATH", "USER")
+    )
+    return deny(event) if shell_forbidden(
+        tool_input["command"],
+        data["cwd"],
+        inherited_repository,
+        inherited_git_dir,
+        inherited_git_common_dir,
+        git_config_environment=inherited_git_config,
+        runtime_environment=runtime_environment,
+    ) else b""
+
+
+def _thread(event: str, data: object) -> bytes:
+    if not isinstance(data, dict) or any(
+        not isinstance(data.get(field), str) or not data[field].strip()
+        for field in THREAD_FIELDS
+    ):
+        return deny(event)
+    return b""
 
 
 def _github(event: str, tool: str, data: object) -> bytes:

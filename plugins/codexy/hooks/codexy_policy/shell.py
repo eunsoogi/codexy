@@ -32,8 +32,9 @@ def forbidden(
     command: str, cwd: str, gh_repo: str | None = None, git_dir: str | None = None,
     git_common_dir: str | None = None,
     git_config_environment: tuple[tuple[str, str], ...] = (), depth: int = 0,
+    runtime_environment: tuple[tuple[str, str], ...] = (),
 ) -> bool:
-    environment = tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir), ("GIT_COMMON_DIR", git_common_dir)) if value is not None) + git_config_environment
+    environment = runtime_environment + tuple((key, value) for key, value in (("GH_REPO", gh_repo), ("GIT_DIR", git_dir), ("GIT_COMMON_DIR", git_common_dir)) if value is not None) + git_config_environment
     owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
     context = ExecutionContext(
         cwd, owned, git_dir, gh_repo, environment,

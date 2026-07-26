@@ -9,6 +9,7 @@ from .execution_context import (
     ExecutionContext, assign, assigned_variables, assignment, at, clear, expand_tokens,
     export_variables, leading_assignments, printf_assignment, unset, unset_variables,
 )
+from .executable_identity import resolve as executable_identity
 from .shell_context import command_option, name, resolve_cwd
 
 MAX_WRAPPER_DEPTH = 8
@@ -61,7 +62,7 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         tokens = expanded
         if not tokens:
             return Invocation(None, [], context)
-        executable = name(tokens[0])
+        executable = executable_identity(tokens[0], context.cwd)
         args = tokens[1:]
         if executable in SHELL_INTERPRETERS | OPAQUE_INTERPRETERS and args == ["--version"]:
             return Invocation(executable, args, context)
