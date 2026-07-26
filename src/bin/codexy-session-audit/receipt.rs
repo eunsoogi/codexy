@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Component, Path},
 };
@@ -96,13 +96,37 @@ fn validate_installation(installed: &Installed) -> Result<()> {
         bail!("receipt must include installation identity");
     }
     validate_digest(&installed.manifest_sha256)?;
-    for changed in &installed.changed_files {
-        if changed.path.is_empty() {
-            bail!("receipt changed-file path must not be empty");
+    let changed = changed_file_map(&installed.changed_files)?;
+    let source = changed_file_map(&installed.content_proof.source_changed_files)?;
+    let installed_files = changed_file_map(&installed.content_proof.installed_changed_files)?;
+    validate_digest(&installed.content_proof.source_manifest_sha256)?;
+    validate_digest(&installed.content_proof.installed_manifest_sha256)?;
+    if !installed.content_equivalent
+        || installed.content_proof.source_manifest_sha256 != installed.manifest_sha256
+        || installed.content_proof.installed_manifest_sha256 != installed.manifest_sha256
+        || source != changed
+        || installed_files != changed
+    {
+        bail!(
+            "receipt installed content equivalence proof must match source and installed metadata"
+        );
+    }
+    Ok(())
+}
+
+fn changed_file_map(files: &[ChangedFile]) -> Result<BTreeMap<&str, &str>> {
+    let mut mapped = BTreeMap::new();
+    for changed in files {
+        if changed.path.is_empty()
+            || !mapped
+                .insert(changed.path.as_str(), changed.sha256.as_str())
+                .is_none()
+        {
+            bail!("receipt changed-file paths must be non-empty and unique");
         }
         validate_digest(&changed.sha256)?;
     }
-    Ok(())
+    Ok(mapped)
 }
 
 fn validate_digest(value: &str) -> Result<()> {

@@ -40,3 +40,32 @@ fn parent_cycle_countermand_keeps_negated_commented_and_sentence_boundary_contro
     }
     Ok(())
 }
+
+#[test]
+fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_variants() -> TestResult {
+    let valid = "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion when an existing blocker is removed.";
+    let invalid = [
+        "A parent reviewer cycle MAY repeat even if no acceptance criterion is newly satisfied and no blocker is removed.",
+        "A parent reviewer cycle MAY repeat without acceptance criterion or blocker removal and MUST NOT retain stale review bodies.",
+    ];
+
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = budget_path(&plugin_root);
+    let original = fs::read_to_string(&path)?;
+    fs::write(&path, format!("{original}\n{valid}\n"))?;
+    assert!(
+        support::validator_instruction_policy(&plugin_root)?.status.success(),
+        "validator rejected alternate blocker progress"
+    );
+
+    for clause in invalid {
+        fs::write(&path, format!("{original}\n{clause}\n"))?;
+        assert!(
+            !support::validator_instruction_policy(&plugin_root)?
+                .status
+                .success(),
+            "validator accepted {clause:?}"
+        );
+    }
+    Ok(())
+}

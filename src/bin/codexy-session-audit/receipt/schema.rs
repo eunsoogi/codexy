@@ -37,7 +37,17 @@ pub(super) struct Installed {
     pub(super) cache_root_relative: String,
     pub(super) manifest_sha256: String,
     pub(super) changed_files: Vec<ChangedFile>,
-    pub(super) content_equivalent: Option<bool>,
+    pub(super) content_equivalent: bool,
+    pub(super) content_proof: ContentProof,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(super) struct ContentProof {
+    pub(super) source_manifest_sha256: String,
+    pub(super) installed_manifest_sha256: String,
+    pub(super) source_changed_files: Vec<ChangedFile>,
+    pub(super) installed_changed_files: Vec<ChangedFile>,
 }
 
 #[derive(Debug, Deserialize)]

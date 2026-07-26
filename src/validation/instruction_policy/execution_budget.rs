@@ -9,8 +9,8 @@ const REQUIRED_CLAUSES: &[&str] = &[
     "Every non-trivial parent-owned orchestration stage MUST declare finite implementation, repair, fanout, and reviewer-cycle limits before work begins.",
     "A parent-owned stage MUST NOT use more than three non-Sentinel specialists in total; the packaged Sentinel remains separate.",
     "A repeated parent helper or reviewer cycle MUST record either an explicit acceptance criterion newly satisfied or an existing blocker removed.",
-    "Unchanged wait output and full-state replay MUST consume the parent-stage budget and MUST NOT renew implementation, repair, fanout, or reviewer-cycle limits.",
-    "A bounded thread-read fallback that returns oversized preview or history output MUST consume the current parent-stage budget, MUST record only bounded size and token metadata, and MUST NOT renew the stage.",
+    "Unchanged wait output and full-state replay MUST consume the parent-stage budget. They MUST NOT renew implementation, repair, fanout, or reviewer-cycle limits.",
+    "A bounded thread-read fallback that returns oversized preview or history output MUST consume the current parent-stage budget and MUST record only bounded size and token metadata. It MUST NOT renew the stage.",
     "Parent-stage budget enforcement MUST preserve external-wait heartbeat semantics and the packaged Sentinel review gate.",
     "File, diff, test, or fingerprint churn without reducing remaining acceptance work MUST NOT renew or reset the budget.",
     "A renewal MUST be an explicit parent-owned new finite budget with recorded acceptance progress or blocker removal.",
@@ -50,11 +50,11 @@ fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
     };
     policy_clauses(&policy_text).into_iter().any(|clause| {
         let words = words(clause);
-        !is_negated(&words)
-            && (permits_budget_renewal(&words)
-                || permits_blocked_goal(&words)
-                || permits_wait_progress(&words)
-                || permits_parent_cycle_without_progress(&words))
+        permits_parent_cycle_without_progress(&words)
+            || (!is_negated(&words)
+                && (permits_budget_renewal(&words)
+                    || permits_blocked_goal(&words)
+                    || permits_wait_progress(&words)))
     })
 }
 
@@ -149,17 +149,54 @@ fn permits_wait_progress(words: &[String]) -> bool {
 }
 
 fn permits_parent_cycle_without_progress(words: &[String]) -> bool {
+    let repeat = words
+        .iter()
+        .position(|word| matches!(word.as_str(), "repeat" | "repeated"));
+    let Some(repeat) = repeat else {
+        return false;
+    };
+    let tail = &words[repeat + 1..];
     contains(words, "parent")
         && (contains(words, "helper") || contains(words, "reviewer"))
         && contains(words, "cycle")
-        && words
-            .iter()
-            .any(|word| matches!(word.as_str(), "repeat" | "repeated"))
-        && contains(words, "without")
-        && (contains(words, "progress")
-            || (contains(words, "acceptance") && contains(words, "criterion"))
-            || contains(words, "blocker"))
-        && permits(words)
+        && permits_repeat(words, repeat)
+        && denies_all_progress(tail)
+}
+
+fn permits_repeat(words: &[String], repeat: usize) -> bool {
+    words[..repeat].iter().enumerate().any(|(index, word)| {
+        matches!(word.as_str(), "may" | "can" | "must")
+            && words.get(index + 1).is_none_or(|next| next != "not")
+    })
+}
+
+fn denies_all_progress(tail: &[String]) -> bool {
+    let names_progress = contains(tail, "progress");
+    let names_criterion = contains(tail, "acceptance") && contains(tail, "criterion");
+    let names_blocker = contains(tail, "blocker");
+    let denies_without =
+        contains(tail, "without") && (names_progress || names_criterion) && names_blocker;
+    let denies_even_if = contains(tail, "even")
+        && contains(tail, "if")
+        && contains(tail, "no")
+        && (names_progress || names_criterion)
+        && names_blocker;
+    (denies_without || denies_even_if) && !has_alternate_progress(tail)
+}
+
+fn has_alternate_progress(tail: &[String]) -> bool {
+    let conditional_progress = tail
+        .iter()
+        .position(|word| matches!(word.as_str(), "when" | "if" | "with"))
+        .is_some_and(|start| {
+            let condition = &tail[start + 1..];
+            (contains(condition, "acceptance") && contains(condition, "criterion"))
+                || (contains(condition, "blocker")
+                    && condition
+                        .iter()
+                        .any(|word| matches!(word.as_str(), "removed" | "removal")))
+        });
+    conditional_progress && !contains(tail, "no")
 }
 
 fn permits(words: &[String]) -> bool {

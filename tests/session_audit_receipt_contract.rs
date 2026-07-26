@@ -14,6 +14,8 @@ fn complete_template_receipt_requires_every_promised_evidence_field() -> TestRes
     for pointer in [
         "/lane/issue",
         "/installed/manifestSha256",
+        "/installed/contentEquivalent",
+        "/installed/contentProof",
         "/audit/duplicateEventsSkipped",
         "/metrics",
         "/goalPlanReceipts",
@@ -24,6 +26,40 @@ fn complete_template_receipt_requires_every_promised_evidence_field() -> TestRes
         let output = validate(&incomplete)?;
         assert!(!output.status.success(), "{pointer} unexpectedly passed");
     }
+    Ok(())
+}
+
+#[test]
+fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
+    let mut receipt: Value = serde_json::from_str(include_str!(
+        "fixtures/session-audit/controlled-receipt.json"
+    ))?;
+    let proof: Value = serde_json::from_str(include_str!(
+        "fixtures/session-audit/sanitized-installed-content-equivalence.json"
+    ))?;
+
+    assert_eq!(receipt["installed"]["contentEquivalent"], true);
+    assert_eq!(proof["contentEquivalent"], true);
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    assert_eq!(
+        proof["contentProof"]["sourceManifestSha256"],
+        sha256(root.join("plugins/codexy/.codex-plugin/plugin.json"))?
+    );
+    assert_eq!(
+        proof["contentProof"]["sourceChangedFiles"][0]["sha256"],
+        sha256(root.join(
+            "plugins/codexy/skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json"
+        ))?
+    );
+    receipt["installed"]["contentProof"] = proof["contentProof"].clone();
+    let output = validate(&receipt)?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+
+    receipt["installed"]["contentProof"]["installedManifestSha256"] =
+        Value::String("d".repeat(64));
+    let output = validate(&receipt)?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("content equivalence"));
     Ok(())
 }
 
@@ -74,4 +110,25 @@ fn validate(receipt: &Value) -> TestResult<std::process::Output> {
 
 fn stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+fn sha256(path: std::path::PathBuf) -> TestResult<String> {
+    let output = Command::new("shasum")
+        .arg("-a")
+        .arg("256")
+        .arg(&path)
+        .output()?;
+    let output = if output.status.success() {
+        output
+    } else {
+        Command::new("sha256sum").arg(path).output()?
+    };
+    if !output.status.success() {
+        return Err("a SHA-256 command must calculate sanitized source digests".into());
+    }
+    String::from_utf8(output.stdout)?
+        .split_ascii_whitespace()
+        .next()
+        .map(str::to_owned)
+        .ok_or_else(|| "SHA-256 output must include a digest".into())
 }

@@ -14,9 +14,30 @@
     "pluginId": "codexy@codexy",
     "version": "1.2.2",
     "cacheRootRelative": "codexy/1.2.2",
-    "manifestSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "changedFiles": [],
-    "contentEquivalent": null
+    "manifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+    "changedFiles": [
+      {
+        "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+        "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+      }
+    ],
+    "contentEquivalent": true,
+    "contentProof": {
+      "sourceManifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+      "installedManifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+      "sourceChangedFiles": [
+        {
+          "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+          "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+        }
+      ],
+      "installedChangedFiles": [
+        {
+          "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+          "sha256": "20de2bb40215be0f8a9082a4c29a31e0f0d81f0ce8914c0dc129f7c4bc139c01"
+        }
+      ]
+    }
   },
   "audit": {
     "inputSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",

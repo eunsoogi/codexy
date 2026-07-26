@@ -16,7 +16,13 @@
     "cacheRootRelative": "<relative-installed-plugin-root>",
     "manifestSha256": "<sha256>",
     "changedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }],
-    "contentEquivalent": null
+    "contentEquivalent": true,
+    "contentProof": {
+      "sourceManifestSha256": "<sha256>",
+      "installedManifestSha256": "<sha256>",
+      "sourceChangedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }],
+      "installedChangedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }]
+    }
   },
   "audit": {
     "inputSha256": "<sha256-of-sanitized-comparison-manifest>",
