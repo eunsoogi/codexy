@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .executable_identity import created_alias
+from .executable_identity import alias_transition
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -160,12 +160,17 @@ def clear(context: ExecutionContext) -> ExecutionContext:
 
 def after_external_command(
     executable: str, arguments: list[str], context: ExecutionContext,
-) -> ExecutionContext:
-    """Make Git state opaque after a supported external in-place config write."""
-    alias = created_alias(executable, arguments, context.cwd, context.executable_aliases)
-    if alias is not None:
+) -> ExecutionContext | None:
+    """Apply bounded external filesystem and Git-config state transitions."""
+    transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases)
+    if executable in {"ln", "cp"} and transition is None:
+        return None
+    if transition is not None and transition.known:
         aliases = dict(context.executable_aliases)
-        aliases[alias[0]] = alias[1]
+        if transition.identity is None:
+            aliases.pop(transition.destination, None)
+        else:
+            aliases[transition.destination] = transition.identity
         context = replace(context, executable_aliases=tuple(aliases.items()))
     if executable != "sed" or not any(
         argument == "-i"

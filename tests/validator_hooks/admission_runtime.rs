@@ -118,14 +118,22 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
     for command in [
         "ln -sf /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
         "cp /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -sf /usr/bin/git safe && ./safe push --force origin topic",
+        "cp /usr/bin/git safe && ./safe push --force origin topic",
+        "cp -p /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -sfn /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
         "ln -sf '/usr/bin/git' '/tmp/safe' && '/tmp/safe' push --force origin topic",
         "ln -sf \"$UNKNOWN_RUNTIME_VALUE\" /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -T /usr/bin/git safe && ./safe push --force origin topic",
+        "cp -r /usr/bin/git safe && ./safe push --force origin topic",
     ] {
         assert_case(&root, &owned, command, true, &[])?;
     }
     for command in [
         "ln -sf /usr/bin/printf /tmp/safe && /tmp/safe '%s\\n' benign",
         "cp /usr/bin/printf /tmp/safe && /tmp/safe '%s\\n' benign",
+        "ln -sf /usr/bin/printf safe && ./safe push --force origin topic",
+        "ln -sf /usr/bin/git safe && ln -sf /usr/bin/printf safe && ./safe push --force origin topic",
     ] {
         assert_case(&root, &owned, command, false, &[])?;
     }

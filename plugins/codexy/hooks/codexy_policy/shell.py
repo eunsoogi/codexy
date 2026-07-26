@@ -134,9 +134,10 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         return arguments is None or gh_forbidden(arguments, invocation.context.cwd, invocation.context.cwd_owned, gh_owned), context
     if invocation.executable == "rm":
         return invocation.context.cwd_owned is not False and rm_forbidden(invocation.arguments), context
-    return False, after_external_command(
+    next_context = after_external_command(
         invocation.executable, invocation.arguments, context,
     )
+    return (True, context) if next_context is None else (False, next_context)
 
 
 def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str, str] | None]:
