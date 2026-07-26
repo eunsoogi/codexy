@@ -105,6 +105,11 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let deep_chain = (0..=32)
+        .map(|index| format!("ln -s {} link{index}", if index == 32 { "/usr/bin/git".to_owned() } else { format!("link{}", index + 1) }))
+        .chain(std::iter::once("link0 push --force origin topic".to_owned()))
+        .collect::<Vec<_>>()
+        .join(" && ");
     for event in ["PreToolUse", "PermissionRequest"] {
         for command in [
             "ln -s /usr/bin/git left && ln -s /usr/bin/git right && ln -sfn /usr/bin/printf left && ./right push --force origin topic",
@@ -112,6 +117,10 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
             "ln -s /usr/bin/git left && ln -s left right && ln -sfn right left && ./left push --force origin topic",
             "ln -s \"$UNKNOWN_RUNTIME_VALUE\" safe && ./safe push --force origin topic",
             "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final || git push --force origin topic",
+            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -sfn /usr/bin/printf parent && mkdir -p grandchild/final || git push --force origin topic",
+            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && ln -sfn /usr/bin/printf parent && mkdir -p greatgrandchild/final || git push --force origin topic",
+            "ln -s cycle-b cycle-a && ln -s cycle-c cycle-b && ln -s cycle-a cycle-c && mkdir -p cycle-a/final || git push --force origin topic",
+            &deep_chain,
         ] {
             assert_event_case(&root, event, &owned, command, true, &[])?;
         }
@@ -120,6 +129,8 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
             "ln -s /usr/bin/printf safe && ./safe '%s\\n' benign",
             "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && mkdir -p child/final && printf benign",
             "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final && printf benign",
+            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && mkdir -p grandchild/final && printf benign",
+            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && mkdir -p greatgrandchild/final && printf benign",
             "ln -s /usr/bin/git left && ln -s /usr/bin/git right && cp -fP /usr/bin/printf left && ./right push --force origin topic",
             "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/printf link && ./target '%s\\n' benign",
         ] {

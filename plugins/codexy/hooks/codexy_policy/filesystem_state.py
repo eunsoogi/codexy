@@ -72,24 +72,32 @@ def state(value: str, paths: tuple[tuple[str, PathState], ...]) -> PathState:
 def replace_path_state(
     paths: tuple[tuple[str, PathState], ...], destination: str, replacement: PathState,
 ) -> tuple[tuple[str, PathState], ...]:
-    """Recompute dependent links and invalidate descendants after replacement."""
+    """Propagate replacement state through dependent links to a fixed point."""
     indexed = dict(paths)
     indexed[destination] = replacement
-    for path, cached in tuple(indexed.items()):
-        if path == destination:
-            continue
-        if _descends_from(path, destination):
-            indexed[path] = OPAQUE
-        elif _descends_from(cached.target, destination):
-            target = _follow_modeled_symlink(cached.target or "", indexed)
-            if target is None:
-                indexed[path] = OPAQUE
-            else:
-                current = state(target, tuple(indexed.items()))
-                indexed[path] = OPAQUE if current.kind == "absent" else PathState(
-                    current.kind, current.identity, cached.symlink, cached.target,
-                )
+    pending = [destination]
+    while pending:
+        ancestor = pending.pop()
+        for path, cached in tuple(indexed.items()):
+            if path == ancestor or not (_descends_from(path, ancestor) or _descends_from(cached.target, ancestor)):
+                continue
+            updated = _dependent_state(path, cached, ancestor, indexed)
+            if indexed[path] != updated:
+                indexed[path] = updated
+                pending.append(path)
     return tuple(indexed.items())
+
+
+def _dependent_state(path: str, cached: PathState, ancestor: str, paths: dict[str, PathState]) -> PathState:
+    if _descends_from(path, ancestor):
+        return OPAQUE
+    target = _follow_modeled_symlink(cached.target or "", paths)
+    if target is None:
+        return OPAQUE
+    current = state(target, tuple(paths.items()))
+    return OPAQUE if current.kind == "absent" else PathState(
+        current.kind, current.identity, cached.symlink, cached.target,
+    )
 
 
 def _descends_from(value: str | None, ancestor: str) -> bool:
