@@ -104,7 +104,6 @@ use std::path::Path;
 
 use anyhow::Result;
 
-pub use hooks::policy_inventory_discovery_json as hook_policy_inventory_discovery;
 pub use mode_dispatch::{errors, run};
 pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
 pub use review_response_cluster::diagnostics as review_response_cluster_diagnostics;
