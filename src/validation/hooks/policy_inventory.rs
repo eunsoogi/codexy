@@ -72,7 +72,7 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
     let discovered = super::policy_inventory_discovery::discover(plugin_root)?;
     if inventory.rules.len() != discovered.len() {
         bail!(
-            "{} has an unreviewed, moved, or changed normative rule: inventory={}, discovered={}",
+            "{} has uncovered normative rules: inventory={}, discovered={}",
             display_relative(&path),
             inventory.rules.len(),
             discovered.len()

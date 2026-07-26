@@ -229,5 +229,11 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
             ));
         }
     }
+    if !errors.is_empty() {
+        errors.push(format!(
+            "{} has an unreviewed, moved, or changed normative rule",
+            display_relative(&path)
+        ));
+    }
     errors
 }
