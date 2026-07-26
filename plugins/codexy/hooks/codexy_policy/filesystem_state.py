@@ -12,6 +12,7 @@ from pathlib import Path
 class PathState:
     kind: str
     identity: str | None = None
+    symlink: bool = False
 
 
 @dataclass(frozen=True)
@@ -73,9 +74,10 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
     indexed = dict(paths)
     cursor = os.path.sep
     created = []
+    traversed_modeled_symlink = False
     for index, segment in enumerate(segments):
         if segment == "..":
-            if _symlink_ambiguous(cursor, indexed):
+            if traversed_modeled_symlink or _symlink_ambiguous(cursor, indexed):
                 return MkdirOutcome(AMBIGUOUS)
             if state(cursor, tuple(indexed.items())).kind != "directory":
                 return MkdirOutcome(FAILURE)
@@ -83,6 +85,9 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
             continue
         cursor = os.path.join(cursor, segment)
         current = state(cursor, tuple(indexed.items()))
+        traversed_modeled_symlink = traversed_modeled_symlink or (
+            cursor in indexed and current.symlink
+        )
         if current.kind == "absent":
             if not parents and index != len(segments) - 1:
                 return MkdirOutcome(FAILURE)

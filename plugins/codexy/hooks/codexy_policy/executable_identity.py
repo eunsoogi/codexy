@@ -66,7 +66,8 @@ def alias_transition(
     destination = _final_destination(operands, cwd, aliases)
     if destination is None:
         return None
-    return AliasTransition(destination, source, known, _effect(operands, destination, aliases))
+    result = PathState(source.kind, source.identity, operands.symbolic)
+    return AliasTransition(destination, result, known, _effect(operands, destination, aliases))
 
 
 def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | None:

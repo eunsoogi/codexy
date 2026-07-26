@@ -138,10 +138,14 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
     let nested_parent = workspace.path().join("nested").join("child");
     let regular = owned.join("README.md");
     let traversal = owned.join("traversal");
+    let external = workspace.path().join("external");
+    let modeled_link = owned.join("modeled-link");
     let gh = executable("gh")?;
     let path = format!("PATH={}:{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", owned.display(), fallback.display());
     std::fs::create_dir(&directory)?;
     std::fs::create_dir(&fallback)?;
+    std::fs::create_dir(&external)?;
+    std::fs::create_dir(external.join("target"))?;
     std::fs::write(&regular, "not executable")?;
     symlink(&directory, &directory_link)?;
     for command in [
@@ -175,6 +179,7 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("mkdir -p {0}/../x/../y && ln -sf {1} {0}/../x/safe && {0}/../x/safe pr merge 453 --merge", directory_link.display(), gh.display()),
         &format!("mkdir -T {0}/unknown && ln -sf {1} {0}/unknown/safe && {0}/unknown/safe pr merge 453 --merge", traversal.display(), gh.display()),
         &format!("mkdir -p {0}/nested//./child/../sibling && cp {1} {0}/nested/child/safe && {0}/nested/child/safe pr merge 453 --merge", traversal.display(), gh.display()),
+        &format!("ln -s {0}/target {1} && mkdir -p {1}/../x/../y && ln -sf {2} {1}/../x/safe && {0}/x/safe pr merge 453 --merge", external.display(), modeled_link.display(), gh.display()),
     ] {
         assert_case(&root, &owned, command, true, &[])?;
     }
@@ -193,6 +198,7 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("mkdir {} && printf safe", created_parent.display()),
         &format!("mkdir {} && git push --force origin topic", regular.display()),
         &format!("mkdir -p {}/benign//./nested/../final && printf safe", traversal.display()),
+        &format!("ln -s {0}/target {1} && printf safe", external.display(), modeled_link.display()),
     ] {
         assert_case(&root, &owned, command, false, &[])?;
     }
