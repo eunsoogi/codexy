@@ -1,0 +1,35 @@
+{
+  "contentEquivalent": true,
+  "contentProof": {
+    "sourceManifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+    "installedManifestSha256": "d207a0337304403254c5979258147c08d68212763b0bc27db74223740804f41b",
+    "sourceChangedFiles": [
+      {
+        "path": "skills/codex-orchestration/references/execution-budget.md",
+        "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+      },
+      {
+        "path": "skills/token-efficient-orchestration/SKILL.md",
+        "sha256": "db70e7ebaba485f84d8eb28ec29e5f0e0a6da39827b3c9bf90c30d8b713f3d25"
+      },
+      {
+        "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+      }
+    ],
+    "installedChangedFiles": [
+      {
+        "path": "skills/codex-orchestration/references/execution-budget.md",
+        "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+      },
+      {
+        "path": "skills/token-efficient-orchestration/SKILL.md",
+        "sha256": "db70e7ebaba485f84d8eb28ec29e5f0e0a6da39827b3c9bf90c30d8b713f3d25"
+      },
+      {
+        "path": "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+      }
+    ]
+  }
+}
