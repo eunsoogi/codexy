@@ -1,5 +1,7 @@
 # Natural Korean User Replies
 
+MUST also follow [Plain-Language User Replies](plain-language-user-replies.md)
+for the shared English and Korean boundary around unexplained workflow terms.
 MUST use this contract when a Codexy skill produces a Korean user-facing update,
 answer, blocker, or completion summary. MUST keep workflow control and proof exact
 in their own evidence surfaces while making the main reply useful to a general user.
