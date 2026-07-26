@@ -2,8 +2,10 @@ use std::path::Path;
 
 use super::clauses::require_all;
 use contrast::clauses as contrast_clauses;
+use parent_progress::denies_all;
 
 mod contrast;
+mod parent_progress;
 
 const REQUIRED_CLAUSES: &[&str] = &[
     "Every non-trivial child lane MUST declare a finite execution budget before edits begin.",
@@ -52,8 +54,7 @@ fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
         return false;
     };
     policy_clauses(&policy_text).into_iter().any(|clause| {
-        let parent_words = words(clause);
-        permits_parent_cycle_without_progress(&parent_words)
+        permits_parent_cycle_without_progress(clause)
             || contrast_clauses(clause)
                 .into_iter()
                 .map(|contrast| words(contrast))
@@ -131,19 +132,19 @@ fn permits_wait_progress(words: &[String]) -> bool {
         && permits(words)
 }
 
-fn permits_parent_cycle_without_progress(words: &[String]) -> bool {
+fn permits_parent_cycle_without_progress(clause: &str) -> bool {
+    let words = words(clause);
     let repeat = words
         .iter()
         .position(|word| matches!(word.as_str(), "repeat" | "repeated"));
     let Some(repeat) = repeat else {
         return false;
     };
-    let tail = &words[repeat + 1..];
-    contains(words, "parent")
-        && (contains(words, "helper") || contains(words, "reviewer"))
-        && contains(words, "cycle")
-        && permits_repeat(words, repeat)
-        && denies_all_progress(tail)
+    contains(&words, "parent")
+        && (contains(&words, "helper") || contains(&words, "reviewer"))
+        && contains(&words, "cycle")
+        && permits_repeat(&words, repeat)
+        && denies_all(clause)
 }
 
 fn permits_repeat(words: &[String], repeat: usize) -> bool {
@@ -151,58 +152,6 @@ fn permits_repeat(words: &[String], repeat: usize) -> bool {
         matches!(word.as_str(), "may" | "can" | "must")
             && words.get(index + 1).is_none_or(|next| next != "not")
     })
-}
-
-fn denies_all_progress(tail: &[String]) -> bool {
-    let criterion = [state(tail, "criterion"), state(tail, "progress")]
-        .into_iter()
-        .max()
-        .unwrap_or(Progress::Absent);
-    criterion == Progress::Denied && state(tail, "blocker") == Progress::Denied
-}
-
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
-enum Progress {
-    Absent,
-    Denied,
-    Established,
-}
-
-fn state(tail: &[String], subject: &str) -> Progress {
-    let Some(index) = tail.iter().position(|word| word == subject) else {
-        return Progress::Absent;
-    };
-    let boundary = tail
-        .iter()
-        .position(|word| matches!(word.as_str(), "when" | "if" | "with"))
-        .unwrap_or(tail.len());
-    let before_subject = &tail[..index];
-    let locally_denied = before_subject
-        .iter()
-        .rev()
-        .take(4)
-        .any(|word| matches!(word.as_str(), "no" | "without"));
-    let continued_denial = before_subject.iter().any(|word| word == "nor")
-        && before_subject
-            .iter()
-            .any(|word| matches!(word.as_str(), "no" | "without"));
-    if locally_denied
-        || continued_denial
-        || (tail.first().is_some_and(|word| word == "without") && index < boundary)
-    {
-        return Progress::Denied;
-    }
-    let positive = match subject {
-        "blocker" => ["removed", "removal"],
-        "criterion" => ["satisfied", "newly"],
-        _ => ["progress", "progress"],
-    };
-    tail[index..]
-        .iter()
-        .take(4)
-        .any(|word| word == positive[0] || word == positive[1])
-        .then_some(Progress::Established)
-        .unwrap_or(Progress::Absent)
 }
 
 fn permits(words: &[String]) -> bool {

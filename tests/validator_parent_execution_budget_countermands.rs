@@ -48,6 +48,7 @@ fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_vari
         "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion when an existing blocker is removed.",
         "A parent reviewer cycle MAY repeat if an existing blocker is removed, even if no acceptance criterion is newly satisfied.",
         "A parent reviewer cycle MAY repeat if an existing blocker is removed, but no acceptance criterion is newly satisfied.",
+        "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion but an existing blocker is removed.",
     ];
     let invalid = [
         "A parent reviewer cycle MAY repeat even if no acceptance criterion is newly satisfied and no blocker is removed.",
@@ -55,6 +56,7 @@ fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_vari
         "A parent reviewer cycle MAY repeat with no newly satisfied acceptance criterion and no blocker removed.",
         "A parent reviewer cycle MAY repeat if no acceptance criterion is newly satisfied, nor is a blocker removed.",
         "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion, but no blocker is removed.",
+        "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion but no blocker is removed.",
     ];
 
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;

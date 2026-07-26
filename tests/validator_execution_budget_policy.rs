@@ -43,6 +43,9 @@ const MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget, BuT repeated wait refreshes MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget, and file churn MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget, while file churn MAY renew the budget.",
+    "Artifact churn MUST NOT renew the budget but repeated wait refreshes MAY renew the budget.",
+    "Artifact churn MUST NOT renew the budget and file churn MAY renew the budget.",
+    "Artifact churn MUST NOT renew the budget while file churn MAY renew the budget.",
 ];
 const ADJACENT_MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget. File churn MAY renew the budget.",
@@ -113,7 +116,7 @@ fn validator_allows_negated_countermand_examples() -> TestResult {
     fs::write(
         &path,
         format!(
-            "{original}\nThe statement \"Artifact churn MAY renew or reset the budget.\" MUST NOT be permitted.\nArtifact churn MUST NOT renew the budget, but repeated wait refreshes MUST NOT renew the budget.\n"
+            "{original}\nThe statement \"Artifact churn MAY renew or reset the budget.\" MUST NOT be permitted.\nThe quoted text \"Artifact churn MUST NOT renew the budget but repeated wait refreshes MAY renew the budget.\" is illustrative.\nArtifact churn MUST NOT renew the budget buttermilk wait refreshes MAY renew the budget.\nArtifact churn MUST NOT renew the budget, but repeated wait refreshes MUST NOT renew the budget.\nArtifact churn MUST NOT renew the budget but repeated wait refreshes MUST NOT renew the budget.\n"
         ),
     )?;
 
