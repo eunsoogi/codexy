@@ -1,11 +1,24 @@
 use std::path::Path;
 
 use super::clauses::require_all;
+use contrast::clauses as contrast_clauses;
+use parent_progress::denies_all;
+use quoted::unquoted_text;
+
+mod contrast;
+mod parent_progress;
+mod quoted;
 
 const REQUIRED_CLAUSES: &[&str] = &[
     "Every non-trivial child lane MUST declare a finite execution budget before edits begin.",
     "The budget MUST name finite implementation, repair, and reviewer cycle limits.",
     "Continuation MUST consume budget and record either an explicit acceptance criterion newly satisfied or an existing blocker removed.",
+    "Every non-trivial parent-owned orchestration stage MUST declare finite implementation, repair, fanout, and reviewer-cycle limits before work begins.",
+    "A parent-owned stage MUST NOT use more than three non-Sentinel specialists in total; the packaged Sentinel remains separate.",
+    "A repeated parent helper or reviewer cycle MUST record either an explicit acceptance criterion newly satisfied or an existing blocker removed.",
+    "Unchanged wait output and full-state replay MUST consume the parent-stage budget. They MUST NOT renew implementation, repair, fanout, or reviewer-cycle limits.",
+    "A bounded thread-read fallback that returns oversized preview or history output MUST consume the current parent-stage budget and MUST record only bounded size and token metadata. It MUST NOT renew the stage.",
+    "Parent-stage budget enforcement MUST preserve external-wait heartbeat semantics and the packaged Sentinel review gate.",
     "File, diff, test, or fingerprint churn without reducing remaining acceptance work MUST NOT renew or reset the budget.",
     "A renewal MUST be an explicit parent-owned new finite budget with recorded acceptance progress or blocker removal.",
     "After all acceptance criteria and required proof are complete, the lane MUST terminate implementation; adjacent findings become non-blocking follow-up candidates.",
@@ -43,12 +56,60 @@ fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
         return false;
     };
     policy_clauses(&policy_text).into_iter().any(|clause| {
-        let words = words(clause);
-        !is_negated(&words)
-            && (permits_budget_renewal(&words)
-                || permits_blocked_goal(&words)
-                || permits_wait_progress(&words))
+        let unquoted = unquoted_text(clause);
+        permits_parent_cycle_without_progress(&unquoted)
+            || permits_nonparent_countermand(contrast_clauses(&unquoted))
     })
+}
+
+fn permits_nonparent_countermand(clauses: Vec<&str>) -> bool {
+    let mut prior_subject = None;
+    for clause in clauses {
+        let words = words(clause);
+        let effective = inherited_subject_words(&words, prior_subject.as_deref());
+        if !is_negated(&effective)
+            && (permits_budget_renewal(&effective)
+                || permits_blocked_goal(&effective)
+                || permits_wait_progress(&effective))
+        {
+            return true;
+        }
+        prior_subject = renewal_subject(&words);
+    }
+    false
+}
+
+fn inherited_subject_words(words: &[String], prior_subject: Option<&[String]>) -> Vec<String> {
+    let Some(prior_subject) = prior_subject else {
+        return words.to_vec();
+    };
+    if words
+        .first()
+        .is_some_and(|word| matches!(word.as_str(), "may" | "can" | "must"))
+    {
+        prior_subject
+            .iter()
+            .cloned()
+            .chain(words.iter().cloned())
+            .collect()
+    } else {
+        words.to_vec()
+    }
+}
+
+fn renewal_subject(words: &[String]) -> Option<Vec<String>> {
+    ["artifact", "file", "diff", "test", "fingerprint"]
+        .iter()
+        .find(|kind| has_pair(words, kind, "churn"))
+        .map(|kind| vec![(*kind).to_owned(), "churn".to_owned()])
+        .or_else(|| {
+            (has_pair(words, "wait", "refresh") || has_pair(words, "wait", "refreshes"))
+                .then(|| vec!["wait".to_owned(), "refresh".to_owned()])
+        })
+        .or_else(|| {
+            (contains(words, "child") && contains(words, "self"))
+                .then(|| vec!["child".to_owned(), "self".to_owned()])
+        })
 }
 
 fn policy_text(line: &str, in_html_comment: &mut bool) -> Option<String> {
@@ -79,34 +140,7 @@ fn policy_text(line: &str, in_html_comment: &mut bool) -> Option<String> {
 fn policy_clauses(line: &str) -> Vec<&str> {
     line.split(';')
         .flat_map(|clause| clause.split(". "))
-        .flat_map(contrast_clauses)
         .collect()
-}
-
-fn contrast_clauses(clause: &str) -> Vec<&str> {
-    let mut clauses = Vec::new();
-    let mut start = 0;
-    for (index, character) in clause.char_indices() {
-        if character == ',' {
-            if let Some(next_start) = contrast_tail_start(&clause[index + 1..]) {
-                clauses.push(&clause[start..index]);
-                start = index + 1 + next_start;
-            }
-        }
-    }
-    clauses.push(&clause[start..]);
-    clauses
-}
-
-fn contrast_tail_start(tail: &str) -> Option<usize> {
-    let trimmed = tail.trim_start();
-    ["but", "and", "while"].iter().find_map(|conjunction| {
-        let prefix = trimmed.get(..conjunction.len())?;
-        let after_conjunction = trimmed.get(conjunction.len()..)?;
-        (prefix.eq_ignore_ascii_case(conjunction)
-            && after_conjunction.starts_with(|character: char| character.is_ascii_whitespace()))
-        .then(|| tail.len() - after_conjunction.trim_start().len())
-    })
 }
 
 fn permits_budget_renewal(words: &[String]) -> bool {
@@ -139,6 +173,34 @@ fn permits_wait_progress(words: &[String]) -> bool {
             .any(|word| matches!(word.as_str(), "qualify" | "qualifies"))
         && contains(words, "progress")
         && permits(words)
+}
+
+fn permits_parent_cycle_without_progress(clause: &str) -> bool {
+    let words = words(clause);
+    let continuation = words.iter().position(|word| {
+        matches!(
+            word.as_str(),
+            "repeat" | "repeated" | "continue" | "continues"
+        )
+    });
+    let Some(continuation) = continuation else {
+        return false;
+    };
+    contains(&words, "parent")
+        && (contains(&words, "helper") || contains(&words, "reviewer"))
+        && contains(&words, "cycle")
+        && permits_continuation(&words, continuation)
+        && denies_all(clause)
+}
+
+fn permits_continuation(words: &[String], continuation: usize) -> bool {
+    words[..continuation]
+        .iter()
+        .enumerate()
+        .any(|(index, word)| {
+            matches!(word.as_str(), "may" | "can" | "must")
+                && words.get(index + 1).is_none_or(|next| next != "not")
+        })
 }
 
 fn permits(words: &[String]) -> bool {

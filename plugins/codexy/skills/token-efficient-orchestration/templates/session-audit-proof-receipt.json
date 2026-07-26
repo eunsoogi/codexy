@@ -13,19 +13,81 @@
   "installed": {
     "pluginId": "codexy@codexy",
     "version": "<manifest-version>",
-    "cacheRoot": "<installed-plugin-root>",
+    "cacheRootRelative": "<relative-installed-plugin-root>",
     "manifestSha256": "<sha256>",
     "changedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }],
-    "contentEquivalent": null
+    "contentEquivalent": true,
+    "contentProof": {
+      "sourceManifestSha256": "<sha256>",
+      "installedManifestSha256": "<sha256>",
+      "sourceChangedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }],
+      "installedChangedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }]
+    }
   },
   "audit": {
-    "inputSha256": "<sha256-of-private-metadata-input>",
-    "session": {
-      "sizeBytes": 0,
-      "latestCumulativeTokens": 0,
-      "recentTurnAverageTokens": 0,
-      "toolCalls": {},
-      "toolOutputBytes": {}
+    "inputSha256": "<sha256-of-sanitized-comparison-manifest>",
+    "observationalOnly": true,
+    "comparison": {
+      "ownerBoundary": {
+        "kind": "same-owner-tree",
+        "ownerThreadId": "<owner-thread-id>"
+      },
+      "windowPolicy": {
+        "kind": "equal-record-count",
+        "beforeRecords": 0,
+        "afterRecords": 0,
+        "comparable": null
+      },
+      "before": {
+        "sessionId": "<sanitized-before-session-id>",
+        "inputSha256": "<sha256-of-sanitized-before-input>",
+        "window": {
+          "recordsObserved": 0,
+          "turnEvents": 0
+        },
+        "latestCumulativeTokens": 0
+      },
+      "after": {
+        "sessionId": "<sanitized-after-session-id>",
+        "inputSha256": "<sha256-of-sanitized-after-input>",
+        "window": {
+          "recordsObserved": 0,
+          "turnEvents": 0
+        },
+        "latestCumulativeTokens": 0
+      }
+    },
+    "ownerTreeSessions": [
+      {
+        "sessionId": "<sanitized-session-id>",
+        "ownerRootThreadId": "<owner-thread-id>",
+        "inputSha256": "<sha256-of-sanitized-session-input>",
+        "recordsObserved": 0,
+        "turnEvents": 0,
+        "cumulativeTokens": 0,
+        "toolInputBytes": 0,
+        "toolOutputBytes": 0,
+        "execFamily": {
+          "calls": 0,
+          "inputBytes": 0,
+          "outputBytes": 0
+        },
+        "waitFamily": {
+          "calls": 0,
+          "inputBytes": 0,
+          "outputBytes": 0
+        }
+      }
+    ],
+    "ownerTreeTotals": {
+      "sessionCount": 0,
+      "recordsObserved": 0,
+      "turnEvents": 0,
+      "cumulativeTokens": 0,
+      "toolInputBytes": 0,
+      "toolOutputBytes": 0,
+      "execFamily": { "calls": 0, "inputBytes": 0, "outputBytes": 0 },
+      "waitFamily": { "calls": 0, "inputBytes": 0, "outputBytes": 0 }
     },
     "duplicateEventsSkipped": 0
   },
@@ -37,5 +99,11 @@
   },
   "goalPlanReceipts": ["<create_goal-or-update_plan-event-id>"],
   "helpers": [{ "id": "<agent-id>", "ownedSlice": "<read-only-or-disjoint-slice>" }],
-  "commandReceipts": [{ "command": "<bounded-command>", "exitCode": 0 }]
+  "commandReceipts": [
+    {
+      "commandId": "<safe-command-id>",
+      "argumentsRedacted": true,
+      "exitCode": 0
+    }
+  ]
 }

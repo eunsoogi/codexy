@@ -103,6 +103,18 @@ mod runtime_platform_detection;
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;
 
+#[path = "../session_audit_parent_bounds.rs"]
+mod session_audit_parent_bounds;
+
+#[path = "../session_audit_receipt.rs"]
+mod session_audit_receipt;
+
+#[path = "../session_audit_receipt_contract.rs"]
+mod session_audit_receipt_contract;
+
+#[path = "../session_audit_receipt_review_feedback.rs"]
+mod session_audit_receipt_review_feedback;
+
 #[path = "../structured_contract.rs"]
 mod structured_contract;
 
