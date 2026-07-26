@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from .filesystem_state import PathState, location as filesystem_location, state as path_state
 from .shell_context import name
 
 MAX_EXECUTABLE_BYTES = 64 * 1024 * 1024
@@ -19,7 +20,7 @@ SENSITIVE_EXECUTABLES = frozenset({"git", "gh"})
 @dataclass(frozen=True)
 class AliasTransition:
     destination: str
-    identity: str | None
+    state: PathState
     known: bool
     applies: bool | None
 
@@ -34,17 +35,19 @@ class AliasOperands:
     executable: str
 
 
-def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str | None], ...] = (), path: str | None = None) -> str:
+def resolve(command: str, cwd: str, aliases: tuple[tuple[str, PathState], ...] = (), path: str | None = None) -> str:
     """Return a sensitive executable identity when one can be proven."""
     lexical = name(command)
     if lexical in SENSITIVE_EXECUTABLES:
         return lexical
     indexed = dict(aliases)
     for location in _command_locations(command, cwd, path):
-        if location in indexed:
-            return indexed[location] or lexical
+        if (modeled := indexed.get(location)) is not None:
+            if modeled.kind == "executable":
+                return modeled.identity or lexical
+            continue
         candidate = _path(location, cwd)
-        if candidate is not None and _executable(candidate):
+        if candidate is not None and path_state(str(candidate), ()).kind == "executable":
             return _identity(candidate) or lexical
     candidate = _path(command, cwd, path)
     if candidate is None:
@@ -53,18 +56,17 @@ def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str | None], ...] 
 
 
 def alias_transition(
-    executable: str, arguments: list[str], cwd: str, aliases: tuple[tuple[str, str | None], ...],
-    directories: tuple[str, ...] = (),
+    executable: str, arguments: list[str], cwd: str, aliases: tuple[tuple[str, PathState], ...],
 ) -> AliasTransition | None:
     """Parse one supported ``ln``/``cp`` transition, or reject ambiguity."""
     operands = _alias_operands(executable, arguments)
     if operands is None:
         return None
-    identity, known = _filesystem_identity(operands.source, cwd, aliases)
-    destination = _final_destination(operands, cwd, directories)
+    source, known = _filesystem_state(operands.source, cwd, aliases)
+    destination = _final_destination(operands, cwd, aliases)
     if destination is None:
         return None
-    return AliasTransition(destination, identity, known, _effect(operands, destination, aliases, directories))
+    return AliasTransition(destination, source, known, _effect(operands, destination, aliases))
 
 
 def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | None:
@@ -108,23 +110,23 @@ def _command_locations(command: str, cwd: str, path: str | None) -> tuple[str, .
 
 
 def _filesystem_location(value: str, cwd: str) -> str:
-    return os.path.abspath(os.path.normpath(os.path.join(cwd, value)))
+    return filesystem_location(value, cwd)
 
 
-def _final_destination(operands: AliasOperands, cwd: str, directories: tuple[str, ...]) -> str | None:
+def _final_destination(operands: AliasOperands, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> str | None:
     result = _filesystem_location(operands.destination, cwd)
-    if operands.no_dereference or not _directory_exists(result, directories):
+    if operands.no_dereference or path_state(result, aliases).kind != "directory":
         return result
     basename = Path(operands.source).name
     return str(Path(result) / basename) if basename not in {"", ".", ".."} else None
 
 
 def _effect(
-    operands: AliasOperands, destination: str, aliases: tuple[tuple[str, str | None], ...], directories: tuple[str, ...],
+    operands: AliasOperands, destination: str, aliases: tuple[tuple[str, PathState], ...],
 ) -> bool | None:
-    if not _directory_exists(str(Path(destination).parent), directories):
+    if path_state(str(Path(destination).parent), aliases).kind != "directory":
         return False
-    exists = destination in dict(aliases) or Path(destination).exists()
+    exists = path_state(destination, aliases).kind != "absent"
     if operands.executable == "cp":
         return True if operands.force or not exists else None
     if operands.symbolic:
@@ -132,17 +134,16 @@ def _effect(
     return False if exists else None
 
 
-def _filesystem_identity(
-    value: str, cwd: str, aliases: tuple[tuple[str, str | None], ...],
-) -> tuple[str | None, bool]:
+def _filesystem_state(value: str, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> tuple[PathState, bool]:
     location = _filesystem_location(value, cwd)
     indexed = dict(aliases)
     if location in indexed:
         return indexed[location], True
     candidate = _path(location, cwd)
     if candidate is None:
-        return None, False
-    return _identity(candidate), True
+        return PathState("absent"), False
+    real = path_state(str(candidate), ())
+    return PathState(real.kind, _identity(candidate) if real.kind == "executable" else None), True
 
 
 def _identity(candidate: Path) -> str | None:
@@ -151,28 +152,6 @@ def _identity(candidate: Path) -> str | None:
         if target is not None and _same_executable(candidate, Path(target)):
             return executable
     return None
-
-
-def directory_location(value: str, cwd: str) -> str:
-    """Normalize a modeled directory path for later filesystem effects."""
-    return _filesystem_location(value, cwd)
-
-
-def directory_exists(value: str, directories: tuple[str, ...]) -> bool:
-    """Return real or modeled directory existence without treating regular files as directories."""
-    return _directory_exists(value, directories)
-
-
-def _directory_exists(value: str, directories: tuple[str, ...]) -> bool:
-    return value in directories or Path(value).is_dir()
-
-
-def _executable(candidate: Path) -> bool:
-    try:
-        metadata = candidate.stat()
-        return stat.S_ISREG(metadata.st_mode) and bool(metadata.st_mode & 0o111)
-    except OSError:
-        return False
 
 
 def _path(command: str, cwd: str, path: str | None = None) -> Path | None:

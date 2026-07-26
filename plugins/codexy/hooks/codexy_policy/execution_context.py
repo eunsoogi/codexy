@@ -6,7 +6,8 @@ import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .executable_identity import alias_transition, directory_exists, directory_location
+from .executable_identity import alias_transition
+from .filesystem_state import PathState, mkdir
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -26,8 +27,7 @@ class ExecutionContext:
     opaque_environment: bool = False
     remote_urls: tuple[tuple[str, str, str], ...] = ()
     opaque_repository_state: bool = False
-    executable_aliases: tuple[tuple[str, str | None], ...] = ()
-    directories: tuple[str, ...] = ()
+    executable_aliases: tuple[tuple[str, PathState], ...] = ()
 @dataclass(frozen=True)
 class CommandEffect:
     success: ExecutionContext | None
@@ -140,13 +140,13 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
     """Apply bounded external filesystem and Git-config state transitions."""
     if executable == "mkdir":
         return _mkdir_effect(arguments, context)
-    transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases, context.directories)
+    transition = alias_transition(executable, arguments, context.cwd, context.executable_aliases)
     if executable in {"ln", "cp"} and (transition is None or not transition.known):
         return None
     if transition is not None:
         success = context
         aliases = dict(context.executable_aliases)
-        aliases[transition.destination] = transition.identity
+        aliases[transition.destination] = transition.state
         success = replace(context, executable_aliases=tuple(aliases.items()))
         if transition.applies is True:
             return CommandEffect(success)
@@ -176,23 +176,8 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
 
 
 def _mkdir_effect(arguments: list[str], context: ExecutionContext) -> CommandEffect | None:
-    parents = False
-    while arguments[:1] and arguments[0].startswith("-"):
-        option = arguments.pop(0)
-        if option == "--":
-            break
-        if option not in {"-p", "--parents"}:
-            return None
-        parents = True
-    if len(arguments) != 1 or not arguments[0]:
-        return None
-    destination = directory_location(arguments[0], context.cwd)
-    existing = directory_exists(destination, context.directories)
-    parent = str(Path(destination).parent)
-    if not parents and (existing or not directory_exists(parent, context.directories)):
-        return CommandEffect(None, context)
-    success = replace(context, directories=tuple(dict.fromkeys((*context.directories, destination))))
-    return CommandEffect(success, context) if parents else CommandEffect(success)
+    paths = mkdir(arguments, context.cwd, context.executable_aliases)
+    return CommandEffect(None, context) if paths is None else CommandEffect(replace(context, executable_aliases=paths))
 
 
 def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:

@@ -33,6 +33,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/body.py"),
     source!("codexy_policy/execution_context.py"),
     source!("codexy_policy/executable_identity.py"),
+    source!("codexy_policy/filesystem_state.py"),
     source!("codexy_policy/git_command.py"),
     source!("codexy_policy/git_options.py"),
     source!("codexy_policy/git_runtime_config.py"),
