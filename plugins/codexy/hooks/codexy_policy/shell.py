@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import shlex
+from pathlib import Path
 
 from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
@@ -95,6 +96,10 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         return False, CommandEffect(invocation.context)
     if invocation.executable == "false":
         return False, CommandEffect(None, context)
+    if invocation.executable == "true":
+        return False, CommandEffect(context)
+    if invocation.executable == "test":
+        return False, _test_effect(invocation.arguments, context)
     if invocation.executable in {"cd", "pushd", "popd"}:
         directory = changed_directory(
             [invocation.executable, *invocation.arguments], invocation.context.cwd
@@ -123,6 +128,15 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         invocation.executable, invocation.arguments, context,
     )
     return (True, CommandEffect(None)) if effect is None else (False, effect)
+
+
+def _test_effect(arguments: list[str], context: ExecutionContext) -> CommandEffect:
+    """Model only deterministic ``test -e`` outcomes; preserve both branches otherwise."""
+    if len(arguments) != 2 or arguments[0] != "-e":
+        return CommandEffect(context, context)
+    path = Path(arguments[1])
+    candidate = path if path.is_absolute() else Path(context.cwd) / path
+    return CommandEffect(context) if candidate.exists() else CommandEffect(None, context)
 
 
 def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, tuple[str, str, str] | None]:

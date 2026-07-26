@@ -26,7 +26,7 @@ class ExecutionContext:
     opaque_environment: bool = False
     remote_urls: tuple[tuple[str, str, str], ...] = ()
     opaque_repository_state: bool = False
-    executable_aliases: tuple[tuple[str, str], ...] = ()
+    executable_aliases: tuple[tuple[str, str | None], ...] = ()
 @dataclass(frozen=True)
 class CommandEffect:
     success: ExecutionContext | None
@@ -169,10 +169,7 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
     if transition is not None:
         success = context
         aliases = dict(context.executable_aliases)
-        if transition.identity is None:
-            aliases.pop(transition.destination, None)
-        else:
-            aliases[transition.destination] = transition.identity
+        aliases[transition.destination] = transition.identity
         success = replace(context, executable_aliases=tuple(aliases.items()))
         if transition.applies is True:
             return CommandEffect(success)
@@ -186,7 +183,7 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
         or argument.startswith("--in-place=")
         for argument in arguments
     ):
-        return CommandEffect(context)
+        return CommandEffect(context, context)
     git_dir = Path(context.git_dir) if context.git_dir is not None else Path(".git")
     config = git_dir / "config"
     if not config.is_absolute():
@@ -197,7 +194,8 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
         and (Path(argument) if Path(argument).is_absolute() else Path(context.cwd) / argument).resolve(strict=False) == target
         for argument in arguments
     )
-    return CommandEffect(replace(context, opaque_repository_state=True) if writes_config else context)
+    success = replace(context, opaque_repository_state=True) if writes_config else context
+    return CommandEffect(success, context)
 
 
 def expand_tokens(tokens: list[str], context: ExecutionContext) -> list[str] | None:

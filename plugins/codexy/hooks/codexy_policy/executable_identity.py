@@ -34,27 +34,26 @@ class AliasOperands:
     executable: str
 
 
-def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str], ...] = (), path: str | None = None) -> str:
+def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str | None], ...] = (), path: str | None = None) -> str:
     """Return a sensitive executable identity when one can be proven."""
     lexical = name(command)
     if lexical in SENSITIVE_EXECUTABLES:
         return lexical
     indexed = dict(aliases)
     for location in _command_locations(command, cwd, path):
-        if (alias := indexed.get(location)) is not None:
-            return alias
+        if location in indexed:
+            return indexed[location] or lexical
+        candidate = _path(location, cwd)
+        if candidate is not None:
+            return _identity(candidate) or lexical
     candidate = _path(command, cwd, path)
     if candidate is None:
         return lexical
-    for executable in SENSITIVE_EXECUTABLES:
-        target = shutil.which(executable)
-        if target is not None and _same_executable(candidate, Path(target)):
-            return executable
-    return lexical
+    return _identity(candidate) or lexical
 
 
 def alias_transition(
-    executable: str, arguments: list[str], cwd: str, aliases: tuple[tuple[str, str], ...],
+    executable: str, arguments: list[str], cwd: str, aliases: tuple[tuple[str, str | None], ...],
 ) -> AliasTransition | None:
     """Parse one supported ``ln``/``cp`` transition, or reject ambiguity."""
     operands = _alias_operands(executable, arguments)
@@ -119,7 +118,9 @@ def _final_destination(operands: AliasOperands, cwd: str) -> str | None:
     return str(Path(result) / basename) if basename not in {"", ".", ".."} else None
 
 
-def _effect(operands: AliasOperands, destination: str, aliases: tuple[tuple[str, str], ...]) -> bool | None:
+def _effect(operands: AliasOperands, destination: str, aliases: tuple[tuple[str, str | None], ...]) -> bool | None:
+    if not Path(destination).parent.is_dir():
+        return False
     exists = destination in dict(aliases) or Path(destination).exists()
     if operands.executable == "cp":
         return True if operands.force or not exists else None
@@ -129,20 +130,24 @@ def _effect(operands: AliasOperands, destination: str, aliases: tuple[tuple[str,
 
 
 def _filesystem_identity(
-    value: str, cwd: str, aliases: tuple[tuple[str, str], ...],
+    value: str, cwd: str, aliases: tuple[tuple[str, str | None], ...],
 ) -> tuple[str | None, bool]:
     location = _filesystem_location(value, cwd)
-    alias = dict(aliases).get(location)
-    if alias is not None:
-        return alias, True
+    indexed = dict(aliases)
+    if location in indexed:
+        return indexed[location], True
     candidate = _path(location, cwd)
     if candidate is None:
         return None, False
+    return _identity(candidate), True
+
+
+def _identity(candidate: Path) -> str | None:
     for executable in SENSITIVE_EXECUTABLES:
         target = shutil.which(executable)
         if target is not None and _same_executable(candidate, Path(target)):
-            return executable, True
-    return None, True
+            return executable
+    return None
 
 
 def _path(command: str, cwd: str, path: str | None = None) -> Path | None:

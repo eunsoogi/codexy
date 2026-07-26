@@ -119,8 +119,11 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let directory = owned.join("directory");
     let directory_link = owned.join("directory-link");
-    let path = format!("PATH={}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", owned.display());
+    let fallback = workspace.path().join("fallback");
+    let missing_parent = workspace.path().join("missing-parent");
+    let path = format!("PATH={}:{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", owned.display(), fallback.display());
     std::fs::create_dir(&directory)?;
+    std::fs::create_dir(&fallback)?;
     symlink(&directory, &directory_link)?;
     for command in [
         "ln -sf /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
@@ -140,6 +143,8 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         "ln -sf \"$UNKNOWN_RUNTIME_VALUE\" /tmp/safe && /tmp/safe push --force origin topic",
         "ln -T /usr/bin/git safe && ./safe push --force origin topic",
         "cp -r /usr/bin/git safe && ./safe push --force origin topic",
+        &format!("test -e {} || git push --force origin topic", missing_parent.display()),
+        &format!("ln -sf /usr/bin/printf {}/safe || git push --force origin topic", missing_parent.display()),
     ] {
         assert_case(&root, &owned, command, true, &[])?;
     }
@@ -152,7 +157,9 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         "ln -sf /usr/bin/git safe && cp -fp /usr/bin/printf safe && ./safe push --force origin topic",
         "printf safe | cat",
         "false || printf safe",
+        "true || git push --force origin topic",
         "printf safe &",
+        &format!("{path}; ln -sf /usr/bin/printf safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
     ] {
         assert_case(&root, &owned, command, false, &[])?;
     }
