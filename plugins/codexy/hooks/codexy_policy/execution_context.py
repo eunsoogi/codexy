@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .executable_identity import alias_transition
-from .filesystem_state import FAILURE, PathState, mkdir
+from .filesystem_state import FAILURE, PathState, mkdir, replace_path_state
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -148,9 +148,8 @@ def after_external_command(executable: str, arguments: list[str], context: Execu
         return None
     if transition is not None:
         success = context
-        aliases = dict(context.executable_aliases)
-        aliases[transition.destination] = transition.state
-        success = replace(context, executable_aliases=tuple(aliases.items()))
+        aliases = replace_path_state(context.executable_aliases, transition.destination, transition.state)
+        success = replace(context, executable_aliases=aliases)
         if transition.applies is True:
             return CommandEffect(success)
         if transition.applies is False:

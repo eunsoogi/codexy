@@ -24,6 +24,7 @@ class MkdirOutcome:
 
 ABSENT = PathState("absent")
 DIRECTORY = PathState("directory")
+OPAQUE = PathState("opaque", symlink=True)
 SUCCESS = "success"
 FAILURE = "failure"
 AMBIGUOUS = "ambiguous"
@@ -66,6 +67,38 @@ def state(value: str, paths: tuple[tuple[str, PathState], ...]) -> PathState:
     if stat.S_ISDIR(metadata.st_mode):
         return DIRECTORY
     return PathState("executable" if stat.S_ISREG(metadata.st_mode) and metadata.st_mode & 0o111 else "regular")
+
+
+def replace_path_state(
+    paths: tuple[tuple[str, PathState], ...], destination: str, replacement: PathState,
+) -> tuple[tuple[str, PathState], ...]:
+    """Recompute dependent links and invalidate descendants after replacement."""
+    indexed = dict(paths)
+    indexed[destination] = replacement
+    for path, cached in tuple(indexed.items()):
+        if path == destination:
+            continue
+        if _descends_from(path, destination):
+            indexed[path] = OPAQUE
+        elif _descends_from(cached.target, destination):
+            target = _follow_modeled_symlink(cached.target or "", indexed)
+            if target is None:
+                indexed[path] = OPAQUE
+            else:
+                current = state(target, tuple(indexed.items()))
+                indexed[path] = OPAQUE if current.kind == "absent" else PathState(
+                    current.kind, current.identity, cached.symlink, cached.target,
+                )
+    return tuple(indexed.items())
+
+
+def _descends_from(value: str | None, ancestor: str) -> bool:
+    if value is None:
+        return False
+    try:
+        return os.path.commonpath((value, ancestor)) == ancestor
+    except ValueError:
+        return False
 
 
 def mkdir(arguments: list[str], cwd: str, paths: tuple[tuple[str, PathState], ...]) -> MkdirOutcome:
