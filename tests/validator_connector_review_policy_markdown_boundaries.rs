@@ -48,6 +48,34 @@ fn validator_rejects_reordered_obligations_and_affirmative_variants() -> TestRes
 }
 
 #[test]
+fn validator_keeps_modal_subjects_when_separating_must_clauses() -> TestResult {
+    for (index, addition) in [
+        "Automatic Codex connector review MUST be enabled.",
+        "Automatic Codex connector review MUST NOT be enabled; Automatic Codex connector review MUST be enabled.",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let output = validate(|text| format!("{text}\n{addition}\n"))?;
+        assert!(
+            !output.status.success(),
+            "affirmative case {index}: {}",
+            support::stderr(&output)
+        );
+    }
+
+    let output = validate(|text| {
+        format!("{text}\nAutomatic Codex connector review MUST NOT be enabled.\n")
+    })?;
+    assert!(
+        output.status.success(),
+        "negative control: {}",
+        support::stderr(&output)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_keeps_mismatched_fences_and_list_examples_inactive() -> TestResult {
     for (index, addition) in [
         "```text\nignored\n~~~\nMUST enable automatic Codex connector review.\n",

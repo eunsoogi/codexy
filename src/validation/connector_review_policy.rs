@@ -159,8 +159,19 @@ fn obligation(line: &str) -> Option<(usize, &str, &str)> {
 }
 
 fn active_request_variant(sentence: &str) -> bool {
-    let sentence = normalize(sentence);
-    let words = sentence.split_whitespace().collect::<Vec<_>>();
+    sentence
+        .split(['.', ';', ':'])
+        .any(active_request_variant_in_fragment)
+}
+
+fn active_request_variant_in_fragment(fragment: &str) -> bool {
+    let fragment = normalize(fragment);
+    let words = fragment.split_whitespace().collect::<Vec<_>>();
+    let subject_end = words
+        .iter()
+        .position(|word| *word == "must")
+        .unwrap_or(words.len());
+    let subject = &words[..subject_end];
     words.iter().enumerate().any(|(start, word)| {
         if *word != "must" {
             return false;
@@ -174,10 +185,11 @@ fn active_request_variant(sentence: &str) -> bool {
             && !clause
                 .windows(2)
                 .any(|pair| pair[0] == "without" && pair[1].starts_with("request"));
-        let request = clause.iter().any(|word| word.starts_with("request"))
-            && clause.iter().any(|word| word.starts_with("review"));
-        let automatic_enable = clause.contains(&"automatic")
-            && clause.iter().any(|word| word.starts_with("review"))
+        let scoped = || subject.iter().chain(clause.iter()).copied();
+        let request = scoped().any(|word| word.starts_with("request"))
+            && scoped().any(|word| word.starts_with("review"));
+        let automatic_enable = scoped().any(|word| word == "automatic")
+            && scoped().any(|word| word.starts_with("review"))
             && ["enable", "enabled", "configure", "configured"]
                 .iter()
                 .any(|verb| clause.contains(verb));
