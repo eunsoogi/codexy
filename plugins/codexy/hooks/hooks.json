@@ -1,30 +1,3 @@
 {
-  "hooks": {
-    "PermissionRequest": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-admission.sh\" PermissionRequest",
-            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-admission.cmd\" PermissionRequest",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-admission.sh\" PreToolUse",
-            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-admission.cmd\" PreToolUse",
-            "timeout": 5
-          }
-        ]
-      }
-    ]
-  }
+  "hooks": {}
 }

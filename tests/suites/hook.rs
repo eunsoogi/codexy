@@ -13,59 +13,29 @@ mod validator_github_labels_stacked_handoff;
 #[path = "../validator_hook_loc_contract.rs"]
 mod validator_hook_loc_contract;
 
-#[path = "../hook_admission_policy.rs"]
-mod hook_admission_policy;
-
-#[path = "../hook_policy_composition.rs"]
-mod hook_policy_composition;
-
-#[path = "../hook_git_normalization_policy.rs"]
-mod hook_git_normalization_policy;
-
-#[path = "../hook_mutation_admission_matrix.rs"]
-mod hook_mutation_admission_matrix;
-
-#[path = "../hook_mutation_surface_review.rs"]
-mod hook_mutation_surface_review;
-
-#[path = "../hook_effective_context_continuation.rs"]
-mod hook_effective_context_continuation;
-
-#[path = "../hook_grouped_execution_context.rs"]
-mod hook_grouped_execution_context;
-
-#[path = "../hook_persistent_environment_and_rewrites.rs"]
-mod hook_persistent_environment_and_rewrites;
-
 #[path = "../hook_fail_closed_command_admission.rs"]
 mod hook_fail_closed_command_admission;
 
 #[path = "../hook_graphql_delimiter_admission.rs"]
 mod hook_graphql_delimiter_admission;
 
-#[path = "../hook_pr_admission_policy.rs"]
-mod hook_pr_admission_policy;
+#[path = "../validator_hook_purpose_topology.rs"]
+mod validator_hook_purpose_topology;
 
-#[path = "../validator_hook_admission_artifact.rs"]
-mod validator_hook_admission_artifact;
+#[path = "../validator_hook_review_feedback.rs"]
+mod validator_hook_review_feedback;
 
-#[path = "../validator_hook_official_events_red.rs"]
-mod validator_hook_official_events_red;
+#[path = "../validator_hook_safety_tokens.rs"]
+mod validator_hook_safety_tokens;
 
-#[path = "../validator_hook_event_topology.rs"]
-mod validator_hook_event_topology;
-
-#[path = "../validator_hook_policy_inventory.rs"]
-mod validator_hook_policy_inventory;
-
-#[path = "../validator_hook_postcompact_capability.rs"]
-mod validator_hook_postcompact_capability;
-
-#[path = "../validator_issue_intake.rs"]
-mod validator_issue_intake;
+#[path = "../validator_hooks.rs"]
+mod validator_hooks;
 
 #[path = "../validator_issue_title_hook.rs"]
 mod validator_issue_title_hook;
+
+#[path = "../validator_issue_intake.rs"]
+mod validator_issue_intake;
 
 #[path = "../validator_merge_message.rs"]
 mod validator_merge_message;
