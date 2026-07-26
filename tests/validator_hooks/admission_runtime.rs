@@ -109,6 +109,29 @@ fn filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
     assert_case(&root, &owned, "printf '%s\\n' benign", false, &[])
 }
 
+#[cfg(unix)]
+#[test]
+fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    for command in [
+        "ln -sf /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "cp /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
+        "ln -sf '/usr/bin/git' '/tmp/safe' && '/tmp/safe' push --force origin topic",
+        "ln -sf \"$UNKNOWN_RUNTIME_VALUE\" /tmp/safe && /tmp/safe push --force origin topic",
+    ] {
+        assert_case(&root, &owned, command, true, &[])?;
+    }
+    for command in [
+        "ln -sf /usr/bin/printf /tmp/safe && /tmp/safe '%s\\n' benign",
+        "cp /usr/bin/printf /tmp/safe && /tmp/safe '%s\\n' benign",
+    ] {
+        assert_case(&root, &owned, command, false, &[])?;
+    }
+    Ok(())
+}
+
 pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
     let input = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     assert_input(root, input, denied, environment)

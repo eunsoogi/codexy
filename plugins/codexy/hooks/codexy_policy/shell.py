@@ -156,6 +156,7 @@ def _git(args: list[str], context: ExecutionContext, depth: int) -> tuple[bool, 
             context.opaque_environment,
             context.remote_urls,
             context.opaque_repository_state,
+            context.executable_aliases,
         )
         return not invocation.alias_command or _forbidden(invocation.alias_command, alias_context, depth + 1), None
     if invocation.operation is None:

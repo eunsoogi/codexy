@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from .executable_identity import created_alias
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -25,6 +26,7 @@ class ExecutionContext:
     opaque_environment: bool = False
     remote_urls: tuple[tuple[str, str, str], ...] = ()
     opaque_repository_state: bool = False
+    executable_aliases: tuple[tuple[str, str], ...] = ()
 
 
 def assignment(value: str) -> bool:
@@ -41,6 +43,7 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
             context.cwd, context.cwd_owned, context.git_dir, context.gh_repo,
             tuple(environment.items()), True, context.remote_urls,
             context.opaque_repository_state or key == "GIT_COMMON_DIR",
+            context.executable_aliases,
         )
     environment[key] = expanded
     git_dir = expanded if key == "GIT_DIR" else context.git_dir
@@ -50,6 +53,7 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
         context.cwd, owned, git_dir, gh_repo, tuple(environment.items()),
         context.opaque_environment, context.remote_urls,
         context.opaque_repository_state or key == "GIT_COMMON_DIR",
+        context.executable_aliases,
     )
 
 
@@ -74,6 +78,7 @@ def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
     return ExecutionContext(
         cwd, owned, context.git_dir, context.gh_repo, context.environment,
         context.opaque_environment, context.remote_urls, context.opaque_repository_state,
+        context.executable_aliases,
     )
 
 
@@ -86,6 +91,7 @@ def remote_url(context: ExecutionContext, remote: str, kind: str, value: str) ->
         context.cwd, context.cwd_owned, context.git_dir, context.gh_repo,
         context.environment, context.opaque_environment, values,
         context.opaque_repository_state,
+        context.executable_aliases,
     )
 
 
@@ -98,6 +104,7 @@ def unset(context: ExecutionContext, key: str) -> ExecutionContext:
     return ExecutionContext(
         context.cwd, owned, git_dir, gh_repo, tuple(environment.items()),
         context.opaque_environment, context.remote_urls, context.opaque_repository_state,
+        context.executable_aliases,
     )
 
 
@@ -147,6 +154,7 @@ def clear(context: ExecutionContext) -> ExecutionContext:
         None,
         remote_urls=context.remote_urls,
         opaque_repository_state=context.opaque_repository_state,
+        executable_aliases=context.executable_aliases,
     )
 
 
@@ -154,6 +162,11 @@ def after_external_command(
     executable: str, arguments: list[str], context: ExecutionContext,
 ) -> ExecutionContext:
     """Make Git state opaque after a supported external in-place config write."""
+    alias = created_alias(executable, arguments, context.cwd, context.executable_aliases)
+    if alias is not None:
+        aliases = dict(context.executable_aliases)
+        aliases[alias[0]] = alias[1]
+        context = replace(context, executable_aliases=tuple(aliases.items()))
     if executable != "sed" or not any(
         argument == "-i"
         or argument.startswith("-i") and len(argument) > 2

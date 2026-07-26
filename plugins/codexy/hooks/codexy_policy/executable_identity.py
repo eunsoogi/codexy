@@ -15,11 +15,14 @@ MAX_EXECUTABLE_BYTES = 64 * 1024 * 1024
 SENSITIVE_EXECUTABLES = frozenset({"git", "gh"})
 
 
-def resolve(command: str, cwd: str) -> str:
+def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str], ...] = ()) -> str:
     """Return a sensitive executable identity when one can be proven."""
     lexical = name(command)
     if lexical in SENSITIVE_EXECUTABLES:
         return lexical
+    alias = dict(aliases).get(_location(command, cwd))
+    if alias is not None:
+        return alias
     candidate = _path(command, cwd)
     if candidate is None:
         return lexical
@@ -28,6 +31,35 @@ def resolve(command: str, cwd: str) -> str:
         if target is not None and _same_executable(candidate, Path(target)):
             return executable
     return lexical
+
+
+def created_alias(
+    executable: str, arguments: list[str], cwd: str, aliases: tuple[tuple[str, str], ...],
+) -> tuple[str, str] | None:
+    """Return a statically provable Git/GH destination created by ``ln`` or ``cp``."""
+    operands = _alias_operands(executable, arguments)
+    if operands is None:
+        return None
+    source, destination = operands
+    identity = resolve(source, cwd, aliases)
+    location = _location(destination, cwd)
+    return (location, identity) if identity in SENSITIVE_EXECUTABLES and location is not None else None
+
+
+def _alias_operands(executable: str, arguments: list[str]) -> tuple[str, str] | None:
+    options = {"-s", "-f", "-sf", "-fs", "--symbolic", "--force"}
+    while arguments and arguments[0] in options:
+        arguments = arguments[1:]
+    if arguments[:1] == ["--"]:
+        arguments = arguments[1:]
+    return (arguments[0], arguments[1]) if executable in {"ln", "cp"} and len(arguments) == 2 else None
+
+
+def _location(command: str, cwd: str) -> str | None:
+    if "/" not in command:
+        return None
+    path = Path(command)
+    return str((path if path.is_absolute() else Path(cwd) / path).resolve(strict=False))
 
 
 def _path(command: str, cwd: str) -> Path | None:
