@@ -34,7 +34,9 @@ def location(value: str, cwd: str) -> str:
     return os.path.abspath(os.path.normpath(os.path.join(cwd, value)))
 
 
-def resolved_location(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...]) -> str | None:
+def resolved_location(
+    value: str, cwd: str, paths: tuple[tuple[str, PathState], ...], follow_final: bool = True,
+) -> str | None:
     """Resolve only modeled symlink traversal for later command-state effects."""
     source = value if os.path.isabs(value) else os.path.join(cwd, value)
     cursor = os.path.sep
@@ -49,7 +51,7 @@ def resolved_location(value: str, cwd: str, paths: tuple[tuple[str, PathState], 
             cursor = str(Path(cursor).parent)
         else:
             cursor = os.path.join(cursor, segment)
-    return _follow_modeled_symlink(cursor, indexed)
+    return _follow_modeled_symlink(cursor, indexed) if follow_final else cursor
 
 
 def state(value: str, paths: tuple[tuple[str, PathState], ...]) -> PathState:

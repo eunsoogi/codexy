@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from .filesystem_state import PathState, resolved_location, state as path_state
+from .filesystem_state import PathState, location as filesystem_location, resolved_location, state as path_state
 from .shell_context import name
 
 MAX_EXECUTABLE_BYTES = 64 * 1024 * 1024
@@ -35,13 +35,16 @@ class AliasOperands:
     executable: str
 
 
-def resolve(command: str, cwd: str, aliases: tuple[tuple[str, PathState], ...] = (), path: str | None = None) -> str:
+def resolve(command: str, cwd: str, aliases: tuple[tuple[str, PathState], ...] = (), path: str | None = None) -> str | None:
     """Return a sensitive executable identity when one can be proven."""
     lexical = name(command)
     if lexical in SENSITIVE_EXECUTABLES:
         return lexical
     indexed = dict(aliases)
-    for location in _command_locations(command, cwd, path, aliases):
+    locations = _command_locations(command, cwd, path, aliases)
+    if locations is None:
+        return None
+    for location in locations:
         if (modeled := indexed.get(location)) is not None:
             if modeled.kind == "executable":
                 return modeled.identity or lexical
@@ -66,7 +69,7 @@ def alias_transition(
     destination = _final_destination(operands, cwd, aliases)
     if destination is None:
         return None
-    target = resolved_location(operands.source, str(Path(destination).parent), aliases) if operands.symbolic else None
+    target = filesystem_location(operands.source, str(Path(destination).parent)) if operands.symbolic else None
     result = PathState(source.kind, source.identity, operands.symbolic, target)
     return AliasTransition(destination, result, known, _effect(operands, destination, aliases))
 
@@ -74,7 +77,7 @@ def alias_transition(
 def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | None:
     grammar = {
         "ln": (frozenset("sfnv"), frozenset({"--symbolic", "--force", "--no-dereference", "--verbose"})),
-        "cp": (frozenset("pfv"), frozenset({"--preserve", "--force", "--verbose"})),
+        "cp": (frozenset("Ppfv"), frozenset({"--preserve", "--force", "--no-dereference", "--verbose"})),
     }.get(executable)
     if grammar is None:
         return None
@@ -99,21 +102,22 @@ def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | No
     return AliasOperands(
         arguments[0], arguments[1], "s" in selected or "--symbolic" in selected,
         "f" in selected or "--force" in selected,
-        "n" in selected or "--no-dereference" in selected, executable,
+        "n" in selected or "P" in selected or "--no-dereference" in selected, executable,
     )
 
 
-def _command_locations(command: str, cwd: str, path: str | None, aliases: tuple[tuple[str, PathState], ...]) -> tuple[str, ...]:
+def _command_locations(command: str, cwd: str, path: str | None, aliases: tuple[tuple[str, PathState], ...]) -> tuple[str, ...] | None:
     if "/" in command:
         location = resolved_location(command, cwd, aliases)
-        return () if location is None else (location,)
+        return None if location is None else (location,)
     if path is None:
         return ()
-    return tuple(location for directory in path.split(os.pathsep) if (location := resolved_location(os.path.join(directory or ".", command), cwd, aliases)) is not None)
+    locations = tuple(resolved_location(os.path.join(directory or ".", command), cwd, aliases) for directory in path.split(os.pathsep))
+    return None if any(location is None for location in locations) else tuple(location for location in locations if location is not None)
 
 
 def _final_destination(operands: AliasOperands, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> str | None:
-    result = resolved_location(operands.destination, cwd, aliases)
+    result = resolved_location(operands.destination, cwd, aliases, follow_final=not operands.no_dereference)
     if result is None:
         return None
     if operands.no_dereference or path_state(result, aliases).kind != "directory":

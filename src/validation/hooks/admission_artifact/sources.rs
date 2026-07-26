@@ -44,6 +44,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/github_api.py"),
     source!("codexy_policy/github_target.py"),
     source!("codexy_policy/invocation.py"),
+    source!("codexy_policy/invocation_wrappers.py"),
     source!("codexy_policy/merge.py"),
     source!("codexy_policy/pull_request.py"),
     source!("codexy_policy/repository.py"),

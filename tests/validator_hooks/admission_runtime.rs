@@ -123,7 +123,11 @@ fn path_search_skips_non_executable_entries() -> TestResult {
 }
 
 pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
-    let input = json!({"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
+    assert_event_case(root, "PreToolUse", cwd, command, denied, environment)
+}
+
+pub(super) fn assert_event_case(root: &Path, event: &str, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
+    let input = json!({"hook_event_name":event,"tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     assert_input(root, input, denied, environment)
 }
 
@@ -139,12 +143,13 @@ fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, denied: boo
 fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
     let description = input.to_string();
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
-    child.arg("PreToolUse").env_clear().env("PLUGIN_ROOT", root).envs(environment.iter().copied()).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let event = input["hook_event_name"].as_str().ok_or("event")?;
+    child.arg(event).env_clear().env("PLUGIN_ROOT", root).envs(environment.iter().copied()).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
     let output = child.wait_with_output()?;
     assert!(output.status.success(), "launcher failed: {}", String::from_utf8_lossy(&output.stderr));
-    if denied { let value: Value = serde_json::from_slice(&output.stdout).map_err(|error| format!("expected deny for {description}: {error}"))?; assert_eq!(value["hookSpecificOutput"]["permissionDecision"], "deny", "{description}"); } else { assert_eq!(output.stdout, b"", "{description}"); }
+    if denied { let value: Value = serde_json::from_slice(&output.stdout).map_err(|error| format!("expected deny for {description}: {error}"))?; let decision = if event == "PermissionRequest" { &value["hookSpecificOutput"]["decision"]["behavior"] } else { &value["hookSpecificOutput"]["permissionDecision"] }; assert_eq!(decision, "deny", "{description}"); } else { assert_eq!(output.stdout, b"", "{description}"); }
     Ok(())
 }
 
