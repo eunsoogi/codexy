@@ -1,11 +1,12 @@
 use super::policy::normalized_instruction;
 
-pub(super) const ROUTES: [(&str, &str, &str, &str, &str); 2] = [
+pub(super) const ROUTES: [(&str, &str, &str, &str, &str, &str); 2] = [
     (
         "Captured #433 parent-to-generic-child evidence",
         "gpt-5.6-terra",
         "gpt-5.6-sol",
         "child-433",
+        "high",
         "parent-to-generic-child",
     ),
     (
@@ -13,6 +14,7 @@ pub(super) const ROUTES: [(&str, &str, &str, &str, &str); 2] = [
         "gpt-5.6-sol",
         "gpt-5.6-terra",
         "root-433",
+        "medium",
         "child-to-root",
     ),
 ];
@@ -24,6 +26,7 @@ pub(super) fn invalid(
     recipient: &str,
     sender: &str,
     thread: &str,
+    effort: &str,
 ) -> bool {
     let evidence = bullets
         .iter()
@@ -33,7 +36,7 @@ pub(super) fn invalid(
     evidence.is_empty()
         || evidence
             .into_iter()
-            .any(|bullet| !valid(bullet, marker, recipient, sender, thread))
+            .any(|bullet| !valid(bullet, marker, recipient, sender, thread, effort))
 }
 
 fn is_active_instruction(instruction: &str, starts: &[&str]) -> bool {
@@ -64,7 +67,14 @@ fn records<'a>(instruction: &'a str, marker: &str) -> Vec<&'a str> {
         .collect()
 }
 
-fn valid(bullet: &str, marker: &str, recipient: &str, sender: &str, thread: &str) -> bool {
+fn valid(
+    bullet: &str,
+    marker: &str,
+    recipient: &str,
+    sender: &str,
+    thread: &str,
+    effort: &str,
+) -> bool {
     let (Some(found_marker), Some(rest)) = (bullet.get(..marker.len()), bullet.get(marker.len()..))
     else {
         return false;
@@ -93,7 +103,7 @@ fn valid(bullet: &str, marker: &str, recipient: &str, sender: &str, thread: &str
             == Some(&[
                 ("threadId", thread),
                 ("model", recipient),
-                ("thinking", "high"),
+                ("thinking", effort),
             ])
 }
 

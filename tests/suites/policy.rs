@@ -40,6 +40,9 @@ mod validator_runtime_heartbeat_clause_boundaries;
 #[path = "../validator_runtime_heartbeat_contract.rs"]
 mod validator_runtime_heartbeat_contract;
 
+#[path = "../validator_runtime_heartbeat_wait_priority.rs"]
+mod validator_runtime_heartbeat_wait_priority;
+
 #[path = "../validator_runtime_heartbeat_heading_scope.rs"]
 mod validator_runtime_heartbeat_heading_scope;
 
