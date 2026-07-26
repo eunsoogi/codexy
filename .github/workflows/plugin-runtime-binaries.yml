@@ -33,7 +33,7 @@ jobs:
           - platform: darwin-arm64
             runner: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Download and verify selected immutable bytes
@@ -114,7 +114,7 @@ jobs:
               ;;
             *) echo "unsupported runtime-release state: $state" >&2; exit 1 ;;
           esac
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: codexy-marketplace-plugin-${{ matrix.platform }}
           path: dist/codexy-marketplace-plugin.tar.gz
