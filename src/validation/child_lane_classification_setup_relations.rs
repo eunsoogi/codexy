@@ -1,4 +1,5 @@
 use super::child_lane_classification_setup_actions::{action_is_passive, setup_action_at};
+use super::child_lane_classification_setup_clause::{SENTENCE_BOUNDARY, analyze_setup_clause};
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum SetupActor {
@@ -61,7 +62,7 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                         explicit_subject(&words, start, *action)
                             .or_else(|| agents_fail_closed(&words, start, end))
                     },
-                    negated: action_is_negated(&words, start, *action, end),
+                    negated: analyze_setup_clause(&words, 0, *action, end).negated,
                     before_classification: window.iter().enumerate().any(|(index, word)| {
                         matches!(*word, "before" | "prior")
                             && window.get(index.wrapping_sub(1)) != Some(&"not")
@@ -76,9 +77,18 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
 }
 
 fn words(line: &str) -> Vec<&str> {
-    line.split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .collect()
+    let mut words = Vec::new();
+    for sentence in line.split_inclusive(['.', '!', '?']) {
+        words.extend(
+            sentence
+                .split(|character: char| !character.is_ascii_alphanumeric())
+                .filter(|word| !word.is_empty()),
+        );
+        if sentence.ends_with(['.', '!', '?']) {
+            words.push(SENTENCE_BOUNDARY);
+        }
+    }
+    words
 }
 
 fn setup_action_indices<'a>(words: &'a [&'a str]) -> impl Iterator<Item = usize> + 'a {
@@ -159,39 +169,4 @@ fn actor_word(word: &str) -> Option<SetupActor> {
         "parent" | "orchestrator" => Some(SetupActor::NonChild),
         _ => None,
     }
-}
-
-fn action_is_negated(words: &[&str], start: usize, action: usize, end: usize) -> bool {
-    words[action.saturating_sub(3).max(start)..action]
-        .iter()
-        .any(|word| matches!(*word, "no" | "not" | "never" | "without" | "neither"))
-        || has_negated_setup_object(words, action, end)
-        || action.checked_sub(2).is_some_and(|index| {
-            index >= start
-                && matches!(
-                    (words[index], words[index + 1]),
-                    ("didn", "t")
-                        | ("isn", "t")
-                        | ("aren", "t")
-                        | ("wasn", "t")
-                        | ("weren", "t")
-                        | ("hasn", "t")
-                        | ("haven", "t")
-                        | ("hadn", "t")
-                )
-        })
-}
-
-fn has_negated_setup_object(words: &[&str], action: usize, end: usize) -> bool {
-    let object = action + usize::from(matches!(words.get(action + 1), Some(&"up" | &"out"))) + 1;
-    let negates_object = |before: &[&str]| before.iter().rev().take(4).any(|word| *word == "no");
-    words[object..end]
-        .iter()
-        .position(|word| matches!(*word, "branch" | "worktree"))
-        .is_some_and(|offset| negates_object(&words[object..object + offset]))
-        || action_is_passive(words, 0, action)
-            && words[..action]
-                .iter()
-                .rposition(|word| matches!(*word, "branch" | "worktree"))
-                .is_some_and(|object| negates_object(&words[..object]))
 }

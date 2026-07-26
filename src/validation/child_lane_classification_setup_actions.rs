@@ -1,3 +1,5 @@
+use super::child_lane_classification_setup_clause::{SENTENCE_BOUNDARY, analyze_setup_clause};
+
 pub(super) fn action_is_passive(words: &[&str], start: usize, action: usize) -> bool {
     words[action.saturating_sub(3).max(start)..action]
         .iter()
@@ -7,17 +9,24 @@ pub(super) fn action_is_passive(words: &[&str], start: usize, action: usize) -> 
 pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
     match words[index] {
         "create" if has_completed_auxiliary(words, index) => Some(()),
-        "creating" if action_is_passive(words, 0, index) && !is_future_plan(words, index) => {
+        "creating"
+            if action_is_passive(words, 0, index)
+                && !analyze_setup_clause(words, 0, index, words.len()).prospective =>
+        {
             Some(())
         }
         "setting"
             if words.get(index + 1) == Some(&"up")
                 && is_governing_progressive_setup(words, index)
-                && !is_future_plan(words, index) =>
+                && !analyze_setup_clause(words, 0, index, words.len()).prospective =>
         {
             Some(())
         }
-        "creates" | "created" if !is_future_plan(words, index) => Some(()),
+        "creates" | "created"
+            if !analyze_setup_clause(words, 0, index, words.len()).prospective =>
+        {
+            Some(())
+        }
         "creation" if words.get(index + 1) == Some(&"occurred") => Some(()),
         "switch"
             if has_completed_auxiliary(words, index)
@@ -47,17 +56,38 @@ pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
 }
 
 fn is_governing_progressive_setup(words: &[&str], action: usize) -> bool {
-    let clause = &words[..action];
-    let Some(auxiliary) = clause
+    let analysis = analyze_setup_clause(words, 0, action, words.len());
+    let Some(auxiliary) = words[analysis.start..action]
         .iter()
         .rposition(|word| is_progressive_auxiliary(word))
+        .map(|offset| analysis.start + offset)
+        .or_else(|| shared_progressive_auxiliary(words, analysis.start))
     else {
         return false;
     };
-    let predicate = &clause[auxiliary + 1..];
+    let predicate = &words[analysis.start.max(auxiliary + 1)..action];
     !predicate.iter().enumerate().any(|(index, word)| {
-        word.ends_with("ing") && !predicate[index + 1..].iter().any(|word| *word == "and")
+        word.ends_with("ing") && !predicate[index + 1..].iter().any(is_predicate_coordinator)
     })
+}
+
+fn shared_progressive_auxiliary(words: &[&str], clause_start: usize) -> Option<usize> {
+    let connector = *words.get(clause_start.checked_sub(1)?)?;
+    let sentence_start = words[..clause_start]
+        .iter()
+        .rposition(|word| *word == SENTENCE_BOUNDARY)
+        .map(|boundary| boundary + 1)
+        .unwrap_or(0);
+    (connector != SENTENCE_BOUNDARY).then(|| {
+        words[sentence_start..clause_start - 1]
+            .iter()
+            .rposition(|word| is_progressive_auxiliary(word))
+            .map(|offset| sentence_start + offset)
+    })?
+}
+
+fn is_predicate_coordinator(word: &&str) -> bool {
+    matches!(*word, "and" | "but")
 }
 
 fn is_progressive_auxiliary(word: &&str) -> bool {
@@ -71,10 +101,4 @@ fn has_completed_auxiliary(words: &[&str], action: usize) -> bool {
     words.get(action.wrapping_sub(1)) == Some(&"did")
         || (words.get(action.wrapping_sub(1)) == Some(&"not")
             && words.get(action.wrapping_sub(2)) == Some(&"did"))
-}
-
-fn is_future_plan(words: &[&str], action: usize) -> bool {
-    words[action.saturating_sub(3)..action]
-        .iter()
-        .any(|word| matches!(*word, "will" | "shall"))
 }
