@@ -20,6 +20,8 @@ MUST read these relative references before acting on the matching surface:
 - `references/pr-review-and-handoff.md` for PR bodies, review-thread handling,
   child-owned review feedback, and completion-handoff PR state capture,
   including review thread comment `commit { oid }` evidence.
+- `references/codex-connector-review.md` for the one explicit pre-merge Codex
+  connector review and its bounded repair cycle.
 - `references/merge-and-main-sync.md` for merge gates, squash merge body
   preservation, branch deletion, post-merge main sync, and the
   `merge_validation_args=(--check-merge-message --expected-pr "$pr_number")`
@@ -169,6 +171,9 @@ PR creation without hard-coding a fixed list. PR-readiness handoff is valid only
 when captured PR state shows labels, or repository label taxonomy proves none exist.
 Before PR readiness, MUST run
 `plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file pr-state.json`.
+
+Before merge, the parent/orchestrator MUST follow the manual Codex connector
+review procedure in `references/codex-connector-review.md`.
 
 ## Child-Owned Review Feedback
 
