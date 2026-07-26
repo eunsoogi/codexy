@@ -12,7 +12,7 @@ pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
         }
         "setting"
             if words.get(index + 1) == Some(&"up")
-                && action_is_passive(words, 0, index)
+                && is_governing_progressive_setup(words, index)
                 && !is_future_plan(words, index) =>
         {
             Some(())
@@ -44,6 +44,15 @@ pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
         "adds" | "added" => Some(()),
         _ => None,
     }
+}
+
+fn is_governing_progressive_setup(words: &[&str], action: usize) -> bool {
+    let predicate = &words[action.saturating_sub(3)..action];
+    action_is_passive(words, 0, action)
+        && !predicate
+            .iter()
+            .enumerate()
+            .any(|(index, word)| word.ends_with("ing") && !predicate[index + 1..].contains(&"and"))
 }
 
 fn has_completed_auxiliary(words: &[&str], action: usize) -> bool {
