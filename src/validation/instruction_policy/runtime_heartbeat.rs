@@ -10,6 +10,9 @@ use weakening::has_weakening_suffix;
 const NORMALIZED_DISCOVERY_CLAUSE: &str = "search the callable tool surface for automation_update";
 
 const ORCHESTRATION_CLAUSES: &[&str] = &[
+    "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
+    "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
+    "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "search the callable tool surface for `automation_update`",
     "register a thread-targeted `kind=heartbeat`",
     "creation MUST use `destination=\"thread\"`",
@@ -28,6 +31,9 @@ const ORCHESTRATION_CLAUSES: &[&str] = &[
 ];
 
 const TOKEN_CLAUSES: &[&str] = &[
+    "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
+    "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
+    "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "polling/monitoring MUST be reserved for an observation bound to one complete runtime-issued monitor identity",
     "heartbeat route MUST bind the observation to its heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity",
     "heartbeat route MUST NOT require a persistent exec/session identifier or same-process resume",
@@ -41,6 +47,9 @@ const TOKEN_CLAUSES: &[&str] = &[
 ];
 
 const EXTERNAL_GATE_CLAUSES: &[&str] = &[
+    "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
+    "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
+    "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "MUST follow `references/runtime-heartbeats.md`",
     "parent or child MUST NOT retain an active goal or plan during an external-gate wait",
     "child external-gate wait MUST end its active goal and plan before waiting",

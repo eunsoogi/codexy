@@ -44,9 +44,9 @@ execution loop and MUST be read with root `AGENTS.md`.
   infer either from historical actual `turn_context` state, the sender, or ambient defaults.
 - Parent-to-generic-child delivery MUST pass `model: "gpt-5.6-terra"` and
   `thinking: "high"`; child-to-root delivery MUST pass `model: "gpt-5.6-sol"`
-  and `thinking: "high"`.
+  and `thinking: "medium"`.
 - Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
-- Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "high" }).
+- Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "medium" }).
 
 ## Read Next
 
@@ -98,7 +98,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST treat asynchronous completion as event waits, not blockers. When an eligible external gate outlives the turn, parent orchestrators and child owners MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- MUST treat asynchronous completion as event waits, not blockers. Parent orchestrators and child owners MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. They MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable. After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata. When an eligible external gate outlives the turn, they MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.

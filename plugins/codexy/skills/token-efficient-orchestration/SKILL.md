@@ -45,6 +45,8 @@ MUST use this flow after compaction and before handoff:
 1. **Inventory once**: MUST keep one compact ledger line per active lane with
    `issue`, `PR`, `branch`, `head`, `owner`, and `state`.
 2. **Accept qualifying events only**: root/orchestrator MUST NOT autonomously poll.
+   The owner MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. The owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable.
+   After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.
    Children MUST send a compact delta only for terminal child state, Sentinel
    verdict, PR creation, new HEAD, GitHub check-state change, actionable
    review-feedback change, or review-thread resolution.

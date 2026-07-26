@@ -1,5 +1,9 @@
 # Runtime Heartbeats
 
+The owner MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. The owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable.
+
+After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.
+
 ## Eligibility And Discovery
 
 When GitHub CI, review-thread state, child state, or another external

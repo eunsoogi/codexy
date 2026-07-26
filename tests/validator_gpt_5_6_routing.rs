@@ -111,9 +111,9 @@ fn validator_cli_rejects_recipient_model_routing_regressions() -> TestResult {
             "parent-to-generic-child messages must use recipient gpt-5.6-terra/high",
         ),
         (
-            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"high\"`",
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"medium\"`",
             "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`\n  and `thinking: \"high\"`",
-            "child-to-root messages must use recipient gpt-5.6-sol/high",
+            "child-to-root messages must use recipient gpt-5.6-sol/medium",
         ),
         (
             "MUST NOT\n  infer either from historical actual `turn_context` state, the sender, or ambient defaults.",
@@ -139,7 +139,7 @@ fn validator_cli_rejects_recipient_model_routing_regressions() -> TestResult {
 #[test]
 fn validator_cli_rejects_actual_recipient_routing_evidence_regressions() -> TestResult {
     let fixture = r#"- Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
-- Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "high" }).
+- Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "medium" }).
 
 "#;
     for (needle, replacement, expected) in [
@@ -159,19 +159,19 @@ fn validator_cli_rejects_actual_recipient_routing_evidence_regressions() -> Test
             "parent-to-generic-child evidence must pass recipient gpt-5.6-terra/high",
         ),
         (
-            "model: \"gpt-5.6-sol\", thinking: \"high\"",
-            "thinking: \"high\"",
-            "child-to-root evidence must pass recipient gpt-5.6-sol/high",
+            "model: \"gpt-5.6-sol\", thinking: \"medium\"",
+            "thinking: \"medium\"",
+            "child-to-root evidence must pass recipient gpt-5.6-sol/medium",
         ),
         (
-            "model: \"gpt-5.6-sol\", thinking: \"high\"",
+            "model: \"gpt-5.6-sol\", thinking: \"medium\"",
             "model: \"gpt-5.6-sol\"",
-            "child-to-root evidence must pass recipient gpt-5.6-sol/high",
+            "child-to-root evidence must pass recipient gpt-5.6-sol/medium",
         ),
         (
-            "model: \"gpt-5.6-sol\", thinking: \"high\"",
-            "model: \"gpt-5.6-terra\", thinking: \"high\"",
-            "child-to-root evidence must pass recipient gpt-5.6-sol/high",
+            "model: \"gpt-5.6-sol\", thinking: \"medium\"",
+            "model: \"gpt-5.6-terra\", thinking: \"medium\"",
+            "child-to-root evidence must pass recipient gpt-5.6-sol/medium",
         ),
     ] {
         let temp = tempfile::tempdir()?;
@@ -203,9 +203,9 @@ fn validator_rejects_decoy_and_inactive_recipient_evidence() -> TestResult {
             "parent-to-generic-child evidence must pass recipient gpt-5.6-terra/high",
         ),
         (
-            "Reverse child-to-root evidence: configured_ui_model=\"gpt-5.6-sol\"; actual_turn_context_model=\"gpt-5.6-terra\"; per_message_model=\"gpt-5.6-sol\"; send_message_to_thread({ threadId: \"root-433\", model: \"gpt-5.6-sol\", thinking: \"high\" })",
+            "Reverse child-to-root evidence: configured_ui_model=\"gpt-5.6-sol\"; actual_turn_context_model=\"gpt-5.6-terra\"; per_message_model=\"gpt-5.6-sol\"; send_message_to_thread({ threadId: \"root-433\", model: \"gpt-5.6-sol\", thinking: \"medium\" })",
             "Reverse child-to-root evidence: not_configured_ui_model=\"gpt-5.6-sol\"; not_actual_turn_context_model=\"gpt-5.6-terra\"; not_per_message_model=\"gpt-5.6-sol\"; send_message_to_thread({ threadId: \"root-433\", model: \"gpt-5.6-terra\", recipient_model: \"gpt-5.6-sol\", model: \"gpt-5.6-sol\", thinking: \"low\", configured_thinking: \"high\", thinking: \"high\" })",
-            "child-to-root evidence must pass recipient gpt-5.6-sol/high",
+            "child-to-root evidence must pass recipient gpt-5.6-sol/medium",
         ),
         (
             "- Captured #433 parent-to-generic-child evidence:",
@@ -215,7 +215,7 @@ fn validator_rejects_decoy_and_inactive_recipient_evidence() -> TestResult {
         (
             "- Reverse child-to-root evidence:",
             "```text\n- Reverse child-to-root evidence:",
-            "child-to-root evidence must pass recipient gpt-5.6-sol/high",
+            "child-to-root evidence must pass recipient gpt-5.6-sol/medium",
         ),
     ] {
         let mutated = skill.replacen(needle, replacement, 1);

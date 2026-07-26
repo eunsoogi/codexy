@@ -9,6 +9,9 @@ use crate::support;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const ORCHESTRATION_CLAUSES: &[&str] = &[
+    "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
+    "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
+    "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "search the callable tool surface for `automation_update`",
     "register a thread-targeted `kind=heartbeat`",
     "creation MUST use `destination=\"thread\"`",
@@ -27,6 +30,9 @@ const ORCHESTRATION_CLAUSES: &[&str] = &[
 ];
 
 const TOKEN_CLAUSES: &[&str] = &[
+    "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
+    "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
+    "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "polling/monitoring MUST be reserved for an observation bound to one complete runtime-issued monitor identity",
     "heartbeat route MUST bind the observation to its heartbeat automation id, target thread, bounded schedule, and last observed state fingerprint or event identity",
     "heartbeat route MUST NOT require a persistent exec/session identifier or same-process resume",
@@ -37,6 +43,12 @@ const TOKEN_CLAUSES: &[&str] = &[
     "material gate change or an explicit user/parent message",
     "active goal and plan MUST end before runtime-owned waiting",
     "qualifying event MUST start a fresh short-lived execution goal and plan",
+];
+
+const EXTERNAL_GATE_CLAUSES: &[&str] = &[
+    "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
+    "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
+    "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
 ];
 
 const TEMPLATE_CLAUSES: &[&str] = &[
@@ -101,6 +113,12 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
         "runtime heartbeat contract",
     )?;
     assert_rejected_clauses(
+        "skills/codex-orchestration/SKILL.md",
+        EXTERNAL_GATE_CLAUSES,
+        "removed event-wait policy",
+        "runtime heartbeat external-gate policy",
+    )?;
+    assert_rejected_clauses(
         "skills/token-efficient-orchestration/templates/delta-poll.md",
         TEMPLATE_CLAUSES,
         "removed heartbeat slot",
@@ -127,7 +145,9 @@ fn assert_rejected_clauses(
     for clause in clauses {
         fixture.reset_file(relative)?;
         let original = fs::read_to_string(&path)?;
-        fs::write(&path, original.replace(clause, replacement))?;
+        let mutated = original.replace(clause, replacement);
+        assert_ne!(original, mutated, "fixture is missing required clause {clause:?}");
+        fs::write(&path, mutated)?;
         let output = support::validator_instruction_policy(fixture.root())?;
         assert!(!output.status.success(), "validator accepted {clause:?}");
         assert!(support::stderr(&output).contains(expected_error));
