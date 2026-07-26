@@ -80,6 +80,7 @@ fn validator_keeps_modal_subjects_when_separating_must_clauses() -> TestResult {
         "Manual review MUST NOT be enabled and Automatic Codex connector review and manual review MUST NOT be enabled.",
         "Manual review MUST be enabled, Automatic Codex connector review MUST NOT be enabled.",
         "The policy MUST NOT archive logs and automatic Codex connector review records and Manual review MUST be enabled.",
+        "The parent/orchestrator MUST NOT archive logs and automatic Codex connector review records and Manual review MUST be enabled.",
     ]
     .into_iter()
     .enumerate()
