@@ -13,7 +13,7 @@ const ORCHESTRATION_CLAUSES: &[&str] = &[
     "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
     "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "search the callable tool surface for `automation_update`",
-    "register a thread-targeted `kind=heartbeat`",
+    "MUST use a thread-targeted `kind=heartbeat`",
     "creation MUST use `destination=\"thread\"`",
     "automation id, target thread, bounded schedule, stable observed-state identity, eligible material events, and terminal delete/disable action",
     "prompt MUST suppress unchanged observations and MUST wake the owner only for a material gate change or an explicit user/parent message",

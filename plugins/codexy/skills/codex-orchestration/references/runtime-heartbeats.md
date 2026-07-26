@@ -6,12 +6,9 @@ After a host transition or `No handler registered` failure, the owner MUST treat
 
 ## Eligibility And Discovery
 
-When GitHub CI, review-thread state, child state, or another external
-gate will outlive the current turn, the owning parent orchestrator or child MUST
-search the callable tool surface for `automation_update` before declaring persistent
-monitoring unavailable. A callable heartbeat surface is `automation_update` with a
-thread-targeted `kind=heartbeat`; the owner MUST register a thread-targeted `kind=heartbeat` instead of repeated model continuations or ending without a wakeup
-path. The heartbeat schedule MUST be bounded to the external gate's expected window.
+When genuinely scheduled monitoring or an unavailable `wait_threads` route will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.
+A callable heartbeat surface is `automation_update` with a thread-targeted `kind=heartbeat`. For such genuinely scheduled monitoring or unavailable-wait fallback, the owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path. The heartbeat MUST use a thread-targeted `kind=heartbeat`.
+The heartbeat schedule MUST be bounded to the external gate's expected window.
 For the current thread, creation MUST use `destination="thread"` rather than
 inventing or copying a target-thread id. Creation MUST use a heartbeat name, prompt,
 bounded schedule, active status, and heartbeat kind; the owner MUST retain the
