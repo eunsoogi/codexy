@@ -1,6 +1,9 @@
 use std::path::Path;
 
 use super::clauses::require_all;
+use contrast::clauses as contrast_clauses;
+
+mod contrast;
 
 const REQUIRED_CLAUSES: &[&str] = &[
     "Every non-trivial child lane MUST declare a finite execution budget before edits begin.",
@@ -49,13 +52,20 @@ fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
         return false;
     };
     policy_clauses(&policy_text).into_iter().any(|clause| {
-        let words = words(clause);
-        permits_parent_cycle_without_progress(&words)
-            || (!is_negated(&words)
-                && (permits_budget_renewal(&words)
-                    || permits_blocked_goal(&words)
-                    || permits_wait_progress(&words)))
+        let parent_words = words(clause);
+        permits_parent_cycle_without_progress(&parent_words)
+            || contrast_clauses(clause)
+                .into_iter()
+                .map(|contrast| words(contrast))
+                .any(|words| permits_nonparent_countermand(&words))
     })
+}
+
+fn permits_nonparent_countermand(words: &[String]) -> bool {
+    !is_negated(words)
+        && (permits_budget_renewal(words)
+            || permits_blocked_goal(words)
+            || permits_wait_progress(words))
 }
 
 fn policy_text(line: &str, in_html_comment: &mut bool) -> Option<String> {
@@ -86,34 +96,7 @@ fn policy_text(line: &str, in_html_comment: &mut bool) -> Option<String> {
 fn policy_clauses(line: &str) -> Vec<&str> {
     line.split(';')
         .flat_map(|clause| clause.split(". "))
-        .flat_map(contrast_clauses)
         .collect()
-}
-
-fn contrast_clauses(clause: &str) -> Vec<&str> {
-    let mut clauses = Vec::new();
-    let mut start = 0;
-    for (index, character) in clause.char_indices() {
-        if character == ',' {
-            if let Some(next_start) = contrast_tail_start(&clause[index + 1..]) {
-                clauses.push(&clause[start..index]);
-                start = index + 1 + next_start;
-            }
-        }
-    }
-    clauses.push(&clause[start..]);
-    clauses
-}
-
-fn contrast_tail_start(tail: &str) -> Option<usize> {
-    let trimmed = tail.trim_start();
-    ["but", "and", "while"].iter().find_map(|conjunction| {
-        let prefix = trimmed.get(..conjunction.len())?;
-        let after_conjunction = trimmed.get(conjunction.len()..)?;
-        (prefix.eq_ignore_ascii_case(conjunction)
-            && after_conjunction.starts_with(|character: char| character.is_ascii_whitespace()))
-        .then(|| tail.len() - after_conjunction.trim_start().len())
-    })
 }
 
 fn permits_budget_renewal(words: &[String]) -> bool {
@@ -193,12 +176,20 @@ fn state(tail: &[String], subject: &str) -> Progress {
         .iter()
         .position(|word| matches!(word.as_str(), "when" | "if" | "with"))
         .unwrap_or(tail.len());
-    let locally_denied = tail[..index]
+    let before_subject = &tail[..index];
+    let locally_denied = before_subject
         .iter()
         .rev()
         .take(4)
         .any(|word| matches!(word.as_str(), "no" | "without"));
-    if locally_denied || (tail.first().is_some_and(|word| word == "without") && index < boundary) {
+    let continued_denial = before_subject.iter().any(|word| word == "nor")
+        && before_subject
+            .iter()
+            .any(|word| matches!(word.as_str(), "no" | "without"));
+    if locally_denied
+        || continued_denial
+        || (tail.first().is_some_and(|word| word == "without") && index < boundary)
+    {
         return Progress::Denied;
     }
     let positive = match subject {

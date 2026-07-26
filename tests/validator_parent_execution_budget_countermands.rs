@@ -28,6 +28,7 @@ fn validator_rejects_repeated_parent_cycles_without_criterion_or_blocker_progres
 fn parent_cycle_countermand_keeps_negated_commented_and_sentence_boundary_controls() -> TestResult {
     for clause in [
         "A parent reviewer cycle MUST NOT be repeated without a newly satisfied acceptance criterion or a removed blocker.",
+        "A parent reviewer cycle MUST NOT repeat if no acceptance criterion is newly satisfied, nor is a blocker removed.",
         "<!-- A parent helper cycle MAY repeat without acceptance criterion satisfaction or blocker removal. -->",
         "A parent reviewer cycle MAY repeat with a newly satisfied acceptance criterion. Without a blocker, it stops.",
     ] {
@@ -46,11 +47,14 @@ fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_vari
     let valid = [
         "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion when an existing blocker is removed.",
         "A parent reviewer cycle MAY repeat if an existing blocker is removed, even if no acceptance criterion is newly satisfied.",
+        "A parent reviewer cycle MAY repeat if an existing blocker is removed, but no acceptance criterion is newly satisfied.",
     ];
     let invalid = [
         "A parent reviewer cycle MAY repeat even if no acceptance criterion is newly satisfied and no blocker is removed.",
         "A parent reviewer cycle MAY repeat without acceptance criterion or blocker removal and MUST NOT retain stale review bodies.",
         "A parent reviewer cycle MAY repeat with no newly satisfied acceptance criterion and no blocker removed.",
+        "A parent reviewer cycle MAY repeat if no acceptance criterion is newly satisfied, nor is a blocker removed.",
+        "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion, but no blocker is removed.",
     ];
 
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;

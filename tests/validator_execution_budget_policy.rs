@@ -113,7 +113,7 @@ fn validator_allows_negated_countermand_examples() -> TestResult {
     fs::write(
         &path,
         format!(
-            "{original}\nThe statement \"Artifact churn MAY renew or reset the budget.\" MUST NOT be permitted.\n"
+            "{original}\nThe statement \"Artifact churn MAY renew or reset the budget.\" MUST NOT be permitted.\nArtifact churn MUST NOT renew the budget, but repeated wait refreshes MUST NOT renew the budget.\n"
         ),
     )?;
 
