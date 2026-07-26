@@ -93,6 +93,8 @@ def _segment(tokens: list[str], context: ExecutionContext, depth: int) -> tuple[
         return True, CommandEffect(None)
     if invocation.executable is None:
         return False, CommandEffect(invocation.context)
+    if invocation.executable == "false":
+        return False, CommandEffect(None, context)
     if invocation.executable in {"cd", "pushd", "popd"}:
         directory = changed_directory(
             [invocation.executable, *invocation.arguments], invocation.context.cwd

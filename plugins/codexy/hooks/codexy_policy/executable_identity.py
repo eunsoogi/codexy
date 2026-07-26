@@ -34,15 +34,16 @@ class AliasOperands:
     executable: str
 
 
-def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str], ...] = ()) -> str:
+def resolve(command: str, cwd: str, aliases: tuple[tuple[str, str], ...] = (), path: str | None = None) -> str:
     """Return a sensitive executable identity when one can be proven."""
     lexical = name(command)
     if lexical in SENSITIVE_EXECUTABLES:
         return lexical
-    alias = dict(aliases).get(_command_location(command, cwd))
-    if alias is not None:
-        return alias
-    candidate = _path(command, cwd)
+    indexed = dict(aliases)
+    for location in _command_locations(command, cwd, path):
+        if (alias := indexed.get(location)) is not None:
+            return alias
+    candidate = _path(command, cwd, path)
     if candidate is None:
         return lexical
     for executable in SENSITIVE_EXECUTABLES:
@@ -98,10 +99,12 @@ def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | No
     )
 
 
-def _command_location(command: str, cwd: str) -> str | None:
-    if "/" not in command:
-        return None
-    return _filesystem_location(command, cwd)
+def _command_locations(command: str, cwd: str, path: str | None) -> tuple[str, ...]:
+    if "/" in command:
+        return (_filesystem_location(command, cwd),)
+    if path is None:
+        return ()
+    return tuple(_filesystem_location(os.path.join(directory or ".", command), cwd) for directory in path.split(os.pathsep))
 
 
 def _filesystem_location(value: str, cwd: str) -> str:
@@ -142,9 +145,9 @@ def _filesystem_identity(
     return None, True
 
 
-def _path(command: str, cwd: str) -> Path | None:
+def _path(command: str, cwd: str, path: str | None = None) -> Path | None:
     if "/" not in command:
-        found = shutil.which(command)
+        found = shutil.which(command, path=path)
         return Path(found) if found is not None else None
     path = Path(command)
     path = path if path.is_absolute() else Path(cwd) / path

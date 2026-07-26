@@ -119,6 +119,7 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let directory = owned.join("directory");
     let directory_link = owned.join("directory-link");
+    let path = format!("PATH={}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", owned.display());
     std::fs::create_dir(&directory)?;
     symlink(&directory, &directory_link)?;
     for command in [
@@ -131,6 +132,8 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("ln -sfn /usr/bin/git {} && {} push --force origin topic", directory_link.display(), directory_link.display()),
         "ln -sf /usr/bin/git safe; ln /usr/bin/printf safe; ./safe push --force origin topic",
         "ln -sf /usr/bin/git safe; cp -p /usr/bin/printf safe; ./safe push --force origin topic",
+        &format!("{path}; ln -sf /usr/bin/git safe && safe push --force origin topic"),
+        &format!("{path}; ln -sf /usr/bin/git safe; cp -p /usr/bin/printf safe; safe push --force origin topic"),
         "cp -p /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
         "ln -sfn /usr/bin/git /tmp/safe && /tmp/safe push --force origin topic",
         "ln -sf '/usr/bin/git' '/tmp/safe' && '/tmp/safe' push --force origin topic",
@@ -147,6 +150,9 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         "ln -sf /usr/bin/git safe && ln -sf /usr/bin/printf safe && ./safe push --force origin topic",
         "ln -sf /usr/bin/git safe && cp -p /usr/bin/printf safe && ./safe push --force origin topic",
         "ln -sf /usr/bin/git safe && cp -fp /usr/bin/printf safe && ./safe push --force origin topic",
+        "printf safe | cat",
+        "false || printf safe",
+        "printf safe &",
     ] {
         assert_case(&root, &owned, command, false, &[])?;
     }

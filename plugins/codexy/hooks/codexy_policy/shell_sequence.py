@@ -12,38 +12,62 @@ Segment = Callable[[list[str], ExecutionContext, int], tuple[bool, CommandEffect
 
 
 def evaluate(sequence: Sequence, context: ExecutionContext, depth: int, segment: Segment) -> tuple[bool, ExecutionContext]:
-    """Run ``&&`` success paths and join every path that reaches ``;``."""
+    """Evaluate supported connector lists without discarding result branches."""
     contexts, index = (context,), 0
     while index < len(sequence.steps):
-        chain, separator = [], ""
+        nodes, connectors, separator = [], [], ""
         while index < len(sequence.steps):
             step = sequence.steps[index]
-            chain.append(step)
+            nodes.append(step.node)
             index += 1
-            if step.following != "&&":
+            if step.following in {"&&", "||"}:
+                connectors.append(step.following)
+            else:
                 separator = step.following
                 break
-        paths: list[ExecutionContext] = []
-        for start in contexts:
-            active, stopped = (start,), []
-            for step in chain:
-                next_active: list[ExecutionContext] = []
-                for current in active:
-                    denied, effect = _node(step.node, current, depth, segment)
-                    if denied:
-                        return True, context
-                    if effect.failure is not None:
-                        stopped.append(effect.failure)
-                    if effect.success is not None:
-                        next_active.append(effect.success)
-                active = next_active
-            paths.extend(stopped + active)
-        contexts = tuple(_unique(paths))
+        denied, success, failure = _list(nodes, connectors, contexts, depth, segment)
+        if denied:
+            return True, context
+        contexts = tuple(_unique(success + failure))
         if separator == "":
             return False, _join(contexts, context)
-        if separator != ";":
+        if separator not in {";", "|", "&"}:
             return True, context
     return False, _join(contexts, context)
+
+
+def _list(
+    nodes: list[Command | Group], connectors: list[str], contexts: tuple[ExecutionContext, ...],
+    depth: int, segment: Segment,
+) -> tuple[bool, list[ExecutionContext], list[ExecutionContext]]:
+    denied, success, failure = _apply(nodes[0], contexts, depth, segment)
+    if denied:
+        return True, [], []
+    for connector, node in zip(connectors, nodes[1:]):
+        carried, active = (failure, success) if connector == "&&" else (success, failure)
+        denied, next_success, next_failure = _apply(node, tuple(active), depth, segment)
+        if denied:
+            return True, [], []
+        if connector == "&&":
+            success, failure = next_success, carried + next_failure
+        else:
+            success, failure = carried + next_success, next_failure
+    return False, success, failure
+
+
+def _apply(
+    node: Command | Group, contexts: tuple[ExecutionContext, ...], depth: int, segment: Segment,
+) -> tuple[bool, list[ExecutionContext], list[ExecutionContext]]:
+    success, failure = [], []
+    for context in contexts:
+        denied, effect = _node(node, context, depth, segment)
+        if denied:
+            return True, [], []
+        if effect.success is not None:
+            success.append(effect.success)
+        if effect.failure is not None:
+            failure.append(effect.failure)
+    return False, success, failure
 
 
 def _node(node: Command | Group, context: ExecutionContext, depth: int, segment: Segment) -> tuple[bool, CommandEffect]:

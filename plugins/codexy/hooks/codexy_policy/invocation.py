@@ -62,7 +62,7 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         tokens = expanded
         if not tokens:
             return Invocation(None, [], context)
-        executable = executable_identity(tokens[0], context.cwd, context.executable_aliases)
+        executable = executable_identity(tokens[0], context.cwd, context.executable_aliases, dict(context.environment).get("PATH"))
         args = tokens[1:]
         if executable in SHELL_INTERPRETERS | OPAQUE_INTERPRETERS and args == ["--version"]:
             return Invocation(executable, args, context)
