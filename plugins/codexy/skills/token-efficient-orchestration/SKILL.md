@@ -132,41 +132,24 @@ In a source checkout, MUST use `scripts/session-audit --input <metadata-jsonl>`
 for bounded aggregate evidence. An installed skill MUST NOT claim this
 repository-local command is packaged; it MUST direct users to the source checkout
 or an explicitly packaged runtime before requesting audit execution. The audit MUST report session size, latest cumulative tokens, recent per-turn
-average, record-window and turn-event metadata, call counts by tool, input and
-output bytes by tool, and bounded `exec` and `wait` family totals. It MUST read only exact
+average, call counts by tool, and output bytes by tool. It MUST read only exact
 top-level metadata keys, reject invalid ids or tool keys, deduplicate the stable
 event identity, and MUST NOT emit prompts, tool arguments, tool bodies, or nested
 metadata. For string output, `output_bytes` is decoded UTF-8 byte length; for
 arrays, objects, and scalars it is compact JSON UTF-8 serialization length, not
-the source JSONL/wire length or Unicode character count. `input_bytes` MUST use
-the same decoded-string or compact-JSON byte semantics and MUST NOT emit the
-measured input. The audit MUST accept
+the source JSONL/wire length or Unicode character count. The audit MUST accept
 one session only, bind a tool name to its first valid `(session, call-kind,
 call-id)`, count the first matching output once, reject conflicting bindings,
-and ignore orphan outputs. Family totals MUST use the exact allowlist `exec`,
-`exec_command`, `functions.exec`, `functions.exec_command`, `wait`,
-`wait_agent`, `functions.wait`, and `functions.wait_agent`; suffix matches MUST
-NOT enter a privileged family. The report MUST label Codex-derived byte counts
-as `derived` and caller-supplied generic byte counts as `reported`, and it MUST
-reject inputs that mix generic and Codex session formats.
+and ignore orphan outputs.
 
 MUST capture before/after aggregate output for one real lane using a comparable
 window and owner boundary. MUST use
 `templates/session-audit-proof-receipt.json` as the metadata-only receipt: it
 MUST include review feedback, child age, retries per PR, stable
 event ids, goal/plan receipts, helper ownership, sanitized audit input digest,
-and command exits. The receipt MUST mark comparisons observational-only, bind
-before and after inputs to the same owner boundary, record an equal record-count
-or equal-duration window policy with sanitized input digests, and report
-owner-tree totals for cumulative tokens plus `exec` and `wait` call/input/output
-byte families. The comparison MUST report observations only; it MUST NOT
+and command exits. The comparison MUST report observations only; it MUST NOT
 claim a causal driver without a controlled comparison. Historical text, negated
 feedback, and stale-head events MUST NOT count as current review activity.
-Each filled receipt MUST pass
-`scripts/session-audit --receipt <metadata-only-receipt.json>` before handoff.
-Receipt command evidence MUST use a safe command identifier with redacted
-arguments, and installed cache references MUST be relative rather than local
-absolute paths.
 
 Before attributing runtime behavior, MUST establish installed content equivalence,
 not just a matching version. MUST read the candidate manifest version, MUST run
