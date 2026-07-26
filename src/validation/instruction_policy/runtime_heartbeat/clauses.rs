@@ -1,5 +1,11 @@
 pub(super) const LEGACY_CHILD_STATE_ELIGIBILITY: &str = "when github ci, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child must search the callable tool surface for automation_update before declaring persistent monitoring unavailable";
 pub(super) const LEGACY_HEARTBEAT_REGISTRATION: &str = "the owner must register a heartbeat instead of repeated model continuations or ending without a wakeup path";
+pub(super) const LEGACY_HEARTBEAT_REGISTRATION_PREFIX: &str = "the owner must register";
+pub(super) const LEGACY_HEARTBEAT_REGISTRATION_TERMS: &[&str] = &[
+    "heartbeat",
+    "instead of repeated model continuations",
+    "ending without a wakeup path",
+];
 pub(super) const RESTRICTED_HEARTBEAT_CONTEXT: &str =
     "for such genuinely scheduled monitoring or unavailable-wait fallback";
 
@@ -9,8 +15,9 @@ pub(super) const ORCHESTRATION: &[&str] = &[
     "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "While a desktop-origin root turn has a callable `wait_threads` handler, the owner MUST keep ordinary child waits in a cursor-based `wait_threads` loop without finalizing that root turn between unchanged waits; mobile input that interrupts the active local wait MUST be consumed in that same local turn before the cursor-based wait continues",
     "If a slingshot-host turn still returns `No handler registered` after the one fresh discovery and one host-aware retry, the owner MUST emit exactly one unavailable evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery",
-    "When genuinely scheduled monitoring or an unavailable `wait_threads` route will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable",
-    "For such genuinely scheduled monitoring or unavailable-wait fallback, the owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path",
+    "The slingshot recovery route is not an unavailable-wait fallback eligible for heartbeat registration; it ends in desktop-origin root re-entry",
+    "When genuinely scheduled monitoring or an unavailable `wait_threads` route other than slingshot recovery will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable",
+    "For such genuinely scheduled monitoring or unavailable-wait fallback other than slingshot recovery, the owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path",
     "search the callable tool surface for `automation_update`",
     "MUST use a thread-targeted `kind=heartbeat`",
     "creation MUST use `destination=\"thread\"`",

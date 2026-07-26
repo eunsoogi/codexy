@@ -7,8 +7,9 @@ mod weakening;
 use crate::paths::display_relative;
 use clauses::{
     CONDITIONAL_MARKERS, EXTERNAL_GATE, LEGACY_CHILD_STATE_ELIGIBILITY,
-    LEGACY_HEARTBEAT_REGISTRATION, ORCHESTRATION, RESTRICTED_HEARTBEAT_CONTEXT, TEMPLATE, TOKEN,
-    TRANSITION,
+    LEGACY_HEARTBEAT_REGISTRATION, LEGACY_HEARTBEAT_REGISTRATION_PREFIX,
+    LEGACY_HEARTBEAT_REGISTRATION_TERMS, ORCHESTRATION, RESTRICTED_HEARTBEAT_CONTEXT, TEMPLATE,
+    TOKEN, TRANSITION,
 };
 use markdown::{last_modal_is_soft, normalized_policy_text};
 use weakening::has_weakening_suffix;
@@ -71,11 +72,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
         ));
     }
     if path.ends_with("skills/codex-orchestration/references/runtime-heartbeats.md")
-        && has_unconditional_clause(
-            &normalized,
-            LEGACY_HEARTBEAT_REGISTRATION,
-            RESTRICTED_HEARTBEAT_CONTEXT,
-        )
+        && has_unconditional_heartbeat_registration(&normalized, RESTRICTED_HEARTBEAT_CONTEXT)
     {
         errors.push(format!(
             "{} runtime heartbeat contract must not retain unconditional heartbeat registration",
@@ -91,13 +88,22 @@ fn has_unweakened_clause(text: &str, clause: &str) -> bool {
         is_unweakened_clause(before, after, clause)
     })
 }
-fn has_unconditional_clause(text: &str, clause: &str, restriction: &str) -> bool {
-    text.match_indices(clause).any(|(index, _)| {
-        let before = &text[..index];
-        let after = &text[index + clause.len()..];
-        is_unweakened_clause(before, after, clause)
-            && !current_sentence_prefix(before).contains(restriction)
-    })
+fn has_unconditional_heartbeat_registration(text: &str, restriction: &str) -> bool {
+    text.match_indices(LEGACY_HEARTBEAT_REGISTRATION_PREFIX)
+        .any(|(index, _)| {
+            let before = &text[..index];
+            let sentence = &text[index..].split(['.', ';']).next().unwrap_or_default();
+            is_legacy_heartbeat_registration(sentence)
+                && is_unweakened_clause(before, &text[index + sentence.len()..], sentence)
+                && !current_sentence_prefix(before).contains(restriction)
+        })
+}
+
+fn is_legacy_heartbeat_registration(sentence: &str) -> bool {
+    sentence.contains(LEGACY_HEARTBEAT_REGISTRATION)
+        || LEGACY_HEARTBEAT_REGISTRATION_TERMS
+            .iter()
+            .all(|term| sentence.contains(term))
 }
 
 fn is_unweakened_clause(before: &str, after: &str, clause: &str) -> bool {

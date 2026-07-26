@@ -11,6 +11,8 @@ const LEGACY_ELIGIBILITY: &str = "When GitHub CI, review-thread state, child sta
 const LEGACY_REGISTRATION: &str = "The owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.";
 const DESKTOP_CONTINUITY: &str = "While a desktop-origin root turn has a callable `wait_threads` handler, the owner MUST keep ordinary child waits in a cursor-based `wait_threads` loop without finalizing that root turn between unchanged waits; mobile input that interrupts the active local wait MUST be consumed in that same local turn before the cursor-based wait continues.";
 const SLINGSHOT_RECOVERY: &str = "If a slingshot-host turn still returns `No handler registered` after the one fresh discovery and one host-aware retry, the owner MUST emit exactly one unavailable evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery.";
+const SLINGSHOT_HEARTBEAT_EXEMPTION: &str = "The slingshot recovery route is not an unavailable-wait fallback eligible for heartbeat registration; it ends in desktop-origin root re-entry.";
+const LEGACY_THREAD_TARGETED_REGISTRATION: &str = "The owner MUST register a thread-targeted `kind=heartbeat` instead of repeated model continuations or ending without a wakeup path.";
 
 #[test]
 fn validator_accepts_ordered_wait_and_host_recovery_routes() -> TestResult {
@@ -27,7 +29,8 @@ fn validator_accepts_ordered_wait_and_host_recovery_routes() -> TestResult {
 #[test]
 fn validator_rejects_additive_unconditional_child_state_heartbeat_conflict() -> TestResult {
     assert_rejected_addition(LEGACY_ELIGIBILITY)?;
-    assert_rejected_addition(LEGACY_REGISTRATION)
+    assert_rejected_addition(LEGACY_REGISTRATION)?;
+    assert_rejected_addition(LEGACY_THREAD_TARGETED_REGISTRATION)
 }
 
 #[test]
@@ -35,6 +38,8 @@ fn validator_ignores_inactive_unconditional_child_state_history() -> TestResult 
     for addition in [
         format!("## Historical Example\n{LEGACY_ELIGIBILITY}\n{LEGACY_REGISTRATION}"),
         format!("```markdown\n{LEGACY_ELIGIBILITY}\n{LEGACY_REGISTRATION}\n```"),
+        format!("## Historical Example\n{LEGACY_THREAD_TARGETED_REGISTRATION}"),
+        format!("```markdown\n{LEGACY_THREAD_TARGETED_REGISTRATION}\n```"),
     ] {
         let fixture = support::plugin_fixture()?;
         let path = fixture.root().join(REFERENCE);
@@ -78,6 +83,15 @@ fn validator_rejects_weakened_desktop_and_slingshot_recovery_routes() -> TestRes
         )?;
     }
     Ok(())
+}
+
+#[test]
+fn validator_requires_slingshot_heartbeat_registration_exemption() -> TestResult {
+    assert_rejected_policy_mutation(
+        REFERENCE,
+        SLINGSHOT_HEARTBEAT_EXEMPTION,
+        "The slingshot recovery route MAY register a heartbeat relay before desktop-origin root re-entry.",
+    )
 }
 
 fn assert_rejected_mutation(original_clause: &str, replacement: &str) -> TestResult {
