@@ -177,15 +177,7 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
         if position > 0 {
             let previous = modal_positions[position - 1];
             let between = &words[previous + 1..start];
-            let boundary = between
-                .iter()
-                .position(|word| *word == "comma")
-                .or_else(|| {
-                    between
-                        .iter()
-                        .rposition(|word| matches!(*word, "and" | "or" | "but" | "then"))
-                });
-            if let Some(boundary) = boundary {
+            if let Some(boundary) = clause_boundary(between) {
                 let candidate = &between[boundary + 1..];
                 if !candidate.is_empty() {
                     subject = candidate;
@@ -194,8 +186,10 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
         }
         let end = modal_positions
             .get(position + 1)
-            .copied()
-            .unwrap_or(words.len());
+            .map_or(words.len(), |next| {
+                let between = &words[start + 1..*next];
+                start + 1 + clause_boundary(between).unwrap_or(between.len())
+            });
         let clause = &words[start..end];
         let positive_must = clause.get(1) != Some(&"not")
             && !clause
@@ -231,6 +225,14 @@ fn active_request_variant_in_fragment(fragment: &str) -> bool {
         }
     }
     false
+}
+
+fn clause_boundary(words: &[&str]) -> Option<usize> {
+    words.iter().position(|word| *word == "comma").or_else(|| {
+        words
+            .iter()
+            .rposition(|word| matches!(*word, "and" | "or" | "but" | "then"))
+    })
 }
 
 fn normalize(text: &str) -> String {
