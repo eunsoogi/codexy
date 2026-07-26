@@ -55,18 +55,58 @@ fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
     };
     policy_clauses(&policy_text).into_iter().any(|clause| {
         permits_parent_cycle_without_progress(clause)
-            || contrast_clauses(clause)
-                .into_iter()
-                .map(|contrast| words(contrast))
-                .any(|words| permits_nonparent_countermand(&words))
+            || permits_nonparent_countermand(contrast_clauses(clause))
     })
 }
 
-fn permits_nonparent_countermand(words: &[String]) -> bool {
-    !is_negated(words)
-        && (permits_budget_renewal(words)
-            || permits_blocked_goal(words)
-            || permits_wait_progress(words))
+fn permits_nonparent_countermand(clauses: Vec<&str>) -> bool {
+    let mut prior_subject = None;
+    for clause in clauses {
+        let words = words(clause);
+        let effective = inherited_subject_words(&words, prior_subject.as_deref());
+        if !is_negated(&effective)
+            && (permits_budget_renewal(&effective)
+                || permits_blocked_goal(&effective)
+                || permits_wait_progress(&effective))
+        {
+            return true;
+        }
+        prior_subject = renewal_subject(&words);
+    }
+    false
+}
+
+fn inherited_subject_words(words: &[String], prior_subject: Option<&[String]>) -> Vec<String> {
+    let Some(prior_subject) = prior_subject else {
+        return words.to_vec();
+    };
+    if words
+        .first()
+        .is_some_and(|word| matches!(word.as_str(), "may" | "can" | "must"))
+    {
+        prior_subject
+            .iter()
+            .cloned()
+            .chain(words.iter().cloned())
+            .collect()
+    } else {
+        words.to_vec()
+    }
+}
+
+fn renewal_subject(words: &[String]) -> Option<Vec<String>> {
+    ["artifact", "file", "diff", "test", "fingerprint"]
+        .iter()
+        .find(|kind| has_pair(words, kind, "churn"))
+        .map(|kind| vec![(*kind).to_owned(), "churn".to_owned()])
+        .or_else(|| {
+            (has_pair(words, "wait", "refresh") || has_pair(words, "wait", "refreshes"))
+                .then(|| vec!["wait".to_owned(), "refresh".to_owned()])
+        })
+        .or_else(|| {
+            (contains(words, "child") && contains(words, "self"))
+                .then(|| vec!["child".to_owned(), "self".to_owned()])
+        })
 }
 
 fn policy_text(line: &str, in_html_comment: &mut bool) -> Option<String> {

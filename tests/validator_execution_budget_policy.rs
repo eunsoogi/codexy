@@ -46,6 +46,7 @@ const MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget but repeated wait refreshes MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget and file churn MAY renew the budget.",
     "Artifact churn MUST NOT renew the budget while file churn MAY renew the budget.",
+    "Artifact churn MUST NOT renew the budget but MAY reset it.",
 ];
 const ADJACENT_MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget. File churn MAY renew the budget.",
@@ -105,27 +106,6 @@ fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult 
         );
         assert!(support::stderr(&output).contains("execution-budget contract"));
     }
-    Ok(())
-}
-
-#[test]
-fn validator_allows_negated_countermand_examples() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-    let path = budget_path(&plugin_root);
-    let original = fs::read_to_string(&path)?;
-    fs::write(
-        &path,
-        format!(
-            "{original}\nThe statement \"Artifact churn MAY renew or reset the budget.\" MUST NOT be permitted.\nThe quoted text \"Artifact churn MUST NOT renew the budget but repeated wait refreshes MAY renew the budget.\" is illustrative.\nArtifact churn MUST NOT renew the budget buttermilk wait refreshes MAY renew the budget.\nArtifact churn MUST NOT renew the budget, but repeated wait refreshes MUST NOT renew the budget.\nArtifact churn MUST NOT renew the budget but repeated wait refreshes MUST NOT renew the budget.\n"
-        ),
-    )?;
-
-    let output = support::validator_instruction_policy(&plugin_root)?;
-    assert!(
-        output.status.success(),
-        "validator rejected a negated countermand example: {}",
-        support::stderr(&output)
-    );
     Ok(())
 }
 

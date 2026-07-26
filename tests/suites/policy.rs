@@ -1,6 +1,9 @@
 #[path = "../validator_execution_budget_policy.rs"]
 mod validator_execution_budget_policy;
 
+#[path = "../validator_execution_budget_policy_controls.rs"]
+mod validator_execution_budget_policy_controls;
+
 #[path = "../validator_parent_execution_budget_policy.rs"]
 mod validator_parent_execution_budget_policy;
 
