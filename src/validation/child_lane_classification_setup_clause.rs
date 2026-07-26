@@ -37,16 +37,17 @@ fn predicate_start(words: &[&str], start: usize, action: usize) -> usize {
         return start;
     };
     let mut predicate = auxiliary;
-    while predicate > start && is_auxiliary_chain_word(words[predicate - 1]) {
+    while predicate > start && is_auxiliary_chain_modifier(words[predicate - 1]) {
         predicate -= 1;
     }
     predicate
 }
 
-fn is_auxiliary_chain_word(word: &str) -> bool {
+fn is_auxiliary_chain_modifier(word: &str) -> bool {
     matches!(
         word,
         "not"
+            | "never"
             | "n"
             | "t"
             | "isn"
@@ -74,7 +75,7 @@ fn is_auxiliary_chain_word(word: &str) -> bool {
             | "should"
             | "must"
             | "shall"
-    )
+    ) || word.ends_with("ly")
 }
 
 fn clause_start(words: &[&str], start: usize, action: usize) -> usize {
