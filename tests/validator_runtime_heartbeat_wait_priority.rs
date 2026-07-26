@@ -10,6 +10,8 @@ const HEARTBEAT_RESERVATION: &str = "The owner MUST reserve heartbeat scheduling
 const ELIGIBILITY: &str = "When genuinely scheduled monitoring or an unavailable `wait_threads` route will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.";
 const REGISTRATION: &str = "For such genuinely scheduled monitoring or unavailable-wait fallback, the owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.";
 const HOST_FALLBACK: &str = "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.";
+const LEGACY_ELIGIBILITY: &str = "When GitHub CI, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.";
+const LEGACY_REGISTRATION: &str = "The owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.";
 
 #[test]
 fn validator_accepts_ordered_wait_and_heartbeat_routes() -> TestResult {
@@ -34,15 +36,28 @@ fn validator_accepts_ordered_wait_and_heartbeat_routes() -> TestResult {
 }
 
 #[test]
-fn validator_rejects_unconditional_child_state_heartbeat_conflict() -> TestResult {
-    assert_rejected_mutation(
-        ELIGIBILITY,
-        "When GitHub CI, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.",
-    )?;
-    assert_rejected_mutation(
-        REGISTRATION,
-        "The owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.",
-    )
+fn validator_rejects_additive_unconditional_child_state_heartbeat_conflict() -> TestResult {
+    assert_rejected_addition(LEGACY_ELIGIBILITY)?;
+    assert_rejected_addition(LEGACY_REGISTRATION)
+}
+
+#[test]
+fn validator_ignores_inactive_unconditional_child_state_history() -> TestResult {
+    for addition in [
+        format!("## Historical Example\n{LEGACY_ELIGIBILITY}\n{LEGACY_REGISTRATION}"),
+        format!("```markdown\n{LEGACY_ELIGIBILITY}\n{LEGACY_REGISTRATION}\n```"),
+    ] {
+        let fixture = support::plugin_fixture()?;
+        let path = fixture.root().join(REFERENCE);
+        fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
+        let output = support::validator_instruction_policy(fixture.root())?;
+        assert!(
+            output.status.success(),
+            "validator rejected inactive legacy history: {}",
+            support::stderr(&output)
+        );
+    }
+    Ok(())
 }
 
 #[test]
@@ -75,5 +90,18 @@ fn assert_rejected_mutation(original_clause: &str, replacement: &str) -> TestRes
         "validator accepted weakened wait/heartbeat priority"
     );
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
+    Ok(())
+}
+
+fn assert_rejected_addition(addition: &str) -> TestResult {
+    let fixture = support::plugin_fixture()?;
+    let path = fixture.root().join(REFERENCE);
+    fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
+    let output = support::validator_instruction_policy(fixture.root())?;
+    assert!(
+        !output.status.success(),
+        "validator accepted additive unconditional heartbeat policy"
+    );
+    assert!(support::stderr(&output).contains("unconditional heartbeat"));
     Ok(())
 }

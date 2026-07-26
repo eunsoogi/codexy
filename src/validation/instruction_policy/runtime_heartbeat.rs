@@ -8,6 +8,10 @@ use markdown::{last_modal_is_soft, normalized_policy_text};
 use weakening::has_weakening_suffix;
 
 const NORMALIZED_DISCOVERY_CLAUSE: &str = "search the callable tool surface for automation_update";
+const LEGACY_CHILD_STATE_ELIGIBILITY: &str = "when github ci, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child must search the callable tool surface for automation_update before declaring persistent monitoring unavailable";
+const LEGACY_HEARTBEAT_REGISTRATION: &str = "the owner must register a heartbeat instead of repeated model continuations or ending without a wakeup path";
+const RESTRICTED_HEARTBEAT_CONTEXT: &str =
+    "for such genuinely scheduled monitoring or unavailable-wait fallback";
 
 const ORCHESTRATION_CLAUSES: &[&str] = &[
     "MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits",
@@ -132,33 +136,65 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
+    if path.ends_with("skills/codex-orchestration/references/runtime-heartbeats.md")
+        && has_unweakened_clause(&normalized, LEGACY_CHILD_STATE_ELIGIBILITY)
+    {
+        errors.push(format!(
+            "{} runtime heartbeat contract must not retain unconditional heartbeat eligibility for child state",
+            display_relative(path)
+        ));
+    }
+    if path.ends_with("skills/codex-orchestration/references/runtime-heartbeats.md")
+        && has_unconditional_clause(
+            &normalized,
+            LEGACY_HEARTBEAT_REGISTRATION,
+            RESTRICTED_HEARTBEAT_CONTEXT,
+        )
+    {
+        errors.push(format!(
+            "{} runtime heartbeat contract must not retain unconditional heartbeat registration",
+            display_relative(path)
+        ));
+    }
 }
 
 fn has_unweakened_clause(text: &str, clause: &str) -> bool {
     text.match_indices(clause).any(|(index, _)| {
         let before = &text[..index];
         let after = &text[index + clause.len()..];
-        has_clause_boundaries(before, after)
-            && before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
-            && !current_block_prefix(before)
-                .rsplit(['.', ';'])
-                .next()
-                .is_some_and(|prefix| {
-                    [
-                        "historical example",
-                        "false that",
-                        "not required",
-                        "no longer required",
-                    ]
-                    .iter()
-                    .any(|marker| prefix.contains(marker))
-                })
-            && !has_conditional_context(before)
-            && !has_negated_prefix(before)
-            && !(clause == NORMALIZED_DISCOVERY_CLAUSE
-                && last_modal_is_soft(current_sentence_prefix(before)))
-            && !has_weakening_suffix(after, CONDITIONAL_MARKERS)
+        is_unweakened_clause(before, after, clause)
     })
+}
+fn has_unconditional_clause(text: &str, clause: &str, restriction: &str) -> bool {
+    text.match_indices(clause).any(|(index, _)| {
+        let before = &text[..index];
+        let after = &text[index + clause.len()..];
+        is_unweakened_clause(before, after, clause)
+            && !current_sentence_prefix(before).contains(restriction)
+    })
+}
+
+fn is_unweakened_clause(before: &str, after: &str, clause: &str) -> bool {
+    has_clause_boundaries(before, after)
+        && before.rfind("<markdown-heading>") <= before.rfind("</markdown-heading>")
+        && !current_block_prefix(before)
+            .rsplit(['.', ';'])
+            .next()
+            .is_some_and(|prefix| {
+                [
+                    "historical example",
+                    "false that",
+                    "not required",
+                    "no longer required",
+                ]
+                .iter()
+                .any(|marker| prefix.contains(marker))
+            })
+        && !has_conditional_context(before)
+        && !has_negated_prefix(before)
+        && !(clause == NORMALIZED_DISCOVERY_CLAUSE
+            && last_modal_is_soft(current_sentence_prefix(before)))
+        && !has_weakening_suffix(after, CONDITIONAL_MARKERS)
 }
 
 fn has_clause_boundaries(before: &str, after: &str) -> bool {
