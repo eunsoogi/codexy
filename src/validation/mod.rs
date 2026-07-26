@@ -80,6 +80,7 @@ mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod readiness_context;
 mod release_publish_contract;
+mod review_response_cluster;
 mod review_thread_evidence;
 mod review_thread_readiness;
 mod review_thread_resolution;
@@ -106,6 +107,7 @@ use anyhow::Result;
 pub use hooks::policy_inventory_discovery_json as hook_policy_inventory_discovery;
 pub use mode_dispatch::{errors, run};
 pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
+pub use review_response_cluster::diagnostics as review_response_cluster_diagnostics;
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -132,6 +134,7 @@ pub enum Mode {
         handoff: String,
         pr_state: String,
     },
+    ReviewResponseCluster(String),
     Mcp,
     Hooks,
     Roles,
