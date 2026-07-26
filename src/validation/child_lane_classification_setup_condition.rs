@@ -1,3 +1,5 @@
+use super::child_lane_classification_setup_phrase::is_condition_phrase_boundary;
+
 pub(super) fn has_negative_condition_adjunct(words: &[&str]) -> bool {
     words.iter().enumerate().any(|(under, word)| {
         *word == "under"
@@ -20,36 +22,4 @@ fn is_negative_condition_phrase(phrase: &[&str]) -> bool {
                 .chain(&phrase[no + 1..])
                 .all(|word| !is_condition_phrase_boundary(word))
         })
-}
-
-fn is_condition_phrase_boundary(word: &&str) -> bool {
-    matches!(
-        *word,
-        "a" | "an"
-            | "the"
-            | "and"
-            | "or"
-            | "but"
-            | "at"
-            | "by"
-            | "for"
-            | "from"
-            | "given"
-            | "in"
-            | "on"
-            | "to"
-            | "under"
-            | "with"
-            | "without"
-            | "is"
-            | "are"
-            | "was"
-            | "were"
-            | "be"
-            | "been"
-            | "being"
-            | "has"
-            | "have"
-            | "had"
-    )
 }

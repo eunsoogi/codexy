@@ -36,6 +36,9 @@ fn validator_distinguishes_governing_progressive_setup_predicates() -> TestResul
         ("Under no ordinary supervision in the circumstances was the child actively setting up worktree codexy/463 before classification.", false),
         ("Under no normal pressure given the circumstances was the child actively setting up worktree codexy/463 before classification.", false),
         ("Under no exceptional supervision in the circumstances was the child actively setting up worktree codexy/463 before classification.", false),
+        ("Under no ordinary supervision during exceptional circumstances was the child actively setting up worktree codexy/463 before classification.", false),
+        ("Under no normal pressure despite extraordinary circumstances was the child actively setting up worktree codexy/463 before classification.", false),
+        ("Under no exceptional supervision regarding circumstances was the child actively setting up worktree codexy/463 before classification.", false),
         ("The child will probably have been actively setting up worktree codexy/463 before classification.", true),
         ("The child might certainly have been actively setting up worktree codexy/463 before classification.", true),
         ("The child has never been actively setting up worktree codexy/463 before classification.", true),
@@ -69,6 +72,34 @@ fn validator_distinguishes_governing_progressive_setup_predicates() -> TestResul
         ("The child will be setting up worktree codexy/463 after classification.", true),
     ] {
         assert_result(&format!("{owner}\n{setup}"), expected)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_bounds_fronted_negative_conditions_to_their_phrase() -> TestResult {
+    let owner = "Ownership metadata source: parent-supplied\nLane ownership: child-owned";
+    for modifier in ["ordinary", "normal", "exceptional", "conceivable", "absolutely ordinary"] {
+        assert_result(
+            &format!("{owner}\nUnder no {modifier} circumstances was the child actively setting up worktree codexy/463 before classification."),
+            true,
+        )?;
+    }
+    for boundary in [
+        "before exceptional circumstances changed",
+        "during exceptional circumstances",
+        "despite extraordinary circumstances",
+        "regarding circumstances",
+        "throughout ordinary circumstances",
+        "although circumstances changed",
+        "because circumstances changed",
+        "unless circumstances changed",
+        "while circumstances changed",
+    ] {
+        assert_result(
+            &format!("{owner}\nUnder no supervision {boundary} was the child actively setting up worktree codexy/463 before classification."),
+            false,
+        )?;
     }
     Ok(())
 }

@@ -1,4 +1,5 @@
 use super::child_lane_classification_setup_condition::has_negative_condition_adjunct;
+use super::child_lane_classification_setup_phrase::is_adjunct_preposition;
 
 pub(super) const SENTENCE_BOUNDARY: &str = "__codexy_sentence_boundary__";
 
@@ -67,13 +68,6 @@ fn is_clause_local_adjunct_token(words: &[&str], index: usize) -> bool {
                     .iter()
                     .all(|word| !is_auxiliary_chain_word(word))
         })
-}
-
-fn is_adjunct_preposition(word: &&str) -> bool {
-    matches!(
-        *word,
-        "at" | "by" | "for" | "from" | "in" | "on" | "under" | "with" | "without"
-    )
 }
 
 fn is_modal(word: &str) -> bool {
