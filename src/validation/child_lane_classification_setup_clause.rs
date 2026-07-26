@@ -59,7 +59,7 @@ fn is_clause_local_adjunct_token(words: &[&str], index: usize) -> bool {
         .rposition(|word| is_adjunct_preposition(word))
         .is_some_and(|preposition| {
             preposition > 0
-                && is_modal(words[preposition - 1])
+                && is_auxiliary_chain_word(words[preposition - 1])
                 && words[preposition..=index]
                     .iter()
                     .all(|word| !is_auxiliary_chain_word(word))
@@ -76,7 +76,7 @@ fn is_adjunct_preposition(word: &&str) -> bool {
 fn is_modal(word: &str) -> bool {
     matches!(
         word,
-        "may" | "might" | "will" | "would" | "could" | "should" | "must" | "shall"
+        "can" | "may" | "might" | "will" | "would" | "could" | "should" | "must" | "shall"
     )
 }
 
@@ -104,15 +104,9 @@ fn is_auxiliary_chain_word(word: &str) -> bool {
             | "has"
             | "have"
             | "had"
-            | "may"
-            | "might"
-            | "will"
-            | "would"
-            | "could"
-            | "should"
-            | "must"
-            | "shall"
-    ) || is_adverbial_modifier(word)
+    ) || is_modal(word)
+        || is_negated_finite_auxiliary(word)
+        || is_adverbial_modifier(word)
 }
 
 pub(super) fn is_adverbial_modifier(word: &str) -> bool {
@@ -182,6 +176,9 @@ fn has_clause_negator(words: &[&str], start: usize, action: usize) -> bool {
         .iter()
         .any(|word| matches!(*word, "not" | "never" | "neither"))
         || words[start..action]
+            .windows(2)
+            .any(|pair| matches!(pair, ["under", "no"]))
+        || words[start..action]
             .iter()
             .enumerate()
             .any(|(offset, word)| {
@@ -194,16 +191,27 @@ fn has_clause_negator(words: &[&str], start: usize, action: usize) -> bool {
 }
 
 fn is_contracted_negator(pair: &[&str]) -> bool {
+    matches!(pair, [auxiliary, "t"] if is_negated_finite_auxiliary(auxiliary))
+}
+
+fn is_negated_finite_auxiliary(word: &str) -> bool {
     matches!(
-        pair,
-        ["didn", "t"]
-            | ["isn", "t"]
-            | ["aren", "t"]
-            | ["wasn", "t"]
-            | ["weren", "t"]
-            | ["hasn", "t"]
-            | ["haven", "t"]
-            | ["hadn", "t"]
+        word,
+        "aren"
+            | "can"
+            | "couldn"
+            | "didn"
+            | "hadn"
+            | "hasn"
+            | "haven"
+            | "isn"
+            | "mustn"
+            | "shan"
+            | "shouldn"
+            | "wasn"
+            | "weren"
+            | "won"
+            | "wouldn"
     )
 }
 
