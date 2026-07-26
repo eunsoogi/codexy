@@ -30,8 +30,13 @@ enum Progress {
 fn state(words: &[String], subject: &str) -> Progress {
     let tail = words
         .iter()
-        .position(|word| matches!(word.as_str(), "repeat" | "repeated"))
-        .map(|repeat| &words[repeat + 1..])
+        .position(|word| {
+            matches!(
+                word.as_str(),
+                "repeat" | "repeated" | "continue" | "continues"
+            )
+        })
+        .map(|continuation| &words[continuation + 1..])
         .unwrap_or(words);
     let Some(index) = tail.iter().position(|word| word == subject) else {
         return Progress::Absent;

@@ -5,6 +5,7 @@ use anyhow::{Result, bail};
 use super::{
     super::audit_math::checked_add,
     schema::{Family, OwnerSession, Totals},
+    validate_digest,
 };
 
 pub(super) fn aggregate_sessions(sessions: &[OwnerSession], owner: &str) -> Result<Totals> {
@@ -14,6 +15,7 @@ pub(super) fn aggregate_sessions(sessions: &[OwnerSession], owner: &str) -> Resu
     let mut ids = BTreeSet::new();
     let mut totals = Totals::default();
     for session in sessions {
+        validate_digest(&session.input_sha256)?;
         if session.owner_root_thread_id != owner {
             bail!("owner-tree session does not match owner boundary");
         }

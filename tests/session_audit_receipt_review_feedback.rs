@@ -62,6 +62,54 @@ fn receipt_rejects_oversized_input_before_decoding() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn receipt_rejects_unbound_owner_session_digests_duplicate_observations_and_drive_paths(
+) -> TestResult {
+    let mut digest = valid_receipt();
+    let mut extra = digest["audit"]["ownerTreeSessions"][1].clone();
+    extra["sessionId"] = json!("third-owner-session");
+    extra["inputSha256"] = json!("private transcript");
+    digest["audit"]["ownerTreeSessions"]
+        .as_array_mut()
+        .ok_or("owner tree sessions must be an array")?
+        .push(extra);
+    digest["audit"]["ownerTreeTotals"] = json!({
+        "sessionCount": 3,
+        "recordsObserved": 6,
+        "turnEvents": 6,
+        "cumulativeTokens": 500,
+        "toolInputBytes": 67,
+        "toolOutputBytes": 255,
+        "execFamily": {"calls": 6, "inputBytes": 52, "outputBytes": 160},
+        "waitFamily": {"calls": 6, "inputBytes": 15, "outputBytes": 95}
+    });
+    let output = validate(&digest)?;
+    assert!(!output.status.success(), "unsafe owner digest unexpectedly passed");
+    assert!(stderr(&output).contains("SHA-256"));
+
+    let mut duplicate = valid_receipt();
+    duplicate["audit"]["comparison"]["after"] =
+        duplicate["audit"]["comparison"]["before"].clone();
+    let output = validate(&duplicate)?;
+    assert!(!output.status.success(), "duplicate observations unexpectedly passed");
+    assert!(stderr(&output).contains("distinct"));
+
+    let mut drive_paths = valid_receipt();
+    for pointer in [
+        "/installed/changedFiles/0/path",
+        "/installed/contentProof/sourceChangedFiles/0/path",
+        "/installed/contentProof/installedChangedFiles/0/path",
+    ] {
+        *drive_paths
+            .pointer_mut(pointer)
+            .ok_or("changed-file fixture pointer must exist")? = json!("C:/Users/private/file");
+    }
+    let output = validate(&drive_paths)?;
+    assert!(!output.status.success(), "drive-qualified path unexpectedly passed");
+    assert!(stderr(&output).contains("safe repository-relative"));
+    Ok(())
+}
+
 fn valid_receipt() -> Value {
     serde_json::from_str(include_str!("fixtures/session-audit/controlled-receipt.json"))
         .expect("controlled receipt fixture must be valid JSON")

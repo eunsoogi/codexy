@@ -3,9 +3,11 @@ use std::path::Path;
 use super::clauses::require_all;
 use contrast::clauses as contrast_clauses;
 use parent_progress::denies_all;
+use quoted::unquoted_text;
 
 mod contrast;
 mod parent_progress;
+mod quoted;
 
 const REQUIRED_CLAUSES: &[&str] = &[
     "Every non-trivial child lane MUST declare a finite execution budget before edits begin.",
@@ -54,8 +56,9 @@ fn permits_countermand(line: &str, in_html_comment: &mut bool) -> bool {
         return false;
     };
     policy_clauses(&policy_text).into_iter().any(|clause| {
-        permits_parent_cycle_without_progress(clause)
-            || permits_nonparent_countermand(contrast_clauses(clause))
+        let unquoted = unquoted_text(clause);
+        permits_parent_cycle_without_progress(&unquoted)
+            || permits_nonparent_countermand(contrast_clauses(&unquoted))
     })
 }
 
@@ -174,24 +177,30 @@ fn permits_wait_progress(words: &[String]) -> bool {
 
 fn permits_parent_cycle_without_progress(clause: &str) -> bool {
     let words = words(clause);
-    let repeat = words
-        .iter()
-        .position(|word| matches!(word.as_str(), "repeat" | "repeated"));
-    let Some(repeat) = repeat else {
+    let continuation = words.iter().position(|word| {
+        matches!(
+            word.as_str(),
+            "repeat" | "repeated" | "continue" | "continues"
+        )
+    });
+    let Some(continuation) = continuation else {
         return false;
     };
     contains(&words, "parent")
         && (contains(&words, "helper") || contains(&words, "reviewer"))
         && contains(&words, "cycle")
-        && permits_repeat(&words, repeat)
+        && permits_continuation(&words, continuation)
         && denies_all(clause)
 }
 
-fn permits_repeat(words: &[String], repeat: usize) -> bool {
-    words[..repeat].iter().enumerate().any(|(index, word)| {
-        matches!(word.as_str(), "may" | "can" | "must")
-            && words.get(index + 1).is_none_or(|next| next != "not")
-    })
+fn permits_continuation(words: &[String], continuation: usize) -> bool {
+    words[..continuation]
+        .iter()
+        .enumerate()
+        .any(|(index, word)| {
+            matches!(word.as_str(), "may" | "can" | "must")
+                && words.get(index + 1).is_none_or(|next| next != "not")
+        })
 }
 
 fn permits(words: &[String]) -> bool {

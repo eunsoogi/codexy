@@ -81,3 +81,37 @@ fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_vari
     }
     Ok(())
 }
+
+#[test]
+fn parent_cycle_countermand_rejects_continuation_verbs_without_progress() -> TestResult {
+    let valid = [
+        "A parent reviewer cycle MAY continue when an existing blocker is removed.",
+        "A parent reviewer MAY continue reviewing evidence without another cycle.",
+        "The quoted text \"A parent reviewer cycle MAY continue without acceptance criterion satisfaction or blocker removal.\" is illustrative.",
+    ];
+    let invalid = [
+        "A parent reviewer cycle MAY continue without acceptance criterion satisfaction or blocker removal.",
+        "A parent helper cycle MAY continue even if no acceptance criterion is newly satisfied and no blocker is removed.",
+    ];
+
+    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let path = budget_path(&plugin_root);
+    let original = fs::read_to_string(&path)?;
+    for clause in valid {
+        fs::write(&path, format!("{original}\n{clause}\n"))?;
+        assert!(
+            support::validator_instruction_policy(&plugin_root)?.status.success(),
+            "validator rejected allowed continuation {clause:?}"
+        );
+    }
+    for clause in invalid {
+        fs::write(&path, format!("{original}\n{clause}\n"))?;
+        assert!(
+            !support::validator_instruction_policy(&plugin_root)?
+                .status
+                .success(),
+            "validator accepted continuation countermand {clause:?}"
+        );
+    }
+    Ok(())
+}

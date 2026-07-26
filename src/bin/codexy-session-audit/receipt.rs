@@ -91,6 +91,9 @@ fn validate_private_metadata(installed: &Installed, commands: &[CommandReceipt])
 }
 
 fn validate_observations(comparison: &Comparison, sessions: &[OwnerSession]) -> Result<()> {
+    if comparison.before.session_id == comparison.after.session_id {
+        bail!("comparison observations must name distinct owner-tree sessions");
+    }
     for observation in [&comparison.before, &comparison.after] {
         let session = sessions
             .iter()
@@ -159,7 +162,7 @@ fn safe_packaged_path(path: &str) -> Result<&str> {
         }
         normalized.push_str(part);
     }
-    if normalized.is_empty() || normalized != path || path.contains('\\') {
+    if normalized.is_empty() || normalized != path || path.contains(['\\', ':']) {
         bail!("receipt changed-file paths must be safe repository-relative paths");
     }
     Ok(path)
