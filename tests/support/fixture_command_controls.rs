@@ -1,4 +1,4 @@
-use super::{FixtureCommand, fixture_script_launcher};
+use super::{FixtureCommand, fixture_script_launcher, windows_fixture_companion};
 
 #[test]
 fn fixture_script_launcher_maps_only_the_inventoryed_windows_shebangs() {
@@ -39,6 +39,23 @@ fn fixture_script_launcher_rejects_unknown_and_malformed_windows_shebangs() {
         fixture_script_launcher(true, b"#!\nfixture\n"),
         Err("malformed fixture script shebang".to_owned())
     );
+}
+
+#[test]
+fn windows_fixture_companion_selects_only_a_paired_shell_entrypoint()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let shell = temp.path().join("fixture.sh");
+    let command = temp.path().join("fixture.cmd");
+    std::fs::write(&shell, "#!/bin/sh\n")?;
+    assert_eq!(windows_fixture_companion(&shell), None);
+    std::fs::write(&command, "@echo off\n")?;
+    assert_eq!(windows_fixture_companion(&shell), Some(command));
+    assert_eq!(
+        windows_fixture_companion(&temp.path().join("fixture.py")),
+        None
+    );
+    Ok(())
 }
 
 #[cfg(unix)]

@@ -1,6 +1,6 @@
 use crate::support::FixtureCommand as Command;
 
-use crate::support::{self, WrapperFixture, make_executable, run_wrapper_command};
+use crate::support::{self, FixtureProbe, WrapperFixture, install_fixture_probe, run_wrapper_command};
 
 #[test]
 fn wrappers_share_platform_detection_across_supported_shells()
@@ -20,7 +20,7 @@ fn wrappers_share_platform_detection_across_supported_shells()
             std::fs::create_dir(&runtime_dir)?;
             let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
             let runtime = runtime_dir.join(format!("codexy-mcp-{server}-{platform}.{extension}"));
-            install_detected_runtime(&runtime, platform, server)?;
+            install_detected_runtime(&runtime)?;
 
             let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
             command.env_path_list("PATH", [fixture.cargo_bin.as_os_str(), "/usr/bin".as_ref(), "/bin".as_ref()]);
@@ -45,7 +45,7 @@ fn explicit_platform_override_precedes_detection_and_unknown_hosts_fail_closed()
         let runtime_dir = temp.path().join("runtime override");
         std::fs::create_dir(&runtime_dir)?;
         let runtime = runtime_dir.join(format!("codexy-mcp-{server}-windows-x86_64.exe"));
-        install_detected_runtime(&runtime, "windows-x86_64", server)?;
+        install_detected_runtime(&runtime)?;
         let wrapper = fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}"));
 
         let mut override_command = Command::new(&wrapper);
@@ -64,22 +64,8 @@ fn explicit_platform_override_precedes_detection_and_unknown_hosts_fail_closed()
     Ok(())
 }
 
-fn install_detected_runtime(
-    runtime: &std::path::Path,
-    platform: &str,
-    server: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if platform == "windows-x86_64" && cfg!(windows) {
-        let binary = match server {
-            "lsp" => env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
-            "codegraph" => env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
-            _ => return Err(format!("unknown runtime server: {server}").into()),
-        };
-        std::fs::copy(binary, runtime)?;
-    } else {
-        std::fs::write(runtime, "#!/bin/sh\nprintf '%s\\n' \"$@\"\n")?;
-        make_executable(runtime)?;
-    }
+fn install_detected_runtime(runtime: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    install_fixture_probe(runtime, FixtureProbe::Arguments)?;
     Ok(())
 }
 
@@ -102,11 +88,9 @@ fn install_fake_uname(
     os: &str,
     arch: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let uname = fixture.cargo_bin.join("uname");
-    std::fs::write(
-        &uname,
-        format!("#!/bin/sh\ncase \"$1\" in -s) printf '%s\\n' '{os}' ;; -m) printf '%s\\n' '{arch}' ;; *) exit 2 ;; esac\n"),
+    install_fixture_probe(
+        &fixture.cargo_bin.join("uname"),
+        FixtureProbe::Uname { operating_system: os, architecture: arch },
     )?;
-    make_executable(&uname)?;
     Ok(())
 }

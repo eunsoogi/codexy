@@ -51,6 +51,7 @@ pub(crate) fn windows_fixture_environment_value(key: &str, value: &str) -> Resul
 }
 
 pub(crate) fn windows_to_posix_fixture_path(value: &str) -> Result<String, String> {
+    let value = value.strip_prefix(r"\\?\").unwrap_or(value);
     if value.starts_with(r"\\") {
         return Err(format!(
             "Windows fixture paths do not support UNC values: {value}"
@@ -93,6 +94,10 @@ fn windows_fixture_paths_use_the_msys_absolute_path_contract() {
     );
     assert_eq!(
         windows_to_posix_fixture_path("D:/runtime/cache"),
+        Ok("/d/runtime/cache".into())
+    );
+    assert_eq!(
+        windows_to_posix_fixture_path(r"\\?\D:\runtime\cache"),
         Ok("/d/runtime/cache".into())
     );
     assert_eq!(

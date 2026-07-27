@@ -14,6 +14,10 @@ pub(crate) struct FixtureCommand(Command);
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
+        #[cfg(windows)]
+        if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
+            return Self(Command::new(companion));
+        }
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
             let command = materialized_script_command(program, &source)
                 .unwrap_or_else(|error| panic!("{error}"));
@@ -169,6 +173,14 @@ fn fixture_script_launcher(
         return Ok(None);
     }
     fixture_script_interpreter(contents)
+}
+
+fn windows_fixture_companion(program: &std::path::Path) -> Option<std::path::PathBuf> {
+    (program
+        .extension()
+        .is_some_and(|extension| extension == "sh"))
+    .then(|| program.with_extension("cmd"))
+    .filter(|companion| companion.is_file())
 }
 
 fn fixture_script_interpreter(contents: &[u8]) -> Result<Option<&'static str>, String> {

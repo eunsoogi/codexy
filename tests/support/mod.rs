@@ -7,6 +7,7 @@ mod child_thread_ledger_skill;
 mod digest;
 mod fixture_command;
 mod fixture_path;
+mod fixture_probe;
 mod fixture_text;
 mod package;
 mod package_archive;
@@ -39,6 +40,7 @@ pub(crate) use child_thread_ledger_skill::{
 pub(crate) use digest::sha256_file;
 pub(crate) use fixture_command::FixtureCommand;
 pub(crate) use fixture_path::fixture_path_text;
+pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
 pub(crate) use fixture_text::{
     materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
 };
