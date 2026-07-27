@@ -5,10 +5,10 @@ pub(super) fn relative_clause_owns_report_predicate(
     start: usize,
     predicate: usize,
 ) -> bool {
-    let Some(relative) = relative_marker(words, start, predicate) else {
-        return false;
-    };
-    relative_finite_predicate(words, relative, predicate)
+    !matches!(
+        relative_parse(words, start, predicate),
+        RelativeParse::Absent
+    )
 }
 
 pub(super) fn main_clause_start(words: &[&str], start: usize, action: usize) -> Option<usize> {
@@ -17,7 +17,7 @@ pub(super) fn main_clause_start(words: &[&str], start: usize, action: usize) -> 
         (relative + 1..action)
             .find(|index| {
                 report_clause_predicate(words[*index])
-                    && !relative_finite_predicate(words, relative, *index)
+                    && matches!(relative_parse(words, start, *index), RelativeParse::Absent)
             })
             .unwrap_or_else(|| predicate_chain_start(words, relative + 1, action)),
     )
@@ -75,6 +75,34 @@ fn relative_marker(words: &[&str], start: usize, end: usize) -> Option<usize> {
     (start..end)
         .rev()
         .find(|index| matches!(words[*index], "who" | "whose" | "which"))
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum RelativeParse {
+    Absent,
+    Valid,
+    Malformed,
+}
+
+fn relative_parse(words: &[&str], start: usize, predicate: usize) -> RelativeParse {
+    let Some(relative) = relative_marker(words, start, predicate) else {
+        return RelativeParse::Absent;
+    };
+    if !relative_predicate_word(words[predicate]) {
+        return RelativeParse::Absent;
+    }
+    let between = &words[relative + 1..predicate];
+    if matches!(words[relative], "who" | "which")
+        && between
+            .first()
+            .is_some_and(|word| is_adverbial_modifier(word))
+        && !between.iter().all(|word| is_adverbial_modifier(word))
+    {
+        return RelativeParse::Malformed;
+    }
+    relative_finite_predicate(words, relative, predicate)
+        .then_some(RelativeParse::Valid)
+        .unwrap_or(RelativeParse::Absent)
 }
 
 fn relative_finite_predicate(words: &[&str], relative: usize, predicate: usize) -> bool {

@@ -150,6 +150,8 @@ mod validator_child_lane_setup_actor_grammar;
 mod validator_child_lane_setup_actor_predicate;
 #[path = "../validator_child_lane_setup_actor_relative_subject.rs"]
 mod validator_child_lane_setup_actor_relative_subject;
+#[path = "../validator_child_lane_setup_actor_relative_malformed.rs"]
+mod validator_child_lane_setup_actor_relative_malformed;
 #[path = "../validator_child_lane_setup_action_binding.rs"]
 mod validator_child_lane_setup_action_binding;
 #[path = "../validator_child_lane_setup_relation_boundaries.rs"]
