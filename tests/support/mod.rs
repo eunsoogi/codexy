@@ -36,8 +36,8 @@ mod wrapper_platform;
 mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
-    TestResult, assert_privacy_diagnostic, public_contract_import_check,
-    validate_agent_replacement, validate_catalog_replacement,
+    TestResult, agent_fixture, assert_privacy_diagnostic, catalog_fixture,
+    public_contract_import_check, validate_agent_replacement, validate_catalog_replacement,
 };
 pub(crate) use child_thread_ledger_skill::{
     stderr, validator, validator_child_lane_ownership_file, validator_completion_handoff_files,

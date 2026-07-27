@@ -2,11 +2,17 @@ use crate::support::FixtureCommand as Command;
 
 use crate::support;
 
-use support::copy_dir;
+use std::path::Path;
+
+const MUTABLE_PLUGIN_FILES: &[&str] = &[
+    "agents/catalog.toml",
+    "agents/codexy-sentinel.toml",
+];
 
 #[test]
 fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
 -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = plugin_fixture()?;
     for existing in [
         "[agents.\"codexy-sentinel\"]\ndescription = \"Existing reviewer\"\n",
         "[agents.codexy-sentinel.mcp_servers.local]\ncommand = \"local\"\n",
@@ -22,7 +28,7 @@ fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
         "[agents.'codexy-sentinel'] # local reviewer\nconfig_file = \"existing.toml\"\n",
         "[agents.\"codexy\\u002dsentinel\"]\nconfig_file = \"existing.toml\"\n",
     ] {
-        assert_conflict(existing)?;
+        assert_conflict(fixture.root(), existing)?;
     }
     Ok(())
 }
@@ -30,6 +36,7 @@ fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
 #[test]
 fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
 -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = plugin_fixture()?;
     for existing in [
         "agents.codexy-sentinel.config_file = \"existing.toml\"\n",
         "agents.codexy-sentinel = { config_file = \"existing.toml\" }\n",
@@ -52,20 +59,21 @@ fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
         "[agents]\n\"codexy-sentinel\" = { config_file = \"existing.toml\" }\n",
         "[\"agents\"]\n'codexy-sentinel' = { config_file = 'existing.toml' }\n",
     ] {
-        assert_conflict(existing)?;
+        assert_conflict(fixture.root(), existing)?;
     }
     Ok(())
 }
 
 #[test]
 fn register_codexy_agents_refuses_inline_agents_tables() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = plugin_fixture()?;
     for existing in [
         "agents = { max_threads = 6 }\n",
         "\"agents\" = { max_threads = 6 }\n",
         "'agents' = { max_threads = 6 }\n",
         "agents = { codexy-sentinel = { config_file = \"existing.toml\" } }\n",
     ] {
-        assert_conflict(existing)?;
+        assert_conflict(fixture.root(), existing)?;
     }
     Ok(())
 }
@@ -74,7 +82,8 @@ fn register_codexy_agents_refuses_inline_agents_tables() -> Result<(), Box<dyn s
 fn register_codexy_agents_backup_uses_python310_compatible_timestamp()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = installed_fixture(temp.path())?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let config_path = temp.path().join("home/.codex/config.toml");
     write_config(
         &config_path,
@@ -103,7 +112,8 @@ fn register_codexy_agents_backup_uses_python310_compatible_timestamp()
 fn register_codexy_agents_uninstall_does_not_require_valid_catalog()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = installed_fixture(temp.path())?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let config_path = temp.path().join("home/.codex/config.toml");
     write_config(
         &config_path,
@@ -132,7 +142,8 @@ fn register_codexy_agents_uninstall_does_not_require_valid_catalog()
 fn register_codexy_agents_allows_supported_agent_config_tables()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = installed_fixture(temp.path())?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
     let mut agent = std::fs::read_to_string(&agent_path)?;
     agent.push_str(
@@ -156,13 +167,9 @@ fn register_codexy_agents_allows_supported_agent_config_tables()
     Ok(())
 }
 
-fn installed_fixture(root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    let plugin_root = root.join("installed-codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    Ok(plugin_root)
+fn plugin_fixture() -> std::io::Result<support::PluginFixture> {
+    let mutable_files = MUTABLE_PLUGIN_FILES.iter().map(Path::new).collect::<Vec<_>>();
+    support::plugin_fixture_with_mutable_files(&mutable_files)
 }
 
 fn write_config(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
@@ -170,15 +177,17 @@ fn write_config(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
     std::fs::write(path, contents)
 }
 
-fn assert_conflict(existing: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn assert_conflict(
+    plugin_root: &std::path::Path,
+    existing: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = installed_fixture(temp.path())?;
     let config_path = temp.path().join("home/.codex/config.toml");
     write_config(&config_path, existing)?;
-    let output = registration_script(&plugin_root)
+    let output = registration_script(plugin_root)
         .args([
             "--plugin-root",
-            path(&plugin_root)?,
+            path(plugin_root)?,
             "--config",
             path(&config_path)?,
         ])
