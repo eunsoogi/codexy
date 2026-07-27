@@ -1,3 +1,5 @@
+use super::child_lane_classification_setup_clause::SENTENCE_BOUNDARY;
+
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum SetupActor {
     Child,
@@ -11,15 +13,17 @@ pub(super) fn explicit_subject(words: &[&str], start: usize, action: usize) -> O
             .rposition(|word| *word == SENTENCE_BOUNDARY || matches!(*word, "but" | "however"))
             .map(|index| index + 1)
             .unwrap_or(0);
-        select_subject(words, inherited_start, start)
+        select_subject(words, inherited_start, action)
     })
 }
 
 fn select_subject(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
-    let (subject, actor) = nearest_actor(words, start, end)?;
-    coordinated_subject_actor(words, start, subject)
-        .filter(|actor| *actor == SetupActor::Child)
-        .or(Some(actor))
+    together_with_subject_actor(words, start, end).or_else(|| {
+        let (subject, actor) = nearest_subject(words, start, end)?;
+        coordinated_subject_actor(words, start, subject)
+            .filter(|actor| *actor == SetupActor::Child)
+            .or(Some(actor))
+    })
 }
 
 pub(super) fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
@@ -37,12 +41,53 @@ pub(super) fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Op
     saw_non_child.then_some(SetupActor::NonChild)
 }
 
-fn nearest_actor(words: &[&str], start: usize, end: usize) -> Option<(usize, SetupActor)> {
+fn nearest_subject(words: &[&str], start: usize, end: usize) -> Option<(usize, SetupActor)> {
     (start..end).rev().find_map(|index| {
-        (!actor_is_introduced_by(words, start, index) && !contrastive_actor(words, index))
-            .then(|| actor_word(words[index]).map(|actor| (index, actor)))
-            .flatten()
+        (!actor_is_introduced_by(words, start, index)
+            && !contrastive_actor(words, index)
+            && !relative_clause_object(words, start, index)
+            && !coordinated_predicate_object(words, start, index, end))
+        .then(|| actor_word(words[index]).map(|actor| (index, actor)))
+        .flatten()
     })
+}
+
+fn relative_clause_object(words: &[&str], start: usize, actor: usize) -> bool {
+    let Some(relative) = words[start..actor]
+        .iter()
+        .rposition(|word| matches!(*word, "who" | "which" | "that"))
+        .map(|offset| start + offset)
+    else {
+        return false;
+    };
+    !words[relative + 1..actor]
+        .iter()
+        .any(|word| report_clause_predicate(word))
+}
+
+fn report_clause_predicate(word: &str) -> bool {
+    matches!(
+        word,
+        "reports"
+            | "reported"
+            | "says"
+            | "said"
+            | "states"
+            | "stated"
+            | "explains"
+            | "explained"
+            | "notes"
+            | "noted"
+            | "tells"
+            | "told"
+    )
+}
+
+fn coordinated_predicate_object(words: &[&str], start: usize, actor: usize, end: usize) -> bool {
+    (start..actor).any(|index| actor_word(words[index]).is_some())
+        && words[actor + 1..end]
+            .windows(2)
+            .any(|words| words == ["and", "then"])
 }
 
 fn contrastive_actor(words: &[&str], actor: usize) -> bool {
@@ -55,12 +100,30 @@ fn coordinated_subject_actor(words: &[&str], start: usize, subject: usize) -> Op
     let conjunction = (start..subject)
         .rev()
         .find(|index| words[*index] == "and")?;
-    let (previous, actor) = nearest_actor(words, start, conjunction)?;
+    let (previous, actor) = nearest_subject(words, start, conjunction)?;
     (words[previous + 1..conjunction]
         .iter()
         .chain(words[conjunction + 1..subject].iter())
         .all(|word| subject_modifier(word)))
     .then_some(actor)
+}
+
+fn together_with_subject_actor(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
+    let together = (start..end).find(|index| words[*index] == "together")?;
+    let with = together + 1;
+    (words.get(with) == Some(&"with")).then_some(())?;
+    let (first_index, first) = nearest_subject(words, start, together)?;
+    let (second_index, second) =
+        (with + 1..end).find_map(|index| actor_word(words[index]).map(|actor| (index, actor)))?;
+    (words[first_index + 1..together]
+        .iter()
+        .chain(words[with + 1..second_index].iter())
+        .all(|word| subject_modifier(word)))
+    .then_some(if first == second {
+        first
+    } else {
+        SetupActor::Child
+    })
 }
 
 fn subject_modifier(word: &str) -> bool {
@@ -99,4 +162,3 @@ fn actor_word(word: &str) -> Option<SetupActor> {
         _ => None,
     }
 }
-use super::child_lane_classification_setup_clause::SENTENCE_BOUNDARY;

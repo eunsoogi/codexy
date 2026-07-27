@@ -70,3 +70,42 @@ fn validator_binds_setup_actions_to_the_nearest_predicate_subject() -> TestResul
     }
     Ok(())
 }
+
+#[test]
+fn validator_binds_setup_predicates_to_structural_clause_subjects() -> TestResult {
+    for (label, setup, expected) in [
+        (
+            "relative clause child object does not replace the parent subject",
+            "The parent who reviewed the child created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "relative clause parent object does not replace the child subject",
+            "The child who reviewed the parent created branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "object of an earlier predicate does not replace the inherited child subject",
+            "The child reviewed the parent and then created branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "object of an earlier predicate does not replace the inherited parent subject",
+            "The parent reviewed the child and then created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "together with mixed subjects fail closed",
+            "The child together with the parent created branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "reciprocal together with mixed subjects fail closed",
+            "The parent together with the child created branch codexy/463 after classification.",
+            false,
+        ),
+    ] {
+        assert_result(label, setup, expected)?;
+    }
+    Ok(())
+}
