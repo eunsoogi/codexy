@@ -160,14 +160,11 @@ fn rejects_unsolicited_json_rpc_response_ids() {
 
 #[test]
 fn workflow_delegates_mcp_stdout_validation_to_the_shared_checker() {
-    let workflow = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join(".github/workflows/plugin-runtime-binaries.yml"),
-    )
-    .expect("runtime workflow");
-    assert!(workflow.contains("scripts/inspect-mcp-response \"$response_file\" \"$server\""));
-    assert!(!workflow.contains("except json.JSONDecodeError: continue"));
-    assert!(workflow.contains("capture_output=True"));
-    assert!(workflow.contains("write(completed.stdout)"));
-    assert!(!workflow.contains("write(completed.stderr)"));
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workflow: serde_yaml::Value = serde_yaml::from_str(&std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml")).expect("runtime workflow")).expect("workflow YAML");
+    let run = workflow["jobs"]["verify-selected-package"]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Assemble state-aware marketplace package without rebuilding")).and_then(|step| step["run"].as_str()).expect("archive inspection step");
+    assert!(run.lines().map(str::trim).any(|line| line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\""));
+    let archive = std::fs::read_to_string(root.join("scripts/inspect-release-archive")).expect("archive inspector");
+    assert!(archive.lines().map(str::trim).any(|line| line == "response_checker=\"$script_dir/inspect-mcp-response\""));
+    assert!(archive.lines().map(str::trim).any(|line| line == "\"$response_checker\" \"$response_file\" \"$server\""));
 }

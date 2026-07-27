@@ -12,7 +12,7 @@ skill requires evidence that directly matches every explicit requirement before
 the agent says work is done, closes an issue, merges a PR, or marks a goal
 complete.
 
-When replying in Korean, MUST follow [Natural Korean User Replies](../codex-orchestration/references/natural-korean-responses.md) for the outcome and blocker summary while preserving exact completion evidence separately.
+For every user-facing summary, MUST follow [Plain-Language User Replies](../codex-orchestration/references/plain-language-user-replies.md) while preserving exact completion evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../codex-orchestration/references/natural-korean-responses.md).
 
 ## Completion Audit
 
@@ -108,6 +108,8 @@ When replying in Korean, MUST follow [Natural Korean User Replies](../codex-orch
   a maintainer explicitly approves a fallback.
 - Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
+- Review-response proof MUST exercise a bounded positive and negative matrix for every repaired root-cause cluster.
+- A repeated same-class variant MUST NOT consume a new repair cycle unless its receipt names a distinct invariant or proves the prior structural repair incomplete.
 - For delegated non-trivial or multi-step child implementation lanes, MUST verify
   the child reported actual goal-tool usage or an unavailable-goal-tool
   fallback, current todo/plan tool usage or an unavailable-todo-tool fallback,

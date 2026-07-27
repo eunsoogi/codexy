@@ -44,9 +44,9 @@ execution loop and MUST be read with root `AGENTS.md`.
   infer either from historical actual `turn_context` state, the sender, or ambient defaults.
 - Parent-to-generic-child delivery MUST pass `model: "gpt-5.6-terra"` and
   `thinking: "high"`; child-to-root delivery MUST pass `model: "gpt-5.6-sol"`
-  and `thinking: "high"`.
+  and `thinking: "medium"`.
 - Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
-- Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "high" }).
+- Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "medium" }).
 
 ## Read Next
 
@@ -62,6 +62,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/runtime-heartbeats.md` for external waits.
 - `references/parent-stop-preflight.md` for ownership checks before implementation edits.
 - `references/execution-budget.md` for finite child execution and termination.
+- `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
 - `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 
 ## Classification Gate
@@ -97,7 +98,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST treat asynchronous completion as event waits, not blockers. When an eligible external gate outlives the turn, parent orchestrators and child owners MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- MUST treat asynchronous completion as event waits, not blockers. Parent orchestrators and child owners MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. They MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable. After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata. When an eligible external gate outlives the turn, they MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.
@@ -207,6 +208,8 @@ The Sentinel MUST review only this issue's acceptance criteria, authorized behav
 Every BLOCK finding MUST map to an in-scope acceptance criterion.
 Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
 Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
+Before review-response edits, MUST create one root-cause cluster for each actionable defect class.
+Each cluster MUST name its stable defect class, violated invariant, structural boundary, related current threads, and representative positive and negative matrix.
 
 ## Codegraph And LSP
 
@@ -235,14 +238,11 @@ MUST run `scripts/validate-plugin-config --check-child-lane-ownership --evidence
 
 ## Event-driven token and quota containment
 
-The root/orchestrator MUST NOT retain a persistent long-running goal, MUST NOT autonomously poll, and MUST process only compact deltas for terminal child state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or review-thread resolution; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry; no full conversation transfer or full agent-tree listing. A parent or child MUST NOT retain an active goal or plan during an external-gate wait. A child MUST use short-lived execution goals only. Once code, proof, push, and review-response work is complete and only an external gate remains, the child MUST send exactly one terminal parent handoff, call `update_goal(complete)`, and end its plan before waiting. A child external-gate wait MUST end its active goal and plan before waiting; when a runtime monitor is absent, it MUST return control. A runtime monitor lives outside goals. A registered heartbeat automation route uses its automation id, target thread, bounded schedule, and state fingerprint; a heartbeat automation route MUST NOT require a persistent exec/session id or same-process resume. A separate process-backed route requires those fields plus a next deadline. Both MUST suppress unchanged observations without assistant turns. A qualifying event starts a fresh short-lived execution goal. `blocked` is reserved for a repeated genuine execution impasse and MUST NOT represent an asynchronous external-gate wait.
+Event-driven refresh: The root/orchestrator MUST NOT retain a persistent long-running goal, MUST NOT autonomously poll, and MUST process only compact deltas for terminal child state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or review-thread resolution; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry the parent message. There MUST be no full conversation transfer and no full agent-tree listing. A parent or child MUST NOT retain an active goal or plan during an external-gate wait. A child MUST use short-lived execution goals only. Once code, proof, push, and review-response work is complete and only an external gate remains, the child MUST send exactly one terminal parent handoff, call `update_goal(complete)`, and end its plan before waiting. A child external-gate wait MUST end its active goal and plan before waiting; when a runtime monitor is absent, it MUST return control. A runtime monitor lives outside goals. A registered heartbeat automation route uses its automation id, target thread, bounded schedule, and state fingerprint; a heartbeat automation route MUST NOT require a persistent exec/session id or same-process resume. A separate process-backed route requires those fields plus a next deadline. Both MUST suppress unchanged observations without assistant turns. A qualifying event starts a fresh short-lived execution goal. `blocked` is reserved for a repeated genuine execution impasse and MUST NOT represent an asynchronous external-gate wait.
 
 When a Material child event arrives—terminal child state, actionable review feedback, or replacement-owner availability—the parent MUST validate the stable event identity and consume it in the same turn. To consume the event, the parent MUST perform the authorized parent-owned next action, such as route actionable review feedback, start a replacement owner, or resolve a verified gate, or MUST record a concrete execution blocker. An acknowledgement-only output MUST NOT satisfy consumption. Duplicate stable event identities MUST remain deduplicated with no parent action, and unchanged continuation observations MUST NOT create assistant turns.
 
-Before creating a child, inspect archive candidates and the active reservation ledger; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head.
-Event-driven refresh MUST update only from qualifying changes; a failed parent message MUST NOT retry the parent message, there MUST be no full agent-tree listing, and orchestration MUST inspect archive candidates and the active reservation ledger.
-Runtime polling evidence and terminal handoff rules are defined in
-`references/goal-transition-reporting.md`; MUST follow that contract.
+Orchestration MUST inspect archive candidates and the active reservation ledger before creating a child; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head.
 
 MUST NOT mark a plan step complete until its evidence has been inspected.
 MUST use `update_goal` only with an active or user-requested goal and current proof;

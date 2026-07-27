@@ -61,6 +61,9 @@ codexy/
 - `LICENSE` MUST remain the standard English MIT license text.
 - MUST put executable Git, issue, PR, review, and merge rules in
   `plugins/codexy/skills/git-workflow/SKILL.md`, not in this file.
+- Codex connector automatic review MUST remain disabled. Before merge, the parent/orchestrator
+  MUST request one explicit `@codex review` after an owning child Sentinel PASS on a frozen head;
+  the executable review and repair procedure lives in the canonical Git workflow skill.
 
 ## Release/version-only orchestration
 

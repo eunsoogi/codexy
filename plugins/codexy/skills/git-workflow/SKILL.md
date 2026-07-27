@@ -20,6 +20,8 @@ MUST read these relative references before acting on the matching surface:
 - `references/pr-review-and-handoff.md` for PR bodies, review-thread handling,
   child-owned review feedback, and completion-handoff PR state capture,
   including review thread comment `commit { oid }` evidence.
+- `references/codex-connector-review.md` for the one explicit pre-merge Codex
+  connector review and its bounded repair cycle.
 - `references/merge-and-main-sync.md` for merge gates, squash merge body
   preservation, branch deletion, post-merge main sync, and the
   `merge_validation_args=(--check-merge-message --expected-pr "$pr_number")`
@@ -170,6 +172,9 @@ when captured PR state shows labels, or repository label taxonomy proves none ex
 Before PR readiness, MUST run
 `plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file pr-state.json`.
 
+Before merge, the parent/orchestrator MUST follow the manual Codex connector
+review procedure in `references/codex-connector-review.md`.
+
 ## Child-Owned Review Feedback
 
 When a PR was produced by a delegated child Codex worktree thread, the
@@ -178,6 +183,12 @@ worker for that lane.
 
 - The child thread owns implementation edits, local verification, and
   review-response fixes for its assigned issue-sized lane.
+- Review-response handoffs MUST include a typed `ReviewClusterReceipt` for every actionable defect class before implementation edits begin.
+- Before edits, MUST run `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file <receipt.json>` against the exact [receipt schema](references/review-response-clusters.md).
+- The receipt state MUST be `planned`, `repaired`, or `reopened`; each cluster MUST carry class, invariant, boundary, current thread identifiers, and positive and negative matrix arrays.
+- Each repaired cluster MUST record one structural repair and the removed case-specific behavior; quoted-input, phrase, or test-case exceptions are insufficient evidence.
+- A reopened cluster MUST carry either a different invariant or evidence that the prior structural repair was incomplete.
+- After addressing feedback and before push or handoff, MUST set the receipt state to `repaired` or `reopened` and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.
 - For any lane that needs its own branch, worktree, PR, or durable child
   context, the parent MUST create, fork, or assign the child thread before
   implementation patches begin. The parent MUST NOT make draft implementation

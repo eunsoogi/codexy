@@ -1,6 +1,8 @@
 use crate::support;
 
-use support::routing_validator::validate;
+use support::routing_validator::{
+    assert_accepted, assert_rejected, duplicate_recipient_section, validate,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -41,6 +43,22 @@ fn rejects_generic_child_effort_downgrades() -> TestResult {
         "- Root/orchestrator MUST run using the Ultra model.",
     ] {
         assert_status(addition, false)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn child_to_root_delivery_requires_sol_medium() -> TestResult {
+    assert_accepted(duplicate_recipient_section(
+        "- child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.",
+    )?)?;
+    for policy in [
+        "- child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"high\"`.",
+        "- child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"low\"`.",
+        "- child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`.",
+        "- child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`, `thinking: \"medium\"`, and `thinking: \"high\"`.",
+    ] {
+        assert_rejected(policy, "gpt-5.6-sol/medium")?;
     }
     Ok(())
 }

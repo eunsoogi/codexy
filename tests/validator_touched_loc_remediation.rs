@@ -8,6 +8,8 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 mod conventional_facade;
 #[path = "validator_touched_loc_remediation/custom_module_path.rs"]
 mod custom_module_path;
+#[path = "validator_touched_loc_remediation/deleted_files.rs"]
+mod deleted_files;
 #[path = "validator_touched_loc_remediation/markdown_links.rs"]
 mod markdown_links;
 #[path = "validator_touched_loc_remediation/module_visibility.rs"]

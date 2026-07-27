@@ -10,8 +10,12 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
             .join(".github/workflows/plugin-runtime-binaries.yml"),
     )
     .expect("runtime workflow");
+    let archive_inspector = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
+    )
+    .expect("archive inspector");
     assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
-    assert_runtime_workflow_contract(&workflow);
+    assert_runtime_workflow_contract(&workflow, &archive_inspector);
 }
 
 #[test]

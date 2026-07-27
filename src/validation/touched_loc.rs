@@ -44,7 +44,11 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
         if !is_governed_path(&file.path) {
             continue;
         }
-        let line_count = count_lines(&root.join(&file.path))?;
+        let path = root.join(&file.path);
+        if !path.is_file() {
+            continue;
+        }
+        let line_count = count_lines(&path)?;
         if let Some(error) = touched_loc_remediation::formatting_only_error(
             &root,
             base_ref,
@@ -131,6 +135,14 @@ fn is_governed_path(path: &Path) -> bool {
     }
     if path_text.starts_with("plugins/codexy/skills/")
         && path.extension().and_then(|extension| extension.to_str()) == Some("md")
+    {
+        return true;
+    }
+    if path_text.starts_with(".github/workflows/")
+        && matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("yml" | "yaml")
+        )
     {
         return true;
     }

@@ -72,3 +72,9 @@ mod validator_touched_loc_stacked_main;
 
 #[path = "../validator_touched_loc_structural_boundaries.rs"]
 mod validator_touched_loc_structural_boundaries;
+
+#[path = "../validator_touched_loc_workflows.rs"]
+mod validator_touched_loc_workflows;
+
+#[path = "../validator_touched_loc_workflow_yaml.rs"]
+mod validator_touched_loc_workflow_yaml;

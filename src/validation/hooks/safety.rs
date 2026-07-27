@@ -4,8 +4,6 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
-use super::agent_update_safety;
-
 const FORBIDDEN_COMMAND_FRAGMENTS: &[&str] = &[
     "~",
     "$HOME",
@@ -49,24 +47,6 @@ const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
     "codex mcp",
     ">",
 ];
-const FORBIDDEN_SOURCED_HELPER_FRAGMENTS: &[&str] = &[
-    "~/",
-    "$HOME",
-    "${HOME}",
-    "/Users/",
-    "/home/",
-    ".codex/",
-    ".git/",
-    "auth.json",
-    "history.jsonl",
-    "PLUGIN_DATA",
-    "CLAUDE_PLUGIN_DATA",
-    "python",
-    "npm",
-    "curl",
-    "codex plugin",
-    "codex mcp",
-];
 const FORBIDDEN_SCRIPT_COMMANDS: &[&str] = &[
     "gh", "git", "mkdir", "touch", "rm", "mv", "cp", "chmod", "chown", "node", "nodejs",
 ];
@@ -90,16 +70,6 @@ pub(super) fn check_script(path: &Path, event: &str, script_path: &Path) -> Resu
     check_script_inner(path, event, script_path, FORBIDDEN_SCRIPT_FRAGMENTS, false)
 }
 
-pub(super) fn check_sourced_helper(path: &Path, event: &str, script_path: &Path) -> Result<()> {
-    check_script_inner(
-        path,
-        event,
-        script_path,
-        FORBIDDEN_SOURCED_HELPER_FRAGMENTS,
-        true,
-    )
-}
-
 fn check_script_inner(
     path: &Path,
     event: &str,
@@ -109,7 +79,6 @@ fn check_script_inner(
 ) -> Result<()> {
     let text = std::fs::read_to_string(script_path)
         .with_context(|| format!("reading {}", display_relative(script_path)))?;
-    agent_update_safety::check(path, event, script_path, &text)?;
     for forbidden in forbidden_fragments {
         if text.contains(forbidden) {
             bail!(

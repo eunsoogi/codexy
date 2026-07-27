@@ -14,6 +14,7 @@ pub(super) fn check_source_contract(plugin_root: &Path, manifest: &Value) -> Res
     check_no_source_runtime_artifacts(plugin_root)?;
     let path = manifest_path(plugin_root);
     let platforms = supported_platforms(manifest, &path)?;
+    crate::validation::runtime_release_contract::check(plugin_root, &platforms)?;
     for server in REQUIRED_RUNTIME_SERVERS {
         let wrapper_path = plugin_root.join("mcp").join(format!("codexy-mcp-{server}"));
         let wrapper_platforms = bundled_platforms(&wrapper_path)?;
@@ -52,21 +53,15 @@ fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Res
         for platform in &platforms {
             let runtime_path = plugin_root
                 .join("runtime")
-                .join(super::runtime_binary::artifact_name(server, platform));
+                .join(format!("codexy-mcp-{server}-{platform}.bin"));
             if !runtime_path.is_file() {
                 bail!(
                     "{} bundled MCP runtime missing for supported platform {platform}",
                     display_relative(&runtime_path)
                 );
             }
-            super::runtime_binary::check(&runtime_path, platform)?;
-            if platform == "windows-x86_64" {
-                super::runtime_binary::check_windows_entrypoint_copy(
-                    plugin_root,
-                    server,
-                    &runtime_path,
-                )?;
-            }
+            check_runtime_binary_signature(&runtime_path, platform)?;
+            check_runtime_executable(&runtime_path)?;
         }
     }
     Ok(())
@@ -82,17 +77,47 @@ fn check_no_source_runtime_artifacts(plugin_root: &Path) -> Result<()> {
             );
         }
     }
-    for server in REQUIRED_RUNTIME_SERVERS {
-        let entrypoint = plugin_root
-            .join("mcp")
-            .join(format!("codexy-mcp-{server}.exe"));
-        if entrypoint.exists() {
+    Ok(())
+}
+
+fn check_runtime_binary_signature(runtime_path: &Path, platform: &str) -> Result<()> {
+    let bytes = std::fs::read(runtime_path)
+        .with_context(|| format!("reading {}", display_relative(runtime_path)))?;
+    match platform {
+        "linux-x86_64" if bytes.starts_with(b"\x7fELF") => Ok(()),
+        "darwin-arm64"
+            if bytes.starts_with(&[0xcf, 0xfa, 0xed, 0xfe])
+                || bytes.starts_with(&[0xfe, 0xed, 0xfa, 0xcf]) =>
+        {
+            Ok(())
+        }
+        "linux-x86_64" | "darwin-arm64" => bail!(
+            "{} bundled MCP runtime has invalid binary format for {platform}",
+            display_relative(runtime_path)
+        ),
+        _ => Ok(()),
+    }
+}
+
+fn check_runtime_executable(runtime_path: &Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let mode = runtime_path
+            .metadata()
+            .with_context(|| format!("reading {}", display_relative(runtime_path)))?
+            .permissions()
+            .mode();
+        if mode & 0o111 == 0 {
             bail!(
-                "{} must be generated only while assembling a Windows package",
-                display_relative(&entrypoint)
+                "{} bundled MCP runtime must be executable",
+                display_relative(runtime_path)
             );
         }
     }
+    #[cfg(not(unix))]
+    let _ = runtime_path;
     Ok(())
 }
 
@@ -100,37 +125,42 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     let path = crate::paths::repo_root()?.join(".github/workflows/plugin-runtime-binaries.yml");
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", display_relative(&path)))?;
+    let selected = ["darwin-arm64", "linux-x86_64"];
+    if platforms != selected {
+        bail!(
+            "{} immutable runtime package must retain platforms {:?}",
+            display_relative(&path),
+            selected
+        );
+    }
     for required in [
-        "release:",
-        "package-plugin:",
-        "needs: build-runtime",
-        "actions/download-artifact@v4",
-        "pattern: codexy-mcp-runtimes-*",
+        "verify-selected-package:",
+        "Download and verify selected immutable bytes",
+        "command -v sha256sum",
+        "shasum -a 256",
+        "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
+        "Assemble state-aware marketplace package without rebuilding",
+        "candidate-proven",
+        "runtime-candidate.json",
+        "payloadManifestSha256",
+        "test ! -e \"$candidate/runtime-release.json\"",
+        "for platform in darwin-arm64 linux-x86_64",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
-        "--check-runtime-artifacts",
-        "--check-hooks",
-        "gh release upload",
+        "scripts/inspect-release-archive",
     ] {
         if !text.contains(required) {
             bail!(
-                "{} runtime package workflow must include {required:?}",
+                "{} immutable runtime package workflow must include {required:?}",
                 display_relative(&path)
             );
         }
     }
-    let package_validation_order = concat!(
-        "--check-runtime-artifacts\n",
-        "          scripts/validate-plugin-config --plugin-root \"$plugin_root\" --check-hooks\n",
-        "          tar -C"
-    );
-    if !text.contains(package_validation_order) {
-        bail!(
-            "{} runtime package workflow must validate hooks before creating the archive",
-            display_relative(&path)
-        );
-    }
     for forbidden in [
+        "cargo build",
+        "build-runtime",
+        "actions/download-artifact",
+        "codexy-mcp-lsp-${PLATFORM}.bin",
         "Publish generated marketplace snapshot",
         "MARKETPLACE_BRANCH",
         "dist/marketplace-root",
@@ -143,57 +173,7 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
             );
         }
     }
-    for trigger in ["push:", "pull_request:"] {
-        let trigger_text = workflow_trigger_block(&text, trigger).with_context(|| {
-            format!(
-                "{} runtime package workflow must include {trigger}",
-                display_relative(&path)
-            )
-        })?;
-        for required_path in ["plugins/codexy/**", "scripts/inspect-mcp-response"] {
-            if !trigger_text.contains(required_path) {
-                bail!(
-                    "{} runtime package workflow {trigger} paths must include {required_path:?}",
-                    display_relative(&path)
-                );
-            }
-        }
-    }
-    for platform in platforms {
-        if !text.contains(&format!("platform: {platform}")) {
-            bail!(
-                "{} runtime build matrix must cover supported platform {platform}",
-                display_relative(&path)
-            );
-        }
-        for server in REQUIRED_RUNTIME_SERVERS {
-            let runtime_name = if platform == "windows-x86_64" {
-                format!("codexy-mcp-{server}-$env:PLATFORM.exe")
-            } else {
-                format!("codexy-mcp-{server}-${{PLATFORM}}.bin")
-            };
-            if !text.contains(&runtime_name) {
-                bail!(
-                    "{} runtime build matrix must package {runtime_name}",
-                    display_relative(&path)
-                );
-            }
-        }
-    }
     Ok(())
-}
-
-fn workflow_trigger_block<'a>(text: &'a str, trigger: &str) -> Option<&'a str> {
-    let start = text.find(trigger)?;
-    let rest = &text[start..];
-    let end = rest
-        .match_indices("\n  ")
-        .find_map(|(index, _)| {
-            let next = &rest[index + 3..];
-            (!next.starts_with(' ')).then_some(index)
-        })
-        .unwrap_or(rest.len());
-    Some(&rest[..end])
 }
 
 fn bundled_platforms(wrapper_path: &Path) -> Result<Vec<String>> {

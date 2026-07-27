@@ -64,7 +64,28 @@ fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::
         ),
     )?;
 
-    assert_matches_cli_with(&plugin_root, "--check", support::validator_routing)?;
+    let cli = cli_output(&plugin_root, "--check")?;
+    let routing = support::validator_routing(&plugin_root)?;
+    assert!(!cli.status.success() && !routing.status.success());
+    let cli_stderr = String::from_utf8_lossy(&cli.stderr);
+    let routing_stderr = String::from_utf8_lossy(&routing.stderr);
+    let cli_errors = cli_stderr
+        .lines()
+        .filter(|line| line.starts_with("error:"))
+        .collect::<Vec<_>>();
+    let routing_errors = routing_stderr
+        .lines()
+        .filter(|line| line.starts_with("error:"))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        &cli_errors[cli_errors.len() - routing_errors.len()..],
+        routing_errors
+    );
+    support::assert_structured_literals(
+        &cli_stderr,
+        "routing mutation inventory drift",
+        &["unreviewed, moved, or changed normative rule"],
+    );
     Ok(())
 }
 
@@ -117,8 +138,12 @@ fn archive_fixture_compression_is_shared_and_uses_the_fast_lossless_mode()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let helper = std::fs::read_to_string(root.join("tests/support/release_archive.rs"))?;
+    let process = std::fs::read_to_string(
+        root.join("tests/support/release_archive/archive_process.rs"),
+    )?;
+    let shared_archive_fixture = format!("{helper}\n{process}");
     support::assert_structured_literals(
-        &helper,
+        &shared_archive_fixture,
         "shared archive fixture compression",
         &["pub(crate) fn create_archive", "[\"-1\", \"-c\"]"],
     );

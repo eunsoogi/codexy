@@ -4,13 +4,18 @@ set -eu
 archive=${1:?archive path required}
 plugin_root=${2:?staged plugin root required}
 max_bytes=${MAX_ARCHIVE_FILE_BYTES:-52428800}
-max_entries=${MAX_ARCHIVE_ENTRIES:-10000}
-max_total_bytes=${MAX_ARCHIVE_TOTAL_BYTES:-268435456}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
-command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required" >&2; exit 127; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
+if command -v sha256sum >/dev/null 2>&1; then
+  digest_file() { sha256sum "$1" | awk '{print $1}'; }
+elif command -v shasum >/dev/null 2>&1; then
+  digest_file() { shasum -a 256 "$1" | awk '{print $1}'; }
+else
+  echo "sha256sum or shasum is required" >&2
+  exit 127
+fi
 response_checker="$script_dir/inspect-mcp-response"
 [ -x "$response_checker" ] || { echo "MCP response checker missing" >&2; exit 1; }
 [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
@@ -18,61 +23,65 @@ response_checker="$script_dir/inspect-mcp-response"
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
-python3 - "$archive" "$max_bytes" "$max_entries" "$max_total_bytes" <<'PY'
-import sys, tarfile, unicodedata
+entries="$tmp_dir/entries"
+tar -tzf "$archive" >"$entries"
+canonicalize_entry() {
+  sed '
+:normalize
+s#^\./##
+s#/\./#/#g
+t normalize
+' | tr -s '/'
+}
+canonical_entries="$tmp_dir/canonical-entries"
+canonicalize_entry <"$entries" | sort >"$canonical_entries"
+duplicates=$(uniq -d "$canonical_entries")
+[ -z "$duplicates" ] || { echo "duplicate archive entries: $duplicates" >&2; exit 1; }
 
-archive_path = sys.argv[1]
-max_bytes, max_entries, max_total_bytes = map(int, sys.argv[2:])
-seen = set()
-seen_canonical = set()
-total_bytes = 0
-devices = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
-with tarfile.open(archive_path, "r:gz") as archive:
-    for count, member in enumerate(archive, start=1):
-        name = member.name
-        if count > max_entries:
-            raise SystemExit(f"archive contains too many entries: {count}")
-        if not (member.isfile() or member.isdir()):
-            raise SystemExit(f"unsupported archive entry type: {name}")
-        if member.isfile() and member.size > max_bytes:
-            raise SystemExit(f"oversized archive entry: {name}")
-        total_bytes += member.size
-        if total_bytes > max_total_bytes:
-            raise SystemExit("archive uncompressed size exceeds the configured limit")
-        if any(ord(character) < 32 or ord(character) == 127 for character in name):
-            raise SystemExit(f"unsafe archive path: {name!r}")
-        if "\\" in name or ":" in name or name.startswith("/"):
-            raise SystemExit(f"unsafe archive path: {name}")
-        raw_parts = name.split("/")
-        if any(part == "" for part in raw_parts):
-            raise SystemExit(f"unsafe archive path: {name}")
-        if any(part == ".." for part in raw_parts):
-            raise SystemExit(f"unsafe archive path: {name}")
-        parts = tuple(part for part in raw_parts if part != ".")
-        canonical_name = "/".join(parts)
-        if canonical_name in seen_canonical:
-            raise SystemExit(f"duplicate archive entries: {canonical_name}")
-        seen_canonical.add(canonical_name)
-        if canonical_name != name:
-            raise SystemExit(f"unsafe archive path: {name}")
-        if not parts or parts[:2] != ("plugins", "codexy"):
-            raise SystemExit(f"unexpected archive root entry: {name}")
-        for part in parts:
-            folded = unicodedata.normalize("NFC", part).casefold()
-            if folded.rstrip(" .") != folded:
-                raise SystemExit(f"unsafe Windows-normalized archive path: {name}")
-            if folded.split(".", 1)[0] in devices:
-                raise SystemExit(f"unsafe Windows device archive path: {name}")
-        normalized_name = unicodedata.normalize("NFC", canonical_name)
-        identity = normalized_name.casefold()
-        if identity in seen:
-            raise SystemExit(f"case-folding archive entries collide: {name}")
-        seen.add(identity)
-PY
+while IFS= read -r entry; do
+  case "$entry" in
+    /*|../*|*/../*|*'/..') echo "unsafe archive path: $entry" >&2; exit 1 ;;
+  esac
+  canonical_entry=$(printf '%s\n' "$entry" | canonicalize_entry)
+  case "$entry" in
+    "$canonical_entry") ;;
+    *) echo "unsafe archive path: $entry" >&2; exit 1 ;;
+  esac
+  case "$entry" in
+    plugins/codexy/*) ;;
+    *) echo "unexpected archive root entry: $entry" >&2; exit 1 ;;
+  esac
+done <"$entries"
+if tar -tvzf "$archive" | awk '$1 ~ /^l/ { print "symlink archive entry: " $0; bad=1 } END { exit bad }'; then :; else exit 1; fi
 
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
+release_contract="$extract_root/plugins/codexy/runtime-release.json"
+[ -f "$release_contract" ] || { echo "packaged runtime-release.json missing" >&2; exit 1; }
+release_state=$(python3 - "$release_contract" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    contract = json.load(source)
+print(contract.get("state", ""))
+PY
+)
+case "$release_state" in
+  legacy-public) ;;
+  candidate-proven)
+    candidate_contract="$extract_root/plugins/codexy/runtime-candidate.json"
+    [ -f "$candidate_contract" ] || { echo "candidate-proven package lacks runtime-candidate.json" >&2; exit 1; }
+    expected_candidate_sha=$(python3 - "$release_contract" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    print(json.load(source)["artifact"]["payloadManifestSha256"])
+PY
+)
+    actual_candidate_sha=$(digest_file "$candidate_contract")
+    [ "$expected_candidate_sha" = "$actual_candidate_sha" ] || { echo "runtime-candidate.json digest differs from payload manifest" >&2; exit 1; }
+    ;;
+  *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
+esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 "$script_dir/inspect-mcp-entrypoints" "$extract_root/plugins/codexy/.mcp.json" >"$tmp_dir/mcp-entrypoints"
@@ -85,13 +94,13 @@ done <"$tmp_dir/mcp-entrypoints"
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 while IFS= read -r relative; do
   case "$relative" in
-    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin|runtime/codexy-mcp-lsp-windows-x86_64.exe|runtime/codexy-mcp-codegraph-windows-x86_64.exe) ;;
+    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin) ;;
     runtime/*) echo "unexpected runtime artifact: $relative" >&2; exit 1 ;;
   esac
 done <"$tmp_dir/actual"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 mkdir -p "$source_check_root"
-tar -C "$extract_root/plugins/codexy" --exclude=runtime --exclude='mcp/*.exe' -cf - . | tar -C "$source_check_root" -xf -
+tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
 "$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
 if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
   echo "archive contains a debug artifact" >&2
@@ -112,8 +121,8 @@ while IFS= read -r relative; do
     echo "packaged file bytes differ: $relative" >&2
     exit 1
   }
-  expected_digest=$(sha256sum "$plugin_root/$relative" | awk '{print $1}')
-  actual_digest=$(sha256sum "$extract_root/plugins/codexy/$relative" | awk '{print $1}')
+  expected_digest=$(digest_file "$plugin_root/$relative")
+  actual_digest=$(digest_file "$extract_root/plugins/codexy/$relative")
   [ "$expected_digest" = "$actual_digest" ] || {
     echo "packaged file digest differs: $relative" >&2
     exit 1
@@ -127,20 +136,57 @@ fi
 hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
 local_path_pattern='/(Users|home|tmp|private/var)/'
 scan_output="$tmp_dir/archive-scan-output"
+inventory="$extract_root/plugins/codexy/hooks/policy-inventory.json"
+set +e
+INVENTORY="$inventory" LOCAL_PATH_PATTERN="$local_path_pattern" python3 - <<'PY'
+import json, os, re
+
+try:
+    inventory = json.load(open(os.environ["INVENTORY"], encoding="utf-8"))
+    rules = inventory["rules"]
+    if not isinstance(rules, list):
+        raise ValueError("rules must be a list")
+    pattern = re.compile(os.environ["LOCAL_PATH_PATTERN"])
+    def contains_local_path(value):
+        if isinstance(value, str):
+            return pattern.search(value) is not None
+        if isinstance(value, list):
+            return any(contains_local_path(item) for item in value)
+        if isinstance(value, dict):
+            return any(contains_local_path(item) for item in value.values())
+        return False
+    semantic_inventory = dict(inventory)
+    semantic_inventory["rules"] = [
+        {key: value for key, value in rule.items() if key not in {"source", "text"}}
+        if isinstance(rule, dict) else rule
+        for rule in rules
+    ]
+    unsafe = contains_local_path(semantic_inventory)
+except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+    raise SystemExit(2)
+raise SystemExit(1 if unsafe else 0)
+PY
+inventory_path_status=$?
+set -e
+case "$inventory_path_status" in
+  0) ;;
+  1) echo "archive contains a secret or local path" >&2; exit 1 ;;
+  *) echo "archive policy inventory hygiene scan failed: status $inventory_path_status" >&2; exit 1 ;;
+esac
 scan_archive_content() {
   "$@" >"$scan_output" 2>&1
 }
 scan_grep_content() {
   pattern=$1
   shift
-  find "$extract_root/plugins/codexy" -type f ! -path "$extract_root/plugins/codexy/runtime/*" ! -path "$extract_root/plugins/codexy/mcp/*.exe" "$@" \
+  find "$extract_root/plugins/codexy" -type f ! -path "$extract_root/plugins/codexy/runtime/*.bin" "$@" \
     -exec grep -a -Hn -E "$pattern" {} +
 }
 if command -v rg >/dev/null 2>&1; then
   set +e
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*' --glob '!**/mcp/*.exe' "$hygiene_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*' --glob '!**/mcp/*.exe' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!**/hooks/policy-inventory.json' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
   local_path_status=$?
   set -e
 else
@@ -148,7 +194,7 @@ else
   set +e
   scan_archive_content scan_grep_content "$hygiene_pattern"
   hygiene_status=$?
-  scan_archive_content scan_grep_content "$local_path_pattern" ! -name '*.md' ! -name '*.txt'
+  scan_archive_content scan_grep_content "$local_path_pattern" ! -path "$extract_root/plugins/codexy/hooks/policy-inventory.json" ! -name '*.md' ! -name '*.txt'
   local_path_status=$?
   set -e
 fi
@@ -164,7 +210,7 @@ case "$local_path_status" in
 esac
 
 printf 'archive_sha256 '
-sha256sum "$archive" | awk '{print $1}'
+digest_file "$archive"
 
 platform=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/;s/amd64/x86_64/')
 for server in lsp codegraph; do

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "getcodexy"
-version = "1.2.2"
+version = "1.3.0"
 description = "Version-pinned MCP runtime bootstrap tools for Codexy"
 requires-python = ">=3.10"
 license = "MIT"

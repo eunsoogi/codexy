@@ -11,8 +11,8 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn validator_rejects_conflicts_appended_to_delivery_policy() -> TestResult {
     assert_rejected(
         routing_skill()?.replacen(
-            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"high\"`.",
-            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"high\"`. Root/orchestrator MUST use `gpt-5.6-luna`.",
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"medium\"`.",
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"medium\"`. Root/orchestrator MUST use `gpt-5.6-luna`.",
             1,
         ),
     )
@@ -60,7 +60,7 @@ fn validator_rejects_later_child_to_root_wrong_recipient_model() -> TestResult {
             routing_skill()?,
             "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`\n  and `thinking: \"high\"`.",
         )?,
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
@@ -71,7 +71,7 @@ fn validator_rejects_later_child_to_root_without_thinking() -> TestResult {
             routing_skill()?,
             "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`.",
         )?,
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
@@ -104,7 +104,7 @@ fn validator_rejects_numbered_child_to_root_wrong_recipient_model() -> TestResul
             routing_skill()?,
             "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
         )?,
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
@@ -115,7 +115,7 @@ fn validator_rejects_plain_child_to_root_wrong_recipient_model() -> TestResult {
             routing_skill()?,
             "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
         )?,
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )
 }
 
@@ -141,12 +141,12 @@ fn validator_accepts_heading_and_paragraph_after_exact_evidence() -> TestResult 
 fn validator_matches_recipient_heading_with_trailing_spaces() -> TestResult {
     let section = |model| {
         format!(
-            "## Recipient Model Routing   \n\n- child-to-root delivery MUST pass `model: \"{model}\"` and `thinking: \"high\"`.\n\n## Read Next"
+            "## Recipient Model Routing   \n\n- child-to-root delivery MUST pass `model: \"{model}\"` and `thinking: \"medium\"`.\n\n## Read Next"
         )
     };
     assert_recipient_assignment_rejected(
         routing_skill()?.replacen("## Read Next", &section("gpt-5.6-terra"), 1),
-        "gpt-5.6-sol/high",
+        "gpt-5.6-sol/medium",
     )?;
     assert_accepted(routing_skill()?.replacen("## Read Next", &section("gpt-5.6-sol"), 1))
 }

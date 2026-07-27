@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME_BINARY:-}"; then
+  test "${CODEXY_TEST_MODE:-}" = 1 || {
+    printf '%s\n' "test activation binary requires CODEXY_TEST_MODE=1" >&2
+    exit 1
+  }
+  test -f "$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY" && \
+    test ! -L "$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY" && \
+    test -x "$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY" || {
+    printf '%s\n' "test activation binary must be a regular executable" >&2
+    exit 1
+  }
+  exec "$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY" "$@"
+fi
+exec cargo run --locked --quiet --manifest-path "$REPO_ROOT/Cargo.toml" --bin codexy-activate-runtime -- "$@"

@@ -1,49 +1,28 @@
-name: Plugin marketplace packages
+name: Verify selected marketplace runtime package
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Version tag to create or update, for example v1.0.0"
-        required: true
-      previous_tag:
-        description: "Optional previous tag for changelog range"
-        required: false
-  push:
-    branches: [main]
-    tags: ["v*"]
-    paths:
-      - "Cargo.lock"
-      - "Cargo.toml"
-      - "src/**"
-      - "plugins/codexy/**"
-      - ".agents/plugins/marketplace.json"
-      - "scripts/generate-release-changelog"
-      - "scripts/inspect-release-archive"
-      - "scripts/inspect-mcp-response"
-      - "tests/release_archive_gate.rs"
-      - ".agents/plugins/release-publish-contract.json"
-      - ".github/workflows/plugin-runtime-binaries.yml"
   pull_request:
     paths:
-      - "Cargo.lock"
-      - "Cargo.toml"
-      - "src/**"
       - "plugins/codexy/**"
-      - ".agents/plugins/marketplace.json"
-      - "scripts/generate-release-changelog"
+      - ".agents/plugins/**"
       - "scripts/inspect-release-archive"
-      - "scripts/inspect-mcp-response"
-      - "tests/release_archive_gate.rs"
-      - ".agents/plugins/release-publish-contract.json"
+      - "scripts/validate-plugin-config"
+      - ".github/workflows/plugin-runtime-binaries.yml"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/codexy/**"
+      - ".agents/plugins/**"
+      - "scripts/inspect-release-archive"
+      - "scripts/validate-plugin-config"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
 permissions:
   contents: read
 
 jobs:
-  build-runtime:
-    name: Build ${{ matrix.platform }} MCP runtimes
+  verify-selected-package:
+    name: Verify ${{ matrix.platform }} selected package
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -51,524 +30,92 @@ jobs:
         include:
           - platform: linux-x86_64
             runner: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            binary_suffix: ""
-            artifact_extension: bin
           - platform: darwin-arm64
             runner: macos-14
-            target: aarch64-apple-darwin
-            binary_suffix: ""
-            artifact_extension: bin
-          - platform: windows-x86_64
-            runner: windows-latest
-            target: x86_64-pc-windows-msvc
-            binary_suffix: .exe
-            artifact_extension: exe
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-          fetch-depth: 0
           persist-credentials: false
-
-      - name: Build MCP runtime binaries
+      - name: Download and verify selected immutable bytes
         run: |
-          cargo build --release --locked --target ${{ matrix.target }} --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
-
-      - name: Package POSIX runtime binaries
-        if: runner.os != 'Windows'
-        env:
-          PLATFORM: ${{ matrix.platform }}
-          TARGET: ${{ matrix.target }}
-        run: |
-          mkdir -p "dist/runtimes-${PLATFORM}"
-          cp "target/${TARGET}/release/codexy-mcp-lsp" "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
-          cp "target/${TARGET}/release/codexy-mcp-codegraph" "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
-          chmod 755 "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
-          chmod 755 "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
-          file "dist/runtimes-${PLATFORM}/codexy-mcp-lsp-${PLATFORM}.bin"
-          file "dist/runtimes-${PLATFORM}/codexy-mcp-codegraph-${PLATFORM}.bin"
-
-      - name: Package Windows PE runtime binaries
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          PLATFORM: ${{ matrix.platform }}
-          TARGET: ${{ matrix.target }}
-        run: |
-          $destination = "dist/runtimes-$env:PLATFORM"
-          New-Item -ItemType Directory -Force -Path $destination | Out-Null
-          Copy-Item "target/$env:TARGET/release/codexy-mcp-lsp.exe" "$destination/codexy-mcp-lsp-$env:PLATFORM.exe"
-          Copy-Item "target/$env:TARGET/release/codexy-mcp-codegraph.exe" "$destination/codexy-mcp-codegraph-$env:PLATFORM.exe"
-          foreach ($runtime in Get-ChildItem "$destination/*.exe") {
-            $signature = [System.IO.File]::ReadAllBytes($runtime.FullName)[0..1]
-            if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) {
-              throw "$($runtime.FullName) is not a PE executable"
-            }
+          digest_file() {
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$1" | awk '{print $1}'
+            else
+              shasum -a 256 "$1" | awk '{print $1}'
+            fi
           }
-
-      - name: Smoke test native POSIX MCP runtimes
-        if: runner.os != 'Windows'
-        env:
-          PLATFORM: ${{ matrix.platform }}
+          url="$(jq -r .artifact.url plugins/codexy/runtime-release.json)"
+          digest="$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)"
+          mkdir -p dist
+          curl --fail --location "$url" -o dist/selected.tar.gz
+          test "$(digest_file dist/selected.tar.gz)" = "$digest"
+      - name: Assemble state-aware marketplace package without rebuilding
         run: |
-          for server in lsp codegraph; do
-            response_file="$(mktemp)"
-            RUNTIME="dist/runtimes-${PLATFORM}/codexy-mcp-${server}-${PLATFORM}.bin" RESPONSE_FILE="$response_file" \
-              python3 - <<'PY'
-          import os, subprocess
-          requests = """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}
-          {"jsonrpc":"2.0","method":"notifications/initialized"}
-          {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-          """
-          completed = subprocess.run(
-              [os.environ["RUNTIME"], "--stdio"], input=requests, text=True,
-              capture_output=True, timeout=15, check=True,
-          )
-          open(os.environ["RESPONSE_FILE"], "w", encoding="utf-8").write(completed.stdout)
-          PY
-            scripts/inspect-mcp-response "$response_file" "$server"
-            rm -f "$response_file"
-          done
-
-      - name: Smoke test native Windows MCP runtimes
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          $expected = @{
-            lsp = @{ Server = "codexy-lsp"; Tool = "lsp_status" }
-            codegraph = @{ Server = "codexy-codegraph"; Tool = "codegraph_index" }
+          digest_file() {
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$1" | awk '{print $1}'
+            else
+              shasum -a 256 "$1" | awk '{print $1}'
+            fi
           }
-          $requests = @(
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"archive-smoke","version":"1"}}}',
-            '{"jsonrpc":"2.0","method":"notifications/initialized"}',
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-          )
-          foreach ($server in @("lsp", "codegraph")) {
-            $runtime = (Resolve-Path "dist/runtimes-$env:PLATFORM/codexy-mcp-$server-$env:PLATFORM.exe").Path
-            $start = [System.Diagnostics.ProcessStartInfo]::new()
-            $start.FileName = $runtime
-            $start.ArgumentList.Add("--stdio")
-            $start.UseShellExecute = $false
-            $start.RedirectStandardInput = $true
-            $start.RedirectStandardOutput = $true
-            $start.RedirectStandardError = $true
-            $start.CreateNoWindow = $true
-            $process = [System.Diagnostics.Process]::new()
-            $process.StartInfo = $start
-            try {
-              if (-not $process.Start()) { throw "failed to start $runtime" }
-              $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-              $stderrTask = $process.StandardError.ReadToEndAsync()
-              foreach ($request in $requests) { $process.StandardInput.WriteLine($request) }
-              $process.StandardInput.Close()
-              if (-not $process.WaitForExit(15000)) {
-                $process.Kill($true)
-                $process.WaitForExit()
-                throw "$server MCP process timed out"
-              }
-              $stdout = $stdoutTask.GetAwaiter().GetResult()
-              $stderr = $stderrTask.GetAwaiter().GetResult()
-              if ($process.ExitCode -ne 0) { throw "$server MCP failed: $stderr" }
-              $messages = @($stdout -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
-              $initialize = $messages | Where-Object id -eq 1
-              $tools = $messages | Where-Object id -eq 2
-              if ($initialize.result.serverInfo.name -ne $expected[$server].Server) {
-                throw "$server returned the wrong server identity"
-              }
-              if ($expected[$server].Tool -notin @($tools.result.tools.name)) {
-                throw "$server omitted its expected tool"
-              }
-            } finally {
-              if (-not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
-              $process.Dispose()
-            }
-          }
-
-      - name: Upload runtime binaries
-        uses: actions/upload-artifact@v4
+          state="$(jq -r .state plugins/codexy/runtime-release.json)"
+          case "$state" in
+            legacy-public)
+              mkdir -p dist/legacy dist/final/plugins
+              tar -xzf dist/selected.tar.gz -C dist/legacy \
+                plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin
+              staged=dist/final/plugins/codexy
+              rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
+              mkdir -p "$staged/runtime"
+              for platform in darwin-arm64 linux-x86_64; do
+                for server in lsp codegraph; do
+                  path="runtime/codexy-mcp-${server}-${platform}.bin"
+                  digest="$(jq -r ".platforms[\"$platform\"][\"$server\"].sha256" plugins/codexy/runtime-release.json)"
+                  test "$(digest_file "dist/legacy/plugins/codexy/$path")" = "$digest"
+                  cp "dist/legacy/plugins/codexy/$path" "$staged/$path"
+                  cmp "dist/legacy/plugins/codexy/$path" "$staged/$path"
+                done
+              done
+              test ! -e "$staged/runtime-candidate.json"
+              tar -C dist/final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+              scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
+              ;;
+            candidate-proven)
+              mkdir -p dist/candidate dist/final/plugins
+              tar -xzf dist/selected.tar.gz -C dist/candidate \
+                plugins/codexy/runtime-candidate.json \
+                plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
+                plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin \
+                plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin
+              candidate=dist/candidate/plugins/codexy
+              staged=dist/final/plugins/codexy
+              test ! -e "$candidate/runtime-release.json"
+              test "$(digest_file "$candidate/runtime-candidate.json")" = "$(jq -r .artifact.payloadManifestSha256 plugins/codexy/runtime-release.json)"
+              rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
+              mkdir -p "$staged/runtime"
+              cp "$candidate/runtime-candidate.json" "$staged/runtime-candidate.json"
+              for platform in darwin-arm64 linux-x86_64; do
+                for server in lsp codegraph; do
+                  path="$(jq -r ".platforms[\"$platform\"][\"$server\"].path" plugins/codexy/runtime-release.json)"
+                  digest="$(jq -r ".platforms[\"$platform\"][\"$server\"].sha256" plugins/codexy/runtime-release.json)"
+                  test "$path" = "runtime/codexy-mcp-${server}-${platform}.bin"
+                  test "$(digest_file "$candidate/$path")" = "$digest"
+                  cp "$candidate/$path" "$staged/$path"
+                  cmp "$candidate/$path" "$staged/$path"
+                done
+              done
+              tar -C dist/final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+              scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
+              ;;
+            *) echo "unsupported runtime-release state: $state" >&2; exit 1 ;;
+          esac
+      - uses: actions/upload-artifact@v7
         with:
-          name: codexy-mcp-runtimes-${{ matrix.platform }}
-          path: dist/runtimes-${{ matrix.platform }}/*
-          if-no-files-found: error
-
-  package-plugin:
-    name: Assemble marketplace plugin package
-    runs-on: ubuntu-latest
-    needs: build-runtime
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Download generated runtime binaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: codexy-mcp-runtimes-*
-          path: dist/generated-runtimes
-          merge-multiple: true
-
-      - name: Assemble marketplace plugin package
-        env:
-          PACKAGE_ROOT: dist/codexy-marketplace-plugin
-        run: |
-          package_root="$PACKAGE_ROOT"
-          plugin_root="${package_root}/plugins/codexy"
-          rm -rf "$package_root"
-          mkdir -p "${package_root}/plugins"
-          scripts/validate-plugin-config --plugin-root plugins/codexy --check
-          rsync -a --exclude '*.bin' --exclude 'mcp/codexy-mcp-lsp.exe' --exclude 'mcp/codexy-mcp-codegraph.exe' plugins/codexy/ "$plugin_root/"
-          mkdir -p "${plugin_root}/runtime"
-          cp dist/generated-runtimes/* "${plugin_root}/runtime/"
-          cp "${plugin_root}/runtime/codexy-mcp-lsp-windows-x86_64.exe" "${plugin_root}/mcp/codexy-mcp-lsp.exe"
-          cp "${plugin_root}/runtime/codexy-mcp-codegraph-windows-x86_64.exe" "${plugin_root}/mcp/codexy-mcp-codegraph.exe"
-          chmod 755 "${plugin_root}"/runtime/*.bin
-          file "${plugin_root}"/runtime/* "${plugin_root}"/mcp/*.exe
-          scripts/validate-plugin-config --plugin-root "$plugin_root" --check-runtime-artifacts
-          scripts/validate-plugin-config --plugin-root "$plugin_root" --check-hooks
-          tar -C "$package_root" -czf "dist/codexy-marketplace-plugin.tar.gz" plugins/codexy
-          scripts/inspect-release-archive "dist/codexy-marketplace-plugin.tar.gz" "$plugin_root"
-
-      - name: Upload marketplace package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: codexy-marketplace-plugin
+          name: codexy-marketplace-plugin-${{ matrix.platform }}
           path: dist/codexy-marketplace-plugin.tar.gz
           if-no-files-found: error
-
-  windows-installed-mcp:
-    name: Verify clean native Windows plugin MCP install
-    runs-on: windows-latest
-    needs: package-plugin
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Download marketplace package artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: codexy-marketplace-plugin
-          path: dist
-
-      - name: Install pinned Codex CLI
-        run: npm install --global @openai/codex@0.144.4
-
-      - name: Install package and prove plugin-relative PE resolution
-        shell: pwsh
-        run: |
-          function Test-PathWithin([string]$Root, [string]$Candidate) {
-            $relative = [System.IO.Path]::GetRelativePath(
-              [System.IO.Path]::GetFullPath($Root),
-              [System.IO.Path]::GetFullPath($Candidate)
-            )
-            $parentPrefix = "..$([System.IO.Path]::DirectorySeparatorChar)"
-            return -not [System.IO.Path]::IsPathRooted($relative) -and
-              $relative -ne ".." -and
-              -not $relative.StartsWith($parentPrefix, [System.StringComparison]::Ordinal)
-          }
-
-          $proofRoot = Join-Path $env:RUNNER_TEMP "Codexy 설치 경로"
-          $marketplaceRoot = Join-Path $proofRoot "marketplace"
-          $env:CODEX_HOME = Join-Path $proofRoot "codex home"
-          if (Test-PathWithin $env:CODEX_HOME ($env:CODEX_HOME + "-sibling")) {
-            throw "Windows path containment accepted a sibling prefix"
-          }
-          New-Item -ItemType Directory -Force -Path $marketplaceRoot, $env:CODEX_HOME | Out-Null
-          foreach ($path in @($proofRoot, $marketplaceRoot, $env:CODEX_HOME)) {
-            if ((Get-Item -LiteralPath $path).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-              throw "Windows proof path is a reparse point: $path"
-            }
-          }
-          $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
-          if (-not (Test-Path -LiteralPath $windowsTar -PathType Leaf)) {
-            throw "native Windows tar.exe is unavailable: $windowsTar"
-          }
-          $archivePath = (Resolve-Path -LiteralPath "dist/codexy-marketplace-plugin.tar.gz").Path
-          Push-Location -LiteralPath $marketplaceRoot
-          try {
-            & $windowsTar -xzf $archivePath
-            if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
-          } finally {
-            Pop-Location
-          }
-          $reparseOutputs = @(Get-ChildItem -LiteralPath $marketplaceRoot -Recurse -Force -Attributes ReparsePoint)
-          if ($reparseOutputs.Count -ne 0) {
-            throw "native Windows extraction produced reparse points"
-          }
-          New-Item -ItemType Directory -Force -Path (Join-Path $marketplaceRoot ".agents/plugins") | Out-Null
-          Copy-Item ".agents/plugins/marketplace.json" (Join-Path $marketplaceRoot ".agents/plugins/marketplace.json")
-
-          codex plugin marketplace add $marketplaceRoot --json | Out-Null
-          $install = codex plugin add codexy@codexy --json | ConvertFrom-Json
-          $installedPath = $install.installedPath
-          if (-not (Test-PathWithin $env:CODEX_HOME $installedPath)) {
-            throw "plugin installed outside the isolated Codex home: $installedPath"
-          }
-
-          $configured = @(codex mcp list --json | ConvertFrom-Json)
-          foreach ($server in @("lsp", "codegraph")) {
-            $entry = $configured | Where-Object name -eq $server
-            if ($entry.transport.command -ne "./mcp/codexy-mcp-$server") {
-              throw "$server did not preserve the extensionless plugin-relative command"
-            }
-            if (-not (Test-PathWithin $installedPath $entry.transport.cwd)) {
-              throw "$server cwd did not resolve beneath the installed plugin root"
-            }
-            $runtime = Join-Path $installedPath "runtime/codexy-mcp-$server-windows-x86_64.exe"
-            $entrypoint = Join-Path $installedPath "mcp/codexy-mcp-$server.exe"
-            if (-not (Test-Path -LiteralPath $runtime -PathType Leaf)) { throw "missing $runtime" }
-            if (-not (Test-Path -LiteralPath $entrypoint -PathType Leaf)) { throw "missing $entrypoint" }
-            if ((Get-FileHash $runtime).Hash -ne (Get-FileHash $entrypoint).Hash) {
-              throw "$server PE entrypoint differs from its validated runtime"
-            }
-          }
-
-          $sentinel = Join-Path $installedPath "mcp/cmd-sentinel-ran"
-          foreach ($server in @("lsp", "codegraph")) {
-            $cmd = Join-Path $installedPath "mcp/codexy-mcp-$server.cmd"
-            [System.IO.File]::WriteAllText(
-              $cmd,
-              "@echo off`r`n>`"%~dp0cmd-sentinel-ran`" echo unexpected-cmd-fallback`r`nexit /b 97`r`n",
-              [System.Text.Encoding]::ASCII
-            )
-          }
-          $env:PATHEXT = ".EXE"
-
-          $expected = @{
-            lsp = @{ Server = "codexy-lsp"; Tool = "lsp_status" }
-            codegraph = @{ Server = "codexy-codegraph"; Tool = "codegraph_index" }
-          }
-          $entrypointRequests = @(
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"installed-windows-ci","version":"1"}}}',
-            '{"jsonrpc":"2.0","method":"notifications/initialized"}',
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-          )
-          foreach ($server in @("lsp", "codegraph")) {
-            $entrypoint = @{
-              Label = "installed PE"
-              Path = Join-Path $installedPath "mcp/codexy-mcp-$server.exe"
-            }
-            $entrypointPath = $entrypoint.Path
-            $entrypointStart = [System.Diagnostics.ProcessStartInfo]::new()
-            $entrypointStart.FileName = $entrypointPath
-            $entrypointStart.ArgumentList.Add("--stdio")
-            $entrypointStart.UseShellExecute = $false
-            $entrypointStart.RedirectStandardInput = $true
-            $entrypointStart.RedirectStandardOutput = $true
-            $entrypointStart.RedirectStandardError = $true
-            $entrypointStart.CreateNoWindow = $true
-            $entrypointProcess = [System.Diagnostics.Process]::new()
-            $entrypointProcess.StartInfo = $entrypointStart
-            $entrypointStarted = $false
-            try {
-              $entrypointStarted = $entrypointProcess.Start()
-              if (-not $entrypointStarted) { throw "failed to start $server $($entrypoint.Label)" }
-              $entrypointStdout = $entrypointProcess.StandardOutput.ReadToEndAsync()
-              $entrypointStderr = $entrypointProcess.StandardError.ReadToEndAsync()
-              foreach ($request in $entrypointRequests) { $entrypointProcess.StandardInput.WriteLine($request) }
-              $entrypointProcess.StandardInput.Close()
-              if (-not $entrypointProcess.WaitForExit(15000)) {
-                $entrypointProcess.Kill($true)
-                $entrypointProcess.WaitForExit()
-                if ($entrypoint.Label -eq "installed PE") {
-                  throw "installed $server PE process timed out"
-                }
-                throw "$server $($entrypoint.Label) process timed out"
-              }
-              $entrypointErrors = $entrypointStderr.GetAwaiter().GetResult()
-              if ($entrypointProcess.ExitCode -ne 0) { throw "$server $($entrypoint.Label) failed: $entrypointErrors" }
-              $entrypointMessages = @($entrypointStdout.GetAwaiter().GetResult() -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
-              $entrypointInitialize = $entrypointMessages | Where-Object id -eq 1
-              $entrypointTools = $entrypointMessages | Where-Object id -eq 2
-              if ($entrypointInitialize.result.serverInfo.name -ne $expected[$server].Server) {
-                throw "$server $($entrypoint.Label) returned the wrong server identity"
-              }
-              if ($expected[$server].Tool -notin @($entrypointTools.result.tools.name)) {
-                if ($entrypoint.Label -eq "installed PE") {
-                  throw "installed $server PE omitted its expected tool"
-                }
-                throw "$server $($entrypoint.Label) omitted its expected tool"
-              }
-            } finally {
-              if ($entrypointStarted -and -not $entrypointProcess.HasExited) {
-                $entrypointProcess.Kill($true)
-                $entrypointProcess.WaitForExit()
-              }
-              $entrypointProcess.Dispose()
-            }
-          }
-
-          $codexPackageRoot = Join-Path (npm root --global) "@openai/codex"
-          $codexExecutables = @(Get-ChildItem -LiteralPath $codexPackageRoot -Recurse -Filter codex.exe -File)
-          if ($codexExecutables.Count -ne 1) {
-            throw "expected one native Codex executable, found $($codexExecutables.Count)"
-          }
-          $start = [System.Diagnostics.ProcessStartInfo]::new()
-          $start.FileName = $codexExecutables[0].FullName
-          $start.ArgumentList.Add("app-server")
-          $start.UseShellExecute = $false
-          $start.RedirectStandardInput = $true
-          $start.RedirectStandardOutput = $true
-          $start.RedirectStandardError = $true
-          $start.CreateNoWindow = $true
-          $appServer = [System.Diagnostics.Process]::new()
-          $appServer.StartInfo = $start
-          $started = $false
-          $appServerFailure = $null
-          try {
-            $started = $appServer.Start()
-            if (-not $started) { throw "failed to start Codex app-server" }
-            $stderrTask = $appServer.StandardError.ReadToEndAsync()
-            $initialize = '{"method":"initialize","id":1,"params":{"clientInfo":{"name":"windows-ci","title":"Windows CI","version":"1"},"capabilities":{"experimentalApi":true}}}'
-            $appServer.StandardInput.WriteLine($initialize)
-            do {
-              $line = $appServer.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(30)).GetAwaiter().GetResult()
-              if ($null -eq $line) { throw "Codex app-server closed before initialize" }
-              $message = $line | ConvertFrom-Json
-            } until ($message.id -eq 1)
-            $appServer.StandardInput.WriteLine('{"method":"initialized"}')
-
-            $statuses = @()
-            $statusResponseTimeout = [TimeSpan]::FromSeconds(30)
-            for ($attempt = 0; $attempt -lt 15; $attempt++) {
-              $requestId = 2 + $attempt
-              $statusRequest = @{
-                method = "mcpServerStatus/list"
-                id = $requestId
-                params = @{ cursor = $null; limit = 100; detail = "toolsAndAuthOnly"; threadId = $null }
-              } | ConvertTo-Json -Depth 4 -Compress
-              $appServer.StandardInput.WriteLine($statusRequest)
-              do {
-                $line = $appServer.StandardOutput.ReadLineAsync().WaitAsync($statusResponseTimeout).GetAwaiter().GetResult()
-                if ($null -eq $line) { throw "Codex app-server closed before MCP status" }
-                $message = $line | ConvertFrom-Json
-              } until ($message.id -eq $requestId)
-              $statuses = @($message.result.data)
-              $allReady = $true
-              foreach ($server in @("lsp", "codegraph")) {
-                $status = $statuses | Where-Object name -eq $server
-                if ($status.serverInfo.name -ne $expected[$server].Server) { $allReady = $false }
-              }
-              if ($allReady) { break }
-              if ($attempt -lt 14) { Start-Sleep -Seconds 2 }
-            }
-            foreach ($server in @("lsp", "codegraph")) {
-              $status = $statuses | Where-Object name -eq $server
-              if ($status.serverInfo.name -ne $expected[$server].Server) {
-                $evidence = $status | ConvertTo-Json -Depth 8 -Compress
-                $appServerFailure = "$server did not start through the installed Codex MCP surface; MCP status evidence: $evidence"
-                break
-              }
-              if ($expected[$server].Tool -notin @($status.tools.PSObject.Properties.Name)) {
-                $appServerFailure = "$server did not expose its expected tool through Codex"
-                break
-              }
-            }
-            if (Test-Path -LiteralPath $sentinel) {
-              $appServerFailure = "Codex selected a .cmd fallback instead of the PE entrypoint"
-            }
-          } catch {
-            $appServerFailure = $_.Exception.Message
-          } finally {
-            if ($started -and -not $appServer.HasExited) {
-              $appServer.Kill($true)
-              if (-not $appServer.WaitForExit(10000)) {
-                throw "Codex app-server process tree did not exit after termination"
-              }
-            }
-            if ($started) { $appServerStderr = $stderrTask.GetAwaiter().GetResult() }
-            $appServer.Dispose()
-          }
-          $remainingMcp = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
-            $_.Path -and (Test-PathWithin $installedPath $_.Path)
-          })
-          if ($remainingMcp.Count -ne 0) {
-            throw "installed MCP process cleanup failed: $($remainingMcp.Id -join ',')"
-          }
-          if ($appServerFailure) {
-            throw "$appServerFailure; Codex app-server stderr: $appServerStderr"
-          }
-
-  publish-release:
-    name: Publish marketplace release
-    needs: [package-plugin, windows-installed-mcp]
-    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Download marketplace package artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: codexy-marketplace-plugin
-          path: dist
-
-      - name: Resolve release tag
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          RELEASE_EVENT_TAG: ${{ github.event.release.tag_name }}
-          WORKFLOW_RELEASE_TAG: ${{ inputs.release_tag }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          case "$EVENT_NAME" in
-            release)
-              release_tag="$RELEASE_EVENT_TAG"
-              ;;
-            workflow_dispatch)
-              release_tag="$WORKFLOW_RELEASE_TAG"
-              ;;
-            *)
-              release_tag="$REF_NAME"
-              ;;
-          esac
-          if [ -z "$release_tag" ]; then
-            echo "release_tag is required for manual release runs" >&2
-            exit 1
-          fi
-          echo "RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
-
-      - name: Verify release tag parity
-        run: scripts/sync-plugin-version --check --tag "$RELEASE_TAG"
-
-      - name: Generate commit-log changelog
-        env:
-          PREVIOUS_TAG: ${{ inputs.previous_tag }}
-        run: |
-          git fetch --tags --force
-          release_tag="$RELEASE_TAG"
-          release_target="$(git rev-list -n 1 "$release_tag")"
-          echo "RELEASE_TARGET=$release_target" >> "$GITHUB_ENV"
-          scripts/generate-release-changelog "$release_tag" "$PREVIOUS_TAG" > release-notes.md
-
-      - name: Create or update GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          release_tag="$RELEASE_TAG"
-          if gh release view "$release_tag" >/dev/null 2>&1; then
-            gh release edit "$release_tag" --title "$release_tag" --notes-file release-notes.md --target "$RELEASE_TARGET"
-          else
-            gh release create "$release_tag" --title "$release_tag" --notes-file release-notes.md --target "$RELEASE_TARGET"
-          fi
-
-      - name: Attach marketplace package to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release upload "$RELEASE_TAG" "dist/codexy-marketplace-plugin.tar.gz" --clobber
