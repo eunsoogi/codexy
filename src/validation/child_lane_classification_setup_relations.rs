@@ -1,6 +1,8 @@
 use super::child_lane_classification_setup_actions::{action_is_passive, setup_action_at};
 use super::child_lane_classification_setup_clause::{SENTENCE_BOUNDARY, analyze_setup_clause};
 
+const COMMA_BOUNDARY: &str = "__codexy_comma_boundary__";
+
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum SetupActor {
     Child,
@@ -92,7 +94,7 @@ fn timing_phrase_is_negated(words: &[&str], timing: usize) -> bool {
 fn timing_polarity_boundary(words: &[&str], index: usize) -> bool {
     matches!(
         words[index],
-        SENTENCE_BOUNDARY | "and" | "but" | "however" | "then"
+        COMMA_BOUNDARY | SENTENCE_BOUNDARY | "and" | "but" | "however" | "then"
     ) || setup_action_at(words, index).is_some()
         || actor_word(words[index]).is_some()
 }
@@ -114,12 +116,19 @@ fn relation_window_end(words: &[&str], action: usize, next_action: Option<usize>
 fn words(line: &str) -> Vec<&str> {
     let mut words = Vec::new();
     for sentence in line.split_inclusive(['.', '!', '?']) {
-        words.extend(
-            sentence
-                .split(|character: char| !character.is_ascii_alphanumeric())
-                .filter(|word| !word.is_empty()),
-        );
-        if sentence.ends_with(['.', '!', '?']) {
+        for clause in sentence.split_inclusive([',', ';']) {
+            words.extend(
+                clause
+                    .split(|character: char| !character.is_ascii_alphanumeric())
+                    .filter(|word| !word.is_empty()),
+            );
+            if clause.ends_with(';') {
+                words.push(SENTENCE_BOUNDARY);
+            } else if clause.ends_with(',') {
+                words.push(COMMA_BOUNDARY);
+            }
+        }
+        if sentence.ends_with(['.', '!', '?']) && words.last() != Some(&SENTENCE_BOUNDARY) {
             words.push(SENTENCE_BOUNDARY);
         }
     }

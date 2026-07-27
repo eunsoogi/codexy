@@ -217,7 +217,7 @@ fn validator_scopes_no_to_bounded_setup_noun_phrases() -> TestResult {
     Ok(())
 }
 
-fn assert_with_classification(label: &str, classification: &str, setup: &str, expected: bool) -> TestResult {
+pub(crate) fn assert_with_classification(label: &str, classification: &str, setup: &str, expected: bool) -> TestResult {
     let temp = tempfile::tempdir()?;
     let path = temp.path().join("handoff.md");
     std::fs::write(&path, format!("{classification}\n{setup}"))?;
@@ -230,7 +230,7 @@ fn parent_owned_classification() -> &'static str {
     "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\nLane type: review response\nSecondary surfaces: validators\nOwner decision: affirmative parent-owned because the parent owns orchestration\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: coordinate after classification\nStop/blocker: None"
 }
 
-fn child_owned_classification() -> &'static str {
+pub(crate) fn child_owned_classification() -> &'static str {
     "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: create branch after classification\nStop/blocker: None\nSource thread id: parent-463\nGoal control state: source_thread_id=parent-463\nGoal transition key: 463:create_goal:actor-grammar\nParent goal pre-delivery: operation=create_goal; parent task=parent-463; delivery=confirmed; task surface=codex task/thread; issue=#463; plan step=implement; branch=codexy/463; worktree=/worktree; head=abc; clean/index=clean; evidence=classification; next action=create goal; transition key=463:create_goal:actor-grammar\nGoal tool call: create_goal\nParent goal post-result: operation=create_goal; exact tool result=active; parent task=parent-463; delivery=confirmed; task surface=codex task/thread; transition key=463:create_goal:actor-grammar\nPlan tool call: update_plan"
 }
 
