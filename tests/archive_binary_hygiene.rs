@@ -2,8 +2,7 @@ use crate::support::FixtureCommand as Command;
 
 use tempfile::tempdir;
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 use release_archive_support::{
     assert_structured_literals, complete_plugin_fixture,
     complete_plugin_fixture_with_stubbed_runtime, create_archive,

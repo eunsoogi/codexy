@@ -7,8 +7,7 @@ use std::{
 use crate::support::executable_path;
 use tempfile::{TempDir, tempdir};
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 use release_archive_support::{
     complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive,
 };

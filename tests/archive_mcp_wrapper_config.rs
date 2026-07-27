@@ -3,8 +3,7 @@ use crate::support::FixtureCommand as Command;
 use serde_json::{Value, json};
 use tempfile::tempdir;
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 use release_archive_support::{complete_plugin_fixture_with_stubbed_runtime, create_archive};
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {

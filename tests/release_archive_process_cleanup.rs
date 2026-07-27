@@ -3,8 +3,7 @@ use std::time::{Duration, Instant};
 
 use tempfile::tempdir;
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 
 #[cfg(unix)]
 #[test]

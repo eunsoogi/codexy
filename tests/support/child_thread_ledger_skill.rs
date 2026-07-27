@@ -15,6 +15,10 @@ pub(crate) struct PluginFixture {
 }
 
 impl PluginFixture {
+    pub(super) fn from_parts(temp: tempfile::TempDir, root: PathBuf) -> Self {
+        Self { _temp: temp, root }
+    }
+
     pub(crate) fn root(&self) -> &Path {
         &self.root
     }
@@ -45,7 +49,7 @@ pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         &root,
     )?;
-    Ok(PluginFixture { _temp: temp, root })
+    Ok(PluginFixture::from_parts(temp, root))
 }
 
 pub(crate) fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {

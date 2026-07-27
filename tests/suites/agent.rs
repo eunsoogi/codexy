@@ -100,6 +100,9 @@ mod validator_sentinel_reasoning_evidence;
 #[path = "../validator_sentinel_reasoning_followups.rs"]
 mod validator_sentinel_reasoning_followups;
 
+#[path = "../validator_sentinel_reasoning_fixture.rs"]
+mod validator_sentinel_reasoning_fixture;
+
 #[path = "../validator_sentinel_reviewer_gate.rs"]
 mod validator_sentinel_reviewer_gate;
 

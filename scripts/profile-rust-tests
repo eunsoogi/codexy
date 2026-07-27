@@ -11,11 +11,14 @@ import signal
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
+from profile_rust_accounting import listed_test_inventory, observed_test_inventory
 from profile_rust_workflow import enforce_workflow_contract
 
 BUDGET_SECONDS = 195.0
+WINDOWS_BUDGET_SECONDS = 540.0
 METADATA_TIMEOUT_SECONDS = 30.0
 MINIMUM_PASSED_TESTS = 1802
 MAXIMUM_INTEGRATION_TARGETS = 8
@@ -27,6 +30,7 @@ RESULT_PATTERN = re.compile(
     r"(\d+) ignored; \d+ measured; \d+ filtered out"
 )
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
+
 def integration_target_count(root: Path) -> int:
     try:
         result = subprocess.run(
@@ -61,7 +65,7 @@ def archive_fixture_nested_cargo_build_count(root: Path) -> int:
         sys.stderr.write(f"archive fixture helper is unreadable: {error}\n")
         raise SystemExit(1) from None
     return source.count('Command::new("cargo")')
-def run_workload(root: Path) -> tuple[str, float, int]:
+def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
     started = time.perf_counter()
     process = subprocess.Popen(
         WORKLOAD,
@@ -72,7 +76,7 @@ def run_workload(root: Path) -> tuple[str, float, int]:
         start_new_session=os.name == "posix",
     )
     try:
-        output, _ = process.communicate(timeout=BUDGET_SECONDS)
+        output, _ = process.communicate(timeout=budget_seconds)
     except subprocess.TimeoutExpired as error:
         if os.name == "posix":
             os.killpg(process.pid, signal.SIGKILL)
@@ -84,7 +88,7 @@ def run_workload(root: Path) -> tuple[str, float, int]:
             partial = partial.decode(errors="replace")
         output = remainder or partial
         sys.stdout.write(output)
-        return output, BUDGET_SECONDS, 124
+        return output, budget_seconds, 124
     elapsed = time.perf_counter() - started
     sys.stdout.write(output)
     return output, elapsed, process.returncode
@@ -92,15 +96,28 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument("--workflow-file", type=Path)
+    parser.add_argument("--budget-seconds", type=float, default=BUDGET_SECONDS)
+    parser.add_argument("--verify-coverage", action="store_true")
+    parser.add_argument("--windows", action="store_true")
     arguments = parser.parse_args()
     root = arguments.root.resolve()
+    if arguments.windows:
+        arguments.verify_coverage = True
+        arguments.budget_seconds = WINDOWS_BUDGET_SECONDS
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
     enforce_workflow_contract(
         workflow, REQUIRED_JOB_TIMEOUT_MINUTES, REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES, WORKLOAD
     )
     targets = integration_target_count(root)
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
-    output, elapsed, status = run_workload(root)
+    expected_tests: Counter[str] = Counter()
+    expected_targets: set[str] = set()
+    inventory_status = 0
+    started = time.perf_counter()
+    if arguments.verify_coverage:
+        (expected_tests, expected_targets), inventory_status = listed_test_inventory(root, WORKLOAD)
+    remaining_budget = max(0.0, arguments.budget_seconds - (time.perf_counter() - started))
+    output, elapsed, status = run_workload(root, remaining_budget)
     summaries = RESULT_PATTERN.findall(output)
     passed = sum(int(result[0]) for result in summaries)
     failed = sum(int(result[1]) for result in summaries)
@@ -115,7 +132,34 @@ def main() -> int:
     target_pass = 0 < targets <= MAXIMUM_INTEGRATION_TARGETS
     tests_pass = passed >= MINIMUM_PASSED_TESTS and failed == 0 and ignored == 0
     archive_fixture_nested_cargo_pass = archive_fixture_nested_cargo_builds == 0
-    budget_pass = elapsed <= BUDGET_SECONDS
+    observed_tests, observed_targets = observed_test_inventory(output)
+    missing = sorted((expected_tests - observed_tests).elements())
+    unexpected = observed_tests - expected_tests
+    duplicate = sorted(
+        name
+        for name, count in unexpected.items()
+        if expected_tests[name] > 0
+        for _ in range(count)
+    )
+    extra = sorted(
+        name
+        for name, count in unexpected.items()
+        if expected_tests[name] == 0
+        for _ in range(count)
+    )
+    coverage_pass = (
+        not arguments.verify_coverage
+        or (
+            inventory_status == 0
+            and expected_tests
+            and not missing
+            and not duplicate
+            and not extra
+            and expected_targets == observed_targets
+        )
+    )
+    total_elapsed = time.perf_counter() - started
+    budget_pass = total_elapsed <= arguments.budget_seconds
     print(f"command\t{' '.join(WORKLOAD)}")
     print("workload-invocations\t1")
     print(f"integration-targets\t{targets}\t{'PASS' if target_pass else 'FAIL'}")
@@ -127,14 +171,36 @@ def main() -> int:
     )
     print(f"compile-seconds\t{compile_seconds:.3f}")
     print(f"execution-seconds\t{execution_seconds:.3f}")
-    print(f"total-seconds\t{elapsed:.3f}")
-    print(f"budget-seconds\t{BUDGET_SECONDS:.3f}\t{'PASS' if budget_pass else 'FAIL'}")
+    print(f"total-seconds\t{total_elapsed:.3f}")
+    if arguments.verify_coverage:
+        print(f"coverage-tests\t{sum(expected_tests.values())}\t{sum(observed_tests.values())}\t{'PASS' if coverage_pass else 'FAIL'}")
+        print(f"coverage-missing\t{len(missing)}")
+        print(f"coverage-duplicates\t{len(duplicate)}")
+        print(f"coverage-extra\t{len(extra)}")
+        print(f"coverage-duplicate-or-extra\t{len(duplicate) + len(extra)}")
+        print(f"coverage-targets\t{len(expected_targets)}\t{len(observed_targets)}\t{'PASS' if expected_targets == observed_targets else 'FAIL'}")
+        print(
+            "coverage-report-json\t"
+            + json.dumps(
+                {
+                    "expected_targets": sorted(expected_targets),
+                    "observed_targets": sorted(observed_targets),
+                    "missing": missing,
+                    "duplicates": duplicate,
+                    "extra": extra,
+                    "inventory_status": inventory_status,
+                },
+                sort_keys=True,
+            )
+        )
+    print(f"budget-seconds\t{arguments.budget_seconds:.3f}\t{'PASS' if budget_pass else 'FAIL'}")
     success = (
         status == 0
         and target_pass
         and tests_pass
         and archive_fixture_nested_cargo_pass
         and budget_pass
+        and coverage_pass
     )
     print(f"result\t{'PASS' if success else 'FAIL'}")
     return 0 if success else status or 1

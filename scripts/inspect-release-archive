@@ -25,8 +25,13 @@ response_checker="$script_dir/inspect-mcp-response"
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
-"$script_dir/inspect-mcp-entrypoints" "$plugin_root/.mcp.json" >"$tmp_dir/mcp-entrypoints"
-"$script_dir/check-release-archive-entries" "$archive" "$max_bytes" "$max_entries" "$max_total_bytes" "$tmp_dir/mcp-entrypoints"
+if [ -f "$plugin_root/.mcp.json" ]; then
+  "$script_dir/inspect-mcp-entrypoints" "$plugin_root/.mcp.json" >"$tmp_dir/mcp-entrypoints"
+  "$script_dir/check-release-archive-entries" "$archive" "$max_bytes" "$max_entries" "$max_total_bytes" "$tmp_dir/mcp-entrypoints"
+else
+  "$script_dir/check-release-archive-entries" "$archive" "$max_bytes" "$max_entries" "$max_total_bytes"
+  "$script_dir/inspect-mcp-entrypoints" "$plugin_root/.mcp.json" >"$tmp_dir/mcp-entrypoints"
+fi
 
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"

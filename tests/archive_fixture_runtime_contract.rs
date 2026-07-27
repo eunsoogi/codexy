@@ -1,5 +1,4 @@
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 
 use release_archive_support::assert_runtime_workflow_contract;
 

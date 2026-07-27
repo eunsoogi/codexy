@@ -2,8 +2,7 @@ use crate::support::{FixtureCommand as Command, materialize_lf_text_fixture, fix
 
 use serde_json::Value;
 
-#[path = "../support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 use release_archive_support::{complete_plugin_fixture, create_archive};
 
 #[test]
