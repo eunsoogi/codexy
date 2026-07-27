@@ -84,13 +84,10 @@ fn validator_cli_rejects_skill_description_bare_imperatives() -> TestResult {
 }
 
 fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    Ok((temp, plugin_root))
+    Ok(support::copy_plugin_fixture_with_mutable_files(&[
+        Path::new("skills/proof-driven-completion/SKILL.md"),
+        Path::new("skills/task-classification/SKILL.md"),
+    ])?)
 }
 
 fn validator(plugin_root: &Path, mode: &str) -> TestResult<Output> {

@@ -62,8 +62,9 @@ pub(super) use package::{
     assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo,
 };
 pub(crate) use plugin_fixture::{
-    PluginFixture, copy_plugin_fixture, copy_plugin_fixture_with_mutable_files, plugin_fixture,
-    plugin_fixture_with_mutable_files, roles_fixture,
+    PluginFixture, copy_plugin_fixture, copy_plugin_fixture_into_with_mutable_files,
+    copy_plugin_fixture_with_mutable_files, plugin_fixture, plugin_fixture_with_mutable_files,
+    roles_fixture,
 };
 pub(crate) use release_archive::assert_structured_literals;
 pub(super) use release_cache::{

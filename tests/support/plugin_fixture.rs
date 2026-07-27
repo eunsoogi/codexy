@@ -23,7 +23,11 @@ impl PluginFixture {
 }
 
 pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
-    Ok(materialize_fixture(&[])?)
+    super::profile_metrics::record("plugin_fixture");
+    let temp = tempfile::tempdir()?;
+    let root = temp.path().join("codexy");
+    super::copy_dir(source_root(), &root)?;
+    Ok(PluginFixture::from_parts(temp, root))
 }
 
 pub(crate) fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
@@ -45,6 +49,17 @@ pub(crate) fn copy_plugin_fixture_with_mutable_files(
 ) -> std::io::Result<(tempfile::TempDir, PathBuf)> {
     let fixture = plugin_fixture_with_mutable_files(mutable_files)?;
     Ok((fixture._temp, fixture.root))
+}
+
+pub(crate) fn copy_plugin_fixture_into_with_mutable_files(
+    target: &Path,
+    mutable_files: &[&Path],
+) -> std::io::Result<()> {
+    for path in mutable_files {
+        validate_relative_file(path)?;
+    }
+    super::profile_metrics::record("plugin_fixture");
+    super::plugin_fixture_copy::materialize(source_root(), target, mutable_files)
 }
 
 pub(crate) fn roles_fixture() -> TestResult<PluginFixture> {

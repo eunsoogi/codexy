@@ -181,17 +181,16 @@ fn validator_ignores_excluded_policy_contexts_and_rejects_excluded_catalogs() ->
 }
 
 fn plugin_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    Ok((temp, plugin_root))
+    Ok(support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+        REFERENCE,
+    )])?)
 }
 
 fn repo_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
+    let (temp, source_plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[
+        Path::new("skills/git-workflow/SKILL.md"),
+        Path::new(REFERENCE),
+    ])?;
     let repo_root = temp.path().join("repo");
     let plugin_root = repo_root.join("plugins/codexy");
     std::fs::create_dir_all(repo_root.join("plugins"))?;
@@ -199,10 +198,7 @@ fn repo_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std
         Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md"),
         repo_root.join("AGENTS.md"),
     )?;
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    std::fs::rename(source_plugin_root, &plugin_root)?;
     Ok((temp, plugin_root))
 }
 

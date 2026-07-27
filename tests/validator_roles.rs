@@ -2,8 +2,6 @@ use std::process::{Command, Output};
 
 use crate::support;
 
-use support::copy_dir;
-
 #[test]
 fn validator_cli_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -213,9 +211,9 @@ fn validator_cli_rejects_unsupported_skills_config_layers() -> Result<(), Box<dy
 }
 
 fn copy_fixture(plugin_root: &std::path::Path) -> std::io::Result<()> {
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+    support::copy_plugin_fixture_into_with_mutable_files(
         plugin_root,
+        &[std::path::Path::new("agents/codexy-pathfinder.toml")],
     )
 }
 

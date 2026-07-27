@@ -2,6 +2,8 @@
 use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
+use crate::support;
+
 #[path = "validator_runtime_contract/platform_matrix.rs"]
 mod platform_matrix;
 #[path = "validator_runtime_contract/runtime_artifacts.rs"]
@@ -11,11 +13,14 @@ mod release_contract;
 
 fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     let plugin_root = temp_root.join("codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy")
-            .as_path(),
+    support::copy_plugin_fixture_into_with_mutable_files(
         &plugin_root,
+        &[
+            std::path::Path::new(".codex-plugin/plugin.json"),
+            std::path::Path::new("runtime-release.json"),
+            std::path::Path::new("mcp/codexy-mcp-lsp"),
+            std::path::Path::new("mcp/codexy-mcp-codegraph"),
+        ],
     )?;
     Ok(plugin_root)
 }
@@ -83,24 +88,6 @@ fn write_runtime_fixture(
             plugin_root.join(format!("mcp/codexy-mcp-{server}.exe")),
             bytes,
         )?;
-    }
-    Ok(())
-}
-
-fn copy_dir(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(target)?;
-    for entry in std::fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let target_path = target.join(entry.file_name());
-        if source_path.is_dir() {
-            if entry.file_name() == "target" {
-                continue;
-            }
-            copy_dir(&source_path, &target_path)?;
-        } else {
-            std::fs::copy(source_path, target_path)?;
-        }
     }
     Ok(())
 }

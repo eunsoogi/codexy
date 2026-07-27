@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::support;
+use super::passive_fixture::copy_plugin_fixture;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -225,16 +226,6 @@ fn validator_cli_rejects_text_fence_handoff_bare_imperatives() -> TestResult {
     assert!(!output.status.success());
     assert!(stderr(&output).contains("mandatory instructions must use MUST"));
     Ok(())
-}
-
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    Ok((temp, plugin_root))
 }
 
 fn validator(plugin_root: &Path, mode: &str) -> TestResult<std::process::Output> {
