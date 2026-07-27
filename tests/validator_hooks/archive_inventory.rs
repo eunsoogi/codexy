@@ -27,6 +27,12 @@ fn inventory_metadata_local_paths_fail_with_both_archive_scanners() {
         }
         let output = command.arg_path(&archive).arg_path(&plugin_root).output().expect("archive gate should start");
         assert!(!output.status.success(), "archive scanner accepted metadata, grep={grep_backend}");
-        assert!(String::from_utf8_lossy(&output.stderr).contains("archive contains a secret or local path"));
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("archive contains a secret or local path"),
+            "archive scanner diagnostic missing, grep={grep_backend}, status={}, stdout={:?}, stderr={:?}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
     }
 }

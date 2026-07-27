@@ -1,7 +1,7 @@
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::{Stdio};
-use crate::support::{FixtureCommand as Command, hook_fixture_shell_input};
+use crate::support::{FixtureCommand as Command, hook_fixture_model_input};
 
 use serde_json::{Value, json};
 
@@ -142,7 +142,7 @@ pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, 
 }
 
 pub(super) fn assert_event_case(root: &Path, event: &str, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
-    let (command, cwd) = hook_fixture_shell_input(command, cwd).map_err(std::io::Error::other)?;
+    let (command, cwd) = hook_fixture_model_input(command, cwd).map_err(std::io::Error::other)?;
     let input = json!({"hook_event_name":event,"tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     assert_input(root, input, denied, environment)
 }
