@@ -1,10 +1,12 @@
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
 
-#[cfg(unix)]
 use super::admission_runtime::{
-    TestResult, assert_case, assert_event_case, executable, plugin_root, repository,
+    TestResult, assert_event_case, plugin_root, repository,
 };
+
+#[cfg(unix)]
+use super::admission_runtime::{assert_case, executable};
 
 #[cfg(unix)]
 #[test]
