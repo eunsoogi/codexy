@@ -69,6 +69,13 @@ impl<'a> WrapperFixture<'a> {
         std::fs::write(&wrapper, script)?;
         make_executable(&wrapper)
     }
+
+    pub(crate) fn select_platform(
+        &self,
+        platform: super::wrapper_platform::FixturePlatform,
+    ) -> std::io::Result<()> {
+        super::wrapper_platform::install_fixture_platform(&self.plugin_root, platform)
+    }
 }
 
 pub(crate) fn run_wrapper(

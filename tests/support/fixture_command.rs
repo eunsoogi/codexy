@@ -1,6 +1,12 @@
 use std::ffi::{OsStr, OsString};
 use std::process::Command;
 
+use super::fixture_command_windows::fixture_script_interpreter;
+#[cfg(windows)]
+use super::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
+pub(super) use super::fixture_command_windows::{
+    fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
+};
 use super::{
     fixture_path::{fixture_path_environment_value, fixture_path_text},
     fixture_text::materialized_script_source,
@@ -14,6 +20,12 @@ pub(crate) struct FixtureCommand(Command);
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
+        #[cfg(windows)]
+        if let Some(command) = windows_static_python_command(std::path::Path::new(program))
+            .unwrap_or_else(|error| panic!("{error}"))
+        {
+            return Self(command);
+        }
         #[cfg(windows)]
         if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
             return Self(Command::new(companion));
@@ -163,70 +175,6 @@ impl From<Command> for FixtureCommand {
     fn from(command: Command) -> Self {
         Self(command)
     }
-}
-
-fn fixture_script_launcher(
-    is_windows: bool,
-    contents: &[u8],
-) -> Result<Option<&'static str>, String> {
-    if !is_windows {
-        return Ok(None);
-    }
-    fixture_script_interpreter(contents)
-}
-
-fn windows_fixture_companion(program: &std::path::Path) -> Option<std::path::PathBuf> {
-    (program
-        .extension()
-        .is_some_and(|extension| extension == "sh"))
-    .then(|| program.with_extension("cmd"))
-    .filter(|companion| companion.is_file())
-}
-
-fn fixture_script_interpreter(contents: &[u8]) -> Result<Option<&'static str>, String> {
-    let first_line = contents
-        .splitn(2, |byte| *byte == b'\n')
-        .next()
-        .unwrap_or_default();
-    let first_line = first_line.strip_suffix(b"\r").unwrap_or(first_line);
-    if !first_line.starts_with(b"#!") {
-        return Ok(None);
-    }
-    let first_line = std::str::from_utf8(first_line)
-        .map_err(|_| "malformed fixture script shebang".to_owned())?;
-    match first_line {
-        "#!/bin/sh" => Ok(Some("sh")),
-        "#!/usr/bin/env bash" => Ok(Some("bash")),
-        "#!/usr/bin/env python3" => Ok(Some("python")),
-        "#!" => Err("malformed fixture script shebang".to_owned()),
-        _ => Err(format!("unsupported fixture script shebang: {first_line}")),
-    }
-}
-
-#[cfg(windows)]
-fn discover_windows_interpreter(interpreter: &str) -> Result<std::path::PathBuf, String> {
-    let path = std::env::var_os("PATH").ok_or_else(|| {
-        format!("Windows fixture interpreter `{interpreter}` cannot discover PATH")
-    })?;
-    let extensions = std::env::var_os("PATHEXT").unwrap_or_else(|| ".COM;.EXE;.BAT;.CMD".into());
-    let extensions = extensions.to_string_lossy();
-    let candidates = std::iter::once(interpreter.to_owned()).chain(
-        extensions
-            .split(';')
-            .filter(|extension| !extension.is_empty())
-            .map(|extension| format!("{interpreter}{extension}")),
-    );
-    for directory in std::env::split_paths(&path) {
-        for candidate in candidates.clone() {
-            let candidate = directory.join(candidate);
-            if candidate.is_file() {
-                return Ok(candidate);
-            }
-        }
-    }
-    Err(format!(
-        "Windows fixture interpreter `{interpreter}` was not found on the host PATH"
-    ))
 }
 
 #[cfg(test)]

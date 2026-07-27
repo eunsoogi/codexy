@@ -1,4 +1,7 @@
-use super::{FixtureCommand, fixture_script_launcher, windows_fixture_companion};
+use super::{
+    FixtureCommand, fixture_script_launcher, windows_fixture_companion,
+    windows_static_python_fixture,
+};
 
 #[test]
 fn fixture_script_launcher_maps_only_the_inventoryed_windows_shebangs() {
@@ -55,6 +58,26 @@ fn windows_fixture_companion_selects_only_a_paired_shell_entrypoint()
         windows_fixture_companion(&temp.path().join("fixture.py")),
         None
     );
+    Ok(())
+}
+
+#[test]
+fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let shell = temp.path().join("codexy-admission.sh");
+    let command = temp.path().join("codexy-admission.cmd");
+    let python = temp.path().join("codexy-admission.py");
+    std::fs::write(&shell, "#!/bin/sh\n")?;
+    std::fs::write(
+        &command,
+        "py -3 -I -B \"%~dp0codexy-admission.py\" --event \"%event%\"\n",
+    )?;
+    assert_eq!(windows_static_python_fixture(&shell), None);
+    std::fs::write(&python, "print('fixture')\n")?;
+    assert_eq!(windows_static_python_fixture(&shell), Some(python));
+    std::fs::write(&command, "py -3 fixture.py\n")?;
+    assert_eq!(windows_static_python_fixture(&shell), None);
     Ok(())
 }
 

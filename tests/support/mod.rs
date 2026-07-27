@@ -6,6 +6,7 @@ mod cache_fixture;
 mod child_thread_ledger_skill;
 mod digest;
 mod fixture_command;
+mod fixture_command_windows;
 mod fixture_path;
 mod fixture_probe;
 mod fixture_text;
@@ -26,6 +27,7 @@ pub(crate) mod workflow_contract;
 pub(super) mod worktree_reservation_harness;
 mod wrapper;
 mod wrapper_copy;
+mod wrapper_platform;
 mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
@@ -81,3 +83,4 @@ pub(crate) use wrapper::{
     wait_for_wrapper_output,
 };
 pub(crate) use wrapper_copy::copy_dir;
+pub(crate) use wrapper_platform::{FixturePlatform, install_fixture_platform};

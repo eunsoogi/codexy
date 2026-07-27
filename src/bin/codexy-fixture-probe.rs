@@ -6,7 +6,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut lines = configuration.lines();
     match lines.next() {
         Some("argv") => echo_arguments(),
-        Some("uname") => emulate_uname(lines.next(), lines.next()),
         _ => Err("unknown fixture probe mode".into()),
     }
 }
@@ -28,16 +27,4 @@ fn echo_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or(0);
     process::exit(status);
-}
-
-fn emulate_uname(
-    operating_system: Option<&str>,
-    architecture: Option<&str>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    match env::args().nth(1).as_deref() {
-        Some("-s") => println!("{}", operating_system.ok_or("missing uname OS")?),
-        Some("-m") => println!("{}", architecture.ok_or("missing uname architecture")?),
-        _ => process::exit(2),
-    }
-    Ok(())
 }
