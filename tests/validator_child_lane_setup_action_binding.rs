@@ -53,23 +53,73 @@ fn validator_retains_a_negated_clause_subject_across_and_then() -> TestResult {
 fn validator_keeps_negated_before_timing_out_of_the_setup_relation() -> TestResult {
     for (label, setup, expected) in [
         (
-            "direct not before classification is not pre-classification setup",
+            "explicit active direct not before classification is not pre-classification setup",
             "The child created branch codexy/463 not before classification but after classification.",
             true,
         ),
         (
-            "modifier-spanning not before classification is not pre-classification setup",
+            "explicit passive direct not before classification is not pre-classification setup",
+            "Branch codexy/463 was created by the child not before classification but after classification.",
+            true,
+        ),
+        (
+            "unqualified active direct not before classification is not pre-classification setup",
+            "Created branch codexy/463 not before classification but after classification.",
+            true,
+        ),
+        (
+            "unqualified passive direct not before classification is not pre-classification setup",
+            "Branch codexy/463 was created not before classification but after classification.",
+            true,
+        ),
+        (
+            "explicit active modifier-spanning not before classification is not pre-classification setup",
             "The child created branch codexy/463 not at any time before classification but after classification.",
             true,
         ),
         (
-            "never before classification is not pre-classification setup",
+            "explicit passive modifier-spanning not before classification is not pre-classification setup",
+            "Branch codexy/463 was created by the child not at any time before classification but after classification.",
+            true,
+        ),
+        (
+            "unqualified active modifier-spanning not before classification is not pre-classification setup",
+            "Created branch codexy/463 not at any time before classification but after classification.",
+            true,
+        ),
+        (
+            "unqualified passive modifier-spanning not before classification is not pre-classification setup",
+            "Branch codexy/463 was created not at any time before classification but after classification.",
+            true,
+        ),
+        (
+            "explicit active never before classification is not pre-classification setup",
             "The child created branch codexy/463 never before classification, only after classification.",
             true,
         ),
         (
-            "affirmative immediately before classification remains pre-classification setup",
-            "The child created branch codexy/463 immediately before classification.",
+            "explicit passive never before classification is not pre-classification setup",
+            "Branch codexy/463 was created by the child never before classification, only after classification.",
+            true,
+        ),
+        (
+            "unqualified active never before classification is not pre-classification setup",
+            "Created branch codexy/463 never before classification, only after classification.",
+            true,
+        ),
+        (
+            "unqualified passive never before classification is not pre-classification setup",
+            "Branch codexy/463 was created never before classification, only after classification.",
+            true,
+        ),
+        (
+            "affirmative unqualified passive immediately before classification remains pre-classification setup",
+            "Branch codexy/463 was created immediately before classification.",
+            false,
+        ),
+        (
+            "affirmative unqualified active at any time before classification remains pre-classification setup",
+            "Created branch codexy/463 at any time before classification.",
             false,
         ),
     ] {

@@ -34,15 +34,12 @@ pub(super) fn clause_has_explicit_child_scope(line: &str) -> bool {
 
 pub(super) fn child_setup_claims_before_classification(line: &str) -> bool {
     let relations = setup_relations(line);
-    let child_relations = relations
-        .iter()
-        .filter(|relation| relation.actor == Some(SetupActor::Child) && !relation.negated)
-        .collect::<Vec<_>>();
-    if child_relations.is_empty() {
+    if relations.is_empty() {
         line_claims_setup_before_classification(line)
     } else {
-        child_relations
+        relations
             .iter()
+            .filter(|relation| !relation.negated && relation.actor != Some(SetupActor::NonChild))
             .any(|relation| relation.before_classification)
     }
 }
