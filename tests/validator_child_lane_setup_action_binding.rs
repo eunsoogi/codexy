@@ -51,18 +51,31 @@ fn validator_retains_a_negated_clause_subject_across_and_then() -> TestResult {
 
 #[test]
 fn validator_keeps_negated_before_timing_out_of_the_setup_relation() -> TestResult {
-    assert_with_classification(
-        "not before classification is not pre-classification setup",
-        child_owned_classification(),
-        "The child created branch codexy/463 not before classification but after classification.",
-        true,
-    )?;
-    assert_with_classification(
-        "affirmative before classification remains pre-classification setup",
-        child_owned_classification(),
-        "The child created branch codexy/463 before classification but after classification.",
-        false,
-    )
+    for (label, setup, expected) in [
+        (
+            "direct not before classification is not pre-classification setup",
+            "The child created branch codexy/463 not before classification but after classification.",
+            true,
+        ),
+        (
+            "modifier-spanning not before classification is not pre-classification setup",
+            "The child created branch codexy/463 not at any time before classification but after classification.",
+            true,
+        ),
+        (
+            "never before classification is not pre-classification setup",
+            "The child created branch codexy/463 never before classification, only after classification.",
+            true,
+        ),
+        (
+            "affirmative immediately before classification remains pre-classification setup",
+            "The child created branch codexy/463 immediately before classification.",
+            false,
+        ),
+    ] {
+        assert_with_classification(label, child_owned_classification(), setup, expected)?;
+    }
+    Ok(())
 }
 
 #[test]

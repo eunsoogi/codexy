@@ -65,7 +65,7 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                     negated: analyze_setup_clause(&words, 0, *action, end).negated,
                     before_classification: window.iter().enumerate().any(|(index, word)| {
                         matches!(*word, "before" | "prior")
-                            && window.get(index.wrapping_sub(1)) != Some(&"not")
+                            && !timing_phrase_is_negated(window, index)
                             && window[index + 1..]
                                 .iter()
                                 .take(4)
@@ -74,6 +74,24 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                 })
         })
         .collect()
+}
+
+fn timing_phrase_is_negated(words: &[&str], timing: usize) -> bool {
+    let mut start = timing;
+    while start > 0 && is_timing_phrase_modifier(words[start - 1]) {
+        start -= 1;
+    }
+    start
+        .checked_sub(1)
+        .and_then(|index| words.get(index))
+        .is_some_and(|word| matches!(*word, "not" | "never"))
+}
+
+fn is_timing_phrase_modifier(word: &str) -> bool {
+    matches!(
+        word,
+        "at" | "any" | "time" | "point" | "moment" | "stage" | "immediately" | "directly"
+    )
 }
 
 fn words(line: &str) -> Vec<&str> {
