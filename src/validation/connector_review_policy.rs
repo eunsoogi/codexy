@@ -1,8 +1,10 @@
 use std::path::Path;
 
 use crate::paths::display_relative;
+use modal_span::{clause_boundary, tokens};
 
 mod active_scope;
+mod modal_span;
 
 const REFERENCE_PATH: &str = "skills/git-workflow/references/codex-connector-review.md";
 const SKILL_PATH: &str = "skills/git-workflow/SKILL.md";
@@ -72,7 +74,10 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     } else {
         return;
     }
-    if active.iter().any(|line| active_request_variant(line)) {
+    if active.iter().any(|line| {
+        line.split(['.', ';', ':'])
+            .any(active_request_variant_in_fragment)
+    }) {
         errors.push(format!(
             "{} Codex connector review policy reintroduces an automatic or repeated review",
             display_relative(path)
@@ -113,6 +118,7 @@ fn procedure_obligations(
 ) -> std::collections::BTreeMap<String, String> {
     let mut in_procedure = false;
     let mut obligations = std::collections::BTreeMap::new();
+    let mut next_number = 1;
     for line in active.iter().map(String::as_str) {
         if line == HEADING {
             in_procedure = true;
@@ -128,13 +134,14 @@ fn procedure_obligations(
             continue;
         };
         let expected = OBLIGATIONS.iter().position(|(expected, _)| *expected == id);
-        if expected.is_none_or(|index| number != index + 1) {
+        if number != next_number || expected.is_none_or(|index| number != index + 1) {
             errors.push(format!(
                 "{} Codex connector review policy has an invalid obligation number or ID",
                 display_relative(path)
             ));
             continue;
         }
+        next_number += 1;
         if obligations
             .insert(id.to_owned(), normalize(clause))
             .is_some()
@@ -156,32 +163,73 @@ fn obligation(line: &str) -> Option<(usize, &str, &str)> {
     (!id.is_empty() && !clause.is_empty()).then_some((number, id, clause))
 }
 
-fn active_request_variant(sentence: &str) -> bool {
-    let sentence = normalize(sentence);
-    let words = sentence.split_whitespace().collect::<Vec<_>>();
-    let positive_must = words.contains(&"must")
-        && !words.windows(2).any(|pair| pair == ["must", "not"])
-        && !sentence.contains("without request");
-    let request = sentence.contains("request") && sentence.contains("review");
-    let automatic_enable = sentence.contains("automatic")
-        && sentence.contains("review")
-        && ["enable", "enabled", "configure", "configured"]
-            .iter()
-            .any(|verb| sentence.contains(verb));
-    let repeated = [
-        "every push",
-        "each push",
-        "per push",
-        "on push",
-        "duplicate",
-        "another",
-        "second",
-        "piecemeal",
-        "after every repair",
-    ]
-    .iter()
-    .any(|marker| sentence.contains(marker));
-    positive_must && ((request && (sentence.contains("automatic") || repeated)) || automatic_enable)
+fn active_request_variant_in_fragment(fragment: &str) -> bool {
+    let tokens = tokens(fragment);
+    let words = tokens
+        .iter()
+        .map(|token| token.text.as_str())
+        .collect::<Vec<_>>();
+    let modal_positions = words
+        .iter()
+        .enumerate()
+        .filter_map(|(index, word)| (*word == "must").then_some(index))
+        .collect::<Vec<_>>();
+    let Some(&first_modal) = modal_positions.first() else {
+        return false;
+    };
+    let mut subject = &words[..first_modal];
+    for (position, start) in modal_positions.iter().copied().enumerate() {
+        if position > 0 {
+            let previous = modal_positions[position - 1];
+            let between = &words[previous + 1..start];
+            if let Some(boundary) = clause_boundary(&tokens[previous + 1..start]) {
+                let candidate = &between[boundary + 1..];
+                if !candidate.is_empty() {
+                    subject = candidate;
+                }
+            }
+        }
+        let end = modal_positions
+            .get(position + 1)
+            .map_or(words.len(), |next| {
+                let between = &words[start + 1..*next];
+                start + 1 + clause_boundary(&tokens[start + 1..*next]).unwrap_or(between.len())
+            });
+        let clause = &words[start..end];
+        let positive_must = clause.get(1) != Some(&"not")
+            && !clause
+                .windows(2)
+                .any(|pair| pair[0] == "without" && pair[1].starts_with("request"));
+        let scoped = || subject.iter().chain(clause.iter()).copied();
+        let request = scoped().any(|word| word.starts_with("request"))
+            && scoped().any(|word| word.starts_with("review"));
+        let automatic_enable = scoped().any(|word| word == "automatic")
+            && scoped().any(|word| word.starts_with("review"))
+            && ["enable", "enabled", "configure", "configured"]
+                .iter()
+                .any(|verb| clause.contains(verb));
+        let repeated = [
+            "every push",
+            "each push",
+            "per push",
+            "on push",
+            "duplicate",
+            "another",
+            "second",
+            "repeated",
+            "piecemeal",
+            "after every repair",
+        ]
+        .iter()
+        .any(|marker| clause.join(" ").contains(marker));
+        if positive_must
+            && ((request && (scoped().any(|word| word == "automatic") || repeated))
+                || automatic_enable)
+        {
+            return true;
+        }
+    }
+    false
 }
 
 fn normalize(text: &str) -> String {
