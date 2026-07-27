@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+import sys
+import tarfile
+import unicodedata
+
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+
+archive_path = sys.argv[1]
+max_bytes, max_entries, max_total_bytes = map(int, sys.argv[2:])
+seen = set()
+seen_canonical = set()
+total_bytes = 0
+devices = {
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{i}" for i in range(1, 10)),
+    *(f"lpt{i}" for i in range(1, 10)),
+}
+
+with tarfile.open(archive_path, "r:gz") as archive:
+    for count, member in enumerate(archive, start=1):
+        name = member.name
+        if count > max_entries:
+            fail(f"archive contains too many entries: {count}")
+        if not (member.isfile() or member.isdir()):
+            fail(f"unsupported archive entry type: {name}")
+        if member.isfile() and member.size > max_bytes:
+            fail(f"oversized archive entry: {name}")
+        total_bytes += member.size
+        if total_bytes > max_total_bytes:
+            fail("archive uncompressed size exceeds the configured limit")
+        if any(ord(character) < 32 or ord(character) == 127 for character in name):
+            fail(f"unsafe archive path: {name!r}")
+        if "\\" in name or ":" in name or name.startswith("/"):
+            fail(f"unsafe archive path: {name}")
+        parts = tuple(part for part in name.split("/") if part != ".")
+        if not parts or any(part in {"", ".."} for part in parts):
+            fail(f"unsafe archive path: {name}")
+        canonical_name = "/".join(parts)
+        if canonical_name in seen_canonical:
+            fail(f"duplicate archive entries: {canonical_name}")
+        seen_canonical.add(canonical_name)
+        if canonical_name != name or parts[:2] != ("plugins", "codexy"):
+            fail(f"unsafe archive path: {name}")
+        for part in parts:
+            folded = unicodedata.normalize("NFC", part).casefold()
+            if folded.rstrip(" .") != folded:
+                fail(f"unsafe Windows-normalized archive path: {name}")
+            if folded.split(".", 1)[0] in devices:
+                fail(f"unsafe Windows device archive path: {name}")
+        identity = unicodedata.normalize("NFC", canonical_name).casefold()
+        if identity in seen:
+            fail(f"case-folding archive entries collide: {name}")
+        seen.add(identity)

@@ -4,6 +4,8 @@ set -eu
 archive=${1:?archive path required}
 plugin_root=${2:?staged plugin root required}
 max_bytes=${MAX_ARCHIVE_FILE_BYTES:-52428800}
+max_entries=${MAX_ARCHIVE_ENTRIES:-10000}
+max_total_bytes=${MAX_ARCHIVE_TOTAL_BYTES:-268435456}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
@@ -23,36 +25,7 @@ response_checker="$script_dir/inspect-mcp-response"
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
-entries="$tmp_dir/entries"
-tar -tzf "$archive" >"$entries"
-canonicalize_entry() {
-  sed '
-:normalize
-s#^\./##
-s#/\./#/#g
-t normalize
-' | tr -s '/'
-}
-canonical_entries="$tmp_dir/canonical-entries"
-canonicalize_entry <"$entries" | sort >"$canonical_entries"
-duplicates=$(uniq -d "$canonical_entries")
-[ -z "$duplicates" ] || { echo "duplicate archive entries: $duplicates" >&2; exit 1; }
-
-while IFS= read -r entry; do
-  case "$entry" in
-    /*|../*|*/../*|*'/..') echo "unsafe archive path: $entry" >&2; exit 1 ;;
-  esac
-  canonical_entry=$(printf '%s\n' "$entry" | canonicalize_entry)
-  case "$entry" in
-    "$canonical_entry") ;;
-    *) echo "unsafe archive path: $entry" >&2; exit 1 ;;
-  esac
-  case "$entry" in
-    plugins/codexy/*) ;;
-    *) echo "unexpected archive root entry: $entry" >&2; exit 1 ;;
-  esac
-done <"$entries"
-if tar -tvzf "$archive" | awk '$1 ~ /^l/ { print "symlink archive entry: " $0; bad=1 } END { exit bad }'; then :; else exit 1; fi
+"$script_dir/check-release-archive-entries" "$archive" "$max_bytes" "$max_entries" "$max_total_bytes"
 
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"

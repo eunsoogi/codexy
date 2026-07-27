@@ -8,6 +8,8 @@ use std::{
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
+mod metadata;
+
 #[test]
 fn real_base_activator_authenticates_retry_and_metadata_matrix()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -80,7 +82,7 @@ impl Fixture {
                 repo.join(relative),
             )?;
         }
-        restore_legacy_platform_metadata(&repo)?;
+        metadata::restore_legacy_platform_metadata(&repo)?;
         git(&repo, &["init", "-b", "main"])?;
         git(&repo, &["config", "user.name", "test"])?;
         git(&repo, &["config", "user.email", "test@example.com"])?;
@@ -178,26 +180,6 @@ impl Fixture {
         git(&self.repo, &["commit", "-m", "drift"])?;
         Ok(())
     }
-}
-
-fn restore_legacy_platform_metadata(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let platforms = json!(["darwin-arm64", "linux-x86_64"]);
-    let manifest = repo.join("plugins/codexy/.codex-plugin/plugin.json");
-    let mut value: Value = serde_json::from_slice(&fs::read(&manifest)?)?;
-    value["supportedPlatforms"] = platforms.clone();
-    fs::write(manifest, serde_json::to_vec_pretty(&value)?)?;
-
-    let marketplace = repo.join(".agents/plugins/marketplace.json");
-    let mut value: Value = serde_json::from_slice(&fs::read(&marketplace)?)?;
-    value["plugins"][0]["supportedPlatforms"] = platforms.clone();
-    fs::write(marketplace, serde_json::to_vec_pretty(&value)?)?;
-
-    let publish = repo.join(".agents/plugins/release-publish-contract.json");
-    let mut value: Value = serde_json::from_slice(&fs::read(&publish)?)?;
-    value["runtime"]["platforms"] = platforms.clone();
-    value["package"]["platforms"] = platforms;
-    fs::write(publish, serde_json::to_vec_pretty(&value)?)?;
-    Ok(())
 }
 
 fn receipt_value() -> Value {

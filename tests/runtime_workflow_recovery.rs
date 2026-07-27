@@ -59,8 +59,10 @@ fn candidate_publication_records_a_reproducible_success_binding()
         "publish-candidate",
         "Assemble canonical candidate archive and receipt",
     )?;
+    assert_eq!(assembly, "scripts/assemble-runtime-candidate");
+    let assembly = script("assemble-runtime-candidate")?;
     support::assert_structured_literals(
-        assembly,
+        &assembly,
         "reproducible candidate archive",
         &["tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy"],
     );
@@ -164,8 +166,10 @@ fn candidate_keeps_windows_native_until_verified_activation()
         &["ProcessStartInfo", "codexy-mcp-lsp.exe", "codexy-mcp-codegraph.exe", "tools/call"],
     );
     let assembly = run(&candidate, "publish-candidate", "Assemble canonical candidate archive and receipt")?;
+    assert_eq!(assembly, "scripts/assemble-runtime-candidate");
+    let assembly = script("assemble-runtime-candidate")?;
     support::assert_structured_literals(
-        assembly,
+        &assembly,
         "candidate-only Windows activation staging",
         &[
             "windows-x86_64",
@@ -198,6 +202,10 @@ fn candidate_keeps_windows_native_until_verified_activation()
 fn workflow(name: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows").join(name);
     Ok(serde_yaml::from_str(&fs::read_to_string(path)?)?)
+}
+
+fn script(name: &str) -> Result<String, Box<dyn std::error::Error>> {
+    Ok(fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts").join(name))?)
 }
 
 fn run<'a>(

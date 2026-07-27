@@ -18,7 +18,7 @@ pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[
 }
 
 #[allow(dead_code)]
-pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
+pub(crate) fn assert_archive_scanner_contract(script: &str, entries: &str, checker: &str) {
     assert_structured_literals(
         script,
         "archive scanner behavior",
@@ -37,10 +37,14 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
             "shasum -a 256",
             "rg or grep is required",
             "hygiene scan failed",
-            "duplicate archive entries",
             "unexpected runtime artifact",
-            "unsafe archive path",
+            "check-release-archive-entries",
         ],
+    );
+    assert_structured_literals(
+        entries,
+        "archive entry checker behavior",
+        &["duplicate archive entries", "unsafe archive path"],
     );
     assert_structured_literals(
         checker,

@@ -33,7 +33,12 @@ fn archive_gate_allows_documentation_path_examples() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response"),
     )
     .expect("MCP response checker");
-    assert_archive_scanner_contract(&script, &checker);
+    let entries = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("scripts/check-release-archive-entries"),
+    )
+    .expect("archive entry checker");
+    assert_archive_scanner_contract(&script, &entries, &checker);
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
 }
 

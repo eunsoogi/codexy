@@ -5,6 +5,7 @@ fn validator_cli_rejects_packaged_plugin_without_generated_runtime_artifacts()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
+    select_candidate_platforms(&plugin_root)?;
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
@@ -32,6 +33,7 @@ fn validator_cli_accepts_packaged_plugin_with_generated_runtime_artifacts()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
+    select_candidate_platforms(&plugin_root)?;
     for runtime_name in packaged_runtime_names() {
         write_runtime_fixture(
             &plugin_root,
@@ -62,6 +64,7 @@ fn validator_cli_rejects_packaged_plugin_with_script_placeholders()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
+    select_candidate_platforms(&plugin_root)?;
     for runtime_name in packaged_runtime_names() {
         write_runtime_fixture(&plugin_root, runtime_name, b"#!/bin/sh\nexit 0\n")?;
     }
@@ -92,6 +95,7 @@ fn validator_cli_rejects_windows_runtime_without_a_valid_pe_signature()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
+    select_candidate_platforms(&plugin_root)?;
     for runtime_name in packaged_runtime_names() {
         let bytes = if runtime_name == "codexy-mcp-lsp-windows-x86_64.exe" {
             let mut bytes = runtime_binary_fixture(runtime_name);
@@ -126,6 +130,7 @@ fn validator_cli_rejects_package_without_native_windows_mcp_entrypoint()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
+    select_candidate_platforms(&plugin_root)?;
     for runtime_name in packaged_runtime_names() {
         write_runtime_fixture(
             &plugin_root,
@@ -159,6 +164,7 @@ fn validator_cli_rejects_non_x86_64_executable_pe_variants()
     for scenario in ["x86", "pe32", "dll", "missing-optional-header", "truncated"] {
         let temp = tempfile::tempdir()?;
         let plugin_root = copy_plugin_to(temp.path())?;
+        select_candidate_platforms(&plugin_root)?;
         for runtime_name in packaged_runtime_names() {
             let mut bytes = runtime_binary_fixture(runtime_name);
             if runtime_name == "codexy-mcp-lsp-windows-x86_64.exe" {
@@ -191,5 +197,13 @@ fn validator_cli_rejects_non_x86_64_executable_pe_variants()
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    Ok(())
+}
+
+fn select_candidate_platforms(plugin_root: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    let path = plugin_root.join(".codex-plugin/plugin.json");
+    let mut manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+    manifest["supportedPlatforms"] = serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]);
+    std::fs::write(path, format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     Ok(())
 }

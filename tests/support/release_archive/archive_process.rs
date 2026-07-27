@@ -22,6 +22,7 @@ pub(crate) fn create_archive_with_commands(
 ) -> std::io::Result<()> {
     let archive_file = File::create(archive)?;
     let mut tar = Command::new(tar_command)
+        .env("COPYFILE_DISABLE", "1")
         .args(["-C"])
         .arg(root)
         .args(["-cf", "-", "plugins/codexy"])
