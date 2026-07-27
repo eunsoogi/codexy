@@ -221,7 +221,11 @@ fn check_platforms(
                     string(binary, "path", path)?,
                     &format!(
                         "runtime/codexy-mcp-{server}-{platform}.{}",
-                        if platform == "windows-x86_64" { "exe" } else { "bin" }
+                        if platform == "windows-x86_64" {
+                            "exe"
+                        } else {
+                            "bin"
+                        }
                     ),
                     "candidate runtime path",
                     path,

@@ -73,10 +73,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
 
 fn platform_updates(root: &Path) -> Result<Vec<Update>> {
     Ok(vec![
-        set_platforms(
-            root.join("plugins/codexy/.codex-plugin/plugin.json"),
-            &[],
-        )?,
+        set_platforms(root.join("plugins/codexy/.codex-plugin/plugin.json"), &[])?,
         set_platforms(
             root.join(".agents/plugins/marketplace.json"),
             &["plugins", "0"],
@@ -92,12 +89,16 @@ fn set_platforms(path: PathBuf, object_path: &[&str]) -> Result<Update> {
             current
                 .as_array_mut()
                 .and_then(|items| items.get_mut(0))
-                .with_context(|| format!("activation metadata lacks {segment} in {}", path.display()))?
+                .with_context(|| {
+                    format!("activation metadata lacks {segment} in {}", path.display())
+                })?
         } else {
             current
                 .as_object_mut()
                 .and_then(|object| object.get_mut(*segment))
-                .with_context(|| format!("activation metadata lacks {segment} in {}", path.display()))?
+                .with_context(|| {
+                    format!("activation metadata lacks {segment} in {}", path.display())
+                })?
         };
     }
     let object = current
@@ -108,11 +109,17 @@ fn set_platforms(path: PathBuf, object_path: &[&str]) -> Result<Update> {
     } else {
         "platforms"
     };
-    let supported = object
-        .get_mut(field)
-        .with_context(|| format!("activation metadata lacks platform declaration: {}", path.display()))?;
+    let supported = object.get_mut(field).with_context(|| {
+        format!(
+            "activation metadata lacks platform declaration: {}",
+            path.display()
+        )
+    })?;
     if !supported.is_array() {
-        bail!("activation platform declaration must be an array: {}", path.display());
+        bail!(
+            "activation platform declaration must be an array: {}",
+            path.display()
+        );
     }
     *supported = json!(PLATFORMS);
     Ok(Update {

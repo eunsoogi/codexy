@@ -33,7 +33,10 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
         assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\""));
     }
     let manifest: Value = serde_json::from_str(&fs::read_to_string(fixture.manifest())?)?;
-    assert_eq!(manifest["supportedPlatforms"], json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
+    assert_eq!(
+        manifest["supportedPlatforms"],
+        json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
+    );
     assert_eq!(
         fs::read_to_string(fixture.bootstrap())?,
         "pub(super) const VERSION: &str = \"1.3.0\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n"
@@ -55,8 +58,14 @@ fn activation_updates_the_complete_selected_identity_transaction() -> Result<()>
     let publish: Value = serde_json::from_str(&fs::read_to_string(fixture.publish())?)?;
     assert_eq!(publish["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(publish["runtime"]["selectedTag"], "runtime-candidate-1.3.0");
-    assert_eq!(publish["runtime"]["platforms"], json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
-    assert_eq!(publish["package"]["platforms"], json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
+    assert_eq!(
+        publish["runtime"]["platforms"],
+        json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
+    );
+    assert_eq!(
+        publish["package"]["platforms"],
+        json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
+    );
     Ok(())
 }
 
@@ -182,7 +191,9 @@ impl Fixture {
             .chain(std::iter::once(self.candidate()))
             .chain(std::iter::once(self.bootstrap()))
             .chain(std::iter::once(self.manifest()))
-            .chain(std::iter::once(self.root.join(".agents/plugins/marketplace.json")))
+            .chain(std::iter::once(
+                self.root.join(".agents/plugins/marketplace.json"),
+            ))
             .map(|path| Ok((path.clone(), fs::read(path).ok())))
             .collect()
     }
@@ -209,6 +220,6 @@ fn receipt_value() -> Value {
         "schema": "codexy-runtime-candidate-receipt/v1",
         "candidate": candidate,
         "artifact": {"url": "https://github.com/eunsoogi/codexy/releases/download/runtime-candidate-1.3.0/codexy-marketplace-plugin.tar.gz", "sha256": "f".repeat(64), "payloadManifestSha256": payload_sha},
-        "provenance": {"repositoryId": 1269350143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": 42, "runAttempt": 1, "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/42"}
+        "provenance": {"repositoryId": 1_269_350_143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": 42, "runAttempt": 1, "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/42"}
     })
 }
