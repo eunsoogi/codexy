@@ -8,7 +8,7 @@ pub(super) fn action_is_passive(words: &[&str], start: usize, action: usize) -> 
 
 pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
     match words[index] {
-        "create" if has_completed_auxiliary(words, index) => Some(()),
+        "create" if has_direct_auxiliary(words, index) => Some(()),
         "creating"
             if action_is_passive(words, 0, index)
                 && !analyze_setup_clause(words, 0, index, words.len()).prospective =>
@@ -29,23 +29,21 @@ pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
         }
         "creation" if words.get(index + 1) == Some(&"occurred") => Some(()),
         "switch"
-            if has_completed_auxiliary(words, index)
+            if has_direct_auxiliary(words, index)
                 || words.get(index.wrapping_sub(1)) == Some(&"git") =>
         {
             Some(())
         }
         "switches" | "switched" => Some(()),
         "checkout" | "checkouts" => Some(()),
-        "check"
-            if words.get(index + 1) == Some(&"out") && has_completed_auxiliary(words, index) =>
-        {
+        "check" if words.get(index + 1) == Some(&"out") && has_direct_auxiliary(words, index) => {
             Some(())
         }
         "checked" if words.get(index + 1) == Some(&"out") => Some(()),
         "setup" => Some(()),
         "set" | "sets" if words.get(index + 1) == Some(&"up") => Some(()),
         "add"
-            if has_completed_auxiliary(words, index)
+            if has_direct_auxiliary(words, index)
                 || (index > 0 && words[index - 1] == "worktree") =>
         {
             Some(())
@@ -97,8 +95,12 @@ fn is_progressive_auxiliary(word: &&str) -> bool {
     )
 }
 
-fn has_completed_auxiliary(words: &[&str], action: usize) -> bool {
-    words.get(action.wrapping_sub(1)) == Some(&"did")
-        || (words.get(action.wrapping_sub(1)) == Some(&"not")
-            && words.get(action.wrapping_sub(2)) == Some(&"did"))
+fn has_direct_auxiliary(words: &[&str], action: usize) -> bool {
+    let auxiliary = words.get(action.wrapping_sub(1));
+    matches!(auxiliary, Some(&"do" | &"does" | &"did"))
+        || (auxiliary == Some(&"not")
+            && matches!(
+                words.get(action.wrapping_sub(2)),
+                Some(&"do" | &"does" | &"did")
+            ))
 }

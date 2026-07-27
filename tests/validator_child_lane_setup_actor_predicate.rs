@@ -169,3 +169,57 @@ fn validator_tracks_governing_subjects_across_predicate_and_relative_boundaries(
     }
     Ok(())
 }
+
+#[test]
+fn validator_binds_direct_auxiliary_setup_to_the_clause_subject() -> TestResult {
+    for (label, setup, expected) in [
+        (
+            "reported parent did create remains parent attributed",
+            "The child reports the parent did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "reported child did create remains child attributed",
+            "The parent reports the child did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "reported parent does create remains parent attributed",
+            "The child reports the parent does create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "reported child does create remains child attributed",
+            "The parent reports the child does create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "parent plural direct do setup remains parent attributed",
+            "The parent and the orchestrator do create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "child plural direct do setup remains fail closed",
+            "The child and the parent do create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "adverb before the direct auxiliary does not replace the parent subject",
+            "The child reports the parent deliberately did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "relative report child object with an adverb remains parent attributed",
+            "The parent who told the child yesterday created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "relative report parent object with an adverb remains child attributed",
+            "The child who told the parent yesterday created branch codexy/463 after classification.",
+            false,
+        ),
+    ] {
+        assert_result(label, setup, expected)?;
+    }
+    Ok(())
+}

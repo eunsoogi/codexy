@@ -95,13 +95,26 @@ fn predicate_introducer(words: &[&str], start: usize, subject: usize) -> bool {
         return false;
     };
     words[index] == "and"
-        || report_clause_predicate(words[index])
+        || (report_clause_predicate(words[index])
+            && !relative_clause_owns_report_predicate(words, start, index))
         || (words[index] == "then"
             && (start..index)
                 .rev()
                 .find(|index| !subject_modifier(words[*index]))
                 == Some(index - 1)
             && words[index - 1] == "and")
+}
+
+fn relative_clause_owns_report_predicate(words: &[&str], start: usize, predicate: usize) -> bool {
+    let Some(relative) = (start..predicate)
+        .rev()
+        .find(|index| matches!(words[*index], "who" | "whose" | "which"))
+    else {
+        return false;
+    };
+    words[relative + 1..predicate]
+        .iter()
+        .all(|word| subject_modifier(word) || predicate_modifier(word))
 }
 
 fn mixed_coordinated_subject(words: &[&str], start: usize, subject: usize) -> Option<SetupActor> {
@@ -162,6 +175,9 @@ fn predicate_modifier(word: &str) -> bool {
                 | "might"
                 | "should"
                 | "must"
+                | "do"
+                | "does"
+                | "did"
                 | "not"
                 | "never"
         )
