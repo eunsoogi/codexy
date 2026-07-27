@@ -110,11 +110,11 @@ local_path_pattern='/(Users|home|tmp|private/var)/'
 scan_output="$tmp_dir/archive-scan-output"
 inventory="$extract_root/plugins/codexy/hooks/policy-inventory.json"
 set +e
-INVENTORY="$inventory" LOCAL_PATH_PATTERN="$local_path_pattern" python3 - <<'PY'
-import json, os, re
+LOCAL_PATH_PATTERN="$local_path_pattern" python3 - "$inventory" <<'PY'
+import json, os, re, sys
 
 try:
-    inventory = json.load(open(os.environ["INVENTORY"], encoding="utf-8"))
+    inventory = json.load(open(sys.argv[1], encoding="utf-8"))
     rules = inventory["rules"]
     if not isinstance(rules, list):
         raise ValueError("rules must be a list")
