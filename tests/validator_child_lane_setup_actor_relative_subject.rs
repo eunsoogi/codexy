@@ -96,6 +96,26 @@ fn validator_keeps_whose_relative_report_roles_out_of_the_main_subject() -> Test
             false,
         ),
         (
+            "noted predicate-form modifier stays inside the parent whose subject",
+            "The parent whose noted orchestrator told the child did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "noted predicate-form modifier stays inside the child whose subject",
+            "The child whose noted orchestrator told the parent did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "reviewed predicate-form modifier stays inside the parent whose subject",
+            "The parent whose reviewed orchestrator told the child did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "reviewed predicate-form modifier stays inside the child whose subject",
+            "The child whose reviewed orchestrator told the parent did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
             "running participial modifier stays inside the parent whose subject",
             "The parent whose running orchestrator told the child did create branch codexy/463 after classification.",
             true,
@@ -126,6 +146,26 @@ fn validator_keeps_whose_relative_report_roles_out_of_the_main_subject() -> Test
             false,
         ),
         (
+            "noted modifier stays in a parent who compound relative subject",
+            "The parent who the noted orchestrator and child told about review did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "noted modifier stays in a child who compound relative subject",
+            "The child who the noted parent and orchestrator told about review did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "reviewed modifier stays in a parent which compound relative subject",
+            "The parent which the reviewed orchestrator and child told about review did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "reviewed modifier stays in a child which compound relative subject",
+            "The child which the reviewed parent and orchestrator told about review did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
             "true finite relative predicate closes the trusted parent subject",
             "The parent whose trusted orchestrator reviewed it says the child did create branch codexy/463 after classification.",
             false,
@@ -133,6 +173,16 @@ fn validator_keeps_whose_relative_report_roles_out_of_the_main_subject() -> Test
         (
             "true finite relative predicate closes the trusted child subject",
             "The child whose trusted orchestrator reviewed it says the parent did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "true finite noted predicate closes the parent whose subject",
+            "The parent whose orchestrator noted it says the child did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "true finite noted predicate closes the child whose subject",
+            "The child whose orchestrator noted it says the parent did create branch codexy/463 after classification.",
             true,
         ),
     ] {

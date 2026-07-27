@@ -6,9 +6,7 @@ pub(super) fn relative_clause_owns_report_predicate(
     let Some(relative) = relative_marker(words, start, predicate) else {
         return false;
     };
-    !words[relative + 1..predicate]
-        .iter()
-        .any(|word| relative_finite_predicate(word))
+    relative_finite_predicate(words, relative, predicate)
 }
 
 pub(super) fn main_clause_start(words: &[&str], start: usize, action: usize) -> Option<usize> {
@@ -17,7 +15,7 @@ pub(super) fn main_clause_start(words: &[&str], start: usize, action: usize) -> 
         (relative + 1..action)
             .find(|index| {
                 report_clause_predicate(words[*index])
-                    && !relative_clause_owns_report_predicate(words, start, *index)
+                    && !relative_finite_predicate(words, relative, *index)
             })
             .unwrap_or_else(|| predicate_chain_start(words, relative + 1, action)),
     )
@@ -35,10 +33,12 @@ pub(super) fn coordinates_relative_subject(
     relative < conjunction
         && !words[relative + 1..conjunction]
             .iter()
-            .any(|word| relative_finite_predicate(word))
+            .enumerate()
+            .any(|(offset, _)| relative_finite_predicate(words, relative, relative + 1 + offset))
         && words[conjunction + 1..action]
             .iter()
-            .any(|word| relative_finite_predicate(word))
+            .enumerate()
+            .any(|(offset, _)| relative_finite_predicate(words, relative, conjunction + 1 + offset))
 }
 
 pub(super) fn preserves_relative_subject_coordination(clause: &str) -> bool {
@@ -75,8 +75,27 @@ fn relative_marker(words: &[&str], start: usize, end: usize) -> Option<usize> {
         .find(|index| matches!(words[*index], "who" | "whose" | "which"))
 }
 
-fn relative_finite_predicate(word: &&str) -> bool {
-    report_clause_predicate(word) || matches!(*word, "review" | "reviews" | "reviewed")
+fn relative_finite_predicate(words: &[&str], relative: usize, predicate: usize) -> bool {
+    relative_predicate_word(words[predicate])
+        && relative_subject_head(words, relative, predicate).is_some_and(|head| {
+            head < predicate
+                && (head + 1..predicate).all(|index| !relative_predicate_word(words[index]))
+        })
+}
+
+fn relative_subject_head(words: &[&str], relative: usize, predicate: usize) -> Option<usize> {
+    if matches!(words[relative], "who" | "which") && relative + 1 == predicate {
+        return Some(relative);
+    }
+    (relative + 1..predicate).find(|index| relative_subject_head_word(words[*index]))
+}
+
+fn relative_subject_head_word(word: &str) -> bool {
+    matches!(word, "child" | "parent" | "orchestrator")
+}
+
+fn relative_predicate_word(word: &str) -> bool {
+    report_clause_predicate(word) || matches!(word, "review" | "reviews" | "reviewed")
 }
 
 fn predicate_chain_start(words: &[&str], start: usize, action: usize) -> usize {
