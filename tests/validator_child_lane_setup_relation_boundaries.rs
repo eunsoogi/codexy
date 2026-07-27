@@ -23,6 +23,25 @@ fn validator_limits_timing_negation_to_the_before_classification_phrase() -> Tes
 }
 
 #[test]
+fn validator_preserves_object_and_timing_polarity_across_punctuation() -> TestResult {
+    for (open, close) in [("(", ")"), ("[", "]"), ("—", "—")] {
+        assert_with_classification(
+            "punctuated object contrast remains affirmative setup",
+            child_owned_classification(),
+            &format!("The child created branch codexy/463 {open}not a worktree{close} before classification."),
+            false,
+        )?;
+        assert_with_classification(
+            "punctuated timing negation remains negative setup",
+            child_owned_classification(),
+            &format!("The child created branch codexy/463 {open}not at any point in time before classification{close} but after classification."),
+            true,
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_treats_semicolons_as_relation_boundaries() -> TestResult {
     for (form, setup) in [
         ("explicit active", "The child created branch codexy/463 after classification."),

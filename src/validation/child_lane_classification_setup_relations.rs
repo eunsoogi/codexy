@@ -116,7 +116,7 @@ fn relation_window_end(words: &[&str], action: usize, next_action: Option<usize>
 fn words(line: &str) -> Vec<&str> {
     let mut words = Vec::new();
     for sentence in line.split_inclusive(['.', '!', '?']) {
-        for clause in sentence.split_inclusive([',', ';']) {
+        for clause in sentence.split_inclusive([',', ';', '(', ')', '[', ']', '-', '—']) {
             words.extend(
                 clause
                     .split(|character: char| !character.is_ascii_alphanumeric())
@@ -124,7 +124,7 @@ fn words(line: &str) -> Vec<&str> {
             );
             if clause.ends_with(';') {
                 words.push(SENTENCE_BOUNDARY);
-            } else if clause.ends_with(',') {
+            } else if clause.ends_with([',', '(', ')', '[', ']', '-', '—']) {
                 words.push(COMMA_BOUNDARY);
             }
         }
