@@ -112,7 +112,14 @@ fn relative_clause_owns_report_predicate(words: &[&str], start: usize, predicate
     else {
         return false;
     };
-    words[relative + 1..predicate]
+    let clause_start = if words[relative] == "whose" {
+        (relative + 1..predicate)
+            .find(|index| !subject_modifier(words[*index]))
+            .map_or(predicate, |subject| subject + 1)
+    } else {
+        relative + 1
+    };
+    words[clause_start..predicate]
         .iter()
         .all(|word| subject_modifier(word) || predicate_modifier(word))
 }
