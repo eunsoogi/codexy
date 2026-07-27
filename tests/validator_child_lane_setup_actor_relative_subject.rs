@@ -126,6 +126,51 @@ fn validator_keeps_whose_relative_report_roles_out_of_the_main_subject() -> Test
             false,
         ),
         (
+            "direct who subject persists through quickly before a parent report",
+            "The parent who quickly told the child did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "direct who subject persists through quickly before a child report",
+            "The child who quickly told the parent did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "direct which subject persists through quickly before a parent report",
+            "The parent which quickly told the child did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "direct which subject persists through quickly before a child report",
+            "The child which quickly told the parent did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "direct who subject persists through perhaps before a parent report",
+            "The parent who perhaps told the child did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "direct which subject persists through deliberately before a child report",
+            "The child which deliberately told the parent did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "direct who subject without a modifier retains the parent report boundary",
+            "The parent who told the child did create branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "direct which subject without a modifier retains the child report boundary",
+            "The child which told the parent did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "ambiguous direct who modifier chain fails closed",
+            "The child who quickly parent told the child did create branch codexy/463 after classification.",
+            false,
+        ),
+        (
             "compound who relative actors stay out of the parent main subject",
             "The parent who the orchestrator and child told about review did create branch codexy/463 after classification.",
             true,

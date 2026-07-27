@@ -1,3 +1,5 @@
+use super::child_lane_classification_setup_clause::is_adverbial_modifier;
+
 pub(super) fn relative_clause_owns_report_predicate(
     words: &[&str],
     start: usize,
@@ -84,8 +86,17 @@ fn relative_finite_predicate(words: &[&str], relative: usize, predicate: usize) 
 }
 
 fn relative_subject_head(words: &[&str], relative: usize, predicate: usize) -> Option<usize> {
-    if matches!(words[relative], "who" | "which") && relative + 1 == predicate {
+    let direct_subject = matches!(words[relative], "who" | "which");
+    let between = &words[relative + 1..predicate];
+    if direct_subject && between.iter().all(|word| is_adverbial_modifier(word)) {
         return Some(relative);
+    }
+    if direct_subject
+        && between
+            .first()
+            .is_some_and(|word| is_adverbial_modifier(word))
+    {
+        return None;
     }
     (relative + 1..predicate).find(|index| relative_subject_head_word(words[*index]))
 }
