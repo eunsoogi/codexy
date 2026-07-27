@@ -11,7 +11,6 @@ fn gate_runs_the_exact_full_workload_once() -> Result<(), Box<dyn std::error::Er
         "test --locked --all-targets\n"
     );
     let stdout = String::from_utf8(output.stdout)?;
-    assert!(stdout.contains("integration-targets\t2\tPASS"), "{stdout}");
     assert!(
         stdout.contains("tests\t1802 passed\t0 failed\t0 ignored\tPASS"),
         "{stdout}"

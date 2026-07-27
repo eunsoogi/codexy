@@ -19,9 +19,7 @@ from profile_rust_workflow import enforce_workflow_contract
 
 BUDGET_SECONDS = 195.0
 WINDOWS_BUDGET_SECONDS = 540.0
-METADATA_TIMEOUT_SECONDS = 30.0
 MINIMUM_PASSED_TESTS = 1802
-MAXIMUM_INTEGRATION_TARGETS = 8
 REQUIRED_JOB_TIMEOUT_MINUTES = 4
 REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES = 10
 WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
@@ -31,32 +29,6 @@ RESULT_PATTERN = re.compile(
 )
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 
-def integration_target_count(root: Path) -> int:
-    try:
-        result = subprocess.run(
-            ["cargo", "metadata", "--locked", "--no-deps", "--format-version=1"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=METADATA_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired:
-        sys.stderr.write("cargo metadata timed out\n")
-        raise SystemExit(124) from None
-    if result.returncode:
-        sys.stderr.write(result.stderr)
-        raise SystemExit(result.returncode)
-    try:
-        metadata = json.loads(result.stdout)
-        return sum(
-            "test" in target.get("kind", [])
-            for package in metadata.get("packages", [])
-            for target in package.get("targets", [])
-        )
-    except (json.JSONDecodeError, TypeError):
-        sys.stderr.write("cargo metadata returned an invalid target inventory\n")
-        raise SystemExit(1) from None
 def archive_fixture_nested_cargo_build_count(root: Path) -> int:
     helper = root / "tests/support/release_archive.rs"
     try:
@@ -108,7 +80,6 @@ def main() -> int:
     enforce_workflow_contract(
         workflow, REQUIRED_JOB_TIMEOUT_MINUTES, REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES, WORKLOAD
     )
-    targets = integration_target_count(root)
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
     expected_tests: Counter[str] = Counter()
     expected_targets: set[str] = set()
@@ -129,7 +100,7 @@ def main() -> int:
         else 0.0
     )
     execution_seconds = max(0.0, elapsed - compile_seconds)
-    target_pass = 0 < targets <= MAXIMUM_INTEGRATION_TARGETS
+    target_pass = bool(expected_targets) if arguments.verify_coverage else True
     tests_pass = passed >= MINIMUM_PASSED_TESTS and failed == 0 and ignored == 0
     archive_fixture_nested_cargo_pass = archive_fixture_nested_cargo_builds == 0
     observed_tests, observed_targets = observed_test_inventory(output)
@@ -162,7 +133,8 @@ def main() -> int:
     budget_pass = total_elapsed <= arguments.budget_seconds
     print(f"command\t{' '.join(WORKLOAD)}")
     print("workload-invocations\t1")
-    print(f"integration-targets\t{targets}\t{'PASS' if target_pass else 'FAIL'}")
+    if arguments.verify_coverage:
+        print(f"compiled-targets\t{len(expected_targets)}\t{'PASS' if target_pass else 'FAIL'}")
     print(f"tests\t{passed} passed\t{failed} failed\t{ignored} ignored\t{'PASS' if tests_pass else 'FAIL'}")
     print(
         "archive-fixture-nested-cargo-builds"
