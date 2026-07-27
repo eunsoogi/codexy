@@ -44,16 +44,73 @@ fn hook_fixture_shell_input_for_platform(
         return Ok((command.to_owned(), native_cwd.to_owned()));
     }
     let shell_cwd = windows_to_posix_fixture_path(native_cwd)?;
-    let command = normalize_declared_hook_shell_paths(command, &[(native_cwd, shell_cwd.as_str())]);
+    let command = normalize_declared_hook_shell_paths(command, native_cwd, shell_cwd.as_str())?;
     Ok((command, native_cwd.to_owned()))
 }
 
-fn normalize_declared_hook_shell_paths(command: &str, paths: &[(&str, &str)]) -> String {
-    paths
-        .iter()
-        .fold(command.to_owned(), |command, (native, posix)| {
-            command.replace(native, posix)
-        })
+fn normalize_declared_hook_shell_paths(
+    command: &str,
+    native_cwd: &str,
+    shell_cwd: &str,
+) -> Result<String, String> {
+    let command = command.replace(native_cwd, shell_cwd);
+    let command = normalize_sudo_chdir_paths(&command)?;
+    normalize_link_source_paths(&command)
+}
+
+fn normalize_sudo_chdir_paths(command: &str) -> Result<String, String> {
+    let mut command = command.to_owned();
+    for prefix in ["sudo -D ", "sudo --chdir="] {
+        let mut start = 0;
+        while let Some(found) = command[start..].find(prefix) {
+            let value_start = start + found + prefix.len();
+            let Some(value_end) = command[value_start..].find(" git ") else {
+                break;
+            };
+            let value_end = value_start + value_end;
+            let value = &command[value_start..value_end];
+            if value.len() >= 3 && value.as_bytes()[1] == b':' {
+                let replacement = windows_to_posix_fixture_path(value)?;
+                command.replace_range(value_start..value_end, &replacement);
+                start = value_start + replacement.len();
+            } else {
+                start = value_end + 5;
+            }
+        }
+    }
+    Ok(command)
+}
+
+fn normalize_link_source_paths(command: &str) -> Result<String, String> {
+    let mut command = command.to_owned();
+    for prefix in ["ln -s ", "ln -sfn "] {
+        let mut start = 0;
+        while let Some(found) = command[start..].find(prefix) {
+            let value_start = start + found + prefix.len();
+            let tail = &command[value_start..];
+            let value_end = tail
+                .find(" && ")
+                .or_else(|| tail.find(" || "))
+                .or_else(|| tail.find(';'))
+                .unwrap_or(tail.len());
+            let value_end = value_start + value_end;
+            let value = &command[value_start..value_end];
+            let Some(separator) = value.rfind(char::is_whitespace) else {
+                start = value_end;
+                continue;
+            };
+            let path_end = value_start + separator;
+            let path = &command[value_start..path_end];
+            if path.len() >= 3 && path.as_bytes()[1] == b':' {
+                let replacement = windows_to_posix_fixture_path(path)?;
+                command.replace_range(value_start..path_end, &replacement);
+                start = value_start + replacement.len();
+            } else {
+                start = value_end;
+            }
+        }
+    }
+    Ok(command)
 }
 
 pub(crate) fn fixture_path_environment_value(
@@ -154,8 +211,18 @@ fn declared_hook_shell_paths_normalize_only_declared_values() {
     let native = r"C:\work\fixture path";
     let command = format!("sudo -D {native} git status --short && printf '%s' C:unrelated");
     assert_eq!(
-        normalize_declared_hook_shell_paths(&command, &[(native, "/c/work/fixture path")]),
-        "sudo -D /c/work/fixture path git status --short && printf '%s' C:unrelated"
+        normalize_declared_hook_shell_paths(&command, native, "/c/work/fixture path"),
+        Ok("sudo -D /c/work/fixture path git status --short && printf '%s' C:unrelated".into())
+    );
+}
+
+#[test]
+fn declared_link_operands_normalize_only_the_source_path() {
+    let native = r"C:\work\owned";
+    let command = r"ln -s C:\work\old target && ln -sfn C:\work\new target";
+    assert_eq!(
+        normalize_declared_hook_shell_paths(command, native, "/c/work/owned"),
+        Ok("ln -s /c/work/old target && ln -sfn /c/work/new target".into())
     );
 }
 

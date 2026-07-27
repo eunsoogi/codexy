@@ -25,7 +25,8 @@ response_checker="$script_dir/inspect-mcp-response"
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
-"$script_dir/check-release-archive-entries" "$archive" "$max_bytes" "$max_entries" "$max_total_bytes"
+"$script_dir/inspect-mcp-entrypoints" "$plugin_root/.mcp.json" >"$tmp_dir/mcp-entrypoints"
+"$script_dir/check-release-archive-entries" "$archive" "$max_bytes" "$max_entries" "$max_total_bytes" "$tmp_dir/mcp-entrypoints"
 
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
@@ -57,13 +58,6 @@ PY
 esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
-"$script_dir/inspect-mcp-entrypoints" "$extract_root/plugins/codexy/.mcp.json" >"$tmp_dir/mcp-entrypoints"
-while IFS= read -r wrapper; do
-  [ -x "$extract_root/plugins/codexy/$wrapper" ] || {
-    echo "packaged MCP wrapper is not executable: $wrapper" >&2
-    exit 1
-  }
-done <"$tmp_dir/mcp-entrypoints"
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 while IFS= read -r relative; do
   case "$relative" in
