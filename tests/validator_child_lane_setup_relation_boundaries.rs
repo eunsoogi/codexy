@@ -42,6 +42,42 @@ fn validator_preserves_object_and_timing_polarity_across_punctuation() -> TestRe
 }
 
 #[test]
+fn validator_distinguishes_lexical_hyphens_from_dash_delimiters() -> TestResult {
+    for (form, setup) in [
+        ("explicit active", "The child created branch codexy/463"),
+        ("explicit passive", "Branch codexy/463 was created by the child"),
+        ("unqualified active", "Created branch codexy/463"),
+        ("unqualified passive", "Branch codexy/463 was created"),
+    ] {
+        for (kind, suffix, expected) in [
+            (
+                "lexical hyphen timing negation",
+                "not at any point-in-time before classification but after classification.",
+                true,
+            ),
+            (
+                "standalone dash timing negation",
+                "- not at any point in time before classification - but after classification.",
+                true,
+            ),
+            (
+                "standalone dash object contrast",
+                "- not a worktree - before classification.",
+                false,
+            ),
+        ] {
+            assert_with_classification(
+                &format!("{kind} preserves {form} polarity"),
+                child_owned_classification(),
+                &format!("{setup} {suffix}"),
+                expected,
+            )?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_treats_semicolons_as_relation_boundaries() -> TestResult {
     for (form, setup) in [
         ("explicit active", "The child created branch codexy/463 after classification."),

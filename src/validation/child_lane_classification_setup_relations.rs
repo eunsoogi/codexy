@@ -116,23 +116,51 @@ fn relation_window_end(words: &[&str], action: usize, next_action: Option<usize>
 fn words(line: &str) -> Vec<&str> {
     let mut words = Vec::new();
     for sentence in line.split_inclusive(['.', '!', '?']) {
-        for clause in sentence.split_inclusive([',', ';', '(', ')', '[', ']', '-', '—']) {
-            words.extend(
-                clause
-                    .split(|character: char| !character.is_ascii_alphanumeric())
-                    .filter(|word| !word.is_empty()),
-            );
-            if clause.ends_with(';') {
-                words.push(SENTENCE_BOUNDARY);
-            } else if clause.ends_with([',', '(', ')', '[', ']', '-', '—']) {
-                words.push(COMMA_BOUNDARY);
+        let mut clause_start = 0;
+        for (index, character) in sentence.char_indices() {
+            if clause_delimiter(sentence, index, character) {
+                let clause_end = index + character.len_utf8();
+                append_clause_words(&mut words, &sentence[clause_start..clause_end]);
+                clause_start = clause_end;
             }
+        }
+        if clause_start < sentence.len() {
+            append_clause_words(&mut words, &sentence[clause_start..]);
         }
         if sentence.ends_with(['.', '!', '?']) && words.last() != Some(&SENTENCE_BOUNDARY) {
             words.push(SENTENCE_BOUNDARY);
         }
     }
     words
+}
+
+fn clause_delimiter(sentence: &str, index: usize, character: char) -> bool {
+    matches!(character, ',' | ';' | '(' | ')' | '[' | ']' | '—')
+        || (character == '-' && !lexical_hyphen(sentence, index))
+}
+
+fn lexical_hyphen(sentence: &str, index: usize) -> bool {
+    sentence[..index]
+        .chars()
+        .next_back()
+        .is_some_and(|character| character.is_ascii_alphanumeric())
+        && sentence[index + '-'.len_utf8()..]
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_ascii_alphanumeric())
+}
+
+fn append_clause_words<'a>(words: &mut Vec<&'a str>, clause: &'a str) {
+    words.extend(
+        clause
+            .split(|character: char| !character.is_ascii_alphanumeric())
+            .filter(|word| !word.is_empty()),
+    );
+    if clause.ends_with(';') {
+        words.push(SENTENCE_BOUNDARY);
+    } else if clause.ends_with([',', '(', ')', '[', ']', '-', '—']) {
+        words.push(COMMA_BOUNDARY);
+    }
 }
 
 fn setup_action_indices<'a>(words: &'a [&'a str]) -> impl Iterator<Item = usize> + 'a {
