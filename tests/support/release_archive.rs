@@ -1,6 +1,8 @@
 #[allow(unused_imports)]
 use std::process::Command;
 
+#[path = "release_archive/archive_entry.rs"]
+mod archive_entry;
 #[path = "release_archive/archive_process.rs"]
 mod archive_process;
 #[allow(unused_imports)]

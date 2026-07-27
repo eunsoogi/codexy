@@ -29,16 +29,23 @@ pub(crate) fn hook_fixture_shell_input(
     command: &str,
     cwd: &std::path::Path,
 ) -> Result<(String, String), String> {
-    #[cfg(windows)]
-    let native_cwd = cwd
+    let cwd = cwd
         .to_str()
         .ok_or_else(|| "hook fixture path is not valid UTF-8".to_owned())?;
-    let cwd = fixture_path_text(cwd)?;
-    #[cfg(windows)]
-    let command = normalize_declared_hook_shell_paths(command, &[(native_cwd, cwd.as_str())]);
-    #[cfg(not(windows))]
-    let command = command.to_owned();
-    Ok((command, cwd))
+    hook_fixture_shell_input_for_platform(command, cwd, cfg!(windows))
+}
+
+fn hook_fixture_shell_input_for_platform(
+    command: &str,
+    native_cwd: &str,
+    is_windows: bool,
+) -> Result<(String, String), String> {
+    if !is_windows {
+        return Ok((command.to_owned(), native_cwd.to_owned()));
+    }
+    let shell_cwd = windows_to_posix_fixture_path(native_cwd)?;
+    let command = normalize_declared_hook_shell_paths(command, &[(native_cwd, shell_cwd.as_str())]);
+    Ok((command, native_cwd.to_owned()))
 }
 
 fn normalize_declared_hook_shell_paths(command: &str, paths: &[(&str, &str)]) -> String {
@@ -150,4 +157,22 @@ fn declared_hook_shell_paths_normalize_only_declared_values() {
         normalize_declared_hook_shell_paths(&command, &[(native, "/c/work/fixture path")]),
         "sudo -D /c/work/fixture path git status --short && printf '%s' C:unrelated"
     );
+}
+
+#[test]
+fn hook_payload_keeps_native_cwd_while_declared_shell_operands_use_msys_paths() {
+    let native = r"C:\work\fixture path";
+    let command = format!("sudo -D {native} git status --short && printf '%s' C:unrelated");
+    assert_eq!(
+        hook_fixture_shell_input_for_platform(&command, native, true),
+        Ok((
+            "sudo -D /c/work/fixture path git status --short && printf '%s' C:unrelated".into(),
+            native.into(),
+        )),
+    );
+    assert_eq!(
+        hook_fixture_shell_input_for_platform("git status --short", native, false),
+        Ok(("git status --short".into(), native.into())),
+    );
+    assert!(hook_fixture_shell_input_for_platform("git status", r"\\server\share", true).is_err());
 }

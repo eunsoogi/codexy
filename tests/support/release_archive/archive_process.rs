@@ -96,9 +96,6 @@ fn create_windows_archive_with_commands(
         .arg(root)
         .arg("-cf");
     tar.arg(&temporary_path);
-    for wrapper in &wrappers {
-        tar.arg(format!("--exclude={wrapper}"));
-    }
     tar.arg("plugins/codexy");
     let mut tar = tar.spawn()?;
     let tar_status = wait_for_archive_process(&mut tar, "tar", timeout)?;
@@ -107,23 +104,7 @@ fn create_windows_archive_with_commands(
     }
 
     if !wrappers.is_empty() {
-        let mode = super::governed_archive_mode(true, true, 0o755)
-            .ok_or_else(|| std::io::Error::other("Windows wrapper archive mode unavailable"))?;
-        let mut wrapper_tar = Command::new(tar_command);
-        wrapper_tar
-            .env("COPYFILE_DISABLE", "1")
-            .arg("-C")
-            .arg(root)
-            .arg("--append")
-            .arg("--file")
-            .arg(&temporary_path)
-            .arg(format!("--mode={mode:o}"));
-        wrapper_tar.args(&wrappers);
-        let mut wrapper_tar = wrapper_tar.spawn()?;
-        let status = wait_for_archive_process(&mut wrapper_tar, "tar", timeout)?;
-        if !status.success() {
-            return Err(std::io::Error::other(format!("tar failed: {status}")));
-        }
+        super::archive_entry::force_governed_wrapper_modes(&temporary_path, &wrappers)?;
     }
 
     let archive_file = File::create(archive)?;
