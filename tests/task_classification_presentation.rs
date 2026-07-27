@@ -53,7 +53,7 @@ fn task_classification_uses_one_ordered_table() -> TestResult {
         .ok_or("missing task-classification default prompt")?;
     assert_eq!(
         default_prompt,
-        "You MUST use $task-classification first to render one ordered two-column GFM table with the canonical header row | Field | Value | and exactly these eight ordered rows: Lane type, Secondary surfaces, Owner decision, Atomic scope, Required skills, Required tools/evidence, First allowed action, Stop/blocker; you MUST complete it before Codexy setup, delegation, implementation, PR, review-response, or merge work begins."
+        "You MUST use $task-classification first to render one ordered two-column GFM table with the canonical header row | Field | Value | and exactly these eight ordered rows: Lane type, Secondary surfaces, Owner decision, Atomic scope, Required skills, Required tools/evidence, First allowed action, Stop/blocker; the Owner decision value MUST use affirmative or denied followed by one exact owner token and an optional because rationale. You MUST complete it before Codexy setup, delegation, implementation, PR, review-response, or merge work begins."
     );
     Ok(())
 }
