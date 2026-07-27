@@ -38,6 +38,7 @@ fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::e
             .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
             .args(["--stdio", "value with spaces", "--literal=--"]);
         assert!(run_wrapper_command(&mut command)?.status.success());
+        let plugin_root = support::fixture_path_text(&fixture.plugin_root)?;
         assert_eq!(
             std::fs::read_to_string(log)?.lines().collect::<Vec<_>>(),
             [
@@ -46,10 +47,7 @@ fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::e
                 "codexy-mcp-runtime",
                 server,
                 "--plugin-root",
-                fixture
-                    .plugin_root
-                    .to_str()
-                    .ok_or("plugin root must be UTF-8")?,
+                plugin_root.as_str(),
                 "--",
                 "--stdio",
                 "value with spaces",

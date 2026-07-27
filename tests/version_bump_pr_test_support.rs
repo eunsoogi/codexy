@@ -1,3 +1,5 @@
+use crate::support::normalize_fixture_text;
+
 pub(super) fn has_trimmed_line(text: &str, expected: &str) -> bool {
     text.lines().map(str::trim).any(|line| line == expected)
 }
@@ -27,4 +29,12 @@ pub(super) fn markdown_section_lines<'a>(text: &'a str, heading: &str) -> Vec<&'
         .take_while(|line| !line.starts_with("## "))
         .filter(|line| !line.is_empty())
         .collect()
+}
+
+#[test]
+fn fixture_text_normalization_changes_only_line_endings() {
+    assert_eq!(
+        normalize_fixture_text("title\r\nbody\r\n"),
+        "title\nbody\n"
+    );
 }

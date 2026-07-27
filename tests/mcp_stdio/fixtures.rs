@@ -1,5 +1,7 @@
 use super::*;
 
+const LEGACY_PUBLIC_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64"];
+
 pub(super) fn installed_plugin_copy() -> Result<InstalledPlugin, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let installed_plugin = temp.path().join("codexy");
@@ -19,9 +21,11 @@ pub(super) fn installed_plugin_copy() -> Result<InstalledPlugin, Box<dyn std::er
         "codexy-mcp-codegraph",
         env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
     )?;
+    let candidate_runtime_dir = install_windows_candidate_runtime_fixture(temp.path())?;
     Ok(InstalledPlugin {
         _temp: temp,
         path: installed_plugin,
+        candidate_runtime_dir,
     })
 }
 
@@ -44,7 +48,46 @@ pub(super) fn installed_plugin_under_rust_host()
     Ok(InstalledPlugin {
         _temp: temp,
         path: installed_plugin,
+        candidate_runtime_dir: None,
     })
+}
+
+fn install_windows_candidate_runtime_fixture(
+    root: &Path,
+) -> Result<Option<std::path::PathBuf>, Box<dyn std::error::Error>> {
+    #[cfg(windows)]
+    {
+        let runtime_dir = root.join("candidate-runtime");
+        std::fs::create_dir_all(&runtime_dir)?;
+        for (runtime, source_binary) in [
+            ("codexy-mcp-lsp", env!("CARGO_BIN_EXE_codexy-mcp-lsp")),
+            ("codexy-mcp-codegraph", env!("CARGO_BIN_EXE_codexy-mcp-codegraph")),
+        ] {
+            std::fs::copy(
+                source_binary,
+                runtime_dir.join(windows_candidate_runtime_name(runtime)),
+            )?;
+        }
+        return Ok(Some(runtime_dir));
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = root;
+        Ok(None)
+    }
+}
+
+fn windows_candidate_runtime_name(runtime: &str) -> String {
+    format!("{runtime}-windows-x86_64.exe")
+}
+
+#[test]
+fn windows_candidate_fixture_name_keeps_legacy_public_runtime_names_unchanged() {
+    assert_eq!(
+        windows_candidate_runtime_name("codexy-mcp-lsp"),
+        "codexy-mcp-lsp-windows-x86_64.exe"
+    );
+    assert_eq!(LEGACY_PUBLIC_PLATFORMS, ["darwin-arm64", "linux-x86_64"]);
 }
 
 pub(super) fn temp_runtime_dir(
@@ -77,7 +120,7 @@ pub(super) fn install_runtime_fixture(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let runtime_dir = installed_plugin.join("runtime");
     std::fs::create_dir_all(&runtime_dir)?;
-    for platform in ["darwin-arm64", "linux-x86_64"] {
+    for platform in LEGACY_PUBLIC_PLATFORMS {
         let runtime_path = runtime_dir.join(format!("{runtime}-{platform}.bin"));
         std::fs::copy(source_binary, &runtime_path)?;
         let mut permissions = std::fs::metadata(&runtime_path)?.permissions();

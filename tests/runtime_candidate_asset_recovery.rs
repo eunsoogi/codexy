@@ -144,9 +144,11 @@ impl Fixture {
     }
 
     fn run_with(&self, run_id: u64, attempt: u64) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        let path = format!("{}:{}", self.bin.display(), std::env::var("PATH")?);
+        let path = std::env::join_paths(
+            std::iter::once(self.bin.clone()).chain(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)),
+        )?;
         Ok(Command::new(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/reconcile-runtime-candidate-assets"))
-            .arg(&self.dist)
+            .path_arg(&self.dist)
             .env("PATH", path)
             .env("CANDIDATE_TAG", "runtime-candidate-test")
             .env("GITHUB_RUN_ID", run_id.to_string())

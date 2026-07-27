@@ -1,6 +1,6 @@
 use serde_json::json;
 use std::{fs, path::Path};
-use crate::support::FixtureCommand as Command;
+use crate::support::{FixtureCommand as Command, read_text_fixture};
 
 use super::version_bump_pr_test_support::{
     markdown_headings, markdown_section_lines,
@@ -70,8 +70,8 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         "renderer failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let title = fs::read_to_string(output_dir.join("title.txt"))?;
-    let body = fs::read_to_string(output_dir.join("body.md"))?;
+    let title = read_text_fixture(&output_dir.join("title.txt"))?;
+    let body = read_text_fixture(&output_dir.join("body.md"))?;
     let labels: serde_json::Value =
         serde_json::from_slice(&fs::read(output_dir.join("labels.json"))?)?;
     let first_render = (
@@ -147,8 +147,8 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         ])
         .output()?;
     assert!(rerender.status.success());
-    assert_eq!(first_render.0, fs::read_to_string(output_dir.join("title.txt"))?);
-    assert_eq!(first_render.1, fs::read_to_string(output_dir.join("body.md"))?);
+    assert_eq!(first_render.0, read_text_fixture(&output_dir.join("title.txt"))?);
+    assert_eq!(first_render.1, read_text_fixture(&output_dir.join("body.md"))?);
     assert_eq!(first_render.2, fs::read(output_dir.join("labels.json"))?);
 
     let provisional = Command::new(root.join("scripts/render-version-pr-metadata"))
@@ -161,7 +161,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         ])
         .output()?;
     assert!(provisional.status.success());
-    let provisional_body = fs::read_to_string(output_dir.join("body.md"))?;
+    let provisional_body = read_text_fixture(&output_dir.join("body.md"))?;
     assert_eq!(
         markdown_section_lines(&provisional_body, "## Evidence"),
         [

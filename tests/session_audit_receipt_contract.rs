@@ -53,6 +53,7 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
         proof["contentProof"]["sourceManifestSha256"],
         sha256(root.join("plugins/codexy/.codex-plugin/plugin.json"))?
     );
+    let canonical_text = tempfile::tempdir()?;
     for list in [
         &receipt["installed"]["changedFiles"],
         &proof["contentProof"]["sourceChangedFiles"],
@@ -61,7 +62,10 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
         assert_eq!(proof_paths(list)?, PACKAGED_PROOF_PATHS);
     }
     for path in PACKAGED_PROOF_PATHS {
-        let digest = sha256(root.join("plugins/codexy").join(path))?;
+        let source = root.join("plugins/codexy").join(path);
+        let materialized = canonical_text.path().join(path);
+        support::materialize_lf_text_fixture(&source, &materialized)?;
+        let digest = sha256(materialized)?;
         assert_eq!(proof_digest(&proof["contentProof"]["sourceChangedFiles"], path)?, digest);
         assert_eq!(proof_digest(&proof["contentProof"]["installedChangedFiles"], path)?, digest);
     }

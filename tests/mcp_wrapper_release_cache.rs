@@ -30,6 +30,7 @@ fn legacy_runtime_environment_cannot_change_pinned_dispatch()
             .env("CODEXY_RUNTIME_PACKAGE", "legacy-package")
             .env("CODEXY_RUNTIME_ARTIFACTS", temp.path().join("artifacts"));
         assert!(run_wrapper_command(&mut command)?.status.success());
+        let plugin_root = support::fixture_path_text(&fixture.plugin_root)?;
         assert_eq!(
             std::fs::read_to_string(&log)?.lines().collect::<Vec<_>>(),
             [
@@ -38,10 +39,7 @@ fn legacy_runtime_environment_cannot_change_pinned_dispatch()
                 "codexy-mcp-runtime",
                 server,
                 "--plugin-root",
-                fixture
-                    .plugin_root
-                    .to_str()
-                    .ok_or("plugin root must be UTF-8")?,
+                plugin_root.as_str(),
                 "--",
             ]
         );

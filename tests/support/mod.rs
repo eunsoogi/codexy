@@ -6,6 +6,8 @@ mod cache_fixture;
 mod child_thread_ledger_skill;
 mod digest;
 mod fixture_command;
+mod fixture_path;
+mod fixture_text;
 mod package;
 mod package_archive;
 mod package_fixture;
@@ -36,6 +38,10 @@ pub(crate) use child_thread_ledger_skill::{
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use fixture_command::FixtureCommand;
+pub(crate) use fixture_path::fixture_path_text;
+pub(crate) use fixture_text::{
+    materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
+};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,

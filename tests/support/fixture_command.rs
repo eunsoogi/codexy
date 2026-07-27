@@ -1,4 +1,7 @@
+use std::ffi::{OsStr, OsString};
 use std::process::Command;
+
+use super::fixture_path::{fixture_path_environment_value, fixture_path_text};
 
 /// A test-only command factory that preserves direct native execution and launches POSIX
 /// fixture scripts through `sh` on Windows.
@@ -13,9 +16,17 @@ impl FixtureCommand {
             if let Ok(contents) = std::fs::read(std::path::Path::new(program)) {
                 match fixture_script_launcher(true, &contents) {
                     Ok(Some(interpreter)) => {
+                        let uses_posix_path = matches!(interpreter, "sh" | "bash");
                         let interpreter = discover_windows_interpreter(interpreter)
                             .unwrap_or_else(|error| panic!("{error}"));
                         let mut command = Command::new(interpreter);
+                        let program: OsString = if uses_posix_path {
+                            fixture_path_text(program)
+                                .unwrap_or_else(|error| panic!("{error}"))
+                                .into()
+                        } else {
+                            program.to_owned()
+                        };
                         command.arg(program);
                         return Self(command);
                     }
@@ -25,6 +36,36 @@ impl FixtureCommand {
             }
         }
         Self(Command::new(program))
+    }
+
+    pub(crate) fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        let key = key.as_ref();
+        let value = fixture_path_environment_value(key, value.as_ref())
+            .unwrap_or_else(|error| panic!("{error}"));
+        self.0.env(key, value);
+        self
+    }
+
+    pub(crate) fn envs<K, V, I>(&mut self, variables: I) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+        I: IntoIterator<Item = (K, V)>,
+    {
+        for (key, value) in variables {
+            self.env(key, value);
+        }
+        self
+    }
+
+    pub(crate) fn path_arg(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
+        let path = fixture_path_text(path).unwrap_or_else(|error| panic!("{error}"));
+        self.0.arg(path);
+        self
     }
 }
 

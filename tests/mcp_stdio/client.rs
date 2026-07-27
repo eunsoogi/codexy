@@ -3,6 +3,18 @@ use super::*;
 pub(super) struct InstalledPlugin {
     pub(super) _temp: tempfile::TempDir,
     pub(super) path: PathBuf,
+    pub(super) candidate_runtime_dir: Option<PathBuf>,
+}
+
+impl InstalledPlugin {
+    pub(super) fn use_candidate_runtime(
+        &self,
+        command: &mut crate::support::FixtureCommand,
+    ) {
+        if let Some(runtime_dir) = &self.candidate_runtime_dir {
+            command.env("CODEXY_RUNTIME_DIR", runtime_dir);
+        }
+    }
 }
 
 pub(super) struct TempRuntimeDir {

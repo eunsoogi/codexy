@@ -18,6 +18,7 @@ fn lsp_wrapper_uses_installed_plugin_root_for_config() -> Result<(), Box<dyn std
     )?;
 
     let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-lsp"));
+    installed_plugin.use_candidate_runtime(&mut command);
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
@@ -75,6 +76,7 @@ fn codegraph_wrapper_uses_bundled_runtime_without_global_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let installed_plugin = installed_plugin_copy()?;
     let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"));
+    installed_plugin.use_candidate_runtime(&mut command);
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
