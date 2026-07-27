@@ -1,6 +1,7 @@
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Stdio};
+use crate::support::FixtureCommand as Command;
 
 use serde_json::{Value, json};
 

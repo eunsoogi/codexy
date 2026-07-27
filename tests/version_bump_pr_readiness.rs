@@ -1,5 +1,6 @@
 use serde_json::json;
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
+use crate::support::FixtureCommand as Command;
 
 use super::version_bump_pr_test_support::{
     markdown_headings, markdown_section_lines,
@@ -221,7 +222,7 @@ fn path_text(path: &Path) -> Result<&str, &'static str> {
     path.to_str().ok_or("non-UTF-8 test path")
 }
 
-fn command_passes(command: &mut Command, context: &str) -> TestResult {
+fn command_passes(command: &mut std::process::Command, context: &str) -> TestResult {
     let output = command.output()?;
     if !output.status.success() {
         return Err(format!("{context} failed: {}", String::from_utf8_lossy(&output.stderr)).into());

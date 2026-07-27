@@ -137,6 +137,26 @@ pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
     Ok(())
 }
 
+fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'static str> {
+    match (os, architecture) {
+        ("macos", "aarch64") => Ok("darwin-arm64"),
+        ("linux", "x86_64") => Ok("linux-x86_64"),
+        ("windows", "x86_64") => Ok("windows-x86_64"),
+        _ => Err(std::io::Error::other(format!(
+            "unsupported test host platform: {os}-{architecture}"
+        ))),
+    }
+}
+
+#[test]
+fn fixture_host_platform_accepts_windows_and_rejects_unknown_hosts() {
+    assert_eq!(
+        fixture_host_platform("windows", "x86_64").unwrap(),
+        "windows-x86_64"
+    );
+    assert!(fixture_host_platform("plan9", "mips64").is_err());
+}
+
 pub(crate) fn complete_plugin_fixture(
     root: &std::path::Path,
 ) -> std::io::Result<std::path::PathBuf> {
@@ -160,15 +180,7 @@ fn complete_plugin_fixture_with_runtime(
     )?;
     let runtime = plugin_root.join("runtime");
     std::fs::create_dir_all(&runtime)?;
-    let host_platform = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("macos", "aarch64") => "darwin-arm64",
-        ("linux", "x86_64") => "linux-x86_64",
-        (os, architecture) => {
-            return Err(std::io::Error::other(format!(
-                "unsupported test host platform: {os}-{architecture}"
-            )));
-        }
-    };
+    let host_platform = fixture_host_platform(std::env::consts::OS, std::env::consts::ARCH)?;
     for (server, binary) in [
         ("lsp", env!("CARGO_BIN_EXE_codexy-mcp-lsp")),
         ("codegraph", env!("CARGO_BIN_EXE_codexy-mcp-codegraph")),

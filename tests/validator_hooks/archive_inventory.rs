@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 use serde_json::Value;
 

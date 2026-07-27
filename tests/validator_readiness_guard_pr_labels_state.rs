@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std::error::Error>> {

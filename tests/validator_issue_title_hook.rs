@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn issue_title_hook_rejects_prefix_only_conventional_title()

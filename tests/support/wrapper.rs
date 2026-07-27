@@ -5,6 +5,7 @@ use std::os::unix::process::CommandExt as _;
 use std::process::{Child, Command, Output, Stdio};
 use std::time::Duration;
 
+use super::fixture_command::FixtureCommand;
 use super::package_fixture::create_runtime_package;
 use super::wrapper_copy::copy_dir;
 pub(crate) use super::wrapper_process::wait_for_wrapper_output;
@@ -88,7 +89,8 @@ pub(crate) fn run_wrapper_with_optional_failure(
     fake_version: &str,
     fail_cargo: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    let mut command =
+        FixtureCommand::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
     command
         .env("HOME", fixture.home)
         .env(
@@ -156,7 +158,8 @@ pub(crate) fn assert_wrapper_uses_package_runtime_without_cargo(
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
     let package = create_runtime_package(temp.path(), "darwin-arm64", server, "override")?;
-    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    let mut command =
+        FixtureCommand::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
     command
         .arg("--help")
         .env("HOME", fixture.home)

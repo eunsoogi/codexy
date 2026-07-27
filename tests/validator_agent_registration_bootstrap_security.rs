@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 use crate::support;
 

@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn infers_previous_tag_from_release_history() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn readiness_guard_treats_globs_as_literal_merge_message_text()

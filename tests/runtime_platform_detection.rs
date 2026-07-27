@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 use crate::support::{self, WrapperFixture, make_executable, run_wrapper_command};
 

@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn readiness_guard_checks_pr_labels_against_repository_taxonomy()

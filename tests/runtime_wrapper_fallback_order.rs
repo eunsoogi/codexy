@@ -1,6 +1,6 @@
 use crate::support;
 
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 use std::time::Duration;
 
 use support::{WrapperFixture, run_wrapper_command_with_timeout};

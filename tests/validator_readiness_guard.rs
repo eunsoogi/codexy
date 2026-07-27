@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn readiness_guard_rejects_lifecycle_event_invocation() -> Result<(), Box<dyn std::error::Error>> {

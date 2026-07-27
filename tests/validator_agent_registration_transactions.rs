@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Output};
+use crate::support::FixtureCommand as Command;
 
 use crate::support;
 

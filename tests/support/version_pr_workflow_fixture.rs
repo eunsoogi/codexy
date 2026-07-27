@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Output};
+use crate::support::FixtureCommand as Command;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;

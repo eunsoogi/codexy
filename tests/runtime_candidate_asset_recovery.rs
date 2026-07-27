@@ -1,4 +1,5 @@
-use std::{fs, path::{Path, PathBuf}, process::Command};
+use std::{fs, path::{Path, PathBuf}};
+use crate::support::FixtureCommand as Command;
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};

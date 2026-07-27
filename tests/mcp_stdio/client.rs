@@ -35,7 +35,10 @@ impl McpClient {
         Self::spawn_command(command)
     }
 
-    pub(super) fn spawn_command(mut command: Command) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(super) fn spawn_command(
+        command: impl Into<crate::support::FixtureCommand>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut command = command.into();
         let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

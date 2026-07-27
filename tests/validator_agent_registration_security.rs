@@ -1,5 +1,8 @@
-use crate::support;
-use std::process::{Command, Output};
+#[path = "validator_agent_registration_security/support.rs"]
+mod registration_security_support;
+use registration_security_support::{
+    assert_diagnose_fails, directory_entries, installed_fixture, run, stderr, stdout,
+};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const BEGIN: &str = "# BEGIN CODEXY MANAGED AGENTS";
@@ -172,21 +175,6 @@ fn diagnose_rejects_wrong_marker_name_or_shape_in_expected_projections() -> Test
     Ok(())
 }
 
-fn assert_diagnose_fails(
-    plugin_root: &std::path::Path,
-    codex_home: &std::path::Path,
-) -> TestResult {
-    let output = run(plugin_root, codex_home, &["--diagnose"])?;
-    let stdout = stdout(&output);
-    assert!(
-        stdout.contains("A role-discovery: FAIL") && !stdout.contains("A role-discovery: PASS"),
-        "semantic discovery errors must not pass by count\nstatus: {}\nstdout:\n{stdout}\nstderr:\n{}",
-        output.status,
-        stderr(&output)
-    );
-    Ok(())
-}
-
 fn write_expected_projections(
     plugin_root: &std::path::Path,
     agents_root: &std::path::Path,
@@ -200,51 +188,4 @@ fn write_expected_projections(
         )?;
     }
     Ok(())
-}
-
-fn installed_fixture(root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    let plugin_root = root.join("installed-codexy");
-    support::copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    Ok(plugin_root)
-}
-
-fn run(
-    plugin_root: &std::path::Path,
-    codex_home: &std::path::Path,
-    extra: &[&str],
-) -> TestResult<Output> {
-    Ok(
-        Command::new(plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"))
-            .args([
-                "--plugin-root",
-                path(plugin_root)?,
-                "--codex-home",
-                path(codex_home)?,
-            ])
-            .args(extra)
-            .output()?,
-    )
-}
-
-fn directory_entries(root: &std::path::Path) -> std::io::Result<Vec<String>> {
-    let mut entries = std::fs::read_dir(root)?
-        .map(|entry| Ok(entry?.file_name().to_string_lossy().into_owned()))
-        .collect::<std::io::Result<Vec<_>>>()?;
-    entries.sort();
-    Ok(entries)
-}
-
-fn path(path: &std::path::Path) -> TestResult<&str> {
-    Ok(path.to_str().ok_or("path must be UTF-8")?)
-}
-
-fn stdout(output: &Output) -> String {
-    String::from_utf8_lossy(&output.stdout).into_owned()
-}
-
-fn stderr(output: &Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
 }
