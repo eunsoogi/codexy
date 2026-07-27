@@ -3,6 +3,9 @@ use super::child_lane_classification_setup_actor::{
     SetupActor, agents_fail_closed, explicit_subject,
 };
 use super::child_lane_classification_setup_clause::{SENTENCE_BOUNDARY, analyze_setup_clause};
+use super::child_lane_classification_setup_relative::{
+    coordinates_relative_subject, main_clause_start,
+};
 
 const COMMA_BOUNDARY: &str = "__codexy_comma_boundary__";
 
@@ -45,12 +48,21 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                                 predicate_start,
                                 predicate_start + offset,
                                 *action,
+                            )
+                            && !coordinates_relative_subject(
+                                &words,
+                                predicate_start,
+                                predicate_start + offset,
+                                *action,
                             ))
                 })
                 .map(|offset| predicate_start + offset + 1)
                 .unwrap_or(predicate_start);
             let end = relation_window_end(&words, *action, actions.get(position + 1).copied());
-            let window = &words[start..end];
+            let relative_main_start = main_clause_start(&words, start, *action);
+            let window_start = relative_main_start.unwrap_or(start);
+            let analysis_start = relative_main_start.unwrap_or(0);
+            let window = &words[window_start..end];
             window
                 .iter()
                 .any(|word| matches!(*word, "branch" | "worktree"))
@@ -62,7 +74,7 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                         explicit_subject(&words, start, *action)
                             .or_else(|| agents_fail_closed(&words, start, end))
                     },
-                    negated: analyze_setup_clause(&words, 0, *action, end).negated,
+                    negated: analyze_setup_clause(&words, analysis_start, *action, end).negated,
                     before_classification: window.iter().enumerate().any(|(index, word)| {
                         matches!(*word, "before" | "prior")
                             && !timing_phrase_is_negated(window, index)

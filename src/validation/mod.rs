@@ -23,6 +23,7 @@ mod child_lane_classification_setup_condition;
 mod child_lane_classification_setup_context;
 mod child_lane_classification_setup_phrase;
 mod child_lane_classification_setup_relations;
+mod child_lane_classification_setup_relative;
 mod child_lane_colon_classification_block;
 mod child_lane_gfm_classification_table;
 mod child_lane_owner_decision;

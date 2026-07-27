@@ -1,4 +1,7 @@
 use super::child_lane_classification_setup_clause::SENTENCE_BOUNDARY;
+use super::child_lane_classification_setup_relative::{
+    relative_clause_owns_report_predicate, report_clause_predicate,
+};
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum SetupActor {
@@ -105,25 +108,6 @@ fn predicate_introducer(words: &[&str], start: usize, subject: usize) -> bool {
             && words[index - 1] == "and")
 }
 
-fn relative_clause_owns_report_predicate(words: &[&str], start: usize, predicate: usize) -> bool {
-    let Some(relative) = (start..predicate)
-        .rev()
-        .find(|index| matches!(words[*index], "who" | "whose" | "which"))
-    else {
-        return false;
-    };
-    let clause_start = if words[relative] == "whose" {
-        (relative + 1..predicate)
-            .find(|index| !subject_modifier(words[*index]))
-            .map_or(predicate, |subject| subject + 1)
-    } else {
-        relative + 1
-    };
-    words[clause_start..predicate]
-        .iter()
-        .all(|word| subject_modifier(word) || predicate_modifier(word))
-}
-
 fn mixed_coordinated_subject(words: &[&str], start: usize, subject: usize) -> Option<SetupActor> {
     let conjunction = (start..subject)
         .rev()
@@ -188,24 +172,6 @@ fn predicate_modifier(word: &str) -> bool {
                 | "not"
                 | "never"
         )
-}
-
-fn report_clause_predicate(word: &str) -> bool {
-    matches!(
-        word,
-        "reports"
-            | "reported"
-            | "says"
-            | "said"
-            | "states"
-            | "stated"
-            | "explains"
-            | "explained"
-            | "notes"
-            | "noted"
-            | "tells"
-            | "told"
-    )
 }
 
 fn subject_modifier(word: &str) -> bool {

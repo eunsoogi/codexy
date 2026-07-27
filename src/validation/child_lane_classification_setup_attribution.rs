@@ -3,6 +3,7 @@ use super::child_lane_classification_setup::line_claims_setup_before_classificat
 use super::child_lane_classification_setup_actor::SetupActor;
 use super::child_lane_classification_setup_clause::is_adverbial_modifier;
 use super::child_lane_classification_setup_relations::{has_setup_action, setup_relations};
+use super::child_lane_classification_setup_relative::preserves_relative_subject_coordination;
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
@@ -58,6 +59,9 @@ fn setup_clauses(line: &str) -> Vec<&str> {
 }
 
 fn split_and_clauses(clause: &str) -> Vec<&str> {
+    if preserves_relative_subject_coordination(clause) {
+        return vec![clause];
+    }
     let parts = clause.split(" and ").collect::<Vec<_>>();
     parts
         .windows(2)
