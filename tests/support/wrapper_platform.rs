@@ -61,9 +61,9 @@ mod controls {
         let temp = tempfile::tempdir()?;
         std::fs::create_dir(temp.path().join("mcp"))?;
         install_fixture_platform(temp.path(), FixturePlatform::Unsupported)?;
-        assert!(
-            std::fs::read_to_string(temp.path().join("mcp/runtime-platform.sh"))?
-                .contains("unknown-unknown")
+        assert_eq!(
+            std::fs::read_to_string(temp.path().join("mcp/runtime-platform.sh"))?,
+            "#!/bin/sh\ncodexy_runtime_platform() {\n  printf '%s\\n' 'unknown-unknown'\n}\n"
         );
         Ok(())
     }
