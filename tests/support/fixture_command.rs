@@ -1,7 +1,10 @@
 use std::ffi::{OsStr, OsString};
 use std::process::Command;
 
-use super::fixture_path::{fixture_path_environment_value, fixture_path_text};
+use super::{
+    fixture_path::{fixture_path_environment_value, fixture_path_text},
+    fixture_text::materialized_script_source,
+};
 
 /// A test-only command factory that preserves direct native execution and launches POSIX
 /// fixture scripts through `sh` on Windows.
@@ -11,6 +14,11 @@ pub(crate) struct FixtureCommand(Command);
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
+        if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
+            let command = materialized_script_command(program, &source)
+                .unwrap_or_else(|error| panic!("{error}"));
+            return Self(command);
+        }
         #[cfg(windows)]
         {
             if let Ok(contents) = std::fs::read(std::path::Path::new(program)) {
@@ -62,11 +70,75 @@ impl FixtureCommand {
         self
     }
 
-    pub(crate) fn path_arg(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
+    pub(crate) fn arg_path(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
         let path = fixture_path_text(path).unwrap_or_else(|error| panic!("{error}"));
         self.0.arg(path);
         self
     }
+
+    pub(crate) fn env_path<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        let value = fixture_path_text(value).unwrap_or_else(|error| panic!("{error}"));
+        self.0.env(key, value);
+        self
+    }
+
+    pub(crate) fn env_path_list<K, I, V>(&mut self, key: K, values: I) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        I: IntoIterator<Item = V>,
+        V: AsRef<OsStr>,
+    {
+        let value = values
+            .into_iter()
+            .map(|value| fixture_path_text(value).unwrap_or_else(|error| panic!("{error}")))
+            .collect::<Vec<_>>()
+            .join(":");
+        self.0.env(key, value);
+        self
+    }
+
+    pub(crate) fn path_arg(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
+        self.arg_path(path)
+    }
+}
+
+fn materialized_script_command(
+    program: &OsStr,
+    source: &std::path::Path,
+) -> Result<Command, String> {
+    let contents = std::fs::read(std::path::Path::new(program))
+        .map_err(|error| format!("reading materialized fixture script: {error}"))?;
+    let interpreter = match fixture_script_interpreter(&contents) {
+        Ok(Some(interpreter)) => interpreter,
+        Ok(None) => return Ok(Command::new(program)),
+        #[cfg(not(windows))]
+        Err(_) => return Ok(Command::new(program)),
+        #[cfg(windows)]
+        Err(error) => return Err(error),
+    };
+    let script = String::from_utf8(contents)
+        .map_err(|_| "materialized fixture script must be valid UTF-8".to_owned())?;
+    let uses_posix_path = matches!(interpreter, "sh" | "bash");
+    #[cfg(windows)]
+    let interpreter = discover_windows_interpreter(interpreter)?;
+    #[cfg(not(windows))]
+    let interpreter = if interpreter == "python" {
+        "python3"
+    } else {
+        interpreter
+    };
+    let source: OsString = if uses_posix_path {
+        fixture_path_text(source)?.into()
+    } else {
+        source.as_os_str().to_owned()
+    };
+    let mut command = Command::new(interpreter);
+    command.arg("-c").arg(script).arg(source);
+    Ok(command)
 }
 
 impl std::ops::Deref for FixtureCommand {
@@ -96,6 +168,10 @@ fn fixture_script_launcher(
     if !is_windows {
         return Ok(None);
     }
+    fixture_script_interpreter(contents)
+}
+
+fn fixture_script_interpreter(contents: &[u8]) -> Result<Option<&'static str>, String> {
     let first_line = contents
         .splitn(2, |byte| *byte == b'\n')
         .next()
@@ -141,83 +217,6 @@ fn discover_windows_interpreter(interpreter: &str) -> Result<std::path::PathBuf,
     ))
 }
 
-#[test]
-fn fixture_script_launcher_maps_only_the_inventoryed_windows_shebangs() {
-    assert_eq!(
-        fixture_script_launcher(true, b"#!/bin/sh\necho fixture\n"),
-        Ok(Some("sh"))
-    );
-    assert_eq!(
-        fixture_script_launcher(true, b"#!/bin/sh\r\necho fixture\r\n"),
-        Ok(Some("sh"))
-    );
-    assert_eq!(
-        fixture_script_launcher(true, b"#!/usr/bin/env bash\necho fixture\n"),
-        Ok(Some("bash"))
-    );
-    assert_eq!(
-        fixture_script_launcher(true, b"#!/usr/bin/env python3\nprint('fixture')\n"),
-        Ok(Some("python"))
-    );
-    assert_eq!(fixture_script_launcher(true, b"MZ\x90\0"), Ok(None));
-    assert_eq!(
-        fixture_script_launcher(false, b"#!/bin/sh\necho fixture\n"),
-        Ok(None)
-    );
-}
-
-#[test]
-fn fixture_script_launcher_rejects_unknown_and_malformed_windows_shebangs() {
-    assert_eq!(
-        fixture_script_launcher(true, b"#!/usr/bin/env ruby\nputs 'fixture'\n"),
-        Err("unsupported fixture script shebang: #!/usr/bin/env ruby".to_owned())
-    );
-    assert_eq!(
-        fixture_script_launcher(true, b"#!/bin/sh-invalid\necho fixture\n"),
-        Err("unsupported fixture script shebang: #!/bin/sh-invalid".to_owned())
-    );
-    assert_eq!(
-        fixture_script_launcher(true, b"#!\nfixture\n"),
-        Err("malformed fixture script shebang".to_owned())
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn fixture_command_preserves_script_arguments_cwd_stdin_and_exit_status()
--> Result<(), Box<dyn std::error::Error>> {
-    use std::io::Write as _;
-
-    let temp = tempfile::tempdir()?;
-    let working_directory = temp.path().join("working directory");
-    std::fs::create_dir(&working_directory)?;
-    let script = working_directory.join("fixture script");
-    std::fs::write(
-        &script,
-        "#!/bin/sh\ninput=$(cat)\nprintf '%s\\n%s\\n%s\\n' \"$PWD\" \"$1\" \"$input\"\nexit 17\n",
-    )?;
-    super::make_executable(&script)?;
-
-    let mut child = FixtureCommand::new(&script)
-        .arg("argument with spaces")
-        .current_dir(&working_directory)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()?;
-    child
-        .stdin
-        .as_mut()
-        .ok_or("fixture stdin")?
-        .write_all(b"stdin with spaces")?;
-    let output = child.wait_with_output()?;
-
-    assert_eq!(output.status.code(), Some(17));
-    assert_eq!(
-        String::from_utf8(output.stdout)?,
-        format!(
-            "{}\nargument with spaces\nstdin with spaces\n",
-            working_directory.canonicalize()?.display()
-        )
-    );
-    Ok(())
-}
+#[cfg(test)]
+#[path = "fixture_command_controls.rs"]
+mod controls;

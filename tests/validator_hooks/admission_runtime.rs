@@ -142,6 +142,7 @@ pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, 
 }
 
 pub(super) fn assert_event_case(root: &Path, event: &str, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
+    let cwd = crate::support::fixture_path_text(cwd)?;
     let input = json!({"hook_event_name":event,"tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     assert_input(root, input, denied, environment)
 }
@@ -159,7 +160,11 @@ fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &
     let description = input.to_string();
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
     let event = input["hook_event_name"].as_str().ok_or("event")?;
-    child.arg(event).env_clear().env("PLUGIN_ROOT", root).envs(environment.iter().copied()).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    child.arg(event);
+    child.env_clear();
+    child.env_path("PLUGIN_ROOT", root);
+    child.envs(environment.iter().copied());
+    child.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
     let output = child.wait_with_output()?;

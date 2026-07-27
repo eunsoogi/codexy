@@ -49,11 +49,13 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
     assert_eq!(receipt["installed"]["contentEquivalent"], true);
     assert_eq!(proof["contentEquivalent"], true);
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    assert_eq!(
-        proof["contentProof"]["sourceManifestSha256"],
-        sha256(root.join("plugins/codexy/.codex-plugin/plugin.json"))?
-    );
     let canonical_text = tempfile::tempdir()?;
+    let manifest = canonical_text.path().join("plugin.json");
+    support::materialize_lf_text_fixture(
+        &root.join("plugins/codexy/.codex-plugin/plugin.json"),
+        &manifest,
+    )?;
+    assert_eq!(proof["contentProof"]["sourceManifestSha256"], sha256(manifest)?);
     for list in [
         &receipt["installed"]["changedFiles"],
         &proof["contentProof"]["sourceChangedFiles"],

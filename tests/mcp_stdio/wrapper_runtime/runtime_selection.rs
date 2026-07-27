@@ -64,11 +64,11 @@ fn codegraph_wrapper_uses_validated_runtime_dir_for_platform_runtime()
         env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
     )?;
     let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"));
+    command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir.path);
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
-        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -87,11 +87,11 @@ fn codegraph_wrapper_under_non_codexy_rust_host_uses_runtime_dir_not_cargo()
         env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
     )?;
     let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-codegraph"));
+    command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir.path);
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
-        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -110,11 +110,11 @@ fn lsp_wrapper_under_non_codexy_rust_host_uses_runtime_dir_not_cargo()
         env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
     )?;
     let mut command = Command::new(installed_plugin.path.join("mcp/codexy-mcp-lsp"));
+    command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir.path);
     command
         .current_dir(&installed_plugin.path)
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
-        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -135,11 +135,11 @@ fn codegraph_wrapper_in_source_checkout_prefers_runtime_dir_over_cargo()
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("plugins/codexy/mcp/codexy-mcp-codegraph"),
     );
+    command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir.path);
     command
         .current_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"))
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
-        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -159,11 +159,11 @@ fn lsp_wrapper_in_source_checkout_prefers_runtime_dir_over_cargo()
     let mut command = Command::new(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/mcp/codexy-mcp-lsp"),
     );
+    command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir.path);
     command
         .current_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"))
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
-        .env("CODEXY_RUNTIME_DIR", &runtime_dir.path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

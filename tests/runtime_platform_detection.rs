@@ -20,15 +20,13 @@ fn wrappers_share_platform_detection_across_supported_shells()
             std::fs::create_dir(&runtime_dir)?;
             let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
             let runtime = runtime_dir.join(format!("codexy-mcp-{server}-{platform}.{extension}"));
-            std::fs::write(&runtime, "#!/bin/sh\nprintf '%s\\n' \"$@\"\n")?;
-            make_executable(&runtime)?;
+            install_detected_runtime(&runtime, platform, server)?;
 
-            let output = run_wrapper_command(
-                Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
-                    .env("PATH", format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()))
-                    .env("CODEXY_RUNTIME_DIR", &runtime_dir)
-                    .args(["--stdio", "value with spaces"]),
-            )?;
+            let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+            command.env_path_list("PATH", [fixture.cargo_bin.as_os_str(), "/usr/bin".as_ref(), "/bin".as_ref()]);
+            command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir);
+            command.args(["--stdio", "value with spaces"]);
+            let output = run_wrapper_command(&mut command)?;
             assert!(output.status.success(), "{server} {os}/{arch}: {}",
                 String::from_utf8_lossy(&output.stderr));
             assert_eq!(String::from_utf8(output.stdout)?, "--stdio\nvalue with spaces\n");
@@ -47,24 +45,40 @@ fn explicit_platform_override_precedes_detection_and_unknown_hosts_fail_closed()
         let runtime_dir = temp.path().join("runtime override");
         std::fs::create_dir(&runtime_dir)?;
         let runtime = runtime_dir.join(format!("codexy-mcp-{server}-windows-x86_64.exe"));
-        std::fs::write(&runtime, "#!/bin/sh\nexit 0\n")?;
-        make_executable(&runtime)?;
+        install_detected_runtime(&runtime, "windows-x86_64", server)?;
         let wrapper = fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}"));
 
-        let override_output = run_wrapper_command(
-            Command::new(&wrapper)
-                .env("PATH", format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()))
-                .env("CODEXY_RUNTIME_DIR", &runtime_dir)
-                .env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64"),
-        )?;
+        let mut override_command = Command::new(&wrapper);
+        override_command.env_path_list("PATH", [fixture.cargo_bin.as_os_str(), "/usr/bin".as_ref(), "/bin".as_ref()]);
+        override_command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir);
+        override_command.env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64");
+        let override_output = run_wrapper_command(&mut override_command)?;
         assert!(override_output.status.success());
 
-        let unsupported = run_wrapper_command(
-            Command::new(&wrapper)
-                .env("PATH", format!("{}:/usr/bin:/bin", fixture.cargo_bin.display())),
-        )?;
+        let mut unsupported_command = Command::new(&wrapper);
+        unsupported_command.env_path_list("PATH", [fixture.cargo_bin.as_os_str(), "/usr/bin".as_ref(), "/bin".as_ref()]);
+        let unsupported = run_wrapper_command(&mut unsupported_command)?;
         assert_eq!(unsupported.status.code(), Some(127));
         assert!(String::from_utf8_lossy(&unsupported.stderr).contains("unknown-unknown"));
+    }
+    Ok(())
+}
+
+fn install_detected_runtime(
+    runtime: &std::path::Path,
+    platform: &str,
+    server: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if platform == "windows-x86_64" && cfg!(windows) {
+        let binary = match server {
+            "lsp" => env!("CARGO_BIN_EXE_codexy-mcp-lsp"),
+            "codegraph" => env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
+            _ => return Err(format!("unknown runtime server: {server}").into()),
+        };
+        std::fs::copy(binary, runtime)?;
+    } else {
+        std::fs::write(runtime, "#!/bin/sh\nprintf '%s\\n' \"$@\"\n")?;
+        make_executable(runtime)?;
     }
     Ok(())
 }
