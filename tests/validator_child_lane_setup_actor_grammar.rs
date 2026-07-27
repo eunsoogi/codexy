@@ -216,7 +216,7 @@ fn validator_handles_setup_relation_grammar_boundaries() -> TestResult {
     Ok(())
 }
 
-fn assert_result(label: &str, setup: &str, expected: bool) -> TestResult {
+pub(crate) fn assert_result(label: &str, setup: &str, expected: bool) -> TestResult {
     let evidence = format!("{}\n{setup}", parent_owned_classification());
     let temp = tempfile::tempdir()?;
     let path = temp.path().join("handoff.md");

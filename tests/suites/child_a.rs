@@ -146,6 +146,8 @@ mod validator_child_lane_authority_record_state;
 mod validator_child_lane_authority_compatibility;
 #[path = "../validator_child_lane_setup_actor_grammar.rs"]
 mod validator_child_lane_setup_actor_grammar;
+#[path = "../validator_child_lane_setup_actor_predicate.rs"]
+mod validator_child_lane_setup_actor_predicate;
 #[path = "../validator_child_lane_setup_action_binding.rs"]
 mod validator_child_lane_setup_action_binding;
 #[path = "../validator_child_lane_setup_relation_boundaries.rs"]

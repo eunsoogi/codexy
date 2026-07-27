@@ -1,13 +1,10 @@
 use super::child_lane_classification_setup_actions::{action_is_passive, setup_action_at};
+use super::child_lane_classification_setup_actor::{
+    SetupActor, agents_fail_closed, explicit_subject,
+};
 use super::child_lane_classification_setup_clause::{SENTENCE_BOUNDARY, analyze_setup_clause};
 
 const COMMA_BOUNDARY: &str = "__codexy_comma_boundary__";
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub(super) enum SetupActor {
-    Child,
-    NonChild,
-}
 
 #[derive(Clone, Copy)]
 pub(super) struct SetupRelation {
@@ -170,26 +167,6 @@ fn setup_action_indices<'a>(words: &'a [&'a str]) -> impl Iterator<Item = usize>
         .filter_map(|(index, _)| setup_action_at(words, index).map(|_| index))
 }
 
-fn explicit_subject(words: &[&str], start: usize, action: usize) -> Option<SetupActor> {
-    let mut saw_non_child = false;
-    let subject_start = if start > 0 && words[start - 1] == "and" {
-        0
-    } else {
-        start
-    };
-    for index in subject_start..action {
-        if actor_is_introduced_by(words, subject_start, index) {
-            continue;
-        }
-        match actor_word(words[index]) {
-            Some(SetupActor::Child) => return Some(SetupActor::Child),
-            Some(SetupActor::NonChild) => saw_non_child = true,
-            None => {}
-        }
-    }
-    saw_non_child.then_some(SetupActor::NonChild)
-}
-
 fn and_coordinates_setup_subjects(
     words: &[&str],
     start: usize,
@@ -199,36 +176,6 @@ fn and_coordinates_setup_subjects(
     let actors = [start..conjunction, conjunction + 1..action]
         .map(|range| words[range].iter().find_map(|word| actor_word(word)));
     matches!(actors, [Some(left), Some(right)] if left != right)
-}
-
-fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
-    let mut saw_non_child = false;
-    for index in start..end {
-        if !actor_is_introduced_by(words, start, index) {
-            continue;
-        }
-        match actor_word(words[index]) {
-            Some(SetupActor::Child) => return Some(SetupActor::Child),
-            Some(SetupActor::NonChild) => saw_non_child = true,
-            None => {}
-        }
-    }
-    saw_non_child.then_some(SetupActor::NonChild)
-}
-
-fn actor_is_introduced_by(words: &[&str], start: usize, actor: usize) -> bool {
-    words[start..actor]
-        .iter()
-        .rposition(|word| *word == "by")
-        .is_some_and(|offset| {
-            let by = start + offset;
-            words[by + 1..actor].iter().all(|word| {
-                matches!(
-                    *word,
-                    "a" | "an" | "the" | "this" | "that" | "its" | "our" | "owning"
-                )
-            })
-        })
 }
 
 fn actor_word(word: &str) -> Option<SetupActor> {

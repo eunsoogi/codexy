@@ -1,9 +1,8 @@
 use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup::line_claims_setup_before_classification;
+use super::child_lane_classification_setup_actor::SetupActor;
 use super::child_lane_classification_setup_clause::is_adverbial_modifier;
-use super::child_lane_classification_setup_relations::{
-    SetupActor, has_setup_action, setup_relations,
-};
+use super::child_lane_classification_setup_relations::{has_setup_action, setup_relations};
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {

@@ -169,9 +169,15 @@ fn is_clause_boundary(word: &&str) -> bool {
 }
 
 fn has_clause_negator(words: &[&str], start: usize, action: usize) -> bool {
-    words[start..action].iter().any(|word| {
-        matches!(*word, "not" | "never" | "neither") || is_negated_finite_auxiliary(word)
-    }) || has_negative_condition_adjunct(&words[start..action])
+    words[start..action]
+        .iter()
+        .enumerate()
+        .any(|(offset, word)| {
+            (*word != "not" || !introduces_contrastive_actor(words, start + offset))
+                && (matches!(*word, "not" | "never" | "neither")
+                    || is_negated_finite_auxiliary(word))
+        })
+        || has_negative_condition_adjunct(&words[start..action])
         || words[start..action]
             .iter()
             .enumerate()
@@ -182,6 +188,14 @@ fn has_clause_negator(words: &[&str], start: usize, action: usize) -> bool {
                         .all(|word| is_adverbial_modifier(word))
             })
         || words[start..action].windows(2).any(is_contracted_negator)
+}
+
+fn introduces_contrastive_actor(words: &[&str], negator: usize) -> bool {
+    let actor = match words.get(negator + 1).copied() {
+        Some("a" | "an" | "the") => words.get(negator + 2).copied(),
+        actor => actor,
+    };
+    matches!(actor, Some("child" | "parent" | "orchestrator"))
 }
 
 fn is_contracted_negator(pair: &[&str]) -> bool {
