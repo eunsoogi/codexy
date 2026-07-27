@@ -8,7 +8,7 @@ pub(super) fn relative_clause_owns_report_predicate(
     };
     !words[relative + 1..predicate]
         .iter()
-        .any(|word| is_relative_predicate(word))
+        .any(|word| relative_finite_predicate(word))
 }
 
 pub(super) fn main_clause_start(words: &[&str], start: usize, action: usize) -> Option<usize> {
@@ -32,14 +32,13 @@ pub(super) fn coordinates_relative_subject(
     let Some(relative) = relative_marker(words, start, action) else {
         return false;
     };
-    words[relative] == "whose"
-        && relative < conjunction
+    relative < conjunction
         && !words[relative + 1..conjunction]
             .iter()
-            .any(|word| is_relative_predicate(word))
+            .any(|word| relative_finite_predicate(word))
         && words[conjunction + 1..action]
             .iter()
-            .any(|word| is_relative_predicate(word))
+            .any(|word| relative_finite_predicate(word))
 }
 
 pub(super) fn preserves_relative_subject_coordination(clause: &str) -> bool {
@@ -76,8 +75,8 @@ fn relative_marker(words: &[&str], start: usize, end: usize) -> Option<usize> {
         .find(|index| matches!(words[*index], "who" | "whose" | "which"))
 }
 
-fn is_relative_predicate(word: &&str) -> bool {
-    report_clause_predicate(word) || word.ends_with("ed") || word.ends_with("ing")
+fn relative_finite_predicate(word: &&str) -> bool {
+    report_clause_predicate(word) || matches!(*word, "review" | "reviews" | "reviewed")
 }
 
 fn predicate_chain_start(words: &[&str], start: usize, action: usize) -> usize {
