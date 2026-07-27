@@ -71,7 +71,8 @@ fn fixture_platform_selection_and_missing_runtime_fail_closed()
 }
 
 fn install_detected_runtime(runtime: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    install_fixture_probe(runtime, FixtureProbe::Arguments)?;
+    let installed = install_fixture_probe(runtime, FixtureProbe::Arguments)?;
+    assert_eq!(installed, runtime);
     Ok(())
 }
 

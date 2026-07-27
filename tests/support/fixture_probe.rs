@@ -12,7 +12,14 @@ pub(crate) fn install_fixture_probe(path: &Path, probe: FixtureProbe) -> std::io
         FixtureProbe::Arguments => "argv\n".to_owned(),
     };
     #[cfg(windows)]
-    std::fs::copy(env!("CARGO_BIN_EXE_codexy-fixture-probe"), &path)?;
+    if path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
+    {
+        std::fs::copy(env!("CARGO_BIN_EXE_codexy-fixture-probe"), &path)?;
+    } else {
+        write_posix_probe(&path, &configuration)?;
+    }
     #[cfg(not(windows))]
     write_posix_probe(&path, &configuration)?;
     std::fs::write(path.with_extension("fixture"), configuration)?;
@@ -35,7 +42,6 @@ fn fixture_probe_path(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-#[cfg(not(windows))]
 fn write_posix_probe(path: &Path, configuration: &str) -> std::io::Result<()> {
     let mut lines = configuration.lines();
     let script = match lines.next() {

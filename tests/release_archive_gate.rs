@@ -6,15 +6,11 @@ use tempfile::tempdir;
 mod release_archive_support;
 use release_archive_support::{
     assert_archive_scanner_contract, assert_runtime_workflow_contract, complete_plugin_fixture,
-    complete_plugin_fixture_with_stubbed_runtime, create_archive, make_executable,
+    complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive, make_executable,
 };
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
-    Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
-        .arg(archive)
-        .arg(plugin_root)
-        .output()
-        .expect("archive gate should start")
+    inspect_archive(archive, plugin_root, None).expect("archive gate should start")
 }
 
 fn assert_gate_error(archive: &std::path::Path, plugin_root: &std::path::Path, expected: &str) {

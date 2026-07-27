@@ -54,9 +54,11 @@ fn windows_measurement_parses_targeted_cargo_inventory() -> Result<(), Box<dyn s
         .env("PATH", path)
         .output()?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    let text = std::fs::read_to_string(inventory)?;
-    assert!(text.contains("lib::lib_case"));
-    assert!(text.contains("suite_all::agent::case"));
+    let inventory: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(inventory)?)?;
+    assert_eq!(
+        inventory["tests"],
+        serde_json::json!(["lib::lib_case", "suite_all::agent::case"])
+    );
     Ok(())
 }
 
@@ -83,9 +85,9 @@ fn windows_measurement_records_a_cluster_execution() -> Result<(), Box<dyn std::
         .env("PATH", path)
         .output()?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    let text = std::fs::read_to_string(artifact)?;
-    assert!(text.contains("suite_all::agent::case"));
-    assert!(text.contains("\"passed\": 1"));
+    let artifact: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(artifact)?)?;
+    assert_eq!(artifact["tests"], serde_json::json!(["suite_all::agent::case"]));
+    assert_eq!(artifact["passed"], serde_json::json!(1));
     Ok(())
 }
 
@@ -115,8 +117,14 @@ fn windows_measurement_persists_failed_cluster_streams_and_partial_timing(
     let value: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(artifact)?)?;
     assert_eq!(value["exitCode"], 101);
     assert!(value["durationSeconds"].as_f64().is_some());
-    assert!(value["stdout"].as_str().is_some_and(|text| text.contains("agent::failure")));
-    assert!(value["stderr"].as_str().is_some_and(|text| text.contains("fixture stderr")));
+    assert_eq!(
+        value["stdout"],
+        serde_json::json!(
+            "test agent::failure ... FAILED\n\
+             test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n"
+        )
+    );
+    assert_eq!(value["stderr"], serde_json::json!("fixture stderr\n"));
     Ok(())
 }
 
@@ -138,6 +146,13 @@ fn windows_measurement_workflow_keeps_the_required_gate_at_ten_minutes() -> Resu
         ],
     );
     assert_eq!(workflow.matches("cargo test --locked --all-targets").count(), 1);
+    assert_eq!(
+        workflow
+            .matches("scripts/install-windows-test-prerequisites.ps1")
+            .count(),
+        2,
+        "the required and profiled Windows workloads must share one prerequisite installer"
+    );
     Ok(())
 }
 

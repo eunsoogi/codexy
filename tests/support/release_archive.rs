@@ -6,6 +6,21 @@ mod archive_process;
 #[allow(unused_imports)]
 pub(crate) use archive_process::{create_archive, create_archive_with_commands};
 
+pub(crate) fn inspect_archive(
+    archive: &std::path::Path,
+    plugin_root: &std::path::Path,
+    path: Option<&std::path::Path>,
+) -> std::io::Result<std::process::Output> {
+    let mut command = crate::support::FixtureCommand::new(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
+    );
+    command.arg_path(archive).arg_path(plugin_root);
+    if let Some(path) = path {
+        command.env("PATH", path);
+    }
+    command.output()
+}
+
 pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[&str]) {
     let missing: Vec<_> = required
         .iter()

@@ -142,7 +142,7 @@ pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, 
 }
 
 pub(super) fn assert_event_case(root: &Path, event: &str, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
-    let cwd = crate::support::fixture_path_text(cwd)?;
+    let cwd = cwd.to_string_lossy().into_owned();
     let input = json!({"hook_event_name":event,"tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     assert_input(root, input, denied, environment)
 }

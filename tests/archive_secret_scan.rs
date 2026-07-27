@@ -1,27 +1,23 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::Output,
 };
 
 use tempfile::{TempDir, tempdir};
 
 #[path = "support/release_archive.rs"]
 mod release_archive_support;
-use release_archive_support::{complete_plugin_fixture_with_stubbed_runtime, create_archive};
+use release_archive_support::{
+    complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive,
+};
 
 const AKIA_SECRET: &str = "AKIA1234567890ABCDEF";
 const ASIA_SECRET: &str = "ASIA1234567890ABCDEF";
 const MATCHED_LINE: &str = "secret-line-payload";
 
 fn run_gate(archive: &Path, plugin_root: &Path, path: Option<&Path>) -> Output {
-    let mut command =
-        Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive");
-    command.arg(archive).arg(plugin_root);
-    if let Some(path) = path {
-        command.env("PATH", path);
-    }
-    command.output().expect("archive gate should start")
+    inspect_archive(archive, plugin_root, path).expect("archive gate should start")
 }
 
 fn secret_archive(secret: &str) -> (TempDir, PathBuf, PathBuf) {

@@ -15,7 +15,10 @@ use super::{
 /// A test-only command factory that preserves direct native execution and launches POSIX
 /// fixture scripts through `sh` on Windows.
 #[derive(Debug)]
-pub(crate) struct FixtureCommand(Command);
+pub(crate) struct FixtureCommand {
+    command: Command,
+    uses_posix_paths: bool,
+}
 
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
@@ -24,16 +27,19 @@ impl FixtureCommand {
         if let Some(command) = windows_static_python_command(std::path::Path::new(program))
             .unwrap_or_else(|error| panic!("{error}"))
         {
-            return Self(command);
+            return Self::native(command);
         }
         #[cfg(windows)]
         if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
-            return Self(Command::new(companion));
+            return Self::native(Command::new(companion));
         }
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
-            let command = materialized_script_command(program, &source)
+            let (command, uses_posix_paths) = materialized_script_command(program, &source)
                 .unwrap_or_else(|error| panic!("{error}"));
-            return Self(command);
+            return Self {
+                command,
+                uses_posix_paths,
+            };
         }
         #[cfg(windows)]
         {
@@ -52,14 +58,24 @@ impl FixtureCommand {
                             program.to_owned()
                         };
                         command.arg(program);
-                        return Self(command);
+                        return Self {
+                            command,
+                            uses_posix_paths: uses_posix_path,
+                        };
                     }
                     Ok(None) => {}
                     Err(error) => panic!("{error}"),
                 }
             }
         }
-        Self(Command::new(program))
+        Self::native(Command::new(program))
+    }
+
+    fn native(command: Command) -> Self {
+        Self {
+            command,
+            uses_posix_paths: false,
+        }
     }
 
     pub(crate) fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
@@ -68,9 +84,13 @@ impl FixtureCommand {
         V: AsRef<OsStr>,
     {
         let key = key.as_ref();
-        let value = fixture_path_environment_value(key, value.as_ref())
-            .unwrap_or_else(|error| panic!("{error}"));
-        self.0.env(key, value);
+        let value = if self.uses_posix_paths {
+            fixture_path_environment_value(key, value.as_ref())
+                .unwrap_or_else(|error| panic!("{error}"))
+        } else {
+            value.as_ref().to_owned()
+        };
+        self.command.env(key, value);
         self
     }
 
@@ -87,8 +107,8 @@ impl FixtureCommand {
     }
 
     pub(crate) fn arg_path(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
-        let path = fixture_path_text(path).unwrap_or_else(|error| panic!("{error}"));
-        self.0.arg(path);
+        let path = self.path_value(path.as_ref());
+        self.command.arg(path);
         self
     }
 
@@ -97,8 +117,8 @@ impl FixtureCommand {
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
     {
-        let value = fixture_path_text(value).unwrap_or_else(|error| panic!("{error}"));
-        self.0.env(key, value);
+        let value = self.path_value(value.as_ref());
+        self.command.env(key, value);
         self
     }
 
@@ -108,31 +128,51 @@ impl FixtureCommand {
         I: IntoIterator<Item = V>,
         V: AsRef<OsStr>,
     {
-        let value = values
+        let values = values
             .into_iter()
-            .map(|value| fixture_path_text(value).unwrap_or_else(|error| panic!("{error}")))
-            .collect::<Vec<_>>()
-            .join(":");
-        self.0.env(key, value);
+            .map(|value| self.path_value(value.as_ref()))
+            .collect::<Vec<_>>();
+        let value = if self.uses_posix_paths {
+            values
+                .iter()
+                .map(|value| value.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join(":")
+                .into()
+        } else {
+            std::env::join_paths(values)
+                .unwrap_or_else(|error| panic!("joining fixture paths: {error}"))
+        };
+        self.command.env(key, value);
         self
     }
 
     pub(crate) fn path_arg(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
         self.arg_path(path)
     }
+
+    fn path_value(&self, value: &OsStr) -> OsString {
+        if self.uses_posix_paths {
+            fixture_path_text(value)
+                .unwrap_or_else(|error| panic!("{error}"))
+                .into()
+        } else {
+            value.to_owned()
+        }
+    }
 }
 
 fn materialized_script_command(
     program: &OsStr,
     source: &std::path::Path,
-) -> Result<Command, String> {
+) -> Result<(Command, bool), String> {
     let contents = std::fs::read(std::path::Path::new(program))
         .map_err(|error| format!("reading materialized fixture script: {error}"))?;
     let interpreter = match fixture_script_interpreter(&contents) {
         Ok(Some(interpreter)) => interpreter,
-        Ok(None) => return Ok(Command::new(program)),
+        Ok(None) => return Ok((Command::new(program), false)),
         #[cfg(not(windows))]
-        Err(_) => return Ok(Command::new(program)),
+        Err(_) => return Ok((Command::new(program), false)),
         #[cfg(windows)]
         Err(error) => return Err(error),
     };
@@ -154,26 +194,26 @@ fn materialized_script_command(
     };
     let mut command = Command::new(interpreter);
     command.arg("-c").arg(script).arg(source);
-    Ok(command)
+    Ok((command, uses_posix_path))
 }
 
 impl std::ops::Deref for FixtureCommand {
     type Target = Command;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.command
     }
 }
 
 impl std::ops::DerefMut for FixtureCommand {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.command
     }
 }
 
 impl From<Command> for FixtureCommand {
     fn from(command: Command) -> Self {
-        Self(command)
+        Self::native(command)
     }
 }
 
