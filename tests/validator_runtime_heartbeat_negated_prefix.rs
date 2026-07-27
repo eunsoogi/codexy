@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use crate::support;
 
@@ -8,7 +8,9 @@ const DISCOVERY_REQUIREMENT: &str =
     "MUST search the callable tool surface for `automation_update`";
 
 fn validate_discovery_clause(replacement: &str) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+        "skills/codex-orchestration/references/runtime-heartbeats.md",
+    )])?;
     let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
     let original = fs::read_to_string(&path)?;
     let updated = original.replace(DISCOVERY_REQUIREMENT, replacement);
@@ -67,7 +69,9 @@ fn validator_accepts_mandatory_modal_prefix_for_discovery_clause() -> TestResult
 
 #[test]
 fn validator_accepts_unnegated_discovery_clause() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+        "skills/codex-orchestration/references/runtime-heartbeats.md",
+    )])?;
     let output = support::validator_instruction_policy(&plugin_root)?;
     assert!(
         output.status.success(),

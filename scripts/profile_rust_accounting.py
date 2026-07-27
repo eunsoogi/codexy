@@ -9,20 +9,43 @@ from pathlib import Path
 
 LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
 RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
+RUNNING_BINARY_PATTERN = re.compile(r"^\s*Running .+ \((?P<binary>.+)\)$")
 
 
-def listed_test_inventory(
-    root: Path, workload: tuple[str, ...]
-) -> tuple[Counter[str], set[str], int]:
-    process = subprocess.run(
-        [*workload, "--", "--list"],
-        cwd=root,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=False,
-    )
-    return parse_inventory(process.stdout or ""), process.returncode
+def listed_test_inventory_from_completed_binaries(
+    root: Path, output: str
+) -> tuple[tuple[Counter[str], set[str]], int]:
+    tests: Counter[str] = Counter()
+    targets: set[str] = set()
+    status = 0
+    for target, binary in completed_test_binaries(root, output):
+        process = subprocess.run(
+            [str(binary), "--list"],
+            cwd=root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+        status = status or process.returncode
+        targets.add(target)
+        for line in (process.stdout or "").splitlines():
+            if match := LIST_PATTERN.match(line):
+                tests[f"{target}::{canonical_test_name(match.group('name'))}"] += 1
+    return (tests, targets), status
+
+
+def completed_test_binaries(root: Path, output: str) -> list[tuple[str, Path]]:
+    binaries: list[tuple[str, Path]] = []
+    current_target = None
+    for line in output.splitlines():
+        if "Running " not in line:
+            continue
+        current_target = target_name(line)
+        if match := RUNNING_BINARY_PATTERN.match(line):
+            binary = Path(match.group("binary"))
+            binaries.append((current_target, binary if binary.is_absolute() else root / binary))
+    return binaries
 
 
 def parse_inventory(output: str) -> tuple[Counter[str], set[str]]:
@@ -31,6 +54,14 @@ def parse_inventory(output: str) -> tuple[Counter[str], set[str]]:
 
 def observed_test_inventory(output: str) -> tuple[Counter[str], set[str]]:
     return parse_tests(output, RUN_PATTERN)
+
+
+def observed_test_outcomes(output: str) -> Counter[str]:
+    return Counter(
+        match.group("result")
+        for line in output.splitlines()
+        if (match := RUN_PATTERN.match(line))
+    )
 
 
 def parse_tests(

@@ -14,7 +14,11 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from profile_rust_accounting import listed_test_inventory, observed_test_inventory
+from profile_rust_accounting import (
+    listed_test_inventory_from_completed_binaries,
+    observed_test_inventory,
+    observed_test_outcomes,
+)
 from profile_rust_workflow import enforce_workflow_contract
 
 BUDGET_SECONDS = 195.0
@@ -23,11 +27,11 @@ MINIMUM_PASSED_TESTS = 1802
 REQUIRED_JOB_TIMEOUT_MINUTES = 4
 REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES = 10
 WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
+COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 RESULT_PATTERN = re.compile(
     r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; "
     r"(\d+) ignored; \d+ measured; \d+ filtered out"
 )
-COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 
 def archive_fixture_nested_cargo_build_count(root: Path) -> int:
     helper = root / "tests/support/release_archive.rs"
@@ -81,18 +85,25 @@ def main() -> int:
         workflow, REQUIRED_JOB_TIMEOUT_MINUTES, REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES, WORKLOAD
     )
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
+    started = time.perf_counter()
+    output, elapsed, status = run_workload(root, arguments.budget_seconds)
     expected_tests: Counter[str] = Counter()
     expected_targets: set[str] = set()
     inventory_status = 0
-    started = time.perf_counter()
+    inventory_seconds = 0.0
     if arguments.verify_coverage:
-        (expected_tests, expected_targets), inventory_status = listed_test_inventory(root, WORKLOAD)
-    remaining_budget = max(0.0, arguments.budget_seconds - (time.perf_counter() - started))
-    output, elapsed, status = run_workload(root, remaining_budget)
-    summaries = RESULT_PATTERN.findall(output)
-    passed = sum(int(result[0]) for result in summaries)
-    failed = sum(int(result[1]) for result in summaries)
-    ignored = sum(int(result[2]) for result in summaries)
+        inventory_started = time.perf_counter()
+        (expected_tests, expected_targets), inventory_status = (
+            listed_test_inventory_from_completed_binaries(root, output)
+        )
+        inventory_seconds = time.perf_counter() - inventory_started
+    outcomes = observed_test_outcomes(output)
+    if not outcomes and not arguments.verify_coverage:
+        for passed, failed, ignored in RESULT_PATTERN.findall(output):
+            outcomes.update({"ok": int(passed), "FAILED": int(failed), "ignored": int(ignored)})
+    passed = outcomes["ok"]
+    failed = outcomes["FAILED"]
+    ignored = outcomes["ignored"]
     compile_matches = COMPILE_PATTERN.findall(output)
     compile_seconds = (
         int(compile_matches[-1][0] or 0) * 60 + float(compile_matches[-1][1])
@@ -143,6 +154,8 @@ def main() -> int:
     )
     print(f"compile-seconds\t{compile_seconds:.3f}")
     print(f"execution-seconds\t{execution_seconds:.3f}")
+    if arguments.verify_coverage:
+        print(f"inventory-seconds\t{inventory_seconds:.3f}")
     print(f"total-seconds\t{total_elapsed:.3f}")
     if arguments.verify_coverage:
         print(f"coverage-tests\t{sum(expected_tests.values())}\t{sum(observed_tests.values())}\t{'PASS' if coverage_pass else 'FAIL'}")
