@@ -35,7 +35,8 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                 .iter()
                 .enumerate()
                 .rposition(|(offset, word)| {
-                    matches!(*word, "but" | "however")
+                    *word == SENTENCE_BOUNDARY
+                        || matches!(*word, "but" | "however")
                         || (*word == "then"
                             && words.get((predicate_start + offset).saturating_sub(1))
                                 != Some(&"and"))
@@ -49,7 +50,7 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                 })
                 .map(|offset| predicate_start + offset + 1)
                 .unwrap_or(predicate_start);
-            let end = actions.get(position + 1).copied().unwrap_or(words.len());
+            let end = relation_window_end(&words, *action, actions.get(position + 1).copied());
             let window = &words[start..end];
             window
                 .iter()
@@ -77,21 +78,37 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
 }
 
 fn timing_phrase_is_negated(words: &[&str], timing: usize) -> bool {
-    let mut start = timing;
-    while start > 0 && is_timing_phrase_modifier(words[start - 1]) {
-        start -= 1;
+    for index in (0..timing).rev() {
+        if matches!(words[index], "not" | "never") {
+            return true;
+        }
+        if timing_polarity_boundary(words, index) {
+            return false;
+        }
     }
-    start
-        .checked_sub(1)
-        .and_then(|index| words.get(index))
-        .is_some_and(|word| matches!(*word, "not" | "never"))
+    false
 }
 
-fn is_timing_phrase_modifier(word: &str) -> bool {
+fn timing_polarity_boundary(words: &[&str], index: usize) -> bool {
     matches!(
-        word,
-        "at" | "any" | "time" | "point" | "moment" | "stage" | "immediately" | "directly"
-    )
+        words[index],
+        SENTENCE_BOUNDARY | "and" | "but" | "however" | "then"
+    ) || setup_action_at(words, index).is_some()
+        || actor_word(words[index]).is_some()
+}
+
+fn relation_window_end(words: &[&str], action: usize, next_action: Option<usize>) -> usize {
+    let mut end = next_action.unwrap_or(words.len());
+    for (offset, word) in words[action + 1..end].iter().enumerate() {
+        if *word == SENTENCE_BOUNDARY
+            || matches!(*word, "but" | "however")
+            || (*word == "then" && words.get(action + offset) != Some(&"and"))
+        {
+            end = action + offset + 1;
+            break;
+        }
+    }
+    end
 }
 
 fn words(line: &str) -> Vec<&str> {
@@ -142,13 +159,9 @@ fn and_coordinates_setup_subjects(
     conjunction: usize,
     action: usize,
 ) -> bool {
-    [start..conjunction, conjunction + 1..action]
-        .iter()
-        .all(|range| {
-            words[range.clone()]
-                .iter()
-                .any(|word| actor_word(word).is_some())
-        })
+    let actors = [start..conjunction, conjunction + 1..action]
+        .map(|range| words[range].iter().find_map(|word| actor_word(word)));
+    matches!(actors, [Some(left), Some(right)] if left != right)
 }
 
 fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {

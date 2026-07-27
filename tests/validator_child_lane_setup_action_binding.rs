@@ -34,6 +34,37 @@ fn validator_scopes_negation_and_timing_to_each_setup_action() -> TestResult {
 }
 
 #[test]
+fn validator_binds_setup_relations_to_sentence_and_repeated_subject_boundaries() -> TestResult {
+    for (boundary, prefix, separator) in [
+        (
+            "sentence",
+            "The child reviewed requirements before classification.",
+            " ",
+        ),
+        (
+            "repeated child subject",
+            "The child reviewed requirements before classification",
+            " and ",
+        ),
+    ] {
+        for (form, setup) in [
+            ("explicit active", "The child created branch codexy/463 after classification."),
+            ("explicit passive", "Branch codexy/463 was created by the child after classification."),
+            ("unqualified active", "Created branch codexy/463 after classification."),
+            ("unqualified passive", "Branch codexy/463 was created after classification."),
+        ] {
+            assert_with_classification(
+                &format!("{boundary} bounds the {form} relation"),
+                child_owned_classification(),
+                &format!("{prefix}{separator}{setup}"),
+                true,
+            )?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_retains_a_negated_clause_subject_across_and_then() -> TestResult {
     assert_with_classification(
         "and then retains the child subject for the later switch",
@@ -124,6 +155,29 @@ fn validator_keeps_negated_before_timing_out_of_the_setup_relation() -> TestResu
         ),
     ] {
         assert_with_classification(label, child_owned_classification(), setup, expected)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_recognizes_clause_bounded_timing_negation_grammar() -> TestResult {
+    for (polarity, timing) in [
+        ("not at any point in time", "not at any point in time before classification but after classification"),
+        ("never once", "never once before classification only after classification"),
+    ] {
+        for (form, setup) in [
+            ("explicit active", "The child created branch codexy/463"),
+            ("explicit passive", "Branch codexy/463 was created by the child"),
+            ("unqualified active", "Created branch codexy/463"),
+            ("unqualified passive", "Branch codexy/463 was created"),
+        ] {
+            assert_with_classification(
+                &format!("{polarity} keeps {form} setup out of pre-classification timing"),
+                child_owned_classification(),
+                &format!("{setup} {timing}."),
+                true,
+            )?;
+        }
     }
     Ok(())
 }
