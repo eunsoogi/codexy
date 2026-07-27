@@ -79,7 +79,7 @@ fn validator_distinguishes_governing_progressive_setup_predicates() -> TestResul
 #[test]
 fn validator_bounds_fronted_negative_conditions_to_their_phrase() -> TestResult {
     let owner = "Ownership metadata source: parent-supplied\nLane ownership: child-owned";
-    for modifier in ["ordinary", "normal", "exceptional", "conceivable", "absolutely ordinary"] {
+    for modifier in ["ordinary", "normal", "exceptional", "conceivable", "absolutely ordinary", "unusual"] {
         assert_result(
             &format!("{owner}\nUnder no {modifier} circumstances was the child actively setting up worktree codexy/463 before classification."),
             true,
@@ -88,6 +88,11 @@ fn validator_bounds_fronted_negative_conditions_to_their_phrase() -> TestResult 
     for boundary in [
         "before exceptional circumstances changed",
         "during exceptional circumstances",
+        "amid exceptional circumstances",
+        "amidst exceptional circumstances",
+        "pending exceptional circumstances",
+        "notwithstanding exceptional circumstances",
+        "per exceptional circumstances",
         "despite extraordinary circumstances",
         "regarding circumstances",
         "throughout ordinary circumstances",
