@@ -69,7 +69,7 @@ fn windows_measurement_records_a_cluster_execution() -> Result<(), Box<dyn std::
     std::fs::create_dir(&bin)?;
     write_fake_cargo(
         &bin,
-        "#!/bin/sh\ncase \"$*\" in *--list*) printf '%s\\n' 'agent::case: test' ;; *) printf '%s\\n' '   Compiling fixture v0.0.0' '    Finished `test` profile [unoptimized] target(s) in 0.01s' 'test agent::case ... ok' 'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s' ;; esac\n",
+        "#!/bin/sh\ncase \"$*\" in *--list*) printf '%s\\n' 'agent::case: test' ;; *) test -n \"$CODEXY_ARCHIVE_HEADER_EVIDENCE\" || exit 2; printf '%s\\n' '   Compiling fixture v0.0.0' '    Finished `test` profile [unoptimized] target(s) in 0.01s' 'test agent::case ... ok' 'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s' ;; esac\n",
         "@echo off\r\necho    Compiling fixture v0.0.0\r\necho     Finished `test` profile [unoptimized] target(s) in 0.01s\r\necho test agent::case ... ok\r\necho test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r\n",
     )?;
     let artifact = temp.path().join("agent.json");

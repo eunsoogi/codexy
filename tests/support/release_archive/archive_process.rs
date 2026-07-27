@@ -104,7 +104,17 @@ fn create_windows_archive_with_commands(
     }
 
     if !wrappers.is_empty() {
+        super::archive_evidence::record_archive_header_receipt(
+            "before-rewrite",
+            &temporary_path,
+            &wrappers,
+        )?;
         super::archive_entry::force_governed_wrapper_modes(&temporary_path, &wrappers)?;
+        super::archive_evidence::record_archive_header_receipt(
+            "after-rewrite",
+            &temporary_path,
+            &wrappers,
+        )?;
     }
 
     let archive_file = File::create(archive)?;

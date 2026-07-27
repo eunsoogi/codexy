@@ -26,7 +26,12 @@ def metric_counts(path: Path) -> dict[str, int]:
 
 def run_command(command: list[str], target: str, metrics_path: Path) -> dict[str, object]:
     started = time.perf_counter()
-    environment = os.environ | {"CODEXY_WINDOWS_PROFILE_METRICS": str(metrics_path)}
+    environment = os.environ | {
+        "CODEXY_WINDOWS_PROFILE_METRICS": str(metrics_path),
+        "CODEXY_ARCHIVE_HEADER_EVIDENCE": str(
+            metrics_path.with_suffix(".archive-headers.jsonl")
+        ),
+    }
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, env=environment)
     stdout_lines: list[str] = []
     stderr_lines: list[str] = []

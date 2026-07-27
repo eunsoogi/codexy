@@ -3,6 +3,11 @@ use std::process::Command;
 
 #[path = "release_archive/archive_entry.rs"]
 mod archive_entry;
+#[path = "release_archive/archive_evidence.rs"]
+mod archive_evidence;
+#[cfg(test)]
+#[path = "release_archive/archive_evidence_tests.rs"]
+mod archive_evidence_tests;
 #[path = "release_archive/archive_process.rs"]
 mod archive_process;
 #[allow(unused_imports)]
