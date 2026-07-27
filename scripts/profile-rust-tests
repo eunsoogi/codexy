@@ -20,6 +20,7 @@ METADATA_TIMEOUT_SECONDS = 30.0
 MINIMUM_PASSED_TESTS = 1802
 MAXIMUM_INTEGRATION_TARGETS = 8
 REQUIRED_JOB_TIMEOUT_MINUTES = 4
+REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES = 10
 WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
 RESULT_PATTERN = re.compile(
     r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; "
@@ -94,7 +95,9 @@ def main() -> int:
     arguments = parser.parse_args()
     root = arguments.root.resolve()
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
-    enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
+    enforce_workflow_contract(
+        workflow, REQUIRED_JOB_TIMEOUT_MINUTES, REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES, WORKLOAD
+    )
     targets = integration_target_count(root)
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
     output, elapsed, status = run_workload(root)

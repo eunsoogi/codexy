@@ -38,6 +38,7 @@ impl PluginFixture {
 }
 
 pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
+    super::profile_metrics::record("plugin_fixture");
     let temp = tempfile::tempdir()?;
     let root = temp.path().join("codexy");
     super::copy_dir(
@@ -148,6 +149,7 @@ fn validator_in_process_mode(
     plugin_root: &Path,
     mode: Mode,
 ) -> Result<Output, Box<dyn std::error::Error>> {
+    super::profile_metrics::record("validator_in_process");
     let errors = validation::errors(plugin_root, mode);
     Ok(output_from_errors(plugin_root, errors))
 }

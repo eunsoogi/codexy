@@ -39,3 +39,107 @@ jobs:
 
       - name: Run full Rust workload
         run: cargo test --locked --all-targets
+
+  windows-rust-profile-plan:
+    name: Plan Windows Rust measurement
+    runs-on: windows-latest
+    timeout-minutes: 2
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - id: matrix
+        name: Enumerate exhaustive measurement targets
+        shell: pwsh
+        run: '"matrix=$(python scripts/profile-windows-rust matrix)" >> $env:GITHUB_OUTPUT'
+
+  windows-rust-profile-inventory:
+    name: Inventory Windows Rust coverage
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Inventory original Cargo test coverage
+        run: python scripts/profile-windows-rust inventory --artifact profile-inventory/inventory.json
+
+      - name: Upload Windows Rust inventory
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-rust-inventory
+          path: profile-inventory/inventory.json
+
+  windows-rust-profile:
+    name: Measure Windows Rust ${{ matrix.name }}
+    needs: [windows-rust-profile-plan, windows-rust-profile-inventory]
+    runs-on: windows-latest
+    timeout-minutes: 9
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.windows-rust-profile-plan.outputs.matrix) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download coverage inventory
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-rust-inventory
+          path: profile-inventory
+
+      - name: Measure exhaustive Cargo target
+        run: python scripts/profile-windows-rust run --name "${{ matrix.name }}" --artifact "profile-results/${{ matrix.name }}.json" --inventory profile-inventory/inventory.json
+
+      - name: Upload target measurement
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-rust-profile-target-${{ matrix.name }}
+          path: profile-results/
+
+  windows-rust-profile-coverage:
+    if: always()
+    name: Reconcile Windows Rust measurement coverage
+    needs: [windows-rust-profile-inventory, windows-rust-profile]
+    runs-on: windows-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download coverage inventory
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-rust-inventory
+          path: profile-inventory
+
+      - name: Download target measurements
+        uses: actions/download-artifact@v8
+        with:
+          pattern: windows-rust-profile-target-*
+          path: profile-results
+          merge-multiple: true
+
+      - name: Reconcile exhaustive coverage
+        run: python scripts/profile-windows-rust verify --inventory profile-inventory/inventory.json --profiles profile-results --coverage profile-coverage/coverage.json
+
+      - name: Upload reconciled measurement
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-rust-profile-coverage
+          path: profile-coverage/coverage.json

@@ -13,6 +13,7 @@ mod fixture_text;
 mod package;
 mod package_archive;
 mod package_fixture;
+mod profile_metrics;
 mod release_archive;
 mod release_cache;
 mod release_cache_audit;

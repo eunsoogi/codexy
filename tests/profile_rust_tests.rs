@@ -10,6 +10,10 @@ mod workflow_contract;
 mod gate_output;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/windows_measurement.rs"]
+mod windows_measurement;
+
+#[cfg(unix)]
 #[test]
 fn gate_propagates_a_single_full_workload_failure() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(42, 1802, 0)?;

@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Measure and reconcile the exhaustive native-Windows Rust test inventory."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from collections import Counter
+from pathlib import Path
+
+from profile_rust_coverage import canonical_name, canonical_test_id, cluster_plan, coverage_report, suite_all_assignments
+from profile_rust_process import metric_counts, run_command
+
+SUITE_ALL_CLUSTERS = (
+    "agent", "child_a", "child_b", "hook", "loc", "policy", "support", "system", "workflow",
+)
+BINS = (
+    "codexy-activate-runtime", "codexy-fake-lsp", "codexy-fixture-probe",
+    "codexy-mcp-codegraph", "codexy-mcp-lsp", "codexy-session-audit",
+    "codexy-sync-version", "codexy-validate",
+)
+LIST_TEST = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
+
+
+def profile_plan() -> list[dict[str, object]]:
+    return ([{"name": f"suite-all-{cluster}", "target": "suite_all", "filter": f"{cluster}::"} for cluster in SUITE_ALL_CLUSTERS]
+        + [{"name": "suite-archive", "target": "suite_archive", "filter": None}, {"name": "library", "target": "lib", "filter": None}]
+        + [{"name": f"bin-{name}", "target": name, "filter": None} for name in BINS])
+
+
+def command_for(entry: dict[str, object], list_only: bool = False, harness_args: list[str] | None = None) -> list[str]:
+    target = str(entry["target"])
+    command = ["cargo", "test", "--locked"]
+    if target == "lib":
+        command.append("--lib")
+    elif target.startswith("codexy-"):
+        command.extend(["--bin", target])
+    else:
+        command.extend(["--test", target])
+    if entry.get("filter"):
+        command.append(str(entry["filter"]))
+    if list_only or harness_args:
+        command.extend(["--", *(harness_args or [])])
+    if list_only:
+        command.append("--list")
+    return command
+
+
+def target_from_running(line: str) -> str | None:
+    path = line.replace("\\", "/")
+    if "tests/suites/all.rs" in path:
+        return "suite_all"
+    if "tests/suites/archive.rs" in path:
+        return "suite_archive"
+    if "src/lib.rs" in path:
+        return "lib"
+    if "src/bin/" in path:
+        return Path(path.split("src/bin/", 1)[1].split(" ", 1)[0]).stem
+    return None
+
+
+def inventory(path: Path) -> int:
+    command = ["cargo", "test", "--locked", "--all-targets", "--", "--list"]
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    current = None
+    tests: list[str] = []
+    targets: set[str] = set()
+    assert process.stdout is not None
+    for line in process.stdout:
+        sys.stdout.write(line)
+        if "Running " in line:
+            current = target_from_running(line)
+            if current:
+                targets.add(current)
+        elif current and (match := LIST_TEST.match(line)):
+            tests.append(canonical_test_id(current, match.group("name")))
+    exit_code = process.wait()
+    write_json(path, {"command": command, "exitCode": exit_code, "tests": sorted(tests), "targets": sorted(targets)})
+    return exit_code
+
+
+def listed_tests(command: list[str], target: str) -> tuple[int, list[str], str, str]:
+    process = subprocess.run(command, capture_output=True, text=True, check=False)
+    sys.stdout.write(process.stdout)
+    sys.stderr.write(process.stderr)
+    tests = [canonical_name(match.group("name")) for line in (process.stdout + process.stderr).splitlines()
+             if (match := LIST_TEST.match(line))]
+    return process.returncode, sorted(tests), process.stdout, process.stderr
+
+
+def suite_all_command(entry: dict[str, object], inventory_tests: list[str]) -> tuple[list[str], dict[str, object]]:
+    cluster = str(entry["name"]).removeprefix("suite-all-")
+    candidate_status, candidates, _, _ = listed_tests(command_for(entry, list_only=True), "suite_all")
+    if candidate_status:
+        raise ValueError(f"candidate list failed with status {candidate_status}")
+    expected = suite_all_assignments(inventory_tests, SUITE_ALL_CLUSTERS)[cluster]
+    candidate_ids = {canonical_test_id("suite_all", item) for item in candidates}
+    exclusions = sorted(test.removeprefix("suite_all::") for test in candidate_ids - expected)
+    selected_status, selected, _, _ = listed_tests(command_for(entry, list_only=True, harness_args=sum((["--skip", item] for item in exclusions), [])), "suite_all")
+    if selected_status:
+        raise ValueError(f"selected list failed with status {selected_status}")
+    plan = cluster_plan(inventory_tests, SUITE_ALL_CLUSTERS, cluster, candidates, selected)
+    return command_for(entry, harness_args=sum((["--skip", item] for item in plan["exclusions"]), [])), plan
+
+
+def run_profile(name: str, artifact: Path, inventory_path: Path | None = None) -> int:
+    entry = next((entry for entry in profile_plan() if entry["name"] == name), None)
+    if entry is None:
+        raise SystemExit(f"unknown Windows profile {name}")
+    metrics = artifact.with_suffix(".metrics")
+    command = command_for(entry)
+    result: dict[str, object]
+    try:
+        if entry["target"] == "suite_all":
+            if inventory_path is None:
+                raise ValueError("suite_all profiles require --inventory")
+            command, plan = suite_all_command(entry, json.loads(inventory_path.read_text())["tests"])
+        result = run_command(command, str(entry["target"]), metrics)
+        if entry["target"] == "suite_all":
+            result.update(plan)
+            actual = sorted(set(result["tests"]))
+            if actual != plan["expected"]:
+                result["coverageError"] = {"expected": plan["expected"], "actual": actual}
+    except OSError as error:
+        message = str(error)
+        sys.stderr.write(f"profile command failed to start: {message}\n")
+        result = {"command": command, "target": str(entry["target"]), "exitCode": None,
+                  "durationSeconds": 0.0, "setupSeconds": 0.0, "compileSeconds": 0.0,
+                  "executionSeconds": 0.0, "tests": [], "passed": 0, "failed": 0,
+                  "ignored": 0, "metrics": metric_counts(metrics), "stdout": "", "stderr": message,
+                  "profilerError": "command did not start"}
+    except ValueError as error:
+        result = {"command": command, "target": str(entry["target"]), "exitCode": 1,
+                  "durationSeconds": 0.0, "setupSeconds": 0.0, "compileSeconds": 0.0,
+                  "executionSeconds": 0.0, "tests": [], "passed": 0, "failed": 0,
+                  "ignored": 0, "metrics": metric_counts(metrics), "stdout": "", "stderr": str(error),
+                  "profilerError": "cluster preflight failed"}
+    result["name"] = name
+    write_json(artifact, result)
+    exit_code = result["exitCode"]
+    if exit_code not in (None, 0):
+        return int(exit_code)
+    return 1 if exit_code is None or result.get("coverageError") else 0
+
+
+def verify(inventory_path: Path, profiles: Path, coverage: Path) -> int:
+    expected = json.loads(inventory_path.read_text())
+    artifacts = [json.loads(path.read_text()) for path in sorted(profiles.glob("*.json"))]
+    actual = [canonical_test_id(name.split("::", 1)[0], name.split("::", 1)[1]) for artifact in artifacts for name in artifact["tests"]]
+    report = coverage_report(expected["tests"], actual)
+    targets = {str(artifact["target"]) for artifact in artifacts}
+    missing_targets = sorted(set(expected.get("targets", [])) - targets)
+    invalid = [artifact["name"] for artifact in artifacts if artifact["exitCode"] or artifact["failed"] or artifact["ignored"] or artifact["passed"] != len(artifact["tests"]) or artifact.get("coverageError")]
+    metrics: Counter[str] = Counter()
+    for artifact in artifacts:
+        metrics.update(artifact.get("metrics", {}))
+    report.update({"expectedTestCount": len(expected["tests"]), "measuredTestCount": len(actual), "targetCount": len(targets), "profiles": artifacts, "metrics": dict(metrics), "missingTargets": missing_targets, "invalidProfiles": invalid})
+    write_json(coverage, report)
+    if not report["pass"] or missing_targets or invalid:
+        print(json.dumps(report), file=sys.stderr)
+        return 1
+    return 0
+
+
+def write_json(path: Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, sort_keys=True, indent=2) + "\n")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("matrix")
+    inventory_parser = commands.add_parser("inventory")
+    inventory_parser.add_argument("--artifact", type=Path, required=True)
+    run_parser = commands.add_parser("run")
+    run_parser.add_argument("--name", required=True)
+    run_parser.add_argument("--artifact", type=Path, required=True)
+    run_parser.add_argument("--inventory", type=Path)
+    verify_parser = commands.add_parser("verify")
+    verify_parser.add_argument("--inventory", type=Path, required=True)
+    verify_parser.add_argument("--profiles", type=Path, required=True)
+    verify_parser.add_argument("--coverage", type=Path, required=True)
+    plan_parser = commands.add_parser("plan")
+    plan_parser.add_argument("--inventory", type=Path, required=True)
+    plan_parser.add_argument("--cluster", required=True)
+    plan_parser.add_argument("--candidates", type=Path, required=True)
+    plan_parser.add_argument("--selected", type=Path, required=True)
+    arguments = parser.parse_args()
+    if arguments.command == "matrix":
+        print(json.dumps({"include": profile_plan()}, separators=(",", ":")))
+        return 0
+    if arguments.command == "inventory":
+        return inventory(arguments.artifact)
+    if arguments.command == "run":
+        return run_profile(arguments.name, arguments.artifact, arguments.inventory)
+    if arguments.command == "plan":
+        inventory_tests = json.loads(arguments.inventory.read_text())["tests"]
+        candidates = json.loads(arguments.candidates.read_text())
+        selected = json.loads(arguments.selected.read_text())
+        try:
+            print(json.dumps(cluster_plan(inventory_tests, SUITE_ALL_CLUSTERS, arguments.cluster, candidates, selected)))
+            return 0
+        except ValueError as error:
+            print(error, file=sys.stderr)
+            return 1
+    return verify(arguments.inventory, arguments.profiles, arguments.coverage)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

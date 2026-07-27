@@ -2,6 +2,7 @@ pub(crate) fn copy_dir(
     source: impl AsRef<std::path::Path>,
     target: &std::path::Path,
 ) -> std::io::Result<()> {
+    super::profile_metrics::record("fixture_copy_dir");
     std::fs::create_dir_all(target)?;
     for entry in std::fs::read_dir(source)? {
         let entry = entry?;
@@ -18,6 +19,7 @@ pub(crate) fn copy_dir(
 
 #[cfg(target_os = "macos")]
 fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
+    super::profile_metrics::record("fixture_copy_file");
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
 
@@ -37,6 +39,7 @@ fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::i
 
 #[cfg(not(target_os = "macos"))]
 fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
+    super::profile_metrics::record("fixture_copy_file");
     if source.ends_with("assets/codexy-agent-hero.png")
         && std::fs::hard_link(source, target).is_ok()
     {

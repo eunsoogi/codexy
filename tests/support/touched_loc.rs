@@ -105,6 +105,7 @@ pub(crate) fn stderr(output: &Output) -> String {
 }
 
 fn run(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    super::profile_metrics::record("git_command");
     let output = Command::new("git").args(args).current_dir(root).output()?;
     assert!(
         output.status.success(),

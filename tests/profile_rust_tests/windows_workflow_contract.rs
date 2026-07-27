@@ -16,6 +16,7 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
             "windows-rust-test:",
             "name: Rust test suite (Windows)",
             "runs-on: windows-latest",
+            "timeout-minutes: 10",
             "run: cargo test --locked --all-targets",
         ],
     );
@@ -28,13 +29,19 @@ fn gate_accepts_only_the_exact_native_windows_workload() -> Result<(), Box<dyn s
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    steps:\n      - run: cargo test --locked --all-targets\n",
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 10\n    steps:\n      - run: cargo test --locked --all-targets\n",
     )?;
     assert!(fixture.run(&[])?.status.success());
 
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: cargo test --locked --all-targets\n",
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 12\n    steps:\n      - run: cargo test --locked --all-targets\n",
+    )?;
+    assert!(!fixture.run(&[])?.status.success());
+
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - run: cargo test --locked --all-targets\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
     Ok(())

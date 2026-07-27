@@ -165,6 +165,7 @@ def job_values(lines: list[str], key: str) -> list[str]:
 def enforce_workflow_contract(
     workflow: Path,
     required_timeout_minutes: int,
+    required_windows_timeout_minutes: int,
     workload: tuple[str, ...],
 ) -> None:
     try:
@@ -197,13 +198,14 @@ def enforce_workflow_contract(
             sys.stderr.write("Rust workflow must not run the full workload outside its gate\n")
             raise SystemExit(1)
         return
-    windows_runs = job_contract(windows_lines)[1]
+    windows_timeouts, windows_runs = job_contract(windows_lines)
     windows_workload_count = sum(
         invocation_count(command, workload) for command in windows_runs
     )
     exact_workload = " ".join(workload)
     if (
         job_values(windows_lines, "runs-on") != ["windows-latest"]
+        or windows_timeouts != [str(required_windows_timeout_minutes)]
         or windows_runs != [exact_workload]
         or windows_workload_count != 1
         or workload_count != windows_workload_count

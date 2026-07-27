@@ -76,6 +76,7 @@ fn copy_plugin_fixture(root: &Path) -> TestResult<std::path::PathBuf> {
 }
 
 fn validator(plugin_root: &Path) -> TestResult<Output> {
+    super::profile_metrics::record("validator_cli");
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",
