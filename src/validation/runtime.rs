@@ -125,12 +125,12 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     let path = crate::paths::repo_root()?.join(".github/workflows/plugin-runtime-binaries.yml");
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", display_relative(&path)))?;
-    let selected = ["darwin-arm64", "linux-x86_64"];
-    if platforms != selected {
+    let legacy = ["darwin-arm64", "linux-x86_64"];
+    let candidate = ["darwin-arm64", "linux-x86_64", "windows-x86_64"];
+    if platforms != legacy && platforms != candidate {
         bail!(
-            "{} immutable runtime package must retain platforms {:?}",
+            "{} immutable runtime package must retain the legacy baseline or verified candidate platforms",
             display_relative(&path),
-            selected
         );
     }
     for required in [
@@ -148,6 +148,8 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/inspect-release-archive",
+        "verify-windows-selected-candidate:",
+        "Verify immutable native Windows candidate bytes",
     ] {
         if !text.contains(required) {
             bail!(
