@@ -80,7 +80,7 @@ fn relative_marker(words: &[&str], start: usize, end: usize) -> Option<usize> {
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum RelativeParse {
     Absent,
-    Valid,
+    Valid { end: usize },
     Malformed,
 }
 
@@ -91,18 +91,31 @@ fn relative_parse(words: &[&str], start: usize, predicate: usize) -> RelativePar
     if !relative_predicate_word(words[predicate]) {
         return RelativeParse::Absent;
     }
-    let between = &words[relative + 1..predicate];
-    if matches!(words[relative], "who" | "which")
-        && between
-            .first()
-            .is_some_and(|word| is_adverbial_modifier(word))
-        && !between.iter().all(|word| is_adverbial_modifier(word))
-    {
+    if malformed_direct_relative(words, relative, predicate) {
         return RelativeParse::Malformed;
     }
-    relative_finite_predicate(words, relative, predicate)
-        .then_some(RelativeParse::Valid)
+    let Some(relative_predicate) =
+        (relative + 1..=predicate).find(|index| relative_finite_predicate(words, relative, *index))
+    else {
+        return RelativeParse::Absent;
+    };
+    let end = relative_predicate + 1;
+    (predicate < end)
+        .then_some(RelativeParse::Valid { end })
         .unwrap_or(RelativeParse::Absent)
+}
+
+fn malformed_direct_relative(words: &[&str], relative: usize, predicate: usize) -> bool {
+    let predicate_start = (relative + 1..=predicate)
+        .find(|index| relative_predicate_word(words[*index]))
+        .unwrap_or(predicate);
+    matches!(words[relative], "who" | "which")
+        && words
+            .get(relative + 1)
+            .is_some_and(|word| is_adverbial_modifier(word))
+        && words[relative + 1..predicate_start]
+            .iter()
+            .any(|word| !is_adverbial_modifier(word))
 }
 
 fn relative_finite_predicate(words: &[&str], relative: usize, predicate: usize) -> bool {
