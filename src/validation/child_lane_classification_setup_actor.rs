@@ -7,22 +7,23 @@ pub(super) enum SetupActor {
 }
 
 pub(super) fn explicit_subject(words: &[&str], start: usize, action: usize) -> Option<SetupActor> {
-    select_subject(words, start, action).or_else(|| {
-        let inherited_start = words[..start]
-            .iter()
-            .rposition(|word| *word == SENTENCE_BOUNDARY || matches!(*word, "but" | "however"))
-            .map(|index| index + 1)
-            .unwrap_or(0);
-        select_subject(words, inherited_start, action)
-    })
-}
-
-fn select_subject(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
-    together_with_subject_actor(words, start, end).or_else(|| {
-        let (subject, actor) = nearest_subject(words, start, end)?;
-        coordinated_subject_actor(words, start, subject)
-            .filter(|actor| *actor == SetupActor::Child)
-            .or(Some(actor))
+    together_with_subject_actor(words, start, action).or_else(|| {
+        let (subject, subject_start) = clause_subject(words, start, action)
+            .map(|subject| (subject, start))
+            .or_else(|| {
+                let inherited_start = words[..start]
+                    .iter()
+                    .rposition(|word| {
+                        *word == SENTENCE_BOUNDARY || matches!(*word, "but" | "however")
+                    })
+                    .map(|index| index + 1)
+                    .unwrap_or(0);
+                clause_subject(words, inherited_start, action)
+                    .map(|subject| (subject, inherited_start))
+            })?;
+        mixed_coordinated_subject(words, subject_start, subject.index)
+            .unwrap_or(subject.actor)
+            .into()
     })
 }
 
@@ -41,28 +42,129 @@ pub(super) fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Op
     saw_non_child.then_some(SetupActor::NonChild)
 }
 
-fn nearest_subject(words: &[&str], start: usize, end: usize) -> Option<(usize, SetupActor)> {
-    (start..end).rev().find_map(|index| {
-        (!actor_is_introduced_by(words, start, index)
+#[derive(Clone, Copy)]
+struct ClauseSubject {
+    index: usize,
+    actor: SetupActor,
+}
+
+fn clause_subject(words: &[&str], start: usize, action: usize) -> Option<ClauseSubject> {
+    let mut subject = initial_clause_subject(words, start, action)?;
+    for index in subject.index + 1..action {
+        if predicate_subject(words, start, index, action) {
+            subject = ClauseSubject {
+                index,
+                actor: actor_word(words[index])?,
+            };
+        }
+    }
+    Some(subject)
+}
+
+fn initial_clause_subject(words: &[&str], start: usize, action: usize) -> Option<ClauseSubject> {
+    (start..action).find_map(|index| {
+        (actor_word(words[index]).is_some()
+            && !actor_is_introduced_by(words, start, index)
             && !contrastive_actor(words, index)
-            && !relative_clause_object(words, start, index)
-            && !coordinated_predicate_object(words, start, index, end))
-        .then(|| actor_word(words[index]).map(|actor| (index, actor)))
+            && words[start..index]
+                .iter()
+                .all(|word| subject_modifier(word)))
+        .then(|| actor_word(words[index]).map(|actor| ClauseSubject { index, actor }))
         .flatten()
     })
 }
 
-fn relative_clause_object(words: &[&str], start: usize, actor: usize) -> bool {
-    let Some(relative) = words[start..actor]
+fn predicate_subject(words: &[&str], start: usize, index: usize, action: usize) -> bool {
+    actor_word(words[index]).is_some()
+        && !contrastive_actor(words, index)
+        && predicate_tail(words, index, action)
+        && predicate_introducer(words, start, index)
+}
+
+fn predicate_tail(words: &[&str], subject: usize, action: usize) -> bool {
+    words[subject + 1..action]
         .iter()
-        .rposition(|word| matches!(*word, "who" | "which" | "that"))
-        .map(|offset| start + offset)
+        .all(|word| subject_modifier(word) || predicate_modifier(word))
+}
+
+fn predicate_introducer(words: &[&str], start: usize, subject: usize) -> bool {
+    let Some(index) = (start..subject)
+        .rev()
+        .find(|index| !subject_modifier(words[*index]))
     else {
         return false;
     };
-    !words[relative + 1..actor]
+    words[index] == "and"
+        || report_clause_predicate(words[index])
+        || (words[index] == "then"
+            && (start..index)
+                .rev()
+                .find(|index| !subject_modifier(words[*index]))
+                == Some(index - 1)
+            && words[index - 1] == "and")
+}
+
+fn mixed_coordinated_subject(words: &[&str], start: usize, subject: usize) -> Option<SetupActor> {
+    let conjunction = (start..subject)
+        .rev()
+        .find(|index| !subject_modifier(words[*index]))?;
+    (words[conjunction] == "and").then_some(())?;
+    let previous = initial_clause_subject(words, start, conjunction)?;
+    (words[previous.index + 1..conjunction]
         .iter()
-        .any(|word| report_clause_predicate(word))
+        .all(|word| subject_modifier(word))
+        && previous.actor != actor_word(words[subject])?)
+    .then_some(SetupActor::Child)
+}
+
+fn contrastive_actor(words: &[&str], actor: usize) -> bool {
+    words.get(actor.saturating_sub(1)) == Some(&"not")
+        || (words.get(actor.saturating_sub(1)) == Some(&"the")
+            && words.get(actor.saturating_sub(2)) == Some(&"not"))
+}
+
+fn together_with_subject_actor(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
+    let together = (start..end).find(|index| words[*index] == "together")?;
+    let with = together + 1;
+    (words.get(with) == Some(&"with")).then_some(())?;
+    let first = initial_clause_subject(words, start, together)?;
+    let (second_index, second) =
+        (with + 1..end).find_map(|index| actor_word(words[index]).map(|actor| (index, actor)))?;
+    (words[first.index + 1..together]
+        .iter()
+        .chain(words[with + 1..second_index].iter())
+        .all(|word| subject_modifier(word)))
+    .then_some(if first.actor == second {
+        first.actor
+    } else {
+        SetupActor::Child
+    })
+}
+
+fn predicate_modifier(word: &str) -> bool {
+    word.ends_with("ly")
+        || matches!(
+            word,
+            "is" | "are"
+                | "was"
+                | "were"
+                | "be"
+                | "been"
+                | "being"
+                | "has"
+                | "have"
+                | "had"
+                | "will"
+                | "would"
+                | "can"
+                | "could"
+                | "may"
+                | "might"
+                | "should"
+                | "must"
+                | "not"
+                | "never"
+        )
 }
 
 fn report_clause_predicate(word: &str) -> bool {
@@ -81,49 +183,6 @@ fn report_clause_predicate(word: &str) -> bool {
             | "tells"
             | "told"
     )
-}
-
-fn coordinated_predicate_object(words: &[&str], start: usize, actor: usize, end: usize) -> bool {
-    (start..actor).any(|index| actor_word(words[index]).is_some())
-        && words[actor + 1..end]
-            .windows(2)
-            .any(|words| words == ["and", "then"])
-}
-
-fn contrastive_actor(words: &[&str], actor: usize) -> bool {
-    words.get(actor.saturating_sub(1)) == Some(&"not")
-        || (words.get(actor.saturating_sub(1)) == Some(&"the")
-            && words.get(actor.saturating_sub(2)) == Some(&"not"))
-}
-
-fn coordinated_subject_actor(words: &[&str], start: usize, subject: usize) -> Option<SetupActor> {
-    let conjunction = (start..subject)
-        .rev()
-        .find(|index| words[*index] == "and")?;
-    let (previous, actor) = nearest_subject(words, start, conjunction)?;
-    (words[previous + 1..conjunction]
-        .iter()
-        .chain(words[conjunction + 1..subject].iter())
-        .all(|word| subject_modifier(word)))
-    .then_some(actor)
-}
-
-fn together_with_subject_actor(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
-    let together = (start..end).find(|index| words[*index] == "together")?;
-    let with = together + 1;
-    (words.get(with) == Some(&"with")).then_some(())?;
-    let (first_index, first) = nearest_subject(words, start, together)?;
-    let (second_index, second) =
-        (with + 1..end).find_map(|index| actor_word(words[index]).map(|actor| (index, actor)))?;
-    (words[first_index + 1..together]
-        .iter()
-        .chain(words[with + 1..second_index].iter())
-        .all(|word| subject_modifier(word)))
-    .then_some(if first == second {
-        first
-    } else {
-        SetupActor::Child
-    })
 }
 
 fn subject_modifier(word: &str) -> bool {

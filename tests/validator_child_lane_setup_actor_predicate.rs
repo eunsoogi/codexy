@@ -109,3 +109,63 @@ fn validator_binds_setup_predicates_to_structural_clause_subjects() -> TestResul
     }
     Ok(())
 }
+
+#[test]
+fn validator_tracks_governing_subjects_across_predicate_and_relative_boundaries(
+) -> TestResult {
+    for (label, setup, expected) in [
+        (
+            "plain and retains the parent subject after a child object",
+            "The parent reviewed the child and created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "plain and retains the child subject after a parent object",
+            "The child reviewed the parent and created branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "relative report child object does not replace the parent subject",
+            "The parent who told the child about review created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "relative report parent object does not replace the child subject",
+            "The child who told the parent about review created branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "possessive relative child does not replace the parent subject",
+            "The parent whose child reviewed it created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "possessive relative parent does not replace the child subject",
+            "The child whose parent reviewed it created branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "reported child subject overrides the parent reporter",
+            "The parent reports the child created branch codexy/463 after classification.",
+            false,
+        ),
+        (
+            "reported parent subject overrides the child reporter",
+            "The child reports the parent created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "and then retains the parent subject after a child object",
+            "The parent reviewed the child and then created branch codexy/463 after classification.",
+            true,
+        ),
+        (
+            "and then retains the child subject after a parent object",
+            "The child reviewed the parent and then created branch codexy/463 after classification.",
+            false,
+        ),
+    ] {
+        assert_result(label, setup, expected)?;
+    }
+    Ok(())
+}

@@ -4,6 +4,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 fn validator_binds_each_actor_to_its_branch_or_worktree_setup_action() -> TestResult {
     for (label, setup, expected) in [
         ("unrelated action before child branch setup", "The parent set requirements then the child created branch codexy/463 before classification.", false),
+        ("unrelated action before parent branch setup", "The child set requirements then the parent created branch codexy/463 before classification.", true),
         ("unrelated action after child worktree setup", "The child checked out worktree for codexy/463 after classification, then the parent set requirements.", false),
         ("parent setup then child setup fails closed", "The parent created branch codexy/parent, then the child created branch codexy/463 after classification.", false),
         ("child setup then orchestrator setup fails closed", "The child set up worktree for codexy/463; then the orchestrator set up worktree for codexy/parent.", false),
