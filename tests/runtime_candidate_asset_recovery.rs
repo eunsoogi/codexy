@@ -1,7 +1,9 @@
-use std::{fs, os::unix::fs::PermissionsExt as _, path::{Path, PathBuf}, process::Command};
+use std::{fs, path::{Path, PathBuf}, process::Command};
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
+
+use crate::support::make_executable;
 
 #[test]
 fn existing_assets_stabilize_retry_bytes_with_a_success_binding() -> Result<(), Box<dyn std::error::Error>> {
@@ -178,8 +180,6 @@ case "$1" in
   *) exit 64 ;;
 esac
 "##)?;
-    let mut permissions = fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(path, permissions)?;
+    make_executable(path)?;
     Ok(())
 }

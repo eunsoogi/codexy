@@ -1,12 +1,13 @@
 use std::{
     fs,
-    os::unix::fs::PermissionsExt as _,
     path::{Path, PathBuf},
     process::{Command, Output},
 };
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
+
+use crate::support::make_executable;
 
 mod metadata;
 
@@ -234,7 +235,5 @@ fn command(command: &mut Command) -> Result<(), Box<dyn std::error::Error>> {
 
 fn executable(path: &Path, source: &str) -> std::io::Result<()> {
     fs::write(path, source)?;
-    let mut permissions = fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(path, permissions)
+    make_executable(path)
 }

@@ -1,9 +1,10 @@
 use std::{
     fs,
-    os::unix::fs::PermissionsExt as _,
     path::{Path, PathBuf},
     process::Command,
 };
+
+use crate::support::make_executable;
 
 #[path = "runtime_activation_branch_recovery/real.rs"]
 mod real;
@@ -205,7 +206,5 @@ done
 
 fn executable(path: &Path, source: &str) -> std::io::Result<()> {
     fs::write(path, source)?;
-    let mut permissions = fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(path, permissions)
+    make_executable(path)
 }

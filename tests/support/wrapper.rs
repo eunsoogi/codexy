@@ -200,7 +200,10 @@ pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
         permissions.set_mode(0o755);
         std::fs::set_permissions(path, permissions)?;
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    // Windows does not use Unix executable mode bits for these fixture files.
+    let _ = path;
+    #[cfg(all(not(unix), not(windows)))]
     let _ = path;
     Ok(())
 }
