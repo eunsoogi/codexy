@@ -109,6 +109,9 @@ mod runtime_platform_detection;
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;
 
+#[path = "../skill_boundary_taxonomy.rs"]
+mod skill_boundary_taxonomy;
+
 #[path = "../session_audit_parent_bounds.rs"]
 mod session_audit_parent_bounds;
 
