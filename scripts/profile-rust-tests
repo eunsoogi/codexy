@@ -10,6 +10,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from collections import Counter
 from pathlib import Path
@@ -43,31 +44,32 @@ def archive_fixture_nested_cargo_build_count(root: Path) -> int:
     return source.count('Command::new("cargo")')
 def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
     started = time.perf_counter()
-    process = subprocess.Popen(
-        WORKLOAD,
-        cwd=root,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        start_new_session=os.name == "posix",
-    )
-    try:
-        output, _ = process.communicate(timeout=budget_seconds)
-    except subprocess.TimeoutExpired as error:
-        if os.name == "posix":
-            os.killpg(process.pid, signal.SIGKILL)
-        else:
-            process.kill()
-        remainder, _ = process.communicate()
-        partial = error.output or ""
-        if isinstance(partial, bytes):
-            partial = partial.decode(errors="replace")
-        output = remainder or partial
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as capture:
+        process = subprocess.Popen(
+            WORKLOAD,
+            cwd=root,
+            stdout=capture,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=os.name == "posix",
+        )
+        try:
+            status = process.wait(timeout=budget_seconds)
+        except subprocess.TimeoutExpired:
+            if os.name == "posix":
+                os.killpg(process.pid, signal.SIGKILL)
+            else:
+                process.kill()
+            process.wait()
+            status = 124
+        capture.seek(0)
+        output = capture.read()
+    if status == 124:
         sys.stdout.write(output)
         return output, budget_seconds, 124
     elapsed = time.perf_counter() - started
     sys.stdout.write(output)
-    return output, elapsed, process.returncode
+    return output, elapsed, status
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
