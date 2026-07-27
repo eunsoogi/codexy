@@ -46,12 +46,16 @@ fn touched_loc_accepts_cohesive_workflow_script_extraction() -> TestResult {
 
 #[test]
 fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
+    let repo = fixture(".github/workflows/release.yml", workflow_baseline())?;
+    let root = repo.path();
     assert_workflow_extraction_with_script(
+        root,
         r#"scripts/validate-plugin-config --check-touched-loc --base-ref "origin/${{ github.base_ref }}""#,
         "scripts/validate-plugin-config",
         true,
     )?;
     assert_multiline_workflow_extraction(
+        root,
         "scripts/reconcile-release --message release\nbuild",
         false,
     )?;
@@ -66,7 +70,7 @@ fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
         "scripts/reconcile-release --tag \"${RELEASE_TAG}\"",
         r#"scripts/reconcile-release --artifact "release-${{ github.run_id }}""#,
     ] {
-        assert_workflow_extraction(command, true)?;
+        assert_workflow_extraction(root, command, true)?;
     }
     for command in [
         "\"scripts/reconcile-release\" --check",
@@ -107,52 +111,58 @@ fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
         "scripts/../reconcile-release --check",
         "cargo run --bin reconcile-release",
     ] {
-        assert_workflow_extraction(command, false)?;
+        assert_workflow_extraction(root, command, false)?;
     }
     Ok(())
 }
 
-fn assert_multiline_workflow_extraction(command: &str, accepted: bool) -> TestResult {
-    let baseline = format!(
-        "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n{}",
-        regular_lines(247)
-    );
-    let repo = fixture(".github/workflows/release.yml", baseline)?;
+fn assert_multiline_workflow_extraction(
+    root: &std::path::Path,
+    command: &str,
+    accepted: bool,
+) -> TestResult {
     let indented = command.replace('\n', "\n          ");
     write(
-        repo.path(),
+        root,
         ".github/workflows/release.yml",
         &format!(
             "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n          {indented}\n"
         ),
     )?;
-    write(repo.path(), "scripts/reconcile-release", &regular_lines(247))?;
-    let output = validate(repo.path())?;
+    write(root, "scripts/reconcile-release", &regular_lines(247))?;
+    let output = validate(root)?;
     assert_eq!(output.status.success(), accepted, "{command}: {}", stderr(&output));
     Ok(())
 }
 
-fn assert_workflow_extraction(command: &str, accepted: bool) -> TestResult {
-    assert_workflow_extraction_with_script(command, "scripts/reconcile-release", accepted)
+fn assert_workflow_extraction(
+    root: &std::path::Path,
+    command: &str,
+    accepted: bool,
+) -> TestResult {
+    assert_workflow_extraction_with_script(root, command, "scripts/reconcile-release", accepted)
 }
 
 fn assert_workflow_extraction_with_script(
+    root: &std::path::Path,
     command: &str,
     extracted_script: &str,
     accepted: bool,
 ) -> TestResult {
-    let baseline = format!(
-        "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n{}",
-        regular_lines(247)
-    );
-    let repo = fixture(".github/workflows/release.yml", baseline)?;
     write(
-        repo.path(),
+        root,
         ".github/workflows/release.yml",
         &format!("name: fixture\njobs:\n  release:\n    steps:\n      - run: {command}\n"),
     )?;
-    write(repo.path(), extracted_script, &regular_lines(247))?;
-    let output = validate(repo.path())?;
+    write(root, extracted_script, &regular_lines(247))?;
+    let output = validate(root)?;
     assert_eq!(output.status.success(), accepted, "{command}: {}", stderr(&output));
     Ok(())
+}
+
+fn workflow_baseline() -> String {
+    format!(
+        "name: fixture\njobs:\n  release:\n    steps:\n      - run: |\n{}",
+        regular_lines(247)
+    )
 }
