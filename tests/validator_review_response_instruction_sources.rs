@@ -1,4 +1,6 @@
-use crate::support::{stderr, TestResult};
+use std::path::Path;
+
+use crate::support::{PluginFixture, stderr, TestResult};
 
 const SENTINEL_PATH: &str = "agents/codexy-sentinel.toml";
 const SENTINEL_CLAUSE: &str =
@@ -12,14 +14,15 @@ const MUTABLE_FILES: &[&str] = &[
     ORCHESTRATION_PATH,
 ];
 
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+fn plugin_fixture() -> TestResult<PluginFixture> {
     let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
-    Ok(crate::support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
+    Ok(crate::support::plugin_fixture_with_mutable_files(&mutable_files)?)
 }
 
 #[test]
 fn active_review_cluster_contract_sources_pass() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let output = crate::support::validator_instruction_policy(&plugin_root)?;
     assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
     Ok(())
@@ -27,7 +30,8 @@ fn active_review_cluster_contract_sources_pass() -> TestResult {
 
 #[test]
 fn toml_comments_cannot_satisfy_review_cluster_contracts() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let path = plugin_root.join(SENTINEL_PATH);
     let text = std::fs::read_to_string(&path)?;
     let replaced = text.replacen(SENTINEL_CLAUSE, "Removed active Sentinel contract.", 1);
@@ -40,6 +44,8 @@ fn toml_comments_cannot_satisfy_review_cluster_contracts() -> TestResult {
 
 #[test]
 fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for inactive in [
         format!("<!-- {ORCHESTRATION_CLAUSE} -->"),
         format!("```text\n{ORCHESTRATION_CLAUSE}\n```"),
@@ -54,7 +60,7 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
         format!("<head>\n{ORCHESTRATION_CLAUSE}\n</head>"),
         format!("<pre>\n<!-- </pre> -->\n{ORCHESTRATION_CLAUSE}\n</pre>"),
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(Path::new(ORCHESTRATION_PATH))?;
         let path = plugin_root.join(ORCHESTRATION_PATH);
         let text = std::fs::read_to_string(&path)?;
         let replaced = text.replacen(
@@ -71,7 +77,8 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
 
 #[test]
 fn inline_code_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let path = plugin_root.join(ORCHESTRATION_PATH);
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
@@ -90,7 +97,8 @@ fn inline_code_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
 
 #[test]
 fn escaped_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let path = plugin_root.join(ORCHESTRATION_PATH);
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
@@ -109,8 +117,10 @@ fn escaped_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
 
 #[test]
 fn standard_unordered_bullets_keep_active_contracts() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for marker in ["-", "+", "*"] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(Path::new(ORCHESTRATION_PATH))?;
         let path = plugin_root.join(ORCHESTRATION_PATH);
         let text = std::fs::read_to_string(&path)?;
         std::fs::write(
@@ -134,7 +144,8 @@ fn standard_unordered_bullets_keep_active_contracts() -> TestResult {
 
 #[test]
 fn real_html_close_after_commented_close_restores_active_contracts() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let path = plugin_root.join(ORCHESTRATION_PATH);
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
@@ -153,7 +164,8 @@ fn real_html_close_after_commented_close_restores_active_contracts() -> TestResu
 
 #[test]
 fn fenced_toml_prompt_examples_cannot_satisfy_review_cluster_contract() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let path = plugin_root.join(SENTINEL_PATH);
     let text = std::fs::read_to_string(&path)?;
     let fenced = text.replacen(
@@ -169,7 +181,8 @@ fn fenced_toml_prompt_examples_cannot_satisfy_review_cluster_contract() -> TestR
 
 #[test]
 fn negated_markdown_clause_cannot_satisfy_review_cluster_contract() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let path = plugin_root.join(ORCHESTRATION_PATH);
     let text = std::fs::read_to_string(&path)?;
     let negated = text.replacen(
@@ -184,7 +197,8 @@ fn negated_markdown_clause_cannot_satisfy_review_cluster_contract() -> TestResul
 
 #[test]
 fn trailing_disclaimer_cannot_satisfy_review_cluster_contract() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let path = plugin_root.join(ORCHESTRATION_PATH);
     let text = std::fs::read_to_string(&path)?;
     let disclaimed = text.replacen(

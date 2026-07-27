@@ -1,27 +1,20 @@
-use super::{TestResult, copy_plugin_fixture_with_mutable_files, stderr, validator};
+use super::{TestResult, stderr, validator};
 
-const GOVERNED_SKILLS: &[&str] = &[
-    "skills/git-workflow/SKILL.md",
-    "skills/plugin-marketplace-prep/SKILL.md",
-    "skills/proof-driven-completion/SKILL.md",
-    "skills/refactoring/SKILL.md",
-];
-
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
-    copy_plugin_fixture_with_mutable_files(GOVERNED_SKILLS)
-}
+#[path = "loc_exception_fixture.rs"]
+mod fixture;
+use fixture::{GOVERNED_SKILLS, REFERENCE_PATH, plugin_fixture, reset_text};
 
 #[test]
 fn validator_cli_rejects_loc_exception_allowances_in_governed_skills() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for allowance in [
         "A tracked Codexy LOC exception MAY exempt a governed file from the 250 LOC contract.",
         "A governed file MAY exceed 250 LOC when a tracked waiver contains a narrow maintained rationale.",
         "## LOC exceptions\n\n- A tracked entry MAY exempt a governed file.",
     ] {
         for skill in GOVERNED_SKILLS {
-            let (_temp, plugin_root) = copy_plugin_fixture()?;
-            let skill_path = plugin_root.join(skill);
-            let text = std::fs::read_to_string(&skill_path)?;
+            let (skill_path, text) = reset_text(&fixture, skill)?;
             std::fs::write(&skill_path, format!("{text}\n- {allowance}\n"))?;
 
             let output = validator(&plugin_root, "--check")?;
@@ -37,10 +30,10 @@ fn validator_cli_rejects_loc_exception_allowances_in_governed_skills() -> TestRe
 
 #[test]
 fn validator_cli_allows_negated_loc_exception_prohibition() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
-        let text = std::fs::read_to_string(&skill_path)?;
+        let (skill_path, text) = reset_text(&fixture, skill)?;
         std::fs::write(
             &skill_path,
             format!("{text}\n- MUST NOT allow LOC exceptions.\n"),
@@ -54,12 +47,16 @@ fn validator_cli_allows_negated_loc_exception_prohibition() -> TestResult {
 
 #[test]
 fn validator_cli_checks_loc_allowances_in_governed_skill_references() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for (addition, rejects) in [
         ("LOC exceptions MAY be used after review.", true),
         ("LOC exceptions MUST NOT be used after review.", false),
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let reference = plugin_root.join("skills/wiki/references/loc-policy.md");
+        let reference = plugin_root.join(REFERENCE_PATH);
+        if reference.exists() {
+            std::fs::remove_file(&reference)?;
+        }
         std::fs::write(reference, format!("# Reference\n\n{addition}\n"))?;
 
         let output = validator(&plugin_root, "--check")?;
@@ -75,6 +72,8 @@ fn validator_cli_checks_loc_allowances_in_governed_skill_references() -> TestRes
 
 #[test]
 fn validator_cli_rejects_passive_loc_exception_allowances() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for allowance in [
         "LOC exceptions are allowed when approved.",
         "LOC exceptions are permitted after review.",
@@ -84,9 +83,7 @@ fn validator_cli_rejects_passive_loc_exception_allowances() -> TestResult {
         "LOC exceptions are exempted from the 250 LOC limit.",
     ] {
         for skill in GOVERNED_SKILLS {
-            let (_temp, plugin_root) = copy_plugin_fixture()?;
-            let skill_path = plugin_root.join(skill);
-            let text = std::fs::read_to_string(&skill_path)?;
+            let (skill_path, text) = reset_text(&fixture, skill)?;
             std::fs::write(&skill_path, format!("{text}\n- {allowance}\n"))?;
 
             let output = validator(&plugin_root, "--check")?;
@@ -102,10 +99,10 @@ fn validator_cli_rejects_passive_loc_exception_allowances() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_mixed_polarity_loc_exception_authorization() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
-        let text = std::fs::read_to_string(&skill_path)?;
+        let (skill_path, text) = reset_text(&fixture, skill)?;
         std::fs::write(
             &skill_path,
             format!(
@@ -122,15 +119,15 @@ fn validator_cli_rejects_mixed_polarity_loc_exception_authorization() -> TestRes
 
 #[test]
 fn validator_cli_rejects_loc_exception_carve_outs() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for carve_out in [
         "LOC exceptions MUST NOT be allowed except by maintainer approval.",
         "LOC exceptions MUST NOT be permitted except when security review approves them.",
         "LOC exceptions MUST NOT be authorized other than with maintainer approval.",
     ] {
         for skill in GOVERNED_SKILLS {
-            let (_temp, plugin_root) = copy_plugin_fixture()?;
-            let skill_path = plugin_root.join(skill);
-            let text = std::fs::read_to_string(&skill_path)?;
+            let (skill_path, text) = reset_text(&fixture, skill)?;
             std::fs::write(&skill_path, format!("{text}\n- {carve_out}\n"))?;
 
             let output = validator(&plugin_root, "--check")?;
@@ -146,6 +143,8 @@ fn validator_cli_rejects_loc_exception_carve_outs() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_waiver_after_safe_prohibition_across_clause_boundaries() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for skill in GOVERNED_SKILLS {
         for clauses in [
             "MUST NOT collapse readable multiline code.\n- A governed file MAY exceed 250 LOC when a waiver is approved.",
@@ -153,9 +152,7 @@ fn validator_cli_rejects_waiver_after_safe_prohibition_across_clause_boundaries(
             "MUST NOT collapse readable multiline code; A governed file MAY exceed 250 LOC when a waiver is approved.",
             "MUST NOT collapse readable multiline code, but a governed file MAY exceed 250 LOC when a waiver is approved.",
         ] {
-            let (_temp, plugin_root) = copy_plugin_fixture()?;
-            let skill_path = plugin_root.join(skill);
-            let text = std::fs::read_to_string(&skill_path)?;
+            let (skill_path, text) = reset_text(&fixture, skill)?;
             std::fs::write(
                 &skill_path,
                 format!(
@@ -176,10 +173,10 @@ fn validator_cli_rejects_waiver_after_safe_prohibition_across_clause_boundaries(
 
 #[test]
 fn validator_cli_rejects_missing_unconditional_loc_contract() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
-        let text = std::fs::read_to_string(&skill_path)?;
+        let (skill_path, text) = reset_text(&fixture, skill)?;
         std::fs::write(
             &skill_path,
             text.replace(
@@ -197,10 +194,10 @@ fn validator_cli_rejects_missing_unconditional_loc_contract() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_negated_unconditional_loc_contract() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
-        let text = std::fs::read_to_string(&skill_path)?;
+        let (skill_path, text) = reset_text(&fixture, skill)?;
         let text = text.replace(
             "MUST stay at or below 250 LOC",
             "MAY stay at or below 250 LOC",
@@ -221,7 +218,8 @@ fn validator_cli_rejects_negated_unconditional_loc_contract() -> TestResult {
 
 #[test]
 fn current_refactoring_and_sentinel_surfaces_prohibit_exceptions() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let refactoring = std::fs::read_to_string(plugin_root.join("skills/refactoring/SKILL.md"))?;
     let sentinel = std::fs::read_to_string(plugin_root.join("agents/codexy-sentinel.toml"))?;
     assert!(!refactoring.contains("remaining large-file exceptions"));
@@ -233,7 +231,8 @@ fn current_refactoring_and_sentinel_surfaces_prohibit_exceptions() -> TestResult
 
 #[test]
 fn plugin_marketplace_loc_contract_stays_nested_under_architecture_check() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = plugin_fixture()?;
+    let plugin_root = fixture.root();
     let skill =
         std::fs::read_to_string(plugin_root.join("skills/plugin-marketplace-prep/SKILL.md"))?;
     assert!(skill.contains(

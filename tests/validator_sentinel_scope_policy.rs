@@ -1,6 +1,9 @@
 use crate::support;
 
 use support::{TestResult, stderr};
+use super::validator_sentinel_scope_policy_fixture::{
+    LIVE_OBSERVATION_CLAUSE, LIVE_OBSERVATION_SKILLS, fixture,
+};
 
 const SENTINEL_SCOPE_CLAUSES: &[&str] = &[
     "MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.",
@@ -59,31 +62,12 @@ const LIVE_SENTINEL_EXEMPTIONS: &[&str] = &[
     "```text\nRoot MAY poll a live Sentinel.\n```",
 ];
 
-const LIVE_OBSERVATION_SKILLS: &[&str] = &[
-    "codex-orchestration",
-    "proof-driven-completion",
-    "token-efficient-orchestration",
-];
-
-const LIVE_OBSERVATION_CLAUSE: &str =
-    "Live Sentinel observation MUST be read-only and event-driven.";
-
-const MUTABLE_FILES: &[&str] = &[
-    "agents/codexy-sentinel.toml",
-    "skills/codex-orchestration/SKILL.md",
-    "skills/proof-driven-completion/SKILL.md",
-    "skills/token-efficient-orchestration/SKILL.md",
-];
-
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
-    let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
-    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
-}
-
 #[test]
 fn validator_cli_rejects_missing_sentinel_scope_policy() -> TestResult {
+    let fixture = fixture()?;
     for clause in SENTINEL_SCOPE_CLAUSES {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new("agents/codexy-sentinel.toml"))?;
+        let plugin_root = fixture.root();
         let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
         let agent = std::fs::read_to_string(&agent_path)?;
         std::fs::write(&agent_path, agent.replace(clause, "removed policy clause."))?;
@@ -97,8 +81,10 @@ fn validator_cli_rejects_missing_sentinel_scope_policy() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_missing_orchestration_scope_policy() -> TestResult {
+    let fixture = fixture()?;
     for clause in SENTINEL_SCOPE_CLAUSES {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        let plugin_root = fixture.root();
         let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, skill.replace(clause, "removed policy clause."))?;
@@ -112,8 +98,10 @@ fn validator_cli_rejects_missing_orchestration_scope_policy() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_contradictory_sentinel_scope_policy() -> TestResult {
+    let fixture = fixture()?;
     for contradiction in CONTRADICTORY_SCOPE_POLICY {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new("agents/codexy-sentinel.toml"))?;
+        let plugin_root = fixture.root();
         let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
         let agent = std::fs::read_to_string(&agent_path)?;
         let agent = agent.replacen("\n\"\"\"\n", &format!("\n{contradiction}\n\"\"\"\n"), 1);
@@ -128,8 +116,10 @@ fn validator_cli_rejects_contradictory_sentinel_scope_policy() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_contradictory_orchestration_scope_policy() -> TestResult {
+    let fixture = fixture()?;
     for contradiction in CONTRADICTORY_SCOPE_POLICY {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        let plugin_root = fixture.root();
         let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{contradiction}\n"))?;
@@ -143,8 +133,10 @@ fn validator_cli_rejects_contradictory_orchestration_scope_policy() -> TestResul
 
 #[test]
 fn validator_cli_accepts_scope_policy_prohibitions() -> TestResult {
+    let fixture = fixture()?;
     for prohibition in SCOPE_POLICY_PROHIBITIONS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new("agents/codexy-sentinel.toml"))?;
+        let plugin_root = fixture.root();
         let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
         let agent = std::fs::read_to_string(&agent_path)?;
         let agent = agent.replacen("\n\"\"\"\n", &format!("\n{prohibition}\n\"\"\"\n"), 1);
@@ -156,6 +148,7 @@ fn validator_cli_accepts_scope_policy_prohibitions() -> TestResult {
             stderr(&output)
         );
 
+        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
         let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{prohibition}\n"))?;
@@ -171,8 +164,10 @@ fn validator_cli_accepts_scope_policy_prohibitions() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_live_sentinel_controls_but_allows_exemptions() -> TestResult {
+    let fixture = fixture()?;
     for control in LIVE_SENTINEL_CONTROLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        let plugin_root = fixture.root();
         let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{control}\n"))?;
@@ -180,7 +175,8 @@ fn validator_cli_rejects_live_sentinel_controls_but_allows_exemptions() -> TestR
         assert!(!output.status.success(), "{control:?} was permitted");
     }
     for exemption in LIVE_SENTINEL_EXEMPTIONS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        let plugin_root = fixture.root();
         let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{exemption}\n"))?;
@@ -196,7 +192,8 @@ fn validator_cli_rejects_live_sentinel_controls_but_allows_exemptions() -> TestR
 
 #[test]
 fn validator_cli_keeps_live_observation_out_of_sentinel_role_scope() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let fixture = fixture()?;
+    let plugin_root = fixture.root();
     let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
     let agent = std::fs::read_to_string(&agent_path)?;
     let agent = agent.replacen(
@@ -212,8 +209,11 @@ fn validator_cli_keeps_live_observation_out_of_sentinel_role_scope() -> TestResu
 
 #[test]
 fn validator_cli_rejects_missing_or_contradictory_live_policy_in_every_skill() -> TestResult {
+    let fixture = fixture()?;
     for skill in LIVE_OBSERVATION_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let relative = format!("skills/{skill}/SKILL.md");
+        fixture.reset_file(std::path::Path::new(&relative))?;
+        let plugin_root = fixture.root();
         let path = plugin_root.join(format!("skills/{skill}/SKILL.md"));
         let text = std::fs::read_to_string(&path)?;
         std::fs::write(
@@ -225,7 +225,7 @@ fn validator_cli_rejects_missing_or_contradictory_live_policy_in_every_skill() -
             "{skill}"
         );
 
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        fixture.reset_file(std::path::Path::new(&relative))?;
         let path = plugin_root.join(format!("skills/{skill}/SKILL.md"));
         let text = std::fs::read_to_string(&path)?;
         std::fs::write(&path, format!("{text}\nRoot MAY poll a live Sentinel.\n"))?;
@@ -241,8 +241,6 @@ fn validator(
     plugin_root: &std::path::Path,
     mode: &str,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    if mode == "--check" {
-        return support::validator_instruction_policy(plugin_root);
-    }
-    support::validator(plugin_root, mode)
+    if mode == "--check" { support::validator_instruction_policy(plugin_root) }
+    else { support::validator(plugin_root, mode) }
 }

@@ -205,13 +205,6 @@ fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     Ok((temp, plugin_root))
 }
 
-fn copy_plugin_fixture_with_mutable_files(
-    mutable_files: &[&str],
-) -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let mutable_files = mutable_files.iter().map(Path::new).collect::<Vec<_>>();
-    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
-}
-
 fn copy_repo_fixture() -> TestResult<(tempfile::TempDir, PathBuf, PathBuf)> {
     let temp = tempfile::tempdir()?;
     let repo_root = temp.path().join("repo");
