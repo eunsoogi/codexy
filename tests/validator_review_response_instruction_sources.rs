@@ -1,4 +1,4 @@
-use crate::support::{copy_plugin_fixture, stderr, TestResult};
+use crate::support::{stderr, TestResult};
 
 const SENTINEL_PATH: &str = "agents/codexy-sentinel.toml";
 const SENTINEL_CLAUSE: &str =
@@ -6,6 +6,16 @@ const SENTINEL_CLAUSE: &str =
 const ORCHESTRATION_PATH: &str = "skills/codex-orchestration/SKILL.md";
 const ORCHESTRATION_CLAUSE: &str =
     "Before review-response edits, MUST create one root-cause cluster for each actionable defect class.";
+
+const MUTABLE_FILES: &[&str] = &[
+    SENTINEL_PATH,
+    ORCHESTRATION_PATH,
+];
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
+    Ok(crate::support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
+}
 
 #[test]
 fn active_review_cluster_contract_sources_pass() -> TestResult {

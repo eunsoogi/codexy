@@ -1,6 +1,13 @@
 use crate::support;
 
-use support::{TestResult, copy_plugin_fixture, stderr, validator_instruction_policy};
+use support::{TestResult, stderr, validator_instruction_policy};
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    support::copy_plugin_fixture_with_mutable_files(&[
+        std::path::Path::new("skills/codex-orchestration/references/thread-and-worktree-routing.md"),
+    ])
+    .map_err(Into::into)
+}
 
 #[test]
 fn validator_cli_rejects_missing_live_worktree_reservation_preflight() -> TestResult {

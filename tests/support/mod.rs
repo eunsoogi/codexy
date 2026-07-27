@@ -14,6 +14,8 @@ mod fixture_text;
 mod package;
 mod package_archive;
 mod package_fixture;
+mod plugin_fixture;
+mod plugin_fixture_copy;
 mod profile_metrics;
 pub(crate) mod release_archive;
 mod release_cache;
@@ -23,7 +25,6 @@ mod release_cache_git_fallback;
 mod release_cache_release_match;
 mod release_cache_resources;
 mod release_version;
-mod roles_fixture;
 pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
 pub(crate) mod workflow_contract;
@@ -38,9 +39,8 @@ pub(crate) use agent_model_assignments::{
     validate_agent_replacement, validate_catalog_replacement,
 };
 pub(crate) use child_thread_ledger_skill::{
-    PluginFixture, copy_plugin_fixture, plugin_fixture, stderr, validator,
-    validator_child_lane_ownership_file, validator_completion_handoff_files, validator_in_process,
-    validator_instruction_policy, validator_routing,
+    stderr, validator, validator_child_lane_ownership_file, validator_completion_handoff_files,
+    validator_in_process, validator_instruction_policy, validator_routing,
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
@@ -61,6 +61,10 @@ pub(super) use package::{
     assert_wrapper_requires_token_for_default_artifact_without_cargo,
     assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo,
 };
+pub(crate) use plugin_fixture::{
+    PluginFixture, copy_plugin_fixture, copy_plugin_fixture_with_mutable_files, plugin_fixture,
+    plugin_fixture_with_mutable_files, roles_fixture,
+};
 pub(crate) use release_archive::assert_structured_literals;
 pub(super) use release_cache::{
     assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
@@ -80,7 +84,6 @@ pub(super) use release_cache_release_match::{
     assert_wrapper_rejects_stale_default_release_then_accepts_matching_release,
 };
 pub(super) use release_cache_resources::assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest;
-pub(crate) use roles_fixture::roles_fixture;
 pub(crate) use wrapper::{
     WrapperCommandExt, WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo,
     make_executable, run_wrapper, run_wrapper_command, run_wrapper_command_with_timeout,

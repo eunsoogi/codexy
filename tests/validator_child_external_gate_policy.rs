@@ -4,6 +4,13 @@ use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    crate::support::copy_plugin_fixture_with_mutable_files(&[
+        std::path::Path::new("skills/codex-orchestration/SKILL.md"),
+    ])
+    .map_err(Into::into)
+}
+
 #[test]
 fn validator_requires_child_external_gate_and_archive_preflight_policy() -> TestResult {
     for (required, replacement, error_fragment) in [
@@ -33,7 +40,7 @@ fn validator_requires_child_external_gate_and_archive_preflight_policy() -> Test
             "invoke exactly one fresh sentinel review for the new file state or head",
         ),
     ] {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         let original = fs::read_to_string(&path)?;
         fs::write(&path, original.replace(required, replacement))?;
@@ -54,7 +61,7 @@ fn validator_rejects_blocked_goal_or_replacement_thread_policy() -> TestResult {
         "MUST call update_goal(status=\"blocked\") after a Sentinel BLOCK.",
         "MUST create a replacement thread after a Sentinel BLOCK.",
     ] {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
         fs::write(
             &path,
@@ -73,7 +80,7 @@ fn validator_rejects_blocked_goal_or_replacement_thread_policy() -> TestResult {
 
 #[test]
 fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     fs::write(
         &path,
@@ -91,7 +98,7 @@ fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
 
 #[test]
 fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let original = fs::read_to_string(&path)?;
     fs::write(
@@ -165,7 +172,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
 
 #[test]
 fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let original = fs::read_to_string(&path)?;
     fs::write(
@@ -184,7 +191,7 @@ fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> T
 
 #[test]
 fn validator_allows_compliant_negated_polling_prohibitions() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     fs::write(
         &path,
@@ -201,7 +208,7 @@ fn validator_allows_compliant_negated_polling_prohibitions() -> TestResult {
 
 #[test]
 fn validator_rejects_inline_code_delimited_forbidden_policy() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let original = fs::read_to_string(&path)?;
     fs::write(

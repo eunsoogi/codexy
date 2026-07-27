@@ -53,6 +53,13 @@ const ADJACENT_MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget.\n## File churn MAY renew the budget.",
 ];
 
+const MUTABLE_FILES: &[&str] = &["skills/codex-orchestration/references/execution-budget.md"];
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
+    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
+}
+
 fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
     plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
 }
@@ -73,7 +80,7 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
         ))
         .expect("execution-budget contract must require a finite child-lane budget");
     for clause in REQUIRED_CLAUSES {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = budget_path(&plugin_root);
         let original = fs::read_to_string(&path)?;
         fs::write(
@@ -91,7 +98,7 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
 #[test]
 fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult {
     for countermand in RENEWAL_COUNTERMANDS.iter().chain(OTHER_COUNTERMANDS) {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = budget_path(&plugin_root);
         let original = fs::read_to_string(&path)?;
         let sequence = format!(
@@ -112,7 +119,7 @@ fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult 
 #[test]
 fn validator_rejects_mixed_polarity_countermand() -> TestResult {
     for countermand in MIXED_POLARITY_COUNTERMANDS {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = budget_path(&plugin_root);
         let original = fs::read_to_string(&path)?;
         fs::write(
@@ -135,7 +142,7 @@ fn validator_rejects_mixed_polarity_countermand() -> TestResult {
 #[test]
 fn validator_rejects_adjacent_mixed_polarity_countermand() -> TestResult {
     for countermand in ADJACENT_MIXED_POLARITY_COUNTERMANDS {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture()?;
         let path = budget_path(&plugin_root);
         let original = fs::read_to_string(&path)?;
         fs::write(&path, format!("{original}\n{countermand}\n"))?;
@@ -152,7 +159,7 @@ fn validator_rejects_adjacent_mixed_polarity_countermand() -> TestResult {
 
 #[test]
 fn validator_rejects_numbered_metadata_countermand() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = budget_path(&plugin_root);
     let original = fs::read_to_string(&path)?;
     fs::write(
@@ -171,7 +178,7 @@ fn validator_rejects_numbered_metadata_countermand() -> TestResult {
 
 #[test]
 fn validator_allows_benign_markdown_heading_and_comment() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = budget_path(&plugin_root);
     let original = fs::read_to_string(&path)?;
     fs::write(
@@ -192,7 +199,7 @@ fn validator_allows_benign_markdown_heading_and_comment() -> TestResult {
 
 #[test]
 fn validator_allows_multiline_html_comment() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = budget_path(&plugin_root);
     let original = fs::read_to_string(&path)?;
     fs::write(
@@ -211,7 +218,7 @@ fn validator_allows_multiline_html_comment() -> TestResult {
 
 #[test]
 fn validator_allows_convergent_progress_and_post_proof_termination() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture()?;
     let path = budget_path(&plugin_root);
     let original = fs::read_to_string(&path)?;
     fs::write(

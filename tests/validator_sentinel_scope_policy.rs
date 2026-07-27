@@ -1,6 +1,6 @@
 use crate::support;
 
-use support::{TestResult, copy_plugin_fixture, stderr};
+use support::{TestResult, stderr};
 
 const SENTINEL_SCOPE_CLAUSES: &[&str] = &[
     "MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.",
@@ -67,6 +67,18 @@ const LIVE_OBSERVATION_SKILLS: &[&str] = &[
 
 const LIVE_OBSERVATION_CLAUSE: &str =
     "Live Sentinel observation MUST be read-only and event-driven.";
+
+const MUTABLE_FILES: &[&str] = &[
+    "agents/codexy-sentinel.toml",
+    "skills/codex-orchestration/SKILL.md",
+    "skills/proof-driven-completion/SKILL.md",
+    "skills/token-efficient-orchestration/SKILL.md",
+];
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
+    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
+}
 
 #[test]
 fn validator_cli_rejects_missing_sentinel_scope_policy() -> TestResult {

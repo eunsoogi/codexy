@@ -1,4 +1,4 @@
-use super::{TestResult, copy_plugin_fixture, stderr, validator};
+use super::{TestResult, copy_plugin_fixture_with_mutable_files, stderr, validator};
 
 const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
@@ -6,6 +6,10 @@ const GOVERNED_SKILLS: &[&str] = &[
     "skills/proof-driven-completion/SKILL.md",
     "skills/refactoring/SKILL.md",
 ];
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    copy_plugin_fixture_with_mutable_files(GOVERNED_SKILLS)
+}
 
 #[test]
 fn validator_cli_rejects_loc_exception_allowances_in_governed_skills() -> TestResult {

@@ -9,54 +9,6 @@ use std::os::unix::process::ExitStatusExt;
 #[cfg(windows)]
 use std::os::windows::process::ExitStatusExt;
 
-pub(crate) struct PluginFixture {
-    _temp: tempfile::TempDir,
-    root: PathBuf,
-}
-
-impl PluginFixture {
-    pub(super) fn from_parts(temp: tempfile::TempDir, root: PathBuf) -> Self {
-        Self { _temp: temp, root }
-    }
-
-    pub(crate) fn root(&self) -> &Path {
-        &self.root
-    }
-
-    pub(crate) fn reset_file(&self, relative: &Path) -> std::io::Result<()> {
-        if !relative.is_relative()
-            || relative
-                .components()
-                .any(|component| matches!(component, std::path::Component::ParentDir))
-        {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "fixture reset path must be relative",
-            ));
-        }
-        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy")
-            .join(relative);
-        std::fs::copy(source, self.root.join(relative)).map(|_| ())
-    }
-}
-
-pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
-    super::profile_metrics::record("plugin_fixture");
-    let temp = tempfile::tempdir()?;
-    let root = temp.path().join("codexy");
-    super::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &root,
-    )?;
-    Ok(PluginFixture::from_parts(temp, root))
-}
-
-pub(crate) fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let fixture = plugin_fixture()?;
-    Ok((fixture._temp, fixture.root))
-}
-
 pub(crate) fn validator(
     plugin_root: &Path,
     mode: &str,
