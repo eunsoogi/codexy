@@ -10,6 +10,7 @@ from pathlib import Path
 from profile_rust_shell import invocation_count
 
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
+WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
 
 
 def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
@@ -203,10 +204,11 @@ def enforce_workflow_contract(
         invocation_count(command, workload) for command in windows_runs
     )
     exact_workload = " ".join(workload)
+    expected_windows_runs = [WINDOWS_PREREQUISITE, exact_workload]
     if (
         job_values(windows_lines, "runs-on") != ["windows-latest"]
         or windows_timeouts != [str(required_windows_timeout_minutes)]
-        or windows_runs != [exact_workload]
+        or windows_runs != expected_windows_runs
         or windows_workload_count != 1
         or workload_count != windows_workload_count
     ):

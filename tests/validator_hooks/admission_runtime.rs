@@ -162,6 +162,9 @@ fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &
     let event = input["hook_event_name"].as_str().ok_or("event")?;
     child.arg(event);
     child.env_clear();
+    if let Some(path) = std::env::var_os("PATH") {
+        child.env("PATH", path);
+    }
     child.env_path("PLUGIN_ROOT", root);
     child.envs(environment.iter().copied());
     child.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());

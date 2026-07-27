@@ -29,13 +29,19 @@ fn gate_accepts_only_the_exact_native_windows_workload() -> Result<(), Box<dyn s
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 10\n    steps:\n      - run: cargo test --locked --all-targets\n",
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 10\n    steps:\n      - name: Install Windows archive scanner prerequisite\n        run: scripts/install-windows-test-prerequisites.ps1\n      - run: cargo test --locked --all-targets\n",
     )?;
     assert!(fixture.run(&[])?.status.success());
 
     std::fs::write(
         &fixture.workflow,
         "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 12\n    steps:\n      - run: cargo test --locked --all-targets\n",
+    )?;
+    assert!(!fixture.run(&[])?.status.success());
+
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 10\n    steps:\n      - run: scripts/unapproved-windows-step.ps1\n      - run: cargo test --locked --all-targets\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
 

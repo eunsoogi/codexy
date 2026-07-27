@@ -211,8 +211,18 @@ pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
         std::fs::set_permissions(path, permissions)?;
     }
     #[cfg(windows)]
-    // Windows does not use Unix executable mode bits for these fixture files.
-    let _ = path;
+    {
+        let shell = super::fixture_command_windows::discover_windows_interpreter("sh")
+            .map_err(std::io::Error::other)?;
+        let path = super::fixture_path::fixture_path_text(path.as_os_str())
+            .map_err(std::io::Error::other)?;
+        let status = Command::new(shell)
+            .args(["-c", "chmod +x -- \"$1\"", "fixture-mode", &path])
+            .status()?;
+        if !status.success() {
+            return Err(std::io::Error::other("Windows fixture chmod failed"));
+        }
+    }
     #[cfg(all(not(unix), not(windows)))]
     let _ = path;
     Ok(())

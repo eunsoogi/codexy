@@ -30,16 +30,16 @@ pub(crate) fn install_fixture_probe(path: &Path, probe: FixtureProbe) -> std::io
 fn fixture_probe_path(path: &Path) -> PathBuf {
     #[cfg(windows)]
     {
-        if path
-            .extension()
-            .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
-        {
-            return path.to_path_buf();
-        }
-        return path.with_extension("exe");
+        return path.to_path_buf();
     }
     #[cfg(not(windows))]
     path.to_path_buf()
+}
+
+#[test]
+fn fixture_probe_preserves_the_requested_platform_artifact_name() {
+    let path = Path::new("runtime/codexy-mcp-lsp-darwin-arm64.bin");
+    assert_eq!(fixture_probe_path(path), path);
 }
 
 fn write_posix_probe(path: &Path, configuration: &str) -> std::io::Result<()> {

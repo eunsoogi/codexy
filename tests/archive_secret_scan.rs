@@ -4,6 +4,7 @@ use std::{
     process::Output,
 };
 
+use crate::support::executable_path;
 use tempfile::{TempDir, tempdir};
 
 #[path = "support/release_archive.rs"]
@@ -46,10 +47,7 @@ fn assert_secret_rejected_quietly(output: Output, secret: &str) {
 }
 
 fn command_path(command: &str) -> PathBuf {
-    std::env::split_paths(&std::env::var_os("PATH").expect("PATH"))
-        .map(|directory| directory.join(command))
-        .find(|candidate| candidate.is_file())
-        .unwrap_or_else(|| panic!("required command missing: {command}"))
+    executable_path(command).unwrap_or_else(|error| panic!("{error}"))
 }
 
 #[cfg(unix)]
