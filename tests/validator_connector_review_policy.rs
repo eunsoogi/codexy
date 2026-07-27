@@ -1,5 +1,7 @@
 use std::{path::Path, process::Command};
 
+use codexy_runtime::validation;
+
 #[path = "structured_contract.rs"]
 mod structured_contract;
 
@@ -61,12 +63,10 @@ fn validator_rejects_missing_historical_or_fenced_connector_review_policy() -> T
     .enumerate()
     {
         std::fs::write(&reference_path, policy)?;
-        let output = validate(&plugin_root)?;
-        assert!(
-            !output.status.success(),
-            "connector policy regression escaped at case {index}: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        assert_policy_rejected(
+            &reference_path,
+            &format!("connector policy regression escaped at case {index}"),
+        )?;
         std::fs::write(&reference_path, &reference)?;
     }
     Ok(())
@@ -87,12 +87,10 @@ fn validator_rejects_active_automatic_or_repeated_request_variants() -> TestResu
         let reference_path = plugin_root.join(REFERENCE);
         let reference = std::fs::read_to_string(&reference_path)?;
         std::fs::write(&reference_path, format!("{reference}\n{variant}\n"))?;
-        let output = validate(&plugin_root)?;
-        assert!(
-            !output.status.success(),
-            "connector request variant escaped: {variant:?}\\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        assert_policy_rejected(
+            &reference_path,
+            &format!("connector request variant escaped: {variant:?}"),
+        )?;
     }
     Ok(())
 }
@@ -108,12 +106,10 @@ fn validator_allows_active_prohibitions_and_quoted_counterexamples() -> TestResu
         let reference_path = plugin_root.join(REFERENCE);
         let reference = std::fs::read_to_string(&reference_path)?;
         std::fs::write(&reference_path, format!("{reference}\n{control}\n"))?;
-        let output = validate(&plugin_root)?;
-        assert!(
-            output.status.success(),
-            "valid prohibition was rejected: {control:?}\\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        assert_policy_allowed(
+            &reference_path,
+            &format!("valid prohibition was rejected: {control:?}"),
+        )?;
     }
     Ok(())
 }
@@ -138,12 +134,10 @@ fn validator_rejects_active_variants_on_every_governed_policy_surface() -> TestR
                 .join(relative);
             let original = std::fs::read_to_string(&path)?;
             std::fs::write(&path, format!("{original}\n{directive}\n"))?;
-            let output = validate(&plugin_root)?;
-            assert!(
-                !output.status.success(),
-                "active directive escaped on {relative}: {directive:?}\\n{}",
-                String::from_utf8_lossy(&output.stderr)
-            );
+            assert_policy_rejected(
+                &path,
+                &format!("active directive escaped on {relative}: {directive:?}"),
+            )?;
         }
     }
     Ok(())
@@ -162,12 +156,10 @@ fn validator_ignores_excluded_policy_contexts_and_rejects_excluded_catalogs() ->
         let path = plugin_root.join(REFERENCE);
         let original = std::fs::read_to_string(&path)?;
         std::fs::write(&path, format!("{original}\n{excluded}\n"))?;
-        let output = validate(&plugin_root)?;
-        assert!(
-            output.status.success(),
-            "excluded context was treated as active: {excluded:?}\\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        assert_policy_allowed(
+            &path,
+            &format!("excluded context was treated as active: {excluded:?}"),
+        )?;
     }
 
     for prefix in ["> ", "### Historical example\n"] {
@@ -180,12 +172,10 @@ fn validator_ignores_excluded_policy_contexts_and_rejects_excluded_catalogs() ->
             .collect::<Vec<_>>()
             .join("\n");
         std::fs::write(&path, format!("# Manual Codex Connector Review\n\n## Required Procedure\n\n{prefix}{catalog}\n"))?;
-        let output = validate(&plugin_root)?;
-        assert!(
-            !output.status.success(),
-            "excluded catalog satisfied active obligations: {prefix:?}\\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        assert_policy_rejected(
+            &path,
+            &format!("excluded catalog satisfied active obligations: {prefix:?}"),
+        )?;
     }
     Ok(())
 }
@@ -224,4 +214,16 @@ fn validate(plugin_root: &Path) -> Result<std::process::Output, Box<dyn std::err
             "--check",
         ])
         .output()?)
+}
+
+fn assert_policy_allowed(path: &Path, context: &str) -> TestResult {
+    let diagnostics = validation::instruction_policy_diagnostics(path)?;
+    assert!(diagnostics.is_empty(), "{context}: {diagnostics:#?}");
+    Ok(())
+}
+
+fn assert_policy_rejected(path: &Path, context: &str) -> TestResult {
+    let diagnostics = validation::instruction_policy_diagnostics(path)?;
+    assert!(!diagnostics.is_empty(), "{context}");
+    Ok(())
 }

@@ -1,4 +1,8 @@
+mod admission_artifact;
 mod command;
+mod policy_inventory;
+mod policy_inventory_discovery;
+mod policy_inventory_frontmatter;
 mod safety;
 
 use std::path::Path;
@@ -62,6 +66,8 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             check_group(&path, plugin_root, event, group)?;
         }
     }
+    admission_artifact::check(plugin_root)?;
+    policy_inventory::check(plugin_root)?;
     Ok(())
 }
 

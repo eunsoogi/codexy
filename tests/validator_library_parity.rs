@@ -64,7 +64,28 @@ fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::
         ),
     )?;
 
-    assert_matches_cli_with(&plugin_root, "--check", support::validator_routing)?;
+    let cli = cli_output(&plugin_root, "--check")?;
+    let routing = support::validator_routing(&plugin_root)?;
+    assert!(!cli.status.success() && !routing.status.success());
+    let cli_stderr = String::from_utf8_lossy(&cli.stderr);
+    let routing_stderr = String::from_utf8_lossy(&routing.stderr);
+    let cli_errors = cli_stderr
+        .lines()
+        .filter(|line| line.starts_with("error:"))
+        .collect::<Vec<_>>();
+    let routing_errors = routing_stderr
+        .lines()
+        .filter(|line| line.starts_with("error:"))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        &cli_errors[cli_errors.len() - routing_errors.len()..],
+        routing_errors
+    );
+    support::assert_structured_literals(
+        &cli_stderr,
+        "routing mutation inventory drift",
+        &["unreviewed, moved, or changed normative rule"],
+    );
     Ok(())
 }
 
