@@ -148,6 +148,21 @@ pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
     crate::support::make_executable(path)
 }
 
+pub(crate) fn governed_archive_mode(
+    is_windows: bool,
+    is_governed_wrapper: bool,
+    _source_mode: u32,
+) -> Option<u32> {
+    (is_windows && is_governed_wrapper).then_some(0o755)
+}
+
+#[test]
+fn windows_archive_fixture_forces_only_governed_shebang_wrappers_to_posix_0755() {
+    assert_eq!(governed_archive_mode(true, true, 0o644), Some(0o755));
+    assert_eq!(governed_archive_mode(true, false, 0o644), None);
+    assert_eq!(governed_archive_mode(false, true, 0o644), None);
+}
+
 fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'static str> {
     match (os, architecture) {
         ("macos", "aarch64") => Ok("darwin-arm64"),

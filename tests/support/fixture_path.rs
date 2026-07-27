@@ -25,6 +25,30 @@ pub(crate) fn fixture_path_text(value: impl AsRef<OsStr>) -> Result<String, Stri
     }
 }
 
+pub(crate) fn hook_fixture_shell_input(
+    command: &str,
+    cwd: &std::path::Path,
+) -> Result<(String, String), String> {
+    #[cfg(windows)]
+    let native_cwd = cwd
+        .to_str()
+        .ok_or_else(|| "hook fixture path is not valid UTF-8".to_owned())?;
+    let cwd = fixture_path_text(cwd)?;
+    #[cfg(windows)]
+    let command = normalize_declared_hook_shell_paths(command, &[(native_cwd, cwd.as_str())]);
+    #[cfg(not(windows))]
+    let command = command.to_owned();
+    Ok((command, cwd))
+}
+
+fn normalize_declared_hook_shell_paths(command: &str, paths: &[(&str, &str)]) -> String {
+    paths
+        .iter()
+        .fold(command.to_owned(), |command, (native, posix)| {
+            command.replace(native, posix)
+        })
+}
+
 pub(crate) fn fixture_path_environment_value(
     key: &OsStr,
     value: &OsStr,
@@ -115,5 +139,15 @@ fn windows_fixture_paths_use_the_msys_absolute_path_contract() {
     assert_eq!(
         windows_fixture_environment_value("CODEXY_RUNTIME_PLATFORM", "windows-x86_64"),
         Ok("windows-x86_64".into())
+    );
+}
+
+#[test]
+fn declared_hook_shell_paths_normalize_only_declared_values() {
+    let native = r"C:\work\fixture path";
+    let command = format!("sudo -D {native} git status --short && printf '%s' C:unrelated");
+    assert_eq!(
+        normalize_declared_hook_shell_paths(&command, &[(native, "/c/work/fixture path")]),
+        "sudo -D /c/work/fixture path git status --short && printf '%s' C:unrelated"
     );
 }

@@ -1,12 +1,29 @@
 use std::path::{Path, PathBuf};
 
-use super::make_executable;
+use super::{fixture_command::FixtureCommand, make_executable};
 
 pub(crate) enum FixtureProbe {
     Arguments,
 }
 
-pub(crate) fn install_fixture_probe(path: &Path, probe: FixtureProbe) -> std::io::Result<PathBuf> {
+pub(crate) struct FixtureProbeExecutable {
+    logical_path: PathBuf,
+}
+
+impl FixtureProbeExecutable {
+    pub(crate) fn logical_path(&self) -> &Path {
+        &self.logical_path
+    }
+
+    pub(crate) fn command(&self) -> FixtureCommand {
+        FixtureCommand::new(&self.logical_path)
+    }
+}
+
+pub(crate) fn install_fixture_probe(
+    path: &Path,
+    probe: FixtureProbe,
+) -> std::io::Result<FixtureProbeExecutable> {
     let path = fixture_probe_path(path);
     let configuration = match probe {
         FixtureProbe::Arguments => "argv\n".to_owned(),
@@ -24,7 +41,7 @@ pub(crate) fn install_fixture_probe(path: &Path, probe: FixtureProbe) -> std::io
     write_posix_probe(&path, &configuration)?;
     std::fs::write(path.with_extension("fixture"), configuration)?;
     make_executable(&path)?;
-    Ok(path)
+    Ok(FixtureProbeExecutable { logical_path: path })
 }
 
 fn fixture_probe_path(path: &Path) -> PathBuf {
@@ -59,7 +76,9 @@ fn fixture_probe_preserves_argv_stdout_stderr_and_exit_status()
         temp.path().join("argv probe").as_path(),
         FixtureProbe::Arguments,
     )?;
-    let output = std::process::Command::new(probe)
+    assert_eq!(probe.logical_path(), temp.path().join("argv probe"));
+    let output = probe
+        .command()
         .arg("value with spaces")
         .env("CODEXY_FIXTURE_PROBE_STDERR", "stderr mirror")
         .env("CODEXY_FIXTURE_PROBE_EXIT", "23")
